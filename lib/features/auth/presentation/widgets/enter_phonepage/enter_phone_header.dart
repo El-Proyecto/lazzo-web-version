@@ -10,7 +10,7 @@ class EnterPhoneHeader extends StatelessWidget {
   final ValueChanged<Country> onCountryChanged;
   final List<Country> countries;
 
-  EnterPhoneHeader({
+  const EnterPhoneHeader({
     super.key,
     required this.controller,
     required this.selectedCountry,

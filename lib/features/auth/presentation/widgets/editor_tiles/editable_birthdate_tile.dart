@@ -98,7 +98,7 @@ class _EditableBirthDateTileState extends State<EditableBirthDateTile> {
                     ),
                   ],
                 ),
-                SizedBox(height: kActionRowClearance),
+                SizedBox(height: Gaps.xl),
                 InkWell(
                   onTap: () async {
                     final now = DateTime.now();

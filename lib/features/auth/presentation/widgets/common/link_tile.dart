@@ -194,7 +194,7 @@ class _LinkTileState extends State<LinkTile> {
           ),
 
           // “respiro” entre header e input
-          SizedBox(height: kActionRowClearance),
+          SizedBox(height: Gaps.xl),
 
           TextField(
             controller: _c,

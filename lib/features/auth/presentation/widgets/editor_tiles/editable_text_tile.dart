@@ -109,7 +109,7 @@ class _EditableTextTileState extends State<EditableTextTile> {
                     ),
                   ],
                 ),
-                SizedBox(height: kActionRowClearance), // “respiro” entre header e input
+                SizedBox(height: Gaps.xl), // “respiro” entre header e input
                 TextField(
                   controller: _c,
                   autofocus: true,
