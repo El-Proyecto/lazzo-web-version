@@ -1,0 +1,143 @@
+import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+// ajusta caminhos conforme a tua estrutura:
+import '../widgets/otp_verification/enter_codetitle.dart';
+import '../widgets/otp_verification/otp_boxes.dart';
+import '../widgets/otp_verification/verify_footer.dart';
+
+class OtpVerificationPage extends StatefulWidget {
+  const OtpVerificationPage({super.key, required this.phoneNumber});
+
+  final String phoneNumber;
+
+  @override
+  State<OtpVerificationPage> createState() => _OtpVerificationPageState();
+}
+
+class _OtpVerificationPageState extends State<OtpVerificationPage> {
+  String _code = '';
+  String? _bannerMessage;
+  bool _busy = false;
+
+  Future<void> _resend() async {
+    try {
+      await Supabase.instance.client.auth.signInWithOtp(phone: widget.phoneNumber);
+      setState(() => _bannerMessage = 'Enviámos novamente o código por SMS.');
+    } on AuthException catch (e) {
+      setState(() => _bannerMessage = e.message);
+    } catch (e) {
+      setState(() => _bannerMessage = 'Falha ao reenviar código: $e');
+    }
+  }
+
+  Future<void> _verify() async {
+    if (_code.length != 6) {
+      setState(() => _bannerMessage = 'Introduz os 6 dígitos do código.');
+      return;
+    }
+    setState(() {
+      _busy = true;
+      _bannerMessage = null;
+    });
+
+    final supabase = Supabase.instance.client;
+
+    try {
+      // 1) verificar OTP
+      await supabase.auth.verifyOTP(
+        phone: widget.phoneNumber,
+        token: _code,
+        type: OtpType.sms,
+      );
+
+      // 2) (opcional) criar/atualizar o registo na tabela users
+      final uid = supabase.auth.currentUser?.id;
+      if (uid != null) {
+        await supabase
+            .from('users')
+            .upsert({'id': uid, 'phone': widget.phoneNumber})
+            .select()
+            .single();
+      }
+
+      if (!mounted) return;
+      // segue para a tua home/rota inicial
+      Navigator.pushNamedAndRemoveUntil(context, '/finish-setup', (_) => false);
+    } on AuthException catch (e) {
+      setState(() => _bannerMessage = e.message);
+    } catch (e) {
+      setState(() => _bannerMessage = 'Erro ao verificar: $e');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFF181818),
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: const BackButton(color: Colors.white),
+      ),
+      bottomNavigationBar: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+          child: EnterPhoneFooter(
+            onSend: _busy ? null : _verify, // botão "Verify"
+          ),
+        ),
+      ),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: EdgeInsets.fromLTRB(
+            16,
+            16,
+            16,
+            MediaQuery.of(context).viewInsets.bottom + 16,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const SizedBox(height: 32),
+              EnterCodeTitle(phoneNumber: widget.phoneNumber),
+              const SizedBox(height: 24),
+              OtpCodeBoxes(
+                onCompleted: (code) => setState(() => _code = code),
+                onResend: _resend,
+              ),
+              if (_bannerMessage != null) ...[
+                const SizedBox(height: 12),
+                _Banner(message: _bannerMessage!),
+              ],
+              const SizedBox(height: 24),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _Banner extends StatelessWidget {
+  const _Banner({required this.message});
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: ShapeDecoration(
+        color: const Color(0xFF2B2B2B),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+      child: Text(
+        message,
+        style: const TextStyle(color: Color(0xFFF2F2F2)),
+      ),
+    );
+  }
+}

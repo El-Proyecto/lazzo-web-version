@@ -1,0 +1,1 @@
+const double kActionRowClearance = 32.0; // distância (px) entre botões e o input
