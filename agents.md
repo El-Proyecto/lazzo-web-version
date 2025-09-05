@@ -1,0 +1,161 @@
+# Lazzo — Agent Guide
+
+**Audience:** engineering agents & copilots. **Goal:** ship features fast without breaking architecture. This repo follows **Clean Architecture (Presentation / Domain / Data)** + **Supabase** + **Riverpod**.
+
+> **Key rule:** We do **not** keep `figma_raw/`. Copy UI from Figma and **immediately tokenize** into `shared/components/`. If a piece is **not reusable**, place it under the feature’s `presentation/widgets/`.
+
+---
+
+## 1) Golden Rules
+- **Tokenize first**: replace all colors/sizes/fonts/radii with tokens from `shared/constants` & `shared/themes`.
+- **No infra in Domain**: Domain must have **no** imports from Flutter/Supabase.
+- **Presentation ≠ Data**: Widgets do not call Supabase; they consume **providers/use cases**.
+- **Fake-first**: default DI wires **fake repositories**. A single override flips to Supabase.
+- **Stateless Shared**: All `shared/components/*` must be stateless and reusable.
+- **Minimal queries**: Data layer selects only columns needed by **entities**.
+
+---
+
+## 2) Repository Layout (for Agents)
+```
+lib/
+├─ shared/
+│  ├─ constants/        # spacing, text styles, assets
+│  ├─ themes/           # colors, app_theme (dark-only MVP)
+│  └─ components/       # reusable, tokenized UI (cards, sections, nav, ctas, forms)
+├─ features/
+│  └─ <feature>/
+│     ├─ domain/        # entities/, repositories/ (interfaces), usecases/
+│     ├─ data/          # data_sources/ (Supabase), models/ (DTO), repositories/ (impl), fakes/
+│     └─ presentation/  # pages/, providers/ (Riverpod), widgets/ (feature-specific UI)
+├─ services/            # supabase_client, storage, notifications, location
+├─ routes/              # AppRouter (Navigator 1.0)
+└─ resources/           # i18n
+```
+
+**Where to put things**
+- Reusable card/section/navbar → `shared/components/...`
+- Feature-only widget → `features/<f>/presentation/widgets/...`
+- State/DI → `features/<f>/presentation/providers/...`
+- Entity/Use case/repo interface → `features/<f>/domain/...`
+- Supabase queries & DTOs → `features/<f>/data/...`
+
+---
+
+## 3) Tokens & Theme (Source of Truth)
+- Colors: `shared/themes/colors.dart` (e.g., `BrandColors.bg2`, `colorScheme.primary`).
+- Spacing: `shared/constants/spacing.dart` (`Insets`, `Gaps`, `Radii`, `Pads`).
+- Typography: `shared/constants/text_styles.dart` (`labelLarge`, `titleMediumEmph`, etc.).
+- Theme: `shared/themes/app_theme.dart` (Material 3, dark-only). **Never hardcode hex** in components.
+
+**Tokenization checklist**
+- Replace all `Color(0xFF...)` → tokens.
+- Replace `EdgeInsets.all/only` values → `Insets`, `Pads`, `Gaps`.
+- Replace `BorderRadius.circular(...)` → `Radii`.
+- Replace `TextStyle(...)` → `AppText.*`.
+- Remove fixed widths; prefer `Expanded`, constraints, or natural sizing.
+
+---
+
+## 4) End‑to‑End Feature Flow (Playbook)
+**Goal:** new feature visible with fake data, then switch to Supabase by DI override.
+
+1. **Scope UI**: list screens/sections; identify reusable vs feature-specific.
+2. **Domain contracts**
+   - Create **Entity** with minimal fields UI needs.
+   - Define **Repository interface** (methods used by use cases/UI).
+   - Add **Use case** (one action per class).
+3. **UI**
+   - Copy from Figma → create tokenized component(s) in `shared/components/`.
+   - Compose screen in `features/<f>/presentation/pages/` (use shared components).
+4. **State**
+   - Create **providers** (Riverpod) exposing `AsyncValue` states; inject **FakeRepo** by default.
+5. **Data**
+   - Add **Supabase data source** in `data/data_sources/` (read/write/RPC/storage calls).
+   - Add **DTO model** in `data/models/` (parse row ↔ entity).
+   - Implement **Repository** in `data/repositories/` (use data source + DTO; return **entities**).
+6. **DI Override**
+   - In `main.dart`’s `ProviderScope(overrides: [...])`, swap `FakeRepo` → `RepoImpl(SupabaseClient)`.
+
+**Result:** UI flips from fake to real with **no** widget changes.
+
+---
+
+## 5) Responsibilities by Folder (for Automation)
+- `presentation/pages/` — screen composition only; no DB/network.
+- `presentation/providers/` — call use cases, manage `AsyncValue`; **no** JSON parsing.
+- `presentation/widgets/` — feature-specific visuals; compose shared components.
+- `domain/entities/` — pure Dart models; stable contracts.
+- `domain/repositories/` — interfaces; define app data API.
+- `domain/usecases/` — orchestrate a single intent; may apply business rules.
+- `data/data_sources/` — Supabase calls (select/insert/update/RPC/storage). Respect RLS.
+- `data/models/` — DTO/serialization; isolate parsing & defaults.
+- `data/repositories/` — bridges data sources ↔ domain; returns entities.
+- `data/fakes/` — in-memory/dev repos.
+- `shared/components/` — tokenized stateless building blocks.
+- `services/` — app-wide clients/services (Supabase, storage, notifications).
+
+---
+
+## 6) Supabase Guidelines
+- **RLS first**: queries must satisfy row-level policies. No admin keys in app.
+- **Minimal select**: only fields required by the **entity**.
+- **Indexes**: sort & filter by indexed columns; always `limit`.
+- **Storage**: path convention `/groupId/eventId/userId/uuid.jpg` + metadata (uploader, type, ts).
+- **RPC/Triggers**: live in DB; expose via repository method signatures.
+
+---
+
+## 7) Navigation
+- Router: `routes/AppRouter` (Navigator 1.0 named routes).
+- For previews, set `initialRoute` to target page.
+- If nested tabs/guards become complex, consider `go_router` migration later.
+
+---
+
+## 8) Quality Gates (PR checklist)
+- Uses tokens (no hex/magic numbers; micro 1–2px allowed if necessary).
+- Stateless, reusable components in `shared/components/`.
+- `AsyncValue` covers loading/empty/error in pages.
+- Domain has no Flutter/Supabase imports.
+- Data layer selects minimal columns and respects RLS.
+- One responsibility per use case.
+- Small PRs; clear filenames; feature‑scoped changes.
+
+---
+
+## 9) Common Playbooks
+- **Add a new card used in many screens** → implement in `shared/components/cards/`, then compose in pages.
+- **Add a feature list (e.g., events)** → Entity + Repo interface + Use case + Provider; UI consumes provider; Data layer later wires Supabase.
+- **Replace fake with real** → only DI override in `main.dart`.
+- **Add write action (POST)** → Use case calling repository; repository calls data source `.insert()`/RPC; UI reads `AsyncValue` and shows success/error.
+
+---
+
+## 10) Naming & Conventions
+- Components: `SomethingCard`, `SectionHeader`, `ModeNavBar`, `CreateEventCta`.
+- Providers: `somethingControllerProvider`, `somethingRepositoryProvider`.
+- Use cases: verb-first `GetLastMemory`, `CreateEvent`, `VoteOnPoll`.
+- Files are **snake_case**; classes are **PascalCase**.
+
+---
+
+## 11) What Agents Must Avoid
+- Editing UI with hardcoded hex/px not backed by tokens.
+- Importing Supabase or Flutter into `domain/`.
+- Calling Supabase directly from widgets/pages/providers.
+- Duplicating shared components inside features.
+- Modifying repository interfaces without syncing owners.
+
+---
+
+## 12) Bootstrapping & Running
+- Theme: dark-only via `shared/themes/app_theme.dart`.
+- Router: named routes; set `initialRoute` to preview target page.
+- Start: `flutter pub get && flutter run`.
+- Supabase env: initialize in `main.dart`; DI override to use real repositories.
+
+---
+
+Keep this guide up to date. When in doubt: **tokenize, separate layers, fake-first, DI override**.
+

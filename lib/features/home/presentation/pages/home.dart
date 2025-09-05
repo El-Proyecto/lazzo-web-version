@@ -2,27 +2,63 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../shared/components/cards/memory_ready_card.dart';
 import '../../../../shared/components/sections/section_block.dart';
-import '../providers/home_data_provider.dart';
+import '../providers/memory_providers.dart';
 
 class HomePage extends ConsumerWidget {
   const HomePage({super.key});
+
   @override
-  Widget build(BuildContext c, WidgetRef ref) {
-    final last = ref.watch(lastMemoryProvider);
-    return ListView(
-      padding: EdgeInsets.zero,
-      children: [
-        if (last != null)
-          SectionBlock(
-            title: 'Last Memory',
-            child: MemoryReadyCard(
-              emoji: last.emoji,
-              title: last.title,
-              onTap: () {/* navegar para memória */},
+  Widget build(BuildContext context, WidgetRef ref) {
+    final lastMemoryAsync = ref.watch(lastMemoryControllerProvider);
+
+    return Scaffold(
+      body: SafeArea(
+        child: ListView(
+          padding: EdgeInsets.zero,
+          children: [
+            lastMemoryAsync.when(
+              data: (memory) {
+                if (memory == null) {
+                  return const SizedBox.shrink();
+                }
+                return SectionBlock(
+                  title: 'Recent Memory',
+                  child: MemoryReadyCard(
+                    emoji: memory.emoji,
+                    title: memory.title,
+                    onTap: () {
+                      // TODO: Navigate to memory details
+                    },
+                  ),
+                );
+              },
+              loading: () => const SectionBlock(
+                title: 'Recent Memory',
+                child: Padding(
+                  padding: EdgeInsets.all(16),
+                  child: SizedBox(
+                    height: 94,
+                    child: Center(child: CircularProgressIndicator()),
+                  ),
+                ),
+              ),
+              error: (error, stackTrace) => SectionBlock(
+                title: 'Recent Memory',
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Text(
+                    'Failed to load memory',
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.error,
+                    ),
+                  ),
+                ),
+              ),
             ),
-          ),
-        // ...outras sections
-      ],
+            // TODO: Add more sections here (Next/Pending memories)
+          ],
+        ),
+      ),
     );
   }
 }

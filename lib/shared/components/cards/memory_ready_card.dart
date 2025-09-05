@@ -19,80 +19,51 @@ class MemoryReadyCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
+    final t = Theme.of(context);
+    final radius = BorderRadius.circular(Radii.md);
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: Insets.screenH)
-          .copyWith(top: Gaps.between), // margem de ecrã + gap entre secções
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header da secção
-          Text(
-            'Last Memory',
-            style: AppText.titleMediumEmph.copyWith(color: scheme.onSurface),
-          ),
-          const SizedBox(height: Gaps.titleField), // 8
-
-          // Card
-          InkWell(
-            borderRadius: BorderRadius.circular(Radii.md),
-            onTap: onTap,
-            child: Container(
-              constraints: const BoxConstraints(minHeight: 94),
-              padding: const EdgeInsets.symmetric(
-                horizontal: Pads.ctlH, // 16
-                vertical: Pads.ctlV,   // 12
-              ),
-              decoration: BoxDecoration(
-                color: BrandColors.bg2,
-                borderRadius: BorderRadius.circular(Radii.md), // 16
-              ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  // Coluna de textos
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Emoji + título
-                        Row(
-                          children: [
-                            Text(emoji,
-                                style:
-                                    const TextStyle(fontSize: 28, height: 1)),
-                            const SizedBox(width: Gaps.inCardText), // 4
-                            Expanded(
-                              child: Text(
-                                title,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: AppText.titleMediumEmph
-                                    .copyWith(color: scheme.onSurface),
-                              ),
-                            ),
-                          ],
+    return Material(
+      color: BrandColors.bg2,
+      shape: RoundedRectangleBorder(borderRadius: radius),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        borderRadius: radius,
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: Pads.ctlH, vertical: Pads.ctlV),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(children: [
+                      const Text('🐟', style: TextStyle(fontSize: 28, height: 1)),
+                      const SizedBox(width: Gaps.inCardText),
+                      Expanded(
+                        child: Text(
+                          title,
+                          maxLines: 1, overflow: TextOverflow.ellipsis,
+                          style: AppText.titleMediumEmph.copyWith(color: t.colorScheme.onSurface),
                         ),
-                        const SizedBox(height: Gaps.sameType), // 8
-                        // Mensagem
-                        Text(
-                          message,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: AppText.bodyMedium
-                              .copyWith(color: BrandColors.text2),
-                        ),
-                      ],
+                      ),
+                    ]),
+                    const SizedBox(height: Gaps.sameType),
+                    Text(
+                      message,
+                      maxLines: 1, overflow: TextOverflow.ellipsis,
+                      style: AppText.bodyMedium.copyWith(color: BrandColors.text2),
                     ),
-                  ),
-                  const SizedBox(width: Gaps.sameType), // 8
-                  Icon(Icons.chevron_right_rounded, color: BrandColors.text2),
-                ],
+                  ],
+                ),
               ),
-            ),
+              const SizedBox(width: Gaps.sameType),
+              const Icon(Icons.chevron_right_rounded, color: BrandColors.text2),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
