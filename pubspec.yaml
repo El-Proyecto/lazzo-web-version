@@ -30,7 +30,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  supabase_flutter: 2.9.1
+  supabase_flutter: ^2.10.0
   flutter_riverpod: ^2.5.1
   http: ^1.4.0
   sign_in_with_apple: ^6.1.0

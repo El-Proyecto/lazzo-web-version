@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../../shared/components/cards/memory_ready_card.dart';
+import '../widgets/memory_summary_card.dart';
 import '../../../../shared/components/sections/section_block.dart';
 import '../providers/memory_providers.dart';
 
@@ -19,11 +19,12 @@ class HomePage extends ConsumerWidget {
             lastMemoryAsync.when(
               data: (memory) {
                 if (memory == null) {
+                  print('memory is null');
                   return const SizedBox.shrink();
                 }
                 return SectionBlock(
                   title: 'Recent Memory',
-                  child: MemoryReadyCard(
+                  child: MemorySummaryCard(
                     emoji: memory.emoji,
                     title: memory.title,
                     onTap: () {

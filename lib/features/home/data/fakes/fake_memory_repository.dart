@@ -6,8 +6,8 @@ class FakeMemoryRepository implements MemoryRepository {
   Future<MemorySummary?> getLastReadyMemory(String userId) async {
     await Future.delayed(const Duration(milliseconds: 300));
     return MemorySummary(
-      id: 'mem_1',
-      title: 'Pescaria com o Manuel Semedo',
+      eventId: 'mem_1',
+      title: 'Pescaria',
       emoji: '🐟',
       createdAt: DateTime.now().subtract(const Duration(days:1)),
     );

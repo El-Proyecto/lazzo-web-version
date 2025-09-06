@@ -3,10 +3,10 @@
 
 import '../../domain/entities/memory_summary.dart';
 import '../../domain/repositories/memory_repository.dart';
-import '../data_sources/memory_remote_datasource.dart';
+import '../data_sources/memory_remote_data_source.dart';
 
 class MemoryRepositoryImpl implements MemoryRepository {
-  final MemoryRemoteDataSource remote;
+  final MemoryRemoteDataSource remote; // injeta o datasource (Supabase)
   MemoryRepositoryImpl(this.remote);
 
   @override

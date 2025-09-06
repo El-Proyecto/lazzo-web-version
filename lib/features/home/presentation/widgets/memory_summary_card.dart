@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
-import '../../constants/spacing.dart';
-import '../../constants/text_styles.dart';
-import '../../themes/colors.dart';
+import '../../../../shared/constants/spacing.dart';
+import '../../../../shared/constants/text_styles.dart';
+import '../../../../shared/themes/colors.dart';
 
-class MemoryReadyCard extends StatelessWidget {
+class MemorySummaryCard extends StatelessWidget {
   final String emoji;              // ex.: '🐟'
   final String title;              // ex.: 'Pescaria com o Zé'
   final String message;            // default abaixo
   final VoidCallback? onTap;
 
-  const MemoryReadyCard({
+  const MemorySummaryCard({
     super.key,
     required this.emoji,
     required this.title,
@@ -40,7 +40,7 @@ class MemoryReadyCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(children: [
-                      const Text('🐟', style: TextStyle(fontSize: 28, height: 1)),
+                      Text(emoji, style: const TextStyle(fontSize: 28, height: 1)),
                       const SizedBox(width: Gaps.inCardText),
                       Expanded(
                         child: Text(
