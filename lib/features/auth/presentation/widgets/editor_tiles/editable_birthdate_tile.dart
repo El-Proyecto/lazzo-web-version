@@ -1,6 +1,7 @@
 // lib/features/profile/presentation/widgets/editor_tiles/editable_birthdate_tile.dart
 import 'package:flutter/material.dart';
 import '../../../../../shared/constants/spacing.dart';
+import '../../../../../shared/themes/colors.dart';
 import '../../../../../shared/utils/formatters.dart';
 import '../common/pill_button.dart';
 
@@ -43,8 +44,9 @@ class _EditableBirthDateTileState extends State<EditableBirthDateTile> {
 
   @override
   Widget build(BuildContext context) {
-    final collapsedText =
-        widget.value != null ? formatDdMMyyyy(widget.value!) : 'Tap to Add';
+    final collapsedText = widget.value != null
+        ? formatDdMMyyyy(widget.value!)
+        : 'Tap to Add';
 
     return Container(
       width: 370,
@@ -52,7 +54,13 @@ class _EditableBirthDateTileState extends State<EditableBirthDateTile> {
       decoration: ShapeDecoration(
         color: const Color(0xFF2B2B2B),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        shadows: const [BoxShadow(color: Color(0x3F282828), blurRadius: 4, offset: Offset(0, 4))],
+        shadows: const [
+          BoxShadow(
+            color: Color(0x3F282828),
+            blurRadius: 4,
+            offset: Offset(0, 4),
+          ),
+        ],
       ),
       child: widget.isEditing
           ? Column(
@@ -74,7 +82,10 @@ class _EditableBirthDateTileState extends State<EditableBirthDateTile> {
                           ),
                         ),
                         SizedBox(width: 8),
-                        Text('*', style: TextStyle(color: Color(0xFFFF3B30))),
+                        Text(
+                          '*',
+                          style: TextStyle(color: BrandColors.cantVote),
+                        ),
                       ],
                     ),
                     const Spacer(),
@@ -102,7 +113,8 @@ class _EditableBirthDateTileState extends State<EditableBirthDateTile> {
                 InkWell(
                   onTap: () async {
                     final now = DateTime.now();
-                    final initial = _picked ?? DateTime(now.year - 18, now.month, now.day);
+                    final initial =
+                        _picked ?? DateTime(now.year - 18, now.month, now.day);
                     final picked = await showDatePicker(
                       context: context,
                       initialDate: initial,
@@ -130,8 +142,13 @@ class _EditableBirthDateTileState extends State<EditableBirthDateTile> {
                       borderRadius: BorderRadius.circular(16),
                     ),
                     child: Text(
-                      _picked != null ? formatDdMMyyyy(_picked!) : 'Select your birth date…',
-                      style: const TextStyle(color: Color(0xFFF2F2F2), fontSize: 16),
+                      _picked != null
+                          ? formatDdMMyyyy(_picked!)
+                          : 'Select your birth date…',
+                      style: const TextStyle(
+                        color: Color(0xFFF2F2F2),
+                        fontSize: 16,
+                      ),
                     ),
                   ),
                 ),
@@ -155,7 +172,10 @@ class _EditableBirthDateTileState extends State<EditableBirthDateTile> {
                       ),
                     ),
                     const SizedBox(width: 8),
-                    const Text('*', style: TextStyle(color: Color(0xFFFF3B30))),
+                    const Text(
+                      '*',
+                      style: TextStyle(color: BrandColors.cantVote),
+                    ),
                     const Spacer(),
                     SizedBox(
                       width: 120,
@@ -175,7 +195,11 @@ class _EditableBirthDateTileState extends State<EditableBirthDateTile> {
                     const SizedBox(width: 6),
                     Transform.rotate(
                       angle: -1.5708,
-                      child: const Icon(Icons.chevron_left, size: 20, color: Color(0xFFA5A5A5)),
+                      child: const Icon(
+                        Icons.chevron_left,
+                        size: 20,
+                        color: Color(0xFFA5A5A5),
+                      ),
                     ),
                   ],
                 ),
