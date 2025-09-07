@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../constants/spacing.dart';
+import '../../constants/text_styles.dart';
 import '../../themes/colors.dart';
 
 class SimpleVoteButton extends StatelessWidget {
@@ -12,18 +13,19 @@ class SimpleVoteButton extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: 40,
-        height: 40,
+        height: 32,
+        padding: const EdgeInsets.symmetric(horizontal: 10),
         decoration: ShapeDecoration(
           color: BrandColors.planning,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(Radii.sm),
           ),
         ),
-        child: const Icon(
-          Icons.how_to_vote_outlined,
-          size: 20,
-          color: BrandColors.text1,
+        child: Center(
+          child: Text(
+            'Vote',
+            style: AppText.bodyMediumEmph.copyWith(color: BrandColors.text1),
+          ),
         ),
       ),
     );

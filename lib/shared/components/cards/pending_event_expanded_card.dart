@@ -92,15 +92,29 @@ class PendingEventExpandedCard extends StatelessWidget {
               const SizedBox(width: Gaps.md),
 
               // Vote Again Button
-              ExpandedCardButton(
-                icon: Icons.how_to_vote_outlined,
-                onTap: onVoteAgain,
-              ),
+              ExpandedCardButton(onTap: onVoteAgain),
 
               const SizedBox(width: Gaps.xs),
 
               // Collapse Button
-              ExpandedCardButton(icon: Icons.expand_less, onTap: onCollapse),
+              GestureDetector(
+                onTap: onCollapse,
+                child: Container(
+                  width: 32,
+                  height: 32,
+                  decoration: ShapeDecoration(
+                    color: BrandColors.bg3,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(Radii.sm),
+                    ),
+                  ),
+                  child: const Icon(
+                    Icons.expand_less,
+                    size: 18,
+                    color: BrandColors.text1,
+                  ),
+                ),
+              ),
             ],
           ),
 

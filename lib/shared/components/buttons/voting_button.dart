@@ -18,21 +18,23 @@ class VotingButton extends StatelessWidget {
         GestureDetector(
           onTap: onNo,
           child: Container(
-            padding: const EdgeInsets.all(6),
+            padding: const EdgeInsets.all(4),
             decoration: ShapeDecoration(
-              color: const Color(0x33D25440), // Red with opacity
+              color: BrandColors.cantVote.withValues(
+                alpha: 0.2,
+              ), // Red with opacity
               shape: RoundedRectangleBorder(
                 side: BorderSide(
                   width: 1,
-                  color: Color(0xFFB93E2B), // Red border
+                  color: BrandColors.cantVote, // Red border
                 ),
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(Radii.sm),
               ),
             ),
             child: SizedBox(
               width: 20,
               height: 20,
-              child: Icon(Icons.close, size: 16, color: Color(0xFFB93E2B)),
+              child: Icon(Icons.close, size: 14, color: BrandColors.cantVote),
             ),
           ),
         ),
@@ -42,21 +44,23 @@ class VotingButton extends StatelessWidget {
         GestureDetector(
           onTap: onYes,
           child: Container(
-            padding: const EdgeInsets.all(6),
+            padding: const EdgeInsets.all(4),
             decoration: ShapeDecoration(
-              color: BrandColors.planning.withValues(alpha: 0.2), // Green with opacity
+              color: BrandColors.planning.withValues(
+                alpha: 0.2,
+              ), // Green with opacity
               shape: RoundedRectangleBorder(
                 side: const BorderSide(
                   width: 1,
                   color: BrandColors.planning, // Green border
                 ),
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(Radii.sm),
               ),
             ),
             child: const SizedBox(
               width: 20,
               height: 20,
-              child: Icon(Icons.check, size: 16, color: BrandColors.planning),
+              child: Icon(Icons.check, size: 14, color: BrandColors.planning),
             ),
           ),
         ),
