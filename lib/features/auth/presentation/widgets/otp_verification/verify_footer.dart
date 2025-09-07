@@ -7,7 +7,7 @@ class EnterPhoneFooter extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return SizedBox(
       width: 370,
       child: Column(
         mainAxisSize: MainAxisSize.min,

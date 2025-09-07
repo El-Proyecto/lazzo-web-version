@@ -1,13 +1,14 @@
 // lib/features/profile/presentation/widgets/editor_tiles/editable_text_tile.dart
 import 'package:flutter/material.dart';
 import '../../../../../shared/constants/spacing.dart';
+import '../../../../../shared/themes/colors.dart';
 import '../common/pill_button.dart';
 
 class EditableTextTile extends StatefulWidget {
   const EditableTextTile({
     super.key,
     required this.label,
-    required this.value,          // '' → “Tap to Add”
+    required this.value, // '' → “Tap to Add”
     required this.isEditing,
     this.requiredAsterisk = false,
     this.hintText,
@@ -44,12 +45,17 @@ class _EditableTextTileState extends State<EditableTextTile> {
     super.didUpdateWidget(old);
     if (widget.isEditing && !old.isEditing) {
       _c.text = widget.value;
-      _c.selection = TextSelection.fromPosition(TextPosition(offset: _c.text.length));
+      _c.selection = TextSelection.fromPosition(
+        TextPosition(offset: _c.text.length),
+      );
     }
   }
 
   @override
-  void dispose() { _c.dispose(); super.dispose(); }
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -61,7 +67,13 @@ class _EditableTextTileState extends State<EditableTextTile> {
       decoration: ShapeDecoration(
         color: const Color(0xFF2B2B2B),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        shadows: const [BoxShadow(color: Color(0x3F282828), blurRadius: 4, offset: Offset(0, 4))],
+        shadows: const [
+          BoxShadow(
+            color: Color(0x3F282828),
+            blurRadius: 4,
+            offset: Offset(0, 4),
+          ),
+        ],
       ),
       child: widget.isEditing
           ? Column(
@@ -84,7 +96,10 @@ class _EditableTextTileState extends State<EditableTextTile> {
                         ),
                         if (widget.requiredAsterisk) ...const [
                           SizedBox(width: 8),
-                          Text('*', style: TextStyle(color: Color(0xFFFF3B30))),
+                          Text(
+                            '*',
+                            style: TextStyle(color: BrandColors.cantVote),
+                          ),
                         ],
                       ],
                     ),
@@ -109,18 +124,24 @@ class _EditableTextTileState extends State<EditableTextTile> {
                     ),
                   ],
                 ),
-                SizedBox(height: kActionRowClearance), // “respiro” entre header e input
+                SizedBox(height: Gaps.xl), // “respiro” entre header e input
                 TextField(
                   controller: _c,
                   autofocus: true,
                   keyboardType: widget.keyboardType,
-                  style: const TextStyle(color: Color(0xFFF2F2F2), fontSize: 16),
+                  style: const TextStyle(
+                    color: Color(0xFFF2F2F2),
+                    fontSize: 16,
+                  ),
                   decoration: InputDecoration(
                     hintText: widget.hintText ?? 'Type…',
                     hintStyle: const TextStyle(color: Color(0xFFA5A5A5)),
                     filled: true,
                     fillColor: const Color(0xFF1E1E1E),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 14,
+                    ),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(16),
                       borderSide: BorderSide.none,
@@ -148,7 +169,7 @@ class _EditableTextTileState extends State<EditableTextTile> {
                     ),
                     if (widget.requiredAsterisk) ...const [
                       SizedBox(width: 8),
-                      Text('*', style: TextStyle(color: Color(0xFFFF3B30))),
+                      Text('*', style: TextStyle(color: BrandColors.cantVote)),
                     ],
                     const Spacer(),
                     SizedBox(
@@ -169,7 +190,11 @@ class _EditableTextTileState extends State<EditableTextTile> {
                     const SizedBox(width: 6),
                     Transform.rotate(
                       angle: -1.5708,
-                      child: const Icon(Icons.chevron_left, size: 20, color: Color(0xFFA5A5A5)),
+                      child: const Icon(
+                        Icons.chevron_left,
+                        size: 20,
+                        color: Color(0xFFA5A5A5),
+                      ),
                     ),
                   ],
                 ),

@@ -1,5 +1,6 @@
 // lib/features/profile/presentation/widgets/common/info_tile.dart
 import 'package:flutter/material.dart';
+import '../../../../../shared/themes/colors.dart';
 
 enum RequiredMark { none, before, after }
 
@@ -35,7 +36,7 @@ class InfoTile extends StatelessWidget {
     const star = Text(
       '*',
       style: TextStyle(
-        color: Color(0xFFFF3B30),
+        color: BrandColors.cantVote,
         fontSize: 12,
         fontWeight: FontWeight.w400,
         height: 1.33,
@@ -51,7 +52,9 @@ class InfoTile extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: ShapeDecoration(
           color: background,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
           shadows: const [
             BoxShadow(
               color: Color(0x3F282828),
@@ -66,9 +69,11 @@ class InfoTile extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 if (requiredMark == RequiredMark.before) star,
-                if (requiredMark == RequiredMark.before) const SizedBox(width: 8),
+                if (requiredMark == RequiredMark.before)
+                  const SizedBox(width: 8),
                 labelText,
-                if (requiredMark == RequiredMark.after) const SizedBox(width: 8),
+                if (requiredMark == RequiredMark.after)
+                  const SizedBox(width: 8),
                 if (requiredMark == RequiredMark.after) star,
               ],
             ),
@@ -93,7 +98,11 @@ class InfoTile extends StatelessWidget {
                 const SizedBox(width: 6),
                 Transform.rotate(
                   angle: -1.5708,
-                  child: const Icon(Icons.chevron_left, size: 20, color: Color(0xFFA5A5A5)),
+                  child: const Icon(
+                    Icons.chevron_left,
+                    size: 20,
+                    color: Color(0xFFA5A5A5),
+                  ),
                 ),
               ],
             ),

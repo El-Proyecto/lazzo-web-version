@@ -63,7 +63,7 @@ class _InlineTextEditorState extends State<InlineTextEditor> {
         children: [
           // Conteúdo principal (com “respiro” em relação aos botões)
           Padding(
-            padding: const EdgeInsets.only(top: kActionRowClearance),
+            padding: const EdgeInsets.only(top: Gaps.xl),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [

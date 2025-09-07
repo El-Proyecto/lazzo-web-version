@@ -1,6 +1,7 @@
 // lib/features/auth/presentation/pages/finish_setup.dart
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../../../shared/themes/colors.dart';
 
 // Form principal
 import '../widgets/finish_auth/body.dart';
@@ -50,7 +51,6 @@ class _CreateProfilePageState extends State<CreateProfilePage> {
     _repo.upsertPatch({});
   }
 
-
   // Helpers UI ---------------------------------------------------------------
 
   List<String> _missingRequiredFields() {
@@ -77,9 +77,11 @@ class _CreateProfilePageState extends State<CreateProfilePage> {
       MaterialBanner(
         backgroundColor: const Color(0xFF2B2B2B),
         elevation: 0,
-        leading: const Icon(Icons.error_outline, color: Color(0xFFFF3B30)),
+        leading: const Icon(Icons.error_outline, color: BrandColors.cantVote),
         contentTextStyle: const TextStyle(color: Colors.white),
-        content: Text('Please complete the required fields: ${missing.join(', ')}'),
+        content: Text(
+          'Please complete the required fields: ${missing.join(', ')}',
+        ),
         actions: [
           TextButton(
             onPressed: () {
@@ -114,21 +116,30 @@ class _CreateProfilePageState extends State<CreateProfilePage> {
 
   // Persistência -------------------------------------------------------------
 
-  Future<void> _savePatch(Map<String, dynamic> patch, {bool showSuccess = false, String successMsg = 'Saved'}) async {
+  Future<void> _savePatch(
+    Map<String, dynamic> patch, {
+    bool showSuccess = false,
+    String successMsg = 'Saved',
+  }) async {
     try {
       await _repo.upsertPatch(patch);
       if (showSuccess) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(successMsg), behavior: SnackBarBehavior.floating),
+          SnackBar(
+            content: Text(successMsg),
+            behavior: SnackBarBehavior.floating,
+          ),
         );
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Could not save: $e'), behavior: SnackBarBehavior.floating),
+        SnackBar(
+          content: Text('Could not save: $e'),
+          behavior: SnackBarBehavior.floating,
+        ),
       );
     }
   }
-
 
   void _toggleNotifyBirthday(bool v) {
     setState(() => _notifyBirthday = v);
@@ -152,7 +163,10 @@ class _CreateProfilePageState extends State<CreateProfilePage> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         centerTitle: true,
-        title: const Text('Create Profile', style: TextStyle(color: Colors.white)),
+        title: const Text(
+          'Create Profile',
+          style: TextStyle(color: Colors.white),
+        ),
         leading: const BackButton(color: Colors.white),
       ),
       body: SafeArea(
@@ -175,61 +189,90 @@ class _CreateProfilePageState extends State<CreateProfilePage> {
                 spotify: _spotify,
 
                 // ----- entrar em modo edição -----
-                onAddPhoto: () {/* TODO: picker/upload avatar + storage */},
-                onEditPhone:     () => setState(() => _editing = _Editing.phone),
-                onEditName:      () => setState(() => _editing = _Editing.name),
-                onEditCity:      () => setState(() => _editing = _Editing.city),
-                onEditBirthDate: () => setState(() => _editing = _Editing.birthDate),
+                onAddPhoto: () {
+                  /* TODO: picker/upload avatar + storage */
+                },
+                onEditPhone: () => setState(() => _editing = _Editing.phone),
+                onEditName: () => setState(() => _editing = _Editing.name),
+                onEditCity: () => setState(() => _editing = _Editing.city),
+                onEditBirthDate: () =>
+                    setState(() => _editing = _Editing.birthDate),
                 onToggleNotifyBirthday: _toggleNotifyBirthday,
 
                 // links: taps para entrar em edição
-                onEditInstagram: () => setState(() => _editing = _Editing.instagram),
-                onEditTikTok:    () => setState(() => _editing = _Editing.tiktok),
-                onEditSpotify:   () => setState(() => _editing = _Editing.spotify),
+                onEditInstagram: () =>
+                    setState(() => _editing = _Editing.instagram),
+                onEditTikTok: () => setState(() => _editing = _Editing.tiktok),
+                onEditSpotify: () =>
+                    setState(() => _editing = _Editing.spotify),
 
                 // ----- NAME -----
                 isEditingName: _editing == _Editing.name,
-                onCancelEditName: () => setState(() => _editing = _Editing.none),
+                onCancelEditName: () =>
+                    setState(() => _editing = _Editing.none),
                 onSaveEditName: (v) {
-                  setState(() { _name = v; _editing = _Editing.none; });
+                  setState(() {
+                    _name = v;
+                    _editing = _Editing.none;
+                  });
                   _savePatch({'name': v});
                 },
 
                 // ----- CITY -----
                 isEditingCity: _editing == _Editing.city,
-                onCancelEditCity: () => setState(() => _editing = _Editing.none),
+                onCancelEditCity: () =>
+                    setState(() => _editing = _Editing.none),
                 onSaveEditCity: (v) {
-                  setState(() { _city = v; _editing = _Editing.none; });
+                  setState(() {
+                    _city = v;
+                    _editing = _Editing.none;
+                  });
                   _savePatch({'city': v});
                 },
 
                 // ----- BIRTH DATE -----
                 isEditingBirthDate: _editing == _Editing.birthDate,
-                onCancelEditBirthDate: () => setState(() => _editing = _Editing.none),
+                onCancelEditBirthDate: () =>
+                    setState(() => _editing = _Editing.none),
                 onSaveEditBirthDate: (d) {
-                  setState(() { _birthDate = d; _editing = _Editing.none; });
+                  setState(() {
+                    _birthDate = d;
+                    _editing = _Editing.none;
+                  });
                   _savePatch({'birth_date': d.toIso8601String()});
                 },
 
                 // ----- LINKS -----
                 isEditingInstagram: _editing == _Editing.instagram,
-                onCancelEditInstagram: () => setState(() => _editing = _Editing.none),
+                onCancelEditInstagram: () =>
+                    setState(() => _editing = _Editing.none),
                 onSaveEditInstagram: (v) {
-                  setState(() { _instagram = v; _editing = _Editing.none; });
+                  setState(() {
+                    _instagram = v;
+                    _editing = _Editing.none;
+                  });
                   _savePatch({'instagram_url': v});
                 },
 
                 isEditingTikTok: _editing == _Editing.tiktok,
-                onCancelEditTikTok: () => setState(() => _editing = _Editing.none),
+                onCancelEditTikTok: () =>
+                    setState(() => _editing = _Editing.none),
                 onSaveEditTikTok: (v) {
-                  setState(() { _tiktok = v; _editing = _Editing.none; });
+                  setState(() {
+                    _tiktok = v;
+                    _editing = _Editing.none;
+                  });
                   _savePatch({'tiktok_url': v});
                 },
 
                 isEditingSpotify: _editing == _Editing.spotify,
-                onCancelEditSpotify: () => setState(() => _editing = _Editing.none),
+                onCancelEditSpotify: () =>
+                    setState(() => _editing = _Editing.none),
                 onSaveEditSpotify: (v) {
-                  setState(() { _spotify = v; _editing = _Editing.none; });
+                  setState(() {
+                    _spotify = v;
+                    _editing = _Editing.none;
+                  });
                   _savePatch({'spotify_url': v});
                 },
 
@@ -237,9 +280,13 @@ class _CreateProfilePageState extends State<CreateProfilePage> {
                 phoneEditor: _editing == _Editing.phone
                     ? InlinePhoneEditor(
                         initial: effectivePhone,
-                        onCancel: () => setState(() => _editing = _Editing.none),
+                        onCancel: () =>
+                            setState(() => _editing = _Editing.none),
                         onSave: (v) {
-                          setState(() { _phoneOverride = v; _editing = _Editing.none; });
+                          setState(() {
+                            _phoneOverride = v;
+                            _editing = _Editing.none;
+                          });
                           _savePatch({'phone': v});
                         },
                       )

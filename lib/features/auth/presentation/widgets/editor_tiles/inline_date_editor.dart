@@ -57,7 +57,7 @@ class _InlineDateEditorState extends State<InlineDateEditor> {
         children: [
           // Conteúdo com “respiro”
           Padding(
-            padding: const EdgeInsets.only(top: kActionRowClearance),
+            padding: const EdgeInsets.only(top: Gaps.xl),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
