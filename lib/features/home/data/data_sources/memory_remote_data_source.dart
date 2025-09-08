@@ -8,24 +8,24 @@ class MemoryRemoteDataSource {
   MemoryRemoteDataSource(this.client);
 
   Future<MemorySummaryModel?> fetchLastReady(String userId) async {
-  
-    final r = await client
-
-      // TOFIX: mudar para tabela 'memories' quando existir
-        .from('events') // <-
-        .select(
-          'event_id, title, emoji, created_at',
-        )
-        .eq(
-          'suggested_by',
-          userId,
-        ) // ou membership/group logic conforme o teu esquema
-        .eq('state', 'ended')
-        .order('created_at', ascending: false)
-        .limit(1)
-        .maybeSingle(); // null se não houver
-
-    if (r == null) return null;
-    return MemorySummaryModel.fromMap(r);
+    try {
+      print('fetchLastReadybefore: $userId');
+      
+      final r = await client
+          .from('events')
+          .select('event_id, title, emoji, created_at')
+          .eq('suggested_by', userId)
+          .eq('state', 'ended')
+          .order('created_at', ascending: false)
+          .limit(1)
+          .maybeSingle();
+      
+      print('fetchLastReady response: $r');
+      return r == null ? null : MemorySummaryModel.fromMap(r);
+    } catch (e, st) {
+      print('Error in fetchLastReady: $e');
+      print('Stack trace: $st');
+      rethrow;
+    }
   }
 }

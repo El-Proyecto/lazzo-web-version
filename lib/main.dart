@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart'; // importa o riverpod
-import '.env';
+import 'env.dart';
 
 
 
@@ -14,6 +14,8 @@ import '../features/home/presentation/providers/memory_providers.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  assert(Env.supabaseUrl.isNotEmpty, 'SUPABASE_URL está vazio');
+  assert(Env.supabaseAnonKey.isNotEmpty, 'SUPABASE_ANON_KEY está vazio');
   // se no futuro precisares iniciar Supabase, Firebase, etc. fazes aqui
   await Supabase.initialize(
     url: Env.supabaseUrl,
