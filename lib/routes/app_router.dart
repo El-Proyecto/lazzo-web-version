@@ -9,9 +9,19 @@ import '../features/auth/presentation/pages/verifyOTP.dart';
 import '../features/auth/presentation/pages/auth_homepage.dart';
 import '../features/auth/presentation/pages/enter_phone_page.dart';
 import '../features/auth/presentation/pages/finish_setup.dart';
+import '../shared/layouts/main_layout.dart';
+import '../features/groups/presentation/pages/groups_page.dart';
+import '../features/create_event/presentation/pages/create_event_page.dart';
+import '../features/activities/presentation/pages/activities_page.dart';
+import '../features/profile/presentation/pages/profile_page.dart';
 
 class AppRouter {
   static const String home = '/home';
+  static const String mainLayout = '/main';
+  static const String groups = '/groups';
+  static const String createEvent = '/create-event';
+  static const String activities = '/activities';
+  static const String profile = '/profile';
   static const String loginPage = '/login';
   static const String otpVerification = '/otp';
   static const String loginVerification = '/otp-login';
@@ -22,6 +32,11 @@ class AppRouter {
   static final routes = <String, WidgetBuilder>{
     authHomepage: (context) => AuthHomepage(),
     home: (context) => const HomePage(),
+    mainLayout: (context) => const MainLayout(),
+    groups: (context) => const GroupsPage(),
+    createEvent: (context) => const CreateEventPage(),
+    activities: (context) => const ActivitiesPage(),
+    profile: (context) => const ProfilePage(),
     loginPage: (context) => LoginPage(),
     loginVerification: (context) {
       final args =
