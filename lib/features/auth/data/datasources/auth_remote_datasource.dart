@@ -6,43 +6,54 @@ class AuthRemoteDatasource {
   final SupabaseClient client;
   AuthRemoteDatasource(this.client);
 
-  // 1) Envia OTP por SMS
-  Future<void> login(String phoneNumber) async {
-    await sendOtp(phoneNumber);
-  }
-
-  // 2) Sign up + garante row em `users`
-  Future<UserModel> register(
-    String phoneNumber,
-    String password,
-    String username, // a tua tabela não tem username; fica só nos metadados de auth se quiseres
-  ) async {
+  // 1) Login com email e OTP
+  Future<void> login(String email) async {
     try {
-      final res = await client.auth.signUp(
-        phone: phoneNumber,
-        password: password,
-        data: {'username': username},
+      print('[AUTH_DATASOURCE] Iniciando login com OTP para: $email');
+      await client.auth.signInWithOtp(
+        email: email,
+        emailRedirectTo: 'lazzo://auth-callback-dev',
+        data: {'type': 'login'},  // Metadata para identificar o tipo de operação
       );
-      final u = res.user;
-      if (u == null) throw Exception('Registration failed: user is null');
-
-      final row = await _upsertUsersRow(id: u.id, phone: u.phone);
-      return UserModel.fromUsersRow(row);
-    } on AuthException catch (e) {
-      throw Exception('Registration failed: ${e.message}');
-    } on PostgrestException catch (e) {
-      throw Exception('Registration failed (DB): ${e.message}');
+      print('[AUTH_DATASOURCE] OTP enviado com sucesso para login');
     } catch (e) {
-      throw Exception('Registration failed: $e');
+      print('[AUTH_DATASOURCE] Erro ao enviar OTP para login: $e');
+      print('[AUTH_DATASOURCE] Client status: ${client.auth.currentSession}');
+      rethrow;
     }
   }
+
+
+  // 2) Sign up + garante row em `users`
+  Future<void> register(String email) async {
+    print('[AUTH_DATASOURCE] Iniciando signInWithOtp para: $email');
+    try {
+      await client.auth.signInWithOtp(
+        email: email.trim().toLowerCase(),
+        shouldCreateUser: true,
+        data: {
+          'type': 'signup',
+          'app': 'lazzo',
+        },
+      );
+      print('[AUTH_DATASOURCE] OTP enviado com sucesso');
+    } catch (e) {
+      print('[AUTH_DATASOURCE] Erro ao enviar OTP: $e');
+      print('[AUTH_DATASOURCE] Client status: ${client.auth.currentSession}');
+      throw Exception('Falha ao enviar código de verificação: ${e.toString()}');
+    }
+  }
+
 
   // 3) Utilizador autenticado atual → lê row de `users` (se não existir, cria mínima)
   Future<UserModel?> getCurrentUser() async {
     final u = client.auth.currentUser;
     if (u == null) return null;
 
-    final row = await _getUsersRow(u.id) ?? await _upsertUsersRow(id: u.id, phone: u.phone);
+    final row = await _getUsersRow(u.id) ?? await _upsertUsersRow(
+      id: u.id,
+      email: u.email ?? '',
+    );
     return UserModel.fromUsersRow(row);
   }
 
@@ -52,29 +63,62 @@ class AuthRemoteDatasource {
   }
 
   // 5) Envia OTP por SMS
-  Future<void> sendOtp(String phoneNumber) async {
+ /* Future<void> sendOtp(String phoneNumber) async {
     await client.auth.signInWithOtp(phone: phoneNumber);
   }
-
-  // 6) Verifica OTP + garante row em `users`
-  Future<UserModel> verifyOtp(String phoneNumber, String token) async {
+*/
+  // Verifica OTP + garante row em `users`
+  Future<UserModel> verifyOtp({
+    required String email,
+    required String token,
+  }) async {
     try {
-      final res = await client.auth.verifyOTP(
-        phone: phoneNumber,
-        token: token,
-        type: OtpType.sms,
+      print('[AUTH_DATASOURCE] Iniciando verificação OTP...');
+      print('[AUTH_DATASOURCE] Email: $email');
+      print('[AUTH_DATASOURCE] Code length: ${token.length}');
+      
+      // 1) Verificar estado atual
+      final currentUser = client.auth.currentUser;
+      print('[AUTH_DATASOURCE] Estado atual - User: ${currentUser?.id ?? 'null'}');
+      print('[AUTH_DATASOURCE] Estado atual - Session existe: ${client.auth.currentSession != null}');
+      
+      // 2) Verificar OTP
+      print('[AUTH_DATASOURCE] Chamando verifyOTP...');
+      final AuthResponse response = await client.auth.verifyOTP(
+        email: email.trim().toLowerCase(),
+        token: token.trim(),
+        type: OtpType.email,  // Mudado para signup pois é um novo registro
       );
-      final u = res.user;
-      if (u == null) throw Exception('OTP verification failed: user is null');
+      
+      print('[AUTH_DATASOURCE] Resposta recebida do verifyOTP');
+      print('[AUTH_DATASOURCE] User ID: ${response.user?.id ?? 'null'}');
+      print('[AUTH_DATASOURCE] Session existe: ${response.session != null}');
 
-      final row = await _upsertUsersRow(id: u.id, phone: u.phone);
+      // 3) Verificar se temos usuário e sessão
+      final u = response.user;
+      if (u == null || response.session == null) {
+        print('[AUTH_DATASOURCE] Erro: Usuário ou sessão nulos após verificação');
+        throw Exception('Falha na autenticação: usuário ou sessão inválidos');
+      }
+      
+      print('[AUTH_DATASOURCE] Criando/atualizando registro do usuário...');
+      final row = await _upsertUsersRow(
+        id: u.id,
+        email: email,
+      );
+
+      print('[AUTH_DATASOURCE] Verificação concluída com sucesso');
       return UserModel.fromUsersRow(row);
+      
     } on AuthException catch (e) {
-      throw Exception('OTP verification failed: ${e.message}');
+      print('[AUTH_DATASOURCE] Erro de autenticação: ${e.message}');
+      throw Exception('Falha na verificação OTP: ${e.message}');
     } on PostgrestException catch (e) {
-      throw Exception('OTP verification failed (DB): ${e.message}');
+      print('[AUTH_DATASOURCE] Erro de banco de dados: ${e.message}');
+      throw Exception('Falha na verificação OTP (DB): ${e.message}');
     } catch (e) {
-      throw Exception('OTP verification failed: $e');
+      print('[AUTH_DATASOURCE] Erro inesperado: $e');
+      throw Exception('Falha na verificação OTP: $e');
     }
   }
 
@@ -94,14 +138,16 @@ class AuthRemoteDatasource {
     return row == null ? null : Map<String, dynamic>.from(row as Map);
   }
 
-  /// Upsert idempotente: cria/atualiza a row com {id, phone}.
+  /// Upsert idempotente: cria/atualiza a row com {id, email}.
   /// Usa onConflict: 'id' para evitar race conditions.
   Future<Map<String, dynamic>> _upsertUsersRow({
     required String id,
-    String? phone,
+    required String email,
   }) async {
-    final patch = <String, dynamic>{'id': id};
-    if (phone != null) patch['phone'] = phone;
+    final patch = <String, dynamic>{
+      'id': id,
+      'email': email,
+    };
 
     final row = await client
         .from('users')

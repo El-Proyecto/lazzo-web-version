@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+/*import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 // ajusta caminhos conforme a tua estrutura:
@@ -93,7 +93,7 @@ class _OtpVerificationPageState extends State<LoginVerificationPage> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               const SizedBox(height: 32),
-              EnterCodeTitle(phoneNumber: widget.phoneNumber),
+              EnterCodeTitle(email: widget.email),
               const SizedBox(height: 24),
               OtpCodeBoxes(
                 onCompleted: (code) => setState(() => _code = code),
@@ -131,3 +131,4 @@ class _Banner extends StatelessWidget {
     );
   }
 }
+*/

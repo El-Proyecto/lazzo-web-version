@@ -1,13 +1,14 @@
-import 'package:app/features/auth/presentation/widgets/signup_prompt.dart';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../../../../shared/components/buttons/continue_with.dart';
 import '../../../../shared/components/buttons/green_button.dart';
 import '../../../../shared/constants/spacing.dart';
 import 'email_input.dart';
+import 'name_input.dart';
+import 'login_prompt.dart';
 import 'or_divider.dart';
 
-class LoginForm extends StatelessWidget {
+class AuthFormWidgets extends StatelessWidget {
   final TextEditingController? nameController;
   final TextEditingController emailController;
   final VoidCallback? onCreateAccount;
@@ -20,7 +21,7 @@ class LoginForm extends StatelessWidget {
   final String bottomText;
   final String bottomActionText;
 
-  const LoginForm({
+  const AuthFormWidgets({
     super.key,
     this.nameController,
     required this.emailController,
@@ -30,9 +31,9 @@ class LoginForm extends StatelessWidget {
     this.onLoginTap,
     this.isLoading = false,
     this.isLogin = false,
-    this.buttonText = 'Log In',
-    this.bottomText = 'Don/t have an Account?',
-    this.bottomActionText = 'Create Account',
+    this.buttonText = 'Create Account',
+    this.bottomText = 'Already have an account?',
+    this.bottomActionText = 'Log In',
   });
 
   @override
@@ -72,6 +73,8 @@ class LoginForm extends StatelessWidget {
         ],
         
         // Email Form
+        if (!isLogin && nameController != null)
+          NameInput(controller: nameController!),
         if (!isLogin) 
           SizedBox(height: Gaps.md),
         EmailInput(controller: emailController),
@@ -82,7 +85,7 @@ class LoginForm extends StatelessWidget {
           isLoading: isLoading,
         ),
         SizedBox(height: Gaps.sm),
-        SignupPrompt(onTap: onLoginTap),
+        LoginPrompt(onTap: onLoginTap),
       ],
     );
   }

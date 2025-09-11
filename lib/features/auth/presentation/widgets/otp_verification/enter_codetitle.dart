@@ -4,10 +4,10 @@ import '../../../../../styles/app_styles.dart';
 class EnterCodeTitle extends StatelessWidget {
   const EnterCodeTitle({
     super.key,
-    required this.phoneNumber,
+    required this.email,
   });
 
-  final String phoneNumber;
+  final String email;
 
   @override
   Widget build(BuildContext context) {
@@ -34,11 +34,11 @@ class EnterCodeTitle extends StatelessWidget {
               text: TextSpan(
                 children: [
                   const TextSpan(
-                    text: 'We sent a 6-digit code to ',
+                    text: 'We sent a verification code to ',
                     style: AppTextStyles.subtitleMuted,
                   ),
                   TextSpan(
-                    text: phoneNumber,
+                    text: email,
                     style: AppTextStyles.subtitleStrong,
                   ),
                 ],
