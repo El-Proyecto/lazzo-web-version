@@ -59,7 +59,7 @@ class HomePage extends ConsumerWidget {
                 child: Padding(
                   padding: const EdgeInsets.all(16),
                   child: Text(
-                    'Failed to load memory',
+                    'Failed to load memory: $error',
                     style: TextStyle(
                       color: Theme.of(context).colorScheme.error,
                     ),

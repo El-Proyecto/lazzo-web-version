@@ -62,8 +62,11 @@ class CompactVoteWidget extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(iconData, size: 18, color: iconColor),
-            const SizedBox(width: Gaps.xs),
+            // Show icon only for voted states, not for notVoted
+            if (userVote != UserVoteStatus.notVoted) ...[
+              Icon(iconData, size: 18, color: iconColor),
+              const SizedBox(width: Gaps.xs),
+            ],
             Text(
               voteText,
               style: AppText.bodyMedium.copyWith(
