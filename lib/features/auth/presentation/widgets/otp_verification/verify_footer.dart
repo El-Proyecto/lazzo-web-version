@@ -48,7 +48,7 @@ class EnterPhoneFooter extends StatelessWidget {
           SizedBox(
             width: 370,
             child: Text(
-              'Didnt receive the code? Check your messages or ask to resend it.',
+              'Didnt receive the code? Check your email or ask to resend it.',
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: Color(0xFFA5A5A5),

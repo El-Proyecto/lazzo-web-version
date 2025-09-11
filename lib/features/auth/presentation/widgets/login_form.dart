@@ -1,52 +1,88 @@
+import 'package:app/features/auth/presentation/widgets/signup_prompt.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../providers/auth_provider.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import '../../../../shared/components/buttons/continue_with.dart';
+import '../../../../shared/components/buttons/green_button.dart';
+import '../../../../shared/constants/spacing.dart';
+import 'email_input.dart';
+import 'or_divider.dart';
 
-class LoginForm extends ConsumerWidget {
-  const LoginForm({super.key});
+class LoginForm extends StatelessWidget {
+  final TextEditingController? nameController;
+  final TextEditingController emailController;
+  final VoidCallback? onCreateAccount;
+  final VoidCallback? onGoogleSignIn;
+  final VoidCallback? onAppleSignIn;
+  final VoidCallback? onLoginTap;
+  final bool isLoading;
+  final bool isLogin;
+  final String buttonText;
+  final String bottomText;
+  final String bottomActionText;
+
+  const LoginForm({
+    super.key,
+    this.nameController,
+    required this.emailController,
+    this.onCreateAccount,
+    this.onGoogleSignIn,
+    this.onAppleSignIn,
+    this.onLoginTap,
+    this.isLoading = false,
+    this.isLogin = false,
+    this.buttonText = 'Log In',
+    this.bottomText = 'Don/t have an Account?',
+    this.bottomActionText = 'Create Account',
+  });
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final authState = ref.watch(authProvider);
-    final identifierCtrl = TextEditingController();
-    final passwordCtrl = TextEditingController();
-
+  Widget build(BuildContext context) {
     return Column(
       children: [
-        TextField(
-          controller: identifierCtrl,
-          decoration: const InputDecoration(labelText: 'Phone Number eg +1234567890'),
-        ),
-        TextField(
-          controller: passwordCtrl,
-          decoration: const InputDecoration(labelText: 'Password'),
-          obscureText: true,
-        ),
-        const SizedBox(height: 16),
-        ElevatedButton(
-          onPressed: () {
-            ref.read(authProvider.notifier).login(
-                  identifierCtrl.text.trim(),
-                );
-          },
-          child: const Text("Login"),
-        ),
-        if (authState.hasError)
+        if (!isLogin) ...[
+          // Social Login Buttons
           Padding(
-            padding: const EdgeInsets.only(top: 16),
-            child: Text(
-              authState.error.toString(),
-              style: const TextStyle(color: Colors.red),
+            padding: EdgeInsets.symmetric(horizontal: Gaps.sm),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Expanded(
+                  child: ContinueWith(
+                    text: 'Google',
+                    icon: FontAwesomeIcons.google,
+                    onPressed: onGoogleSignIn,
+                  ),
+                ),
+                SizedBox(width: Gaps.md),
+                Expanded(
+                  child: ContinueWith(
+                    text: 'Apple',
+                    icon: FontAwesomeIcons.apple,
+                    onPressed: onAppleSignIn,
+                  ),
+                ),
+              ],
             ),
           ),
-        if (authState.value != null)
-          const Padding(
-            padding: EdgeInsets.only(top: 16),
-            child: Text(
-              'Login efetuado com sucesso!',
-              style: TextStyle(color: Colors.green),
-            ),
-          ),
+          SizedBox(height: Gaps.lg),
+          
+          // OR Divider
+          OrDivider(),
+          SizedBox(height: Gaps.lg),
+        ],
+        
+        // Email Form
+        if (!isLogin) 
+          SizedBox(height: Gaps.md),
+        EmailInput(controller: emailController),
+        SizedBox(height: Gaps.lg),
+        GreenButton(
+          text: buttonText,
+          onPressed: isLogin ? onLoginTap : onCreateAccount,
+          isLoading: isLoading,
+        ),
+        SizedBox(height: Gaps.sm),
+        SignupPrompt(onTap: onLoginTap),
       ],
     );
   }

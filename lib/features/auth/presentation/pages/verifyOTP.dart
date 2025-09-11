@@ -1,31 +1,37 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../data/datasources/auth_remote_datasource.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-// ajusta caminhos conforme a tua estrutura:
 import '../widgets/otp_verification/enter_codetitle.dart';
 import '../widgets/otp_verification/otp_boxes.dart';
 import '../widgets/otp_verification/verify_footer.dart';
 
-class OtpVerificationPage extends StatefulWidget {
-  const OtpVerificationPage({super.key, required this.phoneNumber});
+class OtpVerificationPage extends ConsumerStatefulWidget {
+  const OtpVerificationPage({super.key, required this.email});
 
-  final String phoneNumber;
+  final String email;
 
   @override
-  State<OtpVerificationPage> createState() => _OtpVerificationPageState();
+  ConsumerState<OtpVerificationPage> createState() => _OtpVerificationPageState();
 }
 
-class _OtpVerificationPageState extends State<OtpVerificationPage> {
+class _OtpVerificationPageState extends ConsumerState<OtpVerificationPage> {
   String _code = '';
   String? _bannerMessage;
   bool _busy = false;
+  late final AuthRemoteDatasource _authDatasource;
+
+  @override
+  void initState() {
+    super.initState();
+    _authDatasource = AuthRemoteDatasource(Supabase.instance.client);
+  }
 
   Future<void> _resend() async {
     try {
-      await Supabase.instance.client.auth.signInWithOtp(phone: widget.phoneNumber);
-      setState(() => _bannerMessage = 'Enviámos novamente o código por SMS.');
-    } on AuthException catch (e) {
-      setState(() => _bannerMessage = e.message);
+      await _authDatasource.register(widget.email);
+      setState(() => _bannerMessage = 'Enviámos novamente o código por email.');
     } catch (e) {
       setState(() => _bannerMessage = 'Falha ao reenviar código: $e');
     }
@@ -36,33 +42,19 @@ class _OtpVerificationPageState extends State<OtpVerificationPage> {
       setState(() => _bannerMessage = 'Introduz os 6 dígitos do código.');
       return;
     }
+    
     setState(() {
       _busy = true;
       _bannerMessage = null;
     });
 
-    final supabase = Supabase.instance.client;
-
     try {
-      // 1) verificar OTP
-      await supabase.auth.verifyOTP(
-        phone: widget.phoneNumber,
+      await _authDatasource.verifyOtp(
+        email: widget.email,
         token: _code,
-        type: OtpType.sms,
       );
 
-      // 2) (opcional) criar/atualizar o registo na tabela users
-      final uid = supabase.auth.currentUser?.id;
-      if (uid != null) {
-        await supabase
-            .from('users')
-            .upsert({'id': uid, 'phone': widget.phoneNumber})
-            .select()
-            .single();
-      }
-
       if (!mounted) return;
-      // segue para a tua home/rota inicial
       Navigator.pushNamedAndRemoveUntil(context, '/finish-setup', (_) => false);
     } on AuthException catch (e) {
       setState(() => _bannerMessage = e.message);
@@ -103,7 +95,7 @@ class _OtpVerificationPageState extends State<OtpVerificationPage> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               const SizedBox(height: 32),
-              EnterCodeTitle(phoneNumber: widget.phoneNumber),
+              EnterCodeTitle(email: widget.email),
               const SizedBox(height: 24),
               OtpCodeBoxes(
                 onCompleted: (code) => setState(() => _code = code),

@@ -18,12 +18,18 @@ import '../features/home/presentation/providers/pending_event_providers.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  assert(Env.supabaseUrl.isNotEmpty, 'SUPABASE_URL está vazio');
-  assert(Env.supabaseAnonKey.isNotEmpty, 'SUPABASE_ANON_KEY está vazio');
-
-  await Supabase.initialize(url: Env.supabaseUrl, anonKey: Env.supabaseAnonKey);
-
-
+  // Inicialização do Supabase
+  print('[MAIN] Iniciando Supabase com URL: ${Env.supabaseUrl}');
+  try {
+    await Supabase.initialize(
+      url: Env.supabaseUrl,
+      anonKey: Env.supabaseAnonKey,
+    );
+    print('[MAIN] Supabase inicializado com sucesso');
+    print('[MAIN] Cliente Supabase: ${Supabase.instance.client.auth.currentSession}');
+  } catch (e) {
+    print('[MAIN] Erro ao inicializar Supabase: $e');
+  }
   runApp(
     ProviderScope(
       overrides: [
