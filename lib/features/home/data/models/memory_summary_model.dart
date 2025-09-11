@@ -1,4 +1,4 @@
-// DTO
+// DTO memory summary
 
 import '../../domain/entities/memory_summary.dart';
 

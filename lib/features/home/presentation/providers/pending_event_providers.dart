@@ -75,7 +75,7 @@ final pendingEventsControllerProvider =
     FutureProvider.autoDispose<List<PendingEvent>>((ref) async {
       final uid =
           ref.watch(currentUserIdProvider) ??
-          '7ccd4b2d-778e-44bf-b119-d72f76529e1e';
+          '1d473830-e62a-4aaf-a744-9b22343bfd1d';
       final getPendingEvents = ref.watch(getPendingEventsProvider);
       final events = await getPendingEvents(uid);
 
@@ -115,7 +115,7 @@ final voteStateProvider =
         voteOnEvent: ref.watch(voteOnEventProvider),
         currentUserId:
             ref.watch(currentUserIdProvider) ??
-            '7ccd4b2d-778e-44bf-b119-d72f76529e1e',
+            '1d473830-e62a-4aaf-a744-9b22343bfd1d',
       ),
     );
 
