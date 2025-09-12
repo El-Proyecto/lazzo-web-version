@@ -1,0 +1,282 @@
+import 'package:flutter/material.dart';
+import '../../constants/spacing.dart';
+import '../../constants/text_styles.dart';
+import '../../themes/colors.dart';
+import '../forms/event_group_selector.dart';
+
+/// Dialog para pesquisar e selecionar grupos
+/// Inclui barra de pesquisa e opção para criar novo grupo
+class GroupSelectionDialog extends StatefulWidget {
+  final List<GroupInfo> groups;
+  final Function(GroupInfo)? onGroupSelected;
+  final VoidCallback? onCreateGroup;
+
+  const GroupSelectionDialog({
+    super.key,
+    required this.groups,
+    this.onGroupSelected,
+    this.onCreateGroup,
+  });
+
+  @override
+  State<GroupSelectionDialog> createState() => _GroupSelectionDialogState();
+}
+
+class _GroupSelectionDialogState extends State<GroupSelectionDialog> {
+  final TextEditingController _searchController = TextEditingController();
+  List<GroupInfo> _filteredGroups = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _filteredGroups = widget.groups;
+    _searchController.addListener(_filterGroups);
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _filterGroups() {
+    final query = _searchController.text.toLowerCase();
+    setState(() {
+      _filteredGroups = widget.groups
+          .where((group) => group.name.toLowerCase().contains(query))
+          .toList();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: BrandColors.bg2,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(Radii.md),
+      ),
+      child: Container(
+        padding: EdgeInsets.all(Gaps.lg),
+        constraints: const BoxConstraints(maxHeight: 500, maxWidth: 350),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Header
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Select Group',
+                  style: AppText.titleMediumEmph.copyWith(
+                    color: BrandColors.text1,
+                  ),
+                ),
+                IconButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  icon: Icon(Icons.close, color: BrandColors.text2),
+                ),
+              ],
+            ),
+
+            SizedBox(height: Gaps.md),
+
+            // Barra de pesquisa
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _searchController,
+                    style: AppText.bodyLarge.copyWith(color: BrandColors.text1),
+                    decoration: InputDecoration(
+                      hintText: 'Search groups...',
+                      hintStyle: AppText.bodyLarge.copyWith(
+                        color: BrandColors.text2,
+                      ),
+                      prefixIcon: Icon(Icons.search, color: BrandColors.text2),
+                      filled: true,
+                      fillColor: BrandColors.bg3,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(Radii.smAlt),
+                        borderSide: BorderSide.none,
+                      ),
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: Pads.ctlH,
+                        vertical: Pads.ctlV,
+                      ),
+                    ),
+                  ),
+                ),
+
+                SizedBox(width: Gaps.sm),
+
+                // Botão criar grupo
+                GestureDetector(
+                  onTap: () {
+                    Navigator.of(context).pop();
+                    widget.onCreateGroup?.call();
+                  },
+                  child: Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: BrandColors.planning,
+                      borderRadius: BorderRadius.circular(Radii.smAlt),
+                    ),
+                    child: Icon(Icons.add, color: BrandColors.text1, size: 24),
+                  ),
+                ),
+              ],
+            ),
+
+            SizedBox(height: Gaps.md),
+
+            // Lista de grupos
+            Flexible(
+              child: _filteredGroups.isEmpty
+                  ? _EmptyState(
+                      hasSearchTerm: _searchController.text.isNotEmpty,
+                    )
+                  : GridView.builder(
+                      shrinkWrap: true,
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 3,
+                            childAspectRatio: 0.8,
+                            crossAxisSpacing: 12,
+                            mainAxisSpacing: 16,
+                          ),
+                      itemCount: _filteredGroups.length,
+                      itemBuilder: (context, index) {
+                        final group = _filteredGroups[index];
+                        return _GroupTile(
+                          group: group,
+                          onTap: () {
+                            Navigator.of(context).pop();
+                            widget.onGroupSelected?.call(group);
+                          },
+                        );
+                      },
+                    ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _GroupTile extends StatelessWidget {
+  final GroupInfo group;
+  final VoidCallback? onTap;
+
+  const _GroupTile({required this.group, this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Column(
+        children: [
+          // Ícone do grupo
+          Container(
+            width: 60,
+            height: 60,
+            decoration: BoxDecoration(
+              color: BrandColors.bg3,
+              borderRadius: BorderRadius.circular(Radii.md),
+            ),
+            child: group.imageUrl != null
+                ? ClipRRect(
+                    borderRadius: BorderRadius.circular(Radii.md),
+                    child: Image.network(
+                      group.imageUrl!,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        return _DefaultGroupAvatar(name: group.name);
+                      },
+                    ),
+                  )
+                : _DefaultGroupAvatar(name: group.name),
+          ),
+
+          SizedBox(height: Gaps.xs),
+
+          // Nome do grupo
+          Text(
+            group.name,
+            style: AppText.bodyMedium.copyWith(
+              color: BrandColors.text1,
+              fontWeight: FontWeight.w500,
+            ),
+            textAlign: TextAlign.center,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+
+          // Número de membros
+          Text(
+            '${group.memberCount} members',
+            style: AppText.bodyMedium.copyWith(
+              color: BrandColors.text2,
+              fontSize: 12,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DefaultGroupAvatar extends StatelessWidget {
+  final String name;
+
+  const _DefaultGroupAvatar({required this.name});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Text(
+        name.isNotEmpty ? name[0].toUpperCase() : 'G',
+        style: AppText.titleMediumEmph.copyWith(
+          color: BrandColors.text1,
+          fontSize: 24,
+        ),
+      ),
+    );
+  }
+}
+
+class _EmptyState extends StatelessWidget {
+  final bool hasSearchTerm;
+
+  const _EmptyState({required this.hasSearchTerm});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            hasSearchTerm ? Icons.search_off : Icons.group,
+            color: BrandColors.text2,
+            size: 48,
+          ),
+          SizedBox(height: Gaps.sm),
+          Text(
+            hasSearchTerm ? 'No groups found' : 'No groups available',
+            style: AppText.bodyMedium.copyWith(color: BrandColors.text2),
+          ),
+          if (!hasSearchTerm) ...[
+            SizedBox(height: Gaps.sm),
+            Text(
+              'Create your first group!',
+              style: AppText.bodyMedium.copyWith(color: BrandColors.text2),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
