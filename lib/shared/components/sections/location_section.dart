@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../constants/spacing.dart';
 import '../../constants/text_styles.dart';
 import '../../themes/colors.dart';
@@ -96,23 +97,246 @@ class _LocationSectionState extends State<LocationSection> {
   }
 
   Widget _buildExpandedContent() {
+    if (widget.selectedLocation != null) {
+      // Show location preview when selected
+      return _buildLocationPreview();
+    } else {
+      // Show location input form
+      return _buildLocationInput();
+    }
+  }
+
+  Widget _buildLocationPreview() {
+    final location = widget.selectedLocation!;
+    
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Campo para nome customizado
-        _CustomNameField(),
+        // Static map mockup
+        Container(
+          width: double.infinity,
+          height: 120,
+          decoration: BoxDecoration(
+            color: BrandColors.bg3,
+            borderRadius: BorderRadius.circular(Radii.smAlt),
+          ),
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              Icon(Icons.map, size: 40, color: BrandColors.text2),
+              Icon(Icons.place, size: 30, color: BrandColors.planning),
+            ],
+          ),
+        ),
 
         SizedBox(height: Gaps.md),
 
-        // Seletor de localização
-        ExpandedLocationPicker(
-          selectedLocation: widget.selectedLocation,
-          onLocationChanged: widget.onLocationChanged,
+        // Location info
+        if (location.displayName != null) ...[
+          Text(
+            location.displayName!,
+            style: AppText.titleMediumEmph.copyWith(
+              color: BrandColors.text1,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          SizedBox(height: 4),
+        ],
+        Text(
+          location.formattedAddress,
+          style: AppText.bodyMedium.copyWith(color: BrandColors.text2),
+        ),
+
+        SizedBox(height: Gaps.md),
+
+        // Action buttons
+        Row(
+          children: [
+            Expanded(
+              child: _buildActionButton(
+                icon: Icons.edit_location,
+                text: 'Change',
+                onTap: () => widget.onLocationChanged?.call(null),
+                isSecondary: true,
+              ),
+            ),
+            SizedBox(width: Gaps.sm),
+            Expanded(
+              child: _buildActionButton(
+                icon: Icons.open_in_new,
+                text: 'Open in Maps',
+                onTap: () => _openInMaps(location),
+              ),
+            ),
+          ],
         ),
       ],
     );
   }
 
-  void _changeState(LocationState newState) {
+  Widget _buildLocationInput() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Location Name Field (Optional)
+        _buildTextField(
+          hintText: 'Location name (optional)',
+          icon: Icons.edit_location_alt,
+        ),
+
+        SizedBox(height: Gaps.md),
+
+        // Search Address Field
+        _buildTextField(
+          hintText: 'Search address or place',
+          icon: Icons.search,
+          onTap: () => _simulateLocationSearch(),
+        ),
+
+        SizedBox(height: Gaps.md),
+
+        // Action Buttons
+        Row(
+          children: [
+            Expanded(
+              child: _buildActionButton(
+                icon: Icons.my_location,
+                text: 'Use current location',
+                onTap: () => _useCurrentLocation(),
+              ),
+            ),
+            SizedBox(width: Gaps.sm),
+            Expanded(
+              child: _buildActionButton(
+                icon: Icons.place,
+                text: 'Drop a pin',
+                onTap: () => _dropPin(),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTextField({
+    required String hintText,
+    required IconData icon,
+    VoidCallback? onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: EdgeInsets.symmetric(
+          horizontal: Pads.ctlH,
+          vertical: Pads.ctlV,
+        ),
+        decoration: BoxDecoration(
+          color: BrandColors.bg3,
+          borderRadius: BorderRadius.circular(Radii.smAlt),
+          border: Border.all(
+            color: BrandColors.text2.withValues(alpha: 0.2),
+            width: 1,
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, color: BrandColors.text2, size: 18),
+            SizedBox(width: Gaps.sm),
+            Expanded(
+              child: Text(
+                hintText,
+                style: AppText.bodyMedium.copyWith(
+                  color: BrandColors.text2,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildActionButton({
+    required IconData icon,
+    required String text,
+    required VoidCallback onTap,
+    bool isSecondary = false,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: EdgeInsets.symmetric(
+          horizontal: Pads.ctlH - 2,
+          vertical: Pads.ctlV,
+        ),
+        decoration: BoxDecoration(
+          color: BrandColors.bg3,
+          borderRadius: BorderRadius.circular(Radii.smAlt),
+          border: Border.all(
+            color: isSecondary 
+                ? BrandColors.text2.withValues(alpha: 0.3) 
+                : BrandColors.planning, 
+            width: 1,
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              icon,
+              color: isSecondary ? BrandColors.text2 : BrandColors.planning,
+              size: 16,
+            ),
+            SizedBox(width: Gaps.xs),
+            Flexible(
+              child: Text(
+                text,
+                style: AppText.bodyMedium.copyWith(
+                  color: isSecondary ? BrandColors.text1 : BrandColors.planning,
+                  fontWeight: FontWeight.w500,
+                  fontSize: 12,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _simulateLocationSearch() {
+    // TODO: Implement search functionality
+    // For now, simulate selecting a location
+    final mockLocation = LocationInfo(
+      id: 'mock-1',
+      displayName: 'My Custom Location',
+      formattedAddress: 'Rua Augusta, 123 - São Paulo, SP',
+      latitude: -23.5505,
+      longitude: -46.6333,
+    );
+    
+    // Simulate delay then select location
+    Future.delayed(Duration(seconds: 1), () {
+      widget.onLocationChanged?.call(mockLocation);
+    });
+  }
+
+  void _useCurrentLocation() {
+    // TODO: Implement current location using device GPS
+    HapticFeedback.lightImpact();
+  }
+
+  void _dropPin() {
+    // TODO: Implement drop pin functionality
+    HapticFeedback.lightImpact();
+  }
+
+  void _openInMaps(LocationInfo location) {
+    // TODO: Implement opening in maps
+    // This would typically use url_launcher to open maps app
+  }  void _changeState(LocationState newState) {
     setState(() {
       _currentState = newState;
     });
@@ -177,7 +401,7 @@ class _ExpandedLocationPickerState extends State<ExpandedLocationPicker> {
   void initState() {
     super.initState();
     if (widget.selectedLocation != null) {
-      _searchController.text = widget.selectedLocation!.displayName;
+      _searchController.text = widget.selectedLocation!.displayName ?? '';
     }
     _searchController.addListener(_onSearchChanged);
   }
@@ -317,7 +541,7 @@ class _ExpandedLocationPickerState extends State<ExpandedLocationPicker> {
     final location = LocationInfo(
       id: suggestion.id,
       displayName: suggestion.name,
-      address: suggestion.address,
+      formattedAddress: suggestion.address,
       latitude: suggestion.latitude,
       longitude: suggestion.longitude,
     );
@@ -331,12 +555,12 @@ class _ExpandedLocationPickerState extends State<ExpandedLocationPicker> {
     final location = LocationInfo(
       id: 'current',
       displayName: 'Current Location',
-      address: 'Your current location',
+      formattedAddress: 'Your current location',
       latitude: 38.7223,
       longitude: -9.1393,
     );
 
-    _searchController.text = location.displayName;
+    _searchController.text = location.displayName ?? '';
     widget.onLocationChanged?.call(location);
   }
 }
@@ -446,7 +670,7 @@ class _CustomNameFieldState extends State<_CustomNameField> {
       decoration: BoxDecoration(
         color: BrandColors.bg3,
         borderRadius: BorderRadius.circular(Radii.smAlt),
-        border: Border.all(color: BrandColors.text2.withOpacity(0.2), width: 1),
+        border: Border.all(color: BrandColors.text2.withValues(alpha: 0.2), width: 1),
       ),
       child: Row(
         children: [
@@ -476,18 +700,21 @@ class _CustomNameFieldState extends State<_CustomNameField> {
 /// Estados da seção de localização
 enum LocationState { decideLater, setNow }
 
+/// Estados do picker de localização
+enum LocationPickerState { input, searching, results, mapConfirm }
+
 /// Informações de localização
 class LocationInfo {
   final String id;
-  final String displayName;
-  final String address;
+  final String? displayName; // Optional custom name
+  final String formattedAddress;
   final double latitude;
   final double longitude;
 
   const LocationInfo({
     required this.id,
-    required this.displayName,
-    required this.address,
+    this.displayName,
+    required this.formattedAddress,
     required this.latitude,
     required this.longitude,
   });

@@ -8,7 +8,6 @@ export 'nav/create_event_app_bar.dart';
 export 'forms/event_group_selector.dart';
 
 // Section Components
-export 'sections/date_hour_section.dart';
 export 'sections/location_section.dart';
 
 // Dialog Components

@@ -182,7 +182,7 @@ class _CreateEventPageState extends State<CreateEventPage> {
         _selectedLocation = LocationInfo(
           id: 'history',
           displayName: event.location!,
-          address: event.location!,
+          formattedAddress: event.location!,
           latitude: 0.0,
           longitude: 0.0,
         );
