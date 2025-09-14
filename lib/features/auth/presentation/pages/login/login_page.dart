@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../../shared/constants/spacing.dart';
 import '../../../../../shared/components/sections/lazzo_header.dart';
 import '../../providers/auth_provider.dart';
-import '../verifyOTP.dart';
+//import '../verifyOTP.dart';
 
 class LoginPage extends ConsumerStatefulWidget {
   const LoginPage({super.key});
@@ -64,12 +64,11 @@ class _LoginPageState extends ConsumerState<LoginPage> {
         ),
       );
       
-      // Navega para a página de verificação
-      Navigator.push(
+      // Navega para a página de verificação específica de login
+      Navigator.pushNamed(
         context,
-        MaterialPageRoute(
-          builder: (context) => OtpVerificationPage(email: email),
-        ),
+        '/otp-login',
+        arguments: {'email': email},
       );
       
     } catch (e) {

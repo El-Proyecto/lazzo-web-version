@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 
-class EnterPhoneFooter extends StatelessWidget {
+class VerifyFooter extends StatelessWidget {
   final VoidCallback? onSend;
 
-  const EnterPhoneFooter({super.key, this.onSend});
+  const VerifyFooter({super.key, this.onSend});
 
   @override
   Widget build(BuildContext context) {

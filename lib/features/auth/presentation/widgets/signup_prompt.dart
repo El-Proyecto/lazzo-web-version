@@ -9,7 +9,7 @@ class SignupPrompt extends StatelessWidget {
 
   const SignupPrompt({
     super.key,
-    this.text = 'Don/t have an Account?',
+    this.text = 'Dont have an Account?',
     this.actionText = 'Create Account',
     this.onTap,
   });

@@ -5,6 +5,7 @@ import '../features/auth/presentation/pages/authenticated_page.dart';
 import '../features/auth/presentation/pages/login/login_page.dart';
 import '../features/home/presentation/pages/home.dart';
 import '../features/auth/presentation/pages/verifyOTP.dart';
+import '../features/auth/presentation/pages/login_otp_verification.dart';
 import '../features/auth/presentation/pages/auth_page.dart';
 import '../features/auth/presentation/pages/enter_phone_page.dart';
 import '../features/auth/presentation/pages/finish_setup.dart';
@@ -45,9 +46,12 @@ class AppRouter {
     //      ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
     //  return LoginVerificationPage(phoneNumber: args['phoneNumber']);
     //},
+    loginVerification: (context) {
+      final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
+      return LoginOtpVerificationPage(email: args['email']);
+    },
     otpVerification: (context) {
-      final args =
-          ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
+      final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
       return OtpVerificationPage(email: args['email']);
     },
     enterPhonePage: (context) => EnterPhonePage(),

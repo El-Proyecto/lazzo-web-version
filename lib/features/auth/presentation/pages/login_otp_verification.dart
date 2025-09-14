@@ -6,18 +6,17 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../widgets/otp_verification/enter_codetitle.dart';
 import '../widgets/otp_verification/otp_boxes.dart';
 import '../widgets/otp_verification/verify_footer.dart';
-import '../../../../shared/themes/colors.dart';
 
-class OtpVerificationPage extends ConsumerStatefulWidget {
-  const OtpVerificationPage({super.key, required this.email});
+class LoginOtpVerificationPage extends ConsumerStatefulWidget {
+  const LoginOtpVerificationPage({super.key, required this.email});
 
   final String email;
 
   @override
-  ConsumerState<OtpVerificationPage> createState() => _OtpVerificationPageState();
+  ConsumerState<LoginOtpVerificationPage> createState() => _LoginOtpVerificationPageState();
 }
 
-class _OtpVerificationPageState extends ConsumerState<OtpVerificationPage> {
+class _LoginOtpVerificationPageState extends ConsumerState<LoginOtpVerificationPage> {
   String _code = '';
   String? _bannerMessage;
   bool _busy = false;
@@ -29,11 +28,19 @@ class _OtpVerificationPageState extends ConsumerState<OtpVerificationPage> {
     _authDatasource = AuthRemoteDatasource(Supabase.instance.client);
   }
 
-
-
+  /*Future<void> _resend() async {
+    try {
+      await _authDatasource.login(widget.email);  // Usa login em vez de register
+      setState(() => _bannerMessage = 'Enviámos novamente o código por email.');
+    } catch (e) {
+      setState(() => _bannerMessage = 'Falha ao reenviar código: $e');
+    }
+  }
+  */
+  
   Future<void> _verify() async {
     if (_code.length != 6) {
-      setState(() => _bannerMessage = 'Put in the six digit code sent to your email.');
+      setState(() => _bannerMessage = 'Introduz os 6 dígitos do código.');
       return;
     }
     
@@ -49,22 +56,21 @@ class _OtpVerificationPageState extends ConsumerState<OtpVerificationPage> {
       );
 
       if (!mounted) return;
-      Navigator.pushNamedAndRemoveUntil(context, '/home', (_) => false);
-    } on AuthException catch (e) {
-      setState(() => _bannerMessage = e.message);
+
+      // Navega direto para home após login bem sucedido
+      Navigator.of(context).pushNamedAndRemoveUntil('/home', (route) => false);
     } catch (e) {
-      setState(() => _bannerMessage = 'Erro ao verificar: $e');
-    } finally {
-      if (mounted) setState(() => _busy = false);
+      if (!mounted) return;
+      setState(() {
+        _busy = false;
+        _bannerMessage = 'Erro ao verificar código: ${e.toString()}';
+      });
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    
     return Scaffold(
-      backgroundColor: theme.colorScheme.background,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(20),
@@ -80,8 +86,8 @@ class _OtpVerificationPageState extends ConsumerState<OtpVerificationPage> {
                 const SizedBox(height: 24),
                 Text(
                   _bannerMessage!,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: BrandColors.cantVote,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Colors.red,
                   ),
                   textAlign: TextAlign.center,
                 ),

@@ -32,14 +32,12 @@ class AuthNotifier extends StateNotifier<AsyncValue<domain.User?>> {
 
 
   Future<void> register(String email) async {
-    print('[AUTH_PROVIDER] Iniciando registro');
+    
     state = const AsyncLoading();
     try {
-      print('[AUTH_PROVIDER] Chamando repository.register para email: $email');
       await repository.register(
         email: email,
       );
-      print('[AUTH_PROVIDER] Registro bem-sucedido');
     } catch (e, st) {
       state = AsyncError(e, st);
     }
