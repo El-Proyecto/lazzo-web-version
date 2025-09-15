@@ -41,7 +41,7 @@ class CreateEventAppBar extends StatelessWidget implements PreferredSizeWidget {
                 child: Icon(
                   Icons.arrow_back_ios,
                   color: BrandColors.text1,
-                  size: 20,
+                  size: 24,
                 ),
               ),
             ),
@@ -50,7 +50,7 @@ class CreateEventAppBar extends StatelessWidget implements PreferredSizeWidget {
             Expanded(
               child: Center(
                 child: Text(
-                  title,
+                  'Create Event',
                   style: AppText.dropdownTitle.copyWith(
                     color: BrandColors.text1,
                     fontSize: 22,
@@ -65,7 +65,7 @@ class CreateEventAppBar extends StatelessWidget implements PreferredSizeWidget {
               child: SizedBox(
                 width: 24,
                 height: 24,
-                child: Icon(Icons.history, color: BrandColors.text1, size: 20),
+                child: Icon(Icons.history, color: BrandColors.text1, size: 24),
               ),
             ),
           ],

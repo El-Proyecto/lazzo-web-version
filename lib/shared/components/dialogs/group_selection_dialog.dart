@@ -4,14 +4,14 @@ import '../../constants/text_styles.dart';
 import '../../themes/colors.dart';
 import '../forms/event_group_selector.dart';
 
-/// Dialog para pesquisar e selecionar grupos
+/// Bottom sheet para pesquisar e selecionar grupos
 /// Inclui barra de pesquisa e opção para criar novo grupo
-class GroupSelectionDialog extends StatefulWidget {
+class GroupSelectionBottomSheet extends StatefulWidget {
   final List<GroupInfo> groups;
   final Function(GroupInfo)? onGroupSelected;
   final VoidCallback? onCreateGroup;
 
-  const GroupSelectionDialog({
+  const GroupSelectionBottomSheet({
     super.key,
     required this.groups,
     this.onGroupSelected,
@@ -19,10 +19,11 @@ class GroupSelectionDialog extends StatefulWidget {
   });
 
   @override
-  State<GroupSelectionDialog> createState() => _GroupSelectionDialogState();
+  State<GroupSelectionBottomSheet> createState() =>
+      _GroupSelectionBottomSheetState();
 }
 
-class _GroupSelectionDialogState extends State<GroupSelectionDialog> {
+class _GroupSelectionBottomSheetState extends State<GroupSelectionBottomSheet> {
   final TextEditingController _searchController = TextEditingController();
   List<GroupInfo> _filteredGroups = [];
 
@@ -50,14 +51,18 @@ class _GroupSelectionDialogState extends State<GroupSelectionDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return Dialog(
-      backgroundColor: BrandColors.bg2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(Radii.md),
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: BrandColors.bg2,
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(16),
+          topRight: Radius.circular(16),
+        ),
       ),
       child: Container(
         padding: EdgeInsets.all(Gaps.lg),
-        constraints: const BoxConstraints(maxHeight: 500, maxWidth: 350),
+        constraints: const BoxConstraints(maxHeight: 500),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [

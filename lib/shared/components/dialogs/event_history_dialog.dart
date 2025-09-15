@@ -3,13 +3,13 @@ import '../../constants/spacing.dart';
 import '../../constants/text_styles.dart';
 import '../../themes/colors.dart';
 
-/// Dialog para exibir histórico de eventos
+/// Bottom sheet para exibir histórico de eventos
 /// Permite selecionar um evento anterior para usar como template
-class EventHistoryDialog extends StatelessWidget {
+class EventHistoryBottomSheet extends StatelessWidget {
   final List<EventHistoryItem> events;
   final Function(EventHistoryItem)? onEventSelected;
 
-  const EventHistoryDialog({
+  const EventHistoryBottomSheet({
     super.key,
     required this.events,
     this.onEventSelected,
@@ -17,10 +17,14 @@ class EventHistoryDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Dialog(
-      backgroundColor: BrandColors.bg2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(Radii.md),
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: BrandColors.bg2,
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(16),
+          topRight: Radius.circular(16),
+        ),
       ),
       child: Container(
         padding: EdgeInsets.all(Gaps.lg),

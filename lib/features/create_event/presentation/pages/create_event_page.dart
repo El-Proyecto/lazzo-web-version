@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import '../../../../shared/constants/spacing.dart';
+import '../../../../shared/constants/text_styles.dart';
 import '../../../../shared/components/nav/create_event_app_bar.dart';
 import '../../../../shared/components/forms/event_group_selector.dart';
 import '../../../../shared/components/sections/date_time_section.dart';
 import '../../../../shared/components/sections/location_section.dart';
 import '../../../../shared/components/dialogs/event_history_dialog.dart';
 import '../../../../shared/components/dialogs/group_selection_dialog.dart';
+import '../../../../shared/components/dialogs/confirm_event_dialog.dart';
 import '../../../../shared/themes/colors.dart';
 
 /// Página principal para criação de eventos
@@ -19,7 +21,7 @@ class CreateEventPage extends StatefulWidget {
 
 class _CreateEventPageState extends State<CreateEventPage> {
   // Estado do evento
-  String _eventName = 'Create Event';
+  String _eventName = '';
   String _eventEmoji = '🍖';
   GroupInfo? _selectedGroup;
   DateTime? _selectedDate;
@@ -37,13 +39,8 @@ class _CreateEventPageState extends State<CreateEventPage> {
     return Scaffold(
       backgroundColor: BrandColors.bg1,
       appBar: CreateEventAppBar(
-        title: _eventName,
-        isEditable: true,
-        onTitleChanged: (title) {
-          setState(() {
-            _eventName = title;
-          });
-        },
+        title: 'Create Event',
+        isEditable: false,
         onHistoryPressed: _showEventHistory,
       ),
       body: SingleChildScrollView(
@@ -55,7 +52,9 @@ class _CreateEventPageState extends State<CreateEventPage> {
             // Seleção de grupo e nome do evento
             EventGroupSelector(
               eventEmoji: _eventEmoji,
-              eventName: _eventName.isEmpty ? 'Event Name' : _eventName,
+              eventName: _eventName.isEmpty
+                  ? 'e.g., Dinner at Tasca'
+                  : _eventName,
               selectedGroup: _selectedGroup,
               onGroupPressed: _showGroupSelection,
               onEventNameChanged: (name) {
@@ -109,7 +108,31 @@ class _CreateEventPageState extends State<CreateEventPage> {
               },
             ),
 
-            SizedBox(height: Gaps.xl),
+            SizedBox(height: 24),
+
+            // Continue button
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: 0),
+              child: SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: _showConfirmDialog,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: BrandColors.planning,
+                    padding: EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                  child: Text(
+                    'Continue',
+                    style: AppText.titleMediumEmph.copyWith(
+                      color: BrandColors.text1,
+                    ),
+                  ),
+                ),
+              ),
+            ),
 
             // Espaço extra para scroll
             SizedBox(height: 100),
@@ -120,19 +143,42 @@ class _CreateEventPageState extends State<CreateEventPage> {
   }
 
   void _showEventHistory() {
-    showDialog(
+    showModalBottomSheet(
       context: context,
-      builder: (context) => EventHistoryDialog(
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => EventHistoryBottomSheet(
         events: _getMockEventHistory(),
         onEventSelected: _loadEventFromHistory,
       ),
     );
   }
 
-  void _showGroupSelection() {
-    showDialog(
+  void _showConfirmDialog() {
+    showModalBottomSheet(
       context: context,
-      builder: (context) => GroupSelectionDialog(
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => ConfirmEventBottomSheet(
+        eventName: _eventName,
+        eventEmoji: _eventEmoji,
+        selectedGroup: _selectedGroup,
+        selectedDate: _selectedDate,
+        selectedTime: _selectedTime,
+        endDate: _endDate,
+        endTime: _endTime,
+        selectedLocation: _selectedLocation,
+        onCreateEvent: _createEvent,
+      ),
+    );
+  }
+
+  void _showGroupSelection() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => GroupSelectionBottomSheet(
         groups: _getMockGroups(),
         onGroupSelected: (group) {
           setState(() {
@@ -196,6 +242,19 @@ class _CreateEventPageState extends State<CreateEventPage> {
     // Por enquanto, mostrar snackbar
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Create Group feature coming soon!')),
+    );
+  }
+
+  void _createEvent() {
+    // Navigate to home with success data
+    Navigator.of(context).pushNamedAndRemoveUntil(
+      '/home',
+      (Route<dynamic> route) => false,
+      arguments: {
+        'showSuccessBanner': true,
+        'eventName': _eventName.isEmpty ? 'Untitled Event' : _eventName,
+        'groupName': _selectedGroup?.name ?? 'No Group',
+      },
     );
   }
 

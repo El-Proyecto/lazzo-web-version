@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import '../../constants/spacing.dart';
 import '../../constants/text_styles.dart';
 import '../../themes/colors.dart';
+import '../forms/inline_date_picker.dart';
+import '../forms/inline_time_picker.dart';
 
 enum DateTimeState { decideLater, setNow }
 
@@ -176,7 +178,7 @@ class _ToggleButton extends StatelessWidget {
   }
 }
 
-class _DateTimeRow extends StatelessWidget {
+class _DateTimeRow extends StatefulWidget {
   final String label;
   final DateTime? date;
   final TimeOfDay? time;
@@ -192,101 +194,104 @@ class _DateTimeRow extends StatelessWidget {
   });
 
   @override
+  State<_DateTimeRow> createState() => _DateTimeRowState();
+}
+
+class _DateTimeRowState extends State<_DateTimeRow> {
+  bool _isDatePickerExpanded = false;
+  bool _isTimePickerExpanded = false;
+
+  @override
   Widget build(BuildContext context) {
-    return Row(
+    return Column(
       children: [
-        // Label
-        SizedBox(
-          width: 40,
-          child: Text(
-            label,
-            style: AppText.bodyMedium.copyWith(
-              color: BrandColors.text2,
-              fontWeight: FontWeight.w500,
-              fontSize: 12,
+        Row(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            // Label
+            SizedBox(
+              width: 40,
+              child: Text(
+                widget.label,
+                style: AppText.bodyMedium.copyWith(
+                  color: BrandColors.text2,
+                  fontWeight: FontWeight.w500,
+                  fontSize: 12,
+                ),
+              ),
             ),
-          ),
+
+            const Spacer(),
+
+            // Date Button
+            _DateTimeButton(
+              label: widget.date != null
+                  ? '${widget.date!.day}/${widget.date!.month}/${widget.date!.year}'
+                  : 'Date',
+              icon: Icons.calendar_today,
+              onTap: () => _toggleDatePicker(),
+            ),
+
+            SizedBox(width: Gaps.xs),
+
+            // Time Button
+            _DateTimeButton(
+              label: widget.time != null
+                  ? '${widget.time!.hour.toString().padLeft(2, '0')}:${widget.time!.minute.toString().padLeft(2, '0')}'
+                  : 'Time',
+              icon: Icons.access_time,
+              onTap: () => _toggleTimePicker(),
+            ),
+          ],
         ),
 
-        SizedBox(width: Gaps.xs),
-
-        // Date Button
-        Flexible(
-          flex: 3,
-          child: _DateTimeButton(
-            label: date != null
-                ? '${date!.day}/${date!.month}/${date!.year}'
-                : 'Date',
-            icon: Icons.calendar_today,
-            onTap: () => _showDatePicker(context),
+        // Inline Date Picker
+        if (_isDatePickerExpanded) ...[
+          SizedBox(height: Gaps.sm),
+          InlineDatePicker(
+            selectedDate: widget.date,
+            onDateChanged: (date) {
+              widget.onDateChanged?.call(date);
+              setState(() {
+                _isDatePickerExpanded = false;
+              });
+            },
           ),
-        ),
+        ],
 
-        SizedBox(width: Gaps.xs),
-
-        // Time Button
-        Flexible(
-          flex: 2,
-          child: _DateTimeButton(
-            label: time != null
-                ? '${time!.hour.toString().padLeft(2, '0')}:${time!.minute.toString().padLeft(2, '0')}'
-                : 'Time',
-            icon: Icons.access_time,
-            onTap: () => _showTimePicker(context),
+        // Inline Time Picker
+        if (_isTimePickerExpanded) ...[
+          SizedBox(height: Gaps.sm),
+          InlineTimePicker(
+            selectedTime: widget.time,
+            onTimeChanged: (time) {
+              widget.onTimeChanged?.call(time);
+              setState(() {
+                _isTimePickerExpanded = false;
+              });
+            },
           ),
-        ),
+        ],
       ],
     );
   }
 
-  void _showDatePicker(BuildContext context) async {
-    final pickedDate = await showDatePicker(
-      context: context,
-      initialDate: date ?? DateTime.now(),
-      firstDate: DateTime.now().subtract(const Duration(days: 1)),
-      lastDate: DateTime.now().add(const Duration(days: 365)),
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: Theme.of(context).colorScheme.copyWith(
-              primary: BrandColors.planning,
-              onPrimary: BrandColors.text1,
-              surface: BrandColors.bg2,
-              onSurface: BrandColors.text1,
-            ),
-          ),
-          child: child!,
-        );
-      },
-    );
-
-    if (pickedDate != null) {
-      onDateChanged?.call(pickedDate);
-    }
+  void _toggleDatePicker() {
+    setState(() {
+      _isDatePickerExpanded = !_isDatePickerExpanded;
+      if (_isDatePickerExpanded) {
+        _isTimePickerExpanded = false; // Close time picker if open
+      }
+    });
   }
 
-  void _showTimePicker(BuildContext context) async {
-    final pickedTime = await showTimePicker(
-      context: context,
-      initialTime: time ?? TimeOfDay.now(),
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: Theme.of(context).colorScheme.copyWith(
-              primary: BrandColors.planning,
-              onPrimary: BrandColors.text1,
-              surface: BrandColors.bg2,
-              onSurface: BrandColors.text1,
-            ),
-          ),
-          child: child!,
-        );
-      },
-    );
-
-    if (pickedTime != null) {
-      onTimeChanged?.call(pickedTime);
-    }
+  void _toggleTimePicker() {
+    setState(() {
+      _isTimePickerExpanded = !_isTimePickerExpanded;
+      if (_isTimePickerExpanded) {
+        _isDatePickerExpanded = false; // Close date picker if open
+      }
+    });
   }
 }
 
@@ -311,7 +316,7 @@ class _DateTimeButton extends StatelessWidget {
           borderRadius: BorderRadius.circular(Radii.smAlt),
         ),
         child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisAlignment: MainAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(icon, color: BrandColors.text2, size: 14),

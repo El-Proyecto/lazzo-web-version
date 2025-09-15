@@ -273,7 +273,10 @@ class _LocationSectionState extends State<LocationSection> {
       decoration: InputDecoration(
         hintText: hintText,
         hintStyle: AppText.bodyMedium.copyWith(color: BrandColors.text2),
-        prefixIcon: Icon(icon, color: BrandColors.text2, size: 18),
+        prefixIcon: Padding(
+          padding: EdgeInsets.only(left: Pads.ctlH, right: Gaps.xs),
+          child: Icon(icon, color: BrandColors.text2, size: 18),
+        ),
         filled: true,
         fillColor: BrandColors.bg3,
         border: OutlineInputBorder(
@@ -292,7 +295,10 @@ class _LocationSectionState extends State<LocationSection> {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(Radii.smAlt),
-          borderSide: BorderSide(color: BrandColors.living, width: 1),
+          borderSide: BorderSide(
+            color: BrandColors.planning,
+            width: 1,
+          ), // Green focus
         ),
         contentPadding: EdgeInsets.symmetric(
           horizontal: Pads.ctlH,
@@ -491,21 +497,21 @@ class _LocationSectionState extends State<LocationSection> {
     return [
       LocationSuggestion(
         id: 'mock-1',
-        name: '$query - Option 1',
+        name: '$query Restaurant',
         address: 'Rua Augusta, 123 - São Paulo, SP',
         latitude: -23.5505,
         longitude: -46.6333,
       ),
       LocationSuggestion(
         id: 'mock-2',
-        name: '$query - Option 2',
+        name: '$query Shopping',
         address: 'Av. Paulista, 456 - São Paulo, SP',
         latitude: -23.5618,
         longitude: -46.6565,
       ),
       LocationSuggestion(
         id: 'mock-3',
-        name: '$query - Option 3',
+        name: '$query Plaza',
         address: 'Praça da Sé, 789 - São Paulo, SP',
         latitude: -23.5505,
         longitude: -46.6344,
@@ -547,6 +553,7 @@ class _LocationSectionState extends State<LocationSection> {
 
     if (_suggestions.isEmpty) {
       return Container(
+        width: double.infinity,
         padding: EdgeInsets.all(Pads.ctlV),
         decoration: BoxDecoration(
           color: BrandColors.bg3,
@@ -602,7 +609,7 @@ class _LocationSectionState extends State<LocationSection> {
           children: [
             Icon(
               isTopMatch ? Icons.star : Icons.location_on,
-              color: isTopMatch ? BrandColors.living : BrandColors.text2,
+              color: BrandColors.text2, // Gray for all icons
               size: 18,
             ),
             SizedBox(width: Gaps.sm),
@@ -631,22 +638,7 @@ class _LocationSectionState extends State<LocationSection> {
                 ],
               ),
             ),
-            if (isTopMatch) ...[
-              Container(
-                padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(
-                  color: BrandColors.living.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: Text(
-                  'TOP',
-                  style: AppText.labelLarge.copyWith(
-                    color: BrandColors.living,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ],
+            // Removed TOP label
           ],
         ),
       ),
@@ -827,7 +819,10 @@ class _ExpandedLocationPickerState extends State<ExpandedLocationPicker> {
           decoration: InputDecoration(
             hintText: 'Search address...',
             hintStyle: AppText.bodyLarge.copyWith(color: BrandColors.text2),
-            prefixIcon: Icon(Icons.search, color: BrandColors.text2),
+            prefixIcon: Padding(
+              padding: EdgeInsets.only(left: Pads.ctlH, right: Gaps.xs),
+              child: Icon(Icons.search, color: BrandColors.text2),
+            ),
             suffixIcon: _isSearching
                 ? Padding(
                     padding: EdgeInsets.all(12),
@@ -1035,7 +1030,7 @@ class _CustomNameFieldState extends State<_CustomNameField> {
       child: Row(
         children: [
           Icon(Icons.edit_location_alt, color: BrandColors.text2, size: 18),
-          SizedBox(width: Gaps.sm),
+          SizedBox(width: Gaps.xs),
           Expanded(
             child: TextField(
               controller: _controller,

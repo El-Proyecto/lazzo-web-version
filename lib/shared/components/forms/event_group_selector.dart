@@ -94,9 +94,11 @@ class EventGroupSelector extends StatelessWidget {
   }
 
   void _showEventNameEditor(BuildContext context) {
-    showDialog(
+    showModalBottomSheet(
       context: context,
-      builder: (context) => _EventNameEditDialog(
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => _EventNameEditBottomSheet(
         initialName: eventName,
         onChanged: onEventNameChanged,
       ),
@@ -157,17 +159,18 @@ class _DefaultGroupIcon extends StatelessWidget {
   }
 }
 
-class _EventNameEditDialog extends StatefulWidget {
+class _EventNameEditBottomSheet extends StatefulWidget {
   final String initialName;
   final ValueChanged<String>? onChanged;
 
-  const _EventNameEditDialog({required this.initialName, this.onChanged});
+  const _EventNameEditBottomSheet({required this.initialName, this.onChanged});
 
   @override
-  State<_EventNameEditDialog> createState() => _EventNameEditDialogState();
+  State<_EventNameEditBottomSheet> createState() =>
+      _EventNameEditBottomSheetState();
 }
 
-class _EventNameEditDialogState extends State<_EventNameEditDialog> {
+class _EventNameEditBottomSheetState extends State<_EventNameEditBottomSheet> {
   late TextEditingController _controller;
 
   @override
@@ -184,10 +187,14 @@ class _EventNameEditDialogState extends State<_EventNameEditDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return Dialog(
-      backgroundColor: BrandColors.bg2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(Radii.md),
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: BrandColors.bg2,
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(16),
+          topRight: Radius.circular(16),
+        ),
       ),
       child: Padding(
         padding: EdgeInsets.all(Gaps.lg),
@@ -206,7 +213,7 @@ class _EventNameEditDialogState extends State<_EventNameEditDialog> {
               autofocus: true,
               style: AppText.bodyLarge.copyWith(color: BrandColors.text1),
               decoration: InputDecoration(
-                hintText: 'Enter event name',
+                hintText: 'e.g., Dinner at Tasca',
                 hintStyle: AppText.bodyLarge.copyWith(color: BrandColors.text2),
                 filled: true,
                 fillColor: BrandColors.bg3,
