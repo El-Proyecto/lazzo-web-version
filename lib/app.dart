@@ -13,7 +13,7 @@ class LazzoApp extends StatelessWidget {
       darkTheme: buildDarkTheme(),
       themeMode: ThemeMode.dark,
       initialRoute:
-          AppRouter.createEvent, // <-- testing location section
+          AppRouter.mainLayout, // <-- arranca direto no MainLayout com nav
       routes: AppRouter.routes,
       // onGenerateRoute: ... (se precisares mais tarde)
     );

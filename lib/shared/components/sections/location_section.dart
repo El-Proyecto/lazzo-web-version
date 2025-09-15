@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../constants/spacing.dart';
@@ -24,11 +25,34 @@ class LocationSection extends StatefulWidget {
 
 class _LocationSectionState extends State<LocationSection> {
   LocationState _currentState = LocationState.decideLater;
+  final TextEditingController _locationNameController = TextEditingController();
+  final TextEditingController _addressSearchController =
+      TextEditingController();
+
+  // Search state
+  Timer? _searchDebounceTimer;
+  List<LocationSuggestion> _suggestions = [];
+  bool _isSearching = false;
+  bool _showSuggestions = false;
 
   @override
   void initState() {
     super.initState();
     _currentState = widget.initialState;
+
+    // Initialize controllers with existing data if available
+    if (widget.selectedLocation != null) {
+      _locationNameController.text = widget.selectedLocation!.displayName ?? '';
+      _addressSearchController.text = widget.selectedLocation!.formattedAddress;
+    }
+  }
+
+  @override
+  void dispose() {
+    _searchDebounceTimer?.cancel();
+    _locationNameController.dispose();
+    _addressSearchController.dispose();
+    super.dispose();
   }
 
   @override
@@ -108,7 +132,7 @@ class _LocationSectionState extends State<LocationSection> {
 
   Widget _buildLocationPreview() {
     final location = widget.selectedLocation!;
-    
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -154,9 +178,9 @@ class _LocationSectionState extends State<LocationSection> {
           children: [
             Expanded(
               child: _buildActionButton(
-                icon: Icons.edit_location,
+                icon: Icons.edit_outlined,
                 text: 'Change',
-                onTap: () => widget.onLocationChanged?.call(null),
+                onTap: () => _resetLocationForEditing(),
                 isSecondary: true,
               ),
             ),
@@ -182,6 +206,8 @@ class _LocationSectionState extends State<LocationSection> {
         _buildTextField(
           hintText: 'Location name (optional)',
           icon: Icons.edit_location_alt,
+          controller: _locationNameController,
+          onChanged: (value) => _updateLocationName(value),
         ),
 
         SizedBox(height: Gaps.md),
@@ -190,8 +216,17 @@ class _LocationSectionState extends State<LocationSection> {
         _buildTextField(
           hintText: 'Search address or place',
           icon: Icons.search,
-          onTap: () => _simulateLocationSearch(),
+          controller: _addressSearchController,
+          onChanged: (value) => _handleAddressSearch(value),
+          onSubmitted: (value) => _handleEnterKeyPressed(),
+          readOnly: false,
         ),
+
+        // Suggestions list
+        if (_showSuggestions) ...[
+          SizedBox(height: Gaps.sm),
+          _buildSuggestionsList(),
+        ],
 
         SizedBox(height: Gaps.md),
 
@@ -201,16 +236,16 @@ class _LocationSectionState extends State<LocationSection> {
             Expanded(
               child: _buildActionButton(
                 icon: Icons.my_location,
-                text: 'Use current location',
+                text: 'Current location',
                 onTap: () => _useCurrentLocation(),
               ),
             ),
             SizedBox(width: Gaps.sm),
             Expanded(
               child: _buildActionButton(
-                icon: Icons.place,
-                text: 'Drop a pin',
-                onTap: () => _dropPin(),
+                icon: Icons.map_outlined,
+                text: 'Pick on map',
+                onTap: () => _pickOnMap(),
               ),
             ),
           ],
@@ -222,36 +257,46 @@ class _LocationSectionState extends State<LocationSection> {
   Widget _buildTextField({
     required String hintText,
     required IconData icon,
+    required TextEditingController controller,
     VoidCallback? onTap,
+    Function(String)? onChanged,
+    Function(String)? onSubmitted,
+    bool readOnly = false,
   }) {
-    return GestureDetector(
+    return TextField(
+      controller: controller,
+      readOnly: readOnly,
       onTap: onTap,
-      child: Container(
-        padding: EdgeInsets.symmetric(
-          horizontal: Pads.ctlH,
-          vertical: Pads.ctlV,
-        ),
-        decoration: BoxDecoration(
-          color: BrandColors.bg3,
+      onChanged: onChanged,
+      onSubmitted: onSubmitted,
+      style: AppText.bodyMedium.copyWith(color: BrandColors.text1),
+      decoration: InputDecoration(
+        hintText: hintText,
+        hintStyle: AppText.bodyMedium.copyWith(color: BrandColors.text2),
+        prefixIcon: Icon(icon, color: BrandColors.text2, size: 18),
+        filled: true,
+        fillColor: BrandColors.bg3,
+        border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(Radii.smAlt),
-          border: Border.all(
+          borderSide: BorderSide(
             color: BrandColors.text2.withValues(alpha: 0.2),
             width: 1,
           ),
         ),
-        child: Row(
-          children: [
-            Icon(icon, color: BrandColors.text2, size: 18),
-            SizedBox(width: Gaps.sm),
-            Expanded(
-              child: Text(
-                hintText,
-                style: AppText.bodyMedium.copyWith(
-                  color: BrandColors.text2,
-                ),
-              ),
-            ),
-          ],
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(Radii.smAlt),
+          borderSide: BorderSide(
+            color: BrandColors.text2.withValues(alpha: 0.2),
+            width: 1,
+          ),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(Radii.smAlt),
+          borderSide: BorderSide(color: BrandColors.living, width: 1),
+        ),
+        contentPadding: EdgeInsets.symmetric(
+          horizontal: Pads.ctlH,
+          vertical: Pads.ctlV,
         ),
       ),
     );
@@ -274,9 +319,9 @@ class _LocationSectionState extends State<LocationSection> {
           color: BrandColors.bg3,
           borderRadius: BorderRadius.circular(Radii.smAlt),
           border: Border.all(
-            color: isSecondary 
-                ? BrandColors.text2.withValues(alpha: 0.3) 
-                : BrandColors.planning, 
+            color: isSecondary
+                ? BrandColors.text2.withValues(alpha: 0.3)
+                : BrandColors.planning,
             width: 1,
           ),
         ),
@@ -306,40 +351,352 @@ class _LocationSectionState extends State<LocationSection> {
     );
   }
 
-  void _simulateLocationSearch() {
-    // TODO: Implement search functionality
-    // For now, simulate selecting a location
-    final mockLocation = LocationInfo(
-      id: 'mock-1',
-      displayName: 'My Custom Location',
-      formattedAddress: 'Rua Augusta, 123 - São Paulo, SP',
+  void _useCurrentLocation() {
+    // Mock current location
+    final currentLocation = LocationInfo(
+      id: 'current-location',
+      displayName: _locationNameController.text.isNotEmpty
+          ? _locationNameController.text
+          : null,
+      formattedAddress: 'Your current location',
       latitude: -23.5505,
       longitude: -46.6333,
     );
-    
-    // Simulate delay then select location
-    Future.delayed(Duration(seconds: 1), () {
-      widget.onLocationChanged?.call(mockLocation);
-    });
-  }
 
-  void _useCurrentLocation() {
-    // TODO: Implement current location using device GPS
+    // Hide suggestions and go to state 2
+    setState(() {
+      _showSuggestions = false;
+      _suggestions.clear();
+    });
+
+    widget.onLocationChanged?.call(currentLocation);
     HapticFeedback.lightImpact();
   }
 
-  void _dropPin() {
-    // TODO: Implement drop pin functionality
+  void _pickOnMap() {
+    // TODO: Implement map picker functionality
+    // For now, create a mock location and go to state 2
+    final mockLocation = LocationInfo(
+      id: 'map-pick-${DateTime.now().millisecondsSinceEpoch}',
+      displayName: _locationNameController.text.isNotEmpty
+          ? _locationNameController.text
+          : null,
+      formattedAddress: 'Selected from map',
+      latitude: -23.5505,
+      longitude: -46.6333,
+    );
+
+    // Hide suggestions and go to state 2
+    setState(() {
+      _showSuggestions = false;
+      _suggestions.clear();
+    });
+
+    widget.onLocationChanged?.call(mockLocation);
     HapticFeedback.lightImpact();
   }
 
   void _openInMaps(LocationInfo location) {
     // TODO: Implement opening in maps
     // This would typically use url_launcher to open maps app
-  }  void _changeState(LocationState newState) {
+  }
+
+  void _changeState(LocationState newState) {
     setState(() {
       _currentState = newState;
     });
+    if (newState == LocationState.decideLater) {
+      widget.onLocationChanged?.call(null);
+    }
+  }
+
+  void _updateLocationName(String name) {
+    if (widget.selectedLocation != null) {
+      final updatedLocation = LocationInfo(
+        id: widget.selectedLocation!.id,
+        displayName: name.isEmpty ? null : name,
+        formattedAddress: widget.selectedLocation!.formattedAddress,
+        latitude: widget.selectedLocation!.latitude,
+        longitude: widget.selectedLocation!.longitude,
+      );
+      widget.onLocationChanged?.call(updatedLocation);
+    }
+  }
+
+  void _handleAddressSearch(String query) {
+    // Cancel previous timer
+    _searchDebounceTimer?.cancel();
+
+    // Clear suggestions if query is too short
+    if (query.length < 3) {
+      setState(() {
+        _suggestions.clear();
+        _showSuggestions = false;
+        _isSearching = false;
+      });
+      return;
+    }
+
+    // Set searching state
+    setState(() {
+      _isSearching = true;
+      _showSuggestions = true;
+    });
+
+    // Start new debounce timer (400ms)
+    _searchDebounceTimer = Timer(Duration(milliseconds: 400), () {
+      _performSearch(query);
+    });
+  }
+
+  Future<void> _performSearch(String query) async {
+    if (!mounted) return;
+
+    try {
+      // Try native geocoding first, fallback to mock for now
+      List<LocationSuggestion> suggestions;
+
+      // TODO: Implement native geocoding
+      // suggestions = await _performNativeGeocode(query);
+
+      // For now, use mock suggestions
+      suggestions = _getMockSuggestions(query);
+
+      if (mounted) {
+        setState(() {
+          _suggestions = suggestions.take(3).toList(); // Max 3 suggestions
+          _isSearching = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _suggestions.clear();
+          _isSearching = false;
+        });
+      }
+    }
+  }
+
+  // Future<List<LocationSuggestion>> _performNativeGeocode(String query) async {
+  //   // TODO: Implement native geocoding
+  //   // iOS: Use MKLocalSearch and CLGeocoder
+  //   // Android: Use Geocoder
+  //   // This would be implemented using platform channels or a plugin like geocoding
+  //   throw UnimplementedError('Native geocoding not yet implemented');
+  // }
+
+  List<LocationSuggestion> _getMockSuggestions(String query) {
+    // Mock suggestions - will be replaced with native geocoding
+    return [
+      LocationSuggestion(
+        id: 'mock-1',
+        name: '$query - Option 1',
+        address: 'Rua Augusta, 123 - São Paulo, SP',
+        latitude: -23.5505,
+        longitude: -46.6333,
+      ),
+      LocationSuggestion(
+        id: 'mock-2',
+        name: '$query - Option 2',
+        address: 'Av. Paulista, 456 - São Paulo, SP',
+        latitude: -23.5618,
+        longitude: -46.6565,
+      ),
+      LocationSuggestion(
+        id: 'mock-3',
+        name: '$query - Option 3',
+        address: 'Praça da Sé, 789 - São Paulo, SP',
+        latitude: -23.5505,
+        longitude: -46.6344,
+      ),
+    ];
+  }
+
+  Widget _buildSuggestionsList() {
+    if (_isSearching) {
+      return Container(
+        padding: EdgeInsets.all(Pads.ctlV),
+        decoration: BoxDecoration(
+          color: BrandColors.bg3,
+          borderRadius: BorderRadius.circular(Radii.smAlt),
+          border: Border.all(
+            color: BrandColors.text2.withValues(alpha: 0.2),
+            width: 1,
+          ),
+        ),
+        child: Row(
+          children: [
+            SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                valueColor: AlwaysStoppedAnimation<Color>(BrandColors.text2),
+              ),
+            ),
+            SizedBox(width: Gaps.sm),
+            Text(
+              'Searching...',
+              style: AppText.bodyMedium.copyWith(color: BrandColors.text2),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (_suggestions.isEmpty) {
+      return Container(
+        padding: EdgeInsets.all(Pads.ctlV),
+        decoration: BoxDecoration(
+          color: BrandColors.bg3,
+          borderRadius: BorderRadius.circular(Radii.smAlt),
+          border: Border.all(
+            color: BrandColors.text2.withValues(alpha: 0.2),
+            width: 1,
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'No results. Try:',
+              style: AppText.bodyMedium.copyWith(color: BrandColors.text2),
+            ),
+            SizedBox(height: Gaps.xs),
+            Text(
+              '• Pick on map\n• Current location\n• Save name only',
+              style: AppText.bodyMedium.copyWith(color: BrandColors.text2),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Container(
+      decoration: BoxDecoration(
+        color: BrandColors.bg3,
+        borderRadius: BorderRadius.circular(Radii.smAlt),
+        border: Border.all(
+          color: BrandColors.text2.withValues(alpha: 0.2),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        children: _suggestions.asMap().entries.map((entry) {
+          final index = entry.key;
+          final suggestion = entry.value;
+          return _buildSuggestionTile(suggestion, index == 0);
+        }).toList(),
+      ),
+    );
+  }
+
+  Widget _buildSuggestionTile(LocationSuggestion suggestion, bool isTopMatch) {
+    return InkWell(
+      onTap: () => _selectSuggestion(suggestion),
+      borderRadius: BorderRadius.circular(Radii.smAlt),
+      child: Container(
+        padding: EdgeInsets.all(Pads.ctlV),
+        child: Row(
+          children: [
+            Icon(
+              isTopMatch ? Icons.star : Icons.location_on,
+              color: isTopMatch ? BrandColors.living : BrandColors.text2,
+              size: 18,
+            ),
+            SizedBox(width: Gaps.sm),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    suggestion.name,
+                    style: AppText.bodyMedium.copyWith(
+                      color: BrandColors.text1,
+                      fontWeight: isTopMatch
+                          ? FontWeight.w600
+                          : FontWeight.normal,
+                    ),
+                  ),
+                  if (suggestion.address != suggestion.name) ...[
+                    SizedBox(height: 2),
+                    Text(
+                      suggestion.address,
+                      style: AppText.bodyMedium.copyWith(
+                        color: BrandColors.text2,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            if (isTopMatch) ...[
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: BrandColors.living.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  'TOP',
+                  style: AppText.labelLarge.copyWith(
+                    color: BrandColors.living,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _selectSuggestion(LocationSuggestion suggestion) {
+    final location = LocationInfo(
+      id: suggestion.id,
+      displayName: _locationNameController.text.isNotEmpty
+          ? _locationNameController.text
+          : null,
+      formattedAddress: suggestion.address,
+      latitude: suggestion.latitude,
+      longitude: suggestion.longitude,
+    );
+
+    // Hide suggestions and go to state 2 (preview)
+    setState(() {
+      _showSuggestions = false;
+      _suggestions.clear();
+    });
+
+    widget.onLocationChanged?.call(location);
+    HapticFeedback.lightImpact();
+  }
+
+  void _handleEnterKeyPressed() {
+    if (_suggestions.isNotEmpty) {
+      // Select top match (first suggestion)
+      _selectSuggestion(_suggestions.first);
+    } else {
+      // Try single geocode - for now just show empty state
+      setState(() {
+        _showSuggestions = true;
+        _suggestions.clear(); // This will show the empty state
+      });
+    }
+  }
+
+  void _resetLocationForEditing() {
+    // Clear selected location and reset fields for editing
+    _locationNameController.clear();
+    _addressSearchController.clear();
+    setState(() {
+      _showSuggestions = false;
+      _suggestions.clear();
+    });
+    widget.onLocationChanged?.call(null);
+    HapticFeedback.lightImpact();
   }
 }
 
@@ -670,7 +1027,10 @@ class _CustomNameFieldState extends State<_CustomNameField> {
       decoration: BoxDecoration(
         color: BrandColors.bg3,
         borderRadius: BorderRadius.circular(Radii.smAlt),
-        border: Border.all(color: BrandColors.text2.withValues(alpha: 0.2), width: 1),
+        border: Border.all(
+          color: BrandColors.text2.withValues(alpha: 0.2),
+          width: 1,
+        ),
       ),
       child: Row(
         children: [
