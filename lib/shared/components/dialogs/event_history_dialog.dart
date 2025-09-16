@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../constants/spacing.dart';
 import '../../constants/text_styles.dart';
 import '../../themes/colors.dart';
+import '../widgets/grabber_bar.dart';
 
 /// Bottom sheet para exibir histórico de eventos
 /// Permite selecionar um evento anterior para usar como template
@@ -17,23 +18,35 @@ class EventHistoryBottomSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
+    final screenHeight = MediaQuery.of(context).size.height;
+    final maxHeight = screenHeight * 0.9;
+
     return Container(
       width: double.infinity,
+      constraints: BoxConstraints(
+        maxHeight: keyboardHeight > 0 ? maxHeight : 400,
+      ),
       decoration: BoxDecoration(
         color: BrandColors.bg2,
         borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(16),
-          topRight: Radius.circular(16),
+          topLeft: Radius.circular(Radii.md),
+          topRight: Radius.circular(Radii.md),
         ),
       ),
-      child: Container(
-        padding: EdgeInsets.all(Gaps.lg),
-        constraints: const BoxConstraints(maxHeight: 400),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Header
-            Row(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Grabber bar
+          Padding(
+            padding: EdgeInsets.only(top: Gaps.sm),
+            child: Center(child: GrabberBar()),
+          ),
+
+          // Header
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: Gaps.lg),
+            child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
@@ -48,11 +61,18 @@ class EventHistoryBottomSheet extends StatelessWidget {
                 ),
               ],
             ),
+          ),
 
-            SizedBox(height: Gaps.md),
+          SizedBox(height: 12),
 
-            // Lista de eventos
-            Flexible(
+          // Lista de eventos
+          Flexible(
+            child: Padding(
+              padding: EdgeInsets.only(
+                left: Gaps.lg,
+                right: Gaps.lg,
+                bottom: Gaps.lg + MediaQuery.of(context).viewInsets.bottom,
+              ),
               child: events.isEmpty
                   ? Center(
                       child: Column(
@@ -90,8 +110,8 @@ class EventHistoryBottomSheet extends StatelessWidget {
                       },
                     ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -142,10 +162,10 @@ class _EventHistoryTile extends StatelessWidget {
                       fontWeight: FontWeight.w500,
                     ),
                   ),
-                  if (event.lastDate != null) ...[
+                  if (event.lastTime != null || event.location != null) ...[
                     SizedBox(height: 2),
                     Text(
-                      'Last: ${_formatDate(event.lastDate!)}',
+                      _formatTimeAndLocation(event.lastTime, event.location),
                       style: AppText.bodyMedium.copyWith(
                         color: BrandColors.text2,
                       ),
@@ -163,8 +183,20 @@ class _EventHistoryTile extends StatelessWidget {
     );
   }
 
-  String _formatDate(DateTime date) {
-    return '${date.day}/${date.month}/${date.year}';
+  String _formatTimeAndLocation(TimeOfDay? time, String? location) {
+    final parts = <String>[];
+
+    if (time != null) {
+      final hour = time.hour.toString().padLeft(2, '0');
+      final minute = time.minute.toString().padLeft(2, '0');
+      parts.add('$hour:$minute');
+    }
+
+    if (location != null && location.isNotEmpty) {
+      parts.add(location);
+    }
+
+    return parts.join(' • ');
   }
 }
 

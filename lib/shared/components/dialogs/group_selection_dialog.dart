@@ -3,6 +3,7 @@ import '../../constants/spacing.dart';
 import '../../constants/text_styles.dart';
 import '../../themes/colors.dart';
 import '../forms/event_group_selector.dart';
+import '../widgets/grabber_bar.dart';
 
 /// Bottom sheet para pesquisar e selecionar grupos
 /// Inclui barra de pesquisa e opção para criar novo grupo
@@ -51,23 +52,35 @@ class _GroupSelectionBottomSheetState extends State<GroupSelectionBottomSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
+    final screenHeight = MediaQuery.of(context).size.height;
+    final maxHeight = screenHeight * 0.9;
+
     return Container(
       width: double.infinity,
+      constraints: BoxConstraints(
+        maxHeight: keyboardHeight > 0 ? maxHeight : 500,
+      ),
       decoration: BoxDecoration(
         color: BrandColors.bg2,
         borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(16),
-          topRight: Radius.circular(16),
+          topLeft: Radius.circular(Radii.md),
+          topRight: Radius.circular(Radii.md),
         ),
       ),
-      child: Container(
-        padding: EdgeInsets.all(Gaps.lg),
-        constraints: const BoxConstraints(maxHeight: 500),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Header
-            Row(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Grabber bar
+          Padding(
+            padding: EdgeInsets.only(top: Gaps.sm),
+            child: Center(child: GrabberBar()),
+          ),
+
+          // Header
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: Gaps.lg),
+            child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
@@ -82,89 +95,113 @@ class _GroupSelectionBottomSheetState extends State<GroupSelectionBottomSheet> {
                 ),
               ],
             ),
+          ),
 
-            SizedBox(height: Gaps.md),
+          SizedBox(height: 12),
 
-            // Barra de pesquisa
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _searchController,
-                    style: AppText.bodyLarge.copyWith(color: BrandColors.text1),
-                    decoration: InputDecoration(
-                      hintText: 'Search groups...',
-                      hintStyle: AppText.bodyLarge.copyWith(
-                        color: BrandColors.text2,
-                      ),
-                      prefixIcon: Icon(Icons.search, color: BrandColors.text2),
-                      filled: true,
-                      fillColor: BrandColors.bg3,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(Radii.smAlt),
-                        borderSide: BorderSide.none,
-                      ),
-                      contentPadding: EdgeInsets.symmetric(
-                        horizontal: Pads.ctlH,
-                        vertical: Pads.ctlV,
-                      ),
-                    ),
-                  ),
-                ),
-
-                SizedBox(width: Gaps.sm),
-
-                // Botão criar grupo
-                GestureDetector(
-                  onTap: () {
-                    Navigator.of(context).pop();
-                    widget.onCreateGroup?.call();
-                  },
-                  child: Container(
-                    width: 48,
-                    height: 48,
-                    decoration: BoxDecoration(
-                      color: BrandColors.planning,
-                      borderRadius: BorderRadius.circular(Radii.smAlt),
-                    ),
-                    child: Icon(Icons.add, color: BrandColors.text1, size: 24),
-                  ),
-                ),
-              ],
-            ),
-
-            SizedBox(height: Gaps.md),
-
-            // Lista de grupos
-            Flexible(
-              child: _filteredGroups.isEmpty
-                  ? _EmptyState(
-                      hasSearchTerm: _searchController.text.isNotEmpty,
-                    )
-                  : GridView.builder(
-                      shrinkWrap: true,
-                      gridDelegate:
-                          const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 3,
-                            childAspectRatio: 0.8,
-                            crossAxisSpacing: 12,
-                            mainAxisSpacing: 16,
+          // Content with padding
+          Flexible(
+            child: Padding(
+              padding: EdgeInsets.only(
+                left: Gaps.lg,
+                right: Gaps.lg,
+                bottom: Gaps.lg + MediaQuery.of(context).viewInsets.bottom,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Barra de pesquisa
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _searchController,
+                          style: AppText.bodyLarge.copyWith(
+                            color: BrandColors.text1,
                           ),
-                      itemCount: _filteredGroups.length,
-                      itemBuilder: (context, index) {
-                        final group = _filteredGroups[index];
-                        return _GroupTile(
-                          group: group,
-                          onTap: () {
-                            Navigator.of(context).pop();
-                            widget.onGroupSelected?.call(group);
-                          },
-                        );
-                      },
-                    ),
+                          decoration: InputDecoration(
+                            hintText: 'Search groups...',
+                            hintStyle: AppText.bodyLarge.copyWith(
+                              color: BrandColors.text2,
+                            ),
+                            prefixIcon: Icon(
+                              Icons.search,
+                              color: BrandColors.text2,
+                            ),
+                            filled: true,
+                            fillColor: BrandColors.bg3,
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(Radii.smAlt),
+                              borderSide: BorderSide.none,
+                            ),
+                            contentPadding: EdgeInsets.symmetric(
+                              horizontal: Pads.ctlH,
+                              vertical: Pads.ctlV,
+                            ),
+                          ),
+                        ),
+                      ),
+
+                      SizedBox(width: Gaps.sm),
+
+                      // Botão criar grupo
+                      GestureDetector(
+                        onTap: () {
+                          Navigator.of(context).pop();
+                          widget.onCreateGroup?.call();
+                        },
+                        child: Container(
+                          width: 48,
+                          height: 48,
+                          decoration: BoxDecoration(
+                            color: BrandColors.planning,
+                            borderRadius: BorderRadius.circular(Radii.smAlt),
+                          ),
+                          child: Icon(
+                            Icons.group_add,
+                            color: BrandColors.text1,
+                            size: 24,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  SizedBox(height: Gaps.md),
+
+                  // Lista de grupos
+                  Flexible(
+                    child: _filteredGroups.isEmpty
+                        ? _EmptyState(
+                            hasSearchTerm: _searchController.text.isNotEmpty,
+                          )
+                        : GridView.builder(
+                            shrinkWrap: true,
+                            gridDelegate:
+                                const SliverGridDelegateWithFixedCrossAxisCount(
+                                  crossAxisCount: 3,
+                                  childAspectRatio: 0.8,
+                                  crossAxisSpacing: 12,
+                                  mainAxisSpacing: 16,
+                                ),
+                            itemCount: _filteredGroups.length,
+                            itemBuilder: (context, index) {
+                              final group = _filteredGroups[index];
+                              return _GroupTile(
+                                group: group,
+                                onTap: () {
+                                  Navigator.of(context).pop();
+                                  widget.onGroupSelected?.call(group);
+                                },
+                              );
+                            },
+                          ),
+                  ),
+                ],
+              ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

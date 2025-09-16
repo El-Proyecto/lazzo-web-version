@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../constants/spacing.dart';
 import '../../constants/text_styles.dart';
 import '../../themes/colors.dart';
+import '../dialogs/emoji_selector_dialog.dart';
 
 /// Widget para seleção de grupo
 /// Inclui ícone do evento, nome e botão para seleção de grupo
@@ -11,6 +12,7 @@ class EventGroupSelector extends StatelessWidget {
   final GroupInfo? selectedGroup;
   final VoidCallback? onGroupPressed;
   final ValueChanged<String>? onEventNameChanged;
+  final ValueChanged<String>? onEmojiChanged;
 
   const EventGroupSelector({
     super.key,
@@ -19,6 +21,7 @@ class EventGroupSelector extends StatelessWidget {
     this.selectedGroup,
     this.onGroupPressed,
     this.onEventNameChanged,
+    this.onEmojiChanged,
   });
 
   @override
@@ -26,15 +29,18 @@ class EventGroupSelector extends StatelessWidget {
     return Row(
       children: [
         // Ícone do evento
-        Container(
-          width: 48,
-          height: 48,
-          decoration: BoxDecoration(
-            color: BrandColors.bg2,
-            borderRadius: BorderRadius.circular(Radii.smAlt),
-          ),
-          child: Center(
-            child: Text(eventEmoji, style: const TextStyle(fontSize: 32)),
+        GestureDetector(
+          onTap: () => _showEmojiSelector(context),
+          child: Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: BrandColors.bg2,
+              borderRadius: BorderRadius.circular(Radii.smAlt),
+            ),
+            child: Center(
+              child: Text(eventEmoji, style: const TextStyle(fontSize: 32)),
+            ),
           ),
         ),
 
@@ -59,7 +65,9 @@ class EventGroupSelector extends StatelessWidget {
                     child: Text(
                       eventName,
                       style: AppText.bodyLarge.copyWith(
-                        color: BrandColors.text1,
+                        color: eventName == 'Add Event Name'
+                            ? BrandColors.text2
+                            : BrandColors.text1,
                       ),
                     ),
                   ),
@@ -101,6 +109,18 @@ class EventGroupSelector extends StatelessWidget {
       builder: (context) => _EventNameEditBottomSheet(
         initialName: eventName,
         onChanged: onEventNameChanged,
+      ),
+    );
+  }
+
+  void _showEmojiSelector(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => EmojiSelectorBottomSheet(
+        selectedEmoji: eventEmoji,
+        onEmojiSelected: onEmojiChanged,
       ),
     );
   }
@@ -176,7 +196,8 @@ class _EventNameEditBottomSheetState extends State<_EventNameEditBottomSheet> {
   @override
   void initState() {
     super.initState();
-    _controller = TextEditingController(text: widget.initialName);
+    // Start with empty field, only use initialName as placeholder context
+    _controller = TextEditingController(text: '');
   }
 
   @override
@@ -187,8 +208,15 @@ class _EventNameEditBottomSheetState extends State<_EventNameEditBottomSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
+    final screenHeight = MediaQuery.of(context).size.height;
+    final maxHeight = screenHeight * 0.9;
+
     return Container(
       width: double.infinity,
+      constraints: BoxConstraints(
+        maxHeight: keyboardHeight > 0 ? maxHeight : screenHeight * 0.4,
+      ),
       decoration: BoxDecoration(
         color: BrandColors.bg2,
         borderRadius: BorderRadius.only(
@@ -197,7 +225,12 @@ class _EventNameEditBottomSheetState extends State<_EventNameEditBottomSheet> {
         ),
       ),
       child: Padding(
-        padding: EdgeInsets.all(Gaps.lg),
+        padding: EdgeInsets.only(
+          left: Gaps.lg,
+          right: Gaps.lg,
+          top: Gaps.lg,
+          bottom: Gaps.lg + MediaQuery.of(context).viewInsets.bottom,
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -213,7 +246,11 @@ class _EventNameEditBottomSheetState extends State<_EventNameEditBottomSheet> {
               autofocus: true,
               style: AppText.bodyLarge.copyWith(color: BrandColors.text1),
               decoration: InputDecoration(
-                hintText: 'e.g., Dinner at Tasca',
+                hintText:
+                    widget.initialName.isNotEmpty &&
+                        widget.initialName != 'e.g., Dinner at Tasca'
+                    ? widget.initialName
+                    : 'e.g., Dinner at Tasca',
                 hintStyle: AppText.bodyLarge.copyWith(color: BrandColors.text2),
                 filled: true,
                 fillColor: BrandColors.bg3,

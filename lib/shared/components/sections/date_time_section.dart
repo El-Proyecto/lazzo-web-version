@@ -229,6 +229,7 @@ class _DateTimeRowState extends State<_DateTimeRow> {
                   ? '${widget.date!.day}/${widget.date!.month}/${widget.date!.year}'
                   : 'Date',
               icon: Icons.calendar_today,
+              isExpanded: _isDatePickerExpanded,
               onTap: () => _toggleDatePicker(),
             ),
 
@@ -240,6 +241,7 @@ class _DateTimeRowState extends State<_DateTimeRow> {
                   ? '${widget.time!.hour.toString().padLeft(2, '0')}:${widget.time!.minute.toString().padLeft(2, '0')}'
                   : 'Time',
               icon: Icons.access_time,
+              isExpanded: _isTimePickerExpanded,
               onTap: () => _toggleTimePicker(),
             ),
           ],
@@ -266,9 +268,7 @@ class _DateTimeRowState extends State<_DateTimeRow> {
             selectedTime: widget.time,
             onTimeChanged: (time) {
               widget.onTimeChanged?.call(time);
-              setState(() {
-                _isTimePickerExpanded = false;
-              });
+              // Time picker stays open until user clicks outside or taps time button again
             },
           ),
         ],
@@ -298,9 +298,15 @@ class _DateTimeRowState extends State<_DateTimeRow> {
 class _DateTimeButton extends StatelessWidget {
   final String label;
   final IconData icon;
+  final bool isExpanded;
   final VoidCallback? onTap;
 
-  const _DateTimeButton({required this.label, required this.icon, this.onTap});
+  const _DateTimeButton({
+    required this.label,
+    required this.icon,
+    this.isExpanded = false,
+    this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -314,6 +320,9 @@ class _DateTimeButton extends StatelessWidget {
         decoration: BoxDecoration(
           color: BrandColors.bg3,
           borderRadius: BorderRadius.circular(Radii.smAlt),
+          border: isExpanded
+              ? Border.all(color: BrandColors.planning, width: 2)
+              : null,
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.start,

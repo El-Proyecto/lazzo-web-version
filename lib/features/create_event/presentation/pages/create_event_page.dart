@@ -52,14 +52,17 @@ class _CreateEventPageState extends State<CreateEventPage> {
             // Seleção de grupo e nome do evento
             EventGroupSelector(
               eventEmoji: _eventEmoji,
-              eventName: _eventName.isEmpty
-                  ? 'e.g., Dinner at Tasca'
-                  : _eventName,
+              eventName: _eventName.isEmpty ? 'Add Event Name' : _eventName,
               selectedGroup: _selectedGroup,
               onGroupPressed: _showGroupSelection,
               onEventNameChanged: (name) {
                 setState(() {
                   _eventName = name;
+                });
+              },
+              onEmojiChanged: (emoji) {
+                setState(() {
+                  _eventEmoji = emoji;
                 });
               },
             ),
@@ -246,9 +249,9 @@ class _CreateEventPageState extends State<CreateEventPage> {
   }
 
   void _createEvent() {
-    // Navigate to home with success data
+    // Navigate back to main layout (which includes home page with nav bar)
     Navigator.of(context).pushNamedAndRemoveUntil(
-      '/home',
+      '/main',
       (Route<dynamic> route) => false,
       arguments: {
         'showSuccessBanner': true,

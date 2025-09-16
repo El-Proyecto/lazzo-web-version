@@ -4,6 +4,7 @@ import '../../constants/text_styles.dart';
 import '../../themes/colors.dart';
 import '../forms/event_group_selector.dart';
 import '../sections/location_section.dart';
+import '../widgets/grabber_bar.dart';
 
 /// Bottom sheet para confirmar a criação do evento
 /// Mostra resumo de todas as informações do evento
@@ -33,23 +34,36 @@ class ConfirmEventBottomSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
+    final screenHeight = MediaQuery.of(context).size.height;
+    final maxHeight = screenHeight * 0.9;
+
     return Container(
       width: double.infinity,
+      constraints: BoxConstraints(
+        maxHeight: keyboardHeight > 0 ? maxHeight : screenHeight * 0.7,
+      ),
       decoration: BoxDecoration(
         color: BrandColors.bg2,
         borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(16),
-          topRight: Radius.circular(16),
+          topLeft: Radius.circular(Radii.md),
+          topRight: Radius.circular(Radii.md),
         ),
       ),
-      child: Padding(
-        padding: EdgeInsets.all(Gaps.lg),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Header com título e botão fechar
-            Row(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Grabber bar
+          Padding(
+            padding: EdgeInsets.only(top: Gaps.sm),
+            child: Center(child: GrabberBar()),
+          ),
+
+          // Header com título e botão fechar
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: Gaps.lg),
+            child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
@@ -64,82 +78,126 @@ class ConfirmEventBottomSheet extends StatelessWidget {
                 ),
               ],
             ),
+          ),
 
-            SizedBox(height: Gaps.lg),
+          SizedBox(height: 16),
 
-            // Group
-            _buildInfoRow(
-              'Group',
-              selectedGroup?.name ?? 'No group selected',
-              Icons.group,
-            ),
+          // Content with padding
+          Flexible(
+            child: Padding(
+              padding: EdgeInsets.only(
+                left: Gaps.lg,
+                right: Gaps.lg,
+                bottom: Gaps.lg + MediaQuery.of(context).viewInsets.bottom,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Group
+                  _buildInfoRow(
+                    'Group',
+                    selectedGroup?.name ?? 'No group selected',
+                    Icons.group,
+                  ),
 
-            SizedBox(height: Gaps.md),
+                  SizedBox(height: Gaps.md),
 
-            // Name com emoji
-            _buildInfoRow(
-              'Name',
-              '$eventEmoji ${eventName.isEmpty ? 'Untitled Event' : eventName}',
-              Icons.event,
-            ),
+                  // Name com emoji
+                  _buildNameRow(),
 
-            SizedBox(height: Gaps.md),
+                  SizedBox(height: Gaps.md),
 
-            // Date & Time
-            _buildInfoRow('Date & Time', _formatDateTime(), Icons.schedule),
+                  // Date & Time
+                  _buildInfoRow(
+                    'Date & Time',
+                    _formatDateTime(),
+                    Icons.schedule,
+                  ),
 
-            SizedBox(height: Gaps.md),
+                  SizedBox(height: Gaps.md),
 
-            // Location
-            _buildInfoRow(
-              'Location',
-              selectedLocation?.displayName ?? 'Location to be decided',
-              Icons.location_on,
-            ),
+                  // Location
+                  _buildInfoRow(
+                    'Location',
+                    selectedLocation?.displayName ?? 'Location to be decided',
+                    Icons.location_on,
+                  ),
 
-            SizedBox(height: 24),
+                  SizedBox(height: 24),
 
-            // Create button
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: 0),
-              child: SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                    onCreateEvent?.call();
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: BrandColors.planning,
-                    padding: EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
+                  // Create button
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                        onCreateEvent?.call();
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: BrandColors.planning,
+                        padding: EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                      ),
+                      child: Text(
+                        'Create',
+                        style: AppText.titleMediumEmph.copyWith(
+                          color: BrandColors.text1,
+                        ),
+                      ),
                     ),
                   ),
-                  child: Text(
-                    'Create',
-                    style: AppText.titleMediumEmph.copyWith(
-                      color: BrandColors.text1,
-                    ),
-                  ),
-                ),
+                ],
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
+    );
+  }
+
+  Widget _buildNameRow() {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Container(
+          width: 32,
+          height: 32,
+          alignment: Alignment.center,
+          child: Icon(Icons.event, color: BrandColors.text2, size: 24),
+        ),
+        SizedBox(width: Gaps.sm),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Name',
+                style: AppText.bodyMedium.copyWith(color: BrandColors.text2),
+              ),
+              SizedBox(height: 2),
+              Text(
+                '$eventEmoji ${eventName.isEmpty ? 'Untitled Event' : eventName}',
+                style: AppText.bodyMedium.copyWith(color: BrandColors.text1),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 
   Widget _buildInfoRow(String label, String value, IconData icon) {
     return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         Container(
-          width: 24,
-          height: 24,
+          width: 32,
+          height: 32,
           alignment: Alignment.center,
-          child: Icon(icon, color: BrandColors.text2, size: 20),
+          child: Icon(icon, color: BrandColors.text2, size: 24),
         ),
         SizedBox(width: Gaps.sm),
         Expanded(

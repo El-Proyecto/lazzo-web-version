@@ -22,13 +22,19 @@ class _InlineTimePickerState extends State<InlineTimePicker> {
 
   int _selectedHour = 0;
   int _selectedMinute = 0;
+  int _tempHour = 0;
+  int _tempMinute = 0;
 
   @override
   void initState() {
     super.initState();
-    final time = widget.selectedTime ?? TimeOfDay.now();
-    _selectedHour = time.hour;
-    _selectedMinute = time.minute;
+
+    // Initialize with selected time or current time
+    final now = widget.selectedTime ?? TimeOfDay.now();
+    _selectedHour = now.hour;
+    _selectedMinute = now.minute;
+    _tempHour = _selectedHour;
+    _tempMinute = _selectedMinute;
 
     _hourController = FixedExtentScrollController(initialItem: _selectedHour);
     _minuteController = FixedExtentScrollController(
@@ -62,9 +68,16 @@ class _InlineTimePickerState extends State<InlineTimePicker> {
               selectedValue: _selectedHour,
               onSelectedItemChanged: (index) {
                 setState(() {
-                  _selectedHour = index;
+                  _tempHour = index;
                 });
-                _notifyTimeChanged();
+              },
+              onScrollEnd: () {
+                if (_tempHour != _selectedHour) {
+                  setState(() {
+                    _selectedHour = _tempHour;
+                  });
+                  _notifyTimeChanged();
+                }
               },
               formatter: (value) => value.toString().padLeft(2, '0'),
             ),
@@ -90,9 +103,16 @@ class _InlineTimePickerState extends State<InlineTimePicker> {
               selectedValue: _selectedMinute,
               onSelectedItemChanged: (index) {
                 setState(() {
-                  _selectedMinute = index;
+                  _tempMinute = index;
                 });
-                _notifyTimeChanged();
+              },
+              onScrollEnd: () {
+                if (_tempMinute != _selectedMinute) {
+                  setState(() {
+                    _selectedMinute = _tempMinute;
+                  });
+                  _notifyTimeChanged();
+                }
               },
               formatter: (value) => value.toString().padLeft(2, '0'),
             ),
@@ -107,31 +127,42 @@ class _InlineTimePickerState extends State<InlineTimePicker> {
     required int itemCount,
     required int selectedValue,
     required Function(int) onSelectedItemChanged,
+    required VoidCallback onScrollEnd,
     required String Function(int) formatter,
   }) {
-    return CupertinoPicker(
-      scrollController: controller,
-      itemExtent: 28,
-      onSelectedItemChanged: onSelectedItemChanged,
-      selectionOverlay: Container(
-        decoration: BoxDecoration(
-          color: BrandColors.planning.withOpacity(0.1),
-          borderRadius: BorderRadius.circular(4),
-        ),
-      ),
-      children: List.generate(itemCount, (index) {
-        final isSelected = index == selectedValue;
-        return Center(
-          child: Text(
-            formatter(index),
-            style: AppText.bodyLarge.copyWith(
-              color: isSelected ? BrandColors.planning : BrandColors.text1,
-              fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-              fontSize: 16,
-            ),
+    return NotificationListener<ScrollNotification>(
+      onNotification: (scrollNotification) {
+        if (scrollNotification is ScrollEndNotification) {
+          // Call onScrollEnd when scrolling ends
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            onScrollEnd();
+          });
+        }
+        return false;
+      },
+      child: CupertinoPicker(
+        scrollController: controller,
+        itemExtent: 28,
+        onSelectedItemChanged: onSelectedItemChanged,
+        selectionOverlay: Container(
+          decoration: BoxDecoration(
+            color: BrandColors.planning.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(4),
           ),
-        );
-      }),
+        ),
+        children: List.generate(itemCount, (index) {
+          return Center(
+            child: Text(
+              formatter(index),
+              style: AppText.bodyLarge.copyWith(
+                color: BrandColors.text1,
+                fontWeight: FontWeight.w400,
+                fontSize: 16,
+              ),
+            ),
+          );
+        }),
+      ),
     );
   }
 

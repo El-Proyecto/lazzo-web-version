@@ -35,13 +35,14 @@ class CreateEventAppBar extends StatelessWidget implements PreferredSizeWidget {
             // Botão Back
             GestureDetector(
               onTap: onBackPressed ?? () => Navigator.of(context).pop(),
-              child: SizedBox(
-                width: 24,
-                height: 24,
+              child: Container(
+                width: 32,
+                height: 32,
+                alignment: Alignment.center,
                 child: Icon(
                   Icons.arrow_back_ios,
                   color: BrandColors.text1,
-                  size: 24,
+                  size: 20,
                 ),
               ),
             ),
@@ -59,13 +60,16 @@ class CreateEventAppBar extends StatelessWidget implements PreferredSizeWidget {
                   textAlign: TextAlign.center,
                 ),
               ),
-            ), // Botão Histórico
+            ),
+
+            // Botão Histórico
             GestureDetector(
               onTap: onHistoryPressed,
-              child: SizedBox(
-                width: 24,
-                height: 24,
-                child: Icon(Icons.history, color: BrandColors.text1, size: 24),
+              child: Container(
+                width: 32,
+                height: 32,
+                alignment: Alignment.center,
+                child: Icon(Icons.history, color: BrandColors.text1, size: 20),
               ),
             ),
           ],

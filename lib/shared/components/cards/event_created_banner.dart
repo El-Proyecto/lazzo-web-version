@@ -42,9 +42,22 @@ class EventCreatedBanner extends StatelessWidget {
 
           // Texto
           Expanded(
-            child: Text(
-              'Event $eventName added to $groupName!',
-              style: AppText.bodyMedium.copyWith(color: BrandColors.text1),
+            child: RichText(
+              text: TextSpan(
+                style: AppText.bodyMedium.copyWith(color: BrandColors.text1),
+                children: [
+                  TextSpan(
+                    text: eventName,
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  TextSpan(text: ' added to '),
+                  TextSpan(
+                    text: groupName,
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  TextSpan(text: '!'),
+                ],
+              ),
             ),
           ),
 
