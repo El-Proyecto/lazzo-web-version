@@ -4,99 +4,142 @@ import '../../constants/text_styles.dart';
 import '../../themes/colors.dart';
 import '../dialogs/emoji_selector_dialog.dart';
 
-/// Widget para seleção de grupo
-/// Inclui ícone do evento, nome e botão para seleção de grupo
+/// Widget tokenizado para seleção de nome e grupo do evento
+/// Combina emoji, campo de nome editável e seleção de grupo
 class EventGroupSelector extends StatelessWidget {
-  final String eventEmoji;
   final String eventName;
+  final String eventEmoji;
   final GroupInfo? selectedGroup;
+  final Function(String)? onEmojiPressed;
+  final Function(String)? onEventNameChanged;
   final VoidCallback? onGroupPressed;
-  final ValueChanged<String>? onEventNameChanged;
-  final ValueChanged<String>? onEmojiChanged;
+  final String? nameError;
+  final String? groupError;
 
   const EventGroupSelector({
     super.key,
-    required this.eventEmoji,
     required this.eventName,
+    required this.eventEmoji,
     this.selectedGroup,
-    this.onGroupPressed,
+    this.onEmojiPressed,
     this.onEventNameChanged,
-    this.onEmojiChanged,
+    this.onGroupPressed,
+    this.nameError,
+    this.groupError,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Row(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Ícone do evento
-        GestureDetector(
-          onTap: () => _showEmojiSelector(context),
-          child: Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              color: BrandColors.bg2,
-              borderRadius: BorderRadius.circular(Radii.smAlt),
-            ),
-            child: Center(
-              child: Text(eventEmoji, style: const TextStyle(fontSize: 32)),
-            ),
-          ),
-        ),
-
-        SizedBox(width: Gaps.xs),
-
-        // Nome do evento
-        Expanded(
-          child: GestureDetector(
-            onTap: () => _showEventNameEditor(context),
-            child: Container(
-              padding: EdgeInsets.symmetric(
-                horizontal: Pads.ctlH,
-                vertical: Pads.ctlV,
+        Row(
+          children: [
+            // Ícone do evento
+            GestureDetector(
+              onTap: () => _showEmojiSelector(context),
+              child: Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: BrandColors.bg2,
+                  borderRadius: BorderRadius.circular(Radii.smAlt),
+                ),
+                child: Center(
+                  child: Text(eventEmoji, style: const TextStyle(fontSize: 32)),
+                ),
               ),
-              decoration: BoxDecoration(
-                color: BrandColors.bg2,
-                borderRadius: BorderRadius.circular(Radii.smAlt),
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      eventName,
-                      style: AppText.bodyLarge.copyWith(
-                        color: eventName == 'Add Event Name'
-                            ? BrandColors.text2
-                            : BrandColors.text1,
-                      ),
-                    ),
+            ),
+
+            SizedBox(width: Gaps.xs),
+
+            // Campo de nome
+            Expanded(
+              child: GestureDetector(
+                onTap: () => _showEventNameEditor(context),
+                child: Container(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: Pads.ctlH,
+                    vertical: Pads.ctlV,
                   ),
-                  Icon(Icons.edit, color: BrandColors.text2, size: 16),
-                ],
+                  decoration: BoxDecoration(
+                    color: BrandColors.bg2,
+                    borderRadius: BorderRadius.circular(Radii.smAlt),
+                    border: nameError != null
+                        ? Border.all(color: Colors.red, width: 1)
+                        : null,
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          eventName,
+                          style: AppText.bodyLarge.copyWith(
+                            color: eventName == 'Add Event Name'
+                                ? BrandColors.text2
+                                : BrandColors.text1,
+                          ),
+                        ),
+                      ),
+                      Icon(Icons.edit, color: BrandColors.text2, size: 16),
+                    ],
+                  ),
+                ),
               ),
             ),
-          ),
+
+            SizedBox(width: Gaps.xs),
+
+            // Seleção de grupo
+            GestureDetector(
+              onTap: onGroupPressed,
+              child: Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: BrandColors.bg2,
+                  borderRadius: BorderRadius.circular(Radii.smAlt),
+                  border: groupError != null
+                      ? Border.all(color: Colors.red, width: 1)
+                      : null,
+                ),
+                child: Center(
+                  child: selectedGroup != null
+                      ? _GroupIcon(group: selectedGroup!)
+                      : Icon(
+                          Icons.group_add,
+                          color: BrandColors.text2,
+                          size: 20,
+                        ),
+                ),
+              ),
+            ),
+          ],
         ),
 
-        SizedBox(width: Gaps.xs),
-
-        // Seleção de grupo
-        GestureDetector(
-          onTap: onGroupPressed,
-          child: Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              color: BrandColors.bg2,
-              borderRadius: BorderRadius.circular(Radii.smAlt),
+        // Error messages
+        if (nameError != null || groupError != null) ...[
+          SizedBox(height: Gaps.xxs),
+          if (nameError != null)
+            Padding(
+              padding: EdgeInsets.only(left: 48 + Gaps.xs),
+              child: Text(
+                nameError!,
+                style: AppText.bodyMedium.copyWith(
+                  color: Colors.red,
+                  fontSize: 12,
+                ),
+              ),
             ),
-            child: Center(
-              child: selectedGroup != null
-                  ? _GroupIcon(group: selectedGroup!)
-                  : Icon(Icons.group_add, color: BrandColors.text2, size: 20),
+          if (groupError != null)
+            Text(
+              groupError!,
+              style: AppText.bodyMedium.copyWith(
+                color: Colors.red,
+                fontSize: 12,
+              ),
             ),
-          ),
-        ),
+        ],
       ],
     );
   }
@@ -120,7 +163,7 @@ class EventGroupSelector extends StatelessWidget {
       backgroundColor: Colors.transparent,
       builder: (context) => EmojiSelectorBottomSheet(
         selectedEmoji: eventEmoji,
-        onEmojiSelected: onEmojiChanged,
+        onEmojiSelected: onEmojiPressed,
       ),
     );
   }
@@ -268,6 +311,13 @@ class _EventNameEditBottomSheetState extends State<_EventNameEditBottomSheet> {
                 Expanded(
                   child: TextButton(
                     onPressed: () => Navigator.of(context).pop(),
+                    style: TextButton.styleFrom(
+                      backgroundColor: BrandColors.bg3,
+                      padding: EdgeInsets.symmetric(vertical: Pads.ctlV),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(Radii.md),
+                      ),
+                    ),
                     child: Text(
                       'Cancel',
                       style: AppText.labelLarge.copyWith(
@@ -319,4 +369,22 @@ class GroupInfo {
     this.imageUrl,
     required this.memberCount,
   });
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'name': name,
+      'imageUrl': imageUrl,
+      'memberCount': memberCount,
+    };
+  }
+
+  factory GroupInfo.fromJson(Map<String, dynamic> json) {
+    return GroupInfo(
+      id: json['id'],
+      name: json['name'],
+      imageUrl: json['imageUrl'],
+      memberCount: json['memberCount'],
+    );
+  }
 }

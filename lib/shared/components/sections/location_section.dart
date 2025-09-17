@@ -10,13 +10,17 @@ import '../../themes/colors.dart';
 class LocationSection extends StatefulWidget {
   final LocationInfo? selectedLocation;
   final Function(LocationInfo?)? onLocationChanged;
+  final Function(LocationState)? onStateChanged;
   final LocationState initialState;
+  final String? validationError;
 
   const LocationSection({
     super.key,
     this.selectedLocation,
     this.onLocationChanged,
+    this.onStateChanged,
     this.initialState = LocationState.decideLater,
+    this.validationError,
   });
 
   @override
@@ -414,6 +418,8 @@ class _LocationSectionState extends State<LocationSection> {
     if (newState == LocationState.decideLater) {
       widget.onLocationChanged?.call(null);
     }
+    // Notify parent of state change for validation
+    widget.onStateChanged?.call(newState);
   }
 
   void _updateLocationName(String name) {
@@ -1073,6 +1079,26 @@ class LocationInfo {
     required this.latitude,
     required this.longitude,
   });
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'displayName': displayName,
+      'formattedAddress': formattedAddress,
+      'latitude': latitude,
+      'longitude': longitude,
+    };
+  }
+
+  factory LocationInfo.fromJson(Map<String, dynamic> json) {
+    return LocationInfo(
+      id: json['id'],
+      displayName: json['displayName'],
+      formattedAddress: json['formattedAddress'],
+      latitude: json['latitude'],
+      longitude: json['longitude'],
+    );
+  }
 }
 
 /// Sugestão de localização

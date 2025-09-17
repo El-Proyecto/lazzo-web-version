@@ -19,6 +19,8 @@ class DateTimeSection extends StatefulWidget {
   final Function(DateTime?)? onEndDateChanged;
   final Function(TimeOfDay?)? onEndTimeChanged;
   final DateTimeState initialState;
+  final Function(DateTimeState)? onStateChanged;
+  final String? validationError;
 
   const DateTimeSection({
     super.key,
@@ -31,6 +33,8 @@ class DateTimeSection extends StatefulWidget {
     this.onEndDateChanged,
     this.onEndTimeChanged,
     this.initialState = DateTimeState.decideLater,
+    this.onStateChanged,
+    this.validationError,
   });
 
   @override
@@ -69,6 +73,19 @@ class _DateTimeSectionState extends State<DateTimeSection> {
           if (_currentState == DateTimeState.setNow) ...[
             SizedBox(height: Gaps.md),
             _buildExpandedContent(),
+          ],
+
+          // Error message
+          if (widget.validationError != null) ...[
+            SizedBox(height: Gaps.sm),
+            Container(
+              width: double.infinity,
+              alignment: Alignment.centerLeft,
+              child: Text(
+                widget.validationError!,
+                style: AppText.bodyMedium.copyWith(color: BrandColors.cantVote),
+              ),
+            ),
           ],
         ],
       ),
@@ -141,6 +158,8 @@ class _DateTimeSectionState extends State<DateTimeSection> {
     setState(() {
       _currentState = newState;
     });
+    // Notify parent of state change for validation
+    widget.onStateChanged?.call(newState);
   }
 }
 
