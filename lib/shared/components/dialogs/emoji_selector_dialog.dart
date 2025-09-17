@@ -434,7 +434,7 @@ class _EmojiSelectorBottomSheetState extends State<EmojiSelectorBottomSheet>
           SizedBox(height: 16),
 
           // Grid de emojis
-          Container(
+          SizedBox(
             height: 192,
             child: PageView.builder(
               controller: _pageController,

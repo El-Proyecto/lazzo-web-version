@@ -76,6 +76,7 @@ class _OtpVerificationPageState extends State<OtpVerificationPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+<<<<<<< Updated upstream
       backgroundColor: const Color(0xFF181818),
       appBar: AppBar(
         backgroundColor: Colors.transparent,
@@ -91,6 +92,9 @@ class _OtpVerificationPageState extends State<OtpVerificationPage> {
           ),
         ),
       ),
+=======
+      backgroundColor: theme.colorScheme.surface,
+>>>>>>> Stashed changes
       body: SafeArea(
         child: SingleChildScrollView(
           padding: EdgeInsets.fromLTRB(
