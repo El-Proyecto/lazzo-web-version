@@ -62,7 +62,7 @@ class _LoginOtpVerificationPageState extends ConsumerState<LoginOtpVerificationP
       if (!mounted) return;
 
       // Navega direto para home após login bem sucedido
-      Navigator.of(context).pushNamedAndRemoveUntil('/home', (route) => false);
+      Navigator.of(context).pushNamedAndRemoveUntil('/main', (route) => false);
     } catch (e) {
       if (!mounted) return;
       setState(() {

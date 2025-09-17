@@ -69,7 +69,7 @@ class _OtpVerificationPageState extends ConsumerState<OtpVerificationPage> {
       );
 
       if (!mounted) return;
-      Navigator.pushNamedAndRemoveUntil(context, '/home', (_) => false);
+      Navigator.pushNamedAndRemoveUntil(context, '/main', (_) => false);
     } on AuthException catch (e) {
       setState(() => _bannerMessage = e.message);
     } catch (e) {
