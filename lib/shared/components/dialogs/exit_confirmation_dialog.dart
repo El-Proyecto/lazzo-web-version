@@ -82,7 +82,7 @@ class ExitConfirmationDialog extends StatelessWidget {
                     ),
                   ),
                   child: Text(
-                    'Save Draft',
+                    'Save Changes',
                     style: AppText.titleMediumEmph.copyWith(
                       color: BrandColors.text1,
                     ),
