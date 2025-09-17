@@ -34,7 +34,7 @@ class OnboardingSuccessPage extends StatelessWidget {
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
                   child: GetStartedCta(onPressed: () {
-                    Navigator.pushNamedAndRemoveUntil(context, AppRouter.authHomepage, (_) => false);
+                    Navigator.pushNamedAndRemoveUntil(context, AppRouter.mainLayout, (_) => false);
                   }),
                 ),
               ),

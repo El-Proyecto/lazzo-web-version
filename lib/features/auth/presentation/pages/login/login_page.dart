@@ -100,7 +100,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 
       if (success) {
         if (!mounted) return;
-        Navigator.pushNamedAndRemoveUntil(context, '/main', (_) => false);
+        Navigator.pushNamedAndRemoveUntil(context, '/mainLayout', (_) => false);
       } else {
         throw Exception('Failed to sign in with Google');
       }

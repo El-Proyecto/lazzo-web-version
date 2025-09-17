@@ -21,7 +21,16 @@ class PendingEventsSection extends ConsumerWidget {
       data: (events) {
         if (events.isEmpty) {
           print('events is empty');
-          return const SizedBox.shrink(); // Hide section if no pending events
+          return SectionBlock(
+            title: 'Pending Events',
+            child: Padding(
+              padding: const EdgeInsets.all(Pads.ctlV),
+              child: Text(
+                'There is no pending events at the moment',
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
+              ),
+            ),
+          );
         }
 
         return SectionBlock(
