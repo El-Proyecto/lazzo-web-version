@@ -38,7 +38,7 @@ class _AuthPageState extends ConsumerState<AuthPage> {
       final event = data.event;
       final session = data.session;
       if (event == AuthChangeEvent.signedIn && session != null && mounted) {
-        Navigator.pushNamedAndRemoveUntil(context, '/home', (_) => false);
+        Navigator.pushNamedAndRemoveUntil(context, '/main', (_) => false);
       }
     });
   }
@@ -53,7 +53,8 @@ class _AuthPageState extends ConsumerState<AuthPage> {
 
   void _validateForm() {
     setState(() {
-      _canSubmit = _nameController.text.isNotEmpty &&
+      _canSubmit =
+          _nameController.text.isNotEmpty &&
           _emailController.text.isNotEmpty &&
           _emailController.text.contains('@');
     });
@@ -115,7 +116,8 @@ class _AuthPageState extends ConsumerState<AuthPage> {
       setState(() => _isLoading = true);
 
       final authNotifier = ref.read(authProvider.notifier);
-      await authNotifier.signInWithGoogle(); // não navegues aqui — listener trata disso
+      await authNotifier
+          .signInWithGoogle(); // não navegues aqui — listener trata disso
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -136,9 +138,7 @@ class _AuthPageState extends ConsumerState<AuthPage> {
   void _handleLogin() {
     Navigator.pushReplacement(
       context,
-      MaterialPageRoute(
-        builder: (context) => const LoginPage(),
-      ),
+      MaterialPageRoute(builder: (context) => const LoginPage()),
     );
   }
 
@@ -159,8 +159,9 @@ class _AuthPageState extends ConsumerState<AuthPage> {
               AuthFormWidgets(
                 nameController: _nameController,
                 emailController: _emailController,
-                onCreateAccount:
-                    _canSubmit && !_isLoading ? _handleSubmit : null,
+                onCreateAccount: _canSubmit && !_isLoading
+                    ? _handleSubmit
+                    : null,
                 isLoading: _isLoading,
                 onGoogleSignIn: _handleGoogleSignIn,
                 onAppleSignIn: _handleAppleSignIn,

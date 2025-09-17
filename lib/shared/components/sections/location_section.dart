@@ -125,8 +125,10 @@ class _LocationSectionState extends State<LocationSection> {
   }
 
   Widget _buildExpandedContent() {
-    if (widget.selectedLocation != null) {
-      // Show location preview when selected
+    if (widget.selectedLocation != null &&
+        widget.selectedLocation!.formattedAddress.isNotEmpty) {
+      // Show location preview only when there's an actual address
+      // Custom name only should stay in input mode
       return _buildLocationPreview();
     } else {
       // Show location input form
@@ -423,7 +425,9 @@ class _LocationSectionState extends State<LocationSection> {
   }
 
   void _updateLocationName(String name) {
-    if (widget.selectedLocation != null) {
+    if (widget.selectedLocation != null &&
+        widget.selectedLocation!.formattedAddress.isNotEmpty) {
+      // Update existing location with real address
       final updatedLocation = LocationInfo(
         id: widget.selectedLocation!.id,
         displayName: name.isEmpty ? null : name,
@@ -432,6 +436,19 @@ class _LocationSectionState extends State<LocationSection> {
         longitude: widget.selectedLocation!.longitude,
       );
       widget.onLocationChanged?.call(updatedLocation);
+    } else if (name.isNotEmpty) {
+      // Create custom name only location (won't trigger preview due to empty address)
+      final customNameLocation = LocationInfo(
+        id: 'custom-name-${DateTime.now().millisecondsSinceEpoch}',
+        displayName: name,
+        formattedAddress: '', // Empty address keeps it in input mode
+        latitude: 0.0,
+        longitude: 0.0,
+      );
+      widget.onLocationChanged?.call(customNameLocation);
+    } else {
+      // Clear location if name is empty and no existing location with address
+      widget.onLocationChanged?.call(null);
     }
   }
 
@@ -677,11 +694,33 @@ class _LocationSectionState extends State<LocationSection> {
       // Select top match (first suggestion)
       _selectSuggestion(_suggestions.first);
     } else {
-      // Try single geocode - for now just show empty state
-      setState(() {
-        _showSuggestions = true;
-        _suggestions.clear(); // This will show the empty state
-      });
+      // If no suggestions but user typed something, create location with address only
+      final addressText = _addressSearchController.text.trim();
+      if (addressText.isNotEmpty) {
+        final addressOnlyLocation = LocationInfo(
+          id: 'typed-address-${DateTime.now().millisecondsSinceEpoch}',
+          displayName: _locationNameController.text.isNotEmpty
+              ? _locationNameController.text
+              : null,
+          formattedAddress: addressText,
+          latitude: 0.0, // Default coordinates
+          longitude: 0.0,
+        );
+
+        setState(() {
+          _showSuggestions = false;
+          _suggestions.clear();
+        });
+
+        widget.onLocationChanged?.call(addressOnlyLocation);
+        HapticFeedback.lightImpact();
+      } else {
+        // Show empty state if nothing typed
+        setState(() {
+          _showSuggestions = true;
+          _suggestions.clear(); // This will show the empty state
+        });
+      }
     }
   }
 
@@ -693,7 +732,14 @@ class _LocationSectionState extends State<LocationSection> {
       _showSuggestions = false;
       _suggestions.clear();
     });
+
+    // Notify parent that location is cleared
     widget.onLocationChanged?.call(null);
+
+    // If we're clearing location but still in "Set Now" mode,
+    // the parent validation should handle the state appropriately
+    // Don't force state change here - let parent decide
+
     HapticFeedback.lightImpact();
   }
 }

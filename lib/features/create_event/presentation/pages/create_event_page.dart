@@ -132,13 +132,21 @@ class _CreateEventPageState extends State<CreateEventPage> {
 
   /// Verifica se o formulário é válido
   bool get _isFormValid {
-    return _nameError == null &&
+    final basicFieldsValid =
+        _nameError == null &&
         _groupError == null &&
         _eventName.trim().isNotEmpty &&
         _eventName != 'Add Event Name' &&
-        _selectedGroup != null &&
-        _isLocationValid &&
-        _isDateTimeValid;
+        _selectedGroup != null;
+
+    // If basic fields (name, group) are valid, allow continue
+    // Location and DateTime can be set to "Decide Later" if invalid
+    if (basicFieldsValid) {
+      return true;
+    }
+
+    // If basic fields are invalid, require all fields including location and datetime
+    return basicFieldsValid && _isLocationValid && _isDateTimeValid;
   }
 
   /// Verifica se a localização é válida
@@ -147,21 +155,26 @@ class _CreateEventPageState extends State<CreateEventPage> {
       return true; // Decide later is always valid
     }
 
-    // For "Set now", require either location data or location name
-    return _selectedLocation != null &&
+    // For "Set now", location is valid if:
+    // 1. Location object exists AND
+    // 2. Has either formattedAddress OR displayName (custom name)
+    if (_selectedLocation != null &&
         (_selectedLocation!.formattedAddress.isNotEmpty ||
             (_selectedLocation!.displayName != null &&
-                _selectedLocation!.displayName!.isNotEmpty));
+                _selectedLocation!.displayName!.isNotEmpty))) {
+      return true;
+    }
+
+    // If location is being edited (cleared temporarily),
+    // don't make the form invalid - user can still switch to "Decide Later"
+    return false;
   }
 
   /// Valida o estado atual da localização
   void _validateLocationState() {
-    if (_locationState == LocationState.setNow && !_isLocationValid) {
-      // Auto-switch back to "Decide later" if no valid location data
-      setState(() {
-        _locationState = LocationState.decideLater;
-      });
-    }
+    // Don't auto-switch to "Decide later" when user is actively editing location
+    // This was causing the bug where clicking "Change" would disable the Continue button
+    // The validation will handle the invalid state by showing an error message instead
   }
 
   /// Obtém o erro de validação da localização
@@ -294,13 +307,13 @@ class _CreateEventPageState extends State<CreateEventPage> {
         onSaveDraft: () async {
           await _saveDraft();
           if (mounted) {
-            Navigator.of(context).pop(); // Sai da página
+            Navigator.of(context).pop(); // Exit Create Event page
           }
         },
         onDiscard: () async {
           await _draftService.clearDraft();
           if (mounted) {
-            Navigator.of(context).pop(); // Sai da página
+            Navigator.of(context).pop(); // Exit Create Event page
           }
         },
       ),
@@ -317,7 +330,12 @@ class _CreateEventPageState extends State<CreateEventPage> {
           title: 'Create Event',
           isEditable: false,
           onHistoryPressed: _showEventHistory,
-          onBackPressed: () => _onWillPop(),
+          onBackPressed: () async {
+            final shouldPop = await _onWillPop();
+            if (shouldPop && mounted) {
+              Navigator.of(context).pop();
+            }
+          },
         ),
         body: SingleChildScrollView(
           padding: EdgeInsets.symmetric(horizontal: Insets.screenH),

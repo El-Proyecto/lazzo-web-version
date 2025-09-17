@@ -32,29 +32,30 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 
   void _validateForm() {
     setState(() {
-      _canSubmit = _emailController.text.isNotEmpty &&
-                   _emailController.text.contains('@');
+      _canSubmit =
+          _emailController.text.isNotEmpty &&
+          _emailController.text.contains('@');
     });
   }
 
   void _handleSubmit() async {
     if (!_canSubmit) return;
-    
+
     setState(() => _isLoading = true);
     final email = _emailController.text.trim();
-    
+
     try {
       print('[LOGIN_PAGE] Iniciando login para email: $email');
       final authNotifier = ref.read(authProvider.notifier);
-      
+
       // Envia o código OTP
       await authNotifier.login(email);
-      
+
       if (!mounted) return;
-      
+
       // Limpa o campo após o envio bem-sucedido
       _emailController.clear();
-      
+
       // Mostra mensagem de sucesso
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -63,17 +64,12 @@ class _LoginPageState extends ConsumerState<LoginPage> {
           duration: const Duration(seconds: 3),
         ),
       );
-      
+
       // Navega para a página de verificação específica de login
-      Navigator.pushNamed(
-        context,
-        '/otp-login',
-        arguments: {'email': email},
-      );
-      
+      Navigator.pushNamed(context, '/otp-login', arguments: {'email': email});
     } catch (e) {
       if (!mounted) return;
-      
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Error: ${e.toString()}'),
@@ -98,13 +94,13 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   Future<void> _handleGoogleLogIn() async {
     try {
       setState(() => _isLoading = true);
-      
+
       final authNotifier = ref.read(authProvider.notifier);
       final success = await authNotifier.signInWithGoogle();
-      
+
       if (success) {
         if (!mounted) return;
-        Navigator.pushNamedAndRemoveUntil(context, '/home', (_) => false);
+        Navigator.pushNamedAndRemoveUntil(context, '/main', (_) => false);
       } else {
         throw Exception('Failed to sign in with Google');
       }
@@ -144,7 +140,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
               SizedBox(height: Gaps.xl),
               LoginForm(
                 emailController: _emailController,
-                onCreateAccount: _canSubmit && !_isLoading ? _handleSubmit : null,
+                onCreateAccount: _canSubmit && !_isLoading
+                    ? _handleSubmit
+                    : null,
                 isLoading: _isLoading,
                 onGoogleSignIn: _handleGoogleLogIn,
                 onAppleSignIn: _handleAppleLogIn,

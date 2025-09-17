@@ -17,7 +17,8 @@ class OtpVerificationPage extends ConsumerStatefulWidget {
   final String email;
 
   @override
-  ConsumerState<OtpVerificationPage> createState() => _OtpVerificationPageState();
+  ConsumerState<OtpVerificationPage> createState() =>
+      _OtpVerificationPageState();
 }
 
 class _OtpVerificationPageState extends ConsumerState<OtpVerificationPage> {
@@ -34,7 +35,7 @@ class _OtpVerificationPageState extends ConsumerState<OtpVerificationPage> {
 
   Future<void> _resend() async {
     if (_busy) return;
-    
+
     setState(() {
       _busy = true;
       _bannerMessage = null;
@@ -42,7 +43,9 @@ class _OtpVerificationPageState extends ConsumerState<OtpVerificationPage> {
 
     try {
       await _authDatasource.register(widget.email);
-      setState(() => _bannerMessage = 'A new code has been sent to your email.');
+      setState(
+        () => _bannerMessage = 'A new code has been sent to your email.',
+      );
     } catch (e) {
       setState(() => _bannerMessage = 'Failed to resend code: $e');
     } finally {
@@ -50,26 +53,24 @@ class _OtpVerificationPageState extends ConsumerState<OtpVerificationPage> {
     }
   }
 
-
   Future<void> _verify() async {
     if (_code.length != 6) {
-      setState(() => _bannerMessage = 'Put in the six digit code sent to your email.');
+      setState(
+        () => _bannerMessage = 'Put in the six digit code sent to your email.',
+      );
       return;
     }
-    
+
     setState(() {
       _busy = true;
       _bannerMessage = null;
     });
 
     try {
-      await _authDatasource.verifyOtp(
-        email: widget.email,
-        token: _code,
-      );
+      await _authDatasource.verifyOtp(email: widget.email, token: _code);
 
       if (!mounted) return;
-      Navigator.pushNamedAndRemoveUntil(context, '/home', (_) => false);
+      Navigator.pushNamedAndRemoveUntil(context, '/main', (_) => false);
     } on AuthException catch (e) {
       setState(() => _bannerMessage = e.message);
     } catch (e) {
@@ -80,74 +81,72 @@ class _OtpVerificationPageState extends ConsumerState<OtpVerificationPage> {
   }
 
   @override
-    Widget build(BuildContext context) {
-      final theme = Theme.of(context);
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
 
-      return Scaffold(
-        backgroundColor: theme.colorScheme.background,
-        body: SafeArea(
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const LazzoHeader(),
-                Padding(
-                  padding: const EdgeInsets.all(20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      const OtpTitle(),
-                      const SizedBox(height: 16),
-                      OtpSubtitle(email: widget.email),
-                      const SizedBox(height: 32),
-                      OtpCodeBoxes(
-                        onCompleted: (code) => setState(() => _code = code),
-                      ),
+    return Scaffold(
+      backgroundColor: theme.colorScheme.background,
+      body: SafeArea(
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const LazzoHeader(),
+              Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const OtpTitle(),
+                    const SizedBox(height: 16),
+                    OtpSubtitle(email: widget.email),
+                    const SizedBox(height: 32),
+                    OtpCodeBoxes(
+                      onCompleted: (code) => setState(() => _code = code),
+                    ),
 
-                      if (_bannerMessage != null) ...[
-                        const SizedBox(height: 24),
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: ShapeDecoration(
-                            color: BrandColors.bg3,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                          ),
-                          child: Text(
-                            _bannerMessage!,
-                            style: const TextStyle(
-                              color: BrandColors.cantVote,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
-                            ),
-                            textAlign: TextAlign.center,
+                    if (_bannerMessage != null) ...[
+                      const SizedBox(height: 24),
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: ShapeDecoration(
+                          color: BrandColors.bg3,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
                           ),
                         ),
-                      ],
-
-                      const SizedBox(height: 48),
-                      Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          VerifyFooter(
-                            onSend: _busy ? null : _verify,
-                            isEnabled: _code.length == 6 && !_busy, // alinhado com Login
+                        child: Text(
+                          _bannerMessage!,
+                          style: const TextStyle(
+                            color: BrandColors.cantVote,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w500,
                           ),
-                          const SizedBox(height: 16),
-                          ResendOtpButton(
-                            onResend: _resend,
-                            isBusy: _busy,
-                          ),
-                        ],
+                          textAlign: TextAlign.center,
+                        ),
                       ),
                     ],
-                  ),
+
+                    const SizedBox(height: 48),
+                    Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        VerifyFooter(
+                          onSend: _busy ? null : _verify,
+                          isEnabled:
+                              _code.length == 6 && !_busy, // alinhado com Login
+                        ),
+                        const SizedBox(height: 16),
+                        ResendOtpButton(onResend: _resend, isBusy: _busy),
+                      ],
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
-      );
-    }
+      ),
+    );
   }
+}
