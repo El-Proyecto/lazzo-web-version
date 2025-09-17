@@ -92,11 +92,33 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   }
 
   void _handleAppleLogIn() {
-    Navigator.pushNamed(context, '/auth');
+    // TODO: Implement Apple sign in when needed
   }
 
-  void _handleGoogleLogIn() {
-    Navigator.pushNamed(context, '/auth');
+  Future<void> _handleGoogleLogIn() async {
+    try {
+      setState(() => _isLoading = true);
+      
+      final authNotifier = ref.read(authProvider.notifier);
+      final success = await authNotifier.signInWithGoogle();
+      
+      if (success) {
+        if (!mounted) return;
+        Navigator.pushNamedAndRemoveUntil(context, '/home', (_) => false);
+      } else {
+        throw Exception('Failed to sign in with Google');
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Google Sign In failed: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
 
   @override

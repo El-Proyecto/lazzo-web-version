@@ -6,6 +6,23 @@ class AuthRemoteDatasource {
   final SupabaseClient client;
   AuthRemoteDatasource(this.client);
 
+  // Google Sign In
+  Future<bool> signInWithGoogle() async {
+    try {
+      print('[AUTH_DATASOURCE] Starting Google Sign In');
+      final response = await client.auth.signInWithOAuth(
+        OAuthProvider.google,
+        redirectTo: 'lazzo://auth-callback-dev',
+        scopes: 'email profile',
+      );
+      print('[AUTH_DATASOURCE] Google Sign In response: $response');
+      return response;
+    } catch (e) {
+      print('[AUTH_DATASOURCE] Error with Google Sign In: $e');
+      rethrow;
+    }
+  }
+
   // 1) Login com email e OTP
   Future<void> login(String email) async {
     try {
