@@ -6,19 +6,54 @@ class AuthRemoteDatasource {
   final SupabaseClient client;
   AuthRemoteDatasource(this.client);
 
+  // Google Sign In
+  Future<bool> signInWithGoogle() async {
+    try {
+      print('[AUTH_DATASOURCE] Starting Google Sign In');
+      final response = await client.auth.signInWithOAuth(
+        OAuthProvider.google,
+        redirectTo: 'lazzo://auth-callback-dev',
+        scopes: 'email profile',
+      );
+      print('[AUTH_DATASOURCE] Google Sign In response: $response');
+      return response;
+    } catch (e) {
+      print('[AUTH_DATASOURCE] Error with Google Sign In: $e');
+      rethrow;
+    }
+  }
+
   // 1) Login com email e OTP
   Future<void> login(String email) async {
     try {
       print('[AUTH_DATASOURCE] Iniciando login com OTP para: $email');
+      final trimmedEmail = email.trim().toLowerCase();
+      
+      // Verifica se o usuário existe antes de enviar OTP
+      final existingUser = await client
+          .from('users')
+          .select('id')
+          .eq('email', trimmedEmail)
+          .maybeSingle();
+      
+      if (existingUser == null) {
+        throw Exception('Usuário não encontrado. Por favor, registre-se primeiro.');
+      }
+
+      // Envia OTP apenas para usuários existentes
       await client.auth.signInWithOtp(
-        email: email,
-        emailRedirectTo: 'lazzo://auth-callback-dev',
-        data: {'type': 'login'},  // Metadata para identificar o tipo de operação
+        email: trimmedEmail,
+        shouldCreateUser: false,
+        //emailRedirectTo: null, // Desabilita magic link
+        data: {
+          'type': 'login',
+          'app': 'lazzo',
+          'method': 'otp', // Indica preferência por OTP
+        },
       );
       print('[AUTH_DATASOURCE] OTP enviado com sucesso para login');
     } catch (e) {
       print('[AUTH_DATASOURCE] Erro ao enviar OTP para login: $e');
-      print('[AUTH_DATASOURCE] Client status: ${client.auth.currentSession}');
       rethrow;
     }
   }
@@ -26,20 +61,23 @@ class AuthRemoteDatasource {
 
   // 2) Sign up + garante row em `users`
   Future<void> register(String email) async {
-    print('[AUTH_DATASOURCE] Iniciando signInWithOtp para: $email');
     try {
+      print('[AUTH_DATASOURCE] Iniciando registro com OTP para: $email');
+      final trimmedEmail = email.trim().toLowerCase();
+      
       await client.auth.signInWithOtp(
-        email: email.trim().toLowerCase(),
+        email: trimmedEmail,
         shouldCreateUser: true,
+        emailRedirectTo: null, // Desabilita magic link
         data: {
           'type': 'signup',
           'app': 'lazzo',
+          'method': 'otp', // Indica preferência por OTP
         },
       );
-      print('[AUTH_DATASOURCE] OTP enviado com sucesso');
+      print('[AUTH_DATASOURCE] OTP enviado com sucesso para registro');
     } catch (e) {
-      print('[AUTH_DATASOURCE] Erro ao enviar OTP: $e');
-      print('[AUTH_DATASOURCE] Client status: ${client.auth.currentSession}');
+      print('[AUTH_DATASOURCE] Erro ao enviar OTP para registro: $e');
       throw Exception('Falha ao enviar código de verificação: ${e.toString()}');
     }
   }
@@ -73,51 +111,36 @@ class AuthRemoteDatasource {
     required String token,
   }) async {
     try {
-      print('[AUTH_DATASOURCE] Iniciando verificação OTP...');
-      print('[AUTH_DATASOURCE] Email: $email');
-      print('[AUTH_DATASOURCE] Code length: ${token.length}');
       
       // 1) Verificar estado atual
-      final currentUser = client.auth.currentUser;
-      print('[AUTH_DATASOURCE] Estado atual - User: ${currentUser?.id ?? 'null'}');
-      print('[AUTH_DATASOURCE] Estado atual - Session existe: ${client.auth.currentSession != null}');
+      //final currentUser = client.auth.currentUser;
       
       // 2) Verificar OTP
-      print('[AUTH_DATASOURCE] Chamando verifyOTP...');
       final AuthResponse response = await client.auth.verifyOTP(
         email: email.trim().toLowerCase(),
         token: token.trim(),
         type: OtpType.email,  // Mudado para signup pois é um novo registro
       );
       
-      print('[AUTH_DATASOURCE] Resposta recebida do verifyOTP');
-      print('[AUTH_DATASOURCE] User ID: ${response.user?.id ?? 'null'}');
-      print('[AUTH_DATASOURCE] Session existe: ${response.session != null}');
 
       // 3) Verificar se temos usuário e sessão
       final u = response.user;
       if (u == null || response.session == null) {
-        print('[AUTH_DATASOURCE] Erro: Usuário ou sessão nulos após verificação');
         throw Exception('Falha na autenticação: usuário ou sessão inválidos');
       }
       
-      print('[AUTH_DATASOURCE] Criando/atualizando registro do usuário...');
       final row = await _upsertUsersRow(
         id: u.id,
         email: email,
       );
 
-      print('[AUTH_DATASOURCE] Verificação concluída com sucesso');
       return UserModel.fromUsersRow(row);
       
     } on AuthException catch (e) {
-      print('[AUTH_DATASOURCE] Erro de autenticação: ${e.message}');
       throw Exception('Falha na verificação OTP: ${e.message}');
     } on PostgrestException catch (e) {
-      print('[AUTH_DATASOURCE] Erro de banco de dados: ${e.message}');
       throw Exception('Falha na verificação OTP (DB): ${e.message}');
     } catch (e) {
-      print('[AUTH_DATASOURCE] Erro inesperado: $e');
       throw Exception('Falha na verificação OTP: $e');
     }
   }

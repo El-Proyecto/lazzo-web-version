@@ -24,7 +24,11 @@ void main() async {
     await Supabase.initialize(
       url: Env.supabaseUrl,
       anonKey: Env.supabaseAnonKey,
+      authOptions: const FlutterAuthClientOptions(
+        authFlowType: AuthFlowType.pkce, // garante fluxo mobile correto
+      ),
     );
+
     print('[MAIN] Supabase inicializado com sucesso');
     print('[MAIN] Cliente Supabase: ${Supabase.instance.client.auth.currentSession}');
   } catch (e) {

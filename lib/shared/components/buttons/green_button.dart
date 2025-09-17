@@ -50,9 +50,9 @@ class _GreenButtonState extends State<GreenButton> with SingleTickerProviderStat
             child: ElevatedButton(
               onPressed: widget.isLoading ? null : widget.onPressed,
               style: ElevatedButton.styleFrom(
-                backgroundColor: widget.onPressed != null 
-                    ? const Color(0xFF2BB956)  // Verde claro quando habilitado
-                    : const Color(0xFF169C3E).withOpacity(0.5),  // Verde escuro quando desabilitado
+                backgroundColor: widget.onPressed == null 
+                    ? const Color(0xFF044B1E)  // Verde escuro quando desabilitado
+                    : BrandColors.planning,  // Verde claro quando habilitado
                 foregroundColor: BrandColors.text1,
                 padding: EdgeInsets.symmetric(horizontal: Pads.ctlH, vertical: Pads.ctlV),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(Radii.md)),

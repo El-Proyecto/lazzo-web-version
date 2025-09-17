@@ -9,7 +9,7 @@ class LoginPrompt extends StatelessWidget {
 
   const LoginPrompt({
     super.key,
-    this.text = 'Already have an account?',
+    this.text = 'Already have an account? ',
     this.actionText = 'Log In',
     this.onTap,
   });

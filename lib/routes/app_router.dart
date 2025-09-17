@@ -4,9 +4,9 @@ import 'package:flutter/material.dart';
 import '../features/auth/presentation/pages/authenticated_page.dart';
 import '../features/auth/presentation/pages/login/login_page.dart';
 import '../features/home/presentation/pages/home.dart';
-import '../features/auth/presentation/pages/verifyOTP.dart';
+import '../features/auth/presentation/pages/verifyotp.dart';
+import '../features/auth/presentation/pages/login/login_otp_verification.dart';
 import '../features/auth/presentation/pages/auth_page.dart';
-import '../features/auth/presentation/pages/enter_phone_page.dart';
 import '../features/auth/presentation/pages/finish_setup.dart';
 import '../shared/layouts/main_layout.dart';
 import '../features/groups/presentation/pages/groups_page.dart';
@@ -32,6 +32,7 @@ class AppRouter {
 
   
   static final routes = <String, WidgetBuilder>{
+  
     auth: (context) => const AuthPage(),
     home: (context) => const HomePage(),
     mainLayout: (context) => const MainLayout(),
@@ -40,17 +41,15 @@ class AppRouter {
     activities: (context) => const ActivitiesPage(),
     profile: (context) => const ProfilePage(),
     loginPage: (context) => const LoginPage(),
-    //loginVerification: (context) {
-    //  final args =
-    //      ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
-    //  return LoginVerificationPage(phoneNumber: args['phoneNumber']);
-    //},
+  
+    loginVerification: (context) {
+      final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
+      return LoginOtpVerificationPage(email: args['email']);
+    },
     otpVerification: (context) {
-      final args =
-          ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
+      final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
       return OtpVerificationPage(email: args['email']);
     },
-    enterPhonePage: (context) => EnterPhonePage(),
     authenticationDone: (context) => OnboardingSuccessPage(),
     finishSetup: (context) => CreateProfilePage(),
   };

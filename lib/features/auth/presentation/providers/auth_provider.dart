@@ -1,5 +1,5 @@
 
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart'; // Para StateNotifierProvider, StateNotifier, AsyncValue
 import 'package:supabase_flutter/supabase_flutter.dart'; // Para Supabase.instance.client
 import '../../data/repositories/auth_repository_impl.dart'; // Caminho para o teu AuthRepositoryImpl
 import '../../data/datasources/auth_remote_datasource.dart'; // Caminho para o teu AuthRemoteDatasource
@@ -32,14 +32,12 @@ class AuthNotifier extends StateNotifier<AsyncValue<domain.User?>> {
 
 
   Future<void> register(String email) async {
-    print('[AUTH_PROVIDER] Iniciando registro');
+    
     state = const AsyncLoading();
     try {
-      print('[AUTH_PROVIDER] Chamando repository.register para email: $email');
       await repository.register(
         email: email,
       );
-      print('[AUTH_PROVIDER] Registro bem-sucedido');
     } catch (e, st) {
       state = AsyncError(e, st);
     }
@@ -55,4 +53,16 @@ class AuthNotifier extends StateNotifier<AsyncValue<domain.User?>> {
     state = const AsyncData(null);
   }
 
+  Future<bool> signInWithGoogle() async {
+    try {
+      final success = await repository.signInWithGoogle();
+      if (success) {
+        await getCurrentUser(); // Atualiza o estado com o novo usuário
+      }
+      return success;
+    } catch (e, st) {
+      state = AsyncError(e, st);
+      rethrow;
+    }
+  }
 }
