@@ -252,6 +252,25 @@ class _CreateEventPageState extends State<CreateEventPage> {
     }
   }
 
+  /// Limpa erros de validação se os campos estão válidos
+  void _clearValidationErrorsIfValid() {
+    if (!_showValidationErrors) return;
+
+    setState(() {
+      // Clear name error if name is valid
+      if (_nameError != null &&
+          _eventName.trim().isNotEmpty &&
+          _eventName != 'Add Event Name') {
+        _nameError = null;
+      }
+
+      // Clear group error if group is selected
+      if (_groupError != null && _selectedGroup != null) {
+        _groupError = null;
+      }
+    });
+  }
+
   /// Manuseia o botão de voltar
   Future<bool> _onWillPop() async {
     final draft = _getCurrentDraft();
@@ -317,7 +336,12 @@ class _CreateEventPageState extends State<CreateEventPage> {
                 onEventNameChanged: (name) {
                   setState(() {
                     _eventName = name;
-                    // Don't validate immediately on text change
+                    // Clear error if field is now valid
+                    if (_showValidationErrors &&
+                        name.trim().isNotEmpty &&
+                        name != 'Add Event Name') {
+                      _nameError = null;
+                    }
                   });
                 },
                 onEmojiPressed: (emoji) {
@@ -341,27 +365,33 @@ class _CreateEventPageState extends State<CreateEventPage> {
                     _selectedDate = date;
                   });
                   _setDefaultEndTimeIfNeeded();
+                  _clearValidationErrorsIfValid();
                 },
                 onStartTimeChanged: (time) {
                   setState(() {
                     _selectedTime = time;
                   });
                   _setDefaultEndTimeIfNeeded();
+                  _clearValidationErrorsIfValid();
                 },
                 onEndDateChanged: (date) {
                   setState(() {
                     _endDate = date;
                   });
+                  _clearValidationErrorsIfValid();
                 },
                 onEndTimeChanged: (time) {
                   setState(() {
                     _endTime = time;
                   });
+                  _clearValidationErrorsIfValid();
                 },
                 onStateChanged: (state) {
                   setState(() {
                     _dateTimeState = state;
                   });
+                  // Clear validation errors if state becomes valid
+                  _clearValidationErrorsIfValid();
                 },
                 validationError: _getDateTimeValidationError(),
               ),
@@ -376,12 +406,16 @@ class _CreateEventPageState extends State<CreateEventPage> {
                   setState(() {
                     _selectedLocation = location;
                   });
+                  // Clear validation errors if location becomes valid
+                  _clearValidationErrorsIfValid();
                 },
                 onStateChanged: (state) {
                   setState(() {
                     _locationState = state;
                   });
                   _validateLocationState();
+                  // Clear validation errors if state becomes valid
+                  _clearValidationErrorsIfValid();
                 },
                 validationError: _getLocationValidationError(),
               ),
@@ -470,7 +504,10 @@ class _CreateEventPageState extends State<CreateEventPage> {
         onGroupSelected: (group) {
           setState(() {
             _selectedGroup = group;
-            // Don't validate immediately on group selection
+            // Clear error if group is now selected
+            if (_showValidationErrors) {
+              _groupError = null;
+            }
           });
         },
         onCreateGroup: _createNewGroup,

@@ -99,7 +99,7 @@ class _LocationSectionState extends State<LocationSection> {
 
         // Toggle buttons
         Container(
-          padding: EdgeInsets.all(4),
+          padding: EdgeInsets.all(Gaps.xs),
           decoration: BoxDecoration(
             color: BrandColors.bg3,
             borderRadius: BorderRadius.circular(Radii.smAlt),
