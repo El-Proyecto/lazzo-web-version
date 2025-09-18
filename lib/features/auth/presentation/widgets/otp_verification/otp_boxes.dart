@@ -90,22 +90,6 @@ class _OtpCodeBoxesState extends State<OtpCodeBoxes> {
             }),
           ),
         ),
-        const SizedBox(height: 8),
-        const SizedBox(
-          width: 267,
-          child: Text(
-            'Resend code',
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: Color(0xFFF2F2F2), // Text-1
-              fontSize: 14,
-              fontFamily: 'Roboto',
-              fontWeight: FontWeight.w500,
-              height: 1.43,
-              letterSpacing: 0.10,
-            ),
-          ),
-        ),
       ],
     );
   }

@@ -13,26 +13,26 @@ class AuthRepositoryImpl implements AuthRepository {
   User _toDomain(UserModel m) {
     return User(
       id: m.id,
-      phoneNumber: m.phone ?? '',        // fallback se vier null da BD
-      username: '',                      // a tua tabela não tem username
+      email: m.email,                     // a tua tabela não tem username
       dateOfBirth: m.birthDate,
       name: m.name,
     );
   }
 
   @override
-  Future<void> login({required String phoneNumber}) {
-    return remoteDatasource.login(phoneNumber);
+  Future<void> login({required String email}) async {
+    await remoteDatasource.login(email);
   }
 
   @override
-  Future<User> register({
-    required String phone,
-    required String password,
-    required String username,
-  }) async {
-    final model = await remoteDatasource.register(phone, password, username);
-    return _toDomain(model);
+  Future<void> register({
+    required String email
+    }) async {
+    try {
+      await remoteDatasource.register(email);
+    } catch (e) {
+      rethrow;
+    }
   }
 
   @override
@@ -47,13 +47,21 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
-  Future<void> sendOtp(String phoneNumber) {
-    return remoteDatasource.sendOtp(phoneNumber);
+  Future<bool> signInWithGoogle() async {
+    return await remoteDatasource.signInWithGoogle();
   }
 
   @override
-  Future<User> verifyOtp(String phoneNumber, String token) async {
-    final model = await remoteDatasource.verifyOtp(phoneNumber, token);
-    return _toDomain(model);
+  Future<User?> verifyOtp({required String email, required String otp}) async {
+    try {
+      final userModel = await remoteDatasource.verifyOtp(
+        email: email,
+        token: otp,
+      );
+      return _toDomain(userModel);
+    } catch (e) {
+      
+      rethrow;
+    }
   }
 }

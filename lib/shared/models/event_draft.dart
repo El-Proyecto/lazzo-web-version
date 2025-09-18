@@ -35,6 +35,7 @@ class EventDraft {
   /// Verifica se o rascunho tem alterações
   bool get hasChanges {
     return eventName.isNotEmpty ||
+        eventEmoji != '🍖' || // Check if emoji changed from default
         selectedGroup != null ||
         selectedDate != null ||
         selectedTime != null ||

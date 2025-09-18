@@ -120,7 +120,7 @@ class ConfirmEventBottomSheet extends StatelessWidget {
                   // Location
                   _buildInfoRow(
                     'Location',
-                    selectedLocation?.displayName ?? 'Location to be decided',
+                    _formatLocation(),
                     Icons.location_on,
                   ),
 
@@ -280,5 +280,24 @@ class ConfirmEventBottomSheet extends StatelessWidget {
     final hour = time.hour.toString().padLeft(2, '0');
     final minute = time.minute.toString().padLeft(2, '0');
     return '$hour:$minute';
+  }
+
+  String _formatLocation() {
+    if (selectedLocation == null) {
+      return 'Location to be decided';
+    }
+
+    // If has custom name, use it
+    if (selectedLocation!.displayName != null &&
+        selectedLocation!.displayName!.isNotEmpty) {
+      return selectedLocation!.displayName!;
+    }
+
+    // If has address, use it
+    if (selectedLocation!.formattedAddress.isNotEmpty) {
+      return selectedLocation!.formattedAddress;
+    }
+
+    return 'Location to be decided';
   }
 }

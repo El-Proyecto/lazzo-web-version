@@ -7,7 +7,7 @@ class LoginUser {
 
   LoginUser(this.repository);
 
-  Future<void> call(String phoneNumber) {
-    return repository.login(phoneNumber: phoneNumber);
+  Future<void> call(String email, String password) {
+    return repository.login(email: email);
   }
 }

@@ -1,6 +1,5 @@
-//import 'dart:nativewrappers/_internal/vm/lib/internal_patch.dart';
 
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart'; // Para StateNotifierProvider, StateNotifier, AsyncValue
 import 'package:supabase_flutter/supabase_flutter.dart'; // Para Supabase.instance.client
 import '../../data/repositories/auth_repository_impl.dart'; // Caminho para o teu AuthRepositoryImpl
 import '../../data/datasources/auth_remote_datasource.dart'; // Caminho para o teu AuthRemoteDatasource
@@ -19,13 +18,26 @@ class AuthNotifier extends StateNotifier<AsyncValue<domain.User?>> {
     getCurrentUser();
   }
 
-  Future<void> login(String phoneNumber) async {
-    state = const AsyncLoading();
-    print("Login attempt with phone number: $phoneNumber");
+  Future<bool> login(String email) async {
+    
     try {
-      await repository.login(phoneNumber: phoneNumber);
-      // O OTP foi enviado, agora navega para o ecrã de verificação de código
-      state = const AsyncData(null);
+      await repository.login(email: email.trim().toLowerCase());
+               // <- guarda o resultado no state
+      return true;                      // <- todas as paths retornam
+    } catch (e, st) {
+      state = AsyncError(e, st);
+      rethrow;                            // <- evita “body might complete normally”
+    }
+}
+
+
+  Future<void> register(String email) async {
+    
+    state = const AsyncLoading();
+    try {
+      await repository.register(
+        email: email,
+      );
     } catch (e, st) {
       state = AsyncError(e, st);
     }
@@ -41,21 +53,16 @@ class AuthNotifier extends StateNotifier<AsyncValue<domain.User?>> {
     state = const AsyncData(null);
   }
 
-  Future<void> sendOtp(String phoneNumber) async {
+  Future<bool> signInWithGoogle() async {
     try {
-      await repository.sendOtp(phoneNumber);
+      final success = await repository.signInWithGoogle();
+      if (success) {
+        await getCurrentUser(); // Atualiza o estado com o novo usuário
+      }
+      return success;
     } catch (e, st) {
       state = AsyncError(e, st);
-    }
-  }
-
-  Future<void> verifyOtp(String phoneNumber, String token) async {
-    state = const AsyncLoading();
-    try {
-      final user = await repository.verifyOtp(phoneNumber, token);
-      state = AsyncData(user);
-    } catch (e, st) {
-      state = AsyncError(e, st);
+      rethrow;
     }
   }
 }
