@@ -1,9 +1,15 @@
 import 'package:flutter/material.dart';
+import '../../../../../shared/themes/colors.dart';
 
-class EnterPhoneFooter extends StatelessWidget {
+class VerifyFooter extends StatelessWidget {
   final VoidCallback? onSend;
+  final bool isEnabled;
 
-  const EnterPhoneFooter({super.key, this.onSend});
+  const VerifyFooter({
+    super.key, 
+    this.onSend,
+    this.isEnabled = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -18,45 +24,33 @@ class EnterPhoneFooter extends StatelessWidget {
             height: 48,
             padding: const EdgeInsets.symmetric(horizontal: 34, vertical: 12),
             decoration: ShapeDecoration(
-              color: Color(0xFF32D445),
+              color: isEnabled ? BrandColors.planning : BrandColors.bg3,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),
               ),
             ),
-            child: Center(
-              child: SizedBox(
-                width: 267,
-                child: GestureDetector(
-                  onTap: onSend,
-                  child: Text(
-                    'Verify',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: Color(0xFFF2F2F2),
-                      fontSize: 16,
-                      fontFamily: 'Roboto',
-                      fontWeight: FontWeight.w600,
-                      height: 1.50,
-                      letterSpacing: 0.10,
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: isEnabled ? onSend : null,
+                borderRadius: BorderRadius.circular(16),
+                child: Center(
+                  child: SizedBox(
+                    width: 267,
+                    child: Text(
+                      'Verify',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: BrandColors.text1,
+                        fontSize: 16,
+                        fontFamily: 'Roboto',
+                        fontWeight: FontWeight.w600,
+                        height: 1.50,
+                        letterSpacing: 0.10,
+                      ),
                     ),
                   ),
                 ),
-              ),
-            ),
-          ),
-          SizedBox(height: 16),
-          SizedBox(
-            width: 370,
-            child: Text(
-              'Didnt receive the code? Check your messages or ask to resend it.',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: Color(0xFFA5A5A5),
-                fontSize: 14,
-                fontFamily: 'Roboto',
-                fontWeight: FontWeight.w500,
-                height: 1.43,
-                letterSpacing: 0.10,
               ),
             ),
           ),

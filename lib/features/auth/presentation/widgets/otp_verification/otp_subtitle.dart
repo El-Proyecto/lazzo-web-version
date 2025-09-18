@@ -31,6 +31,7 @@ class OtpSubtitle extends StatelessWidget {
             TextSpan(
               text: email,
               style: TextStyle(
+
                 color: theme.colorScheme.onSurface,
                 fontSize: 16,
                 fontFamily: 'Roboto',

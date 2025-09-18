@@ -1,14 +1,12 @@
 class User {
   final String id;
   final String? name;
-  final String username;
-  final String phoneNumber;
+  final String email;
   final DateTime? dateOfBirth;
 
   const User({
     required this.id,
-    required this.phoneNumber,
-    required this.username,
+    required this.email,
     this.name,
     this.dateOfBirth,
   });

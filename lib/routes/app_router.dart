@@ -1,13 +1,12 @@
 // lib/routes/app_router.dart
 import 'package:flutter/material.dart';
 
-import 'package:app/features/auth/presentation/pages/authenticated_page.dart';
-import 'package:app/features/auth/presentation/pages/login/verify_login.dart';
+import '../features/auth/presentation/pages/authenticated_page.dart';
+import '../features/auth/presentation/pages/login/login_page.dart';
 import '../features/home/presentation/pages/home.dart';
-import '../features/auth/presentation/pages/login/login_phone.dart';
-import '../features/auth/presentation/pages/verifyOTP.dart';
-import '../features/auth/presentation/pages/auth_homepage.dart';
-import '../features/auth/presentation/pages/enter_phone_page.dart';
+import '../features/auth/presentation/pages/verifyotp.dart';
+import '../features/auth/presentation/pages/login/login_otp_verification.dart';
+import '../features/auth/presentation/pages/auth_page.dart';
 import '../features/auth/presentation/pages/finish_setup.dart';
 import '../shared/layouts/main_layout.dart';
 import '../features/groups/presentation/pages/groups_page.dart';
@@ -18,6 +17,7 @@ import '../features/profile/presentation/edit_profile_page.dart';
 
 class AppRouter {
   static const String home = '/home';
+  static const String auth = '/auth';
   static const String mainLayout = '/main';
   static const String groups = '/groups';
   static const String createEvent = '/create-event';
@@ -31,27 +31,27 @@ class AppRouter {
   static const String enterPhonePage = '/phone';
   static const String authenticationDone = '/auth-done';
   static const String finishSetup = '/finish-setup';
+
+  
   static final routes = <String, WidgetBuilder>{
-    authHomepage: (context) => AuthHomepage(),
+  
+    auth: (context) => const AuthPage(),
     home: (context) => const HomePage(),
     mainLayout: (context) => const MainLayout(),
     groups: (context) => const GroupsPage(),
     createEvent: (context) => const CreateEventPage(),
     activities: (context) => const ActivitiesPage(),
     profile: (context) => const ProfilePage(),
-    editProfile: (context) => const EditProfilePage(),
-    loginPage: (context) => LoginPage(),
+    loginPage: (context) => const LoginPage(),
+  
     loginVerification: (context) {
-      final args =
-          ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
-      return LoginVerificationPage(phoneNumber: args['phoneNumber']);
+      final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
+      return LoginOtpVerificationPage(email: args['email']);
     },
     otpVerification: (context) {
-      final args =
-          ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
-      return OtpVerificationPage(phoneNumber: args['phoneNumber']);
+      final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
+      return OtpVerificationPage(email: args['email']);
     },
-    enterPhonePage: (context) => EnterPhonePage(),
     authenticationDone: (context) => OnboardingSuccessPage(),
     finishSetup: (context) => CreateProfilePage(),
   };

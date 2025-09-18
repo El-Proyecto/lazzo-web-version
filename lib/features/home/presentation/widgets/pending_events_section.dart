@@ -20,7 +20,17 @@ class PendingEventsSection extends ConsumerWidget {
     return pendingEventsAsync.when(
       data: (events) {
         if (events.isEmpty) {
-          return const SizedBox.shrink(); // Hide section if no pending events
+          print('events is empty');
+          return SectionBlock(
+            title: 'Pending Events',
+            child: Padding(
+              padding: const EdgeInsets.all(Pads.ctlV),
+              child: Text(
+                'There is no pending events at the moment',
+                style: TextStyle(color: Theme.of(context).colorScheme.error),
+              ),
+            ),
+          );
         }
 
         return SectionBlock(
@@ -44,16 +54,20 @@ class PendingEventsSection extends ConsumerWidget {
           ),
         ),
       ),
-      error: (error, stackTrace) => SectionBlock(
-        title: 'Pending Events',
-        child: Padding(
-          padding: const EdgeInsets.all(Pads.ctlV),
-          child: Text(
-            'Failed to load pending events',
-            style: TextStyle(color: Theme.of(context).colorScheme.error),
+      error: (error, stackTrace) {
+        print('Pending events error: $error');
+        print('Pending events stack trace: $stackTrace');
+        return SectionBlock(
+          title: 'Pending Events',
+          child: Padding(
+            padding: const EdgeInsets.all(Pads.ctlV),
+            child: Text(
+              'Failed to load pending events',
+              style: TextStyle(color: Theme.of(context).colorScheme.error),
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 
