@@ -65,4 +65,15 @@ class AuthNotifier extends StateNotifier<AsyncValue<domain.User?>> {
       rethrow;
     }
   }
+
+  Future<void> ensureUsersRow(String id, String email, {String? name}) async {
+    try {
+      await repository.ensureUsersRow(id, email, name: name);
+    } catch (e, st) {
+      state = AsyncError(e, st);
+    }
+  }
+
+
+
 }

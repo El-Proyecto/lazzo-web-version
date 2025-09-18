@@ -8,4 +8,5 @@ abstract class AuthRepository {
   Future<void> logout();
   Future<User?> verifyOtp({required String email, required String otp});
   Future<bool> signInWithGoogle();
+  Future<void> ensureUsersRow(String id, String email, {String? name});
 }

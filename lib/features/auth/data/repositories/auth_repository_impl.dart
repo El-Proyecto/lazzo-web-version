@@ -64,4 +64,10 @@ class AuthRepositoryImpl implements AuthRepository {
       rethrow;
     }
   }
+
+  @override
+  Future<void> ensureUsersRow(String id, String email, {String? name}) {
+    return remoteDatasource.ensureUsersRow(id: id, email: email, name: name);
+  }
+
 }

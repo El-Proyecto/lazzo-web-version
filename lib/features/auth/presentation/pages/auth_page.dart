@@ -25,22 +25,41 @@ class _AuthPageState extends ConsumerState<AuthPage> {
   bool _canSubmit = false;
   bool _isLoading = false;
 
+  // Flag para só navegar quando o fluxo OAuth realmente acontecer
+  bool _pendingOAuth = false;
+
   late final StreamSubscription<AuthState> _authSub;
 
   @override
   void initState() {
     super.initState();
+
     _nameController.addListener(_validateForm);
     _emailController.addListener(_validateForm);
 
-    // Navega quando a sessão chega via deep link (Google OAuth)
-    _authSub = Supabase.instance.client.auth.onAuthStateChange.listen((data) {
-      final event = data.event;
-      final session = data.session;
-      if (event == AuthChangeEvent.signedIn && session != null && mounted) {
-        Navigator.pushNamedAndRemoveUntil(context, '/home', (_) => false);
-      }
-    });
+    // OUVE eventos de auth e navega APENAS se estivermos num fluxo OAuth
+    _authSub = Supabase.instance.client.auth.onAuthStateChange.listen((d) async {
+    if ((d.event == AuthChangeEvent.signedIn || d.event == AuthChangeEvent.userUpdated) &&
+        d.session != null && mounted) {
+      final u = d.session!.user;
+      final meta = (u.userMetadata ?? {});
+      final nameRaw = meta['full_name'] ?? meta['name'];
+      final name = (nameRaw is String && nameRaw.trim().isNotEmpty) ? nameRaw.trim() : null;
+
+      await ref.read(authProvider.notifier).ensureUsersRow(
+        u.id,
+        (u.email ?? '').trim().toLowerCase(),
+        name: name,
+      );
+
+      Navigator.pushNamedAndRemoveUntil(context, '/home', (_) => false);
+    }
+  });
+
+  }
+
+  void _goHome() {
+    Navigator.pushNamedAndRemoveUntil(context, '/home', (_) => false);
   }
 
   @override
@@ -66,19 +85,15 @@ class _AuthPageState extends ConsumerState<AuthPage> {
     final email = _emailController.text.trim();
 
     try {
-      print('[AUTH_PAGE] Iniciando autenticação para email: $email');
+      debugPrint('[AUTH_PAGE] Iniciando autenticação por OTP para: $email');
       final authNotifier = ref.read(authProvider.notifier);
 
-      // Envia o código OTP
       await authNotifier.register(email);
-
       if (!mounted) return;
 
-      // Limpar os campos após o envio bem-sucedido
       _nameController.clear();
       _emailController.clear();
 
-      // Mensagem de sucesso
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Verification code sent to $email'),
@@ -87,40 +102,35 @@ class _AuthPageState extends ConsumerState<AuthPage> {
         ),
       );
 
-      // Navega para a página de verificação
       Navigator.push(
         context,
-        MaterialPageRoute(
-          builder: (context) => OtpVerificationPage(email: email),
-        ),
+        MaterialPageRoute(builder: (_) => OtpVerificationPage(email: email)),
       );
     } catch (e) {
       if (!mounted) return;
-
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error: ${e.toString()}'),
-          backgroundColor: Colors.red,
-        ),
+        SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
       );
     } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
   Future<void> _handleGoogleSignIn() async {
     try {
-      setState(() => _isLoading = true);
+      setState(() {
+        _isLoading = true;
+        _pendingOAuth = true; // marca que estamos a iniciar OAuth
+      });
 
-      final authNotifier = ref.read(authProvider.notifier);
-      await authNotifier.signInWithGoogle(); // não navegues aqui — listener trata disso
+      await ref.read(authProvider.notifier).signInWithGoogle();
+      // NÃO navegues aqui; o listener acima trata disso quando voltar o deep link
     } catch (e) {
+      _pendingOAuth = false; // falhou o fluxo
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Google Sign In failed: ${e.toString()}'),
+          content: Text('Google Sign In failed: $e'),
           backgroundColor: BrandColors.cantVote,
         ),
       );
@@ -136,9 +146,7 @@ class _AuthPageState extends ConsumerState<AuthPage> {
   void _handleLogin() {
     Navigator.pushReplacement(
       context,
-      MaterialPageRoute(
-        builder: (context) => const LoginPage(),
-      ),
+      MaterialPageRoute(builder: (_) => const LoginPage()),
     );
   }
 
@@ -152,15 +160,14 @@ class _AuthPageState extends ConsumerState<AuthPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Center(child: LazzoHeader()),
+              const Center(child: LazzoHeader()),
               SizedBox(height: Gaps.xl),
-              WelcomeSection(),
+              const WelcomeSection(),
               SizedBox(height: Gaps.xl),
               AuthFormWidgets(
                 nameController: _nameController,
                 emailController: _emailController,
-                onCreateAccount:
-                    _canSubmit && !_isLoading ? _handleSubmit : null,
+                onCreateAccount: _canSubmit && !_isLoading ? _handleSubmit : null,
                 isLoading: _isLoading,
                 onGoogleSignIn: _handleGoogleSignIn,
                 onAppleSignIn: _handleAppleSignIn,

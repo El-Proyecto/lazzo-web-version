@@ -145,6 +145,19 @@ class AuthRemoteDatasource {
     }
   }
 
+
+  // Mantém o teu _upsertUsersRow privado como está.
+// Adiciona este atalho público:
+  Future<void> ensureUsersRow({
+  required String id,
+  required String email,
+  String? name,
+  }) {
+  return _upsertUsersRow(id: id, email: email, name: name);
+  }
+
+
+
   // ---------------------------------------------------------------------------
   // Helpers para a tabela `public.users`
   // ---------------------------------------------------------------------------
@@ -166,16 +179,18 @@ class AuthRemoteDatasource {
   Future<Map<String, dynamic>> _upsertUsersRow({
     required String id,
     required String email,
+    String? name,
   }) async {
     final patch = <String, dynamic>{
       'id': id,
-      'email': email,
+      'email': email.trim().toLowerCase(),
+      if (name != null && name.trim().isNotEmpty) 'name': name.trim(),
     };
 
     final row = await client
         .from('users')
         .upsert(patch, onConflict: 'id')
-        .select()          // <- sem genéricos
+        .select() // devolve a row atualizada/criada
         .single();
 
     return Map<String, dynamic>.from(row as Map);
