@@ -72,7 +72,8 @@ class _AuthPageState extends ConsumerState<AuthPage> {
 
   void _validateForm() {
     setState(() {
-      _canSubmit = _nameController.text.isNotEmpty &&
+      _canSubmit =
+          _nameController.text.isNotEmpty &&
           _emailController.text.isNotEmpty &&
           _emailController.text.contains('@');
     });

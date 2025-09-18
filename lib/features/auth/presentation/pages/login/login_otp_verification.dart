@@ -17,10 +17,12 @@ class LoginOtpVerificationPage extends ConsumerStatefulWidget {
   final String email;
 
   @override
-  ConsumerState<LoginOtpVerificationPage> createState() => _LoginOtpVerificationPageState();
+  ConsumerState<LoginOtpVerificationPage> createState() =>
+      _LoginOtpVerificationPageState();
 }
 
-class _LoginOtpVerificationPageState extends ConsumerState<LoginOtpVerificationPage> {
+class _LoginOtpVerificationPageState
+    extends ConsumerState<LoginOtpVerificationPage> {
   String _code = '';
   String? _bannerMessage;
   bool _busy = false;
@@ -34,35 +36,31 @@ class _LoginOtpVerificationPageState extends ConsumerState<LoginOtpVerificationP
 
   Future<void> _resend() async {
     try {
-      await _authDatasource.login(widget.email);  // Usa login em vez de register
+      await _authDatasource.login(widget.email); // Usa login em vez de register
       setState(() => _bannerMessage = 'New code sent to your email.');
     } catch (e) {
       setState(() => _bannerMessage = 'Falha ao reenviar código: $e');
     }
   }
-  
-  
+
   Future<void> _verify() async {
     if (_code.length != 6) {
       setState(() => _bannerMessage = 'Input the six digit code sent.');
       return;
     }
-    
+
     setState(() {
       _busy = true;
       _bannerMessage = null;
     });
 
     try {
-      await _authDatasource.verifyOtp(
-        email: widget.email,
-        token: _code,
-      );
+      await _authDatasource.verifyOtp(email: widget.email, token: _code);
 
       if (!mounted) return;
 
       // Navega direto para home após login bem sucedido
-      Navigator.of(context).pushNamedAndRemoveUntil('/home', (route) => false);
+      Navigator.of(context).pushNamedAndRemoveUntil('/main', (route) => false);
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -123,10 +121,7 @@ class _LoginOtpVerificationPageState extends ConsumerState<LoginOtpVerificationP
                           isEnabled: _code.length == 6 && !_busy,
                         ),
                         const SizedBox(height: 16),
-                        ResendOtpButton(
-                          onResend: _resend,
-                          isBusy: _busy,
-                        ),
+                        ResendOtpButton(onResend: _resend, isBusy: _busy),
                       ],
                     ),
                   ],
@@ -137,6 +132,5 @@ class _LoginOtpVerificationPageState extends ConsumerState<LoginOtpVerificationP
         ),
       ),
     );
-
   }
 }
