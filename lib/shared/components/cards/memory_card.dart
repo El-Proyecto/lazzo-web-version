@@ -115,16 +115,66 @@ class MemoryCard extends StatelessWidget {
 
   String _formatLocationAndDate(String? location, DateTime date) {
     final shortDate = _formatDateShort(date);
-    if (location != null && location.isNotEmpty) {
-      return '$location • $shortDate';
+
+    // Always show both location and date
+    if (location == null || location.isEmpty) {
+      return 'Unknown • $shortDate';
     }
-    return shortDate;
+
+    // Smart location truncation - keep main words
+    final truncatedLocation = _truncateLocation(location);
+    return '$truncatedLocation • $shortDate';
+  }
+
+  String _truncateLocation(String location) {
+    // Remove common suffixes and keep main words
+    final cleanLocation = location
+        .replaceAll(
+          RegExp(
+            r',\s*(Portugal|Brasil|Brazil|Italy|Spain|France)$',
+            caseSensitive: false,
+          ),
+          '',
+        )
+        .replaceAll(RegExp(r',\s*Lisboa$', caseSensitive: false), '')
+        .replaceAll(RegExp(r',\s*Lisbon$', caseSensitive: false), '');
+
+    final words = cleanLocation.split(' ');
+
+    // If location is short enough, return as is
+    if (cleanLocation.length <= 15) {
+      return cleanLocation;
+    }
+
+    // Keep first 1-2 main words
+    if (words.length == 1) {
+      return words[0].length > 12
+          ? '${words[0].substring(0, 12)}...'
+          : words[0];
+    } else if (words.length >= 2) {
+      final firstTwo = '${words[0]} ${words[1]}';
+      return firstTwo.length > 15 ? words[0] : firstTwo;
+    }
+
+    return cleanLocation.length > 15
+        ? '${cleanLocation.substring(0, 15)}...'
+        : cleanLocation;
   }
 
   String _formatDateShort(DateTime date) {
     const months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
     ];
     return '${date.day} ${months[date.month - 1]}';
   }
