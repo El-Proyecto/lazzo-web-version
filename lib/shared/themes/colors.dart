@@ -15,7 +15,7 @@ class BrandColors {
 }
 
 final colorSchemeDark = ColorScheme.dark(
-  primary: BrandColors.living,
+  primary: BrandColors.planning,
   secondary: BrandColors.planning,
   tertiary: BrandColors.recap,
   surface: BrandColors.bg1,

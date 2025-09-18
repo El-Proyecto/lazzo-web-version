@@ -3,6 +3,11 @@
 
 // Navigation Components
 export 'nav/create_event_app_bar.dart';
+export 'nav/profile_app_bar.dart';
+
+// Card Components
+export 'cards/user_info_card.dart';
+export 'cards/memory_card.dart';
 
 // Form Components
 export 'forms/event_group_selector.dart';
@@ -10,6 +15,7 @@ export 'forms/event_group_selector.dart';
 // Section Components
 export 'sections/location_section.dart';
 export 'sections/date_time_section.dart';
+export 'sections/memories_section.dart';
 
 // Dialog Components
 export 'dialogs/event_history_dialog.dart';

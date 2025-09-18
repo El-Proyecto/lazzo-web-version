@@ -103,7 +103,7 @@ class PendingEventModel {
     }
   }
 
-  static _asString(dynamic v) => v is String ? v : (v?.toString());
+  static String? _asString(dynamic v) => v is String ? v : (v?.toString());
 
   static DateTime _parseDate(dynamic v) {
     if (v is DateTime) return v;
