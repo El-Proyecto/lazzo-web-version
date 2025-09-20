@@ -13,6 +13,7 @@ import '../features/groups/presentation/pages/groups_page.dart';
 import '../features/create_event/presentation/pages/create_event_page.dart';
 import '../features/activities/presentation/pages/activities_page.dart';
 import '../features/profile/presentation/pages/profile_page.dart';
+import '../features/profile/presentation/edit_profile_page.dart';
 
 class AppRouter {
   static const String home = '/home';
@@ -22,6 +23,7 @@ class AppRouter {
   static const String createEvent = '/create-event';
   static const String activities = '/activities';
   static const String profile = '/profile';
+  static const String editProfile = '/edit-profile';
   static const String loginPage = '/login';
   static const String otpVerification = '/otp';
   static const String loginVerification = '/otp-login';
@@ -30,9 +32,7 @@ class AppRouter {
   static const String authenticationDone = '/auth-done';
   static const String finishSetup = '/finish-setup';
 
-  
   static final routes = <String, WidgetBuilder>{
-  
     auth: (context) => const AuthPage(),
     home: (context) => const HomePage(),
     mainLayout: (context) => const MainLayout(),
@@ -40,14 +40,17 @@ class AppRouter {
     createEvent: (context) => const CreateEventPage(),
     activities: (context) => const ActivitiesPage(),
     profile: (context) => const ProfilePage(),
+    editProfile: (context) => const EditProfilePage(),
     loginPage: (context) => const LoginPage(),
-  
+
     loginVerification: (context) {
-      final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
+      final args =
+          ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
       return LoginOtpVerificationPage(email: args['email']);
     },
     otpVerification: (context) {
-      final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
+      final args =
+          ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
       return OtpVerificationPage(email: args['email']);
     },
     authenticationDone: (context) => OnboardingSuccessPage(),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../constants/spacing.dart';
 import '../../constants/text_styles.dart';
 import '../../themes/colors.dart';
 
@@ -38,7 +39,7 @@ class EventCreatedBanner extends StatelessWidget {
             child: Icon(Icons.check, color: Colors.white, size: 16),
           ),
 
-          SizedBox(width: 8),
+          SizedBox(width: Gaps.xs),
 
           // Texto
           Expanded(
@@ -61,7 +62,7 @@ class EventCreatedBanner extends StatelessWidget {
             ),
           ),
 
-          SizedBox(width: 8),
+          SizedBox(width: Gaps.xs),
 
           // Botão fechar
           GestureDetector(
