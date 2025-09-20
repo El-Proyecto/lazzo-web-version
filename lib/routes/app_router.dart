@@ -32,9 +32,7 @@ class AppRouter {
   static const String authenticationDone = '/auth-done';
   static const String finishSetup = '/finish-setup';
 
-  
   static final routes = <String, WidgetBuilder>{
-  
     auth: (context) => const AuthPage(),
     home: (context) => const HomePage(),
     mainLayout: (context) => const MainLayout(),
@@ -42,14 +40,17 @@ class AppRouter {
     createEvent: (context) => const CreateEventPage(),
     activities: (context) => const ActivitiesPage(),
     profile: (context) => const ProfilePage(),
+    editProfile: (context) => const EditProfilePage(),
     loginPage: (context) => const LoginPage(),
-  
+
     loginVerification: (context) {
-      final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
+      final args =
+          ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
       return LoginOtpVerificationPage(email: args['email']);
     },
     otpVerification: (context) {
-      final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
+      final args =
+          ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
       return OtpVerificationPage(email: args['email']);
     },
     authenticationDone: (context) => OnboardingSuccessPage(),

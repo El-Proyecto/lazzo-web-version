@@ -66,7 +66,7 @@ class UserInfoCard extends StatelessWidget {
                 size: 16,
                 color: BrandColors.text2,
               ),
-              SizedBox(width: 4),
+              SizedBox(width: Gaps.xs),
               Text(
                 location!,
                 style: AppText.titleMediumEmph.copyWith(
@@ -91,7 +91,7 @@ class UserInfoCard extends StatelessWidget {
                   color: BrandColors.text2,
                 ),
               ),
-              SizedBox(width: 4),
+              SizedBox(width: Gaps.xs),
               Text(
                 _formatBirthday(birthday!),
                 style: AppText.titleMediumEmph.copyWith(

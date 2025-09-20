@@ -10,6 +10,8 @@ export 'cards/user_info_card.dart';
 export 'cards/memory_card.dart';
 export 'cards/editable_info_card.dart';
 export 'cards/birthday_picker_card.dart';
+export 'cards/dropdown_birthday_picker_card.dart';
+export 'cards/email_info_card.dart';
 
 // Form Components
 export 'forms/event_group_selector.dart';

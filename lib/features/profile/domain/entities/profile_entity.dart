@@ -3,6 +3,7 @@
 class ProfileEntity {
   final String id;
   final String name;
+  final String? email;
   final String? profileImageUrl;
   final String? location;
   final DateTime? birthday;
@@ -11,6 +12,7 @@ class ProfileEntity {
   const ProfileEntity({
     required this.id,
     required this.name,
+    this.email,
     this.profileImageUrl,
     this.location,
     this.birthday,
@@ -20,17 +22,24 @@ class ProfileEntity {
   ProfileEntity copyWith({
     String? id,
     String? name,
+    String? email,
     String? profileImageUrl,
     String? location,
     DateTime? birthday,
     List<MemoryEntity>? memories,
+    bool clearProfileImage = false,
+    bool clearLocation = false,
+    bool clearBirthday = false,
   }) {
     return ProfileEntity(
       id: id ?? this.id,
       name: name ?? this.name,
-      profileImageUrl: profileImageUrl ?? this.profileImageUrl,
-      location: location ?? this.location,
-      birthday: birthday ?? this.birthday,
+      email: email ?? this.email,
+      profileImageUrl: clearProfileImage
+          ? null
+          : (profileImageUrl ?? this.profileImageUrl),
+      location: clearLocation ? null : (location ?? this.location),
+      birthday: clearBirthday ? null : (birthday ?? this.birthday),
       memories: memories ?? this.memories,
     );
   }

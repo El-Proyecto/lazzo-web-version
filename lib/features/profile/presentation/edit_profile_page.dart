@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../shared/components/components.dart';
+import '../../../shared/components/cards/ios_birthday_picker_card.dart';
 import '../../../shared/constants/spacing.dart';
 import '../../../shared/themes/colors.dart';
 import '../domain/entities/profile_entity.dart';
@@ -21,6 +22,13 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
     'location': false,
     'birthday': false,
   };
+
+  // Error state management
+  String? _nameError;
+  String? _locationError;
+  String? _birthdayError;
+
+  bool _allowBirthdayNotifications = false;
 
   @override
   Widget build(BuildContext context) {
@@ -130,6 +138,11 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
 
             SizedBox(height: Gaps.xl),
 
+            // Email field (non-editable)
+            EmailInfoCard(email: profile.email),
+
+            SizedBox(height: Gaps.md),
+
             // Name field (required)
             EditableInfoCard(
               label: 'Name',
@@ -137,6 +150,7 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
               placeholder: 'Enter your name',
               isRequired: true,
               isEditing: _editingStates['name'] ?? false,
+              errorMessage: _nameError,
               onEdit: () => _toggleEditing('name'),
               onSave: (value) => _saveField('name', value, profile),
               onCancel: () => _cancelEditing('name'),
@@ -150,20 +164,29 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
               value: profile.location,
               placeholder: 'Enter your location',
               isEditing: _editingStates['location'] ?? false,
+              errorMessage: _locationError,
               onEdit: () => _toggleEditing('location'),
               onSave: (value) => _saveField('location', value, profile),
               onCancel: () => _cancelEditing('location'),
+              onRemove: () => _removeField('location', profile),
             ),
 
             SizedBox(height: Gaps.md),
 
-            // Birthday field (optional)
-            BirthdayPickerCard(
+            // Birthday field (optional) with notification checkbox
+            IosBirthdayPickerCard(
               birthday: profile.birthday,
               isEditing: _editingStates['birthday'] ?? false,
+              allowNotifications: _allowBirthdayNotifications,
+              errorMessage: _birthdayError,
               onEdit: () => _toggleEditing('birthday'),
               onSave: (date) => _saveBirthday(date, profile),
               onCancel: () => _cancelEditing('birthday'),
+              onNotificationChanged: (allow) =>
+                  setState(() => _allowBirthdayNotifications = allow),
+              onRemove: profile.birthday != null
+                  ? () => _removeField('birthday', profile)
+                  : null,
             ),
 
             SizedBox(height: Gaps.xl),
@@ -188,7 +211,43 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
   void _cancelEditing(String field) {
     setState(() {
       _editingStates[field] = false;
+      // Clear any validation errors when canceling
+      if (field == 'name') _nameError = null;
+      if (field == 'location') _locationError = null;
+      if (field == 'birthday') _birthdayError = null;
     });
+  }
+
+  Future<void> _removeField(String field, ProfileEntity profile) async {
+    try {
+      ProfileEntity updatedProfile;
+      switch (field) {
+        case 'location':
+          updatedProfile = profile.copyWith(clearLocation: true);
+          break;
+        case 'birthday':
+          updatedProfile = profile.copyWith(clearBirthday: true);
+          break;
+        default:
+          return;
+      }
+
+      await ref
+          .read(editProfileProvider.notifier)
+          .updateProfile(updatedProfile);
+
+      setState(() {
+        if (field == 'location') _locationError = null;
+        if (field == 'birthday') _birthdayError = null;
+        // Exit edit mode after successful removal
+        _editingStates[field] = false;
+      });
+    } catch (e) {
+      setState(() {
+        if (field == 'location') _locationError = 'Failed to remove location';
+        if (field == 'birthday') _birthdayError = 'Failed to remove birthday';
+      });
+    }
   }
 
   Future<void> _saveField(
@@ -197,7 +256,9 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
     ProfileEntity profile,
   ) async {
     if (field == 'name' && value.trim().isEmpty) {
-      _showSnackBar('Name is required');
+      setState(() {
+        _nameError = 'Name is required';
+      });
       return;
     }
 
@@ -221,10 +282,15 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
           .updateProfile(updatedProfile);
       setState(() {
         _editingStates[field] = false;
+        // Clear any existing errors on successful save
+        if (field == 'name') _nameError = null;
+        if (field == 'location') _locationError = null;
       });
-      _showSnackBar('Profile updated successfully');
     } catch (e) {
-      _showSnackBar('Failed to update profile');
+      setState(() {
+        if (field == 'name') _nameError = 'Failed to update name';
+        if (field == 'location') _locationError = 'Failed to update location';
+      });
     }
   }
 
@@ -237,10 +303,12 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
           .updateProfile(updatedProfile);
       setState(() {
         _editingStates['birthday'] = false;
+        _birthdayError = null;
       });
-      _showSnackBar('Birthday updated successfully');
     } catch (e) {
-      _showSnackBar('Failed to update birthday');
+      setState(() {
+        _birthdayError = 'Failed to update birthday';
+      });
     }
   }
 
@@ -273,7 +341,7 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
           await ref
               .read(editProfileProvider.notifier)
               .updateProfile(updatedProfile);
-          _showSnackBar('Photo removed successfully');
+          // Photo removed successfully
         } catch (e) {
           _showSnackBar('Failed to remove photo');
         }
