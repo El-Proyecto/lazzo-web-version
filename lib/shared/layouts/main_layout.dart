@@ -16,7 +16,7 @@ class MainLayout extends ConsumerStatefulWidget {
 }
 
 class _MainLayoutState extends ConsumerState<MainLayout> {
-  int _currentIndex = 0;
+  int _currentIndex = 1; // Começar na aba Groups
 
   @override
   void didChangeDependencies() {
