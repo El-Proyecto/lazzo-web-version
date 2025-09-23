@@ -208,6 +208,60 @@ class FakeGroupRepository implements GroupRepository {
   }
 
   @override
+  Future<void> togglePin(String groupId) async {
+    await Future.delayed(Duration(milliseconds: 300));
+
+    final index = _mockGroups.indexWhere((group) => group.id == groupId);
+    if (index != -1) {
+      final group = _mockGroups[index];
+      final updatedGroup = Group(
+        id: group.id,
+        name: group.name,
+        avatarUrl: group.avatarUrl,
+        lastActivity: group.lastActivity,
+        lastActivityTime: group.lastActivityTime,
+        unreadCount: group.unreadCount,
+        openActionsCount: group.openActionsCount,
+        addPhotosCount: group.addPhotosCount,
+        addPhotosTimeLeft: group.addPhotosTimeLeft,
+        status: group.status,
+        isMuted: group.isMuted,
+        isPinned: !group.isPinned, // Toggle pin status
+        memberCount: group.memberCount,
+      );
+      _mockGroups[index] = updatedGroup;
+    }
+  }
+
+  @override
+  Future<void> toggleArchive(String groupId) async {
+    await Future.delayed(Duration(milliseconds: 300));
+
+    final index = _mockGroups.indexWhere((group) => group.id == groupId);
+    if (index != -1) {
+      final group = _mockGroups[index];
+      final updatedGroup = Group(
+        id: group.id,
+        name: group.name,
+        avatarUrl: group.avatarUrl,
+        lastActivity: group.lastActivity,
+        lastActivityTime: group.lastActivityTime,
+        unreadCount: group.unreadCount,
+        openActionsCount: group.openActionsCount,
+        addPhotosCount: group.addPhotosCount,
+        addPhotosTimeLeft: group.addPhotosTimeLeft,
+        status: group.status == GroupStatus.archived
+            ? GroupStatus.active
+            : GroupStatus.archived, // Toggle archive status
+        isMuted: group.isMuted,
+        isPinned: group.isPinned,
+        memberCount: group.memberCount,
+      );
+      _mockGroups[index] = updatedGroup;
+    }
+  }
+
+  @override
   Future<List<String>> getGroupMembers(String groupId) async {
     await Future.delayed(Duration(milliseconds: 400));
     // Retornar lista mock de IDs de membros

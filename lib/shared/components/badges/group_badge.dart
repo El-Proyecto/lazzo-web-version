@@ -22,7 +22,7 @@ class GroupBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: Gaps.sm, vertical: Gaps.xxs),
+      padding: EdgeInsets.symmetric(horizontal: 6.0, vertical: Gaps.xxs),
       decoration: ShapeDecoration(
         color: _getBadgeColor(),
         shape: RoundedRectangleBorder(

@@ -48,37 +48,7 @@ class _GroupsPageState extends ConsumerState<GroupsPage> {
             ),
           ),
 
-          // Filter chips
-          Container(
-            height: 56,
-            padding: EdgeInsets.symmetric(horizontal: Insets.screenH),
-            child: Row(
-              children: [
-                CustomFilterChip(
-                  label: 'All',
-                  isSelected: _selectedFilter == GroupFilter.all,
-                  onTap: () =>
-                      setState(() => _selectedFilter = GroupFilter.all),
-                ),
-                SizedBox(width: Gaps.sm),
-                CustomFilterChip(
-                  label: 'Actions',
-                  isSelected: _selectedFilter == GroupFilter.actions,
-                  onTap: () =>
-                      setState(() => _selectedFilter = GroupFilter.actions),
-                ),
-                SizedBox(width: Gaps.sm),
-                CustomFilterChip(
-                  label: 'Archived',
-                  isSelected: _selectedFilter == GroupFilter.archived,
-                  onTap: () =>
-                      setState(() => _selectedFilter = GroupFilter.archived),
-                ),
-              ],
-            ),
-          ),
-
-          // Lista de grupos
+          // Lista de grupos com filtros incluídos na lista para rolagem
           Expanded(
             child: groupsAsync.when(
               data: (groups) {
@@ -106,10 +76,53 @@ class _GroupsPageState extends ConsumerState<GroupsPage> {
                 }
 
                 return ListView.builder(
-                  padding: EdgeInsets.only(top: Gaps.xs),
-                  itemCount: filteredGroups.length,
+                  padding: EdgeInsets.zero,
+                  itemCount: filteredGroups.length + 1, // +1 para os filtros
                   itemBuilder: (context, index) {
-                    final group = filteredGroups[index];
+                    // Primeiro item é a linha de filtros
+                    if (index == 0) {
+                      return Padding(
+                        padding: EdgeInsets.only(
+                          left: Insets.screenH,
+                          right: Insets.screenH,
+                          bottom: Gaps.xs,
+                        ),
+                        child: Row(
+                          children: [
+                            CustomFilterChip(
+                              label: 'All',
+                              isSelected: _selectedFilter == GroupFilter.all,
+                              onTap: () => setState(
+                                () => _selectedFilter = GroupFilter.all,
+                              ),
+                            ),
+                            SizedBox(width: Gaps.sm),
+                            CustomFilterChip(
+                              label: 'Actions',
+                              isSelected:
+                                  _selectedFilter == GroupFilter.actions,
+                              onTap: () => setState(
+                                () => _selectedFilter = GroupFilter.actions,
+                              ),
+                            ),
+                            SizedBox(width: Gaps.sm),
+                            CustomFilterChip(
+                              label: 'Archived',
+                              isSelected:
+                                  _selectedFilter == GroupFilter.archived,
+                              onTap: () => setState(
+                                () => _selectedFilter = GroupFilter.archived,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }
+
+                    // Os demais itens são os grupos
+                    final group =
+                        filteredGroups[index -
+                            1]; // -1 para compensar o índice dos filtros
                     return GroupCard(
                       group: group,
                       onTap: () => _handleGroupTap(group.id),
@@ -202,6 +215,16 @@ class _GroupsPageState extends ConsumerState<GroupsPage> {
     String groupId,
     GlobalKey cardKey,
   ) {
+    // Encontra o grupo atual na lista
+    final groupsAsync = ref.read(groupsProvider);
+    final groups = groupsAsync.value ?? [];
+    final group = groups.firstWhere(
+      (g) => g.id == groupId,
+      orElse: () =>
+          Group(id: '', name: '', status: GroupStatus.active, memberCount: 0),
+    );
+
+    // Ajusta o texto dos botões com base no estado atual do grupo
     final actions = [
       GroupMenuAction(
         title: 'Create event',
@@ -219,22 +242,17 @@ class _GroupsPageState extends ConsumerState<GroupsPage> {
         onTap: () => _handleOpenActions(groupId),
       ),
       GroupMenuAction(
-        title: 'Members',
-        icon: Icons.group,
-        onTap: () => _handleMembers(groupId),
-      ),
-      GroupMenuAction(
         title: 'Mute',
         icon: Icons.notifications_off,
         onTap: () => _handleMute(groupId),
       ),
       GroupMenuAction(
-        title: 'Pin',
+        title: group.isPinned ? 'Unpin' : 'Pin',
         icon: Icons.push_pin,
         onTap: () => _handlePin(groupId),
       ),
       GroupMenuAction(
-        title: 'Archive',
+        title: group.status == GroupStatus.archived ? 'Unarchive' : 'Archive',
         icon: Icons.archive,
         onTap: () => _handleArchive(groupId),
       ),
@@ -261,10 +279,6 @@ class _GroupsPageState extends ConsumerState<GroupsPage> {
     print('Open actions for group: $groupId');
   }
 
-  void _handleMembers(String groupId) {
-    print('Show members for group: $groupId');
-  }
-
   void _handleMute(String groupId) {
     print('Mute group: $groupId');
   }
@@ -274,13 +288,15 @@ class _GroupsPageState extends ConsumerState<GroupsPage> {
   }
 
   void _handleArchive(String groupId) {
-    print('Archive group: $groupId');
-    // TODO: Implementar lógica de arquivamento
+    print('Toggle archive for group: $groupId');
+    final controller = ref.read(groupsControllerProvider);
+    controller.toggleArchive(groupId);
   }
 
   void _handlePin(String groupId) {
-    print('Pin group: $groupId');
-    // TODO: Implementar lógica de afixar
+    print('Toggle pin for group: $groupId');
+    final controller = ref.read(groupsControllerProvider);
+    controller.togglePin(groupId);
   }
 
   /// Aplica filtro por status dos grupos
@@ -310,7 +326,7 @@ class _GroupsPageState extends ConsumerState<GroupsPage> {
   /// Prioridade: Afixados > Vermelhos > Amarelos > Verdes
   List<Group> _sortGroupsByPriority(List<Group> groups) {
     return List.from(groups)..sort((a, b) {
-      // Primeiro critério: grupos afixados sempre primeiro
+      // Primeiro critério: grupos afixados sempre primeiro em qualquer categoria
       if (a.isPinned && !b.isPinned) return -1;
       if (!a.isPinned && b.isPinned) return 1;
 
@@ -319,7 +335,12 @@ class _GroupsPageState extends ConsumerState<GroupsPage> {
       final priorityB = _getGroupPriority(b);
 
       // Ordenar por prioridade decrescente (3=vermelho, 2=amarelo, 1=verde, 0=sem badges)
-      return priorityB.compareTo(priorityA);
+      if (priorityA != priorityB) {
+        return priorityB.compareTo(priorityA);
+      }
+
+      // Terceiro critério: ordenar alfabeticamente pelo nome
+      return a.name.compareTo(b.name);
     });
   }
 

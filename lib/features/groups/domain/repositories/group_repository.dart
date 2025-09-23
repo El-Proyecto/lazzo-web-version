@@ -27,6 +27,12 @@ abstract class GroupRepository {
   /// Alterna o status de mute do grupo
   Future<void> toggleMute(String groupId, bool isMuted);
 
+  /// Alterna o status de pin do grupo
+  Future<void> togglePin(String groupId);
+
+  /// Alterna o status de arquivo do grupo
+  Future<void> toggleArchive(String groupId);
+
   /// Obtém membros do grupo
   Future<List<String>> getGroupMembers(String groupId);
 }

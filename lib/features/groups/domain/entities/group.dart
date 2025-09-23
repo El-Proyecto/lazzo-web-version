@@ -34,7 +34,15 @@ class Group {
 
   /// Retorna a sub-linha contextual do grupo baseada na prioridade
   String get contextualSubline {
-    // Prioridade: Open Actions > Add Photos > Last Activity
+    // Para grupos arquivados, sempre mostrar "Last Event: " + lastActivity
+    if (status == GroupStatus.archived) {
+      if (lastActivity != null) {
+        return "Last Event: ${lastActivity!}";
+      }
+      return "No previous events";
+    }
+
+    // Prioridade para grupos ativos: Open Actions > Add Photos > Last Activity
     if (openActionsCount != null && openActionsCount! > 0) {
       return _getOpenActionsText();
     }

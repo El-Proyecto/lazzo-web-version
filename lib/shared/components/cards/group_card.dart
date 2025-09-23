@@ -58,24 +58,51 @@ class _GroupCardState extends State<GroupCard> {
   }
 
   Widget _buildAvatar() {
-    return Container(
-      width: 56,
-      height: 56,
-      decoration: ShapeDecoration(
-        color: BrandColors.bg3,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(Radii.smAlt),
+    return Stack(
+      children: [
+        // Avatar
+        Container(
+          width: 56,
+          height: 56,
+          decoration: ShapeDecoration(
+            color: BrandColors.bg3,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(Radii.smAlt),
+            ),
+            image: widget.group.avatarUrl != null
+                ? DecorationImage(
+                    image: NetworkImage(widget.group.avatarUrl!),
+                    fit: BoxFit.cover,
+                  )
+                : null,
+          ),
+          child: widget.group.avatarUrl == null
+              ? Icon(Icons.group, color: BrandColors.text2, size: 28)
+              : null,
         ),
-        image: widget.group.avatarUrl != null
-            ? DecorationImage(
-                image: NetworkImage(widget.group.avatarUrl!),
-                fit: BoxFit.cover,
-              )
-            : null,
-      ),
-      child: widget.group.avatarUrl == null
-          ? Icon(Icons.group, color: BrandColors.text2, size: 28)
-          : null,
+
+        // Ícone de pin no canto superior direito do avatar
+        if (widget.group.isPinned)
+          Positioned(
+            top: 0,
+            right: 0,
+            child: Container(
+              padding: EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                color: BrandColors.bg1,
+                borderRadius: BorderRadius.only(
+                  topRight: Radius.circular(Radii.smAlt),
+                  bottomLeft: Radius.circular(Radii.smAlt),
+                ),
+              ),
+              child: Icon(
+                Icons.push_pin,
+                size: 12,
+                color: BrandColors.planning,
+              ),
+            ),
+          ),
+      ],
     );
   }
 
@@ -84,7 +111,7 @@ class _GroupCardState extends State<GroupCard> {
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        // Nome do grupo
+        // Nome do grupo (sem o ícone de pin, agora está no avatar)
         Text(
           widget.group.name,
           style: AppText.titleMediumEmph.copyWith(color: BrandColors.text1),

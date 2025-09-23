@@ -22,7 +22,7 @@ class CustomFilterChip extends StatelessWidget {
       child: Container(
         padding: EdgeInsets.symmetric(
           horizontal: Pads.ctlH,
-          vertical: Pads.ctlV,
+          vertical: 6.0, // Reduzido para menor espaçamento vertical
         ),
         decoration: BoxDecoration(
           color: isSelected ? BrandColors.planning : BrandColors.bg2,
