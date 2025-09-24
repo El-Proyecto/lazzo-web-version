@@ -8,8 +8,10 @@
 
 ## 1) Golden Rules
 - **Tokenize first**: replace all colors/sizes/fonts/radii with tokens from `shared/constants` & `shared/themes`.
+- **Single source rule**: Only use `shared/themes/colors.dart` and `shared/constants/`. Never create `styles/`, `theme/`, or other token files.
 - **No infra in Domain**: Domain must have **no** imports from Flutter/Supabase.
 - **Presentation ≠ Data**: Widgets do not call Supabase; they consume **providers/use cases**.
+- **Complete DI coverage**: Every feature must have provider overrides in `main.dart`. No partial implementations.
 - **Fake-first**: default DI wires **fake repositories**. A single override flips to Supabase.
 - **Stateless Shared**: All `shared/components/*` must be stateless and reusable.
 - **Minimal queries**: Data layer selects only columns needed by **entities**.
@@ -122,6 +124,13 @@ lib/
 - One responsibility per use case.
 - Small PRs; clear filenames; feature‑scoped changes.
 
+**New mandatory checks:**
+- No direct Supabase calls in presentation layer (use repositories only).
+- All shared components use tokens (zero hardcoded dimensions/colors).
+- Feature has complete DI setup (fake repo, real repo, provider override).
+- `const` constructors added where possible for performance.
+- Empty or TODO-only files are removed or implemented.
+
 ---
 
 ## 9) Common Playbooks
@@ -147,6 +156,13 @@ lib/
 - Duplicating shared components inside features.
 - Modifying repository interfaces without syncing owners.
 
+**Critical violations that break architecture:**
+- Creating duplicate token systems (e.g., `styles/app_styles.dart` when `shared/themes/` exists).
+- Skipping DI overrides in `main.dart` (leaving features stuck on fake data).
+- Using `Supabase.instance.client` anywhere in presentation layer.
+- Hardcoding dimensions in shared components (breaks responsive design).
+- Leaving empty test files or unimplemented TODOs in production code.
+
 ---
 
 ## 12) Bootstrapping & Running
@@ -154,6 +170,44 @@ lib/
 - Router: named routes; set `initialRoute` to preview target page.
 - Start: `flutter pub get && flutter run`.
 - Supabase env: initialize in `main.dart`; DI override to use real repositories.
+
+---
+
+## 13) Emergency Debugging
+**When things break during refactoring:**
+
+**"Token not found" errors:**
+- Check if you're importing from `shared/themes/colors.dart` not `styles/app_styles.dart`
+- Verify token exists in `BrandColors` or `colorScheme`
+
+**"Provider not found" errors:**
+- Check `main.dart` ProviderScope overrides list
+- Verify feature has both fake and real repository providers
+
+**"Auth/Supabase errors" in presentation:**
+- Never call `Supabase.instance.client` in presentation/
+- Use repository pattern: widget → provider → use case → repository → data source
+
+**"UI looks wrong" after tokenization:**
+- Check responsive vs fixed sizing decisions
+- Verify accessibility touch targets (min 44x44)
+- Use `Expanded`/`Flexible` instead of fixed widths
+
+---
+
+## 14) Architecture Enforcement
+
+**Automated Checks:**
+Lint rules are configured in `analysis_options.yaml` to enforce:
+- Architecture violations prevention (`depend_on_referenced_packages`, `avoid_relative_lib_imports`)
+- Performance best practices (`prefer_const_constructors`, `prefer_const_literals_to_create_immutables`)
+- Code quality standards (`prefer_single_quotes`, `avoid_unnecessary_containers`)
+
+**Manual Review Checklist:**
+- [ ] `git grep "Supabase.instance" -- lib/features/*/presentation/` returns empty
+- [ ] `git grep "Color(0x" -- lib/shared/components/` returns empty  
+- [ ] `git grep "styles/app_styles" -- lib/` returns empty
+- [ ] All features have entries in `main.dart` ProviderScope overrides
 
 ---
 

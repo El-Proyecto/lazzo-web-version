@@ -37,9 +37,11 @@ lib/
 - `shared/constants/spacing.dart` → Insets, Gaps, Radii, Pads
 - `shared/constants/text_styles.dart` → labelLarge, titleMediumEmph, bodyMedium, etc.
 - `shared/themes/app_theme.dart` → ThemeData (Material 3, dark‑only MVP)
+- **Critical:** Never create duplicate token systems (e.g., `styles/app_styles.dart`). Use only `shared/themes/` and `shared/constants/`.
 - Reusable UI goes in `shared/components/` (cards/, sections/, nav/, ctas/, forms/)
 
-**Figma → Flutter rule**: export **Widget** from plugin → copy to `shared/components/...` and **tokenize** immediately (replace hardcoded colors/sizes with tokens, remove fixed widths). Keep raw exports in `features/.../presentation/widgets/figma_raw/` for reference only (never imported).
+**Figma → Flutter rule**: export **Widget** from plugin → copy **directly** to `shared/components/...` and **tokenize immediately** (substituir cores/tamanhos/raios/fonte por tokens; remover larguras fixas).
+We **do not** keep any `figma_raw/` dumps in this repo. If a piece is **not reusable**, place it under `features/<feature>/presentation/widgets/` instead of `shared/components/`.
 
 ---
 
@@ -49,13 +51,14 @@ lib/
 ### Role P1 — UI + State + Contracts
 1) Define **Domain contracts**
    - `features/<f>/domain/entities/…` → minimal fields UI needs.
-   - `features/<f>/domain/repositories/…` → abstract repo interfaces.
+   - `features/<f>/domain/repositories/…` → interface methods (no implementations).
    - `features/<f>/domain/usecases/…` → one action per class.
 2) Build **UI components** in `shared/components/…` (tokenized, stateless, reusable).
 3) Compose screens in `features/<f>/presentation/pages/…` using shared components.
 4) Create **providers** in `features/<f>/presentation/providers/…`
    - Default DI points to **fakes** (see below).
    - Expose `AsyncValue` for loading/error/success.
+   - **Never import Supabase directly** in presentation layer.
 5) Put **fakes** in `features/<f>/data/fakes/…` implementing repo interfaces (return mock data).
 
 ### Role P2 — Data + Supabase
@@ -64,6 +67,7 @@ lib/
 3) Implement **repository** in `features/<f>/data/repositories/…` (bridge model → entity, normalize errors).
 4) **Dependency Injection** override
    - In `main.dart` (ProviderScope overrides), swap `FakeRepository → RepositoryImpl(Supabase…)`.
+   - **All features must have DI overrides**, not just some.
    - No UI changes needed.
 
 **Handoff contract:** P1 publishes entity fields + repo method signatures before P2 starts. P2 must not change contracts without sync.
@@ -111,6 +115,8 @@ lib/
 
 ## Data & Supabase Guidelines
 - Respect **RLS** in queries; never bypass with admin keys in app.
+- Audit **RLS coverage** systematically; use integration tests to verify policies.
+- Never call Supabase directly from presentation layer; use repository pattern.
 - Select **only** columns required by the entity/use case.
 - Use indexes: e.g., `order('created_at', ascending: false).limit(1)` on indexed columns.
 - Storage paths convention: `/groupId/eventId/userId/uuid.jpg` with metadata (uploader, type, ts).
@@ -123,6 +129,21 @@ lib/
 - Conventional Commits (optional) for changelog.
 - Lints: forbid raw hex colors & magic numbers (except micro optical fixes), prefer tokens.
 - Definition of Done: loading/empty/error states, a11y touch size, tokens applied, no logic in shared components, telemetry hooks (where applicable).
+
+## Quality Checklist (Before PR)
+**Architecture Boundaries:**
+- [ ] No Supabase imports in `features/*/presentation/` or `features/*/domain/`
+- [ ] All hardcoded colors use tokens from `shared/themes/colors.dart`
+- [ ] All hardcoded dimensions use tokens from `shared/constants/spacing.dart`
+- [ ] Shared components are stateless and reusable
+- [ ] Feature has both fake and real repository implementations
+- [ ] DI override exists in `main.dart` for the feature
+
+**Code Quality:**
+- [ ] `const` constructors where possible
+- [ ] Proper error handling with `AsyncValue`
+- [ ] No TODO/FIXME comments without GitHub issues
+- [ ] Tests cover new functionality (unit for domain, widget for UI)
 
 ---
 
