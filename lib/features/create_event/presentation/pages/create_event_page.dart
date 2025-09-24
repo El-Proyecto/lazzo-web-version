@@ -345,8 +345,11 @@ class _CreateEventPageState extends State<CreateEventPage> {
 
               // Seleção de grupo e nome do evento
               EventGroupSelector(
+                key: const Key('createEvent:groupSelector'),
                 eventEmoji: _eventEmoji,
                 eventName: _eventName.isEmpty ? 'Add Event Name' : _eventName,
+                nameFieldKey: const Key('createEvent:name'),
+                groupButtonKey: const Key('createEvent:groupButton'),
                 selectedGroup: _selectedGroup,
                 nameError: _showValidationErrors ? _nameError : null,
                 groupError: _showValidationErrors ? _groupError : null,
@@ -446,6 +449,7 @@ class _CreateEventPageState extends State<CreateEventPage> {
                 child: SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
+                    key: const Key('continue_button'),
                     onPressed: _handleContinuePressed,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: _isFormValid

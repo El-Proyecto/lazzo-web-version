@@ -20,7 +20,7 @@ class PendingEventsSection extends ConsumerWidget {
     return pendingEventsAsync.when(
       data: (events) {
         if (events.isEmpty) {
-          print('events is empty');
+          
           return SectionBlock(
             title: 'Pending Events',
             child: Padding(
@@ -55,8 +55,6 @@ class PendingEventsSection extends ConsumerWidget {
         ),
       ),
       error: (error, stackTrace) {
-        print('Pending events error: $error');
-        print('Pending events stack trace: $stackTrace');
         return SectionBlock(
           title: 'Pending Events',
           child: Padding(

@@ -29,12 +29,15 @@ class PendingEventModel {
 
   factory PendingEventModel.fromMap(Map<String, dynamic> row) {
     final List<dynamic> votersRaw = (row['voters'] as List<dynamic>?) ?? [];
-    final List<dynamic> noResponseRaw = (row['no_response_voters'] as List<dynamic>?) ?? [];
+    final List<dynamic> noResponseRaw =
+        (row['no_response_voters'] as List<dynamic>?) ?? [];
 
     return PendingEventModel(
       eventId: row['event_id'],
       title: row['title'],
-      emoji: _asString(row['emoji'])?.trim().isNotEmpty == true ? row['emoji'] as String : '🗓️',
+      emoji: _asString(row['emoji'])?.trim().isNotEmpty == true
+          ? row['emoji'] as String
+          : '🗓️',
       scheduledDate: _parseDate(row['start_time']),
       location: _asString(row['location_name']) ?? '',
       voteStatus: _parseVoteStatus(_asString(row['vote_status'])),
@@ -70,17 +73,21 @@ class PendingEventModel {
 
   static VoterInfo _parseVoterInfoFromMap(Map<String, dynamic> data) {
     // Suporta chaves alternativas comuns vindas do SQL/JSON
-    final name = _asString(data['name']) ??
+    final name =
+        _asString(data['name']) ??
         _asString(data['user_name']) ??
         _asString(data['display_name']) ??
         _asString(data['user_id']) ?? // fallback: mostra o id como nome
         'Unknown';
 
-    final avatarUrl = _asString(data['avatar_url']) ??
+    final avatarUrl =
+        _asString(data['avatar_url']) ??
         _asString(data['avatar']) ??
         'https://i.pravatar.cc/150?img=3';
 
-    final response = (_asString(data['rsvp']) ?? _asString(data['response']) ?? 'pending').toLowerCase();
+    final response =
+        (_asString(data['rsvp']) ?? _asString(data['response']) ?? 'pending')
+            .toLowerCase();
 
     final votedAtRaw = data['votedAt'] ?? data['voted_at'];
     final votedAt = _tryParseDate(votedAtRaw);
@@ -95,11 +102,16 @@ class PendingEventModel {
 
   static VoteStatus _parseVoteStatus(String? status) {
     switch (status?.toLowerCase()) {
-      case 'vote': return VoteStatus.vote;
-      case 'voting': return VoteStatus.voting;
-      case 'voted': return VoteStatus.voted;
-      case 'voters_expanded': return VoteStatus.votersExpanded;
-      default: return VoteStatus.vote;
+      case 'vote':
+        return VoteStatus.vote;
+      case 'voting':
+        return VoteStatus.voting;
+      case 'voted':
+        return VoteStatus.voted;
+      case 'voters_expanded':
+        return VoteStatus.votersExpanded;
+      default:
+        return VoteStatus.vote;
     }
   }
 

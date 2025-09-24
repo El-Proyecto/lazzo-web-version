@@ -5,6 +5,7 @@ class UsersRepository {
   final UsersRemoteDatasource remote;
   UsersRepository(this.remote);
 
-  Future<void> upsertPatch(Map<String, dynamic> patch) => remote.upsertPatch(patch);
+  Future<void> upsertPatch(Map<String, dynamic> patch) =>
+      remote.upsertPatch(patch);
   Future<Map<String, dynamic>?> load() => remote.fetch();
 }

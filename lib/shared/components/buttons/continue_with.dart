@@ -24,11 +24,11 @@ class ContinueWith extends StatelessWidget {
       child: TextButton(
         onPressed: onPressed,
         style: TextButton.styleFrom(
-          backgroundColor: BrandColors.text1,  // White background
+          backgroundColor: BrandColors.text1, // White background
           padding: EdgeInsets.all(Insets.screenH),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(Radii.md),
-            side: BorderSide(color: BrandColors.bg3, width: 1),  // Dark border
+            side: BorderSide(color: BrandColors.bg3, width: 1), // Dark border
           ),
         ),
         child: Center(
@@ -40,13 +40,13 @@ class ContinueWith extends StatelessWidget {
               FaIcon(
                 icon,
                 size: 20,
-                color: BrandColors.bg1,  // Dark icon color
+                color: BrandColors.bg1, // Dark icon color
               ),
               SizedBox(width: Gaps.xs),
               Text(
                 text,
                 style: AppText.bodyMedium.copyWith(
-                  color: BrandColors.bg1,  // Dark text color
+                  color: BrandColors.bg1, // Dark text color
                   fontWeight: FontWeight.w500,
                 ),
               ),

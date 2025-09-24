@@ -6,11 +6,7 @@ class ResendOtpButton extends StatefulWidget {
   final VoidCallback? onResend;
   final bool isBusy;
 
-  const ResendOtpButton({
-    super.key,
-    this.onResend,
-    this.isBusy = false,
-  });
+  const ResendOtpButton({super.key, this.onResend, this.isBusy = false});
 
   @override
   State<ResendOtpButton> createState() => _ResendOtpButtonState();
@@ -33,7 +29,7 @@ class _ResendOtpButtonState extends State<ResendOtpButton> {
     Future.doWhile(() async {
       await Future.delayed(const Duration(seconds: 1));
       if (!mounted) return false;
-      
+
       setState(() {
         if (_remainingSeconds > 1) {
           _remainingSeconds--;
@@ -61,13 +57,18 @@ class _ResendOtpButtonState extends State<ResendOtpButton> {
       color: Colors.transparent,
       child: Container(
         width: double.infinity,
-        padding: EdgeInsets.symmetric(horizontal: Pads.ctlH, vertical: Pads.ctlV),
+        padding: EdgeInsets.symmetric(
+          horizontal: Pads.ctlH,
+          vertical: Pads.ctlV,
+        ),
         decoration: ShapeDecoration(
-          color: _canResend ? BrandColors.text1 : Colors.transparent,  // Branco quando habilitado
+          color: _canResend
+              ? BrandColors.text1
+              : Colors.transparent, // Branco quando habilitado
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(Radii.md),
             side: BorderSide(
-              color: BrandColors.text2.withOpacity(0.3),  // Borda sutil
+              color: BrandColors.text2.withOpacity(0.3), // Borda sutil
               width: 1,
             ),
           ),
@@ -80,7 +81,9 @@ class _ResendOtpButtonState extends State<ResendOtpButton> {
               _canResend ? 'Resend' : 'Resend in ${_remainingSeconds}s',
               textAlign: TextAlign.center,
               style: TextStyle(
-                color: _canResend ? BrandColors.bg1 : BrandColors.text2,  // Texto escuro quando habilitado
+                color: _canResend
+                    ? BrandColors.bg1
+                    : BrandColors.text2, // Texto escuro quando habilitado
                 fontSize: 16,
                 fontFamily: 'Roboto',
                 fontWeight: FontWeight.w600,

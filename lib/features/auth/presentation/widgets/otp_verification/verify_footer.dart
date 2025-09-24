@@ -5,11 +5,7 @@ class VerifyFooter extends StatelessWidget {
   final VoidCallback? onSend;
   final bool isEnabled;
 
-  const VerifyFooter({
-    super.key, 
-    this.onSend,
-    this.isEnabled = false,
-  });
+  const VerifyFooter({super.key, this.onSend, this.isEnabled = false});
 
   @override
   Widget build(BuildContext context) {

@@ -8,8 +8,6 @@ import '../editor_tiles/editable_text_tile.dart';
 import '../editor_tiles/editable_birthdate_tile.dart';
 //import '../common/link_tile.dart';
 
-
-
 class CreateProfileForm extends StatelessWidget {
   const CreateProfileForm({
     super.key,
@@ -127,20 +125,26 @@ class CreateProfileForm extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final String phone =
-        (phoneNumber?.trim().isNotEmpty ?? false) ? phoneNumber!.trim() : 'Tap to Add';
-    final String displayName =
-        (name?.trim().isNotEmpty ?? false) ? name!.trim() : 'Tap to Add';
-    final String displayCity =
-        (city?.trim().isNotEmpty ?? false) ? city!.trim() : 'Tap to Add';
+    final String phone = (phoneNumber?.trim().isNotEmpty ?? false)
+        ? phoneNumber!.trim()
+        : 'Tap to Add';
+    final String displayName = (name?.trim().isNotEmpty ?? false)
+        ? name!.trim()
+        : 'Tap to Add';
+    final String displayCity = (city?.trim().isNotEmpty ?? false)
+        ? city!.trim()
+        : 'Tap to Add';
 
     // Links
-    final String displayInstagram =
-        (instagram?.trim().isNotEmpty ?? false) ? instagram!.trim() : 'Tap to Add';
-    final String displayTikTok =
-        (tiktok?.trim().isNotEmpty ?? false) ? tiktok!.trim() : 'Tap to Add';
-    final String displaySpotify =
-        (spotify?.trim().isNotEmpty ?? false) ? spotify!.trim() : 'Tap to Add';
+    final String displayInstagram = (instagram?.trim().isNotEmpty ?? false)
+        ? instagram!.trim()
+        : 'Tap to Add';
+    final String displayTikTok = (tiktok?.trim().isNotEmpty ?? false)
+        ? tiktok!.trim()
+        : 'Tap to Add';
+    final String displaySpotify = (spotify?.trim().isNotEmpty ?? false)
+        ? spotify!.trim()
+        : 'Tap to Add';
 
     return Container(
       width: 370,
@@ -164,7 +168,11 @@ class CreateProfileForm extends StatelessWidget {
                       borderRadius: BorderRadius.circular(58),
                     ),
                     alignment: Alignment.center,
-                    child: const Icon(Icons.add_a_photo, size: 32, color: Color(0xFFA5A5A5)),
+                    child: const Icon(
+                      Icons.add_a_photo,
+                      size: 32,
+                      color: Color(0xFFA5A5A5),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 8),

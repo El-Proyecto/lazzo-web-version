@@ -4,10 +4,7 @@ import '../../../../shared/components/inputs/inputBox.dart';
 class EmailInput extends StatelessWidget {
   final TextEditingController controller;
 
-  const EmailInput({
-    super.key,
-    required this.controller,
-  });
+  const EmailInput({super.key, required this.controller});
 
   @override
   Widget build(BuildContext context) {

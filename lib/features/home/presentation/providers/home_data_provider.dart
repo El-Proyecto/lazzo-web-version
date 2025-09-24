@@ -6,4 +6,6 @@ class MemorySummary {
   const MemorySummary(this.emoji, this.title);
 }
 
-final lastMemoryProvider = Provider<MemorySummary?>((_) => const MemorySummary('🐟','Pescaria com o Zé'));
+final lastMemoryProvider = Provider<MemorySummary?>(
+  (_) => const MemorySummary('🐟', 'Pescaria com o Zé'),
+);

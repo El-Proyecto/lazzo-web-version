@@ -3,23 +3,28 @@
 import '../../domain/entities/memory_summary.dart';
 
 class MemorySummaryModel {
-  final String eventId,
-  title, emoji;
+  final String eventId, title, emoji;
   final DateTime createdAt;
 
   const MemorySummaryModel({
     required this.eventId,
     required this.title,
     required this.emoji,
-    required this.createdAt
+    required this.createdAt,
   });
 
-  factory MemorySummaryModel.fromMap(Map<String, dynamic> row) => MemorySummaryModel(
-    eventId: row['event_id'] as String,
-    title: row['title'] as String,
-    emoji: row['emoji'] as String? ?? '🖼️',
-    createdAt: DateTime.parse(row['created_at'] as String),
-  );
+  factory MemorySummaryModel.fromMap(Map<String, dynamic> row) =>
+      MemorySummaryModel(
+        eventId: row['event_id'] as String,
+        title: row['title'] as String,
+        emoji: row['emoji'] as String? ?? '🖼️',
+        createdAt: DateTime.parse(row['created_at'] as String),
+      );
 
-  MemorySummary toEntity() => MemorySummary(eventId: eventId, title: title, emoji: emoji, createdAt: createdAt);
+  MemorySummary toEntity() => MemorySummary(
+    eventId: eventId,
+    title: title,
+    emoji: emoji,
+    createdAt: createdAt,
+  );
 }

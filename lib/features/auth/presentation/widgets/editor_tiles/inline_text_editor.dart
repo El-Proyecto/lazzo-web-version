@@ -67,11 +67,13 @@ class _InlineTextEditorState extends State<InlineTextEditor> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(widget.title,
-                    style: const TextStyle(
-                      color: Color(0xFFF2F2F2),
-                      fontWeight: FontWeight.w600,
-                    )),
+                Text(
+                  widget.title,
+                  style: const TextStyle(
+                    color: Color(0xFFF2F2F2),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
                 const SizedBox(height: 8),
                 TextField(
                   controller: _controller,
@@ -83,8 +85,10 @@ class _InlineTextEditorState extends State<InlineTextEditor> {
                     hintStyle: const TextStyle(color: Color(0xFFA5A5A5)),
                     filled: true,
                     fillColor: const Color(0xFF2B2B2B),
-                    contentPadding:
-                        const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 14,
+                    ),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(16),
                       borderSide: BorderSide.none,
@@ -115,7 +119,8 @@ class _InlineTextEditorState extends State<InlineTextEditor> {
                   icon: Icons.check,
                   onTap: () {
                     var text = _controller.text;
-                    if (widget.normalizer != null) text = widget.normalizer!(text);
+                    if (widget.normalizer != null)
+                      text = widget.normalizer!(text);
                     if (text.trim().isEmpty) {
                       _toast('This field is required.');
                       return;

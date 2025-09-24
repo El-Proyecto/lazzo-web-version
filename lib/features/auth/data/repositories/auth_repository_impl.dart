@@ -13,7 +13,7 @@ class AuthRepositoryImpl implements AuthRepository {
   User _toDomain(UserModel m) {
     return User(
       id: m.id,
-      email: m.email,                     // a tua tabela não tem username
+      email: m.email, // a tua tabela não tem username
       dateOfBirth: m.birthDate,
       name: m.name,
     );
@@ -25,9 +25,7 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
-  Future<void> register({
-    required String email
-    }) async {
+  Future<void> register({required String email}) async {
     try {
       await remoteDatasource.register(email);
     } catch (e) {
@@ -60,7 +58,6 @@ class AuthRepositoryImpl implements AuthRepository {
       );
       return _toDomain(userModel);
     } catch (e) {
-      
       rethrow;
     }
   }
@@ -69,5 +66,4 @@ class AuthRepositoryImpl implements AuthRepository {
   Future<void> ensureUsersRow(String id, String email, {String? name}) {
     return remoteDatasource.ensureUsersRow(id: id, email: email, name: name);
   }
-
 }

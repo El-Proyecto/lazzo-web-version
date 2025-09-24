@@ -6,6 +6,7 @@ import '../widgets/authenticated_user/features_auth_list.dart';
 import '../../../auth/presentation/widgets/authenticated_user/authenticated_header.dart';
 import '../widgets/authenticated_user/authenticated_footer.dart';
 import '../../../../routes/app_router.dart';
+
 class OnboardingSuccessPage extends StatelessWidget {
   const OnboardingSuccessPage({super.key});
 
@@ -18,7 +19,11 @@ class OnboardingSuccessPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF181818),
-      appBar: AppBar(backgroundColor: Colors.transparent, elevation: 0, leading: const SizedBox.shrink()),
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: const SizedBox.shrink(),
+      ),
       body: SafeArea(
         child: CustomScrollView(
           slivers: [
@@ -33,9 +38,15 @@ class OnboardingSuccessPage extends StatelessWidget {
                 alignment: Alignment.bottomCenter,
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                  child: GetStartedCta(onPressed: () {
-                    Navigator.pushNamedAndRemoveUntil(context, AppRouter.mainLayout, (_) => false);
-                  }),
+                  child: GetStartedCta(
+                    onPressed: () {
+                      Navigator.pushNamedAndRemoveUntil(
+                        context,
+                        AppRouter.mainLayout,
+                        (_) => false,
+                      );
+                    },
+                  ),
                 ),
               ),
             ),
@@ -43,6 +54,5 @@ class OnboardingSuccessPage extends StatelessWidget {
         ),
       ),
     );
-
   }
 }

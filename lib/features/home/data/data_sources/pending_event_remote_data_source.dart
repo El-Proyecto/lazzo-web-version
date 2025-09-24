@@ -12,7 +12,6 @@ class PendingEventRemoteDataSource {
 
   /// Buscar todos os eventos pendentes de um utilizador
   Future<List<PendingEventModel>> fetchPending(String userId) async {
-    print('fetchPending userId: $userId');
     final rows = await client
         .from(_view)
         .select('''
@@ -30,7 +29,6 @@ class PendingEventRemoteDataSource {
         .eq('user_id', userId)
         .order('start_time', ascending: true);
 
-    print('fetchPending rows: $rows');
     final data = rows as List<dynamic>;
     return data.map((e) => PendingEventModel.fromMap(e)).toList();
   }
@@ -42,11 +40,7 @@ class PendingEventRemoteDataSource {
   Future<bool> vote(String eventId, String userId, bool isYes) async {
     try {
       await client.from(_participantsTable).upsert(
-        {
-          'event_id': eventId,
-          'user_id': userId,
-          'rsvp': isYes ? 'yes' : 'no',
-        },
+        {'event_id': eventId, 'user_id': userId, 'rsvp': isYes ? 'yes' : 'no'},
         // garante que atualiza a linha deste (event_id,user_id) se já existir
         onConflict: 'event_id,user_id',
       );

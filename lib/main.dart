@@ -19,7 +19,7 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // Inicialização do Supabase
-  print('[MAIN] Iniciando Supabase com URL: ${Env.supabaseUrl}');
+
   try {
     await Supabase.initialize(
       url: Env.supabaseUrl,
@@ -28,11 +28,8 @@ void main() async {
         authFlowType: AuthFlowType.pkce, // garante fluxo mobile correto
       ),
     );
-
-    print('[MAIN] Supabase inicializado com sucesso');
-    print('[MAIN] Cliente Supabase: ${Supabase.instance.client.auth.currentSession}');
   } catch (e) {
-    print('[MAIN] Erro ao inicializar Supabase: $e');
+    rethrow;
   }
   runApp(
     ProviderScope(

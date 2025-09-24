@@ -9,9 +9,9 @@ class ProfileAvatar extends StatefulWidget {
   const ProfileAvatar({
     super.key,
     this.photoUrl,
-    this.storagePath,                   // ← caminho no Storage (ex.: "<uid>/avatar_123.webp")
-    this.bucketName = 'avatars',        // ← o teu bucket privado
-    this.signedUrlTtlSeconds = 3600,    // 1h por defeito
+    this.storagePath, // ← caminho no Storage (ex.: "<uid>/avatar_123.webp")
+    this.bucketName = 'avatars', // ← o teu bucket privado
+    this.signedUrlTtlSeconds = 3600, // 1h por defeito
     this.nameForInitials,
     this.onTap,
     this.size = 116,
@@ -40,7 +40,7 @@ class ProfileAvatar extends StatefulWidget {
 }
 
 class _ProfileAvatarState extends State<ProfileAvatar> {
-  String? _resolvedUrl;    // Signed URL gerado a partir do storagePath
+  String? _resolvedUrl; // Signed URL gerado a partir do storagePath
   bool _isLoading = false;
 
   @override
@@ -88,8 +88,9 @@ class _ProfileAvatarState extends State<ProfileAvatar> {
 
       // Se for String (v2.x), usa diretamente; se numa versão antiga vier como objeto com 'signedUrl',
       // tenta aceder a essa propriedade de forma dinâmica.
-      final String? url =
-          signed is String ? signed : (signed as dynamic).signedUrl as String?;
+      final String? url = signed is String
+          ? signed
+          : (signed as dynamic).signedUrl as String?;
 
       setState(() => _resolvedUrl = url);
     } catch (e) {
@@ -99,7 +100,6 @@ class _ProfileAvatarState extends State<ProfileAvatar> {
       if (mounted) setState(() => _isLoading = false);
     }
   }
-
 
   String _initials(String? name) {
     if (name == null || name.trim().isEmpty) return '';
@@ -125,7 +125,11 @@ class _ProfileAvatarState extends State<ProfileAvatar> {
           ),
         );
       }
-      return Icon(widget.placeholderIcon, color: widget.placeholderColor, size: 32);
+      return Icon(
+        widget.placeholderIcon,
+        color: widget.placeholderColor,
+        size: 32,
+      );
     }
 
     Widget content;
@@ -133,13 +137,16 @@ class _ProfileAvatarState extends State<ProfileAvatar> {
       content = const SizedBox(
         width: 28,
         height: 28,
-        child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFA5A5A5)),
+        child: CircularProgressIndicator(
+          strokeWidth: 2,
+          color: Color(0xFFA5A5A5),
+        ),
       );
     } else if ((_resolvedUrl ?? '').isNotEmpty) {
       content = Image.network(
         _resolvedUrl!,
         fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) => Center(child: placeholder()),
+        errorBuilder: (_, ___, __) => Center(child: placeholder()),
       );
     } else {
       content = Center(child: placeholder());
@@ -150,7 +157,8 @@ class _ProfileAvatarState extends State<ProfileAvatar> {
       button: true,
       child: GestureDetector(
         onTap: widget.onTap,
-        onLongPress: _loadSignedUrl, // long-press para refazer o signed URL (se expirar)
+        onLongPress:
+            _loadSignedUrl, // long-press para refazer o signed URL (se expirar)
         child: Container(
           width: widget.size,
           height: widget.size,

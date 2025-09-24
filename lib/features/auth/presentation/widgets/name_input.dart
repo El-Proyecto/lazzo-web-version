@@ -4,10 +4,7 @@ import '../../../../shared/components/inputs/inputBox.dart';
 class NameInput extends StatelessWidget {
   final TextEditingController controller;
 
-  const NameInput({
-    super.key,
-    required this.controller,
-  });
+  const NameInput({super.key, required this.controller});
 
   @override
   Widget build(BuildContext context) {

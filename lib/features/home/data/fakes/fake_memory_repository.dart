@@ -9,7 +9,7 @@ class FakeMemoryRepository implements MemoryRepository {
       eventId: 'mem_1',
       title: 'Pescaria',
       emoji: '🐟',
-      createdAt: DateTime.now().subtract(const Duration(days:1)),
+      createdAt: DateTime.now().subtract(const Duration(days: 1)),
     );
   }
 }

@@ -5,8 +5,8 @@ import '../../../../../styles/app_styles.dart';
 class WelcomeAccountCreated extends StatelessWidget {
   const WelcomeAccountCreated({
     super.key,
-    this.icon = FontAwesomeIcons.circleCheck, 
-    this.iconColor = AppColors.green,         
+    this.icon = FontAwesomeIcons.circleCheck,
+    this.iconColor = AppColors.green,
     this.iconSize = 192,
     this.title = 'Welcome to Gathering!',
     this.subtitle = 'Your Account Has Been Created!',
@@ -37,7 +37,7 @@ class WelcomeAccountCreated extends StatelessWidget {
             child: Center(
               child: Icon(
                 icon,
-                size: iconSize,         // 192 cabe bem na largura; ajusta se precisares
+                size: iconSize, // 192 cabe bem na largura; ajusta se precisares
                 color: iconColor,
               ),
             ),
@@ -51,7 +51,11 @@ class WelcomeAccountCreated extends StatelessWidget {
 }
 
 class _Texts extends StatelessWidget {
-  const _Texts({required this.title, required this.subtitle, required this.body});
+  const _Texts({
+    required this.title,
+    required this.subtitle,
+    required this.body,
+  });
   final String title, subtitle, body;
 
   @override

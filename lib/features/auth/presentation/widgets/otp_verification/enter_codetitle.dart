@@ -2,10 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../../../styles/app_styles.dart';
 
 class EnterCodeTitle extends StatelessWidget {
-  const EnterCodeTitle({
-    super.key,
-    required this.email,
-  });
+  const EnterCodeTitle({super.key, required this.email});
 
   final String email;
 
@@ -37,10 +34,7 @@ class EnterCodeTitle extends StatelessWidget {
                     text: 'We sent a verification code to ',
                     style: AppTextStyles.subtitleMuted,
                   ),
-                  TextSpan(
-                    text: email,
-                    style: AppTextStyles.subtitleStrong,
-                  ),
+                  TextSpan(text: email, style: AppTextStyles.subtitleStrong),
                 ],
               ),
             ),

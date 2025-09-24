@@ -3,7 +3,8 @@ import '../../domain/repositories/pending_event_repository.dart';
 import '../data_sources/pending_event_remote_data_source.dart';
 
 class PendingEventRepositoryImpl implements PendingEventRepository {
-  final PendingEventRemoteDataSource remote; // injeta o datasource (ex.: Supabase)
+  final PendingEventRemoteDataSource
+  remote; // injeta o datasource (ex.: Supabase)
   PendingEventRepositoryImpl(this.remote);
 
   @override

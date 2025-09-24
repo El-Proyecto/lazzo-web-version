@@ -57,7 +57,7 @@ class FeatureCard extends StatelessWidget {
     this.iconColor = const Color(0xFFF2F2F2),
     this.iconPadding = const EdgeInsets.all(8),
     this.fixedWidth,
-  })  : imageUrl = null;
+  }) : imageUrl = null;
 
   // --- Imagem por URL ---
   const FeatureCard.image({
@@ -67,8 +67,8 @@ class FeatureCard extends StatelessWidget {
     required this.imageUrl,
     this.iconPadding = const EdgeInsets.all(8),
     this.fixedWidth,
-  })  : iconData = null,
-        iconColor = null;
+  }) : iconData = null,
+       iconColor = null;
 
   final String title;
   final String subtitle;
@@ -95,9 +95,7 @@ class FeatureCard extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: ShapeDecoration(
         color: const Color(0xFF1E1E1E), // Background-2
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         shadows: const [
           BoxShadow(
             color: Color(0x3F282828),

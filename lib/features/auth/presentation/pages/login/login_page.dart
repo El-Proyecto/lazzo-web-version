@@ -45,7 +45,6 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     final email = _emailController.text.trim();
 
     try {
-      print('[LOGIN_PAGE] Iniciando login para email: $email');
       final authNotifier = ref.read(authProvider.notifier);
 
       // Envia o código OTP

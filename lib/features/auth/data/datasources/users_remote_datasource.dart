@@ -18,7 +18,7 @@ class UsersRemoteDatasource {
     final nowIso = DateTime.now().toUtc().toIso8601String();
     final data = <String, dynamic>{
       'id': id,
-      'phone': phone,                 // <- NOT NULL garantido aqui
+      'phone': phone, // <- NOT NULL garantido aqui
       'updated_at': nowIso,
       ...extra,
     };
@@ -37,17 +37,16 @@ class UsersRemoteDatasource {
     if (existing == null) {
       final authPhone = _sb.auth.currentUser?.phone;
       if (authPhone == null || authPhone.isEmpty) {
-        throw Exception('Cannot create user row: phone is required by DB and auth has no phone (not verified?).');
+        throw Exception(
+          'Cannot create user row: phone is required by DB and auth has no phone (not verified?).',
+        );
       }
       await _insertMinimal(id: uid, phone: authPhone, extra: patch);
       return;
     }
 
     // Row existe → UPDATE incremental
-    final data = <String, dynamic>{
-      ...patch,
-      'updated_at': nowIso,
-    };
+    final data = <String, dynamic>{...patch, 'updated_at': nowIso};
     await _sb.from('users').update(data).eq('id', uid);
   }
 

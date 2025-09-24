@@ -10,27 +10,15 @@ class OrDivider extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Expanded(
-          child: Container(
-            height: 1,
-            color: BrandColors.border,
-          ),
-        ),
+        Expanded(child: Container(height: 1, color: BrandColors.border)),
         Padding(
           padding: EdgeInsets.symmetric(horizontal: Gaps.md),
           child: Text(
             'OR',
-            style: AppText.bodyMedium.copyWith(
-              color: BrandColors.text2,
-            ),
+            style: AppText.bodyMedium.copyWith(color: BrandColors.text2),
           ),
         ),
-        Expanded(
-          child: Container(
-            height: 1,
-            color: BrandColors.border,
-          ),
-        ),
+        Expanded(child: Container(height: 1, color: BrandColors.border)),
       ],
     );
   }

@@ -3,15 +3,12 @@ import 'package:flutter/material.dart';
 class OtpSubtitle extends StatelessWidget {
   final String email;
 
-  const OtpSubtitle({
-    super.key,
-    required this.email,
-  });
+  const OtpSubtitle({super.key, required this.email});
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
+
     return SizedBox(
       width: 370,
       child: Text.rich(
@@ -31,7 +28,6 @@ class OtpSubtitle extends StatelessWidget {
             TextSpan(
               text: email,
               style: TextStyle(
-
                 color: theme.colorScheme.onSurface,
                 fontSize: 16,
                 fontFamily: 'Roboto',
@@ -40,7 +36,7 @@ class OtpSubtitle extends StatelessWidget {
                 letterSpacing: 0.50,
               ),
             ),
-       ],
+          ],
         ),
       ),
     );

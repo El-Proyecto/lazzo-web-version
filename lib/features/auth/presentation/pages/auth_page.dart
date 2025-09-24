@@ -38,28 +38,34 @@ class _AuthPageState extends ConsumerState<AuthPage> {
     _emailController.addListener(_validateForm);
 
     // OUVE eventos de auth e navega APENAS se estivermos num fluxo OAuth
-    _authSub = Supabase.instance.client.auth.onAuthStateChange.listen((d) async {
-    if ((d.event == AuthChangeEvent.signedIn || d.event == AuthChangeEvent.userUpdated) &&
-        d.session != null && mounted) {
-      final u = d.session!.user;
-      final meta = (u.userMetadata ?? {});
-      final nameRaw = meta['full_name'] ?? meta['name'];
-      final name = (nameRaw is String && nameRaw.trim().isNotEmpty) ? nameRaw.trim() : null;
+    _authSub = Supabase.instance.client.auth.onAuthStateChange.listen((
+      d,
+    ) async {
+      if (!_pendingOAuth) return;
 
-      await ref.read(authProvider.notifier).ensureUsersRow(
-        u.id,
-        (u.email ?? '').trim().toLowerCase(),
-        name: name,
-      );
+      if ((d.event == AuthChangeEvent.signedIn ||
+              d.event == AuthChangeEvent.userUpdated) &&
+          d.session != null &&
+          mounted) {
+        _pendingOAuth = false; // reset
+        final u = d.session!.user;
+        final meta = (u.userMetadata ?? {});
+        final nameRaw = meta['full_name'] ?? meta['name'];
+        final name = (nameRaw is String && nameRaw.trim().isNotEmpty)
+            ? nameRaw.trim()
+            : null;
 
-      Navigator.pushNamedAndRemoveUntil(context, '/home', (_) => false);
-    }
-  });
+        await ref
+            .read(authProvider.notifier)
+            .ensureUsersRow(
+              u.id,
+              (u.email ?? '').trim().toLowerCase(),
+              name: name,
+            );
 
-  }
-
-  void _goHome() {
-    Navigator.pushNamedAndRemoveUntil(context, '/home', (_) => false);
+        Navigator.pushNamedAndRemoveUntil(context, '/home', (_) => false);
+      }
+    });
   }
 
   @override
@@ -86,7 +92,6 @@ class _AuthPageState extends ConsumerState<AuthPage> {
     final email = _emailController.text.trim();
 
     try {
-      debugPrint('[AUTH_PAGE] Iniciando autenticação por OTP para: $email');
       final authNotifier = ref.read(authProvider.notifier);
 
       await authNotifier.register(email);
@@ -168,7 +173,9 @@ class _AuthPageState extends ConsumerState<AuthPage> {
               AuthFormWidgets(
                 nameController: _nameController,
                 emailController: _emailController,
-                onCreateAccount: _canSubmit && !_isLoading ? _handleSubmit : null,
+                onCreateAccount: _canSubmit && !_isLoading
+                    ? _handleSubmit
+                    : null,
                 isLoading: _isLoading,
                 onGoogleSignIn: _handleGoogleSignIn,
                 onAppleSignIn: _handleAppleSignIn,

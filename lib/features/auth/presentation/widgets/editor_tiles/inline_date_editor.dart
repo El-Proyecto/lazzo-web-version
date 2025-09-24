@@ -61,18 +61,22 @@ class _InlineDateEditorState extends State<InlineDateEditor> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(widget.title,
-                    style: const TextStyle(
-                      color: Color(0xFFF2F2F2),
-                      fontWeight: FontWeight.w600,
-                    )),
+                Text(
+                  widget.title,
+                  style: const TextStyle(
+                    color: Color(0xFFF2F2F2),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
                 const SizedBox(height: 8),
                 InkWell(
                   onTap: () async {
-                    final initial = _picked ?? DateTime(now.year - 18, now.month, now.day);
+                    final initial =
+                        _picked ?? DateTime(now.year - 18, now.month, now.day);
                     final picked = await showDatePicker(
                       context: context,
-                      initialDate: initial.isBefore(first) || initial.isAfter(last)
+                      initialDate:
+                          initial.isBefore(first) || initial.isAfter(last)
                           ? last
                           : initial,
                       firstDate: first,
@@ -102,7 +106,10 @@ class _InlineDateEditorState extends State<InlineDateEditor> {
                       _picked != null
                           ? '${_picked!.day.toString().padLeft(2, '0')}/${_picked!.month.toString().padLeft(2, '0')}/${_picked!.year}'
                           : 'Select a date…',
-                      style: const TextStyle(color: Color(0xFFF2F2F2), fontSize: 16),
+                      style: const TextStyle(
+                        color: Color(0xFFF2F2F2),
+                        fontSize: 16,
+                      ),
                     ),
                   ),
                 ),

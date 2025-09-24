@@ -8,6 +8,8 @@ import '../dialogs/emoji_selector_dialog.dart';
 /// Combina emoji, campo de nome editável e seleção de grupo
 class EventGroupSelector extends StatelessWidget {
   final String eventName;
+  final Key? nameFieldKey;
+  final Key? groupButtonKey;
   final String eventEmoji;
   final GroupInfo? selectedGroup;
   final Function(String)? onEmojiPressed;
@@ -21,6 +23,8 @@ class EventGroupSelector extends StatelessWidget {
     required this.eventName,
     required this.eventEmoji,
     this.selectedGroup,
+    this.nameFieldKey,
+    this.groupButtonKey,
     this.onEmojiPressed,
     this.onEventNameChanged,
     this.onGroupPressed,
@@ -92,6 +96,7 @@ class EventGroupSelector extends StatelessWidget {
 
             // Seleção de grupo
             GestureDetector(
+              key: groupButtonKey,
               onTap: onGroupPressed,
               child: Container(
                 width: 48,
@@ -152,6 +157,7 @@ class EventGroupSelector extends StatelessWidget {
       builder: (context) => _EventNameEditBottomSheet(
         initialName: eventName,
         onChanged: onEventNameChanged,
+        nameFieldKey: nameFieldKey,
       ),
     );
   }
@@ -225,8 +231,13 @@ class _DefaultGroupIcon extends StatelessWidget {
 class _EventNameEditBottomSheet extends StatefulWidget {
   final String initialName;
   final ValueChanged<String>? onChanged;
+  final Key? nameFieldKey;
 
-  const _EventNameEditBottomSheet({required this.initialName, this.onChanged});
+  const _EventNameEditBottomSheet({
+    required this.initialName,
+    this.onChanged,
+    this.nameFieldKey,
+  });
 
   @override
   State<_EventNameEditBottomSheet> createState() =>
@@ -285,6 +296,7 @@ class _EventNameEditBottomSheetState extends State<_EventNameEditBottomSheet> {
             SizedBox(height: Gaps.md),
 
             TextField(
+              key: widget.nameFieldKey,
               controller: _controller,
               autofocus: true,
               style: AppText.bodyLarge.copyWith(color: BrandColors.text1),

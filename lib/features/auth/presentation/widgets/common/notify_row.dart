@@ -26,7 +26,9 @@ class NotifyRow extends StatelessWidget {
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(6),
               border: Border.all(width: 2, color: const Color(0xFFA5A5A5)),
-              color: value ? const Color(0xFFA5A5A5).withOpacity(.15) : Colors.transparent,
+              color: value
+                  ? const Color(0xFFA5A5A5).withOpacity(.15)
+                  : Colors.transparent,
             ),
             child: value
                 ? const Icon(Icons.check, size: 16, color: Color(0xFFF2F2F2))

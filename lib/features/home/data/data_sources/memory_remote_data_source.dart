@@ -9,8 +9,6 @@ class MemoryRemoteDataSource {
 
   Future<MemorySummaryModel?> fetchLastReady(String userId) async {
     try {
-      print('fetchLastReadybefore: $userId');
-      
       final r = await client
           .from('events')
           .select('event_id, title, emoji, created_at')
@@ -19,12 +17,9 @@ class MemoryRemoteDataSource {
           .order('created_at', ascending: false)
           .limit(1)
           .maybeSingle();
-      
-      print('fetchLastReady response: $r');
+
       return r == null ? null : MemorySummaryModel.fromMap(r);
-    } catch (e, st) {
-      print('Error in fetchLastReady: $e');
-      print('Stack trace: $st');
+    } catch (e) {
       rethrow;
     }
   }

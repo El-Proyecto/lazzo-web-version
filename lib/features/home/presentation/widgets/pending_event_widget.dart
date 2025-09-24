@@ -162,19 +162,16 @@ class PendingEventWidget extends ConsumerWidget {
               .toList();
 
           if (yesVoters.isEmpty) {
-            print('No yes voters, showing VotedNoButton');
             // No yes voters - show expand button to see results
             return VotedNoButton(onTap: () => notifier.toggleExpansion());
           } else {
             // There are yes voters - show their stacked avatars
-            print('yesVoters: $yesVoters');
             return StackedAvatars(
               voters: yesVoters,
               onTap: () => notifier.toggleExpansion(),
             );
           }
         }
-        print('User has not voted, showing SimpleVoteButton');
         // If user hasn't voted yet, show simple vote button
         return SimpleVoteButton(onTap: () => notifier.startVoting());
 

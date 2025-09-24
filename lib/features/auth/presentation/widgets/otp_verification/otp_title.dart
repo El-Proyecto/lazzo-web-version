@@ -11,7 +11,6 @@ class OtpTitle extends StatelessWidget {
       child: Text(
         'Check your email',
         style: TextStyle(
-
           color: Theme.of(context).colorScheme.onSurface,
           fontSize: 28,
           fontFamily: 'Roboto',

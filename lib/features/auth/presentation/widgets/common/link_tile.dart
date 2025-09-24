@@ -8,11 +8,10 @@ import 'pill_button.dart';
 class LinkTile extends StatefulWidget {
   const LinkTile({
     super.key,
-    required this.icon,         // FontAwesome icon (ex.: FontAwesomeIcons.instagram)
-    required this.label,        // "Instagram" | "TikTok" | "Spotify"
-    required this.value,        // "Tap to Add" ou URL
-    this.onTap,                 // tap no tile (para entrar em edição, p.ex.)
-
+    required this.icon, // FontAwesome icon (ex.: FontAwesomeIcons.instagram)
+    required this.label, // "Instagram" | "TikTok" | "Spotify"
+    required this.value, // "Tap to Add" ou URL
+    this.onTap, // tap no tile (para entrar em edição, p.ex.)
     // ---- Edição ----
     this.isEditing = false,
     this.onCancelEdit,
@@ -73,7 +72,8 @@ class _LinkTileState extends State<LinkTile> {
     final v = raw.trim();
     if (v.isEmpty) return 'This field is required.';
     final uri = Uri.tryParse(v);
-    if (uri == null || !(uri.hasScheme && (uri.scheme == 'https' || uri.scheme == 'http'))) {
+    if (uri == null ||
+        !(uri.hasScheme && (uri.scheme == 'https' || uri.scheme == 'http'))) {
       return 'Enter a valid URL (https://...)';
     }
     return null;
@@ -91,9 +91,15 @@ class _LinkTileState extends State<LinkTile> {
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: ShapeDecoration(
             color: const Color(0xFF2B2B2B),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
             shadows: const [
-              BoxShadow(color: Color(0x3F282828), blurRadius: 4, offset: Offset(0, 4)),
+              BoxShadow(
+                color: Color(0x3F282828),
+                blurRadius: 4,
+                offset: Offset(0, 4),
+              ),
             ],
           ),
           child: Row(
@@ -129,7 +135,11 @@ class _LinkTileState extends State<LinkTile> {
               const SizedBox(width: 6),
               Transform.rotate(
                 angle: -1.5708,
-                child: const Icon(Icons.chevron_left, size: 20, color: Color(0xFFA5A5A5)),
+                child: const Icon(
+                  Icons.chevron_left,
+                  size: 20,
+                  color: Color(0xFFA5A5A5),
+                ),
               ),
             ],
           ),
@@ -145,7 +155,11 @@ class _LinkTileState extends State<LinkTile> {
         color: const Color(0xFF2B2B2B),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         shadows: const [
-          BoxShadow(color: Color(0x3F282828), blurRadius: 4, offset: Offset(0, 4)),
+          BoxShadow(
+            color: Color(0x3F282828),
+            blurRadius: 4,
+            offset: Offset(0, 4),
+          ),
         ],
       ),
       child: Column(
@@ -206,7 +220,10 @@ class _LinkTileState extends State<LinkTile> {
               hintStyle: const TextStyle(color: Color(0xFFA5A5A5)),
               filled: true,
               fillColor: const Color(0xFF1E1E1E),
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 14,
+              ),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(16),
                 borderSide: BorderSide.none,

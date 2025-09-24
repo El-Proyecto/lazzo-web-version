@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 
-
-
 class AppColors {
   static const Color background1 = Color(0xFF121212);
   static const Color background2 = Color(0xFF1F1F1F);
@@ -72,5 +70,4 @@ class AppTextStyles {
     fontWeight: FontWeight.w500,
     height: 1.27,
   );
-
 }

@@ -66,17 +66,16 @@ class AuthFormWidgets extends StatelessWidget {
             ),
           ),
           SizedBox(height: Gaps.lg),
-          
+
           // OR Divider
           OrDivider(),
           SizedBox(height: Gaps.lg),
         ],
-        
+
         // Email Form
         if (!isLogin && nameController != null)
           NameInput(controller: nameController!),
-        if (!isLogin) 
-          SizedBox(height: Gaps.md),
+        if (!isLogin) SizedBox(height: Gaps.md),
         EmailInput(controller: emailController),
         SizedBox(height: Gaps.lg),
         GreenButton(
