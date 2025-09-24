@@ -70,6 +70,7 @@ class FakeGroupRepository implements GroupRepository {
       addPhotosCount: null,
       addPhotosTimeLeft: null,
       status: GroupStatus.active,
+      isMuted: true, // Grupo mutado para teste
       memberCount: 15,
     ),
     Group(
@@ -83,6 +84,8 @@ class FakeGroupRepository implements GroupRepository {
       addPhotosCount: null,
       addPhotosTimeLeft: null,
       status: GroupStatus.active,
+      isPinned: true, // Grupo pinned e muted para testar os dois ícones
+      isMuted: true,
       memberCount: 10,
     ),
     Group(
@@ -204,7 +207,27 @@ class FakeGroupRepository implements GroupRepository {
   @override
   Future<void> toggleMute(String groupId, bool isMuted) async {
     await Future.delayed(Duration(milliseconds: 300));
-    // Simular toggle de mute
+
+    final index = _mockGroups.indexWhere((group) => group.id == groupId);
+    if (index != -1) {
+      final group = _mockGroups[index];
+      final updatedGroup = Group(
+        id: group.id,
+        name: group.name,
+        avatarUrl: group.avatarUrl,
+        lastActivity: group.lastActivity,
+        lastActivityTime: group.lastActivityTime,
+        unreadCount: group.unreadCount,
+        openActionsCount: group.openActionsCount,
+        addPhotosCount: group.addPhotosCount,
+        addPhotosTimeLeft: group.addPhotosTimeLeft,
+        status: group.status,
+        isMuted: !group.isMuted, // Toggle mute status
+        isPinned: group.isPinned,
+        memberCount: group.memberCount,
+      );
+      _mockGroups[index] = updatedGroup;
+    }
   }
 
   @override
@@ -240,6 +263,10 @@ class FakeGroupRepository implements GroupRepository {
     final index = _mockGroups.indexWhere((group) => group.id == groupId);
     if (index != -1) {
       final group = _mockGroups[index];
+      final newStatus = group.status == GroupStatus.archived
+          ? GroupStatus.active
+          : GroupStatus.archived;
+
       final updatedGroup = Group(
         id: group.id,
         name: group.name,
@@ -250,11 +277,10 @@ class FakeGroupRepository implements GroupRepository {
         openActionsCount: group.openActionsCount,
         addPhotosCount: group.addPhotosCount,
         addPhotosTimeLeft: group.addPhotosTimeLeft,
-        status: group.status == GroupStatus.archived
-            ? GroupStatus.active
-            : GroupStatus.archived, // Toggle archive status
+        status: newStatus,
         isMuted: group.isMuted,
-        isPinned: group.isPinned,
+        // Remove pinned status when archiving
+        isPinned: newStatus == GroupStatus.archived ? false : group.isPinned,
         memberCount: group.memberCount,
       );
       _mockGroups[index] = updatedGroup;

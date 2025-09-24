@@ -224,8 +224,8 @@ class _GroupsPageState extends ConsumerState<GroupsPage> {
           Group(id: '', name: '', status: GroupStatus.active, memberCount: 0),
     );
 
-    // Ajusta o texto dos botões com base no estado atual do grupo
-    final actions = [
+    // Ajusta o menu com base no estado atual do grupo
+    final actions = <GroupMenuAction>[
       GroupMenuAction(
         title: 'Create event',
         icon: Icons.add, // Ícone de + para criar evento
@@ -236,21 +236,31 @@ class _GroupsPageState extends ConsumerState<GroupsPage> {
         icon: Icons.person_add,
         onTap: () => _handleInvite(groupId),
       ),
-      GroupMenuAction(
-        title: 'Open Actions',
-        icon: Icons.bolt, // Ícone de raio para Open Actions
-        onTap: () => _handleOpenActions(groupId),
-      ),
-      GroupMenuAction(
-        title: 'Mute',
-        icon: Icons.notifications_off,
-        onTap: () => _handleMute(groupId),
-      ),
-      GroupMenuAction(
-        title: group.isPinned ? 'Unpin' : 'Pin',
-        icon: Icons.push_pin,
-        onTap: () => _handlePin(groupId),
-      ),
+
+      // Open Actions - só aparece se o grupo tem ações abertas
+      if (group.openActionsCount != null && group.openActionsCount! > 0)
+        GroupMenuAction(
+          title: 'Open Actions',
+          icon: Icons.bolt, // Ícone de raio para Open Actions
+          onTap: () => _handleOpenActions(groupId),
+        ),
+
+      // Mute/Unmute - não aparece em grupos arquivados
+      if (group.status != GroupStatus.archived)
+        GroupMenuAction(
+          title: group.isMuted ? 'Unmute' : 'Mute',
+          icon: group.isMuted ? Icons.notifications : Icons.notifications_off,
+          onTap: () => _handleMute(groupId),
+        ),
+
+      // Pin/Unpin - não aparece em grupos arquivados
+      if (group.status != GroupStatus.archived)
+        GroupMenuAction(
+          title: group.isPinned ? 'Unpin' : 'Pin',
+          icon: Icons.push_pin,
+          onTap: () => _handlePin(groupId),
+        ),
+
       GroupMenuAction(
         title: group.status == GroupStatus.archived ? 'Unarchive' : 'Archive',
         icon: Icons.archive,
@@ -269,6 +279,9 @@ class _GroupsPageState extends ConsumerState<GroupsPage> {
 
   void _handleCreateEvent(String groupId) {
     print('Create event for group: $groupId');
+    Navigator.of(
+      context,
+    ).pushNamed('/create-event', arguments: {'groupId': groupId});
   }
 
   void _handleInvite(String groupId) {
@@ -280,7 +293,11 @@ class _GroupsPageState extends ConsumerState<GroupsPage> {
   }
 
   void _handleMute(String groupId) {
-    print('Mute group: $groupId');
+    print('Toggle mute for group: $groupId');
+    final controller = ref.read(groupsControllerProvider);
+    final groups = ref.read(groupsProvider).value ?? [];
+    final group = groups.firstWhere((g) => g.id == groupId);
+    controller.toggleMute(groupId, group.isMuted);
   }
 
   void _handleLeaveGroup(String groupId) {

@@ -81,27 +81,101 @@ class _GroupCardState extends State<GroupCard> {
               : null,
         ),
 
-        // Ícone de pin no canto superior direito do avatar
-        if (widget.group.isPinned)
+        // Ícones no canto superior do avatar
+        if (widget.group.status == GroupStatus.archived)
+          // Archived groups only show archive icon (archived groups can't be pinned or muted in UI)
           Positioned(
             top: 0,
             right: 0,
             child: Container(
               padding: EdgeInsets.all(4),
               decoration: BoxDecoration(
-                color: BrandColors.bg1,
+                color: BrandColors.bg2,
                 borderRadius: BorderRadius.only(
                   topRight: Radius.circular(Radii.smAlt),
                   bottomLeft: Radius.circular(Radii.smAlt),
                 ),
               ),
-              child: Icon(
-                Icons.push_pin,
-                size: 12,
-                color: BrandColors.planning,
+              child: Icon(Icons.archive, size: 12, color: BrandColors.text2),
+            ),
+          )
+        else ...[
+          // Multiple icons for active groups
+          if (widget.group.isPinned && widget.group.isMuted)
+            // Both icons in same container
+            Positioned(
+              top: 0,
+              right: 0,
+              child: Container(
+                padding: EdgeInsets.all(4),
+                decoration: BoxDecoration(
+                  color: BrandColors.bg2,
+                  borderRadius: BorderRadius.only(
+                    topRight: Radius.circular(Radii.smAlt),
+                    bottomLeft: Radius.circular(Radii.smAlt),
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.push_pin,
+                      size: 12,
+                      color: BrandColors.text2,
+                    ),
+                    SizedBox(width: 4),
+                    Icon(
+                      Icons.notifications_off,
+                      size: 12,
+                      color: BrandColors.text2,
+                    ),
+                  ],
+                ),
+              ),
+            )
+          else if (widget.group.isPinned)
+            // Only pinned icon
+            Positioned(
+              top: 0,
+              right: 0,
+              child: Container(
+                padding: EdgeInsets.all(4),
+                decoration: BoxDecoration(
+                  color: BrandColors.bg2,
+                  borderRadius: BorderRadius.only(
+                    topRight: Radius.circular(Radii.smAlt),
+                    bottomLeft: Radius.circular(Radii.smAlt),
+                  ),
+                ),
+                child: Icon(
+                  Icons.push_pin,
+                  size: 12,
+                  color: BrandColors.text2,
+                ),
+              ),
+            )
+          else if (widget.group.isMuted)
+            // Only muted icon
+            Positioned(
+              top: 0,
+              right: 0,
+              child: Container(
+                padding: EdgeInsets.all(4),
+                decoration: BoxDecoration(
+                  color: BrandColors.bg2,
+                  borderRadius: BorderRadius.only(
+                    topRight: Radius.circular(Radii.smAlt),
+                    bottomLeft: Radius.circular(Radii.smAlt),
+                  ),
+                ),
+                child: Icon(
+                  Icons.notifications_off,
+                  size: 12,
+                  color: BrandColors.text2,
+                ),
               ),
             ),
-          ),
+        ],
       ],
     );
   }

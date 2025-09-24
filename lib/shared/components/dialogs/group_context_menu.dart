@@ -23,8 +23,9 @@ class GroupMenuAction {
 /// Menu contextual para ações do grupo (long-press)
 class GroupContextMenu extends StatelessWidget {
   final List<GroupMenuAction> actions;
+  final VoidCallback? onClose;
 
-  const GroupContextMenu({super.key, required this.actions});
+  const GroupContextMenu({super.key, required this.actions, this.onClose});
 
   /// Exibe o menu contextual relativo ao card
   static Future<void> show({
@@ -91,7 +92,10 @@ class GroupContextMenu extends StatelessWidget {
           Positioned(
             left: menuLeft,
             top: menuTop,
-            child: GroupContextMenu(actions: actions),
+            child: GroupContextMenu(
+              actions: actions,
+              onClose: () => entry.remove(),
+            ),
           ),
         ],
       ),
@@ -132,7 +136,9 @@ class GroupContextMenu extends StatelessWidget {
   Widget _buildMenuItem(BuildContext context, GroupMenuAction action) {
     return InkWell(
       onTap: () {
-        Navigator.of(context).pop();
+        // Fechar o menu
+        onClose?.call();
+        // Executar a ação
         action.onTap();
       },
       borderRadius: BorderRadius.circular(Radii.md),
