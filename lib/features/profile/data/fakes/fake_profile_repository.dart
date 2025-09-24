@@ -8,6 +8,7 @@ class FakeProfileRepository implements ProfileRepository {
   static final _currentUser = ProfileEntity(
     id: 'user_1',
     name: 'Mara Soares',
+    email: 'mara.soares@example.com',
     profileImageUrl: 'https://picsum.photos/152/152?random=1',
     location: 'Buraca, Lisbon',
     birthday: DateTime(1995, 7, 15),

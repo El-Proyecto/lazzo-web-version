@@ -11,6 +11,8 @@ ThemeData buildDarkTheme() => ThemeData(
   appBarTheme: const AppBarTheme(
     backgroundColor: Colors.transparent,
     foregroundColor: Colors.white,
+    surfaceTintColor: Colors.transparent,
+    shadowColor: Colors.transparent,
   ),
   inputDecorationTheme: const InputDecorationTheme(
     isDense: true,

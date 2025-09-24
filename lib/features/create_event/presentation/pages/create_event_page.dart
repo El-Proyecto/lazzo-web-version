@@ -51,7 +51,28 @@ class _CreateEventPageState extends State<CreateEventPage> {
   @override
   void initState() {
     super.initState();
-    _loadDraftIfExists();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _handleNavigationArguments();
+      _loadDraftIfExists();
+    });
+  }
+
+  /// Verifica se existe um grupo pré-selecionado nos argumentos de navegação
+  void _handleNavigationArguments() {
+    final arguments =
+        ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+    if (arguments != null && arguments['groupId'] != null) {
+      final groupId = arguments['groupId'] as String;
+      final groups = _getMockGroups();
+      final selectedGroup = groups
+          .where((group) => group.id == groupId)
+          .firstOrNull;
+      if (selectedGroup != null && mounted) {
+        setState(() {
+          _selectedGroup = selectedGroup;
+        });
+      }
+    }
   }
 
   /// Carrega rascunho se existir
@@ -644,12 +665,14 @@ class _CreateEventPageState extends State<CreateEventPage> {
 
   List<GroupInfo> _getMockGroups() {
     return [
-      const GroupInfo(id: 'group1', name: 'Os Bros', memberCount: 8),
-      const GroupInfo(id: 'group2', name: 'Família', memberCount: 5),
-      const GroupInfo(id: 'group3', name: 'Work Squad', memberCount: 12),
-      const GroupInfo(id: 'group4', name: 'Uni Friends', memberCount: 15),
-      const GroupInfo(id: 'group5', name: 'Football Team', memberCount: 22),
-      const GroupInfo(id: 'group6', name: 'Hiking Group', memberCount: 7),
+      const GroupInfo(id: '1', name: 'Obama Care', memberCount: 8),
+      const GroupInfo(id: '2', name: 'Beach Volleyball', memberCount: 12),
+      const GroupInfo(id: '3', name: 'Study Group', memberCount: 6),
+      const GroupInfo(id: '4', name: 'Family', memberCount: 5),
+      const GroupInfo(id: '5', name: 'Work Team', memberCount: 15),
+      const GroupInfo(id: '6', name: 'Weekend Warriors', memberCount: 10),
+      const GroupInfo(id: '7', name: 'Hiking Squad', memberCount: 7),
+      const GroupInfo(id: '8', name: 'Cooking Class', memberCount: 9),
     ];
   }
 }

@@ -72,16 +72,7 @@ class ProfilePage extends ConsumerWidget {
   }
 
   void _onEditProfile(BuildContext context) {
-    // TODO: Navigate to edit profile page
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          'Edit profile - Coming soon!',
-          style: TextStyle(color: Colors.black),
-        ),
-        backgroundColor: Colors.white,
-      ),
-    );
+    Navigator.of(context).pushNamed('/edit-profile');
   }
 
   void _onMemoryTap(BuildContext context, MemoryEntity memory) {
