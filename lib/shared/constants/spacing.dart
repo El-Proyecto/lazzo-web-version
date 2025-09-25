@@ -14,3 +14,11 @@ class Radii {
 class Pads {
   static const ctlH = 16.0, ctlV = 12.0, sectionH = 16.0, sectionV = 12.0;
 }
+
+class IconSizes {
+  static const sm = 16.0, md = 24.0, lg = 32.0;
+}
+
+class TouchTargets {
+  static const min = 44.0, input = 48.0;
+}

@@ -100,8 +100,8 @@ class PendingEventExpandedCard extends StatelessWidget {
               GestureDetector(
                 onTap: onCollapse,
                 child: Container(
-                  width: 32,
-                  height: 32,
+                  width: IconSizes.lg,
+                  height: IconSizes.lg,
                   decoration: ShapeDecoration(
                     color: BrandColors.bg3,
                     shape: RoundedRectangleBorder(

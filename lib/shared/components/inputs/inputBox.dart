@@ -30,7 +30,7 @@ class InputBox extends StatelessWidget {
         SizedBox(height: Gaps.xs),
         Container(
           width: double.infinity,
-          height: 48,
+          height: TouchTargets.input,
           decoration: ShapeDecoration(
             color: BrandColors.bg2,
             shape: RoundedRectangleBorder(

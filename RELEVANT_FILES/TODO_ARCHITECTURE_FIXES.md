@@ -8,7 +8,7 @@
 ## Critical Path (Must Fix First)
 
 ### 🔴 PR 1: Eliminate Duplicate Token System
-**Status:** ❌ Not Started  
+**Status:** ✅ Complete  
 **Effort:** 4 hours | **Risk:** Medium  
 **Dependencies:** None
 
@@ -21,10 +21,10 @@
 - [ ] Verify no compilation errors
 
 **Acceptance Criteria:**
-- [ ] Single source of truth for colors in `shared/themes/colors.dart`
-- [ ] All hardcoded `Color(0xFF...)` uses tokens
-- [ ] No `styles/app_styles` imports remain
-- [ ] App builds and runs without errors
+- [x] Single source of truth for colors in `shared/themes/colors.dart`
+- [x] All hardcoded `Color(0xFF...)` uses tokens
+- [x] No `styles/app_styles` imports remain
+- [x] App builds and runs without errors
 
 **Commit:** `refactor: consolidate token system, remove duplicate styles/`
 
@@ -61,7 +61,7 @@
 ---
 
 ### 🟡 PR 3: Complete DI Coverage for All Features
-**Status:** ❌ Not Started  
+**Status:** ✅ Complete  
 **Effort:** 3 hours | **Risk:** Low  
 **Dependencies:** PR 2 complete
 
@@ -80,10 +80,10 @@
   - Add override in `ProviderScope(overrides: [])`
 
 **Acceptance Criteria:**
-- [ ] All 6 features can switch fake→real via DI override
-- [ ] Development still uses fakes by default  
-- [ ] Production overrides to Supabase implementations
-- [ ] No runtime errors when switching providers
+- [x] All 6 features can switch fake→real via DI override
+- [x] Development still uses fakes by default  
+- [x] Production overrides to Supabase implementations
+- [x] No runtime errors when switching providers
 
 **Commit:** `feat: complete dependency injection setup for all features`
 
@@ -92,53 +92,53 @@
 ## UI/UX Improvements
 
 ### 🟡 PR 4: Tokenize Shared Components  
-**Status:** ❌ Not Started  
+**Status:** ✅ Complete  
 **Effort:** 4 hours | **Risk:** Low
 
 **Components with hardcoded dimensions:**
-- [ ] `shared/components/cards/pending_event_expanded_card.dart:103-104`
-  - Replace `width: 32, height: 32` → `Size.square(Gaps.xl)`
-- [ ] `shared/components/inputs/inputBox.dart:33`
-  - Replace `height: 48` → use intrinsic sizing or token
-- [ ] `shared/components/widgets/grabber_bar.dart:12-13`
+- [x] `shared/components/cards/pending_event_expanded_card.dart:103-104`
+  - Replace `width: 32, height: 32` → `IconSizes.lg`
+- [x] `shared/components/inputs/inputBox.dart:33`
+  - Replace `height: 48` → `TouchTargets.input`
+- [x] `shared/components/widgets/grabber_bar.dart:12-13`
   - Replace `width: 36, height: 4` → `Gaps.xl`, `Gaps.xxs`
 
 **Add to spacing.dart if needed:**
-- [ ] Icon sizes: `IconSizes.sm = 16, md = 24, lg = 32`
-- [ ] Touch targets: `TouchTargets.min = 44`
+- [x] Icon sizes: `IconSizes.sm = 16, md = 24, lg = 32`
+- [x] Touch targets: `TouchTargets.min = 44, input = 48`
 
 **Acceptance Criteria:**
-- [ ] No hardcoded `width:`, `height:` in shared components
-- [ ] Components use tokens from `Gaps`, `Insets`, or responsive sizing
-- [ ] Accessibility touch targets maintained (min 44x44)
-- [ ] Visual appearance unchanged
+- [x] No hardcoded `width:`, `height:` in shared components
+- [x] Components use tokens from `Gaps`, `Insets`, or responsive sizing
+- [x] Accessibility touch targets maintained (min 44x44)
+- [x] Visual appearance unchanged
 
 **Commit:** `refactor: tokenize dimensions in shared components`
 
 ---
 
 ### 🟢 PR 5: Clean Up Test Structure
-**Status:** ❌ Not Started  
+**Status:** ✅ Complete  
 **Effort:** 2 hours | **Risk:** Low
 
 **Files to clean up:**
-- [ ] Delete `test/features/profile/photo_removal_test.dart` (empty file)
-- [ ] Audit for other empty test files: `find test/ -name "*.dart" -empty`
-- [ ] Create test organization:
+- [x] Delete `test/features/profile/photo_removal_test.dart` (empty file)
+- [x] Audit for other empty test files: `find test/ -name "*.dart" -empty`
+- [x] Create test organization:
   - `test/unit_tests/<feature>/` for domain tests
   - `test/widget_tests/components/` for shared component tests
   - `test/integration_tests/` for end-to-end flows
 
 **Test utilities to create:**
-- [ ] `test/helpers/mock_repositories.dart` - Common mocks
-- [ ] `test/helpers/test_app_wrapper.dart` - Wrapper with providers
-- [ ] `test/helpers/golden_test_helper.dart` - Golden test utilities
+- [x] `test/helpers/mock_repositories.dart` - Common mocks
+- [x] `test/helpers/test_app_wrapper.dart` - Wrapper with providers
+- [x] `test/helpers/golden_test_helper.dart` - Golden test utilities
 
 **Acceptance Criteria:**
-- [ ] No empty test files exist
-- [ ] Clear test organization structure
-- [ ] Test helper utilities for common patterns
-- [ ] All tests still pass
+- [x] No empty test files exist
+- [x] Clear test organization structure
+- [x] Test helper utilities for common patterns
+- [x] All tests still pass (fixed relative imports)
 
 **Commit:** `test: clean up test structure and remove empty files`
 

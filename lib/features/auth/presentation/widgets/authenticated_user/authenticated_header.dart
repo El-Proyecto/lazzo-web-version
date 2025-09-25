@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-import '../../../../../styles/app_styles.dart';
+import '../../../../../shared/themes/colors.dart';
+import '../../../../../shared/constants/text_styles.dart';
 
 class WelcomeAccountCreated extends StatelessWidget {
   const WelcomeAccountCreated({
     super.key,
     this.icon = FontAwesomeIcons.circleCheck,
-    this.iconColor = AppColors.green,
+    this.iconColor = BrandColors.planning,
     this.iconSize = 192,
     this.title = 'Welcome to Gathering!',
     this.subtitle = 'Your Account Has Been Created!',
@@ -65,40 +66,21 @@ class _Texts extends StatelessWidget {
         Text(
           title,
           textAlign: TextAlign.center,
-          style: const TextStyle(
-            color: Color(0xFFF2F2F2),
-            fontSize: 28,
-            fontFamily: 'Roboto',
-            fontWeight: FontWeight.w500,
-            height: 1.29,
-          ),
+          style: AppText.headlineMedium.copyWith(color: BrandColors.text1),
         ),
         const SizedBox(height: 8),
         Text(
           subtitle,
           textAlign: TextAlign.center,
-          style: const TextStyle(
-            color: Color(0xFFA5A5A5),
-            fontSize: 22,
-            fontFamily: 'Roboto',
-            fontWeight: FontWeight.w500,
-            height: 1.27,
-          ),
+          style: AppText.subtitleMuted.copyWith(color: BrandColors.text2),
         ),
         const SizedBox(height: 8),
-        const SizedBox(
+        SizedBox(
           width: 362,
           child: Text(
             "You're all set to start creating amazing memories with your friends and family.",
             textAlign: TextAlign.center,
-            style: TextStyle(
-              color: Color(0xFFA5A5A5),
-              fontSize: 16,
-              fontFamily: 'Roboto',
-              fontWeight: FontWeight.w500,
-              height: 1.50,
-              letterSpacing: 0.15,
-            ),
+            style: AppText.titleMediumEmph.copyWith(color: BrandColors.text2),
           ),
         ),
       ],

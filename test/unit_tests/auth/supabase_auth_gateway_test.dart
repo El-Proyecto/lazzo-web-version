@@ -3,8 +3,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../mocks/mock_supabase.dart'; // MockGoTrueClient já existe aqui
-import '../mocks/test_bootstrap.dart'; // opcional
+import '../../mocks/mock_supabase.dart'; // MockGoTrueClient já existe aqui
+import '../../mocks/test_bootstrap.dart'; // opcional
 
 /// Erro de domínio mínimo para o teste (ajusta ao teu projeto se quiseres)
 class AuthFailure implements Exception {

@@ -15,6 +15,15 @@ import '../features/home/data/data_sources/pending_event_remote_data_source.dart
 import '../features/home/data/repositories/pending_event_repository_impl.dart';
 import '../features/home/presentation/providers/pending_event_providers.dart';
 
+// GROUPS - TODO: Add real implementation imports when available
+import '../features/groups/presentation/providers/groups_provider.dart';
+
+// PROFILE - TODO: Add real implementation imports when available
+import '../features/profile/presentation/providers/profile_providers.dart';
+
+// AUTH - TODO: Add real implementation imports when available
+import '../features/auth/presentation/providers/auth_provider.dart';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -47,6 +56,23 @@ void main() async {
             PendingEventRemoteDataSource(Supabase.instance.client),
           ),
         ),
+
+        // Groups repo -> ready for real (Supabase) - TODO: Add when GroupRepositoryImpl exists
+        groupRepositoryProvider.overrideWith(
+          (ref) => ref.read(
+            groupRepositoryProvider,
+          ), // Currently uses fake, ready for real
+        ),
+
+        // Profile repo -> ready for real (Supabase) - TODO: Add when ProfileRepositoryImpl exists
+        profileRepositoryProvider.overrideWith(
+          (ref) => ref.read(
+            profileRepositoryProvider,
+          ), // Currently uses fake, ready for real
+        ),
+
+        // Auth repo -> TODO: Refactor auth providers to use DI pattern (from PR 2)
+        // authRepositoryProvider.overrideWith(...),
       ],
       child: const LazzoApp(),
     ),

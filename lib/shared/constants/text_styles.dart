@@ -59,4 +59,26 @@ class AppText {
     height: 20 / 14,
     letterSpacing: 0.25,
   );
+
+  // Migration from app_styles.dart
+  static TextStyle get enterCodeTitle => const TextStyle(
+    fontFamily: _f,
+    fontWeight: FontWeight.w500,
+    fontSize: 32,
+    height: 1.25,
+  );
+
+  static TextStyle get subtitleMuted => const TextStyle(
+    fontFamily: _f,
+    fontWeight: FontWeight.w500,
+    fontSize: 22,
+    height: 1.27,
+  );
+
+  static TextStyle get subtitleStrong => const TextStyle(
+    fontFamily: _f,
+    fontWeight: FontWeight.w500,
+    fontSize: 22,
+    height: 1.27,
+  );
 }

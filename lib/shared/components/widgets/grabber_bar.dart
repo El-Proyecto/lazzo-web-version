@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../constants/spacing.dart';
 import '../../themes/colors.dart';
 
 /// Grabber bar para bottom sheets
@@ -9,9 +10,9 @@ class GrabberBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 36,
-      height: 4,
-      margin: EdgeInsets.only(bottom: 4),
+      width: Gaps.xl,
+      height: Gaps.xxs,
+      margin: EdgeInsets.only(bottom: Gaps.xxs),
       decoration: BoxDecoration(
         color: BrandColors.border,
         borderRadius: BorderRadius.circular(2),
