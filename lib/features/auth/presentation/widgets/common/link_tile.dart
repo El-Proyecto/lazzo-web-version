@@ -208,7 +208,7 @@ class _LinkTileState extends State<LinkTile> {
           ),
 
           // “respiro” entre header e input
-          SizedBox(height: Gaps.xl),
+          const SizedBox(height: Gaps.xl),
 
           TextField(
             controller: _c,

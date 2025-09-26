@@ -253,9 +253,9 @@ class CreateProfileForm extends StatelessWidget {
           const SizedBox(height: 24),
 
           // Links
-          Column(
+          const Column(
             crossAxisAlignment: CrossAxisAlignment.start,
-            children: const [
+            children: [
               SizedBox(
                 width: 70.57,
                 child: Text(

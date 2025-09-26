@@ -12,7 +12,7 @@ class OrDivider extends StatelessWidget {
       children: [
         Expanded(child: Container(height: 1, color: BrandColors.border)),
         Padding(
-          padding: EdgeInsets.symmetric(horizontal: Gaps.md),
+          padding: const EdgeInsets.symmetric(horizontal: Gaps.md),
           child: Text(
             'OR',
             style: AppText.bodyMedium.copyWith(color: BrandColors.text2),

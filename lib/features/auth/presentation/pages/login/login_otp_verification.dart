@@ -103,7 +103,7 @@ class _LoginOtpVerificationPageState
                         ),
                         child: Text(
                           _bannerMessage!,
-                          style: TextStyle(
+                          style: const TextStyle(
                             color: BrandColors.cantVote,
                             fontSize: 14,
                             fontWeight: FontWeight.w500,

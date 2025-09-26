@@ -34,7 +34,7 @@ class _GroupCardState extends State<GroupCard> {
       onLongPress: () => widget.onLongPress?.call(_cardKey),
       child: Container(
         width: double.infinity,
-        padding: EdgeInsets.symmetric(
+        padding: const EdgeInsets.symmetric(
           horizontal: Insets.screenH,
           vertical: Gaps.sm,
         ),
@@ -42,12 +42,12 @@ class _GroupCardState extends State<GroupCard> {
           children: [
             // Avatar do grupo
             _buildAvatar(),
-            SizedBox(width: Gaps.sm),
+            const SizedBox(width: Gaps.sm),
 
             // Conteúdo central (nome e sub-linha)
             Expanded(child: _buildContent()),
 
-            SizedBox(width: Gaps.sm),
+            const SizedBox(width: Gaps.sm),
 
             // Badges à direita
             _buildBadges(),
@@ -77,7 +77,7 @@ class _GroupCardState extends State<GroupCard> {
                 : null,
           ),
           child: widget.group.avatarUrl == null
-              ? Icon(Icons.group, color: BrandColors.text2, size: 28)
+              ? const Icon(Icons.group, color: BrandColors.text2, size: 28)
               : null,
         ),
 
@@ -88,15 +88,15 @@ class _GroupCardState extends State<GroupCard> {
             top: 0,
             right: 0,
             child: Container(
-              padding: EdgeInsets.all(4),
-              decoration: BoxDecoration(
+              padding: const EdgeInsets.all(4),
+              decoration: const BoxDecoration(
                 color: BrandColors.bg2,
                 borderRadius: BorderRadius.only(
                   topRight: Radius.circular(Radii.smAlt),
                   bottomLeft: Radius.circular(Radii.smAlt),
                 ),
               ),
-              child: Icon(Icons.archive, size: 12, color: BrandColors.text2),
+              child: const Icon(Icons.archive, size: 12, color: BrandColors.text2),
             ),
           )
         else ...[
@@ -107,15 +107,15 @@ class _GroupCardState extends State<GroupCard> {
               top: 0,
               right: 0,
               child: Container(
-                padding: EdgeInsets.all(4),
-                decoration: BoxDecoration(
+                padding: const EdgeInsets.all(4),
+                decoration: const BoxDecoration(
                   color: BrandColors.bg2,
                   borderRadius: BorderRadius.only(
                     topRight: Radius.circular(Radii.smAlt),
                     bottomLeft: Radius.circular(Radii.smAlt),
                   ),
                 ),
-                child: Row(
+                child: const Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(
@@ -139,15 +139,15 @@ class _GroupCardState extends State<GroupCard> {
               top: 0,
               right: 0,
               child: Container(
-                padding: EdgeInsets.all(4),
-                decoration: BoxDecoration(
+                padding: const EdgeInsets.all(4),
+                decoration: const BoxDecoration(
                   color: BrandColors.bg2,
                   borderRadius: BorderRadius.only(
                     topRight: Radius.circular(Radii.smAlt),
                     bottomLeft: Radius.circular(Radii.smAlt),
                   ),
                 ),
-                child: Icon(
+                child: const Icon(
                   Icons.push_pin,
                   size: 12,
                   color: BrandColors.text2,
@@ -160,15 +160,15 @@ class _GroupCardState extends State<GroupCard> {
               top: 0,
               right: 0,
               child: Container(
-                padding: EdgeInsets.all(4),
-                decoration: BoxDecoration(
+                padding: const EdgeInsets.all(4),
+                decoration: const BoxDecoration(
                   color: BrandColors.bg2,
                   borderRadius: BorderRadius.only(
                     topRight: Radius.circular(Radii.smAlt),
                     bottomLeft: Radius.circular(Radii.smAlt),
                   ),
                 ),
-                child: Icon(
+                child: const Icon(
                   Icons.notifications_off,
                   size: 12,
                   color: BrandColors.text2,
@@ -193,7 +193,7 @@ class _GroupCardState extends State<GroupCard> {
           overflow: TextOverflow.ellipsis,
         ),
 
-        SizedBox(height: Gaps.xxs),
+        const SizedBox(height: Gaps.xxs),
 
         // Sub-linha contextual
         Text(
@@ -251,7 +251,7 @@ class _GroupCardState extends State<GroupCard> {
     }
 
     if (badgeData.isEmpty) {
-      return SizedBox(width: 40);
+      return const SizedBox(width: 40);
     }
 
     // Ordenar por prioridade (menor número = maior prioridade)
@@ -269,7 +269,7 @@ class _GroupCardState extends State<GroupCard> {
       children: [
         for (int i = 0; i < topBadges.length; i++) ...[
           topBadges[i],
-          if (i < topBadges.length - 1) SizedBox(width: Gaps.xs),
+          if (i < topBadges.length - 1) const SizedBox(width: Gaps.xs),
         ],
       ],
     );

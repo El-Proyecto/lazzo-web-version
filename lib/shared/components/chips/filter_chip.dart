@@ -20,7 +20,7 @@ class CustomFilterChip extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: EdgeInsets.symmetric(
+        padding: const EdgeInsets.symmetric(
           horizontal: Pads.ctlH,
           vertical: 6.0, // Reduzido para menor espaçamento vertical
         ),

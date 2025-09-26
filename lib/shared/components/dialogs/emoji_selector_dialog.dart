@@ -351,7 +351,7 @@ class _EmojiSelectorBottomSheetState extends State<EmojiSelectorBottomSheet>
     return Container(
       width: double.infinity,
       height: bottomSheetHeight,
-      decoration: BoxDecoration(
+      decoration: const BoxDecoration(
         color: BrandColors.bg2,
         borderRadius: BorderRadius.only(
           topLeft: Radius.circular(Radii.md),
@@ -362,14 +362,14 @@ class _EmojiSelectorBottomSheetState extends State<EmojiSelectorBottomSheet>
         mainAxisSize: MainAxisSize.min,
         children: [
           // Grabber bar
-          Padding(
+          const Padding(
             padding: EdgeInsets.only(top: Gaps.sm),
             child: Center(child: GrabberBar()),
           ),
 
           // Header
           Padding(
-            padding: EdgeInsets.symmetric(horizontal: Gaps.lg),
+            padding: const EdgeInsets.symmetric(horizontal: Gaps.lg),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -381,23 +381,23 @@ class _EmojiSelectorBottomSheetState extends State<EmojiSelectorBottomSheet>
                 ),
                 IconButton(
                   onPressed: () => Navigator.of(context).pop(),
-                  icon: Icon(Icons.close, color: BrandColors.text2),
+                  icon: const Icon(Icons.close, color: BrandColors.text2),
                 ),
               ],
             ),
           ),
 
-          SizedBox(height: 12),
+          const SizedBox(height: 12),
 
           // Tab bar para categorias
           TabBarTheme(
             data: TabBarTheme.of(context).copyWith(
-              labelPadding: EdgeInsets.symmetric(horizontal: Gaps.xs),
+              labelPadding: const EdgeInsets.symmetric(horizontal: Gaps.xs),
               tabAlignment: TabAlignment.fill,
             ),
             child: Container(
               height: 40, // Altura fixa menor
-              margin: EdgeInsets.symmetric(horizontal: Gaps.lg),
+              margin: const EdgeInsets.symmetric(horizontal: Gaps.lg),
               child: TabBar(
                 controller: _tabController,
                 isScrollable: false,
@@ -412,7 +412,7 @@ class _EmojiSelectorBottomSheetState extends State<EmojiSelectorBottomSheet>
                 onTap: (index) {
                   _pageController.animateToPage(
                     index,
-                    duration: Duration(milliseconds: 300),
+                    duration: const Duration(milliseconds: 300),
                     curve: Curves.easeInOut,
                   );
                 },
@@ -431,7 +431,7 @@ class _EmojiSelectorBottomSheetState extends State<EmojiSelectorBottomSheet>
             ),
           ),
 
-          SizedBox(height: 16),
+          const SizedBox(height: 16),
 
           // Grid de emojis
           SizedBox(
@@ -445,10 +445,10 @@ class _EmojiSelectorBottomSheetState extends State<EmojiSelectorBottomSheet>
               itemBuilder: (context, categoryIndex) {
                 final category = _categories[categoryIndex];
                 return Padding(
-                  padding: EdgeInsets.symmetric(horizontal: Gaps.lg),
+                  padding: const EdgeInsets.symmetric(horizontal: Gaps.lg),
                   child: GridView.builder(
-                    physics: NeverScrollableScrollPhysics(),
-                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    physics: const NeverScrollableScrollPhysics(),
+                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                       crossAxisCount: 8,
                       childAspectRatio: 1,
                       crossAxisSpacing: 8,
@@ -480,7 +480,7 @@ class _EmojiSelectorBottomSheetState extends State<EmojiSelectorBottomSheet>
                                 : null,
                           ),
                           child: Center(
-                            child: Text(emoji, style: TextStyle(fontSize: 24)),
+                            child: Text(emoji, style: const TextStyle(fontSize: 24)),
                           ),
                         ),
                       );

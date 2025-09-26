@@ -27,14 +27,14 @@ class InputBox extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(label, style: AppText.labelLarge),
-        SizedBox(height: Gaps.xs),
+        const SizedBox(height: Gaps.xs),
         Container(
           width: double.infinity,
           height: TouchTargets.input,
-          decoration: ShapeDecoration(
+          decoration: const ShapeDecoration(
             color: BrandColors.bg2,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(Radii.md),
+              borderRadius: BorderRadius.all(Radius.circular(Radii.md)),
             ),
           ),
           child: TextField(
@@ -46,7 +46,7 @@ class InputBox extends StatelessWidget {
             decoration: InputDecoration(
               hintText: hintText,
               hintStyle: AppText.bodyMedium.copyWith(color: BrandColors.text2),
-              contentPadding: EdgeInsets.all(Insets.screenH),
+              contentPadding: const EdgeInsets.all(Insets.screenH),
               border: InputBorder.none,
             ),
           ),

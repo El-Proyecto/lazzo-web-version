@@ -10,6 +10,7 @@
 /// // - TestAppWrapper, pumpTestWidget, etc.
 /// // - pumpGoldenWidget, testWidgetStatesGolden, etc.
 /// ```
+library;
 
 // Mock repositories
 export 'mock_repositories.dart';

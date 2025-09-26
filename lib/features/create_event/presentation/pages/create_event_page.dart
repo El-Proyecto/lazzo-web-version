@@ -277,7 +277,7 @@ class _CreateEventPageState extends State<CreateEventPage> {
         _selectedTime!.minute,
       );
 
-      final endDateTime = startDateTime.add(Duration(hours: 6));
+      final endDateTime = startDateTime.add(const Duration(hours: 6));
 
       setState(() {
         _endDate = endDateTime;
@@ -359,10 +359,10 @@ class _CreateEventPageState extends State<CreateEventPage> {
           },
         ),
         body: SingleChildScrollView(
-          padding: EdgeInsets.symmetric(horizontal: Insets.screenH),
+          padding: const EdgeInsets.symmetric(horizontal: Insets.screenH),
           child: Column(
             children: [
-              SizedBox(height: Gaps.lg),
+              const SizedBox(height: Gaps.lg),
 
               // Seleção de grupo e nome do evento
               EventGroupSelector(
@@ -393,7 +393,7 @@ class _CreateEventPageState extends State<CreateEventPage> {
                 },
               ),
 
-              SizedBox(height: Gaps.md),
+              const SizedBox(height: Gaps.md),
 
               // Seção de data e hora
               DateTimeSection(
@@ -438,7 +438,7 @@ class _CreateEventPageState extends State<CreateEventPage> {
                 validationError: _getDateTimeValidationError(),
               ),
 
-              SizedBox(height: Gaps.md),
+              const SizedBox(height: Gaps.md),
 
               // Seção de localização
               LocationSection(
@@ -462,11 +462,11 @@ class _CreateEventPageState extends State<CreateEventPage> {
                 validationError: _getLocationValidationError(),
               ),
 
-              SizedBox(height: 24),
+              const SizedBox(height: 24),
 
               // Continue button
               Padding(
-                padding: EdgeInsets.symmetric(horizontal: 0),
+                padding: const EdgeInsets.symmetric(horizontal: 0),
                 child: SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
@@ -476,7 +476,7 @@ class _CreateEventPageState extends State<CreateEventPage> {
                       backgroundColor: _isFormValid
                           ? BrandColors.planning
                           : BrandColors.bg3,
-                      padding: EdgeInsets.symmetric(vertical: 12),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(16),
                       ),
@@ -494,7 +494,7 @@ class _CreateEventPageState extends State<CreateEventPage> {
               ),
 
               // Espaço extra para scroll
-              SizedBox(height: 100),
+              const SizedBox(height: 100),
             ],
           ),
         ),

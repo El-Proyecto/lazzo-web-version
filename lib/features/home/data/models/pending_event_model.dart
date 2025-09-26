@@ -63,7 +63,7 @@ class PendingEventModel {
       );
     }
     // Qualquer outro formato inesperado
-    return VoterInfo(
+    return const VoterInfo(
       name: 'Unknown',
       avatarUrl: 'https://i.pravatar.cc/150?img=3',
       response: 'pending',

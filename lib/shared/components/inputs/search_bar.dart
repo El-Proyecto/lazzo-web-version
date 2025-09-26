@@ -26,7 +26,7 @@ class SearchBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.symmetric(horizontal: Pads.ctlH, vertical: Pads.ctlV),
+      padding: const EdgeInsets.symmetric(horizontal: Pads.ctlH, vertical: Pads.ctlV),
       decoration: ShapeDecoration(
         color: BrandColors.bg2,
         shape: RoundedRectangleBorder(
@@ -36,8 +36,8 @@ class SearchBar extends StatelessWidget {
       child: Row(
         children: [
           // Ícone de pesquisa
-          prefixIcon ?? Icon(Icons.search, color: BrandColors.text2, size: 24),
-          SizedBox(width: Gaps.md),
+          prefixIcon ?? const Icon(Icons.search, color: BrandColors.text2, size: 24),
+          const SizedBox(width: Gaps.md),
 
           // Campo de texto ou placeholder
           Expanded(

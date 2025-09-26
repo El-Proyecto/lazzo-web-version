@@ -30,7 +30,7 @@ class VerifyFooter extends StatelessWidget {
               child: InkWell(
                 onTap: isEnabled ? onSend : null,
                 borderRadius: BorderRadius.circular(16),
-                child: Center(
+                child: const Center(
                   child: SizedBox(
                     width: 267,
                     child: Text(

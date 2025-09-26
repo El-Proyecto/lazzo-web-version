@@ -37,7 +37,7 @@ class PhotoChangeBottomSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      decoration: ShapeDecoration(
+      decoration: const ShapeDecoration(
         color: BrandColors.bg2,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.only(
@@ -48,7 +48,7 @@ class PhotoChangeBottomSheet extends StatelessWidget {
       ),
       child: SafeArea(
         child: Padding(
-          padding: EdgeInsets.all(Pads.sectionH),
+          padding: const EdgeInsets.all(Pads.sectionH),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -64,7 +64,7 @@ class PhotoChangeBottomSheet extends StatelessWidget {
                 ),
               ),
 
-              SizedBox(height: Gaps.lg),
+              const SizedBox(height: Gaps.lg),
 
               // Title
               Text(
@@ -74,7 +74,7 @@ class PhotoChangeBottomSheet extends StatelessWidget {
                 ),
               ),
 
-              SizedBox(height: Gaps.lg),
+              const SizedBox(height: Gaps.lg),
 
               // Options
               _buildOption(
@@ -83,7 +83,7 @@ class PhotoChangeBottomSheet extends StatelessWidget {
                 onTap: () => _handleAction(context, PhotoSourceAction.gallery),
               ),
 
-              SizedBox(height: Gaps.sm),
+              const SizedBox(height: Gaps.sm),
 
               _buildOption(
                 icon: Icons.camera_alt_outlined,
@@ -92,7 +92,7 @@ class PhotoChangeBottomSheet extends StatelessWidget {
               ),
 
               if (hasCurrentPhoto) ...[
-                SizedBox(height: Gaps.sm),
+                const SizedBox(height: Gaps.sm),
                 _buildOption(
                   icon: Icons.delete_outline,
                   title: 'Remove Photo',
@@ -101,7 +101,7 @@ class PhotoChangeBottomSheet extends StatelessWidget {
                 ),
               ],
 
-              SizedBox(height: Gaps.md),
+              const SizedBox(height: Gaps.md),
             ],
           ),
         ),
@@ -119,7 +119,7 @@ class PhotoChangeBottomSheet extends StatelessWidget {
       onTap: onTap,
       child: Container(
         width: double.infinity,
-        padding: EdgeInsets.all(Pads.ctlH),
+        padding: const EdgeInsets.all(Pads.ctlH),
         decoration: ShapeDecoration(
           color: BrandColors.bg3,
           shape: RoundedRectangleBorder(
@@ -134,7 +134,7 @@ class PhotoChangeBottomSheet extends StatelessWidget {
               color: isDestructive ? BrandColors.cantVote : BrandColors.text2,
             ),
 
-            SizedBox(width: Gaps.md),
+            const SizedBox(width: Gaps.md),
 
             Text(
               title,

@@ -35,10 +35,12 @@ class EventValidator {
     final errors = <String>[];
 
     final title = d.title.trim();
-    if (title.length < titleMin)
+    if (title.length < titleMin) {
       errors.add('Título demasiado curto (min $titleMin).');
-    if (title.length > titleMax)
+    }
+    if (title.length > titleMax) {
       errors.add('Título demasiado longo (max $titleMax).');
+    }
 
     if (!d.startsAt.isBefore(d.endsAt)) {
       errors.add('Data de início deve ser antes da data de fim.');

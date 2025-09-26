@@ -33,10 +33,15 @@ class _HomePageState extends ConsumerState<HomePage> {
             // Success banner if needed
             Consumer(
               builder: (context, ref, child) {
-                final bannerState = ref.watch(bannerProvider);
-                if (!bannerState.isVisible) {
+                // Use select to only rebuild when visibility changes
+                final isVisible = ref.watch(
+                  bannerProvider.select((state) => state.isVisible),
+                );
+                if (!isVisible) {
                   return const SizedBox.shrink();
                 }
+
+                final bannerState = ref.watch(bannerProvider);
 
                 return Column(
                   children: [

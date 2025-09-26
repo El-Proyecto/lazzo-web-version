@@ -53,7 +53,7 @@ class _InlineTimePickerState extends State<InlineTimePicker> {
   Widget build(BuildContext context) {
     return Container(
       height: 120,
-      padding: EdgeInsets.symmetric(horizontal: Pads.ctlH, vertical: Pads.ctlV),
+      padding: const EdgeInsets.symmetric(horizontal: Pads.ctlH, vertical: Pads.ctlV),
       decoration: BoxDecoration(
         color: BrandColors.bg3,
         borderRadius: BorderRadius.circular(Radii.smAlt),
@@ -85,7 +85,7 @@ class _InlineTimePickerState extends State<InlineTimePicker> {
 
           // Separator
           Padding(
-            padding: EdgeInsets.symmetric(horizontal: Gaps.xs),
+            padding: const EdgeInsets.symmetric(horizontal: Gaps.xs),
             child: Text(
               ':',
               style: AppText.titleMediumEmph.copyWith(

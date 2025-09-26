@@ -18,12 +18,12 @@ class ProfileAppBar extends StatelessWidget implements PreferredSizeWidget {
       elevation: 0,
       automaticallyImplyLeading: false,
       title: Padding(
-        padding: EdgeInsets.symmetric(horizontal: Insets.screenH),
+        padding: const EdgeInsets.symmetric(horizontal: Insets.screenH),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             // Invisible placeholder for centering
-            SizedBox(width: 28, height: 28),
+            const SizedBox(width: 28, height: 28),
 
             // Title
             Expanded(
@@ -47,7 +47,7 @@ class ProfileAppBar extends StatelessWidget implements PreferredSizeWidget {
                 width: 25,
                 height: 25,
                 alignment: Alignment.center,
-                child: Icon(
+                child: const Icon(
                   Icons.edit_outlined,
                   color: BrandColors.text1,
                   size: 20,

@@ -22,11 +22,11 @@ class GroupBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: 6.0, vertical: Gaps.xxs),
+      padding: const EdgeInsets.symmetric(horizontal: 6.0, vertical: Gaps.xxs),
       decoration: ShapeDecoration(
         color: _getBadgeColor(),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(Radii.pill),
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.all(Radius.circular(Radii.pill)),
         ),
       ),
       child: Row(
@@ -34,7 +34,7 @@ class GroupBadge extends StatelessWidget {
         children: [
           Icon(icon, color: BrandColors.text1, size: 14),
           if (text != null || (count != null && count! > 0)) ...[
-            SizedBox(width: Gaps.xxs),
+            const SizedBox(width: Gaps.xxs),
             Text(
               text ?? count.toString(),
               style: AppText.bodyMediumEmph.copyWith(

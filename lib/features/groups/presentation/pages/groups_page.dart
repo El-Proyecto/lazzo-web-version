@@ -33,7 +33,7 @@ class _GroupsPageState extends ConsumerState<GroupsPage> {
         children: [
           // Search bar
           Padding(
-            padding: EdgeInsets.symmetric(
+            padding: const EdgeInsets.symmetric(
               horizontal: Insets.screenH,
               vertical: Gaps.md,
             ),
@@ -82,7 +82,7 @@ class _GroupsPageState extends ConsumerState<GroupsPage> {
                     // Primeiro item é a linha de filtros
                     if (index == 0) {
                       return Padding(
-                        padding: EdgeInsets.only(
+                        padding: const EdgeInsets.only(
                           left: Insets.screenH,
                           right: Insets.screenH,
                           bottom: Gaps.xs,
@@ -96,7 +96,7 @@ class _GroupsPageState extends ConsumerState<GroupsPage> {
                                 () => _selectedFilter = GroupFilter.all,
                               ),
                             ),
-                            SizedBox(width: Gaps.sm),
+                            const SizedBox(width: Gaps.sm),
                             CustomFilterChip(
                               label: 'Actions',
                               isSelected:
@@ -105,7 +105,7 @@ class _GroupsPageState extends ConsumerState<GroupsPage> {
                                 () => _selectedFilter = GroupFilter.actions,
                               ),
                             ),
-                            SizedBox(width: Gaps.sm),
+                            const SizedBox(width: Gaps.sm),
                             CustomFilterChip(
                               label: 'Archived',
                               isSelected:
@@ -146,8 +146,8 @@ class _GroupsPageState extends ConsumerState<GroupsPage> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.group_outlined, size: 64, color: BrandColors.text2),
-          SizedBox(height: Gaps.md),
+          const Icon(Icons.group_outlined, size: 64, color: BrandColors.text2),
+          const SizedBox(height: Gaps.md),
           Text(
             _searchQuery.isEmpty ? 'No groups yet' : 'No groups found',
             style: Theme.of(
@@ -155,7 +155,7 @@ class _GroupsPageState extends ConsumerState<GroupsPage> {
             ).textTheme.titleMedium?.copyWith(color: BrandColors.text2),
           ),
           if (_searchQuery.isEmpty) ...[
-            SizedBox(height: Gaps.sm),
+            const SizedBox(height: Gaps.sm),
             Text(
               'Create your first group to get started',
               style: Theme.of(
@@ -169,7 +169,7 @@ class _GroupsPageState extends ConsumerState<GroupsPage> {
   }
 
   Widget _buildLoadingState() {
-    return Center(
+    return const Center(
       child: CircularProgressIndicator(color: BrandColors.planning),
     );
   }
@@ -179,15 +179,15 @@ class _GroupsPageState extends ConsumerState<GroupsPage> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.error_outline, size: 64, color: BrandColors.cantVote),
-          SizedBox(height: Gaps.md),
+          const Icon(Icons.error_outline, size: 64, color: BrandColors.cantVote),
+          const SizedBox(height: Gaps.md),
           Text(
             'Error loading groups',
             style: Theme.of(
               context,
             ).textTheme.titleMedium?.copyWith(color: BrandColors.cantVote),
           ),
-          SizedBox(height: Gaps.sm),
+          const SizedBox(height: Gaps.sm),
           Text(
             error.toString(),
             style: Theme.of(
@@ -221,7 +221,7 @@ class _GroupsPageState extends ConsumerState<GroupsPage> {
     final group = groups.firstWhere(
       (g) => g.id == groupId,
       orElse: () =>
-          Group(id: '', name: '', status: GroupStatus.active, memberCount: 0),
+          const Group(id: '', name: '', status: GroupStatus.active, memberCount: 0),
     );
 
     // Ajusta o menu com base no estado atual do grupo

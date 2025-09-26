@@ -61,7 +61,7 @@ class _GroupSelectionBottomSheetState extends State<GroupSelectionBottomSheet> {
       constraints: BoxConstraints(
         maxHeight: keyboardHeight > 0 ? maxHeight : 500,
       ),
-      decoration: BoxDecoration(
+      decoration: const BoxDecoration(
         color: BrandColors.bg2,
         borderRadius: BorderRadius.only(
           topLeft: Radius.circular(Radii.md),
@@ -72,14 +72,14 @@ class _GroupSelectionBottomSheetState extends State<GroupSelectionBottomSheet> {
         mainAxisSize: MainAxisSize.min,
         children: [
           // Grabber bar
-          Padding(
+          const Padding(
             padding: EdgeInsets.only(top: Gaps.sm),
             child: Center(child: GrabberBar()),
           ),
 
           // Header
           Padding(
-            padding: EdgeInsets.symmetric(horizontal: Gaps.lg),
+            padding: const EdgeInsets.symmetric(horizontal: Gaps.lg),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -91,13 +91,13 @@ class _GroupSelectionBottomSheetState extends State<GroupSelectionBottomSheet> {
                 ),
                 IconButton(
                   onPressed: () => Navigator.of(context).pop(),
-                  icon: Icon(Icons.close, color: BrandColors.text2),
+                  icon: const Icon(Icons.close, color: BrandColors.text2),
                 ),
               ],
             ),
           ),
 
-          SizedBox(height: 12),
+          const SizedBox(height: 12),
 
           // Content with padding
           Flexible(
@@ -124,7 +124,7 @@ class _GroupSelectionBottomSheetState extends State<GroupSelectionBottomSheet> {
                             hintStyle: AppText.bodyLarge.copyWith(
                               color: BrandColors.text2,
                             ),
-                            prefixIcon: Icon(
+                            prefixIcon: const Icon(
                               Icons.search,
                               color: BrandColors.text2,
                             ),
@@ -134,7 +134,7 @@ class _GroupSelectionBottomSheetState extends State<GroupSelectionBottomSheet> {
                               borderRadius: BorderRadius.circular(Radii.smAlt),
                               borderSide: BorderSide.none,
                             ),
-                            contentPadding: EdgeInsets.symmetric(
+                            contentPadding: const EdgeInsets.symmetric(
                               horizontal: Pads.ctlH,
                               vertical: Pads.ctlV,
                             ),
@@ -142,7 +142,7 @@ class _GroupSelectionBottomSheetState extends State<GroupSelectionBottomSheet> {
                         ),
                       ),
 
-                      SizedBox(width: Gaps.sm),
+                      const SizedBox(width: Gaps.sm),
 
                       // Botão criar grupo
                       GestureDetector(
@@ -157,7 +157,7 @@ class _GroupSelectionBottomSheetState extends State<GroupSelectionBottomSheet> {
                             color: BrandColors.planning,
                             borderRadius: BorderRadius.circular(Radii.smAlt),
                           ),
-                          child: Icon(
+                          child: const Icon(
                             Icons.group_add,
                             color: BrandColors.text1,
                             size: 24,
@@ -167,7 +167,7 @@ class _GroupSelectionBottomSheetState extends State<GroupSelectionBottomSheet> {
                     ],
                   ),
 
-                  SizedBox(height: Gaps.md),
+                  const SizedBox(height: Gaps.md),
 
                   // Lista de grupos
                   Flexible(
@@ -241,7 +241,7 @@ class _GroupTile extends StatelessWidget {
                 : _DefaultGroupAvatar(name: group.name),
           ),
 
-          SizedBox(height: Gaps.xs),
+          const SizedBox(height: Gaps.xs),
 
           // Nome do grupo
           Text(
@@ -305,13 +305,13 @@ class _EmptyState extends StatelessWidget {
             color: BrandColors.text2,
             size: 48,
           ),
-          SizedBox(height: Gaps.sm),
+          const SizedBox(height: Gaps.sm),
           Text(
             hasSearchTerm ? 'No groups found' : 'No groups available',
             style: AppText.bodyMedium.copyWith(color: BrandColors.text2),
           ),
           if (!hasSearchTerm) ...[
-            SizedBox(height: Gaps.sm),
+            const SizedBox(height: Gaps.sm),
             Text(
               'Create your first group!',
               style: AppText.bodyMedium.copyWith(color: BrandColors.text2),

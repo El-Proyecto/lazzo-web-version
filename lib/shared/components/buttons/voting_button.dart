@@ -24,14 +24,14 @@ class VotingButton extends StatelessWidget {
                 alpha: 0.2,
               ), // Red with opacity
               shape: RoundedRectangleBorder(
-                side: BorderSide(
+                side: const BorderSide(
                   width: 1,
                   color: BrandColors.cantVote, // Red border
                 ),
                 borderRadius: BorderRadius.circular(Radii.sm),
               ),
             ),
-            child: SizedBox(
+            child: const SizedBox(
               width: 20,
               height: 20,
               child: Icon(Icons.close, size: 14, color: BrandColors.cantVote),

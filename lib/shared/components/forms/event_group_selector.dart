@@ -55,14 +55,14 @@ class EventGroupSelector extends StatelessWidget {
               ),
             ),
 
-            SizedBox(width: Gaps.xs),
+            const SizedBox(width: Gaps.xs),
 
             // Campo de nome
             Expanded(
               child: GestureDetector(
                 onTap: () => _showEventNameEditor(context),
                 child: Container(
-                  padding: EdgeInsets.symmetric(
+                  padding: const EdgeInsets.symmetric(
                     horizontal: Pads.ctlH,
                     vertical: Pads.ctlV,
                   ),
@@ -85,14 +85,14 @@ class EventGroupSelector extends StatelessWidget {
                           ),
                         ),
                       ),
-                      Icon(Icons.edit, color: BrandColors.text2, size: 16),
+                      const Icon(Icons.edit, color: BrandColors.text2, size: 16),
                     ],
                   ),
                 ),
               ),
             ),
 
-            SizedBox(width: Gaps.xs),
+            const SizedBox(width: Gaps.xs),
 
             // Seleção de grupo
             GestureDetector(
@@ -111,7 +111,7 @@ class EventGroupSelector extends StatelessWidget {
                 child: Center(
                   child: selectedGroup != null
                       ? _GroupIcon(group: selectedGroup!)
-                      : Icon(
+                      : const Icon(
                           Icons.group_add,
                           color: BrandColors.text2,
                           size: 20,
@@ -124,10 +124,10 @@ class EventGroupSelector extends StatelessWidget {
 
         // Error messages
         if (nameError != null || groupError != null) ...[
-          SizedBox(height: Gaps.xxs),
+          const SizedBox(height: Gaps.xxs),
           if (nameError != null)
             Padding(
-              padding: EdgeInsets.only(left: 48 + Gaps.xs),
+              padding: const EdgeInsets.only(left: 48 + Gaps.xs),
               child: Text(
                 nameError!,
                 style: AppText.bodyMedium.copyWith(
@@ -271,7 +271,7 @@ class _EventNameEditBottomSheetState extends State<_EventNameEditBottomSheet> {
       constraints: BoxConstraints(
         maxHeight: keyboardHeight > 0 ? maxHeight : screenHeight * 0.4,
       ),
-      decoration: BoxDecoration(
+      decoration: const BoxDecoration(
         color: BrandColors.bg2,
         borderRadius: BorderRadius.only(
           topLeft: Radius.circular(16),
@@ -293,7 +293,7 @@ class _EventNameEditBottomSheetState extends State<_EventNameEditBottomSheet> {
               style: AppText.titleMediumEmph.copyWith(color: BrandColors.text1),
             ),
 
-            SizedBox(height: Gaps.md),
+            const SizedBox(height: Gaps.md),
 
             TextField(
               key: widget.nameFieldKey,
@@ -316,7 +316,7 @@ class _EventNameEditBottomSheetState extends State<_EventNameEditBottomSheet> {
               ),
             ),
 
-            SizedBox(height: Gaps.lg),
+            const SizedBox(height: Gaps.lg),
 
             Row(
               children: [
@@ -325,7 +325,7 @@ class _EventNameEditBottomSheetState extends State<_EventNameEditBottomSheet> {
                     onPressed: () => Navigator.of(context).pop(),
                     style: TextButton.styleFrom(
                       backgroundColor: BrandColors.bg3,
-                      padding: EdgeInsets.symmetric(vertical: Pads.ctlV),
+                      padding: const EdgeInsets.symmetric(vertical: Pads.ctlV),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(Radii.md),
                       ),
@@ -338,7 +338,7 @@ class _EventNameEditBottomSheetState extends State<_EventNameEditBottomSheet> {
                     ),
                   ),
                 ),
-                SizedBox(width: Gaps.sm),
+                const SizedBox(width: Gaps.sm),
                 Expanded(
                   child: ElevatedButton(
                     onPressed: () {

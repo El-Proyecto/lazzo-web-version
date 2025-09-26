@@ -110,17 +110,17 @@ class _IosBirthdayPickerCardState extends State<IosBirthdayPickerCard> {
       // Update controllers
       _dayController.animateToItem(
         _selectedDay - 1,
-        duration: Duration(milliseconds: 200),
+        duration: const Duration(milliseconds: 200),
         curve: Curves.easeInOut,
       );
       _monthController.animateToItem(
         _selectedMonth - 1,
-        duration: Duration(milliseconds: 200),
+        duration: const Duration(milliseconds: 200),
         curve: Curves.easeInOut,
       );
       _yearController.animateToItem(
         _years.indexOf(_selectedYear),
-        duration: Duration(milliseconds: 200),
+        duration: const Duration(milliseconds: 200),
         curve: Curves.easeInOut,
       );
     }
@@ -144,7 +144,7 @@ class _IosBirthdayPickerCardState extends State<IosBirthdayPickerCard> {
       children: [
         Container(
           width: double.infinity,
-          padding: EdgeInsets.symmetric(
+          padding: const EdgeInsets.symmetric(
             horizontal: Pads.ctlH,
             vertical: Pads.ctlV,
           ),
@@ -153,16 +153,16 @@ class _IosBirthdayPickerCardState extends State<IosBirthdayPickerCard> {
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(Radii.md),
               side: widget.errorMessage != null
-                  ? BorderSide(color: BrandColors.cantVote, width: 1)
+                  ? const BorderSide(color: BrandColors.cantVote, width: 1)
                   : BorderSide.none,
             ),
           ),
           child: widget.isEditing ? _buildEditMode() : _buildViewMode(),
         ),
         if (widget.errorMessage != null) ...[
-          SizedBox(height: Gaps.xxs),
+          const SizedBox(height: Gaps.xxs),
           Padding(
-            padding: EdgeInsets.only(left: Pads.ctlH),
+            padding: const EdgeInsets.only(left: Pads.ctlH),
             child: Text(
               widget.errorMessage!,
               style: AppText.bodyMedium.copyWith(
@@ -206,7 +206,7 @@ class _IosBirthdayPickerCardState extends State<IosBirthdayPickerCard> {
                       fontSize: 14,
                     ),
                   ),
-                  SizedBox(width: Gaps.xs),
+                  const SizedBox(width: Gaps.xs),
                   Icon(
                     hasBirthday ? Icons.edit_outlined : Icons.add,
                     size: 16,
@@ -241,9 +241,9 @@ class _IosBirthdayPickerCardState extends State<IosBirthdayPickerCard> {
           ],
         ),
 
-        SizedBox(height: Gaps.md),
+        const SizedBox(height: Gaps.md),
         _buildDatePicker(),
-        SizedBox(height: Gaps.md),
+        const SizedBox(height: Gaps.md),
         _buildNotificationCheckbox(),
       ],
     );
@@ -252,7 +252,7 @@ class _IosBirthdayPickerCardState extends State<IosBirthdayPickerCard> {
   Widget _buildDatePicker() {
     return Container(
       height: 120,
-      padding: EdgeInsets.symmetric(horizontal: Pads.ctlH, vertical: Pads.ctlV),
+      padding: const EdgeInsets.symmetric(horizontal: Pads.ctlH, vertical: Pads.ctlV),
       decoration: BoxDecoration(
         color: BrandColors.bg3,
         borderRadius: BorderRadius.circular(Radii.smAlt),
@@ -285,7 +285,7 @@ class _IosBirthdayPickerCardState extends State<IosBirthdayPickerCard> {
 
           // Separator
           Padding(
-            padding: EdgeInsets.symmetric(horizontal: Gaps.xs),
+            padding: const EdgeInsets.symmetric(horizontal: Gaps.xs),
             child: Text(
               '/',
               style: AppText.titleMediumEmph.copyWith(
@@ -318,7 +318,7 @@ class _IosBirthdayPickerCardState extends State<IosBirthdayPickerCard> {
                     _selectedDay = maxDays;
                     _dayController.animateToItem(
                       _selectedDay - 1,
-                      duration: Duration(milliseconds: 200),
+                      duration: const Duration(milliseconds: 200),
                       curve: Curves.easeInOut,
                     );
                   }
@@ -330,7 +330,7 @@ class _IosBirthdayPickerCardState extends State<IosBirthdayPickerCard> {
 
           // Separator
           Padding(
-            padding: EdgeInsets.symmetric(horizontal: Gaps.xs),
+            padding: const EdgeInsets.symmetric(horizontal: Gaps.xs),
             child: Text(
               '/',
               style: AppText.titleMediumEmph.copyWith(
@@ -363,7 +363,7 @@ class _IosBirthdayPickerCardState extends State<IosBirthdayPickerCard> {
                     _selectedMonth = now.month;
                     _monthController.animateToItem(
                       _selectedMonth - 1,
-                      duration: Duration(milliseconds: 200),
+                      duration: const Duration(milliseconds: 200),
                       curve: Curves.easeInOut,
                     );
                   }
@@ -377,7 +377,7 @@ class _IosBirthdayPickerCardState extends State<IosBirthdayPickerCard> {
                     _selectedDay = maxDays;
                     _dayController.animateToItem(
                       _selectedDay - 1,
-                      duration: Duration(milliseconds: 200),
+                      duration: const Duration(milliseconds: 200),
                       curve: Curves.easeInOut,
                     );
                   }
@@ -452,10 +452,10 @@ class _IosBirthdayPickerCardState extends State<IosBirthdayPickerCard> {
                       : Colors.transparent,
                 ),
                 child: _allowNotifications
-                    ? Icon(Icons.check, color: Colors.white, size: 14)
+                    ? const Icon(Icons.check, color: Colors.white, size: 14)
                     : null,
               ),
-              SizedBox(width: Gaps.xs),
+              const SizedBox(width: Gaps.xs),
               Text(
                 'Let friends get notified on my birthday',
                 style: AppText.bodyMedium.copyWith(
@@ -489,14 +489,14 @@ class _IosBirthdayPickerCardState extends State<IosBirthdayPickerCard> {
                   borderRadius: BorderRadius.circular(Radii.sm),
                 ),
               ),
-              child: Icon(
+              child: const Icon(
                 Icons.delete_outline,
                 size: 16,
                 color: BrandColors.cantVote,
               ),
             ),
           ),
-          SizedBox(width: Gaps.xs),
+          const SizedBox(width: Gaps.xs),
         ],
 
         // Cancel button
@@ -514,24 +514,24 @@ class _IosBirthdayPickerCardState extends State<IosBirthdayPickerCard> {
               // Update controllers
               _dayController.animateToItem(
                 _selectedDay - 1,
-                duration: Duration(milliseconds: 200),
+                duration: const Duration(milliseconds: 200),
                 curve: Curves.easeInOut,
               );
               _monthController.animateToItem(
                 _selectedMonth - 1,
-                duration: Duration(milliseconds: 200),
+                duration: const Duration(milliseconds: 200),
                 curve: Curves.easeInOut,
               );
               _yearController.animateToItem(
                 _years.indexOf(_selectedYear),
-                duration: Duration(milliseconds: 200),
+                duration: const Duration(milliseconds: 200),
                 curve: Curves.easeInOut,
               );
             }
             widget.onCancel?.call();
           },
           child: Container(
-            padding: EdgeInsets.symmetric(
+            padding: const EdgeInsets.symmetric(
               horizontal: Gaps.xs + 1,
               vertical: Gaps.xxs - 1,
             ),
@@ -551,7 +551,7 @@ class _IosBirthdayPickerCardState extends State<IosBirthdayPickerCard> {
           ),
         ),
 
-        SizedBox(width: Gaps.xs),
+        const SizedBox(width: Gaps.xs),
 
         // Save button
         GestureDetector(
@@ -564,7 +564,7 @@ class _IosBirthdayPickerCardState extends State<IosBirthdayPickerCard> {
             widget.onSave?.call(selectedDate);
           },
           child: Container(
-            padding: EdgeInsets.symmetric(
+            padding: const EdgeInsets.symmetric(
               horizontal: Gaps.sm - 1,
               vertical: Gaps.xxs - 1,
             ),

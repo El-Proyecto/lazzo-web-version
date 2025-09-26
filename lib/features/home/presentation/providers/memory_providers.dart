@@ -13,12 +13,12 @@ final memoryRepositoryProvider = Provider<MemoryRepository>(
 );
 
 // Use case que injeta o repo
-final getLastMemoryProvider = Provider<GetLastMemory>(
+final getLastMemoryProvider = Provider.autoDispose<GetLastMemory>(
   (ref) => GetLastMemory(ref.watch(memoryRepositoryProvider)),
 );
 
 // User ID atual (fallback para um ID fake em DEV se não autenticado)
-final currentUserIdProvider = Provider<String>(
+final currentUserIdProvider = Provider.autoDispose<String>(
   (ref) =>
       Supabase.instance.client.auth.currentUser?.id ??
       '1d473830-e62a-4aaf-a744-9b22343bfd1d',

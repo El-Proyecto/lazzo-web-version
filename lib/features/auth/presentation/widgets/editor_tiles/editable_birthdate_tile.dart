@@ -69,8 +69,8 @@ class _EditableBirthDateTileState extends State<EditableBirthDateTile> {
                 // Header: título + botões
                 Row(
                   children: [
-                    Row(
-                      children: const [
+                    const Row(
+                      children: [
                         Text(
                           'Birth Date',
                           style: TextStyle(
@@ -109,7 +109,7 @@ class _EditableBirthDateTileState extends State<EditableBirthDateTile> {
                     ),
                   ],
                 ),
-                SizedBox(height: Gaps.xl),
+                const SizedBox(height: Gaps.xl),
                 InkWell(
                   onTap: () async {
                     final now = DateTime.now();

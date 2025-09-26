@@ -25,7 +25,7 @@ class EditableProfilePhoto extends StatelessWidget {
           Container(
             width: size,
             height: size,
-            decoration: ShapeDecoration(
+            decoration: const ShapeDecoration(
               color: BrandColors.bg3,
               shape: CircleBorder(
                 side: BorderSide(width: 2, color: BrandColors.border),
@@ -50,13 +50,13 @@ class EditableProfilePhoto extends StatelessWidget {
             child: Container(
               width: 36,
               height: 36,
-              decoration: ShapeDecoration(
+              decoration: const ShapeDecoration(
                 color: BrandColors.planning,
                 shape: CircleBorder(
                   side: BorderSide(width: 2, color: BrandColors.bg1),
                 ),
               ),
-              child: Icon(Icons.camera_alt, size: 18, color: BrandColors.text1),
+              child: const Icon(Icons.camera_alt, size: 18, color: BrandColors.text1),
             ),
           ),
         ],

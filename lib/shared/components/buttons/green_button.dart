@@ -58,7 +58,7 @@ class _GreenButtonState extends State<GreenButton>
                   ? const Color(0xFF044B1E) // Verde escuro quando desabilitado
                   : BrandColors.planning, // Verde claro quando habilitado
               foregroundColor: BrandColors.text1,
-              padding: EdgeInsets.symmetric(
+              padding: const EdgeInsets.symmetric(
                 horizontal: Pads.ctlH,
                 vertical: Pads.ctlV,
               ),

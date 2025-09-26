@@ -42,7 +42,7 @@ class LoginForm extends StatelessWidget {
         if (!isLogin) ...[
           // Social Login Buttons
           Padding(
-            padding: EdgeInsets.symmetric(horizontal: Gaps.sm),
+            padding: const EdgeInsets.symmetric(horizontal: Gaps.sm),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -53,7 +53,7 @@ class LoginForm extends StatelessWidget {
                     onPressed: onGoogleSignIn,
                   ),
                 ),
-                SizedBox(width: Gaps.md),
+                const SizedBox(width: Gaps.md),
                 Expanded(
                   child: ContinueWith(
                     text: 'Apple',
@@ -64,23 +64,23 @@ class LoginForm extends StatelessWidget {
               ],
             ),
           ),
-          SizedBox(height: Gaps.lg),
+          const SizedBox(height: Gaps.lg),
 
           // OR Divider
-          OrDivider(),
-          SizedBox(height: Gaps.lg),
+          const OrDivider(),
+          const SizedBox(height: Gaps.lg),
         ],
 
         // Email Form
-        if (!isLogin) SizedBox(height: Gaps.md),
+        if (!isLogin) const SizedBox(height: Gaps.md),
         EmailInput(controller: emailController),
-        SizedBox(height: Gaps.lg),
+        const SizedBox(height: Gaps.lg),
         GreenButton(
           text: buttonText,
           onPressed: isLogin ? onLoginTap : onCreateAccount,
           isLoading: isLoading,
         ),
-        SizedBox(height: Gaps.sm),
+        const SizedBox(height: Gaps.sm),
         SignupPrompt(onTap: onLoginTap),
       ],
     );

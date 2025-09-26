@@ -122,12 +122,12 @@ class _LoginPageState extends ConsumerState<LoginPage> {
       backgroundColor: Colors.black,
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: EdgeInsets.all(Insets.screenH),
+          padding: const EdgeInsets.all(Insets.screenH),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Center(child: LazzoHeader()),
-              SizedBox(height: Gaps.xl),
+              const SizedBox(height: Gaps.xl),
               const Text(
                 'Welcome Back!',
                 style: TextStyle(
@@ -136,7 +136,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              SizedBox(height: Gaps.xl),
+              const SizedBox(height: Gaps.xl),
               LoginForm(
                 emailController: _emailController,
                 onCreateAccount: _canSubmit && !_isLoading

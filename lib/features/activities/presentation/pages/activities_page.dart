@@ -7,9 +7,9 @@ class ActivitiesPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return Scaffold(
+    return const Scaffold(
       backgroundColor: BrandColors.bg1,
-      body: const SizedBox.shrink(),
+      body: SizedBox.shrink(),
     );
   }
 }

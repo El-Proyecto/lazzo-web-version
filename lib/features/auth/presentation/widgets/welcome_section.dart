@@ -15,7 +15,7 @@ class WelcomeSection extends StatelessWidget {
           'Create your account',
           style: AppText.headlineMedium.copyWith(color: BrandColors.text1),
         ),
-        SizedBox(height: Gaps.xs),
+        const SizedBox(height: Gaps.xs),
         Text(
           'Use email, Apple, or Google. No password needed.',
           style: AppText.bodyMedium.copyWith(color: BrandColors.text2),

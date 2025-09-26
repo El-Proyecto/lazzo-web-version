@@ -16,7 +16,7 @@ class EmailInfoCard extends StatelessWidget {
 
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.symmetric(horizontal: Pads.ctlH, vertical: Pads.ctlV),
+      padding: const EdgeInsets.symmetric(horizontal: Pads.ctlH, vertical: Pads.ctlV),
       decoration: ShapeDecoration(
         color: hasValue ? BrandColors.bg2 : BrandColors.bg3,
         shape: RoundedRectangleBorder(

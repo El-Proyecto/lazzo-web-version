@@ -53,7 +53,7 @@ class AppRouter {
           ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
       return OtpVerificationPage(email: args['email']);
     },
-    authenticationDone: (context) => OnboardingSuccessPage(),
-    finishSetup: (context) => CreateProfilePage(),
+    authenticationDone: (context) => const OnboardingSuccessPage(),
+    finishSetup: (context) => const CreateProfilePage(),
   };
 }

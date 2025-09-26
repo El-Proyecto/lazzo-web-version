@@ -84,7 +84,7 @@ class _EditableInfoCardState extends State<EditableInfoCard> {
       children: [
         Container(
           width: double.infinity,
-          padding: EdgeInsets.symmetric(
+          padding: const EdgeInsets.symmetric(
             horizontal: Pads.ctlH,
             vertical: Pads.ctlV,
           ),
@@ -93,16 +93,16 @@ class _EditableInfoCardState extends State<EditableInfoCard> {
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(Radii.md),
               side: widget.errorMessage != null
-                  ? BorderSide(color: BrandColors.cantVote, width: 1)
+                  ? const BorderSide(color: BrandColors.cantVote, width: 1)
                   : BorderSide.none,
             ),
           ),
           child: widget.isEditing ? _buildEditMode() : _buildViewMode(),
         ),
         if (widget.errorMessage != null) ...[
-          SizedBox(height: Gaps.xxs),
+          const SizedBox(height: Gaps.xxs),
           Padding(
-            padding: EdgeInsets.only(left: Pads.ctlH),
+            padding: const EdgeInsets.only(left: Pads.ctlH),
             child: Text(
               widget.errorMessage!,
               style: AppText.bodyMedium.copyWith(
@@ -134,7 +134,7 @@ class _EditableInfoCardState extends State<EditableInfoCard> {
               ),
             ),
             if (widget.isRequired) ...[
-              SizedBox(width: Gaps.xs),
+              const SizedBox(width: Gaps.xs),
               Text(
                 '*',
                 style: AppText.bodyMedium.copyWith(
@@ -160,7 +160,7 @@ class _EditableInfoCardState extends State<EditableInfoCard> {
                       fontSize: 14,
                     ),
                   ),
-                  SizedBox(width: Gaps.xs),
+                  const SizedBox(width: Gaps.xs),
                   Icon(
                     hasValue ? Icons.edit_outlined : Icons.add,
                     size: 16,
@@ -194,7 +194,7 @@ class _EditableInfoCardState extends State<EditableInfoCard> {
                   ),
                 ),
                 if (widget.isRequired) ...[
-                  SizedBox(width: Gaps.xs),
+                  const SizedBox(width: Gaps.xs),
                   Text(
                     '*',
                     style: AppText.bodyMedium.copyWith(
@@ -211,7 +211,7 @@ class _EditableInfoCardState extends State<EditableInfoCard> {
           ],
         ),
 
-        SizedBox(height: Gaps.md),
+        const SizedBox(height: Gaps.md),
 
         // Edit field
         _buildEditField(),
@@ -240,14 +240,14 @@ class _EditableInfoCardState extends State<EditableInfoCard> {
                   borderRadius: BorderRadius.circular(Radii.sm),
                 ),
               ),
-              child: Icon(
+              child: const Icon(
                 Icons.delete_outline,
                 size: 16,
                 color: BrandColors.cantVote,
               ),
             ),
           ),
-          SizedBox(width: Gaps.xs),
+          const SizedBox(width: Gaps.xs),
         ],
 
         // Cancel button
@@ -258,7 +258,7 @@ class _EditableInfoCardState extends State<EditableInfoCard> {
             widget.onCancel?.call();
           },
           child: Container(
-            padding: EdgeInsets.symmetric(
+            padding: const EdgeInsets.symmetric(
               horizontal: Gaps.xs + 1,
               vertical: Gaps.xxs - 1,
             ),
@@ -278,7 +278,7 @@ class _EditableInfoCardState extends State<EditableInfoCard> {
           ),
         ),
 
-        SizedBox(width: Gaps.xs),
+        const SizedBox(width: Gaps.xs),
 
         // Save button
         GestureDetector(
@@ -286,7 +286,7 @@ class _EditableInfoCardState extends State<EditableInfoCard> {
             widget.onSave?.call(_controller.text);
           },
           child: Container(
-            padding: EdgeInsets.symmetric(
+            padding: const EdgeInsets.symmetric(
               horizontal: Gaps.sm - 1,
               vertical: Gaps.xxs - 1,
             ),
@@ -312,7 +312,7 @@ class _EditableInfoCardState extends State<EditableInfoCard> {
   Widget _buildEditField() {
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.symmetric(
+      padding: const EdgeInsets.symmetric(
         horizontal: Pads.ctlH - 2,
         vertical: Pads.ctlV,
       ),

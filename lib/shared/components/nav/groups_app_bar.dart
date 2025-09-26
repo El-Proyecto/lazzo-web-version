@@ -23,12 +23,12 @@ class GroupsAppBar extends StatelessWidget implements PreferredSizeWidget {
       elevation: 0,
       automaticallyImplyLeading: false,
       title: Padding(
-        padding: EdgeInsets.symmetric(horizontal: Insets.screenH),
+        padding: const EdgeInsets.symmetric(horizontal: Insets.screenH),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             // Espaço vazio para centralizar o título
-            SizedBox(width: 28, height: 28),
+            const SizedBox(width: 28, height: 28),
 
             // Título
             Expanded(
@@ -52,7 +52,7 @@ class GroupsAppBar extends StatelessWidget implements PreferredSizeWidget {
                 width: 28,
                 height: 28,
                 alignment: Alignment.center,
-                child: Icon(
+                child: const Icon(
                   Icons.group_add,
                   color: BrandColors.text1,
                   size: 20,
@@ -66,5 +66,5 @@ class GroupsAppBar extends StatelessWidget implements PreferredSizeWidget {
   }
 
   @override
-  Size get preferredSize => Size.fromHeight(kToolbarHeight);
+  Size get preferredSize => const Size.fromHeight(kToolbarHeight);
 }

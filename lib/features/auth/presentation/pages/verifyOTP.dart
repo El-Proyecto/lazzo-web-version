@@ -85,7 +85,7 @@ class _OtpVerificationPageState extends ConsumerState<OtpVerificationPage> {
     final theme = Theme.of(context);
 
     return Scaffold(
-      backgroundColor: theme.colorScheme.background,
+      backgroundColor: theme.colorScheme.surface,
       body: SafeArea(
         child: SingleChildScrollView(
           child: Column(

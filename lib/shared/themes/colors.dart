@@ -14,7 +14,7 @@ class BrandColors {
   static const cantVote = Color(0xFFFF3B30);
 }
 
-final colorSchemeDark = ColorScheme.dark(
+final colorSchemeDark = const ColorScheme.dark(
   primary: BrandColors.planning,
   secondary: BrandColors.planning,
   tertiary: BrandColors.recap,

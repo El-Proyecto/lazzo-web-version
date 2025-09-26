@@ -42,11 +42,11 @@ class _BirthdayPickerCardState extends State<BirthdayPickerCard> {
 
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.all(Pads.ctlH),
+      padding: const EdgeInsets.all(Pads.ctlH),
       decoration: ShapeDecoration(
         color: showEmptyState ? BrandColors.bg3 : BrandColors.bg2,
         shape: RoundedRectangleBorder(
-          side: BorderSide(width: 1, color: BrandColors.border),
+          side: const BorderSide(width: 1, color: BrandColors.border),
           borderRadius: BorderRadius.circular(Radii.md),
         ),
       ),
@@ -73,7 +73,7 @@ class _BirthdayPickerCardState extends State<BirthdayPickerCard> {
             ],
           ),
 
-          SizedBox(height: Gaps.md),
+          const SizedBox(height: Gaps.md),
 
           // Content
           if (widget.isEditing)
@@ -94,7 +94,7 @@ class _BirthdayPickerCardState extends State<BirthdayPickerCard> {
         GestureDetector(
           onTap: widget.onCancel,
           child: Container(
-            padding: EdgeInsets.symmetric(
+            padding: const EdgeInsets.symmetric(
               horizontal: Gaps.xs + 1,
               vertical: Gaps.xxs - 1,
             ),
@@ -114,13 +114,13 @@ class _BirthdayPickerCardState extends State<BirthdayPickerCard> {
           ),
         ),
 
-        SizedBox(width: Gaps.xs),
+        const SizedBox(width: Gaps.xs),
 
         // Save button
         GestureDetector(
           onTap: () => widget.onSave?.call(_selectedDate),
           child: Container(
-            padding: EdgeInsets.symmetric(
+            padding: const EdgeInsets.symmetric(
               horizontal: Gaps.sm - 1,
               vertical: Gaps.xxs - 1,
             ),
@@ -146,14 +146,14 @@ class _BirthdayPickerCardState extends State<BirthdayPickerCard> {
   Widget _buildViewActions() {
     return GestureDetector(
       onTap: widget.onEdit,
-      child: Icon(Icons.edit_outlined, size: 20, color: BrandColors.text2),
+      child: const Icon(Icons.edit_outlined, size: 20, color: BrandColors.text2),
     );
   }
 
   Widget _buildDatePicker() {
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.all(Pads.ctlH),
+      padding: const EdgeInsets.all(Pads.ctlH),
       decoration: ShapeDecoration(
         color: BrandColors.bg3,
         shape: RoundedRectangleBorder(
@@ -164,7 +164,7 @@ class _BirthdayPickerCardState extends State<BirthdayPickerCard> {
         selectedDate:
             _selectedDate ??
             DateTime.now().subtract(
-              Duration(days: 365 * 25),
+              const Duration(days: 365 * 25),
             ), // Default to 25 years ago
         onDateChanged: (date) {
           setState(() {
@@ -186,7 +186,7 @@ class _BirthdayPickerCardState extends State<BirthdayPickerCard> {
   }
 
   Widget _buildViewContent() {
-    if (widget.birthday == null) return SizedBox.shrink();
+    if (widget.birthday == null) return const SizedBox.shrink();
 
     final birthday = widget.birthday!;
     final formatted =

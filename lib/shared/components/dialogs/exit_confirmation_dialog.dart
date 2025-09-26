@@ -18,7 +18,7 @@ class ExitConfirmationDialog extends StatelessWidget {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(Radii.md),
       ),
-      contentPadding: EdgeInsets.all(Gaps.lg),
+      contentPadding: const EdgeInsets.all(Gaps.lg),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -28,7 +28,7 @@ class ExitConfirmationDialog extends StatelessWidget {
             style: AppText.titleMediumEmph.copyWith(color: BrandColors.text1),
           ),
 
-          SizedBox(height: Gaps.md),
+          const SizedBox(height: Gaps.md),
 
           // Descrição
           Text(
@@ -37,7 +37,7 @@ class ExitConfirmationDialog extends StatelessWidget {
             textAlign: TextAlign.center,
           ),
 
-          SizedBox(height: Gaps.lg),
+          const SizedBox(height: Gaps.lg),
 
           // Botões lado a lado
           Row(
@@ -51,7 +51,7 @@ class ExitConfirmationDialog extends StatelessWidget {
                   },
                   style: TextButton.styleFrom(
                     backgroundColor: BrandColors.bg3,
-                    padding: EdgeInsets.symmetric(vertical: Pads.ctlV),
+                    padding: const EdgeInsets.symmetric(vertical: Pads.ctlV),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(Radii.md),
                     ),
@@ -65,7 +65,7 @@ class ExitConfirmationDialog extends StatelessWidget {
                 ),
               ),
 
-              SizedBox(width: Gaps.sm),
+              const SizedBox(width: Gaps.sm),
 
               // Save Draft button (highlighted)
               Expanded(
@@ -76,7 +76,7 @@ class ExitConfirmationDialog extends StatelessWidget {
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: BrandColors.planning,
-                    padding: EdgeInsets.symmetric(vertical: Pads.ctlV),
+                    padding: const EdgeInsets.symmetric(vertical: Pads.ctlV),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(Radii.md),
                     ),

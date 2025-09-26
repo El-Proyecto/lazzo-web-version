@@ -43,7 +43,7 @@ class ConfirmEventBottomSheet extends StatelessWidget {
       constraints: BoxConstraints(
         maxHeight: keyboardHeight > 0 ? maxHeight : screenHeight * 0.7,
       ),
-      decoration: BoxDecoration(
+      decoration: const BoxDecoration(
         color: BrandColors.bg2,
         borderRadius: BorderRadius.only(
           topLeft: Radius.circular(Radii.md),
@@ -55,14 +55,14 @@ class ConfirmEventBottomSheet extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Grabber bar
-          Padding(
+          const Padding(
             padding: EdgeInsets.only(top: Gaps.sm),
             child: Center(child: GrabberBar()),
           ),
 
           // Header com título e botão fechar
           Padding(
-            padding: EdgeInsets.symmetric(horizontal: Gaps.lg),
+            padding: const EdgeInsets.symmetric(horizontal: Gaps.lg),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -74,13 +74,13 @@ class ConfirmEventBottomSheet extends StatelessWidget {
                 ),
                 GestureDetector(
                   onTap: () => Navigator.of(context).pop(),
-                  child: Icon(Icons.close, color: BrandColors.text2, size: 24),
+                  child: const Icon(Icons.close, color: BrandColors.text2, size: 24),
                 ),
               ],
             ),
           ),
 
-          SizedBox(height: 16),
+          const SizedBox(height: 16),
 
           // Content with padding
           Flexible(
@@ -101,12 +101,12 @@ class ConfirmEventBottomSheet extends StatelessWidget {
                     Icons.group,
                   ),
 
-                  SizedBox(height: Gaps.md),
+                  const SizedBox(height: Gaps.md),
 
                   // Name com emoji
                   _buildNameRow(),
 
-                  SizedBox(height: Gaps.md),
+                  const SizedBox(height: Gaps.md),
 
                   // Date & Time
                   _buildInfoRow(
@@ -115,7 +115,7 @@ class ConfirmEventBottomSheet extends StatelessWidget {
                     Icons.schedule,
                   ),
 
-                  SizedBox(height: Gaps.md),
+                  const SizedBox(height: Gaps.md),
 
                   // Location
                   _buildInfoRow(
@@ -124,7 +124,7 @@ class ConfirmEventBottomSheet extends StatelessWidget {
                     Icons.location_on,
                   ),
 
-                  SizedBox(height: 24),
+                  const SizedBox(height: 24),
 
                   // Create button
                   SizedBox(
@@ -136,7 +136,7 @@ class ConfirmEventBottomSheet extends StatelessWidget {
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: BrandColors.planning,
-                        padding: EdgeInsets.symmetric(vertical: 12),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(16),
                         ),
@@ -166,9 +166,9 @@ class ConfirmEventBottomSheet extends StatelessWidget {
           width: 32,
           height: 32,
           alignment: Alignment.center,
-          child: Icon(Icons.event, color: BrandColors.text2, size: 24),
+          child: const Icon(Icons.event, color: BrandColors.text2, size: 24),
         ),
-        SizedBox(width: Gaps.sm),
+        const SizedBox(width: Gaps.sm),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -177,7 +177,7 @@ class ConfirmEventBottomSheet extends StatelessWidget {
                 'Name',
                 style: AppText.bodyMedium.copyWith(color: BrandColors.text2),
               ),
-              SizedBox(height: 2),
+              const SizedBox(height: 2),
               Text(
                 '$eventEmoji ${eventName.isEmpty ? 'Untitled Event' : eventName}',
                 style: AppText.bodyMedium.copyWith(color: BrandColors.text1),
@@ -199,7 +199,7 @@ class ConfirmEventBottomSheet extends StatelessWidget {
           alignment: Alignment.center,
           child: Icon(icon, color: BrandColors.text2, size: 24),
         ),
-        SizedBox(width: Gaps.sm),
+        const SizedBox(width: Gaps.sm),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -208,7 +208,7 @@ class ConfirmEventBottomSheet extends StatelessWidget {
                 label,
                 style: AppText.bodyMedium.copyWith(color: BrandColors.text2),
               ),
-              SizedBox(height: 2),
+              const SizedBox(height: 2),
               Text(
                 value,
                 style: AppText.bodyMedium.copyWith(color: BrandColors.text1),

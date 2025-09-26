@@ -43,11 +43,11 @@ class UserInfoCard extends StatelessWidget {
             ),
           ),
           child: profileImageUrl == null
-              ? Icon(Icons.person, size: 64, color: BrandColors.text2)
+              ? const Icon(Icons.person, size: 64, color: BrandColors.text2)
               : null,
         ),
 
-        SizedBox(height: Gaps.xs),
+        const SizedBox(height: Gaps.xs),
 
         // Name
         Text(
@@ -57,16 +57,16 @@ class UserInfoCard extends StatelessWidget {
 
         // Location (if provided)
         if (location != null) ...[
-          SizedBox(height: Gaps.xxs),
+          const SizedBox(height: Gaps.xxs),
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(
+              const Icon(
                 Icons.location_on_outlined,
                 size: 16,
                 color: BrandColors.text2,
               ),
-              SizedBox(width: Gaps.xs),
+              const SizedBox(width: Gaps.xs),
               Text(
                 location!,
                 style: AppText.titleMediumEmph.copyWith(
@@ -79,11 +79,11 @@ class UserInfoCard extends StatelessWidget {
 
         // Birthday (if provided)
         if (birthday != null) ...[
-          SizedBox(height: Gaps.xxs),
+          const SizedBox(height: Gaps.xxs),
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Opacity(
+              const Opacity(
                 opacity: 0.6,
                 child: Icon(
                   Icons.cake_outlined,
@@ -91,7 +91,7 @@ class UserInfoCard extends StatelessWidget {
                   color: BrandColors.text2,
                 ),
               ),
-              SizedBox(width: Gaps.xs),
+              const SizedBox(width: Gaps.xs),
               Text(
                 _formatBirthday(birthday!),
                 style: AppText.titleMediumEmph.copyWith(

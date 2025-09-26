@@ -9,10 +9,10 @@ class FeatureCardsList extends StatelessWidget {
     return Container(
       width: double.infinity,
       alignment: Alignment.centerLeft,
-      child: Column(
+      child: const Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: const [
+        children: [
           FeatureCard.icon(
             title: 'Create Events',
             subtitle: 'Plan and organize memorable gatherings',

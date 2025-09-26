@@ -9,34 +9,34 @@ import '../../data/fakes/fake_profile_repository.dart';
 final profileRepositoryProvider = Provider((ref) => FakeProfileRepository());
 
 /// Provider for GetCurrentUserProfile use case
-final getCurrentUserProfileProvider = Provider(
+final getCurrentUserProfileProvider = Provider.autoDispose(
   (ref) => GetCurrentUserProfile(ref.read(profileRepositoryProvider)),
 );
 
 /// Provider for GetProfileById use case
-final getProfileByIdProvider = Provider(
+final getProfileByIdProvider = Provider.autoDispose(
   (ref) => GetProfileById(ref.read(profileRepositoryProvider)),
 );
 
 /// Provider for GetUserMemories use case
-final getUserMemoriesProvider = Provider(
+final getUserMemoriesProvider = Provider.autoDispose(
   (ref) => GetUserMemories(ref.read(profileRepositoryProvider)),
 );
 
 /// Provider for current user profile - exposes AsyncValue for UI consumption
-final currentUserProfileProvider = FutureProvider<ProfileEntity>((ref) async {
+final currentUserProfileProvider = FutureProvider.autoDispose<ProfileEntity>((
+  ref,
+) async {
   final useCase = ref.read(getCurrentUserProfileProvider);
   return await useCase.call();
 });
 
 /// Provider for profile by ID - takes userId parameter
-final profileByIdProvider = FutureProvider.family<ProfileEntity, String>((
-  ref,
-  userId,
-) async {
-  final useCase = ref.read(getProfileByIdProvider);
-  return await useCase.call(userId);
-});
+final profileByIdProvider = FutureProvider.autoDispose
+    .family<ProfileEntity, String>((ref, userId) async {
+      final useCase = ref.read(getProfileByIdProvider);
+      return await useCase.call(userId);
+    });
 
 /// Provider for user memories - takes userId parameter
 final userMemoriesProvider = FutureProvider.family<List<MemoryEntity>, String>((

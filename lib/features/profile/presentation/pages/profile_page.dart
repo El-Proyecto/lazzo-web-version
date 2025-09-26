@@ -26,27 +26,27 @@ class ProfilePage extends ConsumerWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.error_outline, size: 48, color: BrandColors.text2),
-              SizedBox(height: Gaps.md),
+              const Icon(Icons.error_outline, size: 48, color: BrandColors.text2),
+              const SizedBox(height: Gaps.md),
               Text(
                 'Error loading profile',
                 style: Theme.of(
                   context,
                 ).textTheme.bodyLarge?.copyWith(color: BrandColors.text2),
               ),
-              SizedBox(height: Gaps.sm),
+              const SizedBox(height: Gaps.sm),
               TextButton(
                 onPressed: () => ref.refresh(currentUserProfileProvider),
-                child: Text('Retry'),
+                child: const Text('Retry'),
               ),
             ],
           ),
         ),
         data: (profile) => SingleChildScrollView(
-          padding: EdgeInsets.symmetric(horizontal: Insets.screenH),
+          padding: const EdgeInsets.symmetric(horizontal: Insets.screenH),
           child: Column(
             children: [
-              SizedBox(height: Gaps.lg),
+              const SizedBox(height: Gaps.lg),
 
               // User Info Section
               UserInfoCard(
@@ -56,14 +56,14 @@ class ProfilePage extends ConsumerWidget {
                 birthday: profile.birthday,
               ),
 
-              SizedBox(height: Gaps.lg), // Reduced from 40px to 24px
+              const SizedBox(height: Gaps.lg), // Reduced from 40px to 24px
               // Memories Section
               MemoriesSection(
                 memories: profile.memories,
                 onMemoryTap: (memory) => _onMemoryTap(context, memory),
               ),
 
-              SizedBox(height: Gaps.lg),
+              const SizedBox(height: Gaps.lg),
             ],
           ),
         ),
@@ -78,7 +78,7 @@ class ProfilePage extends ConsumerWidget {
   void _onMemoryTap(BuildContext context, MemoryEntity memory) {
     // TODO: Navigate to memory detail page
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
+      const SnackBar(
         content: Text(
           'Memory detail - Coming soon!',
           style: TextStyle(color: Colors.black),

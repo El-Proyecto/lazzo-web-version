@@ -59,7 +59,7 @@ class _DropdownBirthdayPickerCardState
       children: [
         Container(
           width: double.infinity,
-          padding: EdgeInsets.symmetric(
+          padding: const EdgeInsets.symmetric(
             horizontal: Pads.ctlH,
             vertical: Pads.ctlV,
           ),
@@ -74,7 +74,7 @@ class _DropdownBirthdayPickerCardState
 
         // Show notification checkbox when birthday is set
         if (widget.showNotificationCheckbox && hasValue) ...[
-          SizedBox(height: Gaps.sm),
+          const SizedBox(height: Gaps.sm),
           _buildNotificationCheckbox(),
         ],
       ],
@@ -109,7 +109,7 @@ class _DropdownBirthdayPickerCardState
                   fontSize: 14,
                 ),
               ),
-              SizedBox(width: Gaps.xs),
+              const SizedBox(width: Gaps.xs),
               Icon(
                 hasValue ? Icons.edit_outlined : Icons.add,
                 size: 16,
@@ -139,7 +139,7 @@ class _DropdownBirthdayPickerCardState
           ],
         ),
 
-        SizedBox(height: Gaps.md),
+        const SizedBox(height: Gaps.md),
 
         // Dropdown selectors
         _buildDropdownSelectors(),
@@ -160,7 +160,7 @@ class _DropdownBirthdayPickerCardState
           ),
         ),
 
-        SizedBox(width: Gaps.sm),
+        const SizedBox(width: Gaps.sm),
 
         // Month dropdown
         Expanded(
@@ -173,7 +173,7 @@ class _DropdownBirthdayPickerCardState
           ),
         ),
 
-        SizedBox(width: Gaps.sm),
+        const SizedBox(width: Gaps.sm),
 
         // Year dropdown
         Expanded(
@@ -196,7 +196,7 @@ class _DropdownBirthdayPickerCardState
     String Function(int)? itemBuilder,
   }) {
     return Container(
-      padding: EdgeInsets.symmetric(
+      padding: const EdgeInsets.symmetric(
         horizontal: Pads.ctlH - 2,
         vertical: Pads.ctlV - 2,
       ),
@@ -214,7 +214,7 @@ class _DropdownBirthdayPickerCardState
             style: AppText.bodyMedium.copyWith(color: BrandColors.text2),
           ),
           dropdownColor: BrandColors.bg3,
-          icon: Icon(
+          icon: const Icon(
             Icons.keyboard_arrow_down,
             color: BrandColors.text2,
             size: 20,
@@ -243,7 +243,7 @@ class _DropdownBirthdayPickerCardState
         GestureDetector(
           onTap: widget.onCancel,
           child: Container(
-            padding: EdgeInsets.symmetric(
+            padding: const EdgeInsets.symmetric(
               horizontal: Gaps.xs + 1,
               vertical: Gaps.xxs - 1,
             ),
@@ -263,13 +263,13 @@ class _DropdownBirthdayPickerCardState
           ),
         ),
 
-        SizedBox(width: Gaps.xs),
+        const SizedBox(width: Gaps.xs),
 
         // Save button
         GestureDetector(
           onTap: _handleSave,
           child: Container(
-            padding: EdgeInsets.symmetric(
+            padding: const EdgeInsets.symmetric(
               horizontal: Gaps.sm - 1,
               vertical: Gaps.xxs - 1,
             ),
@@ -295,7 +295,7 @@ class _DropdownBirthdayPickerCardState
   Widget _buildNotificationCheckbox() {
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.symmetric(horizontal: Pads.ctlH, vertical: Pads.ctlV),
+      padding: const EdgeInsets.symmetric(horizontal: Pads.ctlH, vertical: Pads.ctlV),
       decoration: ShapeDecoration(
         color: BrandColors.bg2,
         shape: RoundedRectangleBorder(
@@ -312,9 +312,9 @@ class _DropdownBirthdayPickerCardState
             },
             activeColor: BrandColors.planning,
             checkColor: BrandColors.text1,
-            side: BorderSide(color: BrandColors.border, width: 1),
+            side: const BorderSide(color: BrandColors.border, width: 1),
           ),
-          SizedBox(width: Gaps.sm),
+          const SizedBox(width: Gaps.sm),
           Expanded(
             child: Text(
               'Let friends get notified on my birthday',

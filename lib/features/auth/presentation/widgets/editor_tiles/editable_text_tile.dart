@@ -124,7 +124,7 @@ class _EditableTextTileState extends State<EditableTextTile> {
                     ),
                   ],
                 ),
-                SizedBox(height: Gaps.xl), // “respiro” entre header e input
+                const SizedBox(height: Gaps.xl), // “respiro” entre header e input
                 TextField(
                   controller: _c,
                   autofocus: true,

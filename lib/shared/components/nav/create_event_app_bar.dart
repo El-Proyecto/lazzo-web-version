@@ -28,7 +28,7 @@ class CreateEventAppBar extends StatelessWidget implements PreferredSizeWidget {
       elevation: 0,
       automaticallyImplyLeading: false,
       title: Padding(
-        padding: EdgeInsets.symmetric(horizontal: Insets.screenH),
+        padding: const EdgeInsets.symmetric(horizontal: Insets.screenH),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
@@ -39,7 +39,7 @@ class CreateEventAppBar extends StatelessWidget implements PreferredSizeWidget {
                 width: 32,
                 height: 32,
                 alignment: Alignment.center,
-                child: Icon(
+                child: const Icon(
                   Icons.arrow_back_ios,
                   color: BrandColors.text1,
                   size: 20,
@@ -69,7 +69,7 @@ class CreateEventAppBar extends StatelessWidget implements PreferredSizeWidget {
                 width: 32,
                 height: 32,
                 alignment: Alignment.center,
-                child: Icon(Icons.history, color: BrandColors.text1, size: 20),
+                child: const Icon(Icons.history, color: BrandColors.text1, size: 20),
               ),
             ),
           ],

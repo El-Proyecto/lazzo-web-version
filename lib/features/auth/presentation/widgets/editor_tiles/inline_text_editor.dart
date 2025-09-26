@@ -119,8 +119,9 @@ class _InlineTextEditorState extends State<InlineTextEditor> {
                   icon: Icons.check,
                   onTap: () {
                     var text = _controller.text;
-                    if (widget.normalizer != null)
+                    if (widget.normalizer != null) {
                       text = widget.normalizer!(text);
+                    }
                     if (text.trim().isEmpty) {
                       _toast('This field is required.');
                       return;

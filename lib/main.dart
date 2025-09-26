@@ -22,7 +22,6 @@ import '../features/groups/presentation/providers/groups_provider.dart';
 import '../features/profile/presentation/providers/profile_providers.dart';
 
 // AUTH - TODO: Add real implementation imports when available
-import '../features/auth/presentation/providers/auth_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();

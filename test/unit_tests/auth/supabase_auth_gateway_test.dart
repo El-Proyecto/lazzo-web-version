@@ -67,7 +67,7 @@ void main() {
       // Arrange
       when(
         () => auth.signInWithOtp(email: any(named: 'email')),
-      ).thenThrow(AuthException('Invalid OTP'));
+      ).thenThrow(const AuthException('Invalid OTP'));
 
       // Act + Assert
       await expectLater(

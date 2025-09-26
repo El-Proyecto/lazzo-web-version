@@ -31,7 +31,7 @@ class MemoriesSection extends StatelessWidget {
           style: AppText.titleMediumEmph.copyWith(color: BrandColors.text1),
         ),
 
-        SizedBox(height: Gaps.sm),
+        const SizedBox(height: Gaps.sm),
 
         // Memories Grid
         if (memories.isEmpty)
@@ -41,12 +41,12 @@ class MemoriesSection extends StatelessWidget {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(
+                const Icon(
                   Icons.photo_library_outlined,
                   size: 48,
                   color: BrandColors.text2,
                 ),
-                SizedBox(height: Gaps.xs),
+                const SizedBox(height: Gaps.xs),
                 Text(
                   'No memories yet',
                   style: AppText.bodyLarge.copyWith(color: BrandColors.text2),
@@ -91,7 +91,7 @@ class MemoriesSection extends StatelessWidget {
                     ),
 
                     // Spacing between cards
-                    SizedBox(width: Gaps.xs),
+                    const SizedBox(width: Gaps.xs),
 
                     // Second memory in row (if exists)
                     if (i + 1 < memories.length)
@@ -108,7 +108,7 @@ class MemoriesSection extends StatelessWidget {
                         ),
                       )
                     else
-                      Expanded(child: SizedBox()), // Placeholder for alignment
+                      const Expanded(child: SizedBox()), // Placeholder for alignment
                   ],
                 ),
               ),

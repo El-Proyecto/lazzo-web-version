@@ -27,7 +27,7 @@ class EventHistoryBottomSheet extends StatelessWidget {
       constraints: BoxConstraints(
         maxHeight: keyboardHeight > 0 ? maxHeight : 400,
       ),
-      decoration: BoxDecoration(
+      decoration: const BoxDecoration(
         color: BrandColors.bg2,
         borderRadius: BorderRadius.only(
           topLeft: Radius.circular(Radii.md),
@@ -38,14 +38,14 @@ class EventHistoryBottomSheet extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           // Grabber bar
-          Padding(
+          const Padding(
             padding: EdgeInsets.only(top: Gaps.sm),
             child: Center(child: GrabberBar()),
           ),
 
           // Header
           Padding(
-            padding: EdgeInsets.symmetric(horizontal: Gaps.lg),
+            padding: const EdgeInsets.symmetric(horizontal: Gaps.lg),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -57,13 +57,13 @@ class EventHistoryBottomSheet extends StatelessWidget {
                 ),
                 IconButton(
                   onPressed: () => Navigator.of(context).pop(),
-                  icon: Icon(Icons.close, color: BrandColors.text2),
+                  icon: const Icon(Icons.close, color: BrandColors.text2),
                 ),
               ],
             ),
           ),
 
-          SizedBox(height: 12),
+          const SizedBox(height: 12),
 
           // Lista de eventos
           Flexible(
@@ -78,12 +78,12 @@ class EventHistoryBottomSheet extends StatelessWidget {
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(
+                          const Icon(
                             Icons.history,
                             color: BrandColors.text2,
                             size: 48,
                           ),
-                          SizedBox(height: Gaps.sm),
+                          const SizedBox(height: Gaps.sm),
                           Text(
                             'No events yet',
                             style: AppText.bodyMedium.copyWith(
@@ -97,7 +97,7 @@ class EventHistoryBottomSheet extends StatelessWidget {
                       shrinkWrap: true,
                       itemCount: events.length,
                       separatorBuilder: (context, index) =>
-                          SizedBox(height: Gaps.sm),
+                          const SizedBox(height: Gaps.sm),
                       itemBuilder: (context, index) {
                         final event = events[index];
                         return _EventHistoryTile(
@@ -129,7 +129,7 @@ class _EventHistoryTile extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(Radii.smAlt),
       child: Container(
-        padding: EdgeInsets.all(Pads.ctlV),
+        padding: const EdgeInsets.all(Pads.ctlV),
         decoration: BoxDecoration(
           color: BrandColors.bg3,
           borderRadius: BorderRadius.circular(Radii.smAlt),
@@ -148,7 +148,7 @@ class _EventHistoryTile extends StatelessWidget {
               ),
             ),
 
-            SizedBox(width: Gaps.sm),
+            const SizedBox(width: Gaps.sm),
 
             // Nome e data
             Expanded(
@@ -163,7 +163,7 @@ class _EventHistoryTile extends StatelessWidget {
                     ),
                   ),
                   if (event.lastTime != null || event.location != null) ...[
-                    SizedBox(height: 2),
+                    const SizedBox(height: 2),
                     Text(
                       _formatTimeAndLocation(event.lastTime, event.location),
                       style: AppText.bodyMedium.copyWith(
@@ -176,7 +176,7 @@ class _EventHistoryTile extends StatelessWidget {
             ),
 
             // Seta
-            Icon(Icons.arrow_forward_ios, color: BrandColors.text2, size: 16),
+            const Icon(Icons.arrow_forward_ios, color: BrandColors.text2, size: 16),
           ],
         ),
       ),

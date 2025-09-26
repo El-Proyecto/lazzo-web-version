@@ -13,22 +13,22 @@ final pendingEventRepositoryProvider = Provider<PendingEventRepository>(
 );
 
 // Use cases
-final getPendingEventsProvider = Provider<GetPendingEvents>(
+final getPendingEventsProvider = Provider.autoDispose<GetPendingEvents>(
   (ref) => GetPendingEvents(ref.watch(pendingEventRepositoryProvider)),
 );
 
-final voteOnEventProvider = Provider<VoteOnEvent>(
+final voteOnEventProvider = Provider.autoDispose<VoteOnEvent>(
   (ref) => VoteOnEvent(ref.watch(pendingEventRepositoryProvider)),
 );
 
 // Current user ID
-final currentUserIdProvider = Provider<String?>(
+final currentUserIdProvider = Provider.autoDispose<String?>(
   (_) => Supabase.instance.client.auth.currentUser?.id,
 );
 
 // Stacked events state provider
 final stackedEventsStateProvider =
-    StateNotifierProvider<StackedEventsNotifier, bool>(
+    StateNotifierProvider.autoDispose<StackedEventsNotifier, bool>(
       (ref) => StackedEventsNotifier(ref),
     );
 

@@ -20,26 +20,28 @@ class EventCreatedBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: EdgeInsets.symmetric(horizontal: 16),
-      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
+      margin: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: const BoxDecoration(
         color: BrandColors.bg2,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.all(Radius.circular(16)),
       ),
       child: Row(
         children: [
           // Ícone de sucesso (bola verde com certo branco)
-          Container(
+          const SizedBox(
             width: 24,
             height: 24,
-            decoration: BoxDecoration(
-              color: BrandColors.planning,
-              shape: BoxShape.circle,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: BrandColors.planning,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(Icons.check, color: Colors.white, size: 16),
             ),
-            child: Icon(Icons.check, color: Colors.white, size: 16),
           ),
 
-          SizedBox(width: Gaps.xs),
+          const SizedBox(width: Gaps.xs),
 
           // Texto
           Expanded(
@@ -49,25 +51,25 @@ class EventCreatedBanner extends StatelessWidget {
                 children: [
                   TextSpan(
                     text: eventName,
-                    style: TextStyle(fontWeight: FontWeight.bold),
+                    style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
-                  TextSpan(text: ' added to '),
+                  const TextSpan(text: ' added to '),
                   TextSpan(
                     text: groupName,
-                    style: TextStyle(fontWeight: FontWeight.bold),
+                    style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
-                  TextSpan(text: '!'),
+                  const TextSpan(text: '!'),
                 ],
               ),
             ),
           ),
 
-          SizedBox(width: Gaps.xs),
+          const SizedBox(width: Gaps.xs),
 
           // Botão fechar
           GestureDetector(
             onTap: onClose,
-            child: Icon(Icons.close, color: BrandColors.text2, size: 20),
+            child: const Icon(Icons.close, color: BrandColors.text2, size: 20),
           ),
         ],
       ),

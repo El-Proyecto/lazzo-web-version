@@ -37,9 +37,9 @@ class Group {
     // Para grupos arquivados, sempre mostrar "Last Event: " + lastActivity
     if (status == GroupStatus.archived) {
       if (lastActivity != null) {
-        return "Last Event: ${lastActivity!}";
+        return 'Last Event: ${lastActivity!}';
       }
-      return "No previous events";
+      return 'No previous events';
     }
 
     // Prioridade para grupos ativos: Open Actions > Add Photos > Last Activity
@@ -55,7 +55,7 @@ class Group {
       return lastActivity!;
     }
 
-    return "No events — create one";
+    return 'No events — create one';
   }
 
   /// Calcula a urgência baseada no tempo restante
@@ -71,10 +71,10 @@ class Group {
   }
 
   String _getOpenActionsText() {
-    return "Vote date · closes Tue"; // Placeholder - seria dinâmico
+    return 'Vote date · closes Tue'; // Placeholder - seria dinâmico
   }
 
   String _getAddPhotosText() {
-    return "Add photos · 12h left"; // Placeholder - seria dinâmico
+    return 'Add photos · 12h left'; // Placeholder - seria dinâmico
   }
 }

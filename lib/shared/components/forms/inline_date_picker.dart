@@ -29,7 +29,7 @@ class _InlineDatePickerState extends State<InlineDatePicker> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: EdgeInsets.all(Pads.ctlH),
+      padding: const EdgeInsets.all(Pads.ctlH),
       decoration: BoxDecoration(
         color: BrandColors.bg3,
         borderRadius: BorderRadius.circular(Radii.smAlt),
@@ -39,11 +39,11 @@ class _InlineDatePickerState extends State<InlineDatePicker> {
         children: [
           // Header do mês
           _buildMonthHeader(),
-          SizedBox(height: Gaps.sm),
+          const SizedBox(height: Gaps.sm),
 
           // Dias da semana
           _buildWeekdayHeaders(),
-          SizedBox(height: Gaps.xs),
+          const SizedBox(height: Gaps.xs),
 
           // Calendário
           _buildCalendar(),
@@ -58,7 +58,7 @@ class _InlineDatePickerState extends State<InlineDatePicker> {
       children: [
         GestureDetector(
           onTap: _previousMonth,
-          child: Icon(Icons.chevron_left, color: BrandColors.text2, size: 20),
+          child: const Icon(Icons.chevron_left, color: BrandColors.text2, size: 20),
         ),
         Text(
           _formatMonth(_currentMonth),
@@ -69,7 +69,7 @@ class _InlineDatePickerState extends State<InlineDatePicker> {
         ),
         GestureDetector(
           onTap: _nextMonth,
-          child: Icon(Icons.chevron_right, color: BrandColors.text2, size: 20),
+          child: const Icon(Icons.chevron_right, color: BrandColors.text2, size: 20),
         ),
       ],
     );
@@ -116,7 +116,7 @@ class _InlineDatePickerState extends State<InlineDatePicker> {
 
     // Empty cells for days before the first day of the month
     for (int i = 0; i < firstWeekday; i++) {
-      dayWidgets.add(SizedBox(width: 32, height: 32));
+      dayWidgets.add(const SizedBox(width: 32, height: 32));
     }
 
     // Days of the month
@@ -128,7 +128,7 @@ class _InlineDatePickerState extends State<InlineDatePicker> {
           _selectedDate!.month == date.month &&
           _selectedDate!.day == date.day;
       final isToday = _isToday(date);
-      final isPast = date.isBefore(DateTime.now().subtract(Duration(days: 1)));
+      final isPast = date.isBefore(DateTime.now().subtract(const Duration(days: 1)));
 
       dayWidgets.add(
         GestureDetector(
@@ -179,7 +179,7 @@ class _InlineDatePickerState extends State<InlineDatePicker> {
 
       // Fill the rest of the row if needed
       while (rowWidgets.length < 7) {
-        rowWidgets.add(SizedBox(width: 32, height: 32));
+        rowWidgets.add(const SizedBox(width: 32, height: 32));
       }
 
       rows.add(
@@ -193,7 +193,7 @@ class _InlineDatePickerState extends State<InlineDatePicker> {
     return Column(
       children: rows
           .map(
-            (row) => Padding(padding: EdgeInsets.only(bottom: 4), child: row),
+            (row) => Padding(padding: const EdgeInsets.only(bottom: 4), child: row),
           )
           .toList(),
     );

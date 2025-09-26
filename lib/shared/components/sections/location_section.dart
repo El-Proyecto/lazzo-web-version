@@ -63,7 +63,7 @@ class _LocationSectionState extends State<LocationSection> {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.only(
+      padding: const EdgeInsets.only(
         top: Pads.sectionV,
         left: Pads.sectionH,
         right: Pads.sectionH,
@@ -80,7 +80,7 @@ class _LocationSectionState extends State<LocationSection> {
 
           // Conteúdo expansível
           if (_currentState == LocationState.setNow) ...[
-            SizedBox(height: Gaps.md),
+            const SizedBox(height: Gaps.md),
             _buildExpandedContent(),
           ],
         ],
@@ -99,7 +99,7 @@ class _LocationSectionState extends State<LocationSection> {
 
         // Toggle buttons
         Container(
-          padding: EdgeInsets.all(Gaps.xs),
+          padding: const EdgeInsets.all(Gaps.xs),
           decoration: BoxDecoration(
             color: BrandColors.bg3,
             borderRadius: BorderRadius.circular(Radii.smAlt),
@@ -150,7 +150,7 @@ class _LocationSectionState extends State<LocationSection> {
             color: BrandColors.bg3,
             borderRadius: BorderRadius.circular(Radii.smAlt),
           ),
-          child: Stack(
+          child: const Stack(
             alignment: Alignment.center,
             children: [
               Icon(Icons.map, size: 40, color: BrandColors.text2),
@@ -159,7 +159,7 @@ class _LocationSectionState extends State<LocationSection> {
           ),
         ),
 
-        SizedBox(height: Gaps.md),
+        const SizedBox(height: Gaps.md),
 
         // Location info
         if (location.displayName != null) ...[
@@ -170,14 +170,14 @@ class _LocationSectionState extends State<LocationSection> {
               fontWeight: FontWeight.w500,
             ),
           ),
-          SizedBox(height: 4),
+          const SizedBox(height: 4),
         ],
         Text(
           location.formattedAddress,
           style: AppText.bodyMedium.copyWith(color: BrandColors.text2),
         ),
 
-        SizedBox(height: Gaps.md),
+        const SizedBox(height: Gaps.md),
 
         // Action buttons
         Row(
@@ -190,7 +190,7 @@ class _LocationSectionState extends State<LocationSection> {
                 isSecondary: true,
               ),
             ),
-            SizedBox(width: Gaps.sm),
+            const SizedBox(width: Gaps.sm),
             Expanded(
               child: _buildActionButton(
                 icon: Icons.open_in_new,
@@ -216,7 +216,7 @@ class _LocationSectionState extends State<LocationSection> {
           onChanged: (value) => _updateLocationName(value),
         ),
 
-        SizedBox(height: Gaps.md),
+        const SizedBox(height: Gaps.md),
 
         // Search Address Field
         _buildTextField(
@@ -230,11 +230,11 @@ class _LocationSectionState extends State<LocationSection> {
 
         // Suggestions list
         if (_showSuggestions) ...[
-          SizedBox(height: Gaps.sm),
+          const SizedBox(height: Gaps.sm),
           _buildSuggestionsList(),
         ],
 
-        SizedBox(height: Gaps.md),
+        const SizedBox(height: Gaps.md),
 
         // Action Buttons
         Row(
@@ -246,7 +246,7 @@ class _LocationSectionState extends State<LocationSection> {
                 onTap: () => _useCurrentLocation(),
               ),
             ),
-            SizedBox(width: Gaps.sm),
+            const SizedBox(width: Gaps.sm),
             Expanded(
               child: _buildActionButton(
                 icon: Icons.map_outlined,
@@ -280,7 +280,7 @@ class _LocationSectionState extends State<LocationSection> {
         hintText: hintText,
         hintStyle: AppText.bodyMedium.copyWith(color: BrandColors.text2),
         prefixIcon: Padding(
-          padding: EdgeInsets.only(left: Pads.ctlH, right: Gaps.xs),
+          padding: const EdgeInsets.only(left: Pads.ctlH, right: Gaps.xs),
           child: Icon(icon, color: BrandColors.text2, size: 18),
         ),
         filled: true,
@@ -301,12 +301,12 @@ class _LocationSectionState extends State<LocationSection> {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(Radii.smAlt),
-          borderSide: BorderSide(
+          borderSide: const BorderSide(
             color: BrandColors.planning,
             width: 1,
           ), // Green focus
         ),
-        contentPadding: EdgeInsets.symmetric(
+        contentPadding: const EdgeInsets.symmetric(
           horizontal: Pads.ctlH,
           vertical: Pads.ctlV,
         ),
@@ -323,7 +323,7 @@ class _LocationSectionState extends State<LocationSection> {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: EdgeInsets.symmetric(
+        padding: const EdgeInsets.symmetric(
           horizontal: Pads.ctlH - 2,
           vertical: Pads.ctlV,
         ),
@@ -345,7 +345,7 @@ class _LocationSectionState extends State<LocationSection> {
               color: isSecondary ? BrandColors.text2 : BrandColors.planning,
               size: 16,
             ),
-            SizedBox(width: Gaps.xs),
+            const SizedBox(width: Gaps.xs),
             Flexible(
               child: Text(
                 text,
@@ -473,7 +473,7 @@ class _LocationSectionState extends State<LocationSection> {
     });
 
     // Start new debounce timer (400ms)
-    _searchDebounceTimer = Timer(Duration(milliseconds: 400), () {
+    _searchDebounceTimer = Timer(const Duration(milliseconds: 400), () {
       _performSearch(query);
     });
   }
@@ -545,7 +545,7 @@ class _LocationSectionState extends State<LocationSection> {
   Widget _buildSuggestionsList() {
     if (_isSearching) {
       return Container(
-        padding: EdgeInsets.all(Pads.ctlV),
+        padding: const EdgeInsets.all(Pads.ctlV),
         decoration: BoxDecoration(
           color: BrandColors.bg3,
           borderRadius: BorderRadius.circular(Radii.smAlt),
@@ -556,7 +556,7 @@ class _LocationSectionState extends State<LocationSection> {
         ),
         child: Row(
           children: [
-            SizedBox(
+            const SizedBox(
               width: 16,
               height: 16,
               child: CircularProgressIndicator(
@@ -564,7 +564,7 @@ class _LocationSectionState extends State<LocationSection> {
                 valueColor: AlwaysStoppedAnimation<Color>(BrandColors.text2),
               ),
             ),
-            SizedBox(width: Gaps.sm),
+            const SizedBox(width: Gaps.sm),
             Text(
               'Searching...',
               style: AppText.bodyMedium.copyWith(color: BrandColors.text2),
@@ -577,7 +577,7 @@ class _LocationSectionState extends State<LocationSection> {
     if (_suggestions.isEmpty) {
       return Container(
         width: double.infinity,
-        padding: EdgeInsets.all(Pads.ctlV),
+        padding: const EdgeInsets.all(Pads.ctlV),
         decoration: BoxDecoration(
           color: BrandColors.bg3,
           borderRadius: BorderRadius.circular(Radii.smAlt),
@@ -593,7 +593,7 @@ class _LocationSectionState extends State<LocationSection> {
               'No results. Try:',
               style: AppText.bodyMedium.copyWith(color: BrandColors.text2),
             ),
-            SizedBox(height: Gaps.xs),
+            const SizedBox(height: Gaps.xs),
             Text(
               '• Pick on map\n• Current location\n• Save name only',
               style: AppText.bodyMedium.copyWith(color: BrandColors.text2),
@@ -627,7 +627,7 @@ class _LocationSectionState extends State<LocationSection> {
       onTap: () => _selectSuggestion(suggestion),
       borderRadius: BorderRadius.circular(Radii.smAlt),
       child: Container(
-        padding: EdgeInsets.all(Pads.ctlV),
+        padding: const EdgeInsets.all(Pads.ctlV),
         child: Row(
           children: [
             Icon(
@@ -635,7 +635,7 @@ class _LocationSectionState extends State<LocationSection> {
               color: BrandColors.text2, // Gray for all icons
               size: 18,
             ),
-            SizedBox(width: Gaps.sm),
+            const SizedBox(width: Gaps.sm),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -650,7 +650,7 @@ class _LocationSectionState extends State<LocationSection> {
                     ),
                   ),
                   if (suggestion.address != suggestion.name) ...[
-                    SizedBox(height: 2),
+                    const SizedBox(height: 2),
                     Text(
                       suggestion.address,
                       style: AppText.bodyMedium.copyWith(
@@ -760,7 +760,7 @@ class _ToggleButton extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: EdgeInsets.symmetric(horizontal: Pads.ctlH - 2, vertical: 5),
+        padding: const EdgeInsets.symmetric(horizontal: Pads.ctlH - 2, vertical: 5),
         decoration: BoxDecoration(
           color: isSelected ? BrandColors.planning : Colors.transparent,
           borderRadius: BorderRadius.circular(Radii.smAlt),
@@ -871,12 +871,12 @@ class _ExpandedLocationPickerState extends State<ExpandedLocationPicker> {
           decoration: InputDecoration(
             hintText: 'Search address...',
             hintStyle: AppText.bodyLarge.copyWith(color: BrandColors.text2),
-            prefixIcon: Padding(
+            prefixIcon: const Padding(
               padding: EdgeInsets.only(left: Pads.ctlH, right: Gaps.xs),
               child: Icon(Icons.search, color: BrandColors.text2),
             ),
             suffixIcon: _isSearching
-                ? Padding(
+                ? const Padding(
                     padding: EdgeInsets.all(12),
                     child: SizedBox(
                       width: 16,
@@ -896,7 +896,7 @@ class _ExpandedLocationPickerState extends State<ExpandedLocationPicker> {
               borderRadius: BorderRadius.circular(Radii.smAlt),
               borderSide: BorderSide.none,
             ),
-            contentPadding: EdgeInsets.symmetric(
+            contentPadding: const EdgeInsets.symmetric(
               horizontal: Pads.ctlH,
               vertical: Pads.ctlV,
             ),
@@ -905,7 +905,7 @@ class _ExpandedLocationPickerState extends State<ExpandedLocationPicker> {
 
         // Sugestões
         if (_suggestions.isNotEmpty) ...[
-          SizedBox(height: Gaps.sm),
+          const SizedBox(height: Gaps.sm),
           Container(
             constraints: const BoxConstraints(maxHeight: 200),
             decoration: BoxDecoration(
@@ -914,10 +914,10 @@ class _ExpandedLocationPickerState extends State<ExpandedLocationPicker> {
             ),
             child: ListView.separated(
               shrinkWrap: true,
-              padding: EdgeInsets.all(Gaps.xs),
+              padding: const EdgeInsets.all(Gaps.xs),
               itemCount: _suggestions.length,
               separatorBuilder: (context, index) =>
-                  Divider(color: BrandColors.border, height: 1),
+                  const Divider(color: BrandColors.border, height: 1),
               itemBuilder: (context, index) {
                 final suggestion = _suggestions[index];
                 return _SuggestionTile(
@@ -930,7 +930,7 @@ class _ExpandedLocationPickerState extends State<ExpandedLocationPicker> {
         ],
 
         // Localização atual
-        SizedBox(height: Gaps.md),
+        const SizedBox(height: Gaps.md),
         _CurrentLocationButton(onTap: _useCurrentLocation),
       ],
     );
@@ -956,7 +956,7 @@ class _ExpandedLocationPickerState extends State<ExpandedLocationPicker> {
   void _useCurrentLocation() {
     // Implementar obtenção da localização atual
     // Por enquanto, usar localização mock
-    final location = LocationInfo(
+    final location = const LocationInfo(
       id: 'current',
       displayName: 'Current Location',
       formattedAddress: 'Your current location',
@@ -981,11 +981,11 @@ class _SuggestionTile extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(Radii.sm),
       child: Padding(
-        padding: EdgeInsets.all(Pads.ctlV),
+        padding: const EdgeInsets.all(Pads.ctlV),
         child: Row(
           children: [
-            Icon(Icons.location_on, color: BrandColors.text2, size: 20),
-            SizedBox(width: Gaps.sm),
+            const Icon(Icons.location_on, color: BrandColors.text2, size: 20),
+            const SizedBox(width: Gaps.sm),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -1025,7 +1025,7 @@ class _CurrentLocationButton extends StatelessWidget {
       borderRadius: BorderRadius.circular(Radii.smAlt),
       child: Container(
         width: double.infinity,
-        padding: EdgeInsets.all(Pads.ctlV),
+        padding: const EdgeInsets.all(Pads.ctlV),
         decoration: BoxDecoration(
           color: BrandColors.bg3,
           borderRadius: BorderRadius.circular(Radii.smAlt),
@@ -1034,8 +1034,8 @@ class _CurrentLocationButton extends StatelessWidget {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.my_location, color: BrandColors.planning, size: 20),
-            SizedBox(width: Gaps.sm),
+            const Icon(Icons.my_location, color: BrandColors.planning, size: 20),
+            const SizedBox(width: Gaps.sm),
             Text(
               'Use Current Location',
               style: AppText.labelLarge.copyWith(
@@ -1070,7 +1070,7 @@ class _CustomNameFieldState extends State<_CustomNameField> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: Pads.ctlH, vertical: Pads.ctlV),
+      padding: const EdgeInsets.symmetric(horizontal: Pads.ctlH, vertical: Pads.ctlV),
       decoration: BoxDecoration(
         color: BrandColors.bg3,
         borderRadius: BorderRadius.circular(Radii.smAlt),
@@ -1081,8 +1081,8 @@ class _CustomNameFieldState extends State<_CustomNameField> {
       ),
       child: Row(
         children: [
-          Icon(Icons.edit_location_alt, color: BrandColors.text2, size: 18),
-          SizedBox(width: Gaps.xs),
+          const Icon(Icons.edit_location_alt, color: BrandColors.text2, size: 18),
+          const SizedBox(width: Gaps.xs),
           Expanded(
             child: TextField(
               controller: _controller,

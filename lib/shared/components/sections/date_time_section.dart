@@ -54,7 +54,7 @@ class _DateTimeSectionState extends State<DateTimeSection> {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.only(
+      padding: const EdgeInsets.only(
         top: Pads.sectionV,
         left: Pads.sectionH,
         right: Pads.sectionH,
@@ -71,13 +71,13 @@ class _DateTimeSectionState extends State<DateTimeSection> {
 
           // Conteúdo expansível
           if (_currentState == DateTimeState.setNow) ...[
-            SizedBox(height: Gaps.md),
+            const SizedBox(height: Gaps.md),
             _buildExpandedContent(),
           ],
 
           // Error message
           if (widget.validationError != null) ...[
-            SizedBox(height: Gaps.sm),
+            const SizedBox(height: Gaps.sm),
             Container(
               width: double.infinity,
               alignment: Alignment.centerLeft,
@@ -103,7 +103,7 @@ class _DateTimeSectionState extends State<DateTimeSection> {
 
         // Toggle buttons
         Container(
-          padding: EdgeInsets.all(Gaps.xs),
+          padding: const EdgeInsets.all(Gaps.xs),
           decoration: BoxDecoration(
             color: BrandColors.bg3,
             borderRadius: BorderRadius.circular(Radii.smAlt),
@@ -140,7 +140,7 @@ class _DateTimeSectionState extends State<DateTimeSection> {
           onTimeChanged: widget.onStartTimeChanged,
         ),
 
-        SizedBox(height: Gaps.sm),
+        const SizedBox(height: Gaps.sm),
 
         // End Date & Time
         _DateTimeRow(
@@ -179,7 +179,7 @@ class _ToggleButton extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: EdgeInsets.symmetric(horizontal: Pads.ctlH - 2, vertical: 5),
+        padding: const EdgeInsets.symmetric(horizontal: Pads.ctlH - 2, vertical: 5),
         decoration: BoxDecoration(
           color: isSelected ? BrandColors.planning : Colors.transparent,
           borderRadius: BorderRadius.circular(Radii.smAlt),
@@ -252,7 +252,7 @@ class _DateTimeRowState extends State<_DateTimeRow> {
               onTap: () => _toggleDatePicker(),
             ),
 
-            SizedBox(width: Gaps.xs),
+            const SizedBox(width: Gaps.xs),
 
             // Time Button
             _DateTimeButton(
@@ -268,7 +268,7 @@ class _DateTimeRowState extends State<_DateTimeRow> {
 
         // Inline Date Picker
         if (_isDatePickerExpanded) ...[
-          SizedBox(height: Gaps.sm),
+          const SizedBox(height: Gaps.sm),
           InlineDatePicker(
             selectedDate: widget.date,
             onDateChanged: (date) {
@@ -282,7 +282,7 @@ class _DateTimeRowState extends State<_DateTimeRow> {
 
         // Inline Time Picker
         if (_isTimePickerExpanded) ...[
-          SizedBox(height: Gaps.sm),
+          const SizedBox(height: Gaps.sm),
           InlineTimePicker(
             selectedTime: widget.time,
             onTimeChanged: (time) {
@@ -332,7 +332,7 @@ class _DateTimeButton extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: EdgeInsets.symmetric(
+        padding: const EdgeInsets.symmetric(
           horizontal: Pads.ctlH - 2,
           vertical: Pads.ctlV - 1,
         ),
@@ -348,7 +348,7 @@ class _DateTimeButton extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(icon, color: BrandColors.text2, size: 14),
-            SizedBox(width: Gaps.xs),
+            const SizedBox(width: Gaps.xs),
             Flexible(
               child: Text(
                 label,

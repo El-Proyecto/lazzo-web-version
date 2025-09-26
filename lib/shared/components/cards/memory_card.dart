@@ -46,7 +46,7 @@ class MemoryCard extends StatelessWidget {
                 ),
               ),
               child: coverImageUrl == null
-                  ? Icon(
+                  ? const Icon(
                       Icons.image_outlined,
                       size: 48,
                       color: BrandColors.text2,
@@ -93,7 +93,7 @@ class MemoryCard extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
 
-                  SizedBox(height: 2),
+                  const SizedBox(height: 2),
 
                   // Location and Date
                   Text(

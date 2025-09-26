@@ -24,10 +24,10 @@ class NavigationBar extends StatelessWidget {
         horizontal: Gaps.lg,
         vertical: Gaps.xs,
       ),
-      decoration: ShapeDecoration(
+      decoration: const ShapeDecoration(
         color: BrandColors.bg2,
         shape: RoundedRectangleBorder(
-          side: const BorderSide(width: 1, color: BrandColors.bg3),
+          side: BorderSide(width: 1, color: BrandColors.bg3),
         ),
       ),
       child: Row(

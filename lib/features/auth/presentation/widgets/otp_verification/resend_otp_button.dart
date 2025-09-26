@@ -57,7 +57,7 @@ class _ResendOtpButtonState extends State<ResendOtpButton> {
       color: Colors.transparent,
       child: Container(
         width: double.infinity,
-        padding: EdgeInsets.symmetric(
+        padding: const EdgeInsets.symmetric(
           horizontal: Pads.ctlH,
           vertical: Pads.ctlV,
         ),

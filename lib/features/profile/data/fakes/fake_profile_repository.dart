@@ -70,14 +70,14 @@ class FakeProfileRepository implements ProfileRepository {
   @override
   Future<ProfileEntity> getCurrentUserProfile() async {
     // Simulate network delay
-    await Future.delayed(Duration(milliseconds: 800));
+    await Future.delayed(const Duration(milliseconds: 800));
     return _currentUser;
   }
 
   @override
   Future<ProfileEntity> getProfileById(String userId) async {
     // Simulate network delay
-    await Future.delayed(Duration(milliseconds: 600));
+    await Future.delayed(const Duration(milliseconds: 600));
 
     if (userId == _currentUser.id) {
       return _currentUser;
@@ -94,7 +94,7 @@ class FakeProfileRepository implements ProfileRepository {
   @override
   Future<ProfileEntity> updateProfile(ProfileEntity profile) async {
     // Simulate network delay
-    await Future.delayed(Duration(milliseconds: 1000));
+    await Future.delayed(const Duration(milliseconds: 1000));
 
     // In a real implementation, this would save to the database
     // For now, just return the updated profile
@@ -104,7 +104,7 @@ class FakeProfileRepository implements ProfileRepository {
   @override
   Future<List<MemoryEntity>> getUserMemories(String userId) async {
     // Simulate network delay
-    await Future.delayed(Duration(milliseconds: 500));
+    await Future.delayed(const Duration(milliseconds: 500));
 
     if (userId == _currentUser.id) {
       return _currentUser.memories;

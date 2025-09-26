@@ -54,11 +54,11 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: BrandColors.text1),
+          icon: const Icon(Icons.arrow_back, color: BrandColors.text1),
           onPressed: () => Navigator.of(context).pop(),
         ),
       ),
-      body: Center(
+      body: const Center(
         child: CircularProgressIndicator(color: BrandColors.planning),
       ),
     );
@@ -77,7 +77,7 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: BrandColors.text1),
+          icon: const Icon(Icons.arrow_back, color: BrandColors.text1),
           onPressed: () => Navigator.of(context).pop(),
         ),
       ),
@@ -85,15 +85,15 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.error_outline, size: 48, color: BrandColors.cantVote),
-            SizedBox(height: Gaps.md),
+            const Icon(Icons.error_outline, size: 48, color: BrandColors.cantVote),
+            const SizedBox(height: Gaps.md),
             Text(
               'Failed to load profile',
               style: Theme.of(
                 context,
               ).textTheme.titleMedium?.copyWith(color: BrandColors.text1),
             ),
-            SizedBox(height: Gaps.sm),
+            const SizedBox(height: Gaps.sm),
             Text(
               error,
               style: Theme.of(
@@ -120,15 +120,15 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: BrandColors.text1),
+          icon: const Icon(Icons.arrow_back, color: BrandColors.text1),
           onPressed: () => Navigator.of(context).pop(),
         ),
       ),
       body: SingleChildScrollView(
-        padding: EdgeInsets.all(Insets.screenH),
+        padding: const EdgeInsets.all(Insets.screenH),
         child: Column(
           children: [
-            SizedBox(height: Gaps.lg),
+            const SizedBox(height: Gaps.lg),
 
             // Profile photo
             EditableProfilePhoto(
@@ -136,12 +136,12 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
               onTap: () => _showPhotoChangeSheet(profile),
             ),
 
-            SizedBox(height: Gaps.xl),
+            const SizedBox(height: Gaps.xl),
 
             // Email field (non-editable)
             EmailInfoCard(email: profile.email),
 
-            SizedBox(height: Gaps.md),
+            const SizedBox(height: Gaps.md),
 
             // Name field (required)
             EditableInfoCard(
@@ -156,7 +156,7 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
               onCancel: () => _cancelEditing('name'),
             ),
 
-            SizedBox(height: Gaps.md),
+            const SizedBox(height: Gaps.md),
 
             // Location field (optional)
             EditableInfoCard(
@@ -171,7 +171,7 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
               onRemove: () => _removeField('location', profile),
             ),
 
-            SizedBox(height: Gaps.md),
+            const SizedBox(height: Gaps.md),
 
             // Birthday field (optional) with notification checkbox
             IosBirthdayPickerCard(
@@ -189,7 +189,7 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
                   : null,
             ),
 
-            SizedBox(height: Gaps.xl),
+            const SizedBox(height: Gaps.xl),
           ],
         ),
       ),
@@ -352,7 +352,7 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
   void _showSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(message, style: TextStyle(color: BrandColors.text1)),
+        content: Text(message, style: const TextStyle(color: BrandColors.text1)),
         backgroundColor: BrandColors.bg1,
         behavior: SnackBarBehavior.floating,
       ),
