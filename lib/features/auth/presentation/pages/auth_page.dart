@@ -1,7 +1,5 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../../shared/constants/spacing.dart';
 import '../widgets/auth_form_widgets.dart';
@@ -11,6 +9,9 @@ import '../providers/auth_provider.dart';
 import '../../../../shared/themes/colors.dart';
 import 'verifyotp.dart';
 import './login/login_page.dart';
+
+// Domínio: para tipar o listen
+import '../../domain/entities/user.dart' as domain;
 
 class AuthPage extends ConsumerStatefulWidget {
   const AuthPage({super.key});
@@ -28,49 +29,16 @@ class _AuthPageState extends ConsumerState<AuthPage> {
   // Flag para só navegar quando o fluxo OAuth realmente acontecer
   bool _pendingOAuth = false;
 
-  late final StreamSubscription<AuthState> _authSub;
-
   @override
   void initState() {
     super.initState();
-
     _nameController.addListener(_validateForm);
     _emailController.addListener(_validateForm);
-
-    // OUVE eventos de auth e navega APENAS se estivermos num fluxo OAuth
-    _authSub = Supabase.instance.client.auth.onAuthStateChange.listen((
-      d,
-    ) async {
-      if (!_pendingOAuth) return;
-
-      if ((d.event == AuthChangeEvent.signedIn ||
-              d.event == AuthChangeEvent.userUpdated) &&
-          d.session != null &&
-          mounted) {
-        _pendingOAuth = false; // reset
-        final u = d.session!.user;
-        final meta = (u.userMetadata ?? {});
-        final nameRaw = meta['full_name'] ?? meta['name'];
-        final name = (nameRaw is String && nameRaw.trim().isNotEmpty)
-            ? nameRaw.trim()
-            : null;
-
-        await ref
-            .read(authProvider.notifier)
-            .ensureUsersRow(
-              u.id,
-              (u.email ?? '').trim().toLowerCase(),
-              name: name,
-            );
-
-        Navigator.pushNamedAndRemoveUntil(context, '/home', (_) => false);
-      }
-    });
+    
   }
 
   @override
   void dispose() {
-    _authSub.cancel();
     _nameController.dispose();
     _emailController.dispose();
     super.dispose();
@@ -78,8 +46,7 @@ class _AuthPageState extends ConsumerState<AuthPage> {
 
   void _validateForm() {
     setState(() {
-      _canSubmit =
-          _nameController.text.isNotEmpty &&
+      _canSubmit = _nameController.text.isNotEmpty &&
           _emailController.text.isNotEmpty &&
           _emailController.text.contains('@');
     });
@@ -126,13 +93,13 @@ class _AuthPageState extends ConsumerState<AuthPage> {
     try {
       setState(() {
         _isLoading = true;
-        _pendingOAuth = true; // marca que estamos a iniciar OAuth
+        _pendingOAuth = true; // a iniciar OAuth
       });
 
       await ref.read(authProvider.notifier).signInWithGoogle();
-      // NÃO navegues aqui; o listener acima trata disso quando voltar o deep link
+      // Navegação acontece no listener no build
     } catch (e) {
-      _pendingOAuth = false; // falhou o fluxo
+      _pendingOAuth = false;
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -158,6 +125,29 @@ class _AuthPageState extends ConsumerState<AuthPage> {
 
   @override
   Widget build(BuildContext context) {
+    // ✅ ref.listen deve estar no build
+    ref.listen<AsyncValue<domain.User?>>(authProvider, (prev, next) async {
+      next.whenOrNull(
+        data: (u) async {
+          if (!_pendingOAuth || u == null || !mounted) return;
+
+          _pendingOAuth = false;
+
+          // Garantir row no backend (se necessário)
+          final n = ref.read(authProvider.notifier);
+          await n.ensureUsersRow(
+            u.id,
+            u.email.trim().toLowerCase(),
+            name: u.name,
+          );
+
+          if (mounted) {
+            Navigator.pushNamedAndRemoveUntil(context, '/home', (_) => false);
+          }
+        },
+      );
+    });
+
     return Scaffold(
       backgroundColor: Colors.black,
       body: SafeArea(
@@ -173,9 +163,8 @@ class _AuthPageState extends ConsumerState<AuthPage> {
               AuthFormWidgets(
                 nameController: _nameController,
                 emailController: _emailController,
-                onCreateAccount: _canSubmit && !_isLoading
-                    ? _handleSubmit
-                    : null,
+                onCreateAccount:
+                    _canSubmit && !_isLoading ? _handleSubmit : null,
                 isLoading: _isLoading,
                 onGoogleSignIn: _handleGoogleSignIn,
                 onAppleSignIn: _handleAppleSignIn,

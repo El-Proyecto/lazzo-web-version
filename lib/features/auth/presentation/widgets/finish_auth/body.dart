@@ -12,7 +12,7 @@ class CreateProfileForm extends StatelessWidget {
   const CreateProfileForm({
     super.key,
     // dados
-    this.phoneNumber,
+    this.email,
     this.name,
     this.city,
     this.birthDate,
@@ -20,14 +20,14 @@ class CreateProfileForm extends StatelessWidget {
 
     // toques nos tiles
     this.onAddPhoto,
-    this.onEditPhone,
+    //this.onEditPhone,
     this.onEditName,
     this.onEditCity,
     this.onEditBirthDate,
     this.onToggleNotifyBirthday,
 
     // editores inline adicionais (legado/extra)
-    this.phoneEditor,
+    //this.phoneEditor,
     this.cityEditor,
     this.birthDateEditor,
 
@@ -67,7 +67,7 @@ class CreateProfileForm extends StatelessWidget {
   });
 
   // ---- Dados base ----
-  final String? phoneNumber;
+  final String? email;
   final String? name;
   final String? city;
   final DateTime? birthDate;
@@ -75,14 +75,14 @@ class CreateProfileForm extends StatelessWidget {
 
   // ---- Actions gerais ----
   final VoidCallback? onAddPhoto;
-  final VoidCallback? onEditPhone;
+  //final VoidCallback? onEditPhone;
   final VoidCallback? onEditName;
   final VoidCallback? onEditCity;
   final VoidCallback? onEditBirthDate;
   final ValueChanged<bool>? onToggleNotifyBirthday;
 
   // ---- Editores inline extras ----
-  final Widget? phoneEditor;
+  //final Widget? phoneEditor;
   final Widget? cityEditor;
   final Widget? birthDateEditor;
 
@@ -125,8 +125,8 @@ class CreateProfileForm extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final String phone = (phoneNumber?.trim().isNotEmpty ?? false)
-        ? phoneNumber!.trim()
+    final String buildEmail = (email?.trim().isNotEmpty ?? false)
+        ? email!.trim()
         : 'Tap to Add';
     final String displayName = (name?.trim().isNotEmpty ?? false)
         ? name!.trim()
@@ -202,11 +202,10 @@ class CreateProfileForm extends StatelessWidget {
             children: [
               InfoTile(
                 background: const Color(0xFF1E1E1E),
-                label: 'Phone Number',
-                value: phone,
-                onTap: onEditPhone,
+                label: 'Email',
+                value: buildEmail,
+                onTap: null,
               ),
-              if (phoneEditor != null) phoneEditor!,
               const SizedBox(height: 8),
 
               EditableTextTile(

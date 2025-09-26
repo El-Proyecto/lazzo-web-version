@@ -21,7 +21,17 @@ import '../features/groups/presentation/providers/groups_provider.dart';
 // PROFILE - TODO: Add real implementation imports when available
 import '../features/profile/presentation/providers/profile_providers.dart';
 
-// AUTH - TODO: Add real implementation imports when available
+// AUTH (DI via providers)
+import '../features/auth/presentation/providers/auth_provider.dart';
+import '../features/auth/data/datasources/auth_remote_datasource.dart';
+import '../features/auth/data/repositories/auth_repository_impl.dart';
+
+// USERS (para finish_setup)
+import '../features/auth/presentation/providers/users_repository_provider.dart';
+import '../features/auth/data/datasources/users_remote_datasource.dart';
+import '../features/auth/data/repositories/users_repository.dart';
+
+
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -70,8 +80,20 @@ void main() async {
           ), // Currently uses fake, ready for real
         ),
 
-        // Auth repo -> TODO: Refactor auth providers to use DI pattern (from PR 2)
         // authRepositoryProvider.overrideWith(...),
+        // ✅ AUTH repo -> real (Supabase) via DI
+        authRepositoryProvider.overrideWith((ref) {
+          final client = Supabase.instance.client;
+          return AuthRepositoryImpl(AuthRemoteDatasource(client));
+        }),
+
+        // ✅ USERS repo -> real (Supabase) via DI (usado no finish_setup)
+        usersRepositoryProvider.overrideWith((ref) {
+          final client = Supabase.instance.client;
+          return UsersRepository(UsersRemoteDatasource(client));
+        }),
+
+
       ],
       child: const LazzoApp(),
     ),

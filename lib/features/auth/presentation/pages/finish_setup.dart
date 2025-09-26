@@ -1,34 +1,31 @@
-// lib/features/auth/presentation/pages/finish_setup.dart
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../shared/themes/colors.dart';
 
 // Form principal
 import '../widgets/finish_auth/body.dart';
 
-// Editor inline para telefone (abaixo do tile)
-import '../widgets/editor_tiles/inline_phone_editor.dart';
-
 // Botão "Complete setup"
 import '../widgets/finish_auth/complete_setup.dart';
 
-// >>> NOVOS imports para persistência
-import '../../data/datasources/users_remote_datasource.dart';
+// Providers (injeção de dependências)
+import '../../presentation/providers/users_repository_provider.dart';
+import '../providers/auth_provider.dart';
 import '../../data/repositories/users_repository.dart';
 
-class CreateProfilePage extends StatefulWidget {
+class CreateProfilePage extends ConsumerStatefulWidget {
   const CreateProfilePage({super.key});
 
   @override
-  State<CreateProfilePage> createState() => _CreateProfilePageState();
+  ConsumerState<CreateProfilePage> createState() => _CreateProfilePageState();
 }
 
-enum _Editing { none, phone, name, city, birthDate, instagram, tiktok, spotify }
+enum _Editing { none, name, city, birthDate }
 
-class _CreateProfilePageState extends State<CreateProfilePage> {
+class _CreateProfilePageState extends ConsumerState<CreateProfilePage> {
   // ---- estado local (UI) ----
   String? _name;
-  String? _phoneOverride;
+  String? _emailOverride; // caso venhas a permitir edição inline
   String? _city;
   DateTime? _birthDate;
   bool _notifyBirthday = false;
@@ -46,8 +43,8 @@ class _CreateProfilePageState extends State<CreateProfilePage> {
   @override
   void initState() {
     super.initState();
-    _repo = UsersRepository(UsersRemoteDatasource(Supabase.instance.client));
-    // Garante row (faz insert com phone do auth se não existir)
+    _repo = ref.read(usersRepositoryProvider);
+    // Garante row (faz insert se não existir)
     _repo.upsertPatch({});
   }
 
@@ -105,15 +102,6 @@ class _CreateProfilePageState extends State<CreateProfilePage> {
     );
   }
 
-  String? _resolvedPhone(BuildContext context) {
-    final args = ModalRoute.of(context)?.settings.arguments;
-    final argPhone = (args is Map) ? args['phoneNumber'] as String? : null;
-    final authPhone = Supabase.instance.client.auth.currentUser?.phone;
-    return (argPhone?.trim().isNotEmpty ?? false)
-        ? argPhone!.trim()
-        : ((authPhone?.trim().isNotEmpty ?? false) ? authPhone!.trim() : null);
-  }
-
   // Persistência -------------------------------------------------------------
 
   Future<void> _savePatch(
@@ -143,11 +131,11 @@ class _CreateProfilePageState extends State<CreateProfilePage> {
 
   void _toggleNotifyBirthday(bool v) {
     setState(() => _notifyBirthday = v);
-    _savePatch({'Notify_birthday': v}); // nome da tua coluna com N maiúsculo
+    _savePatch({'Notify_birthday': v}); // nome da coluna conforme schema
   }
 
   void _finishSetup() {
-    // aqui já está tudo persistido campo-a-campo; basta navegar
+    // Aqui já está tudo persistido campo-a-campo; basta navegar
     Navigator.pushNamedAndRemoveUntil(context, '/auth-done', (_) => false);
   }
 
@@ -155,7 +143,22 @@ class _CreateProfilePageState extends State<CreateProfilePage> {
 
   @override
   Widget build(BuildContext context) {
-    final effectivePhone = _phoneOverride ?? _resolvedPhone(context);
+    // User autenticado (reativo)
+    final user = ref.watch(authProvider).maybeWhen(
+          data: (u) => u,
+          orElse: () => null,
+        );
+
+    // Email vindo por argumento da rota (se existir)
+    final routeArgs = ModalRoute.of(context)?.settings.arguments;
+    final String? routeEmail = (routeArgs is Map && routeArgs['email'] is String)
+        ? (routeArgs['email'] as String?)
+        : null;
+
+    // Prioridade: override local > argumento de rota > auth user
+    final String? effectiveEmail = (_emailOverride ?? routeEmail ?? user?.email)
+        ?.trim()
+        .toLowerCase();
 
     return Scaffold(
       backgroundColor: const Color(0xFF181818),
@@ -177,7 +180,7 @@ class _CreateProfilePageState extends State<CreateProfilePage> {
             children: [
               CreateProfileForm(
                 // ----- dados -----
-                phoneNumber: effectivePhone,
+                email: effectiveEmail, // <- passa o email resolvido
                 name: _name,
                 city: _city,
                 birthDate: _birthDate,
@@ -192,19 +195,12 @@ class _CreateProfilePageState extends State<CreateProfilePage> {
                 onAddPhoto: () {
                   /* TODO: picker/upload avatar + storage */
                 },
-                onEditPhone: () => setState(() => _editing = _Editing.phone),
+
                 onEditName: () => setState(() => _editing = _Editing.name),
                 onEditCity: () => setState(() => _editing = _Editing.city),
                 onEditBirthDate: () =>
                     setState(() => _editing = _Editing.birthDate),
                 onToggleNotifyBirthday: _toggleNotifyBirthday,
-
-                // links: taps para entrar em edição
-                onEditInstagram: () =>
-                    setState(() => _editing = _Editing.instagram),
-                onEditTikTok: () => setState(() => _editing = _Editing.tiktok),
-                onEditSpotify: () =>
-                    setState(() => _editing = _Editing.spotify),
 
                 // ----- NAME -----
                 isEditingName: _editing == _Editing.name,
@@ -241,56 +237,6 @@ class _CreateProfilePageState extends State<CreateProfilePage> {
                   });
                   _savePatch({'birth_date': d.toIso8601String()});
                 },
-
-                // ----- LINKS -----
-                isEditingInstagram: _editing == _Editing.instagram,
-                onCancelEditInstagram: () =>
-                    setState(() => _editing = _Editing.none),
-                onSaveEditInstagram: (v) {
-                  setState(() {
-                    _instagram = v;
-                    _editing = _Editing.none;
-                  });
-                  _savePatch({'instagram_url': v});
-                },
-
-                isEditingTikTok: _editing == _Editing.tiktok,
-                onCancelEditTikTok: () =>
-                    setState(() => _editing = _Editing.none),
-                onSaveEditTikTok: (v) {
-                  setState(() {
-                    _tiktok = v;
-                    _editing = _Editing.none;
-                  });
-                  _savePatch({'tiktok_url': v});
-                },
-
-                isEditingSpotify: _editing == _Editing.spotify,
-                onCancelEditSpotify: () =>
-                    setState(() => _editing = _Editing.none),
-                onSaveEditSpotify: (v) {
-                  setState(() {
-                    _spotify = v;
-                    _editing = _Editing.none;
-                  });
-                  _savePatch({'spotify_url': v});
-                },
-
-                // ----- PHONE (editor inline) -----
-                phoneEditor: _editing == _Editing.phone
-                    ? InlinePhoneEditor(
-                        initial: effectivePhone,
-                        onCancel: () =>
-                            setState(() => _editing = _Editing.none),
-                        onSave: (v) {
-                          setState(() {
-                            _phoneOverride = v;
-                            _editing = _Editing.none;
-                          });
-                          _savePatch({'phone': v});
-                        },
-                      )
-                    : null,
               ),
               const SizedBox(height: 24),
             ],

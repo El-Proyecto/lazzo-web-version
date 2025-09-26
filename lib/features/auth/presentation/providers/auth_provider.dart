@@ -3,8 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart'; // Para Supabase.instan
 import '../../data/repositories/auth_repository_impl.dart'; // Caminho para o teu AuthRepositoryImpl
 import '../../data/datasources/auth_remote_datasource.dart'; // Caminho para o teu AuthRemoteDatasource
 import '../../domain/repositories/auth_repository.dart'; // Caminho para o contrato AuthRepository
-import '../../domain/entities/user.dart'
-    as domain; // Caminho para a entidade User
+import '../../domain/entities/user.dart' as domain; // Caminho para a entidade User
 
 final authProvider =
     StateNotifierProvider<AuthNotifier, AsyncValue<domain.User?>>((ref) {
@@ -13,6 +12,11 @@ final authProvider =
       );
       return AuthNotifier(repo);
     });
+
+
+final authRepositoryProvider = Provider<AuthRepository>((ref) {
+  throw UnimplementedError('Provide AuthRepository in main.dart override');
+});
 
 class AuthNotifier extends StateNotifier<AsyncValue<domain.User?>> {
   final AuthRepository repository;

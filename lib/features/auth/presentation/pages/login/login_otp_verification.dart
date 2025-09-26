@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../data/datasources/auth_remote_datasource.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../widgets/otp_verification/otp_title.dart';
 import '../../widgets/otp_verification/otp_subtitle.dart';
@@ -10,6 +8,11 @@ import '../../widgets/otp_verification/verify_footer.dart';
 import '../../widgets/otp_verification/resend_otp_button.dart';
 import '../../../../../shared/components/sections/lazzo_header.dart';
 import '../../../../../shared/themes/colors.dart';
+
+// Auth providers (DI)
+import '../../providers/auth_provider.dart';
+// Rotas
+import '../../../../../routes/app_router.dart';
 
 class LoginOtpVerificationPage extends ConsumerStatefulWidget {
   const LoginOtpVerificationPage({super.key, required this.email});
@@ -26,17 +29,12 @@ class _LoginOtpVerificationPageState
   String _code = '';
   String? _bannerMessage;
   bool _busy = false;
-  late final AuthRemoteDatasource _authDatasource;
-
-  @override
-  void initState() {
-    super.initState();
-    _authDatasource = AuthRemoteDatasource(Supabase.instance.client);
-  }
 
   Future<void> _resend() async {
+    setState(() => _bannerMessage = null);
     try {
-      await _authDatasource.login(widget.email); // Usa login em vez de register
+      // Pede novo OTP via repositório (login por email)
+      await ref.read(authRepositoryProvider).login(email: widget.email);
       setState(() => _bannerMessage = 'New code sent to your email.');
     } catch (e) {
       setState(() => _bannerMessage = 'Falha ao reenviar código: $e');
@@ -55,12 +53,21 @@ class _LoginOtpVerificationPageState
     });
 
     try {
-      await _authDatasource.verifyOtp(email: widget.email, token: _code);
+      // 1) Verifica OTP via repo (camada de dados)
+      await ref
+          .read(authRepositoryProvider)
+          .verifyOtp(email: widget.email, otp: _code);
+
+      // 2) Atualiza estado de sessão no provider (camada de domínio)
+      await ref.read(authProvider.notifier).getCurrentUser();
 
       if (!mounted) return;
 
-      // Navega direto para home após login bem sucedido
-      Navigator.of(context).pushNamedAndRemoveUntil('/main', (route) => false);
+      // 3) Navega para o layout principal usando o ROOT navigator
+      Navigator.of(context, rootNavigator: true).pushNamedAndRemoveUntil(
+        AppRouter.mainLayout,
+        (route) => false,
+      );
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -121,7 +128,7 @@ class _LoginOtpVerificationPageState
                           isEnabled: _code.length == 6 && !_busy,
                         ),
                         const SizedBox(height: 16),
-                        ResendOtpButton(onResend: _resend, isBusy: _busy),
+                        ResendOtpButton(onResend: _busy ? null : _resend, isBusy: _busy),
                       ],
                     ),
                   ],
