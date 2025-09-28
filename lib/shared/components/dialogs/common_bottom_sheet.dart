@@ -77,7 +77,7 @@ class CommonBottomSheet extends StatelessWidget {
             const GrabberBar(),
             const SizedBox(height: Gaps.md),
           ],
-          
+
           // Header
           Padding(
             padding: contentPadding ?? const EdgeInsets.all(Pads.sectionH),
@@ -100,9 +100,9 @@ class CommonBottomSheet extends StatelessWidget {
               ],
             ),
           ),
-          
+
           const SizedBox(height: Gaps.sm),
-          
+
           // Content
           Flexible(
             child: SingleChildScrollView(
@@ -110,7 +110,7 @@ class CommonBottomSheet extends StatelessWidget {
               child: content,
             ),
           ),
-          
+
           // Actions
           if (actions != null && actions!.isNotEmpty) ...[
             const SizedBox(height: Gaps.md),
@@ -118,16 +118,22 @@ class CommonBottomSheet extends StatelessWidget {
               padding: contentPadding ?? const EdgeInsets.all(Pads.sectionH),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: actions!.map((action) => Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: Gaps.xs),
-                    child: action,
-                  ),
-                )).toList(),
+                children: actions!
+                    .map(
+                      (action) => Expanded(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: Gaps.xs,
+                          ),
+                          child: action,
+                        ),
+                      ),
+                    )
+                    .toList(),
               ),
             ),
           ],
-          
+
           // Bottom safe area
           SizedBox(height: MediaQuery.of(context).padding.bottom),
         ],
@@ -191,14 +197,12 @@ class CommonConfirmDialog extends StatelessWidget {
       children: [
         Text(
           message,
-          style: AppText.bodyMedium.copyWith(
-            color: BrandColors.text2,
-          ),
+          style: AppText.bodyMedium.copyWith(color: BrandColors.text2),
           textAlign: TextAlign.center,
         ),
-        
+
         const SizedBox(height: Gaps.lg),
-        
+
         Row(
           children: [
             Expanded(
@@ -212,15 +216,13 @@ class CommonConfirmDialog extends StatelessWidget {
                 ),
                 child: Text(
                   cancelText,
-                  style: AppText.labelLarge.copyWith(
-                    color: BrandColors.text2,
-                  ),
+                  style: AppText.labelLarge.copyWith(color: BrandColors.text2),
                 ),
               ),
             ),
-            
+
             const SizedBox(width: Gaps.md),
-            
+
             Expanded(
               child: ElevatedButton(
                 onPressed: () {
@@ -228,13 +230,12 @@ class CommonConfirmDialog extends StatelessWidget {
                   onConfirm();
                 },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: confirmColor ?? Theme.of(context).colorScheme.primary,
+                  backgroundColor:
+                      confirmColor ?? Theme.of(context).colorScheme.primary,
                 ),
                 child: Text(
                   confirmText,
-                  style: AppText.labelLarge.copyWith(
-                    color: Colors.white,
-                  ),
+                  style: AppText.labelLarge.copyWith(color: Colors.white),
                 ),
               ),
             ),
