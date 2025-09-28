@@ -6,9 +6,9 @@ import '../../domain/entities/pending_event.dart';
 import '../providers/pending_event_providers.dart';
 import '../../../../shared/components/cards/pending_event_card.dart';
 import '../../../../shared/components/cards/pending_event_expanded_card.dart';
-import '../../../../shared/components/buttons/simple_vote_button.dart';
-import '../../../../shared/components/buttons/voting_button.dart';
-import '../../../../shared/components/buttons/voted_no_button.dart';
+import 'simple_vote_button.dart';
+import 'voting_button.dart';
+import 'voted_no_button.dart';
 import '../../../../shared/components/buttons/stacked_avatars.dart';
 import '../../../../shared/constants/vote_status.dart';
 

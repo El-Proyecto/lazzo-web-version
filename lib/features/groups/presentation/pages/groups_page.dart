@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../shared/themes/colors.dart';
 import '../../../../shared/constants/spacing.dart';
-import '../../../../shared/components/nav/groups_app_bar.dart';
+import '../widgets/groups_app_bar.dart';
 import '../../../../shared/components/inputs/search_bar.dart' as custom;
 import '../../../../shared/components/cards/group_card.dart';
-import '../../../../shared/components/dialogs/group_context_menu.dart';
+import '../widgets/group_context_menu.dart';
 import '../../../../shared/models/group_enums.dart';
 import '../../../../shared/components/chips/filter_chip.dart';
 import '../../domain/entities/group.dart';
@@ -179,7 +179,11 @@ class _GroupsPageState extends ConsumerState<GroupsPage> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(Icons.error_outline, size: 64, color: BrandColors.cantVote),
+          const Icon(
+            Icons.error_outline,
+            size: 64,
+            color: BrandColors.cantVote,
+          ),
           const SizedBox(height: Gaps.md),
           Text(
             'Error loading groups',
@@ -220,8 +224,12 @@ class _GroupsPageState extends ConsumerState<GroupsPage> {
     final groups = groupsAsync.value ?? [];
     final group = groups.firstWhere(
       (g) => g.id == groupId,
-      orElse: () =>
-          const Group(id: '', name: '', status: GroupStatus.active, memberCount: 0),
+      orElse: () => const Group(
+        id: '',
+        name: '',
+        status: GroupStatus.active,
+        memberCount: 0,
+      ),
     );
 
     // Ajusta o menu com base no estado atual do grupo

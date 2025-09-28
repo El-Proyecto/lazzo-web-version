@@ -12,9 +12,9 @@ export 'providers/pending_event_providers.dart';
 export 'widgets/pending_event_widget.dart';
 export 'widgets/pending_events_section.dart';
 
-// Shared Components (Vote Buttons)
-export '../../../shared/components/buttons/vote_button.dart';
-export '../../../shared/components/buttons/voting_button.dart';
-export '../../../shared/components/buttons/voted_button.dart';
+// Feature-specific Components (Vote Buttons)
+export 'widgets/vote_button.dart';
+export 'widgets/voting_button.dart';
+export 'widgets/voted_button.dart';
 export '../../../shared/components/cards/pending_event_card.dart';
 export '../../../shared/components/cards/pending_event_expanded_card.dart';

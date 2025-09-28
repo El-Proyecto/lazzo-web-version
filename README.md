@@ -130,6 +130,23 @@ We **do not** keep any `figma_raw/` dumps in this repo. If a piece is **not reus
 - Lints: forbid raw hex colors & magic numbers (except micro optical fixes), prefer tokens.
 - Definition of Done: loading/empty/error states, a11y touch size, tokens applied, no logic in shared components, telemetry hooks (where applicable).
 
+---
+
+## Widget Management Guidelines
+
+**Component Organization Rules:**
+- **Shared components** (`shared/components/`): Only widgets used across 3+ features (cards, buttons, nav, sections)
+- **Feature widgets** (`features/*/presentation/widgets/`): Components specific to one feature
+- **Generic over specific**: Create unified components (e.g., `CommonAppBar`) to replace multiple similar widgets
+
+**Critical Don'ts:**
+- Never delete widgets without ensuring they're replaced or moved
+- Never leave broken import paths "to fix later"
+- Never move shared design tokens (colors, spacing, text_styles) out of `shared/`
+- Never create duplicate widgets in different locations
+
+---
+
 ## Quality Checklist (Before PR)
 **Architecture Boundaries:**
 - [ ] No Supabase imports in `features/*/presentation/` or `features/*/domain/`
@@ -144,6 +161,13 @@ We **do not** keep any `figma_raw/` dumps in this repo. If a piece is **not reus
 - [ ] Proper error handling with `AsyncValue`
 - [ ] No TODO/FIXME comments without GitHub issues
 - [ ] Tests cover new functionality (unit for domain, widget for UI)
+
+**Widget Management:**
+- [ ] No broken import paths: `flutter analyze` shows no "Target of URI doesn't exist" errors
+- [ ] Shared components are truly reusable (used by 3+ features)
+- [ ] Feature-specific widgets are in correct `features/*/presentation/widgets/` folders
+- [ ] All moved widgets have updated import paths in consuming files
+- [ ] `shared/components/components.dart` exports only truly shared components
 
 ---
 
