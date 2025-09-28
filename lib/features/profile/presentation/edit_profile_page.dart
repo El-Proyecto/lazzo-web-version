@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../shared/components/components.dart';
-import '../../../shared/components/cards/ios_birthday_picker_card.dart';
+import 'widgets/ios_birthday_picker_card.dart';
+import 'widgets/editable_profile_photo.dart';
+import 'widgets/editable_info_card.dart';
+import 'widgets/photo_change_bottom_sheet.dart';
+import '../../auth/presentation/widgets/email_info_card.dart';
 import '../../../shared/constants/spacing.dart';
 import '../../../shared/themes/colors.dart';
 import '../domain/entities/profile_entity.dart';
@@ -85,7 +89,11 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.error_outline, size: 48, color: BrandColors.cantVote),
+            const Icon(
+              Icons.error_outline,
+              size: 48,
+              color: BrandColors.cantVote,
+            ),
             const SizedBox(height: Gaps.md),
             Text(
               'Failed to load profile',
@@ -352,7 +360,10 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
   void _showSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(message, style: const TextStyle(color: BrandColors.text1)),
+        content: Text(
+          message,
+          style: const TextStyle(color: BrandColors.text1),
+        ),
         backgroundColor: BrandColors.bg1,
         behavior: SnackBarBehavior.floating,
       ),

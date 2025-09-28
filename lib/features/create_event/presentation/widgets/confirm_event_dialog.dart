@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import '../../constants/spacing.dart';
-import '../../constants/text_styles.dart';
-import '../../themes/colors.dart';
-import '../../../features/create_event/presentation/widgets/event_group_selector.dart';
-import '../../../features/create_event/presentation/widgets/location_section.dart';
-import '../widgets/grabber_bar.dart';
+import '../../../../shared/constants/spacing.dart';
+import '../../../../shared/constants/text_styles.dart';
+import '../../../../shared/themes/colors.dart';
+import 'event_group_selector.dart';
+import 'location_section.dart';
+import '../../../../shared/components/widgets/grabber_bar.dart';
 
 /// Bottom sheet para confirmar a criação do evento
 /// Mostra resumo de todas as informações do evento

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import '../components/forms/event_group_selector.dart';
-import '../components/sections/location_section.dart';
-import '../components/sections/date_time_section.dart';
+import '../../features/create_event/presentation/widgets/event_group_selector.dart';
+import '../../features/create_event/presentation/widgets/location_section.dart';
+import '../../features/create_event/presentation/widgets/date_time_section.dart';
 
 /// Model para rascunho de evento
 /// Usado para salvar e carregar estados parciais de criação de eventos

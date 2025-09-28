@@ -211,5 +211,86 @@ Lint rules are configured in `analysis_options.yaml` to enforce:
 
 ---
 
-Keep this guide up to date. When in doubt: **tokenize, separate layers, fake-first, DI override**.
+## 15) Widget Migration & Management Guidelines
+
+**CRITICAL RULE: Never delete widgets during migration - always move or replace them.**
+
+### Widget Organization Principles
+- **Shared components** (`shared/components/`): Only truly reusable UI that's used across 3+ features
+- **Feature widgets** (`features/*/presentation/widgets/`): Components specific to one feature
+- **Generic replacements**: Create unified components to replace multiple similar widgets
+
+### Safe Widget Migration Process
+1. **Before moving any widget:**
+   - Search codebase for all imports: `git grep "widget_name.dart"`
+   - Identify all usage locations
+   - Plan replacement strategy (move vs replace vs create generic)
+
+2. **When moving widgets:**
+   - Update import paths in ALL consuming files immediately
+   - Test compilation after each move: `flutter analyze`
+   - Fix import paths using correct relative structure:
+     - From feature to shared: `../../../../shared/constants/spacing.dart`
+     - Between features: `../../../other_feature/presentation/widgets/`
+
+3. **When creating generic replacements:**
+   - Create new generic widget first (e.g., `CommonAppBar`, `VoteWidget`)
+   - Update consumers to use new generic widget
+   - Only then remove old specific widgets
+   - Update `shared/components/components.dart` exports
+
+### Import Path Patterns
+```dart
+// From feature widget to shared constants
+import '../../../../shared/constants/spacing.dart';
+import '../../../../shared/constants/text_styles.dart';
+import '../../../../shared/themes/colors.dart';
+
+// From feature widget to shared components
+import '../../../../shared/components/cards/memory_card.dart';
+
+// From feature widget to other feature
+import '../../../create_event/presentation/widgets/event_form.dart';
+
+// From feature widget to same feature
+import '../other_widget.dart';
+import '../../domain/entities/profile_entity.dart';
+```
+
+### Component Movement Checklist
+Before moving any widget file:
+- [ ] Search all imports: `git grep "filename.dart"`
+- [ ] List all consuming files
+- [ ] Plan import path updates
+- [ ] Move file to new location
+- [ ] Update ALL import paths immediately
+- [ ] Run `flutter analyze` to verify no broken imports
+- [ ] Update export files (`components.dart`, feature exports)
+- [ ] Test app compilation and basic functionality
+
+### Forbidden Operations
+- **NEVER** delete widgets without ensuring they're replaced or moved
+- **NEVER** move widgets without updating import paths immediately
+- **NEVER** leave broken import paths "to fix later"
+- **NEVER** create duplicate widgets in different locations
+- **NEVER** move shared design tokens (colors, spacing, text_styles)
+
+### Recovery from Broken Migration
+If widgets are missing or imports broken:
+1. Check git history: `git log --oneline --name-only`
+2. Find moved files: `find lib/ -name "*widget_name*"`
+3. Search for broken imports: `flutter analyze | grep "Target of URI doesn't exist"`
+4. Fix import paths systematically, feature by feature
+5. Verify each fix with `flutter analyze`
+
+### Widget Architecture Rules
+- **Generic widgets** (3+ usages): `shared/components/category/generic_name.dart`
+- **Feature widgets** (1-2 usages): `features/feature_name/presentation/widgets/specific_name.dart`
+- **Replacement strategy**: Create generic first, migrate consumers, remove specifics
+- **Import consistency**: Use absolute paths from lib/ root for clarity
+- **Export management**: Keep `shared/components/components.dart` updated with only shared exports
+
+---
+
+Keep this guide up to date. When in doubt: **tokenize, separate layers, fake-first, DI override, move-don't-delete**.
 

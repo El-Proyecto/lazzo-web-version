@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../../shared/components/nav/profile_app_bar.dart';
-import '../../../../shared/components/cards/user_info_card.dart';
-import '../../../../shared/components/sections/memories_section.dart';
+import '../widgets/profile_app_bar.dart';
+import '../widgets/user_info_card.dart';
+import '../widgets/memories_section.dart';
 import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/themes/colors.dart';
 import '../../domain/entities/profile_entity.dart';
@@ -26,7 +26,11 @@ class ProfilePage extends ConsumerWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.error_outline, size: 48, color: BrandColors.text2),
+              const Icon(
+                Icons.error_outline,
+                size: 48,
+                color: BrandColors.text2,
+              ),
               const SizedBox(height: Gaps.md),
               Text(
                 'Error loading profile',

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../shared/components/sections/section_block.dart';
-import '../../../../shared/components/cards/event_created_banner.dart';
+import '../../../create_event/presentation/widgets/event_created_banner.dart';
 import '../widgets/memory_summary_card.dart';
 import '../widgets/pending_events_section.dart';
 import '../providers/memory_providers.dart';

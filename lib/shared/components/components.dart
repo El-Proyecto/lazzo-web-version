@@ -1,42 +1,36 @@
 // Shared Components Exports
-// This file exports all the shared components for easy importing
+// This file exports only truly reusable shared components
+// Feature-specific components are now located in their respective feature folders
 
-// Navigation Components
-export 'nav/create_event_app_bar.dart';
-export 'nav/profile_app_bar.dart';
-export 'nav/groups_app_bar.dart';
+// NAVIGATION COMPONENTS (Truly Shared)
+export 'nav/common_app_bar.dart'; // NEW: Replaces 3 feature-specific AppBars
+export 'nav/navigation_bar.dart'; // App-wide bottom navigation
 
-// Card Components
-export 'cards/user_info_card.dart';
-export 'cards/memory_card.dart';
-export 'cards/editable_info_card.dart';
-export 'cards/birthday_picker_card.dart';
-export 'cards/dropdown_birthday_picker_card.dart';
-export 'cards/email_info_card.dart';
-export 'cards/group_card.dart';
+// CARD COMPONENTS (Truly Shared)
+export 'cards/base_card.dart'; // NEW: Generic card foundation
+export 'cards/memory_card.dart'; // Used in profile, details
+export 'cards/memory_summary_card.dart'; // Used in home, profile
+export 'cards/group_card.dart'; // Used in groups, selections
+export 'cards/pending_event_card.dart'; // Used in home, notifications
+export 'cards/pending_event_expanded_card.dart'; // Expanded version
 
-// Form Components
-export 'forms/event_group_selector.dart';
+// BUTTON COMPONENTS (Truly Shared)
+export 'buttons/vote_widget.dart'; // NEW: Replaces 14 voting buttons
+export 'buttons/green_button.dart'; // Used across auth, create_event
+export 'buttons/continue_with.dart'; // Used across auth flows
+export 'buttons/expanded_card_button.dart'; // Generic expandable button
+export 'buttons/stacked_avatars.dart'; // Reusable avatar display
 
-// Section Components
-export 'sections/location_section.dart';
-export 'sections/date_time_section.dart';
-export 'sections/memories_section.dart';
+// INPUT COMPONENTS (Truly Shared)
+export 'inputs/inputBox.dart'; // Generic input field
+export 'inputs/search_bar.dart'; // Generic search component
 
-// Dialog Components
-export 'dialogs/event_history_dialog.dart';
-export 'dialogs/group_selection_dialog.dart';
-export 'dialogs/confirm_event_dialog.dart';
-export 'dialogs/group_context_menu.dart';
+// LAYOUT & STRUCTURE (Truly Shared)
+export 'sections/section_header.dart'; // Generic section title
+export 'sections/section_block.dart'; // Generic section wrapper
+export 'sections/lazzo_header.dart'; // App branding (used across auth)
 
-// Sheet Components
-export 'sheets/photo_change_bottom_sheet.dart';
-
-// Profile Components
-export 'profile/editable_profile_photo.dart';
-
-// Badge Components
-export 'badges/group_badge.dart';
-
-// Input Components
-export 'inputs/search_bar.dart';
+// UTILITY COMPONENTS (Truly Shared)
+export 'widgets/grabber_bar.dart'; // Generic sheet handle
+export 'badges/group_badge.dart'; // Reusable badge component
+export 'chips/filter_chip.dart'; // Generic filter UI
