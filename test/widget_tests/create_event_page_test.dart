@@ -3,7 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 // Ajusta estes imports para os teus paths reais:
 import 'package:app/features/create_event/presentation/pages/create_event_page.dart';
-import 'package:app/shared/components/dialogs/confirm_event_dialog.dart';
+import 'package:app/features/create_event/presentation/widgets/confirm_event_dialog.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();

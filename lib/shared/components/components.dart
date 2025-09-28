@@ -30,6 +30,9 @@ export 'sections/section_header.dart'; // Generic section title
 export 'sections/section_block.dart'; // Generic section wrapper
 export 'sections/lazzo_header.dart'; // App branding (used across auth)
 
+// DIALOG COMPONENTS (Truly Shared)
+export 'dialogs/common_bottom_sheet.dart'; // Generic bottom sheet and confirmation dialogs
+
 // UTILITY COMPONENTS (Truly Shared)
 export 'widgets/grabber_bar.dart'; // Generic sheet handle
 export 'badges/group_badge.dart'; // Reusable badge component
