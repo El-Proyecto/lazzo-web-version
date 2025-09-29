@@ -18,13 +18,15 @@ final createGroupUseCaseProvider = Provider<CreateGroup>((ref) {
 
 /// Provider for create group state management
 final createGroupProvider =
-    StateNotifierProvider<CreateGroupController, AsyncValue<void>>((ref) {
+    StateNotifierProvider<CreateGroupController, AsyncValue<GroupEntity?>>((
+      ref,
+    ) {
       final useCase = ref.watch(createGroupUseCaseProvider);
       return CreateGroupController(useCase);
     });
 
 /// Controller for managing create group state
-class CreateGroupController extends StateNotifier<AsyncValue<void>> {
+class CreateGroupController extends StateNotifier<AsyncValue<GroupEntity?>> {
   final CreateGroup _useCase;
 
   CreateGroupController(this._useCase) : super(const AsyncValue.data(null));
@@ -52,8 +54,8 @@ class CreateGroupController extends StateNotifier<AsyncValue<void>> {
         ),
       );
 
-      await _useCase.call(groupEntity);
-      state = const AsyncValue.data(null);
+      final createdGroup = await _useCase.call(groupEntity);
+      state = AsyncValue.data(createdGroup);
     } catch (error, stack) {
       state = AsyncValue.error(error, stack);
     }

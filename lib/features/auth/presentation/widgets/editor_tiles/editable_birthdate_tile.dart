@@ -2,7 +2,7 @@
 import 'package:flutter/material.dart';
 import '../../../../../shared/constants/spacing.dart';
 import '../../../../../shared/themes/colors.dart';
-import '../../../../../shared/utils/formatters.dart';
+import '../../../../../shared/utils/formatters.dart' show formatDdMMyyyy;
 import '../common/pill_button.dart';
 
 class EditableBirthDateTile extends StatefulWidget {

@@ -32,7 +32,7 @@ class GroupPermissionsSection extends StatelessWidget {
           'Members permissions',
           style: AppText.labelLarge.copyWith(color: BrandColors.text1),
         ),
-        const SizedBox(height: Gaps.xs),
+        const SizedBox(height: Gaps.sm),
         _PermissionRow(
           title: 'Edit Group Settings',
           value: canEditSettings,
@@ -68,15 +68,28 @@ class _PermissionRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(
-          title,
-          style: AppText.bodyMedium.copyWith(color: BrandColors.text1),
-        ),
-        ToggleSwitch(value: value, onChanged: onChanged),
-      ],
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: Pads.ctlH,
+        vertical: Pads.ctlV,
+      ),
+      decoration: BoxDecoration(
+        color: BrandColors.bg2,
+        borderRadius: BorderRadius.circular(Radii.md),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Expanded(
+            child: Text(
+              title,
+              style: AppText.bodyMedium.copyWith(color: BrandColors.text1),
+            ),
+          ),
+          const SizedBox(width: Gaps.md),
+          ToggleSwitch(value: value, onChanged: onChanged),
+        ],
+      ),
     );
   }
 }

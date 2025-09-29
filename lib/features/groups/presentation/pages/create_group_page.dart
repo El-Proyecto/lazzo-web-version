@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../shared/constants/spacing.dart';
+import '../../../../shared/constants/text_styles.dart';
+import '../../../../shared/themes/colors.dart';
 import '../../../../shared/components/nav/common_app_bar.dart';
-import '../../../../shared/components/inputs/inputBox.dart';
-import '../../../../shared/components/buttons/green_button.dart';
-import '../widgets/group_photo_selector.dart';
+import '../../../../shared/components/inputs/photo_selector.dart';
+import '../../../../routes/app_router.dart';
+import '../../domain/entities/group_entity.dart';
 import '../widgets/group_permissions_section.dart';
 import '../providers/create_group_provider.dart';
 
@@ -24,6 +26,15 @@ class _CreateGroupPageState extends ConsumerState<CreateGroupPage> {
   bool _canAddMembers = false;
   bool _canSendMessages = false;
   String? _selectedPhotoPath;
+  String? _nameError;
+
+  @override
+  void initState() {
+    super.initState();
+    _nameController.addListener(() {
+      setState(() {}); // Rebuild to update button state
+    });
+  }
 
   @override
   void dispose() {
@@ -33,34 +44,106 @@ class _CreateGroupPageState extends ConsumerState<CreateGroupPage> {
   }
 
   void _handlePhotoSelection() {
-    // TODO: Implement photo selection logic
-    // This would typically open a file picker or camera
+    // Mock photo selection with realistic URL
     setState(() {
-      _selectedPhotoPath = 'mock_photo_path';
+      _selectedPhotoPath =
+          'https://images.unsplash.com/photo-1511632765486-a01980e01a18?w=400&h=400&fit=crop&crop=face';
+    });
+  }
+
+  void _handlePhotoRemoval() {
+    setState(() {
+      _selectedPhotoPath = null;
     });
   }
 
   void _handleCreateGroup() {
-    final name = _nameController.text.trim();
-    if (name.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter a group name')),
-      );
-      return;
-    }
+    _validateFields();
 
-    ref
-        .read(createGroupProvider.notifier)
-        .createGroup(
-          name: name,
-          description: _descriptionController.text.trim().isNotEmpty
-              ? _descriptionController.text.trim()
-              : null,
-          photoPath: _selectedPhotoPath,
-          canEditSettings: _canEditSettings,
-          canAddMembers: _canAddMembers,
-          canSendMessages: _canSendMessages,
-        );
+    final name = _nameController.text.trim();
+
+    // Only proceed if form is valid
+    if (_isFormValid) {
+      ref
+          .read(createGroupProvider.notifier)
+          .createGroup(
+            name: name,
+            description: _descriptionController.text.trim().isNotEmpty
+                ? _descriptionController.text.trim()
+                : null,
+            photoPath: _selectedPhotoPath,
+            canEditSettings: _canEditSettings,
+            canAddMembers: _canAddMembers,
+            canSendMessages: _canSendMessages,
+          );
+    }
+    // If form is invalid, errors are now visible due to _validateFields call
+  }
+
+  void _validateFields() {
+    final name = _nameController.text.trim();
+
+    setState(() {
+      if (name.isEmpty) {
+        _nameError = 'Please enter a group name';
+      } else if (name.length < 3) {
+        _nameError = 'Group name must be at least 3 characters';
+      } else {
+        _nameError = null;
+      }
+    });
+  }
+
+  bool get _isFormValid {
+    final name = _nameController.text.trim();
+    return _nameError == null && name.isNotEmpty && name.length >= 3;
+  }
+
+  Widget _buildCreateButton(AsyncValue<GroupEntity?> createGroupState) {
+    final isLoading = createGroupState.isLoading;
+
+    return Container(
+      width: double.infinity,
+      height: TouchTargets.input,
+      decoration: ShapeDecoration(
+        color: _isFormValid && !isLoading
+            ? BrandColors.planning
+            : BrandColors.bg3,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.all(Radius.circular(Radii.md)),
+        ),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: const BorderRadius.all(Radius.circular(Radii.md)),
+          onTap: isLoading
+              ? null
+              : _handleCreateGroup, // Always allow tap when not loading
+          child: Center(
+            child: isLoading
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        BrandColors.text1,
+                      ),
+                    ),
+                  )
+                : Text(
+                    'Create',
+                    style: AppText.labelLarge.copyWith(
+                      color: _isFormValid
+                          ? BrandColors.text1
+                          : BrandColors.text2,
+                    ),
+                  ),
+          ),
+        ),
+      ),
+    );
   }
 
   @override
@@ -68,14 +151,16 @@ class _CreateGroupPageState extends ConsumerState<CreateGroupPage> {
     final createGroupState = ref.watch(createGroupProvider);
 
     // Listen to state changes for navigation
-    ref.listen<AsyncValue<void>>(createGroupProvider, (previous, next) {
+    ref.listen<AsyncValue<GroupEntity?>>(createGroupProvider, (previous, next) {
       next.whenOrNull(
-        data: (_) {
-          // Navigate back on success
-          Navigator.of(context).pop();
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Group created successfully!')),
-          );
+        data: (createdGroup) {
+          if (createdGroup != null) {
+            // Navigate to Group Created page
+            Navigator.of(context).pushNamed(
+              AppRouter.groupCreated,
+              arguments: {'group': createdGroup},
+            );
+          }
         },
         error: (error, stack) {
           ScaffoldMessenger.of(
@@ -86,36 +171,94 @@ class _CreateGroupPageState extends ConsumerState<CreateGroupPage> {
     });
 
     return Scaffold(
-      appBar: CommonAppBar(
+      appBar: CommonAppBar.createEvent(
         title: 'Create Group',
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
+        onBackPressed: () => Navigator.of(context).pop(),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(Insets.screenH),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            const SizedBox(height: Gaps.lg),
+            const SizedBox(height: Gaps.xs),
 
             // Photo selector
-            GroupPhotoSelector(
+            PhotoSelector(
               photoUrl: _selectedPhotoPath,
-              onTap: _handlePhotoSelection,
+              onPhotoSelected: _handlePhotoSelection,
+              onPhotoRemoved: _handlePhotoRemoval,
+              addPhotoText: 'Add Photo',
+              size: 120,
+              showEditOverlay:
+                  false, // Don't show edit overlay, text indicates editability
+              showRemoveOption: true,
             ),
 
-            const SizedBox(height: Gaps.lg),
+            const SizedBox(height: Gaps.md),
 
-            // Group name input
-            InputBox(
-              label: 'Name',
-              hintText: 'e.g. Rancho Folclórico da Afurada',
-              controller: _nameController,
+            // Group name input with error support
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Name', style: AppText.labelLarge),
+                const SizedBox(height: Gaps.xs),
+                Container(
+                  width: double.infinity,
+                  height: TouchTargets.input,
+                  decoration: ShapeDecoration(
+                    color: BrandColors.bg2,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: const BorderRadius.all(
+                        Radius.circular(Radii.md),
+                      ),
+                      side: _nameError != null
+                          ? const BorderSide(
+                              color: BrandColors.cantVote,
+                              width: 1,
+                            )
+                          : BorderSide.none,
+                    ),
+                  ),
+                  child: TextField(
+                    controller: _nameController,
+                    style: AppText.bodyMedium.copyWith(
+                      color: BrandColors.text1,
+                    ),
+                    onChanged: (value) {
+                      // Clear error when user starts typing
+                      if (_nameError != null) {
+                        setState(() {
+                          _nameError = null;
+                        });
+                      }
+                    },
+                    decoration: InputDecoration(
+                      hintText: 'e.g. Rancho Folclórico da Afurada',
+                      hintStyle: AppText.bodyMedium.copyWith(
+                        color: BrandColors.text2,
+                      ),
+                      contentPadding: const EdgeInsets.all(Insets.screenH),
+                      border: InputBorder.none,
+                    ),
+                  ),
+                ),
+                if (_nameError != null) ...[
+                  const SizedBox(height: Gaps.xxs),
+                  Padding(
+                    padding: const EdgeInsets.only(left: Insets.screenH),
+                    child: Text(
+                      _nameError!,
+                      style: AppText.bodyMedium.copyWith(
+                        color: BrandColors.cantVote,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                ],
+              ],
             ),
 
-            const SizedBox(height: Gaps.lg),
+            const SizedBox(height: Gaps.md),
 
             // Permissions section
             GroupPermissionsSection(
@@ -138,16 +281,10 @@ class _CreateGroupPageState extends ConsumerState<CreateGroupPage> {
             // Create button
             SizedBox(
               width: double.infinity,
-              child: GreenButton(
-                text: 'Create',
-                onPressed: createGroupState.isLoading
-                    ? null
-                    : _handleCreateGroup,
-                isLoading: createGroupState.isLoading,
-              ),
+              child: _buildCreateButton(createGroupState),
             ),
 
-            const SizedBox(height: Gaps.lg),
+            const SizedBox(height: Gaps.md),
           ],
         ),
       ),
