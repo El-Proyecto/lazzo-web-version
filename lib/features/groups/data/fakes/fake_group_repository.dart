@@ -1,9 +1,11 @@
 import '../../domain/entities/group.dart';
+import '../../domain/entities/group_entity.dart';
 import '../../domain/repositories/group_repository.dart';
 import '../../../../shared/models/group_enums.dart';
 
 /// Implementação fake do repositório de grupos para desenvolvimento
 class FakeGroupRepository implements GroupRepository {
+  final List<GroupEntity> _createdGroups = [];
   final List<Group> _mockGroups = [
     Group(
       id: '1',
@@ -142,6 +144,8 @@ class FakeGroupRepository implements GroupRepository {
     ),
   ];
 
+  int _nextId = 11;
+
   @override
   Future<List<Group>> getUserGroups() async {
     // Simular delay da rede
@@ -190,6 +194,20 @@ class FakeGroupRepository implements GroupRepository {
 
     _mockGroups.insert(0, newGroup);
     return newGroup;
+  }
+
+  @override
+  Future<GroupEntity> createGroupEntity(GroupEntity group) async {
+    // Simulate network delay
+    await Future.delayed(const Duration(milliseconds: 500));
+
+    final createdGroup = group.copyWith(
+      id: _nextId++,
+      createdAt: DateTime.now(),
+    );
+
+    _createdGroups.add(createdGroup);
+    return createdGroup;
   }
 
   @override
@@ -292,5 +310,12 @@ class FakeGroupRepository implements GroupRepository {
     await Future.delayed(const Duration(milliseconds: 400));
     // Retornar lista mock de IDs de membros
     return ['user1', 'user2', 'user3'];
+  }
+
+  @override
+  Future<String> uploadGroupPhoto(String imagePath, String groupId) async {
+    // Simulate photo upload
+    await Future.delayed(const Duration(seconds: 1));
+    return 'https://example.com/groups/$groupId/photo.jpg';
   }
 }

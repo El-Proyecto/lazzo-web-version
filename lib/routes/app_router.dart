@@ -10,6 +10,7 @@ import '../features/auth/presentation/pages/auth_page.dart';
 import '../features/auth/presentation/pages/finish_setup.dart';
 import '../shared/layouts/main_layout.dart';
 import '../features/groups/presentation/pages/groups_page.dart';
+import '../features/groups/presentation/pages/create_group_page.dart';
 import '../features/create_event/presentation/pages/create_event_page.dart';
 import '../features/activities/presentation/pages/activities_page.dart';
 import '../features/profile/presentation/pages/profile_page.dart';
@@ -20,6 +21,7 @@ class AppRouter {
   static const String auth = '/auth';
   static const String mainLayout = '/main';
   static const String groups = '/groups';
+  static const String createGroup = '/create-group';
   static const String createEvent = '/create-event';
   static const String activities = '/activities';
   static const String profile = '/profile';
@@ -37,6 +39,7 @@ class AppRouter {
     home: (context) => const HomePage(),
     mainLayout: (context) => const MainLayout(),
     groups: (context) => const GroupsPage(),
+    createGroup: (context) => const CreateGroupPage(),
     createEvent: (context) => const CreateEventPage(),
     activities: (context) => const ActivitiesPage(),
     profile: (context) => const ProfilePage(),

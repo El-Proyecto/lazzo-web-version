@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../shared/components/components.dart';
 import 'widgets/ios_birthday_picker_card.dart';
 import 'widgets/editable_profile_photo.dart';
 import 'widgets/editable_info_card.dart';
