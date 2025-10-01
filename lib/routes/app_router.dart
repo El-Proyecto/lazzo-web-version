@@ -13,7 +13,7 @@ import '../features/groups/presentation/pages/groups_page.dart';
 import '../features/groups/presentation/pages/create_group_page.dart';
 import '../features/groups/presentation/pages/group_created_page.dart';
 import '../features/create_event/presentation/pages/create_event_page.dart';
-import '../features/activities/presentation/pages/activities_page.dart';
+import '../features/inbox/presentation/pages/inbox_page.dart';
 import '../features/profile/presentation/pages/profile_page.dart';
 import '../features/profile/presentation/edit_profile_page.dart';
 
@@ -25,7 +25,7 @@ class AppRouter {
   static const String createGroup = '/create-group';
   static const String groupCreated = '/group-created';
   static const String createEvent = '/create-event';
-  static const String activities = '/activities';
+  static const String inbox = '/inbox';
   static const String profile = '/profile';
   static const String editProfile = '/edit-profile';
   static const String loginPage = '/login';
@@ -48,7 +48,7 @@ class AppRouter {
       return GroupCreatedPage(group: args['group']);
     },
     createEvent: (context) => const CreateEventPage(),
-    activities: (context) => const ActivitiesPage(),
+    inbox: (context) => const InboxPage(),
     profile: (context) => const ProfilePage(),
     editProfile: (context) => const EditProfilePage(),
     loginPage: (context) => const LoginPage(),
