@@ -84,16 +84,10 @@ class PaymentsSection extends StatelessWidget {
   }
 
   Widget _buildSectionHeader(String title, double total) {
-    return Container(
+    return Padding(
       padding: const EdgeInsets.symmetric(
         horizontal: Gaps.md,
         vertical: Gaps.sm,
-      ),
-      decoration: ShapeDecoration(
-        color: BrandColors.bg3,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(Radii.sm),
-        ),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -106,7 +100,7 @@ class PaymentsSection extends StatelessWidget {
             '€${total.toStringAsFixed(2)}',
             style: AppText.titleMediumEmph.copyWith(
               color: title.contains('owe')
-                  ? BrandColors.recap
+                  ? BrandColors.cantVote
                   : BrandColors.planning,
             ),
           ),

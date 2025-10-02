@@ -86,164 +86,108 @@ class NotificationCard extends StatelessWidget {
   Widget _buildNotificationTextWithTime() {
     // Parse the notification description to identify important parts
     final parts = _parseNotificationText();
+    final timeText = _formatTime(notification.createdAt);
 
-    // Add the time at the end
-    parts.add(
-      TextSpan(
-        text: ' ${_formatTime(notification.createdAt)}',
-        style: AppText.bodyMedium.copyWith(color: BrandColors.text2),
-      ),
-    );
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // Create a text painter to measure text
+        final textPainter = TextPainter(
+          text: TextSpan(
+            style: AppText.bodyMedium.copyWith(color: BrandColors.text1),
+            children: parts,
+          ),
+          maxLines: 2,
+          textDirection: TextDirection.ltr,
+        );
 
-    return RichText(
-      text: TextSpan(
-        style: AppText.bodyMedium.copyWith(color: BrandColors.text1),
-        children: parts,
-      ),
+        textPainter.layout(maxWidth: constraints.maxWidth);
+
+        // Check if text fits in one line by measuring actual height
+        // A single line should be roughly equal to the line height
+        final singleLineHeight =
+            AppText.bodyMedium.height! * AppText.bodyMedium.fontSize!;
+        final fitsInOneLine =
+            textPainter.size.height <= singleLineHeight + 2; // 2px tolerance
+
+        if (fitsInOneLine) {
+          // If text fits in one line, put time on second line
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              RichText(
+                text: TextSpan(
+                  style: AppText.bodyMedium.copyWith(color: BrandColors.text1),
+                  children: parts,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                timeText,
+                style: AppText.bodyMedium.copyWith(color: BrandColors.text2),
+              ),
+            ],
+          );
+        } else {
+          // If text takes 2 lines, add time at the end of the text
+          final combinedParts = List<TextSpan>.from(parts);
+          combinedParts.add(
+            TextSpan(
+              text: ' $timeText',
+              style: AppText.bodyMedium.copyWith(color: BrandColors.text2),
+            ),
+          );
+
+          return RichText(
+            text: TextSpan(
+              style: AppText.bodyMedium.copyWith(color: BrandColors.text1),
+              children: combinedParts,
+            ),
+          );
+        }
+      },
     );
   }
 
   List<TextSpan> _parseNotificationText() {
-    final description = notification.description;
+    // Replace placeholders with actual values from notification entity
+    String text = notification.formattedMessage;
 
-    // Different parsing based on notification type
-    switch (notification.type) {
-      case NotificationType.paymentRequest:
-        // Example: "Ana requested €25.50 for restaurant bill"
-        // Make name and amount bold, amount red if it's owed
-        return _parsePaymentNotification(description);
-      case NotificationType.groupInvite:
-        // Example: "João invited you to join "Summer Trip Planning""
-        return _parseGroupInviteNotification(description);
-      case NotificationType.eventUpdate:
-        // Example: "Beach BBQ location has been changed"
-        return _parseEventUpdateNotification(description);
-      default:
-        return [TextSpan(text: description)];
-    }
+    // Parse the text to identify bold elements (marked with **)
+    return _parseTextWithBoldMarkdown(text);
   }
 
-  List<TextSpan> _parsePaymentNotification(String text) {
-    // Simple parsing for demo - in real implementation, you'd have structured data
+  List<TextSpan> _parseTextWithBoldMarkdown(String text) {
     final spans = <TextSpan>[];
-    final regex = RegExp(r'(\w+)\s+(requested|owes you|you owe)\s+(€[\d.,]+)');
-    final match = regex.firstMatch(text);
+    final regex = RegExp(r'\*\*(.*?)\*\*');
 
-    if (match != null) {
-      final name = match.group(1)!;
-      final action = match.group(2)!;
-      final amount = match.group(3)!;
+    int lastEnd = 0;
 
-      spans.add(
-        TextSpan(
-          text: name,
-          style: AppText.bodyMedium.copyWith(
-            color: BrandColors.text1,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      );
-      spans.add(TextSpan(text: ' $action '));
-      spans.add(
-        TextSpan(
-          text: amount,
-          style: AppText.bodyMedium.copyWith(
-            color: action.contains('owe')
-                ? BrandColors.cantVote
-                : BrandColors.planning,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      );
-
-      // Add remaining text if any
-      final remainingText = text.substring(match.end);
-      if (remainingText.isNotEmpty) {
-        spans.add(TextSpan(text: remainingText));
+    for (final match in regex.allMatches(text)) {
+      // Add normal text before the bold part
+      if (match.start > lastEnd) {
+        spans.add(TextSpan(text: text.substring(lastEnd, match.start)));
       }
-    } else {
-      spans.add(TextSpan(text: text));
-    }
 
-    return spans;
-  }
-
-  List<TextSpan> _parseGroupInviteNotification(String text) {
-    final spans = <TextSpan>[];
-    final regex = RegExp(r'(\w+)\s+invited you to join\s+"([^"]+)"');
-    final match = regex.firstMatch(text);
-
-    if (match != null) {
-      final name = match.group(1)!;
-      final groupName = match.group(2)!;
-
+      // Add bold text
       spans.add(
         TextSpan(
-          text: name,
+          text: match.group(1),
           style: AppText.bodyMedium.copyWith(
             color: BrandColors.text1,
             fontWeight: FontWeight.w600,
           ),
         ),
       );
-      spans.add(TextSpan(text: ' invited you to join '));
-      spans.add(
-        TextSpan(
-          text: '"$groupName"',
-          style: AppText.bodyMedium.copyWith(
-            color: BrandColors.text1,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      );
-    } else {
-      spans.add(TextSpan(text: text));
+
+      lastEnd = match.end;
     }
 
-    return spans;
-  }
-
-  List<TextSpan> _parseEventUpdateNotification(String text) {
-    final spans = <TextSpan>[];
-    // Handle both quoted and unquoted event names
-    // Example: "Beach BBQ location has been changed"
-    final quotedRegex = RegExp(r'"([^"]+)"\s+(.+)');
-    final match = quotedRegex.firstMatch(text);
-
-    if (match != null) {
-      final eventName = match.group(1)!;
-      final action = match.group(2)!;
-
-      spans.add(
-        TextSpan(
-          text: '"$eventName"',
-          style: AppText.bodyMedium.copyWith(
-            color: BrandColors.text1,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      );
-      spans.add(TextSpan(text: ' $action.'));
-    } else {
-      // Try without quotes
-      final parts = text.split(' ');
-      if (parts.length >= 2) {
-        spans.add(
-          TextSpan(
-            text: parts[0] + ' ' + parts[1],
-            style: AppText.bodyMedium.copyWith(
-              color: BrandColors.text1,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        );
-        spans.add(TextSpan(text: ' ${parts.skip(2).join(' ')}.'));
-      } else {
-        spans.add(TextSpan(text: text));
-      }
+    // Add remaining normal text
+    if (lastEnd < text.length) {
+      spans.add(TextSpan(text: text.substring(lastEnd)));
     }
 
-    return spans;
+    return spans.isEmpty ? [TextSpan(text: text)] : spans;
   }
 
   String? _getGroupImageUrl() {
@@ -255,7 +199,15 @@ class NotificationCard extends StatelessWidget {
   }
 
   String _getEmojiForNotification() {
+    // Se tiver emoji do evento específico, usa esse
+    if (notification.eventEmoji != null &&
+        notification.eventEmoji!.isNotEmpty) {
+      return notification.eventEmoji!;
+    }
+
+    // Fallback para emojis genéricos por tipo (só se não tiver emoji específico)
     switch (notification.type) {
+      // Legacy types
       case NotificationType.groupInvite:
         return '👥'; // Group emoji
       case NotificationType.eventUpdate:
@@ -264,6 +216,43 @@ class NotificationCard extends StatelessWidget {
         return '💰'; // Money emoji
       case NotificationType.general:
         return '📢'; // General notification emoji
+
+      // New specific types from catalog
+      case NotificationType.groupInviteReceived:
+        return '👥';
+      case NotificationType.eventStartsSoon:
+      case NotificationType.eventLive:
+      case NotificationType.eventEndsSoon:
+      case NotificationType.eventExtended:
+        return '📅';
+      case NotificationType.uploadsOpen:
+      case NotificationType.uploadsClosing:
+        return '📸';
+      case NotificationType.memoryReady:
+        return '🎞️';
+      case NotificationType.paymentsRequest:
+      case NotificationType.paymentsAddedYouOwe:
+      case NotificationType.paymentsPaidYou:
+        return '💰';
+      case NotificationType.chatMention:
+        return '💬';
+      case NotificationType.securityNewLogin:
+        return '🔐';
+      case NotificationType.groupInviteAccepted:
+        return '👥';
+      case NotificationType.groupRenamed:
+      case NotificationType.groupPhotoChanged:
+        return '👥';
+      case NotificationType.eventCreated:
+      case NotificationType.eventDateSet:
+      case NotificationType.eventLocationSet:
+      case NotificationType.eventDetailsUpdated:
+      case NotificationType.eventCanceled:
+      case NotificationType.eventRestored:
+      case NotificationType.eventConfirmed:
+        return '📅';
+      case NotificationType.suggestionAdded:
+        return '💡';
     }
   }
 

@@ -5,6 +5,7 @@ abstract class NotificationRepository {
     int limit = 20,
     int offset = 0,
     bool unreadOnly = false,
+    NotificationCategory? category,
   });
 
   Future<NotificationEntity?> getNotificationById(String id);

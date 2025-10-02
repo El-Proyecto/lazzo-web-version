@@ -3,22 +3,22 @@ import '../../constants/spacing.dart';
 import '../../constants/text_styles.dart';
 import '../../themes/colors.dart';
 
-enum ActivityCardPriority { low, medium, high, urgent }
+enum ActionCardPriority { low, medium, high, urgent }
 
-enum ActivityCardStatus { pending, completed, overdue, cancelled }
+enum ActionCardStatus { pending, completed, overdue, cancelled }
 
-class ActivityCard extends StatelessWidget {
+class ActionCard extends StatelessWidget {
   final String title;
   final String description;
-  final ActivityCardPriority priority;
-  final ActivityCardStatus status;
+  final ActionCardPriority priority;
+  final ActionCardStatus status;
   final Duration? timeLeft;
   final VoidCallback? onTap;
   final VoidCallback? onActionTap;
   final String? actionText;
   final IconData? actionIcon;
 
-  const ActivityCard({
+  const ActionCard({
     super.key,
     required this.title,
     required this.description,
@@ -137,7 +137,7 @@ class ActivityCard extends StatelessWidget {
   }
 
   Widget _buildTimeLeft() {
-    final isOverdue = status == ActivityCardStatus.overdue;
+    final isOverdue = status == ActionCardStatus.overdue;
     final timeText = _formatTimeLeft();
 
     return Container(
@@ -175,9 +175,9 @@ class ActivityCard extends StatelessWidget {
 
   Color _getBorderColor() {
     switch (status) {
-      case ActivityCardStatus.overdue:
+      case ActionCardStatus.overdue:
         return BrandColors.cantVote;
-      case ActivityCardStatus.completed:
+      case ActionCardStatus.completed:
         return BrandColors.planning;
       default:
         return BrandColors.bg3;
@@ -186,7 +186,7 @@ class ActivityCard extends StatelessWidget {
 
   Color _getTitleColor() {
     switch (status) {
-      case ActivityCardStatus.completed:
+      case ActionCardStatus.completed:
         return BrandColors.text2;
       default:
         return BrandColors.text1;
@@ -195,20 +195,20 @@ class ActivityCard extends StatelessWidget {
 
   Color _getPriorityColor() {
     switch (priority) {
-      case ActivityCardPriority.urgent:
+      case ActionCardPriority.urgent:
         return BrandColors.cantVote;
-      case ActivityCardPriority.high:
+      case ActionCardPriority.high:
         return BrandColors.recap;
-      case ActivityCardPriority.medium:
+      case ActionCardPriority.medium:
         return BrandColors.planning;
-      case ActivityCardPriority.low:
+      case ActionCardPriority.low:
         return BrandColors.text2;
     }
   }
 
   Color _getActionButtonColor() {
     switch (status) {
-      case ActivityCardStatus.overdue:
+      case ActionCardStatus.overdue:
         return BrandColors.cantVote;
       default:
         return BrandColors.planning;
@@ -218,7 +218,7 @@ class ActivityCard extends StatelessWidget {
   String _formatTimeLeft() {
     if (timeLeft == null) return '';
 
-    if (status == ActivityCardStatus.overdue) {
+    if (status == ActionCardStatus.overdue) {
       return 'Overdue';
     }
 

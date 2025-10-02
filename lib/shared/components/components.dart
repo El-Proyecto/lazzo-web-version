@@ -4,7 +4,7 @@
 // Card Components
 export 'cards/memory_card.dart';
 export 'cards/group_card.dart';
-export 'cards/activity_card.dart';
+export 'cards/action_card.dart';
 
 // Badge Components
 export 'badges/group_badge.dart';

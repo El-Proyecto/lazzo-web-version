@@ -4,11 +4,11 @@ import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/constants/text_styles.dart';
 import '../../../../shared/themes/colors.dart';
 
-class InboxActivityCard extends StatelessWidget {
-  final ActionEntity activity;
+class InboxActionCard extends StatelessWidget {
+  final ActionEntity action;
   final VoidCallback? onTap;
 
-  const InboxActivityCard({super.key, required this.activity, this.onTap});
+  const InboxActionCard({super.key, required this.action, this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -114,7 +114,7 @@ class InboxActivityCard extends StatelessWidget {
         Icon(Icons.schedule, color: _getTimeLeftColor(), size: IconSizes.sm),
         const SizedBox(width: Gaps.xs / 2), // Reduzido para metade (era xs)
         Text(
-          _formatTimeLeft(),
+          action.deadlineText ?? 'No deadline',
           style: AppText.labelLarge.copyWith(color: BrandColors.text1),
         ),
       ],
@@ -122,17 +122,17 @@ class InboxActivityCard extends StatelessWidget {
   }
 
   String _getActionTitle() {
-    switch (activity.type) {
+    switch (action.type) {
       case ActionType.voteDate:
-        return activity.formattedDescription;
+        return action.formattedDescription;
       case ActionType.votePlace:
-        return activity.formattedDescription;
+        return action.formattedDescription;
       case ActionType.confirmAttendance:
-        return activity.formattedDescription;
+        return action.formattedDescription;
       case ActionType.completeDetails:
-        return activity.formattedDescription;
+        return action.formattedDescription;
       case ActionType.addPhotos:
-        return activity.formattedDescription;
+        return action.formattedDescription;
       // Legacy action types for backward compatibility
       case ActionType.vote:
         return 'Vote on a local';
@@ -151,8 +151,8 @@ class InboxActivityCard extends StatelessWidget {
     // O subtítulo é sempre o nome do evento
     // Em produção, viria de uma entidade Event linkada pelo eventId
     // Para demo, usando nomes baseados no emoji/tipo da atividade
-    if (activity.eventEmoji != null) {
-      switch (activity.eventEmoji) {
+    if (action.eventEmoji != null) {
+      switch (action.eventEmoji) {
         case '🍽️':
           return 'Friday Dinner';
         case '🏖️':
@@ -167,7 +167,7 @@ class InboxActivityCard extends StatelessWidget {
     }
 
     // Fallback baseado no tipo
-    switch (activity.type) {
+    switch (action.type) {
       case ActionType.voteDate:
       case ActionType.votePlace:
         return 'Restaurant Choice';
@@ -192,19 +192,28 @@ class InboxActivityCard extends StatelessWidget {
   }
 
   String _getGroupName() {
-    // In a real app, this would come from the activity entity
-    // For now, we'll use a placeholder
-    return 'Summer Trip';
+    // In a real app, this would come from a Group entity via groupId
+    // For now, we'll use intelligent mapping based on groupId
+    switch (action.groupId) {
+      case 'group1':
+        return 'Dinner Group';
+      case 'group2':
+        return 'Beach Friends';
+      case 'group3':
+        return 'Weekend Hikers';
+      default:
+        return 'Unknown Group';
+    }
   }
 
   String _getEventEmoji() {
     // Se tiver emoji do evento específico, usa esse
-    if (activity.eventEmoji != null && activity.eventEmoji!.isNotEmpty) {
-      return activity.eventEmoji!;
+    if (action.eventEmoji != null && action.eventEmoji!.isNotEmpty) {
+      return action.eventEmoji!;
     }
 
     // Fallback para emojis genéricos por tipo (só se não tiver emoji específico)
-    switch (activity.type) {
+    switch (action.type) {
       case ActionType.voteDate:
       case ActionType.votePlace:
         return '🗳️';
@@ -229,11 +238,11 @@ class InboxActivityCard extends StatelessWidget {
   }
 
   Color _getTimeLeftColor() {
-    if (activity.isOverdue) {
+    if (action.isOverdue) {
       return BrandColors.cantVote; // Red
     }
 
-    final timeLeft = activity.timeLeft;
+    final timeLeft = action.timeLeft;
     if (timeLeft == null) return BrandColors.text2;
 
     if (timeLeft.inHours <= 2) {
@@ -242,27 +251,6 @@ class InboxActivityCard extends StatelessWidget {
       return BrandColors.recap; // Orange - warning
     } else {
       return BrandColors.planning; // Green - good
-    }
-  }
-
-  String _formatTimeLeft() {
-    if (activity.isOverdue) {
-      return 'Overdue';
-    }
-
-    final timeLeft = activity.timeLeft;
-    if (timeLeft == null) return 'No deadline';
-
-    final hours = timeLeft.inHours;
-    final days = timeLeft.inDays;
-
-    if (days > 0) {
-      return '${days}d left';
-    } else if (hours > 0) {
-      return '${hours}h left';
-    } else {
-      final minutes = timeLeft.inMinutes;
-      return '${minutes}m left';
     }
   }
 }

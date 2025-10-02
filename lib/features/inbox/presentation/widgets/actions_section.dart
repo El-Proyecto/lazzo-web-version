@@ -1,23 +1,21 @@
 import 'package:flutter/material.dart';
-import '../../domain/entities/activity.dart';
+import '../../domain/entities/action.dart';
 import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/constants/text_styles.dart';
 import '../../../../shared/themes/colors.dart';
-import 'inbox_activity_card.dart';
+import 'inbox_action_card.dart';
 
-class ActivitiesSection extends StatelessWidget {
-  final List<ActivityEntity> activities;
+class ActionsSection extends StatelessWidget {
+  final List<ActionEntity> actions;
   final bool isLoading;
   final VoidCallback? onRefresh;
-  final Function(ActivityEntity)? onActivityTap;
-  final Function(ActivityEntity)? onActionTap;
+  final Function(ActionEntity)? onActionTap;
 
-  const ActivitiesSection({
+  const ActionsSection({
     super.key,
-    required this.activities,
+    required this.actions,
     this.isLoading = false,
     this.onRefresh,
-    this.onActivityTap,
     this.onActionTap,
   });
 
@@ -29,7 +27,7 @@ class ActivitiesSection extends StatelessWidget {
       );
     }
 
-    if (activities.isEmpty) {
+    if (actions.isEmpty) {
       return _buildEmptyState();
     }
 
@@ -41,13 +39,13 @@ class ActivitiesSection extends StatelessWidget {
       backgroundColor: BrandColors.bg2,
       child: ListView.separated(
         padding: const EdgeInsets.all(Insets.screenH),
-        itemCount: activities.length,
+        itemCount: actions.length,
         separatorBuilder: (context, index) => const SizedBox(height: Gaps.md),
         itemBuilder: (context, index) {
-          final activity = activities[index];
-          return InboxActivityCard(
-            activity: activity,
-            onTap: () => onActivityTap?.call(activity),
+          final action = actions[index];
+          return InboxActionCard(
+            action: action,
+            onTap: () => onActionTap?.call(action),
           );
         },
       ),
@@ -78,7 +76,7 @@ class ActivitiesSection extends StatelessWidget {
             ),
             const SizedBox(height: Gaps.lg),
             Text(
-              'No pending activities',
+              'No pending actions',
               style: AppText.titleMediumEmph.copyWith(color: BrandColors.text1),
             ),
             const SizedBox(height: Gaps.sm),

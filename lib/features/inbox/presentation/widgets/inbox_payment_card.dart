@@ -110,7 +110,9 @@ class _InboxPaymentCardState extends State<InboxPaymentCard> {
                       ),
 
                       if (widget.payment.description.isNotEmpty) ...[
-                        const SizedBox(height: Gaps.xs),
+                        const SizedBox(
+                          height: Gaps.xs / 2,
+                        ), // Reduzido para metade
                         Text(
                           widget.payment.description,
                           style: AppText.bodyMedium.copyWith(

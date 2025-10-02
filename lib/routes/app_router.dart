@@ -16,6 +16,7 @@ import '../features/create_event/presentation/pages/create_event_page.dart';
 import '../features/inbox/presentation/pages/inbox_page.dart';
 import '../features/profile/presentation/pages/profile_page.dart';
 import '../features/profile/presentation/edit_profile_page.dart';
+import '../features/event/presentation/pages/event_page.dart';
 
 class AppRouter {
   static const String home = '/home';
@@ -28,6 +29,7 @@ class AppRouter {
   static const String inbox = '/inbox';
   static const String profile = '/profile';
   static const String editProfile = '/edit-profile';
+  static const String event = '/event';
   static const String loginPage = '/login';
   static const String otpVerification = '/otp';
   static const String loginVerification = '/otp-login';
@@ -51,6 +53,13 @@ class AppRouter {
     inbox: (context) => const InboxPage(),
     profile: (context) => const ProfilePage(),
     editProfile: (context) => const EditProfilePage(),
+    event: (context) {
+      final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+      return EventPage(
+        eventId: args?['eventId'],
+        section: args?['section'],
+      );
+    },
     loginPage: (context) => const LoginPage(),
 
     loginVerification: (context) {

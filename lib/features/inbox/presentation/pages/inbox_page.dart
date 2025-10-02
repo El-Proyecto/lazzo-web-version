@@ -5,10 +5,10 @@ import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/constants/text_styles.dart';
 import '../../domain/entities/payment_entity.dart';
 import '../providers/notifications_provider.dart';
-import '../providers/activities_provider.dart';
+import '../providers/actions_provider.dart';
 import '../providers/payments_provider.dart';
 import '../widgets/notifications_section.dart';
-import '../widgets/activities_section.dart';
+import '../widgets/actions_section.dart';
 import '../widgets/payments_section.dart';
 
 class InboxPage extends ConsumerStatefulWidget {
@@ -48,7 +48,7 @@ class _InboxPageState extends ConsumerState<InboxPage>
                 controller: _tabController,
                 children: [
                   _buildNotificationsTab(),
-                  _buildActivitiesTab(),
+                  _buildActionsTab(),
                   _buildPaymentsTab(),
                 ],
               ),
@@ -104,7 +104,7 @@ class _InboxPageState extends ConsumerState<InboxPage>
         labelPadding: const EdgeInsets.symmetric(horizontal: 8),
         tabs: const [
           Tab(text: 'Notifications'),
-          Tab(text: 'Activities'),
+          Tab(text: 'Actions'),
           Tab(text: 'Payments'),
         ],
       ),
@@ -154,35 +154,31 @@ class _InboxPageState extends ConsumerState<InboxPage>
     );
   }
 
-  Widget _buildActivitiesTab() {
-    final activitiesState = ref.watch(activitiesProvider);
+  Widget _buildActionsTab() {
+    final actionsState = ref.watch(actionsProvider);
 
-    return activitiesState.when(
-      data: (activities) => ActivitiesSection(
-        activities: activities,
-        onRefresh: () => ref.read(activitiesProvider.notifier).refresh(),
-        onActivityTap: (activity) {
-          // Handle activity tap
-          // Navigate to activity details
-        },
-        onActionTap: (activity) {
-          // Handle action tap
-          ref.read(completeActivityUseCaseProvider).call(activity.id);
-          ref.read(activitiesProvider.notifier).refresh();
+    return actionsState.when(
+      data: (actions) => ActionsSection(
+        actions: actions,
+        onRefresh: () => ref.read(actionsProvider.notifier).refresh(),
+        onActionTap: (action) {
+          // Handle action tap and complete it
+          ref.read(completeActionUseCaseProvider).call(action.id);
+          ref.read(actionsProvider.notifier).refresh();
         },
       ),
-      loading: () => const ActivitiesSection(activities: [], isLoading: true),
+      loading: () => const ActionsSection(actions: [], isLoading: true),
       error: (error, stack) => Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Text(
-              'Error loading activities',
+              'Error loading actions',
               style: AppText.titleMediumEmph.copyWith(color: BrandColors.text1),
             ),
             const SizedBox(height: Gaps.md),
             TextButton(
-              onPressed: () => ref.read(activitiesProvider.notifier).refresh(),
+              onPressed: () => ref.read(actionsProvider.notifier).refresh(),
               child: Text(
                 'Try again',
                 style: AppText.labelLarge.copyWith(color: BrandColors.planning),
