@@ -1,0 +1,200 @@
+import 'package:flutter/material.dart';
+import '../../domain/entities/payment_entity.dart';
+import '../../domain/entities/payment_group.dart';
+import '../../../../shared/constants/spacing.dart';
+import '../../../../shared/constants/text_styles.dart';
+import '../../../../shared/themes/colors.dart';
+import '../../../../shared/components/dialogs/common_bottom_sheet.dart';
+
+class PaymentDetailsBottomSheet extends StatelessWidget {
+  final PaymentGroup paymentGroup;
+  final Function(PaymentEntity)? onPaymentTap;
+
+  const PaymentDetailsBottomSheet({
+    super.key,
+    required this.paymentGroup,
+    this.onPaymentTap,
+  });
+
+  static Future<void> show({
+    required BuildContext context,
+    required PaymentGroup paymentGroup,
+    Function(PaymentEntity)? onPaymentTap,
+  }) {
+    return CommonBottomSheet.show(
+      context: context,
+      title: paymentGroup.userName,
+      content: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Total amount header
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Total',
+                style: AppText.bodyMedium.copyWith(color: BrandColors.text2),
+              ),
+              Text(
+                '€${paymentGroup.totalAmount.toStringAsFixed(2)}',
+                style: AppText.titleMediumEmph.copyWith(
+                  color: paymentGroup.isOwedToUser
+                      ? BrandColors.planning
+                      : BrandColors.cantVote,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: Gaps.lg),
+          // Expenses list
+          PaymentDetailsBottomSheet(
+            paymentGroup: paymentGroup,
+            onPaymentTap: onPaymentTap,
+          ),
+        ],
+      ),
+      maxHeight: MediaQuery.of(context).size.height * 0.7,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView.separated(
+      shrinkWrap: true,
+      padding: EdgeInsets.zero,
+      itemCount: paymentGroup.payments.length,
+      separatorBuilder: (context, index) => const SizedBox(height: Gaps.md),
+      itemBuilder: (context, index) {
+        final payment = paymentGroup.payments[index];
+        return _buildPaymentItem(payment);
+      },
+    );
+  }
+
+  Widget _buildPaymentItem(PaymentEntity payment) {
+    // Determine if this specific payment is owed to user or we owe
+    final paymentIsOwedToUser =
+        payment.fromUserId != 'current_user' &&
+        payment.toUserId == 'current_user';
+
+    return GestureDetector(
+      onTap: () => onPaymentTap?.call(payment),
+      child: Container(
+        padding: const EdgeInsets.all(Pads.ctlH),
+        decoration: BoxDecoration(
+          color: BrandColors.bg2,
+          borderRadius: BorderRadius.circular(Radii.md),
+          border: Border.all(color: BrandColors.bg3, width: 1),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Title and amount
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Text(
+                    payment.title,
+                    style: AppText.bodyMediumEmph.copyWith(
+                      color: BrandColors.text1,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                Text(
+                  '${paymentIsOwedToUser ? '+' : '-'}€${payment.amount.toStringAsFixed(2)}',
+                  style: AppText.bodyMediumEmph.copyWith(
+                    color: paymentIsOwedToUser
+                        ? BrandColors.planning
+                        : BrandColors.cantVote,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: Gaps.xs),
+
+            // Event and Group info
+            Row(
+              children: [
+                Icon(Icons.event, size: 14, color: BrandColors.text2),
+                const SizedBox(width: Gaps.xs / 2),
+                Text(
+                  _getEventName(payment.eventId ?? ''),
+                  style: AppText.bodyMedium.copyWith(
+                    color: BrandColors.text2,
+                    fontSize: 12,
+                  ),
+                ),
+                const SizedBox(width: Gaps.sm),
+                Icon(Icons.group, size: 14, color: BrandColors.text2),
+                const SizedBox(width: Gaps.xs / 2),
+                Text(
+                  _getGroupName(payment.groupId ?? ''),
+                  style: AppText.bodyMedium.copyWith(
+                    color: BrandColors.text2,
+                    fontSize: 12,
+                  ),
+                ),
+                const Spacer(),
+                Text(
+                  _formatDate(payment.createdAt),
+                  style: AppText.bodyMedium.copyWith(
+                    color: BrandColors.text2,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _formatDate(DateTime date) {
+    final now = DateTime.now();
+    final difference = now.difference(date);
+
+    if (difference.inDays == 0) {
+      return 'Today';
+    } else if (difference.inDays == 1) {
+      return 'Yesterday';
+    } else if (difference.inDays < 7) {
+      return '${difference.inDays} days ago';
+    } else {
+      return '${date.day}/${date.month}/${date.year}';
+    }
+  }
+
+  String _getEventName(String eventId) {
+    // In a real app, this would come from an Event entity
+    switch (eventId) {
+      case 'event1':
+        return 'Friday Dinner';
+      case 'event2':
+        return 'Concert Night';
+      case 'event3':
+        return 'Beach BBQ';
+      default:
+        return 'Event';
+    }
+  }
+
+  String _getGroupName(String groupId) {
+    // In a real app, this would come from a Group entity
+    switch (groupId) {
+      case 'group1':
+        return 'Dinner Group';
+      case 'group2':
+        return 'Beach Friends';
+      case 'group3':
+        return 'Weekend Hikers';
+      default:
+        return 'Group';
+    }
+  }
+}

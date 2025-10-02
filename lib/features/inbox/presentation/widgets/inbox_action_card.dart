@@ -44,7 +44,10 @@ class InboxActionCard extends StatelessWidget {
             children: [
               Text(
                 _getActionTitle(),
-                style: AppText.bodyMedium.copyWith(color: BrandColors.text1),
+                style: AppText.bodyMedium.copyWith(
+                  color: BrandColors.text1,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
               const SizedBox(
                 height: Gaps.xs / 4,

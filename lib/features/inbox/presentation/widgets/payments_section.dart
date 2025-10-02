@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import '../../domain/entities/payment_entity.dart';
+import '../../domain/entities/payment_group.dart';
 import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/constants/text_styles.dart';
 import '../../../../shared/themes/colors.dart';
 import 'inbox_payment_card.dart';
+import 'payment_details_bottom_sheet.dart';
 
 class PaymentsSection extends StatelessWidget {
   final List<PaymentEntity> owedToUser;
@@ -38,6 +40,18 @@ class PaymentsSection extends StatelessWidget {
       return _buildEmptyState();
     }
 
+    // Group payments by user (pass all payments for net calculation)
+    final allPayments = [...owedToUser, ...userOwes];
+    final owedToUserGroups = PaymentGroup.groupByUser(
+      allPayments,
+      true,
+      _getUserName,
+    );
+    final userOwesGroups = PaymentGroup.groupByUser(
+      allPayments,
+      false,
+      _getUserName,
+    );
     return RefreshIndicator(
       onRefresh: () async {
         onRefresh?.call();
@@ -50,14 +64,14 @@ class PaymentsSection extends StatelessWidget {
           if (hasOwedToUser) ...[
             _buildSectionHeader('Owed to you', _calculateTotal(owedToUser)),
             const SizedBox(height: Gaps.md),
-            ...owedToUser.map(
-              (payment) => Padding(
+            ...owedToUserGroups.map(
+              (group) => Padding(
                 padding: const EdgeInsets.only(bottom: Gaps.md),
                 child: InboxPaymentCard(
-                  payment: payment,
+                  payment: _createGroupPayment(group),
                   isOwedToUser: true,
-                  onTap: () => onPaymentTap?.call(payment),
-                  onNotify: () => _handleNotifyPayment(payment),
+                  onTap: () => _showPaymentDetails(context, group),
+                  onNotify: () => _handleNotifyPayment(group),
                 ),
               ),
             ),
@@ -66,14 +80,14 @@ class PaymentsSection extends StatelessWidget {
             if (hasOwedToUser) const SizedBox(height: Gaps.lg),
             _buildSectionHeader('You owe', _calculateTotal(userOwes)),
             const SizedBox(height: Gaps.md),
-            ...userOwes.map(
-              (payment) => Padding(
+            ...userOwesGroups.map(
+              (group) => Padding(
                 padding: const EdgeInsets.only(bottom: Gaps.md),
                 child: InboxPaymentCard(
-                  payment: payment,
+                  payment: _createGroupPayment(group),
                   isOwedToUser: false,
-                  onTap: () => onPaymentTap?.call(payment),
-                  onMarkAsPaid: () => _handleMarkAsPaid(payment),
+                  onTap: () => _showPaymentDetails(context, group),
+                  onMarkAsPaid: () => _handleMarkAsPaid(group),
                 ),
               ),
             ),
@@ -84,28 +98,22 @@ class PaymentsSection extends StatelessWidget {
   }
 
   Widget _buildSectionHeader(String title, double total) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(
-        horizontal: Gaps.md,
-        vertical: Gaps.sm,
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            title,
-            style: AppText.titleMediumEmph.copyWith(color: BrandColors.text1),
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          title,
+          style: AppText.titleMediumEmph.copyWith(color: BrandColors.text1),
+        ),
+        Text(
+          '€${total.toStringAsFixed(2)}',
+          style: AppText.titleMediumEmph.copyWith(
+            color: title.contains('owe')
+                ? BrandColors.cantVote
+                : BrandColors.planning,
           ),
-          Text(
-            '€${total.toStringAsFixed(2)}',
-            style: AppText.titleMediumEmph.copyWith(
-              color: title.contains('owe')
-                  ? BrandColors.cantVote
-                  : BrandColors.planning,
-            ),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -154,16 +162,59 @@ class PaymentsSection extends StatelessWidget {
         .fold(0.0, (sum, payment) => sum + payment.amount);
   }
 
-  void _handleNotifyPayment(PaymentEntity payment) {
-    // Send notification to remind payment - card should NOT disappear
-    // This is just a reminder, not a payment confirmation
-    print('Sending payment reminder for payment: ${payment.id}');
+  void _handleNotifyPayment(PaymentGroup group) {
+    // Send notification to remind payment for all payments in group
+    print('Sending payment reminder for payment group: ${group.userId}');
     // TODO: Implement actual notification sending logic
-    // The card stays visible because the payment is still pending
+    // The cards stay visible because the payments are still pending
   }
 
-  void _handleMarkAsPaid(PaymentEntity payment) {
-    // This would trigger the mark as paid action
-    onMarkAsPaid?.call(payment);
+  void _handleMarkAsPaid(PaymentGroup group) {
+    // This would trigger the mark as paid action for all payments in group
+    for (final payment in group.payments) {
+      onMarkAsPaid?.call(payment);
+    }
+  }
+
+  String _getUserName(String userId) {
+    // In a real app, this would come from a User entity or service
+    switch (userId) {
+      case 'ana':
+        return 'Ana';
+      case 'maria':
+        return 'Maria';
+      case 'joao':
+        return 'João';
+      case 'sofia':
+        return 'Sofia';
+      default:
+        return 'Unknown User';
+    }
+  }
+
+  PaymentEntity _createGroupPayment(PaymentGroup group) {
+    // Create a summary payment entity representing the group
+    return PaymentEntity(
+      id: 'group_${group.userId}',
+      title: group.displaySubtitle,
+      description: group.displaySubtitle,
+      type: PaymentType.split,
+      status: PaymentStatus.pending,
+      amount: group.totalAmount,
+      createdAt: DateTime.now(),
+      fromUserId: group.isOwedToUser ? group.userId : 'current_user',
+      toUserId: group.isOwedToUser ? 'current_user' : group.userId,
+    );
+  }
+
+  void _showPaymentDetails(BuildContext context, PaymentGroup group) {
+    PaymentDetailsBottomSheet.show(
+      context: context,
+      paymentGroup: group,
+      onPaymentTap: (payment) {
+        // Handle individual payment tap if needed
+        Navigator.of(context).pop();
+      },
+    );
   }
 }
