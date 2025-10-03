@@ -59,10 +59,13 @@ class PaymentsSection extends StatelessWidget {
       color: BrandColors.planning,
       backgroundColor: BrandColors.bg2,
       child: ListView(
-        padding: const EdgeInsets.all(Insets.screenH),
+        padding: const EdgeInsets.all(Insets.screenTop),
         children: [
           if (hasOwedToUser) ...[
-            _buildSectionHeader('Owed to you', _calculateTotal(owedToUser)),
+            _buildSectionHeader(
+              'Owed to you',
+              _calculateGroupTotal(owedToUserGroups),
+            ),
             const SizedBox(height: Gaps.md),
             ...owedToUserGroups.map(
               (group) => Padding(
@@ -77,8 +80,11 @@ class PaymentsSection extends StatelessWidget {
             ),
           ],
           if (hasUserOwes) ...[
-            if (hasOwedToUser) const SizedBox(height: Gaps.lg),
-            _buildSectionHeader('You owe', _calculateTotal(userOwes)),
+            if (hasOwedToUser) const SizedBox(height: Gaps.md),
+            _buildSectionHeader(
+              'You owe',
+              _calculateGroupTotal(userOwesGroups),
+            ),
             const SizedBox(height: Gaps.md),
             ...userOwesGroups.map(
               (group) => Padding(
@@ -156,10 +162,8 @@ class PaymentsSection extends StatelessWidget {
     );
   }
 
-  double _calculateTotal(List<PaymentEntity> payments) {
-    return payments
-        .where((p) => p.status != PaymentStatus.paid)
-        .fold(0.0, (sum, payment) => sum + payment.amount);
+  double _calculateGroupTotal(List<PaymentGroup> groups) {
+    return groups.fold(0.0, (sum, group) => sum + group.totalAmount);
   }
 
   void _handleNotifyPayment(PaymentGroup group) {

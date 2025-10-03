@@ -4,7 +4,7 @@ import '../../domain/entities/payment_group.dart';
 import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/constants/text_styles.dart';
 import '../../../../shared/themes/colors.dart';
-import '../../../../shared/components/dialogs/common_bottom_sheet.dart';
+import '../../../../shared/components/widgets/grabber_bar.dart';
 
 class PaymentDetailsBottomSheet extends StatelessWidget {
   final PaymentGroup paymentGroup;
@@ -21,40 +21,68 @@ class PaymentDetailsBottomSheet extends StatelessWidget {
     required PaymentGroup paymentGroup,
     Function(PaymentEntity)? onPaymentTap,
   }) {
-    return CommonBottomSheet.show(
+    return showModalBottomSheet<void>(
       context: context,
-      title: paymentGroup.userName,
-      content: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Total amount header
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Total',
-                style: AppText.bodyMedium.copyWith(color: BrandColors.text2),
+      isDismissible: true,
+      enableDrag: true,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) => Container(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.7,
+        ),
+        decoration: const BoxDecoration(
+          color: BrandColors.bg1,
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(Radii.md),
+            topRight: Radius.circular(Radii.md),
+          ),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const GrabberBar(),
+
+            // Custom header with name and amount on same line
+            Padding(
+              padding: const EdgeInsets.all(Pads.sectionH),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    paymentGroup.userName,
+                    style: AppText.titleMediumEmph.copyWith(
+                      color: BrandColors.text1,
+                    ),
+                  ),
+                  Text(
+                    '€${paymentGroup.totalAmount.toStringAsFixed(2)}',
+                    style: AppText.titleMediumEmph.copyWith(
+                      color: paymentGroup.isOwedToUser
+                          ? BrandColors.planning
+                          : BrandColors.cantVote,
+                    ),
+                  ),
+                ],
               ),
-              Text(
-                '€${paymentGroup.totalAmount.toStringAsFixed(2)}',
-                style: AppText.titleMediumEmph.copyWith(
-                  color: paymentGroup.isOwedToUser
-                      ? BrandColors.planning
-                      : BrandColors.cantVote,
+            ),
+
+            // Content
+            Flexible(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.only(left: Pads.sectionH, right: Pads.sectionH, bottom: Pads.sectionH),
+                child: PaymentDetailsBottomSheet(
+                  paymentGroup: paymentGroup,
+                  onPaymentTap: onPaymentTap,
                 ),
               ),
-            ],
-          ),
-          const SizedBox(height: Gaps.lg),
-          // Expenses list
-          PaymentDetailsBottomSheet(
-            paymentGroup: paymentGroup,
-            onPaymentTap: onPaymentTap,
-          ),
-        ],
+            ),
+
+            // Bottom safe area
+            SizedBox(height: MediaQuery.of(context).padding.bottom),
+          ],
+        ),
       ),
-      maxHeight: MediaQuery.of(context).size.height * 0.7,
     );
   }
 
@@ -120,7 +148,7 @@ class PaymentDetailsBottomSheet extends StatelessWidget {
             // Event and Group info
             Row(
               children: [
-                Icon(Icons.event, size: 14, color: BrandColors.text2),
+                const Icon(Icons.event, size: 14, color: BrandColors.text2),
                 const SizedBox(width: Gaps.xs / 2),
                 Text(
                   _getEventName(payment.eventId ?? ''),
@@ -130,7 +158,7 @@ class PaymentDetailsBottomSheet extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: Gaps.sm),
-                Icon(Icons.group, size: 14, color: BrandColors.text2),
+                const Icon(Icons.group, size: 14, color: BrandColors.text2),
                 const SizedBox(width: Gaps.xs / 2),
                 Text(
                   _getGroupName(payment.groupId ?? ''),

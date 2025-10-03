@@ -31,7 +31,7 @@ class EventPage extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.event, size: 64, color: BrandColors.text2),
+              const Icon(Icons.event, size: 64, color: BrandColors.text2),
               const SizedBox(height: Gaps.lg),
               Text(
                 'Event Page',

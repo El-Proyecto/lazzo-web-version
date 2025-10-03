@@ -80,11 +80,11 @@ class _InboxPageState extends ConsumerState<InboxPage>
   Widget _buildTabBar() {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: Insets.screenH),
-      padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 2),
+      padding: const EdgeInsets.all(4),
       decoration: ShapeDecoration(
         color: BrandColors.bg2,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(Radii.smAlt),
+          borderRadius: BorderRadius.circular(Radii.md),
         ),
       ),
       child: TabBar(
@@ -92,7 +92,7 @@ class _InboxPageState extends ConsumerState<InboxPage>
         indicator: ShapeDecoration(
           color: BrandColors.bg3,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(Radii.smAlt),
+            borderRadius: BorderRadius.circular(Radii.md),
           ),
         ),
         indicatorSize: TabBarIndicatorSize.tab,
@@ -101,7 +101,7 @@ class _InboxPageState extends ConsumerState<InboxPage>
         unselectedLabelColor: BrandColors.text2,
         labelStyle: AppText.labelLarge,
         unselectedLabelStyle: AppText.labelLarge,
-        labelPadding: const EdgeInsets.symmetric(horizontal: 8),
+        labelPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 0),
         tabs: const [
           Tab(text: 'Notifications'),
           Tab(text: 'Actions'),
