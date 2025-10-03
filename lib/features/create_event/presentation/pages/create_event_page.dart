@@ -530,7 +530,7 @@ class _CreateEventPageState extends State<CreateEventPage> {
         endDate: _endDate,
         endTime: _endTime,
         selectedLocation: _selectedLocation,
-        onCreateEvent: _createEvent,
+        onEventCreated: _onEventCreated,
       ),
     );
   }
@@ -613,7 +613,7 @@ class _CreateEventPageState extends State<CreateEventPage> {
     );
   }
 
-  void _createEvent() async {
+  void _onEventCreated() async {
     // Clear draft since event is being created
     await _draftService.clearDraft();
 

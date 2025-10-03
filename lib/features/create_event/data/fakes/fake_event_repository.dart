@@ -14,7 +14,7 @@ class FakeEventRepository implements EventRepository {
 
     final createdEvent = event.copyWith(
       id: _idCounter.toString(),
-      status: EventStatus.planning,
+      status: EventStatus.pending,
     );
 
     _events.add(createdEvent);

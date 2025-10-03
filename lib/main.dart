@@ -31,6 +31,10 @@ import '../features/auth/presentation/providers/users_repository_provider.dart';
 import '../features/auth/data/datasources/users_remote_datasource.dart';
 import '../features/auth/data/repositories/users_repository.dart';
 
+// CREATE EVENT (P2 implementation)
+import 'features/create_event/presentation/providers/event_providers.dart';
+import 'features/create_event/data/repositories/event_repository_impl.dart';
+
 
 
 void main() async {
@@ -89,6 +93,11 @@ void main() async {
           return UsersRepository(UsersRemoteDatasource(client));
         }),
 
+        // ✅ CREATE EVENT repo -> real (Supabase) via DI (P2 implementation)
+        eventRepositoryProvider.overrideWith((ref) {
+          final client = Supabase.instance.client;
+          return EventRepositoryImpl(client);
+        }),
 
       ],
       child: const LazzoApp(),

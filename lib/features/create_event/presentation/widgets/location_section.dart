@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:geocoding/geocoding.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/constants/text_styles.dart';
 import '../../../../shared/themes/colors.dart';
@@ -364,15 +366,16 @@ class _LocationSectionState extends State<LocationSection> {
   }
 
   void _useCurrentLocation() {
-    // Mock current location
+    // Mock current location with realistic coordinates for Portugal
+    // In production, this would use geolocator package for actual GPS location
     final currentLocation = LocationInfo(
       id: 'current-location',
       displayName: _locationNameController.text.isNotEmpty
           ? _locationNameController.text
-          : null,
-      formattedAddress: 'Your current location',
-      latitude: -23.5505,
-      longitude: -46.6333,
+          : 'Localização Atual',
+      formattedAddress: 'Rua do Porto, 456, Lisboa, Portugal',
+      latitude: 38.7223,
+      longitude: -9.1393,
     );
 
     // Hide suggestions and go to state 2
@@ -408,9 +411,66 @@ class _LocationSectionState extends State<LocationSection> {
     HapticFeedback.lightImpact();
   }
 
-  void _openInMaps(LocationInfo location) {
-    // TODO: Implement opening in maps
-    // This would typically use url_launcher to open maps app
+  void _openInMaps(LocationInfo location) async {
+    final lat = location.latitude;
+    final lng = location.longitude;
+    final label = Uri.encodeComponent(location.displayName ?? location.formattedAddress);
+
+    // Platform-specific URL schemes - ordered by preference and platform
+    List<String> mapUrls = [
+      // iOS-specific Google Maps schemes (most reliable on iOS)
+      'comgooglemaps://?q=$lat,$lng&center=$lat,$lng&zoom=14',
+      'googlemaps://?q=$lat,$lng&center=$lat,$lng&zoom=14',
+      // iOS Apple Maps (native)
+      'maps://maps.apple.com/?q=$lat,$lng&ll=$lat,$lng&z=14',
+      // Cross-platform Google Maps web URLs
+      'https://www.google.com/maps/dir/?api=1&destination=$lat,$lng',
+      'https://maps.google.com/?q=$lat,$lng',
+      // Android-specific schemes (still included for compatibility)
+      'geo:$lat,$lng?q=$lat,$lng($label)',
+      'google.navigation:q=$lat,$lng',
+      // Final web fallback
+      'https://maps.google.com/maps?q=$lat,$lng&ll=$lat,$lng&z=16',
+    ];
+
+    bool launched = false;
+
+    // Try each URL scheme until one works
+    for (String mapUrl in mapUrls) {
+      try {
+        Uri uri = Uri.parse(mapUrl);
+        
+        // Check if the URL can be launched
+        if (await canLaunchUrl(uri)) {
+          launched = await launchUrl(
+            uri,
+            mode: LaunchMode.externalApplication,
+          );
+          if (launched) {
+            // Successfully launched, break out of loop
+            break;
+          }
+        }
+      } catch (e) {
+        // Log error for debugging but continue to next URL scheme
+        print('Failed to launch $mapUrl: $e');
+        continue;
+      }
+    }
+
+    // Show error if no map app could be opened
+    if (!launched && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Não foi possível abrir o mapa. Certifique-se de que tem uma aplicação de mapas instalada.',
+            style: AppText.bodyMedium.copyWith(color: Colors.white),
+          ),
+          backgroundColor: BrandColors.cantVote,
+          duration: const Duration(seconds: 4),
+        ),
+      );
+    }
   }
 
   void _changeState(LocationState newState) {
@@ -482,14 +542,8 @@ class _LocationSectionState extends State<LocationSection> {
     if (!mounted) return;
 
     try {
-      // Try native geocoding first, fallback to mock for now
-      List<LocationSuggestion> suggestions;
-
-      // TODO: Implement native geocoding
-      // suggestions = await _performNativeGeocode(query);
-
-      // For now, use mock suggestions
-      suggestions = _getMockSuggestions(query);
+      // Use real geocoding implementation
+      List<LocationSuggestion> suggestions = await _performNativeGeocode(query);
 
       if (mounted) {
         setState(() {
@@ -500,20 +554,89 @@ class _LocationSectionState extends State<LocationSection> {
     } catch (e) {
       if (mounted) {
         setState(() {
-          _suggestions.clear();
+          // Fallback to mock suggestions on error
+          _suggestions = _getMockSuggestions(query).take(3).toList();
           _isSearching = false;
         });
       }
     }
   }
 
-  // Future<List<LocationSuggestion>> _performNativeGeocode(String query) async {
-  //   // TODO: Implement native geocoding
-  //   // iOS: Use MKLocalSearch and CLGeocoder
-  //   // Android: Use Geocoder
-  //   // This would be implemented using platform channels or a plugin like geocoding
-  //   throw UnimplementedError('Native geocoding not yet implemented');
-  // }
+  /// Native geocoding implementation using geocoding package
+  /// Converts address strings to coordinates and readable names
+  Future<List<LocationSuggestion>> _performNativeGeocode(String query) async {
+    try {
+      // Get locations from address query
+      List<Location> locations = await locationFromAddress(query);
+      List<LocationSuggestion> suggestions = [];
+
+      for (int i = 0; i < locations.length && i < 3; i++) {
+        Location location = locations[i];
+        
+        try {
+          // Get readable address from coordinates
+          List<Placemark> placemarks = await placemarkFromCoordinates(
+            location.latitude, 
+            location.longitude
+          );
+          
+          if (placemarks.isNotEmpty) {
+            Placemark placemark = placemarks.first;
+            
+            // Build formatted address
+            String formattedAddress = _buildFormattedAddress(placemark);
+            String displayName = _buildDisplayName(placemark, query);
+            
+            suggestions.add(LocationSuggestion(
+              id: '${location.latitude}_${location.longitude}',
+              name: displayName,
+              address: formattedAddress,
+              latitude: location.latitude,
+              longitude: location.longitude,
+            ));
+          }
+        } catch (e) {
+          // If reverse geocoding fails, use basic info
+          suggestions.add(LocationSuggestion(
+            id: '${location.latitude}_${location.longitude}',
+            name: query,
+            address: '${location.latitude.toStringAsFixed(4)}, ${location.longitude.toStringAsFixed(4)}',
+            latitude: location.latitude,
+            longitude: location.longitude,
+          ));
+        }
+      }
+      
+      return suggestions;
+    } catch (e) {
+      // Return empty list on geocoding failure
+      return [];
+    }
+  }
+
+  /// Build formatted address from placemark
+  String _buildFormattedAddress(Placemark placemark) {
+    List<String> parts = [];
+    
+    if (placemark.street?.isNotEmpty == true) parts.add(placemark.street!);
+    if (placemark.locality?.isNotEmpty == true) parts.add(placemark.locality!);
+    if (placemark.administrativeArea?.isNotEmpty == true) parts.add(placemark.administrativeArea!);
+    if (placemark.country?.isNotEmpty == true) parts.add(placemark.country!);
+    
+    return parts.join(', ');
+  }
+
+  /// Build display name from placemark and query
+  String _buildDisplayName(Placemark placemark, String query) {
+    // Prefer name, then locality, then fall back to query
+    if (placemark.name?.isNotEmpty == true && placemark.name != placemark.street) {
+      return placemark.name!;
+    }
+    if (placemark.locality?.isNotEmpty == true) {
+      return placemark.locality!;
+    }
+    return query;
+  }
 
   List<LocationSuggestion> _getMockSuggestions(String query) {
     // Mock suggestions - will be replaced with native geocoding

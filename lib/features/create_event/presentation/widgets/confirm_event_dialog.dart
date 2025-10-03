@@ -1,14 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/constants/text_styles.dart';
 import '../../../../shared/themes/colors.dart';
 import 'event_group_selector.dart';
 import 'location_section.dart';
 import '../../../../shared/components/widgets/grabber_bar.dart';
+import '../providers/event_providers.dart';
+import '../../domain/entities/event.dart';
 
 /// Bottom sheet para confirmar a criação do evento
 /// Mostra resumo de todas as informações do evento
-class ConfirmEventBottomSheet extends StatelessWidget {
+class ConfirmEventBottomSheet extends ConsumerStatefulWidget {
   final String eventName;
   final String eventEmoji;
   final GroupInfo? selectedGroup;
@@ -17,7 +20,7 @@ class ConfirmEventBottomSheet extends StatelessWidget {
   final DateTime? endDate;
   final TimeOfDay? endTime;
   final LocationInfo? selectedLocation;
-  final VoidCallback? onCreateEvent;
+  final VoidCallback? onEventCreated; // Changed name for clarity
 
   const ConfirmEventBottomSheet({
     super.key,
@@ -29,8 +32,98 @@ class ConfirmEventBottomSheet extends StatelessWidget {
     this.endDate,
     this.endTime,
     this.selectedLocation,
-    this.onCreateEvent,
+    this.onEventCreated,
   });
+
+  @override
+  ConsumerState<ConfirmEventBottomSheet> createState() => _ConfirmEventBottomSheetState();
+}
+
+class _ConfirmEventBottomSheetState extends ConsumerState<ConfirmEventBottomSheet> {
+
+  /// Cria o evento usando os providers do Riverpod
+  Future<void> _createEvent() async {
+    final controller = ref.read(createEventControllerProvider.notifier);
+    
+    try {
+      // Criar entidade de localização se necessário
+      EventLocation? eventLocation;
+      if (widget.selectedLocation != null) {
+        eventLocation = EventLocation(
+          id: widget.selectedLocation!.id,
+          displayName: widget.selectedLocation!.displayName ?? '',
+          formattedAddress: widget.selectedLocation!.formattedAddress,
+          latitude: widget.selectedLocation!.latitude,
+          longitude: widget.selectedLocation!.longitude,
+        );
+      }
+      
+      // Converter TimeOfDay para DateTime se necessário
+      DateTime? startDateTime;
+      if (widget.selectedDate != null && widget.selectedTime != null) {
+        startDateTime = DateTime(
+          widget.selectedDate!.year,
+          widget.selectedDate!.month,
+          widget.selectedDate!.day,
+          widget.selectedTime!.hour,
+          widget.selectedTime!.minute,
+        );
+      }
+      
+      DateTime? endDateTime;
+      if (widget.endDate != null && widget.endTime != null) {
+        endDateTime = DateTime(
+          widget.endDate!.year,
+          widget.endDate!.month,
+          widget.endDate!.day,
+          widget.endTime!.hour,
+          widget.endTime!.minute,
+        );
+      }
+      
+      // Criar entidade do evento
+      final event = Event(
+        id: '', // Será gerado pelo Supabase
+        name: widget.eventName,
+        emoji: widget.eventEmoji,
+        groupId: widget.selectedGroup?.id ?? '',
+        startDateTime: startDateTime,
+        endDateTime: endDateTime,
+        location: eventLocation,
+        status: EventStatus.pending,
+        createdAt: DateTime.now(),
+      );
+      
+      // Enviar para o Supabase via provider
+      await controller.createEvent(event);
+      
+      // Fechar dialog
+      if (mounted) {
+        Navigator.of(context).pop();
+        
+        // Chamar callback se fornecido
+        widget.onEventCreated?.call();
+        
+        // Mostrar mensagem de sucesso
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Event created successfully!'),
+            backgroundColor: BrandColors.planning,
+          ),
+        );
+      }
+    } catch (e) {
+      // Mostrar erro
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error creating event: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -101,7 +194,7 @@ class ConfirmEventBottomSheet extends StatelessWidget {
                   // Group
                   _buildInfoRow(
                     'Group',
-                    selectedGroup?.name ?? 'No group selected',
+                    widget.selectedGroup?.name ?? 'No group selected',
                     Icons.group,
                   ),
 
@@ -134,10 +227,7 @@ class ConfirmEventBottomSheet extends StatelessWidget {
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
-                      onPressed: () {
-                        Navigator.of(context).pop();
-                        onCreateEvent?.call();
-                      },
+                      onPressed: () => _createEvent(),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: BrandColors.planning,
                         padding: const EdgeInsets.symmetric(vertical: 12),
@@ -183,7 +273,7 @@ class ConfirmEventBottomSheet extends StatelessWidget {
               ),
               const SizedBox(height: 2),
               Text(
-                '$eventEmoji ${eventName.isEmpty ? 'Untitled Event' : eventName}',
+                '${widget.eventEmoji} ${widget.eventName.isEmpty ? 'Untitled Event' : widget.eventName}',
                 style: AppText.bodyMedium.copyWith(color: BrandColors.text1),
               ),
             ],
@@ -225,24 +315,24 @@ class ConfirmEventBottomSheet extends StatelessWidget {
   }
 
   String _formatDateTime() {
-    if (selectedDate == null && selectedTime == null) {
+    if (widget.selectedDate == null && widget.selectedTime == null) {
       return 'Date & time to be decided';
     }
 
     String result = '';
 
-    if (selectedDate != null) {
-      result += _formatDate(selectedDate!);
+    if (widget.selectedDate != null) {
+      result += _formatDate(widget.selectedDate!);
     }
 
-    if (selectedTime != null) {
+    if (widget.selectedTime != null) {
       if (result.isNotEmpty) result += ' at ';
-      result += _formatTime(selectedTime!);
+      result += _formatTime(widget.selectedTime!);
     }
 
     // Add end time if available
-    if (endTime != null && endTime != selectedTime) {
-      result += ' - ${_formatTime(endTime!)}';
+    if (widget.endTime != null && widget.endTime != widget.selectedTime) {
+      result += ' - ${_formatTime(widget.endTime!)}';
     }
 
     return result.isEmpty ? 'Date & time to be decided' : result;
@@ -287,19 +377,19 @@ class ConfirmEventBottomSheet extends StatelessWidget {
   }
 
   String _formatLocation() {
-    if (selectedLocation == null) {
+    if (widget.selectedLocation == null) {
       return 'Location to be decided';
     }
 
     // If has custom name, use it
-    if (selectedLocation!.displayName != null &&
-        selectedLocation!.displayName!.isNotEmpty) {
-      return selectedLocation!.displayName!;
+    if (widget.selectedLocation!.displayName != null &&
+        widget.selectedLocation!.displayName!.isNotEmpty) {
+      return widget.selectedLocation!.displayName!;
     }
 
     // If has address, use it
-    if (selectedLocation!.formattedAddress.isNotEmpty) {
-      return selectedLocation!.formattedAddress;
+    if (widget.selectedLocation!.formattedAddress.isNotEmpty) {
+      return widget.selectedLocation!.formattedAddress;
     }
 
     return 'Location to be decided';

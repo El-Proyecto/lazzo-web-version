@@ -45,5 +45,22 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<!-- Configurações para abrir Google Maps e outras apps de mapas -->
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<!-- Google Maps -->
+		<string>googlemaps</string>
+		<string>comgooglemaps</string>
+		<string>google.navigation</string>
+		<!-- Apple Maps (built-in) -->
+		<string>maps</string>
+		<!-- Waze -->
+		<string>waze</string>
+		<!-- Generic schemes -->
+		<string>geo</string>
+		<!-- Web fallback -->
+		<string>http</string>
+		<string>https</string>
+	</array>
 </dict>
 </plist>

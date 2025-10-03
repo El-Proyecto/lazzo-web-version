@@ -38,7 +38,7 @@ class CreateEventUseCase {
       startDateTime: startDateTime,
       endDateTime: endDateTime,
       location: location,
-      status: EventStatus.draft,
+      status: EventStatus.pending,
       createdAt: DateTime.now(),
     );
 

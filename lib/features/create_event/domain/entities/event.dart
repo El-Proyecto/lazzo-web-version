@@ -66,4 +66,4 @@ class EventLocation {
 }
 
 /// Event status enumeration
-enum EventStatus { draft, planning, confirmed, cancelled, completed }
+enum EventStatus { pending, confirmed, ended }

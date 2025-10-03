@@ -48,6 +48,38 @@
 
     <!-- Default do template Flutter -->
     <queries>
+        <!-- Para url_launcher funcionar com Google Maps e outras apps de mapas -->
+        <!-- Google Maps -->
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="google.navigation" />
+        </intent>
+        
+        <!-- Generic geo intent -->
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="geo" />
+        </intent>
+        
+        <!-- Generic maps intent -->
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="maps" />
+        </intent>
+        
+        <!-- Web browser for fallback -->
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="https" />
+        </intent>
+        
+        <!-- HTTP for fallback -->
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:scheme="http" />
+        </intent>
+        
+        <!-- Preservar o existente -->
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT" />
             <data android:mimeType="text/plain" />

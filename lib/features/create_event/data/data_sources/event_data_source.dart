@@ -1,0 +1,146 @@
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+/// Remote data source for event operations using Supabase
+/// Handles all Supabase interactions following RLS and minimal column selection
+class EventDataSource {
+  final SupabaseClient _client;
+
+  EventDataSource(this._client);
+
+  /// Create a new event in Supabase
+  /// Respects RLS - user can only create events in groups they belong to
+  Future<Map<String, dynamic>> createEvent({
+    //required String? id,
+    required String name,
+    required String emoji,
+    required String groupId,
+    DateTime? startDateTime,
+    DateTime? endDateTime,
+    String? locationId,
+    String status = 'draft',
+    required String createdBy,
+  }) async {
+    final response = await _client.from('events').insert({
+      'name': name,
+      'emoji': emoji,
+      'group_id': groupId,
+      'start_datetime': startDateTime?.toIso8601String(),
+      'end_datetime': endDateTime?.toIso8601String(),
+      'location_id': locationId,
+      'status': status,
+      'created_by': createdBy,
+    }).select('id, name, emoji, group_id, start_datetime, end_datetime, location_id, status, created_by, created_at').single();
+
+    return response;
+  }
+
+  /// Get event by ID
+  /// Selects minimal columns as per agent guide
+  Future<Map<String, dynamic>?> getEventById(String id) async {
+    final response = await _client
+        .from('events')
+        .select('id, name, emoji, group_id, start_datetime, end_datetime, location_id, status, created_by, created_at')
+        .eq('id', id)
+        .maybeSingle();
+
+    return response;
+  }
+
+  /// Update an existing event
+  /// Respects RLS - user can only update events they created
+  Future<Map<String, dynamic>> updateEvent({
+    required String id,
+    String? name,
+    String? emoji,
+    String? groupId,
+    DateTime? startDateTime,
+    DateTime? endDateTime,
+    String? locationId,
+    String? status,
+  }) async {
+    final updateData = <String, dynamic>{};
+    if (name != null) updateData['name'] = name;
+    if (emoji != null) updateData['emoji'] = emoji;
+    if (groupId != null) updateData['group_id'] = groupId;
+    if (startDateTime != null) updateData['start_datetime'] = startDateTime.toIso8601String();
+    if (endDateTime != null) updateData['end_datetime'] = endDateTime.toIso8601String();
+    if (locationId != null) updateData['location_id'] = locationId;
+    if (status != null) updateData['status'] = status;
+
+    final response = await _client
+        .from('events')
+        .update(updateData)
+        .eq('id', id)
+        .select('id, name, emoji, group_id, start_datetime, end_datetime, location_id, status, created_by, created_at')
+        .single();
+
+    return response;
+  }
+
+  /// Delete an event
+  /// Respects RLS - user can only delete events they created
+  Future<void> deleteEvent(String id) async {
+    await _client.from('events').delete().eq('id', id);
+  }
+
+  /// Get events for a group with performance optimization
+  /// Uses indexes: order by created_at (indexed) with limit
+  Future<List<Map<String, dynamic>>> getEventsForGroup(
+    String groupId, {
+    int limit = 50,
+  }) async {
+    final response = await _client
+        .from('events')
+        .select('id, name, emoji, group_id, start_datetime, end_datetime, location_id, status, created_by, created_at')
+        .eq('group_id', groupId)
+        .order('created_at', ascending: false)
+        .limit(limit);
+
+    return List<Map<String, dynamic>>.from(response);
+  }
+
+  /// Create a location entry
+  /// Returns location ID for use in events
+  /// Requires created_by for RLS compliance
+  Future<Map<String, dynamic>> createLocation({
+    String? displayName,
+    required String formattedAddress,
+    required double latitude,
+    required double longitude,
+    required String createdBy,
+  }) async {
+    final response = await _client.from('locations').insert({
+      'display_name': displayName,
+      'formatted_address': formattedAddress,
+      'latitude': latitude,
+      'longitude': longitude,
+      'created_by': createdBy,
+    }).select('id, display_name, formatted_address, latitude, longitude').single();
+
+    return response;
+  }
+
+  /// Get location by ID
+  Future<Map<String, dynamic>?> getLocationById(String id) async {
+    final response = await _client
+        .from('locations')
+        .select('id, display_name, formatted_address, latitude, longitude')
+        .eq('id', id)
+        .maybeSingle();
+
+    return response;
+  }
+
+  /// Search locations by address (using RPC for complex search if available)
+  /// Falls back to simple text search if no RPC is implemented
+  Future<List<Map<String, dynamic>>> searchLocations(String query) async {
+    // Simple text search - in production this could use a Supabase RPC for more sophisticated search
+    final response = await _client
+        .from('locations')
+        .select('id, display_name, formatted_address, latitude, longitude')
+        .ilike('formatted_address', '%$query%')
+        .limit(10);
+
+    return List<Map<String, dynamic>>.from(response);
+  }
+}
