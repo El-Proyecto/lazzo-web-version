@@ -67,7 +67,7 @@ class GroupContextMenu extends StatelessWidget {
             child: Container(
               width: double.infinity,
               height: double.infinity,
-              color: Colors.black.withOpacity(0.1),
+              color: Colors.black.withValues(alpha: 0.1),
             ),
           ),
 
@@ -81,7 +81,7 @@ class GroupContextMenu extends StatelessWidget {
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(Radii.md),
                 border: Border.all(
-                  color: BrandColors.text2.withOpacity(0.3),
+                  color: BrandColors.text2.withValues(alpha: 0.3),
                   width: 0.5,
                 ),
               ),
@@ -117,7 +117,7 @@ class GroupContextMenu extends StatelessWidget {
           ),
           shadows: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.3),
+              color: Colors.black.withValues(alpha: 0.3),
               blurRadius: 8,
               offset: const Offset(0, 4),
             ),

@@ -1,0 +1,60 @@
+import 'group_permissions.dart';
+
+/// Group entity representing a group in the domain layer
+class GroupEntity {
+  final int? id;
+  final String name;
+  final String? description;
+  final String? photoUrl;
+  final GroupPermissions permissions;
+  final DateTime? createdAt;
+
+  const GroupEntity({
+    this.id,
+    required this.name,
+    this.description,
+    this.photoUrl,
+    required this.permissions,
+    this.createdAt,
+  });
+
+  GroupEntity copyWith({
+    int? id,
+    String? name,
+    String? description,
+    String? photoUrl,
+    GroupPermissions? permissions,
+    DateTime? createdAt,
+  }) {
+    return GroupEntity(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      description: description ?? this.description,
+      photoUrl: photoUrl ?? this.photoUrl,
+      permissions: permissions ?? this.permissions,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is GroupEntity &&
+        other.id == id &&
+        other.name == name &&
+        other.description == description &&
+        other.photoUrl == photoUrl &&
+        other.permissions == permissions &&
+        other.createdAt == createdAt;
+  }
+
+  @override
+  int get hashCode {
+    return Object.hash(id, name, description, photoUrl, permissions, createdAt);
+  }
+
+  @override
+  String toString() {
+    return 'GroupEntity(id: $id, name: $name, description: $description, photoUrl: $photoUrl, permissions: $permissions, createdAt: $createdAt)';
+  }
+}

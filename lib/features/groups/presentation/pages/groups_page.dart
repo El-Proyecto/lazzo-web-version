@@ -205,8 +205,7 @@ class _GroupsPageState extends ConsumerState<GroupsPage> {
   }
 
   void _handleCreateGroup() {
-    // TODO: Implementar navegação para criar grupo
-    print('Create group pressed');
+    Navigator.of(context).pushNamed('/create-group');
   }
 
   void _handleGroupTap(String groupId) {

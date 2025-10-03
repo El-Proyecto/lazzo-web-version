@@ -36,7 +36,7 @@ class NavigationBar extends StatelessWidget {
           _buildNavItem(0, Icons.home_outlined, Icons.home),
           _buildNavItem(1, Icons.group_outlined, Icons.group),
           _buildCenterButton(),
-          _buildNavItem(3, Icons.notifications_outlined, Icons.notifications),
+          _buildNavItem(3, Icons.mail_outline, Icons.mail),
           _buildNavItem(4, Icons.person_outline, Icons.person),
         ],
       ),
