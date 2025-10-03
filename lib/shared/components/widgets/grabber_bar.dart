@@ -12,7 +12,7 @@ class GrabberBar extends StatelessWidget {
     return Container(
       width: Gaps.xl,
       height: Gaps.xxs,
-      margin: const EdgeInsets.only(bottom: Gaps.xxs),
+      margin: const EdgeInsets.only(top: Gaps.sm, bottom: Gaps.xxs),
       decoration: BoxDecoration(
         color: BrandColors.border,
         borderRadius: BorderRadius.circular(2),
