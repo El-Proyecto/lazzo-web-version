@@ -70,7 +70,10 @@ class AppRouter {
     otpVerification: (context) {
       final args =
           ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
-      return OtpVerificationPage(email: args['email']);
+      return OtpVerificationPage(
+        email: args['email'], 
+        name: args['name'], // Optional name parameter
+      );
     },
     authenticationDone: (context) => const OnboardingSuccessPage(),
     finishSetup: (context) => const CreateProfilePage(),

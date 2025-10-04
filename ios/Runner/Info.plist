@@ -62,5 +62,10 @@
 		<string>http</string>
 		<string>https</string>
 	</array>
+	<!-- Permissões de localização para funcionalidade Current Location -->
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Este app precisa de acesso à sua localização para definir a localização do evento automaticamente.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>Este app precisa de acesso à sua localização para definir a localização do evento automaticamente.</string>
 </dict>
 </plist>

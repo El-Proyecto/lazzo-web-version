@@ -42,6 +42,9 @@ dependencies:
   # Native platform integrations for P2 handoff
   url_launcher: ^6.1.0
   geocoding: ^3.0.0
+  # Location services for current location and map functionality
+  geolocator: ^12.0.0
+  google_maps_flutter: ^2.9.0
   integration_test:
     sdk: flutter
   # The following adds the Cupertino Icons font to your application.

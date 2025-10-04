@@ -60,6 +60,7 @@ class _AuthPageState extends ConsumerState<AuthPage> {
 
     try {
       final authNotifier = ref.read(authProvider.notifier);
+      final name = _nameController.text.trim(); // Capture name BEFORE clearing
 
       await authNotifier.register(email);
       if (!mounted) return;
@@ -75,9 +76,16 @@ class _AuthPageState extends ConsumerState<AuthPage> {
         ),
       );
 
+      print('🔄 Navegando para OTP com email: $email, name: $name'); // Debug
+
       Navigator.push(
         context,
-        MaterialPageRoute(builder: (_) => OtpVerificationPage(email: email)),
+        MaterialPageRoute(
+          builder: (_) => OtpVerificationPage(
+            email: email, 
+            name: name,
+          ),
+        ),
       );
     } catch (e) {
       if (!mounted) return;

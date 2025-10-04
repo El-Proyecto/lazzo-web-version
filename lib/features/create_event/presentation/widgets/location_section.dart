@@ -2,6 +2,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:geocoding/geocoding.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/constants/text_styles.dart';
@@ -144,20 +146,38 @@ class _LocationSectionState extends State<LocationSection> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Static map mockup
+        // Google Maps preview
         Container(
           width: double.infinity,
           height: 120,
           decoration: BoxDecoration(
-            color: BrandColors.bg3,
             borderRadius: BorderRadius.circular(Radii.smAlt),
+            border: Border.all(color: BrandColors.border, width: 1),
           ),
-          child: const Stack(
-            alignment: Alignment.center,
-            children: [
-              Icon(Icons.map, size: 40, color: BrandColors.text2),
-              Icon(Icons.place, size: 30, color: BrandColors.planning),
-            ],
+          clipBehavior: Clip.antiAlias,
+          child: GoogleMap(
+            initialCameraPosition: CameraPosition(
+              target: LatLng(location.latitude, location.longitude),
+              zoom: 15,
+            ),
+            markers: {
+              Marker(
+                markerId: const MarkerId('event_location'),
+                position: LatLng(location.latitude, location.longitude),
+                infoWindow: InfoWindow(
+                  title: location.displayName ?? 'Localização do Evento',
+                  snippet: location.formattedAddress,
+                ),
+              ),
+            },
+            zoomControlsEnabled: false,
+            scrollGesturesEnabled: false,
+            zoomGesturesEnabled: false,
+            tiltGesturesEnabled: false,
+            rotateGesturesEnabled: false,
+            mapToolbarEnabled: false,
+            myLocationButtonEnabled: false,
+            onTap: (_) => _openInMaps(location), // Ao clicar no mapa, abrir Maps
           ),
         ),
 
@@ -365,11 +385,73 @@ class _LocationSectionState extends State<LocationSection> {
     );
   }
 
-  void _useCurrentLocation() {
-    // Mock current location with realistic coordinates for Portugal
-    // In production, this would use geolocator package for actual GPS location
-    final currentLocation = LocationInfo(
-      id: 'current-location',
+  void _useCurrentLocation() async {
+    try {
+      // Verificar e solicitar permissões de localização
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          // Permissão negada, usar localização mock
+          _useDefaultLocation();
+          return;
+        }
+      }
+
+      if (permission == LocationPermission.deniedForever) {
+        // Permissões negadas permanentemente, usar localização mock
+        _useDefaultLocation();
+        return;
+      }
+
+      // Obter localização atual
+      Position position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+        timeLimit: const Duration(seconds: 10),
+      );
+
+      // Converter coordenadas para endereço legível
+      List<Placemark> placemarks = await placemarkFromCoordinates(
+        position.latitude,
+        position.longitude,
+      );
+
+      String formattedAddress = 'Localização Atual';
+      if (placemarks.isNotEmpty) {
+        formattedAddress = _buildFormattedAddress(placemarks.first);
+      }
+
+      final currentLocation = LocationInfo(
+        id: 'current-location-${DateTime.now().millisecondsSinceEpoch}',
+        displayName: _locationNameController.text.isNotEmpty
+            ? _locationNameController.text
+            : 'Localização Atual',
+        formattedAddress: formattedAddress,
+        latitude: position.latitude,
+        longitude: position.longitude,
+      );
+
+      // Hide suggestions and update location
+      setState(() {
+        _showSuggestions = false;
+        _suggestions.clear();
+      });
+
+      widget.onLocationChanged?.call(currentLocation);
+      widget.onStateChanged?.call(LocationState.setNow);
+      HapticFeedback.lightImpact();
+
+    } catch (e) {
+      // Erro ao obter localização, usar localização padrão
+      print('Erro ao obter localização atual: $e');
+      _useDefaultLocation();
+    }
+  }
+
+  void _useDefaultLocation() {
+    // Localização padrão caso não consiga obter GPS
+    final defaultLocation = LocationInfo(
+      id: 'default-location',
       displayName: _locationNameController.text.isNotEmpty
           ? _locationNameController.text
           : 'Localização Atual',
@@ -378,36 +460,125 @@ class _LocationSectionState extends State<LocationSection> {
       longitude: -9.1393,
     );
 
-    // Hide suggestions and go to state 2
     setState(() {
       _showSuggestions = false;
       _suggestions.clear();
     });
 
-    widget.onLocationChanged?.call(currentLocation);
+    widget.onLocationChanged?.call(defaultLocation);
+    widget.onStateChanged?.call(LocationState.setNow);
     HapticFeedback.lightImpact();
   }
 
-  void _pickOnMap() {
-    // TODO: Implement map picker functionality
-    // For now, create a mock location and go to state 2
-    final mockLocation = LocationInfo(
-      id: 'map-pick-${DateTime.now().millisecondsSinceEpoch}',
+  void _pickOnMap() async {
+    // Abrir Google Maps em modo de seleção de localização
+    try {
+      // Obter localização atual para centrar o mapa
+      Position? currentPosition;
+      try {
+        currentPosition = await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.medium,
+          timeLimit: const Duration(seconds: 5),
+        );
+      } catch (e) {
+        // Se não conseguir obter localização, usar Lisboa como padrão
+        currentPosition = null;
+      }
+
+      final lat = currentPosition?.latitude ?? 38.7223;
+      final lng = currentPosition?.longitude ?? -9.1393;
+
+      // URLs para abrir Google Maps em modo de seleção
+      List<String> mapUrls = [
+        // Google Maps web com parâmetro de seleção
+        'https://www.google.com/maps/@$lat,$lng,15z',
+        // Fallback para Apple Maps
+        'maps://maps.apple.com/?q=$lat,$lng&ll=$lat,$lng&z=15',
+      ];
+
+      bool launched = false;
+
+      for (String mapUrl in mapUrls) {
+        try {
+          Uri uri = Uri.parse(mapUrl);
+          if (await canLaunchUrl(uri)) {
+            launched = await launchUrl(
+              uri,
+              mode: LaunchMode.externalApplication,
+            );
+            if (launched) break;
+          }
+        } catch (e) {
+          continue;
+        }
+      }
+
+      if (!launched && mounted) {
+        // Se não conseguir abrir mapas, mostrar um diálogo personalizado
+        _showMapPickerDialog();
+      }
+
+    } catch (e) {
+      print('Erro ao abrir Pick on Map: $e');
+      _showMapPickerDialog();
+    }
+  }
+
+  void _showMapPickerDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: BrandColors.bg2,
+        title: Text(
+          'Escolher no Mapa',
+          style: AppText.titleMediumEmph.copyWith(color: BrandColors.text1),
+        ),
+        content: Text(
+          'Esta funcionalidade abrirá Google Maps para você escolher uma localização. Por agora, vamos usar uma localização de exemplo.',
+          style: AppText.bodyMedium.copyWith(color: BrandColors.text2),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text(
+              'Cancelar',
+              style: AppText.labelLarge.copyWith(color: BrandColors.text2),
+            ),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              _useExamplePickedLocation();
+            },
+            child: Text(
+              'Usar Exemplo',
+              style: AppText.labelLarge.copyWith(color: Theme.of(context).colorScheme.primary),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _useExamplePickedLocation() {
+    // Localização de exemplo escolhida "no mapa"
+    final pickedLocation = LocationInfo(
+      id: 'map-picked-${DateTime.now().millisecondsSinceEpoch}',
       displayName: _locationNameController.text.isNotEmpty
           ? _locationNameController.text
-          : null,
-      formattedAddress: 'Selected from map',
-      latitude: -23.5505,
-      longitude: -46.6333,
+          : 'Local Escolhido no Mapa',
+      formattedAddress: 'Praça do Comércio, Lisboa, Portugal',
+      latitude: 38.7071,
+      longitude: -9.1359,
     );
 
-    // Hide suggestions and go to state 2
     setState(() {
       _showSuggestions = false;
       _suggestions.clear();
     });
 
-    widget.onLocationChanged?.call(mockLocation);
+    widget.onLocationChanged?.call(pickedLocation);
+    widget.onStateChanged?.call(LocationState.setNow);
     HapticFeedback.lightImpact();
   }
 
@@ -542,20 +713,20 @@ class _LocationSectionState extends State<LocationSection> {
     if (!mounted) return;
 
     try {
-      // Use real geocoding implementation
+      // Use real geocoding implementation - limited to 3 results
       List<LocationSuggestion> suggestions = await _performNativeGeocode(query);
 
       if (mounted) {
         setState(() {
-          _suggestions = suggestions.take(3).toList(); // Max 3 suggestions
+          _suggestions = suggestions.take(3).toList(); // Exactly 3 suggestions
           _isSearching = false;
         });
       }
     } catch (e) {
       if (mounted) {
         setState(() {
-          // Fallback to mock suggestions on error
-          _suggestions = _getMockSuggestions(query).take(3).toList();
+          // In case of error, show empty list
+          _suggestions = [];
           _isSearching = false;
         });
       }
@@ -564,12 +735,43 @@ class _LocationSectionState extends State<LocationSection> {
 
   /// Native geocoding implementation using geocoding package
   /// Converts address strings to coordinates and readable names
+  /// Limited to 3 results, prioritizing user's location context
   Future<List<LocationSuggestion>> _performNativeGeocode(String query) async {
     try {
+      // Get user's current location for context (if available)
+      Position? userLocation;
+      try {
+        LocationPermission permission = await Geolocator.checkPermission();
+        if (permission == LocationPermission.always || permission == LocationPermission.whileInUse) {
+          userLocation = await Geolocator.getCurrentPosition(
+            desiredAccuracy: LocationAccuracy.low,
+            timeLimit: const Duration(seconds: 5),
+          );
+        }
+      } catch (e) {
+        // Continue without user location if unavailable
+      }
+
       // Get locations from address query
       List<Location> locations = await locationFromAddress(query);
       List<LocationSuggestion> suggestions = [];
 
+      // If we have user location, sort results by distance
+      if (userLocation != null) {
+        locations.sort((a, b) {
+          double distanceA = Geolocator.distanceBetween(
+            userLocation!.latitude, userLocation.longitude,
+            a.latitude, a.longitude,
+          );
+          double distanceB = Geolocator.distanceBetween(
+            userLocation.latitude, userLocation.longitude,
+            b.latitude, b.longitude,
+          );
+          return distanceA.compareTo(distanceB);
+        });
+      }
+
+      // Process exactly 3 results (or fewer if not available)
       for (int i = 0; i < locations.length && i < 3; i++) {
         Location location = locations[i];
         
@@ -638,32 +840,7 @@ class _LocationSectionState extends State<LocationSection> {
     return query;
   }
 
-  List<LocationSuggestion> _getMockSuggestions(String query) {
-    // Mock suggestions - will be replaced with native geocoding
-    return [
-      LocationSuggestion(
-        id: 'mock-1',
-        name: '$query Restaurant',
-        address: 'Rua Augusta, 123 - São Paulo, SP',
-        latitude: -23.5505,
-        longitude: -46.6333,
-      ),
-      LocationSuggestion(
-        id: 'mock-2',
-        name: '$query Shopping',
-        address: 'Av. Paulista, 456 - São Paulo, SP',
-        latitude: -23.5618,
-        longitude: -46.6565,
-      ),
-      LocationSuggestion(
-        id: 'mock-3',
-        name: '$query Plaza',
-        address: 'Praça da Sé, 789 - São Paulo, SP',
-        latitude: -23.5505,
-        longitude: -46.6344,
-      ),
-    ];
-  }
+
 
   Widget _buildSuggestionsList() {
     if (_isSearching) {

@@ -99,8 +99,11 @@ class AuthRemoteDatasource {
   Future<UserModel> verifyOtp({
     required String email,
     required String token,
+    String? name,
   }) async {
     try {
+      print('🔐 verifyOtp iniciado com email: $email, name: $name'); // Debug
+
       // 1) Verificar estado atual
       //final currentUser = client.auth.currentUser;
 
@@ -111,20 +114,27 @@ class AuthRemoteDatasource {
         type: OtpType.email, // Mudado para signup pois é um novo registro
       );
 
+      print('🔐 OTP verificado com sucesso'); // Debug
+
       // 3) Verificar se temos usuário e sessão
       final u = response.user;
       if (u == null || response.session == null) {
         throw Exception('Falha na autenticação: usuário ou sessão inválidos');
       }
 
-      final row = await _upsertUsersRow(id: u.id, email: email);
+      print('🔐 Criando/atualizando usuário na tabela users...'); // Debug
+      final row = await _upsertUsersRow(id: u.id, email: email, name: name);
+      print('🔐 Usuário salvo na tabela users: ${row['name']}'); // Debug
 
       return UserModel.fromUsersRow(row);
     } on AuthException catch (e) {
+      print('❌ Erro AuthException: ${e.message}'); // Debug
       throw Exception('Falha na verificação OTP: ${e.message}');
     } on PostgrestException catch (e) {
+      print('❌ Erro PostgrestException: ${e.message}'); // Debug
       throw Exception('Falha na verificação OTP (DB): ${e.message}');
     } catch (e) {
+      print('❌ Erro geral: $e'); // Debug
       throw Exception('Falha na verificação OTP: $e');
     }
   }
@@ -157,23 +167,44 @@ class AuthRemoteDatasource {
 
   /// Upsert idempotente: cria/atualiza a row com {id, email}.
   /// Usa onConflict: 'id' para evitar race conditions.
+  /// Implementa lógica de patch incremental similar ao finish_setup.dart
   Future<Map<String, dynamic>> _upsertUsersRow({
     required String id,
     required String email,
     String? name,
   }) async {
+    print('💾 _upsertUsersRow chamado com id: $id, email: $email, name: $name'); // Debug
+    
     final patch = <String, dynamic>{
       'id': id,
       'email': email.trim().toLowerCase(),
-      if (name != null && name.trim().isNotEmpty) 'name': name.trim(),
+      'updated_at': DateTime.now().toUtc().toIso8601String(),
     };
 
-    final row = await client
-        .from('users')
-        .upsert(patch, onConflict: 'id')
-        .select() // devolve a row atualizada/criada
-        .single();
+    // Only add name if it's provided, not null and not empty
+    if (name != null && name.trim().isNotEmpty) {
+      patch['name'] = name.trim();
+      print('💾 Nome adicionado ao patch: ${name.trim()}'); // Debug
+    } else {
+      print('💾 Nome não fornecido ou vazio - mantendo valor existente'); // Debug
+    }
 
-    return Map<String, dynamic>.from(row as Map);
+    print('💾 Patch a ser enviado: $patch'); // Debug
+
+    try {
+      final row = await client
+          .from('users')
+          .upsert(patch, onConflict: 'id')
+          .select() // devolve a row atualizada/criada
+          .single();
+
+      final result = Map<String, dynamic>.from(row as Map);
+      print('💾 Resultado do upsert: $result'); // Debug
+      
+      return result;
+    } catch (e) {
+      print('❌ Erro no upsert: $e'); // Debug
+      rethrow;
+    }
   }
 }

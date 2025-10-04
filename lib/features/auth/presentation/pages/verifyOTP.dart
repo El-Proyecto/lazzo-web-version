@@ -12,9 +12,10 @@ import '../../../../shared/components/sections/lazzo_header.dart';
 import '../../../../shared/themes/colors.dart';
 
 class OtpVerificationPage extends ConsumerStatefulWidget {
-  const OtpVerificationPage({super.key, required this.email});
+  const OtpVerificationPage({super.key, required this.email, this.name});
 
   final String email;
+  final String? name;
 
   @override
   ConsumerState<OtpVerificationPage> createState() =>
@@ -67,13 +68,24 @@ class _OtpVerificationPageState extends ConsumerState<OtpVerificationPage> {
     });
 
     try {
-      await _authDatasource.verifyOtp(email: widget.email, token: _code);
+      print('📱 Iniciando verificação OTP com email: ${widget.email}, name: ${widget.name}'); // Debug
+      
+      // Pass name directly to verifyOtp method
+      await _authDatasource.verifyOtp(
+        email: widget.email, 
+        token: _code,
+        name: widget.name?.trim(),
+      );
+
+      print('📱 OTP verificado com sucesso, navegando para /main'); // Debug
 
       if (!mounted) return;
       Navigator.pushNamedAndRemoveUntil(context, '/main', (_) => false);
     } on AuthException catch (e) {
+      print('📱 Erro AuthException: ${e.message}'); // Debug
       setState(() => _bannerMessage = e.message);
     } catch (e) {
+      print('📱 Erro geral: $e'); // Debug
       setState(() => _bannerMessage = 'Erro ao verificar: $e');
     } finally {
       if (mounted) setState(() => _busy = false);

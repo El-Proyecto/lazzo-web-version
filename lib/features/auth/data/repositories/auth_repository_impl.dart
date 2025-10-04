@@ -50,11 +50,12 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
-  Future<User?> verifyOtp({required String email, required String otp}) async {
+  Future<User?> verifyOtp({required String email, required String otp, String? name}) async {
     try {
       final userModel = await remoteDatasource.verifyOtp(
         email: email,
         token: otp,
+        name: name,
       );
       return _toDomain(userModel);
     } catch (e) {
