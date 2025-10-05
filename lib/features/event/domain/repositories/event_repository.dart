@@ -1,0 +1,11 @@
+import '../entities/event_detail.dart';
+
+/// Event repository interface
+/// Defines the contract for event data operations
+abstract class EventRepository {
+  /// Get event details by ID
+  Future<EventDetail> getEventDetail(String eventId);
+
+  /// Check if user is the event host
+  Future<bool> isUserHost(String eventId, String userId);
+}
