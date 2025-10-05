@@ -4,6 +4,7 @@ import '../../domain/repositories/rsvp_repository.dart';
 /// Fake RSVP repository for development
 class FakeRsvpRepository implements RsvpRepository {
   final List<Rsvp> _rsvps = [
+    // Can votes (5 people)
     Rsvp(
       id: 'rsvp-1',
       eventId: 'event-1',
@@ -11,7 +12,7 @@ class FakeRsvpRepository implements RsvpRepository {
       userName: 'João Silva',
       userAvatar: null,
       status: RsvpStatus.going,
-      createdAt: DateTime.now().subtract(const Duration(hours: 2)),
+      createdAt: DateTime.now().subtract(const Duration(hours: 4)),
     ),
     Rsvp(
       id: 'rsvp-2',
@@ -26,9 +27,87 @@ class FakeRsvpRepository implements RsvpRepository {
       id: 'rsvp-3',
       eventId: 'event-1',
       userId: 'user-3',
+      userName: 'Ana Costa',
+      userAvatar: null,
+      status: RsvpStatus.going,
+      createdAt: DateTime.now().subtract(const Duration(hours: 2)),
+    ),
+    Rsvp(
+      id: 'rsvp-4',
+      eventId: 'event-1',
+      userId: 'user-4',
+      userName: 'Ricardo Alves',
+      userAvatar: null,
+      status: RsvpStatus.going,
+      createdAt: DateTime.now().subtract(const Duration(minutes: 90)),
+    ),
+    Rsvp(
+      id: 'rsvp-5',
+      eventId: 'event-1',
+      userId: 'user-5',
+      userName: 'Sofia Lima',
+      userAvatar: null,
+      status: RsvpStatus.going,
+      createdAt: DateTime.now().subtract(const Duration(minutes: 45)),
+    ),
+
+    // Can't votes (3 people)
+    Rsvp(
+      id: 'rsvp-6',
+      eventId: 'event-1',
+      userId: 'user-6',
       userName: 'Pedro Costa',
       userAvatar: null,
       status: RsvpStatus.notGoing,
+      createdAt: DateTime.now().subtract(const Duration(hours: 5)),
+    ),
+    Rsvp(
+      id: 'rsvp-7',
+      eventId: 'event-1',
+      userId: 'user-7',
+      userName: 'Beatriz Sousa',
+      userAvatar: null,
+      status: RsvpStatus.notGoing,
+      createdAt: DateTime.now().subtract(const Duration(hours: 6)),
+    ),
+    Rsvp(
+      id: 'rsvp-8',
+      eventId: 'event-1',
+      userId: 'user-8',
+      userName: 'Miguel Rocha',
+      userAvatar: null,
+      status: RsvpStatus.notGoing,
+      createdAt: DateTime.now().subtract(const Duration(minutes: 30)),
+    ),
+
+    // Haven't responded (2 people)
+    Rsvp(
+      id: 'rsvp-9',
+      eventId: 'event-1',
+      userId: 'user-9',
+      userName: 'Inês Ferreira',
+      userAvatar: null,
+      status: RsvpStatus.pending,
+      createdAt: DateTime.now().subtract(const Duration(minutes: 15)),
+    ),
+    Rsvp(
+      id: 'rsvp-10',
+      eventId: 'event-1',
+      userId: 'user-10',
+      userName: 'Tiago Santos',
+      userAvatar: null,
+      status: RsvpStatus.pending,
+      createdAt: DateTime.now().subtract(const Duration(minutes: 10)),
+    ),
+
+    // Current user starts as pending
+    Rsvp(
+      id: 'rsvp-current',
+      eventId: 'event-1',
+      userId: 'current-user',
+      userName: 'Carlos Pereira',
+      userAvatar: null,
+      status: RsvpStatus.pending,
       createdAt: DateTime.now().subtract(const Duration(hours: 1)),
     ),
   ];
@@ -42,17 +121,14 @@ class FakeRsvpRepository implements RsvpRepository {
   @override
   Future<Rsvp?> getUserRsvp(String eventId, String userId) async {
     await Future.delayed(const Duration(milliseconds: 200));
-    return _rsvps.firstWhere(
-      (r) => r.eventId == eventId && r.userId == userId,
-      orElse: () => Rsvp(
-        id: 'rsvp-new',
-        eventId: eventId,
-        userId: userId,
-        userName: 'Current User',
-        status: RsvpStatus.pending,
-        createdAt: DateTime.now(),
-      ),
-    );
+    try {
+      return _rsvps.firstWhere(
+        (r) => r.eventId == eventId && r.userId == userId,
+      );
+    } catch (e) {
+      // Return null if no RSVP exists
+      return null;
+    }
   }
 
   @override
@@ -68,12 +144,19 @@ class FakeRsvpRepository implements RsvpRepository {
     );
 
     final newRsvp = Rsvp(
-      id: existingIndex >= 0 ? _rsvps[existingIndex].id : 'rsvp-new',
+      id: existingIndex >= 0
+          ? _rsvps[existingIndex].id
+          : 'rsvp-new-${_rsvps.length}',
       eventId: eventId,
       userId: userId,
-      userName: 'Current User',
+      userName: existingIndex >= 0
+          ? _rsvps[existingIndex].userName
+          : 'Current User',
+      userAvatar: existingIndex >= 0 ? _rsvps[existingIndex].userAvatar : null,
       status: status,
-      createdAt: DateTime.now(),
+      createdAt: existingIndex >= 0
+          ? _rsvps[existingIndex].createdAt
+          : DateTime.now(),
     );
 
     if (existingIndex >= 0) {

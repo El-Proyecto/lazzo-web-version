@@ -24,18 +24,11 @@ class EventHeader extends StatelessWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        // Emoji container
-        Container(
-          width: 108,
-          height: 108,
-          padding: const EdgeInsets.all(22),
-          decoration: BoxDecoration(
-            color: BrandColors.bg2,
-            borderRadius: BorderRadius.circular(Radii.md),
-          ),
-          child: Center(
-            child: Text(emoji, style: const TextStyle(fontSize: 64)),
-          ),
+        // Emoji
+        Text(
+          emoji,
+          style: const TextStyle(fontSize: 64, height: 1.0),
+          textAlign: TextAlign.center,
         ),
         const SizedBox(height: Gaps.xs),
 

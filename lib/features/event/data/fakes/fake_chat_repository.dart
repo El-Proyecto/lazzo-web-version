@@ -11,7 +11,7 @@ class FakeChatRepository implements ChatRepository {
       userName: 'Maria Santos',
       userAvatar: null,
       content: 'Mal posso esperar! 🔥',
-      createdAt: DateTime.now().subtract(const Duration(minutes: 15)),
+      createdAt: DateTime.now().subtract(const Duration(hours: 2)),
     ),
     ChatMessage(
       id: 'msg-2',
@@ -20,7 +20,70 @@ class FakeChatRepository implements ChatRepository {
       userName: 'João Silva',
       userAvatar: null,
       content: 'Vou levar a grelha grande!',
+      createdAt: DateTime.now().subtract(const Duration(minutes: 90)),
+    ),
+    ChatMessage(
+      id: 'msg-3',
+      eventId: 'event-1',
+      userId: 'user-3',
+      userName: 'Ana Costa',
+      userAvatar: null,
+      content: 'Preciso de boleia, alguém passa pela Amadora?',
+      createdAt: DateTime.now().subtract(const Duration(minutes: 45)),
+    ),
+    ChatMessage(
+      id: 'msg-4',
+      eventId: 'event-1',
+      userId: 'current-user',
+      userName: 'Carlos Pereira',
+      userAvatar: null,
+      content: 'Eu passo! Mando mensagem quando sair.',
+      createdAt: DateTime.now().subtract(const Duration(minutes: 30)),
+    ),
+    ChatMessage(
+      id: 'msg-5',
+      eventId: 'event-1',
+      userId: 'user-4',
+      userName: 'Ricardo Alves',
+      userAvatar: null,
+      content: 'Levo cerveja artesanal para toda a gente 🍺',
+      createdAt: DateTime.now().subtract(const Duration(minutes: 15)),
+    ),
+    ChatMessage(
+      id: 'msg-6',
+      eventId: 'event-1',
+      userId: 'user-5',
+      userName: 'Sofia Lima',
+      userAvatar: null,
+      content: 'Perfeito! Levo as sobremesas então 🍰',
       createdAt: DateTime.now().subtract(const Duration(minutes: 5)),
+    ),
+    ChatMessage(
+      id: 'msg-7',
+      eventId: 'event-1',
+      userId: 'user-6',
+      userName: 'Pedro Costa',
+      userAvatar: null,
+      content: 'Pessoal, não vou conseguir ir 😔',
+      createdAt: DateTime.now().subtract(const Duration(minutes: 3)),
+    ),
+    ChatMessage(
+      id: 'msg-8',
+      eventId: 'event-1',
+      userId: 'user-1',
+      userName: 'João Silva',
+      userAvatar: null,
+      content: 'Não há problema! Para a próxima 👍',
+      createdAt: DateTime.now().subtract(const Duration(minutes: 2)),
+    ),
+    ChatMessage(
+      id: 'msg-9',
+      eventId: 'event-1',
+      userId: 'user-7',
+      userName: 'Beatriz Sousa',
+      userAvatar: null,
+      content: 'Também não consigo... talvez podíamos mudar a data?',
+      createdAt: DateTime.now().subtract(const Duration(minutes: 1)),
     ),
   ];
 
@@ -30,12 +93,12 @@ class FakeChatRepository implements ChatRepository {
     int limit = 2,
   }) async {
     await Future.delayed(const Duration(milliseconds: 300));
-    return _messages
-        .where((m) => m.eventId == eventId)
-        .take(limit)
-        .toList()
-        .reversed
-        .toList();
+    final eventMessages = _messages.where((m) => m.eventId == eventId).toList();
+
+    // Sort by creation time descending (newest first)
+    eventMessages.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+
+    return eventMessages.take(limit).toList();
   }
 
   @override

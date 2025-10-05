@@ -32,7 +32,7 @@ class DateTimeWidget extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Header
-          Text('Data & Hora', style: AppText.labelLarge),
+          Text('Date & Time', style: AppText.labelLarge),
           const SizedBox(height: Gaps.md),
 
           // Date and time display
@@ -95,10 +95,7 @@ class DateTimeWidget extends StatelessWidget {
             child: OutlinedButton.icon(
               onPressed: () => _addToCalendar(),
               icon: const Icon(Icons.calendar_today, size: IconSizes.sm),
-              label: Text(
-                'Adicionar ao calendário',
-                style: AppText.bodyMediumEmph,
-              ),
+              label: Text('Add to calendar', style: AppText.bodyMediumEmph),
               style: OutlinedButton.styleFrom(
                 foregroundColor: BrandColors.text1,
                 side: const BorderSide(color: BrandColors.border),

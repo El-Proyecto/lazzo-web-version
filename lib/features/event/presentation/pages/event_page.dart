@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../shared/components/nav/common_app_bar.dart';
 import '../../../../shared/components/sections/event_header.dart';
-import '../../../../shared/components/widgets/rsvp_widget.dart';
+import '../../../../shared/components/widgets/rsvp_widget.dart' as rsvp_widget;
 import '../../../../shared/components/widgets/location_widget.dart';
 import '../../../../shared/components/widgets/date_time_widget.dart';
 import '../../../../shared/components/widgets/poll_widget.dart';
@@ -60,28 +60,65 @@ class EventPage extends ConsumerWidget {
               const SizedBox(height: Gaps.xl),
 
               // RSVP Widget
-              userRsvpAsync.when(
-                data: (userRsvp) => RsvpWidget(
-                  goingCount: event.goingCount,
-                  notGoingCount: event.notGoingCount,
-                  userVote: _getUserVoteStatus(userRsvp),
-                  onGoingPressed: () {
-                    ref
-                        .read(userRsvpProvider(eventId).notifier)
-                        .submitVote(RsvpStatus.going);
-                  },
-                  onNotGoingPressed: () {
-                    ref
-                        .read(userRsvpProvider(eventId).notifier)
-                        .submitVote(RsvpStatus.notGoing);
-                  },
-                  onViewVotesPressed: () {
-                    _showRsvpList(context, rsvpsAsync);
-                  },
-                  onAddSuggestionPressed: _getUserVoteStatus(userRsvp) == false
-                      ? () => _showAddSuggestionDialog(context, ref)
-                      : null,
-                ),
+              rsvpsAsync.when(
+                data: (rsvps) {
+                  return userRsvpAsync.when(
+                    data: (userRsvp) {
+                      return rsvp_widget.RsvpWidget(
+                        goingCount: event.goingCount,
+                        notGoingCount: event.notGoingCount,
+                        pendingCount: rsvps
+                            .where((r) => r.status == RsvpStatus.pending)
+                            .length,
+                        userVote: _getUserVoteStatus(userRsvp),
+                        onGoingPressed: () {
+                          final currentStatus =
+                              userRsvp?.status ?? RsvpStatus.pending;
+                          final newStatus = currentStatus == RsvpStatus.going
+                              ? RsvpStatus.pending
+                              : RsvpStatus.going;
+                          ref
+                              .read(userRsvpProvider(eventId).notifier)
+                              .submitVote(newStatus);
+                        },
+                        onNotGoingPressed: () {
+                          final currentStatus =
+                              userRsvp?.status ?? RsvpStatus.pending;
+                          final newStatus = currentStatus == RsvpStatus.notGoing
+                              ? RsvpStatus.pending
+                              : RsvpStatus.notGoing;
+                          ref
+                              .read(userRsvpProvider(eventId).notifier)
+                              .submitVote(newStatus);
+                        },
+                        allVotes: rsvps
+                            .map(
+                              (r) => rsvp_widget.RsvpVote(
+                                id: r.id,
+                                userId: r.userId,
+                                userName: r.userName,
+                                userAvatar: r.userAvatar,
+                                status: r.status == RsvpStatus.going
+                                    ? rsvp_widget.RsvpVoteStatus.going
+                                    : r.status == RsvpStatus.notGoing
+                                    ? rsvp_widget.RsvpVoteStatus.notGoing
+                                    : rsvp_widget.RsvpVoteStatus.pending,
+                                votedAt: r.createdAt,
+                              ),
+                            )
+                            .toList(),
+                        onAddSuggestion: _getUserVoteStatus(userRsvp) == false
+                            ? () {
+                                // Add suggestion bottom sheet is handled by RsvpWidget
+                              }
+                            : null,
+                      );
+                    },
+                    loading: () =>
+                        const Center(child: CircularProgressIndicator()),
+                    error: (error, stack) => const SizedBox.shrink(),
+                  );
+                },
                 loading: () => const Center(child: CircularProgressIndicator()),
                 error: (error, stack) => const SizedBox.shrink(),
               ),
@@ -90,10 +127,14 @@ class EventPage extends ConsumerWidget {
               // Chat Preview
               messagesAsync.when(
                 data: (messages) => ChatPreviewWidget(
+                  newMessagesCount: 3, // TODO: Calculate real new messages
+                  currentUserId: 'current-user', // TODO: Get from auth provider
                   recentMessages: messages
                       .map(
                         (m) => ChatMessagePreview(
+                          userId: m.userId,
                           userName: m.userName,
+                          userAvatar: m.userAvatar,
                           content: m.content,
                           timestamp: m.createdAt,
                         ),
@@ -183,7 +224,7 @@ class EventPage extends ConsumerWidget {
         ),
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, stack) =>
-            Center(child: Text('Erro ao carregar evento: $error')),
+            Center(child: Text('Error loading event: $error')),
       ),
     );
   }
@@ -196,70 +237,5 @@ class EventPage extends ConsumerWidget {
   String? _getUserVotedOption(dynamic poll) {
     // TODO: Implement logic to check if current user voted
     return null;
-  }
-
-  void _showRsvpList(BuildContext context, AsyncValue rsvpsAsync) {
-    rsvpsAsync.whenData((rsvps) {
-      showModalBottomSheet(
-        context: context,
-        backgroundColor: BrandColors.bg2,
-        shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(Radii.md)),
-        ),
-        builder: (context) => Padding(
-          padding: const EdgeInsets.all(Pads.sectionH),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Confirmações',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                  color: BrandColors.text1,
-                ),
-              ),
-              const SizedBox(height: Gaps.md),
-              ...rsvps
-                  .where((r) => r.status == RsvpStatus.going)
-                  .map(
-                    (r) => Padding(
-                      padding: const EdgeInsets.only(bottom: Gaps.sm),
-                      child: Text(
-                        r.userName,
-                        style: const TextStyle(color: BrandColors.text1),
-                      ),
-                    ),
-                  ),
-            ],
-          ),
-        ),
-      );
-    });
-  }
-
-  void _showAddSuggestionDialog(BuildContext context, WidgetRef ref) {
-    // TODO: Implement add suggestion dialog
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: BrandColors.bg2,
-        title: const Text(
-          'Adicionar sugestão',
-          style: TextStyle(color: BrandColors.text1),
-        ),
-        content: const Text(
-          'Funcionalidade em desenvolvimento',
-          style: TextStyle(color: BrandColors.text2),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Fechar'),
-          ),
-        ],
-      ),
-    );
   }
 }

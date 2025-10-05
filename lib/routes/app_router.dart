@@ -56,7 +56,7 @@ class AppRouter {
     event: (context) {
       final args =
           ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
-      return EventPage(eventId: args?['eventId'] ?? '');
+      return EventPage(eventId: args?['eventId'] ?? 'event-1');
     },
     loginPage: (context) => const LoginPage(),
 

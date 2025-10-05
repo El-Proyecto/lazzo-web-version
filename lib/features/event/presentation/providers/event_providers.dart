@@ -124,13 +124,16 @@ class UserRsvpNotifier extends StateNotifier<AsyncValue<Rsvp?>> {
   }
 
   Future<void> submitVote(RsvpStatus status) async {
-    state = const AsyncValue.loading();
     try {
       // TODO: Get current user ID from auth service
       final rsvp = await repository.submitRsvp(eventId, 'current-user', status);
       state = AsyncValue.data(rsvp);
+
+      // No need to reload, the repository should return the updated RSVP
     } catch (error, stackTrace) {
       state = AsyncValue.error(error, stackTrace);
+      // Reload on error to get consistent state
+      _loadUserRsvp();
     }
   }
 }

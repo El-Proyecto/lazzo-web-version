@@ -5,7 +5,7 @@ import '../../constants/text_styles.dart';
 import '../../themes/colors.dart';
 
 /// Location widget for displaying event location
-/// Shows location info and button to open in Maps app
+/// Shows location with subtitle and tappable map
 /// TODO P2: Implement map preview similar to create_event location section
 class LocationWidget extends StatelessWidget {
   final String displayName;
@@ -33,66 +33,52 @@ class LocationWidget extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header
-          Text('Localização', style: AppText.labelLarge),
+          // Header with subtitle
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Location', style: AppText.labelLarge),
+              const SizedBox(height: 2),
+              Text(
+                displayName,
+                style: AppText.bodyMedium.copyWith(
+                  color: BrandColors.text2,
+                  fontSize: 12,
+                ),
+              ),
+            ],
+          ),
           const SizedBox(height: Gaps.md),
 
           // TODO P2: Add map preview here (similar to create_event)
-          // Placeholder for map preview
-          Container(
-            height: 200,
-            decoration: BoxDecoration(
-              color: BrandColors.bg3,
-              borderRadius: BorderRadius.circular(Radii.sm),
-            ),
-            child: const Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.map, size: 48, color: BrandColors.text2),
-                  SizedBox(height: Gaps.xs),
-                  Text(
-                    'Mapa',
-                    style: TextStyle(
-                      fontFamily: 'Roboto',
-                      fontWeight: FontWeight.w400,
-                      fontSize: 14,
-                      height: 20 / 14,
-                      letterSpacing: 0.25,
-                      color: BrandColors.text2,
-                    ),
-                  ),
-                ],
+          // Placeholder for map preview - tappable to open Maps
+          InkWell(
+            onTap: () => _openInMaps(latitude, longitude),
+            borderRadius: BorderRadius.circular(Radii.sm),
+            child: Container(
+              height: 200,
+              decoration: BoxDecoration(
+                color: BrandColors.bg3,
+                borderRadius: BorderRadius.circular(Radii.sm),
               ),
-            ),
-          ),
-          const SizedBox(height: Gaps.sm),
-
-          // Location info
-          Text(displayName, style: AppText.bodyMediumEmph),
-          const SizedBox(height: Gaps.xxs),
-          Text(
-            formattedAddress,
-            style: AppText.bodyMedium.copyWith(color: BrandColors.text2),
-          ),
-          const SizedBox(height: Gaps.md),
-
-          // Open in Maps button
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton.icon(
-              onPressed: () => _openInMaps(latitude, longitude),
-              icon: const Icon(Icons.map_outlined, size: IconSizes.sm),
-              label: Text('Abrir no Maps', style: AppText.bodyMediumEmph),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: BrandColors.text1,
-                side: const BorderSide(color: BrandColors.border),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: Pads.ctlH,
-                  vertical: Pads.ctlV,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(Radii.sm),
+              child: const Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.map, size: 48, color: BrandColors.text2),
+                    SizedBox(height: Gaps.xs),
+                    Text(
+                      'Tap to open in Maps',
+                      style: TextStyle(
+                        fontFamily: 'Roboto',
+                        fontWeight: FontWeight.w400,
+                        fontSize: 14,
+                        height: 20 / 14,
+                        letterSpacing: 0.25,
+                        color: BrandColors.text2,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),

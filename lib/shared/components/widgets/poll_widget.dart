@@ -88,10 +88,7 @@ class PollWidget extends StatelessWidget {
                     borderRadius: BorderRadius.circular(Radii.sm),
                   ),
                 ),
-                child: Text(
-                  'Escolher data final',
-                  style: AppText.bodyMediumEmph,
-                ),
+                child: Text('Choose final date', style: AppText.bodyMediumEmph),
               ),
             ),
           ],
