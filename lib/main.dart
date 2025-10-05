@@ -33,8 +33,10 @@ import '../features/home/presentation/providers/pending_event_providers.dart';
 // GROUPS - TODO: Add real implementation imports when available
 // import '../features/groups/presentation/providers/groups_provider.dart';
 
-// PROFILE - TODO: Add real implementation imports when available
-// import '../features/profile/presentation/providers/profile_providers.dart';
+// PROFILE - Real implementation
+import '../features/profile/data/data_sources/profile_remote_data_source.dart';
+import '../features/profile/data/repositories/profile_repository_impl.dart';
+import '../features/profile/presentation/providers/profile_providers.dart';
 
 // AUTH (DI via providers)
 import '../features/auth/presentation/providers/auth_provider.dart';
@@ -49,8 +51,6 @@ import '../features/auth/data/repositories/users_repository.dart';
 // CREATE EVENT (P2 implementation)
 import 'features/create_event/presentation/providers/event_providers.dart';
 import 'features/create_event/data/repositories/event_repository_impl.dart';
-
-
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -111,10 +111,12 @@ void main() async {
         //   (ref) => GroupRepositoryImpl(GroupRemoteDataSource(Supabase.instance.client)),
         // ),
 
-        // Profile repo -> TODO: Add when ProfileRepositoryImpl exists
-        // profileRepositoryProvider.overrideWith(
-        //   (ref) => ProfileRepositoryImpl(ProfileRemoteDataSource(Supabase.instance.client)),
-        // ),
+        // Profile repo -> real (Supabase)
+        profileRepositoryProvider.overrideWith(
+          (ref) => ProfileRepositoryImpl(
+            ProfileRemoteDataSource(Supabase.instance.client),
+          ),
+        ),
 
         // authRepositoryProvider.overrideWith(...),
         // ✅ AUTH repo -> real (Supabase) via DI
@@ -134,7 +136,6 @@ void main() async {
           final client = Supabase.instance.client;
           return EventRepositoryImpl(client);
         }),
-
       ],
       child: const LazzoApp(),
     ),
