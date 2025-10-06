@@ -11,6 +11,7 @@ import '../../../../shared/themes/colors.dart';
 import '../../domain/entities/rsvp.dart';
 import '../providers/event_providers.dart';
 import '../widgets/chat_preview_widget.dart';
+import '../widgets/date_time_suggestions_widget.dart';
 
 /// Event detail page
 /// Displays all event information and interactions
@@ -112,6 +113,8 @@ class EventPage extends ConsumerWidget {
                                 // Add suggestion bottom sheet is handled by RsvpWidget
                               }
                             : null,
+                        eventStartDateTime: event.startDateTime,
+                        eventEndDateTime: event.endDateTime,
                       );
                     },
                     loading: () =>
@@ -121,6 +124,53 @@ class EventPage extends ConsumerWidget {
                 },
                 loading: () => const Center(child: CircularProgressIndicator()),
                 error: (error, stack) => const SizedBox.shrink(),
+              ),
+              const SizedBox(height: Gaps.xl),
+
+              // Date & Time Suggestions Widget (persists when suggestions exist)
+              DateTimeSuggestionsWidget(
+                suggestions: [
+                  // TODO: Get from provider - showing sample data that persists
+                  DateTimeSuggestion(
+                    id: 'suggestion1',
+                    startDateTime: DateTime.now().add(
+                      const Duration(days: 1, hours: 2),
+                    ),
+                    endDateTime: DateTime.now().add(
+                      const Duration(days: 1, hours: 4),
+                    ),
+                    voteCount: 3,
+                    hasUserVoted: false,
+                  ),
+                  DateTimeSuggestion(
+                    id: 'suggestion2',
+                    startDateTime: DateTime.now().add(
+                      const Duration(days: 2, hours: 3),
+                    ),
+                    endDateTime: DateTime.now().add(
+                      const Duration(days: 2, hours: 5),
+                    ),
+                    voteCount: 1,
+                    hasUserVoted: true,
+                  ),
+                ],
+                userVotes: {
+                  'suggestion2',
+                }, // Example: user has voted for suggestion2
+                onVote: (suggestionId) {
+                  // TODO: Implement vote logic
+                  print('Voted for suggestion: $suggestionId');
+                },
+                isHost:
+                    true, // TODO: Get from provider - determines if "Pick as final" shows
+                onAddSuggestion: () {
+                  // TODO: Implement add suggestion logic
+                  print('Add suggestion pressed');
+                },
+                onPickAsFinal: (suggestionId) {
+                  // TODO: Implement pick as final logic
+                  print('Pick as final: $suggestionId');
+                },
               ),
               const SizedBox(height: Gaps.xl),
 

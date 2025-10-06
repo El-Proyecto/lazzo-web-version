@@ -38,6 +38,8 @@ class RsvpWidget extends StatelessWidget {
   final VoidCallback onNotGoingPressed;
   final List<RsvpVote> allVotes;
   final VoidCallback? onAddSuggestion;
+  final DateTime? eventStartDateTime;
+  final DateTime? eventEndDateTime;
 
   const RsvpWidget({
     super.key,
@@ -49,6 +51,8 @@ class RsvpWidget extends StatelessWidget {
     required this.onNotGoingPressed,
     required this.allVotes,
     this.onAddSuggestion,
+    this.eventStartDateTime,
+    this.eventEndDateTime,
   });
 
   @override
@@ -141,7 +145,7 @@ class RsvpWidget extends StatelessWidget {
                     vertical: Pads.ctlV,
                   ),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(Radii.sm),
+                    borderRadius: BorderRadius.circular(10),
                   ),
                 ),
               ),
@@ -195,179 +199,289 @@ class RsvpWidget extends StatelessWidget {
   }
 
   void _showAddSuggestionBottomSheet(BuildContext context) {
-    DateTime? startDate;
-    TimeOfDay? startTime;
-    DateTime? endDate;
-    TimeOfDay? endTime;
+    // Initialize with event dates or today as fallback
+    final now = DateTime.now();
+    final fallbackStart = DateTime(
+      now.year,
+      now.month,
+      now.day,
+      18,
+      0,
+    ); // 6 PM today
+    final fallbackEnd = DateTime(
+      now.year,
+      now.month,
+      now.day,
+      22,
+      0,
+    ); // 10 PM today
+
+    DateTime? startDate = eventStartDateTime ?? fallbackStart;
+    TimeOfDay? startTime = eventStartDateTime != null
+        ? TimeOfDay.fromDateTime(eventStartDateTime!)
+        : TimeOfDay.fromDateTime(fallbackStart);
+    DateTime? endDate = eventEndDateTime ?? fallbackEnd;
+    TimeOfDay? endTime = eventEndDateTime != null
+        ? TimeOfDay.fromDateTime(eventEndDateTime!)
+        : TimeOfDay.fromDateTime(fallbackEnd);
+
+    // Track original values to check if changed
+    final originalStartDate = startDate;
+    final originalStartTime = startTime;
+    final originalEndDate = endDate;
+    final originalEndTime = endTime;
+
     bool isStartDatePickerExpanded = false;
     bool isStartTimePickerExpanded = false;
     bool isEndDatePickerExpanded = false;
     bool isEndTimePickerExpanded = false;
 
-    CommonBottomSheet.show(
+    showModalBottomSheet<void>(
       context: context,
-      title: 'Add Suggestion',
-      content: StatefulBuilder(
-        builder: (context, setState) => Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Start Date & Time Row
-            _buildDateTimeRow(
-              label: 'Start',
-              date: startDate,
-              time: startTime,
-              isDatePickerExpanded: isStartDatePickerExpanded,
-              isTimePickerExpanded: isStartTimePickerExpanded,
-              onDateTap: () {
-                setState(() {
-                  isStartDatePickerExpanded = !isStartDatePickerExpanded;
-                  isStartTimePickerExpanded = false;
-                  isEndDatePickerExpanded = false;
-                  isEndTimePickerExpanded = false;
-                });
-              },
-              onTimeTap: () {
-                setState(() {
-                  isStartTimePickerExpanded = !isStartTimePickerExpanded;
-                  isStartDatePickerExpanded = false;
-                  isEndDatePickerExpanded = false;
-                  isEndTimePickerExpanded = false;
-                });
-              },
-              onDateChanged: (date) {
-                setState(() {
-                  startDate = date;
-                  isStartDatePickerExpanded = false;
-                });
-              },
-              onTimeChanged: (time) {
-                setState(() {
-                  startTime = time;
-                });
-              },
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (BuildContext context) {
+        return Container(
+          height:
+              MediaQuery.of(context).size.height * 0.85, // 85% of screen height
+          decoration: const BoxDecoration(
+            color: BrandColors.bg2,
+            borderRadius: BorderRadius.only(
+              topLeft: Radius.circular(Radii.md),
+              topRight: Radius.circular(Radii.md),
             ),
-
-            if (isStartDatePickerExpanded) ...[
-              const SizedBox(height: Gaps.sm),
-              InlineDatePicker(
-                selectedDate: startDate,
-                onDateChanged: (date) {
-                  setState(() {
-                    startDate = date;
-                    isStartDatePickerExpanded = false;
-                  });
-                },
-              ),
-            ],
-
-            if (isStartTimePickerExpanded) ...[
-              const SizedBox(height: Gaps.sm),
-              InlineTimePicker(
-                selectedTime: startTime,
-                onTimeChanged: (time) {
-                  setState(() {
-                    startTime = time;
-                  });
-                },
-              ),
-            ],
-
-            const SizedBox(height: Gaps.sm),
-
-            // End Date & Time Row
-            _buildDateTimeRow(
-              label: 'End',
-              date: endDate,
-              time: endTime,
-              isDatePickerExpanded: isEndDatePickerExpanded,
-              isTimePickerExpanded: isEndTimePickerExpanded,
-              onDateTap: () {
-                setState(() {
-                  isEndDatePickerExpanded = !isEndDatePickerExpanded;
-                  isEndTimePickerExpanded = false;
-                  isStartDatePickerExpanded = false;
-                  isStartTimePickerExpanded = false;
-                });
-              },
-              onTimeTap: () {
-                setState(() {
-                  isEndTimePickerExpanded = !isEndTimePickerExpanded;
-                  isEndDatePickerExpanded = false;
-                  isStartDatePickerExpanded = false;
-                  isStartTimePickerExpanded = false;
-                });
-              },
-              onDateChanged: (date) {
-                setState(() {
-                  endDate = date;
-                  isEndDatePickerExpanded = false;
-                });
-              },
-              onTimeChanged: (time) {
-                setState(() {
-                  endTime = time;
-                });
-              },
-            ),
-
-            if (isEndDatePickerExpanded) ...[
-              const SizedBox(height: Gaps.sm),
-              InlineDatePicker(
-                selectedDate: endDate,
-                onDateChanged: (date) {
-                  setState(() {
-                    endDate = date;
-                    isEndDatePickerExpanded = false;
-                  });
-                },
-              ),
-            ],
-
-            if (isEndTimePickerExpanded) ...[
-              const SizedBox(height: Gaps.sm),
-              InlineTimePicker(
-                selectedTime: endTime,
-                onTimeChanged: (time) {
-                  setState(() {
-                    endTime = time;
-                  });
-                },
-              ),
-            ],
-
-            const SizedBox(height: Gaps.xl),
-
-            // Submit button
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton(
-                onPressed:
-                    (startDate != null &&
-                        startTime != null &&
-                        endDate != null &&
-                        endTime != null)
-                    ? () {
-                        Navigator.of(context).pop();
-                        // TODO: Create poll with the selected dates/times
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Suggestion added!')),
-                        );
-                      }
-                    : null,
-                style: FilledButton.styleFrom(
-                  backgroundColor: BrandColors.text1,
-                  foregroundColor: BrandColors.bg1,
-                  padding: const EdgeInsets.symmetric(vertical: Pads.ctlV),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(Radii.sm),
-                  ),
+          ),
+          child: Column(
+            children: [
+              // Handle bar
+              Container(
+                width: 32,
+                height: 4,
+                margin: const EdgeInsets.only(top: Gaps.sm),
+                decoration: BoxDecoration(
+                  color: BrandColors.text2,
+                  borderRadius: BorderRadius.circular(2),
                 ),
-                child: Text('Add Suggestion', style: AppText.bodyMediumEmph),
               ),
-            ),
-          ],
-        ),
-      ),
+
+              // Header
+              Padding(
+                padding: const EdgeInsets.all(Pads.sectionH),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text('Add Suggestion', style: AppText.titleMediumEmph),
+                    IconButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      icon: const Icon(Icons.close, color: BrandColors.text2),
+                    ),
+                  ],
+                ),
+              ),
+
+              // Content
+              Expanded(
+                child: StatefulBuilder(
+                  builder: (context, setState) {
+                    // Check if any value has changed from original
+                    final bool hasChanges =
+                        startDate != originalStartDate ||
+                        startTime != originalStartTime ||
+                        endDate != originalEndDate ||
+                        endTime != originalEndTime;
+
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: Pads.sectionH,
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Start Date & Time Row
+                          _buildDateTimeRow(
+                            label: 'Start',
+                            date: startDate,
+                            time: startTime,
+                            isDatePickerExpanded: isStartDatePickerExpanded,
+                            isTimePickerExpanded: isStartTimePickerExpanded,
+                            onDateTap: () {
+                              setState(() {
+                                isStartDatePickerExpanded =
+                                    !isStartDatePickerExpanded;
+                                isStartTimePickerExpanded = false;
+                                isEndDatePickerExpanded = false;
+                                isEndTimePickerExpanded = false;
+                              });
+                            },
+                            onTimeTap: () {
+                              setState(() {
+                                isStartTimePickerExpanded =
+                                    !isStartTimePickerExpanded;
+                                isStartDatePickerExpanded = false;
+                                isEndDatePickerExpanded = false;
+                                isEndTimePickerExpanded = false;
+                              });
+                            },
+                            onDateChanged: (date) {
+                              setState(() {
+                                startDate = date;
+                                isStartDatePickerExpanded = false;
+                              });
+                            },
+                            onTimeChanged: (time) {
+                              setState(() {
+                                startTime = time;
+                              });
+                            },
+                          ),
+
+                          if (isStartDatePickerExpanded) ...[
+                            const SizedBox(height: Gaps.sm),
+                            InlineDatePicker(
+                              selectedDate: startDate,
+                              onDateChanged: (date) {
+                                setState(() {
+                                  startDate = date;
+                                  isStartDatePickerExpanded = false;
+                                });
+                              },
+                            ),
+                          ],
+
+                          if (isStartTimePickerExpanded) ...[
+                            const SizedBox(height: Gaps.sm),
+                            InlineTimePicker(
+                              selectedTime: startTime,
+                              onTimeChanged: (time) {
+                                setState(() {
+                                  startTime = time;
+                                });
+                              },
+                            ),
+                          ],
+
+                          const SizedBox(height: Gaps.sm),
+
+                          // End Date & Time Row
+                          _buildDateTimeRow(
+                            label: 'End',
+                            date: endDate,
+                            time: endTime,
+                            isDatePickerExpanded: isEndDatePickerExpanded,
+                            isTimePickerExpanded: isEndTimePickerExpanded,
+                            onDateTap: () {
+                              setState(() {
+                                isEndDatePickerExpanded =
+                                    !isEndDatePickerExpanded;
+                                isEndTimePickerExpanded = false;
+                                isStartDatePickerExpanded = false;
+                                isStartTimePickerExpanded = false;
+                              });
+                            },
+                            onTimeTap: () {
+                              setState(() {
+                                isEndTimePickerExpanded =
+                                    !isEndTimePickerExpanded;
+                                isEndDatePickerExpanded = false;
+                                isStartDatePickerExpanded = false;
+                                isStartTimePickerExpanded = false;
+                              });
+                            },
+                            onDateChanged: (date) {
+                              setState(() {
+                                endDate = date;
+                                isEndDatePickerExpanded = false;
+                              });
+                            },
+                            onTimeChanged: (time) {
+                              setState(() {
+                                endTime = time;
+                              });
+                            },
+                          ),
+
+                          if (isEndDatePickerExpanded) ...[
+                            const SizedBox(height: Gaps.sm),
+                            InlineDatePicker(
+                              selectedDate: endDate,
+                              onDateChanged: (date) {
+                                setState(() {
+                                  endDate = date;
+                                  isEndDatePickerExpanded = false;
+                                });
+                              },
+                            ),
+                          ],
+
+                          if (isEndTimePickerExpanded) ...[
+                            const SizedBox(height: Gaps.sm),
+                            InlineTimePicker(
+                              selectedTime: endTime,
+                              onTimeChanged: (time) {
+                                setState(() {
+                                  endTime = time;
+                                });
+                              },
+                            ),
+                          ],
+
+                          const Spacer(),
+
+                          // Submit button - only enabled when changes are made
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.only(
+                              bottom: Pads.sectionV,
+                            ),
+                            child: FilledButton(
+                              onPressed:
+                                  hasChanges &&
+                                      startDate != null &&
+                                      startTime != null &&
+                                      endDate != null &&
+                                      endTime != null
+                                  ? () {
+                                      Navigator.of(context).pop();
+                                      // TODO: Create poll with the selected dates/times
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        const SnackBar(
+                                          content: Text('Suggestion added!'),
+                                        ),
+                                      );
+                                    }
+                                  : null,
+                              style: FilledButton.styleFrom(
+                                backgroundColor: hasChanges
+                                    ? Colors.green
+                                    : BrandColors.text2,
+                                foregroundColor: hasChanges
+                                    ? Colors.white
+                                    : BrandColors.text2,
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: Pads.ctlV,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                              ),
+                              child: Text(
+                                'Add Suggestion',
+                                style: AppText.bodyMediumEmph,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 

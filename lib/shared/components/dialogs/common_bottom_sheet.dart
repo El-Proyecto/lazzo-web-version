@@ -64,7 +64,7 @@ class CommonBottomSheet extends StatelessWidget {
         maxHeight: maxHeight ?? MediaQuery.of(context).size.height * 0.9,
       ),
       decoration: const BoxDecoration(
-        color: BrandColors.bg1,
+        color: BrandColors.bg2,
         borderRadius: BorderRadius.only(
           topLeft: Radius.circular(Radii.md),
           topRight: Radius.circular(Radii.md),
