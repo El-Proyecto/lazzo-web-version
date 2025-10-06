@@ -187,11 +187,7 @@ class RsvpWidget extends StatelessWidget {
 
           // Haven't Responded section
           if (pending.isNotEmpty) ...[
-            _VoteSection(
-              title: 'Haven\'t Responded',
-              count: pending.length,
-              votes: pending,
-            ),
+            _VoteSection(title: 'Maybe', count: pending.length, votes: pending),
           ],
         ],
       ),
@@ -203,6 +199,10 @@ class RsvpWidget extends StatelessWidget {
     TimeOfDay? startTime;
     DateTime? endDate;
     TimeOfDay? endTime;
+    bool isStartDatePickerExpanded = false;
+    bool isStartTimePickerExpanded = false;
+    bool isEndDatePickerExpanded = false;
+    bool isEndTimePickerExpanded = false;
 
     CommonBottomSheet.show(
       context: context,
@@ -211,57 +211,56 @@ class RsvpWidget extends StatelessWidget {
         builder: (context, setState) => Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Start Date & Time
-            Text('Start', style: AppText.labelLarge),
-            const SizedBox(height: Gaps.sm),
-
-            Row(
-              children: [
-                Expanded(
-                  child: _DateTimeButton(
-                    label: startDate != null
-                        ? '${startDate!.day}/${startDate!.month}/${startDate!.year}'
-                        : 'Date',
-                    isSelected: startDate != null,
-                    onPressed: () {
-                      // Show date picker inline
-                      setState(() {
-                        startDate = DateTime.now().add(const Duration(days: 1));
-                      });
-                    },
-                  ),
-                ),
-                const SizedBox(width: Gaps.sm),
-                Expanded(
-                  child: _DateTimeButton(
-                    label: startTime != null
-                        ? '${startTime!.hour.toString().padLeft(2, '0')}:${startTime!.minute.toString().padLeft(2, '0')}'
-                        : 'Time',
-                    isSelected: startTime != null,
-                    onPressed: () {
-                      // Show time picker inline
-                      setState(() {
-                        startTime = const TimeOfDay(hour: 19, minute: 0);
-                      });
-                    },
-                  ),
-                ),
-              ],
+            // Start Date & Time Row
+            _buildDateTimeRow(
+              label: 'Start',
+              date: startDate,
+              time: startTime,
+              isDatePickerExpanded: isStartDatePickerExpanded,
+              isTimePickerExpanded: isStartTimePickerExpanded,
+              onDateTap: () {
+                setState(() {
+                  isStartDatePickerExpanded = !isStartDatePickerExpanded;
+                  isStartTimePickerExpanded = false;
+                  isEndDatePickerExpanded = false;
+                  isEndTimePickerExpanded = false;
+                });
+              },
+              onTimeTap: () {
+                setState(() {
+                  isStartTimePickerExpanded = !isStartTimePickerExpanded;
+                  isStartDatePickerExpanded = false;
+                  isEndDatePickerExpanded = false;
+                  isEndTimePickerExpanded = false;
+                });
+              },
+              onDateChanged: (date) {
+                setState(() {
+                  startDate = date;
+                  isStartDatePickerExpanded = false;
+                });
+              },
+              onTimeChanged: (time) {
+                setState(() {
+                  startTime = time;
+                });
+              },
             ),
 
-            if (startDate != null) ...[
+            if (isStartDatePickerExpanded) ...[
               const SizedBox(height: Gaps.sm),
               InlineDatePicker(
                 selectedDate: startDate,
                 onDateChanged: (date) {
                   setState(() {
                     startDate = date;
+                    isStartDatePickerExpanded = false;
                   });
                 },
               ),
             ],
 
-            if (startTime != null) ...[
+            if (isStartTimePickerExpanded) ...[
               const SizedBox(height: Gaps.sm),
               InlineTimePicker(
                 selectedTime: startTime,
@@ -273,59 +272,58 @@ class RsvpWidget extends StatelessWidget {
               ),
             ],
 
-            const SizedBox(height: Gaps.lg),
-
-            // End Date & Time
-            Text('End', style: AppText.labelLarge),
             const SizedBox(height: Gaps.sm),
 
-            Row(
-              children: [
-                Expanded(
-                  child: _DateTimeButton(
-                    label: endDate != null
-                        ? '${endDate!.day}/${endDate!.month}/${endDate!.year}'
-                        : 'Date',
-                    isSelected: endDate != null,
-                    onPressed: () {
-                      // Show date picker inline
-                      setState(() {
-                        endDate = DateTime.now().add(const Duration(days: 1));
-                      });
-                    },
-                  ),
-                ),
-                const SizedBox(width: Gaps.sm),
-                Expanded(
-                  child: _DateTimeButton(
-                    label: endTime != null
-                        ? '${endTime!.hour.toString().padLeft(2, '0')}:${endTime!.minute.toString().padLeft(2, '0')}'
-                        : 'Time',
-                    isSelected: endTime != null,
-                    onPressed: () {
-                      // Show time picker inline
-                      setState(() {
-                        endTime = const TimeOfDay(hour: 22, minute: 0);
-                      });
-                    },
-                  ),
-                ),
-              ],
+            // End Date & Time Row
+            _buildDateTimeRow(
+              label: 'End',
+              date: endDate,
+              time: endTime,
+              isDatePickerExpanded: isEndDatePickerExpanded,
+              isTimePickerExpanded: isEndTimePickerExpanded,
+              onDateTap: () {
+                setState(() {
+                  isEndDatePickerExpanded = !isEndDatePickerExpanded;
+                  isEndTimePickerExpanded = false;
+                  isStartDatePickerExpanded = false;
+                  isStartTimePickerExpanded = false;
+                });
+              },
+              onTimeTap: () {
+                setState(() {
+                  isEndTimePickerExpanded = !isEndTimePickerExpanded;
+                  isEndDatePickerExpanded = false;
+                  isStartDatePickerExpanded = false;
+                  isStartTimePickerExpanded = false;
+                });
+              },
+              onDateChanged: (date) {
+                setState(() {
+                  endDate = date;
+                  isEndDatePickerExpanded = false;
+                });
+              },
+              onTimeChanged: (time) {
+                setState(() {
+                  endTime = time;
+                });
+              },
             ),
 
-            if (endDate != null) ...[
+            if (isEndDatePickerExpanded) ...[
               const SizedBox(height: Gaps.sm),
               InlineDatePicker(
                 selectedDate: endDate,
                 onDateChanged: (date) {
                   setState(() {
                     endDate = date;
+                    isEndDatePickerExpanded = false;
                   });
                 },
               ),
             ],
 
-            if (endTime != null) ...[
+            if (isEndTimePickerExpanded) ...[
               const SizedBox(height: Gaps.sm),
               InlineTimePicker(
                 selectedTime: endTime,
@@ -372,6 +370,109 @@ class RsvpWidget extends StatelessWidget {
       ),
     );
   }
+
+  Widget _buildDateTimeRow({
+    required String label,
+    required DateTime? date,
+    required TimeOfDay? time,
+    required bool isDatePickerExpanded,
+    required bool isTimePickerExpanded,
+    required VoidCallback onDateTap,
+    required VoidCallback onTimeTap,
+    required Function(DateTime) onDateChanged,
+    required Function(TimeOfDay) onTimeChanged,
+  }) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.end,
+      children: [
+        // Label
+        SizedBox(
+          width: 40,
+          child: Text(
+            label,
+            style: AppText.bodyMedium.copyWith(
+              color: BrandColors.text2,
+              fontWeight: FontWeight.w500,
+              fontSize: 12,
+            ),
+          ),
+        ),
+
+        const Spacer(),
+
+        // Date Button
+        _CreateEventDateTimeButton(
+          label: date != null
+              ? '${date.day}/${date.month}/${date.year}'
+              : 'Date',
+          icon: Icons.calendar_today,
+          isExpanded: isDatePickerExpanded,
+          onTap: onDateTap,
+        ),
+
+        const SizedBox(width: Gaps.xs),
+
+        // Time Button
+        _CreateEventDateTimeButton(
+          label: time != null
+              ? '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}'
+              : 'Time',
+          icon: Icons.access_time,
+          isExpanded: isTimePickerExpanded,
+          onTap: onTimeTap,
+        ),
+      ],
+    );
+  }
+}
+
+/// Date/Time button matching create_event design
+class _CreateEventDateTimeButton extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final bool isExpanded;
+  final VoidCallback onTap;
+
+  const _CreateEventDateTimeButton({
+    required this.label,
+    required this.icon,
+    required this.isExpanded,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(
+          horizontal: Pads.ctlH,
+          vertical: Pads.ctlV,
+        ),
+        decoration: BoxDecoration(
+          color: BrandColors.bg2,
+          borderRadius: BorderRadius.circular(Radii.sm),
+          border: isExpanded
+              ? Border.all(color: BrandColors.planning, width: 1)
+              : Border.all(color: BrandColors.border, width: 1),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 16, color: BrandColors.text2),
+            const SizedBox(width: Gaps.xs),
+            Text(
+              label,
+              style: AppText.bodyMedium.copyWith(
+                color: BrandColors.text1,
+                fontSize: 14,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 /// Vote section in bottom sheet
@@ -386,26 +487,38 @@ class _VoteSection extends StatelessWidget {
     required this.votes,
   });
 
+  Color _getTitleColor() {
+    switch (title) {
+      case 'Can':
+        return BrandColors.planning;
+      case 'Can\'t':
+        return BrandColors.cantVote;
+      default:
+        return BrandColors.text1;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // Section title with count
-        Row(
-          children: [
-            Text(title, style: AppText.labelLarge),
-            const SizedBox(width: Gaps.xs),
-            Text(
-              count.toString(),
-              style: AppText.bodyMedium.copyWith(color: BrandColors.text2),
-            ),
-          ],
+        Text(
+          '$count Votes',
+          style: AppText.bodyMediumEmph.copyWith(color: BrandColors.text1),
+        ),
+        const SizedBox(height: Gaps.xs),
+        Text(
+          title,
+          style: AppText.labelLarge.copyWith(color: _getTitleColor()),
         ),
         const SizedBox(height: Gaps.md),
 
         // Vote list
-        ...votes.map((vote) => _VoteItem(vote: vote)),
+        ...votes.map(
+          (vote) => _VoteItem(vote: vote, showDate: title != 'Maybe'),
+        ),
       ],
     );
   }
@@ -414,8 +527,9 @@ class _VoteSection extends StatelessWidget {
 /// Individual vote item
 class _VoteItem extends StatelessWidget {
   final RsvpVote vote;
+  final bool showDate;
 
-  const _VoteItem({required this.vote});
+  const _VoteItem({required this.vote, this.showDate = true});
 
   @override
   Widget build(BuildContext context) {
@@ -445,8 +559,8 @@ class _VoteItem extends StatelessWidget {
           // Name
           Expanded(child: Text(vote.userName, style: AppText.bodyMedium)),
 
-          // Date (if voted)
-          if (vote.votedAt != null)
+          // Date (if voted and should show date)
+          if (showDate && vote.votedAt != null)
             Text(
               _formatDate(vote.votedAt!),
               style: AppText.bodyMedium.copyWith(
@@ -549,49 +663,6 @@ class _VoteButton extends StatelessWidget {
                 ),
               ],
             ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// Date/Time button for the add suggestion bottom sheet
-class _DateTimeButton extends StatelessWidget {
-  final String label;
-  final bool isSelected;
-  final VoidCallback onPressed;
-
-  const _DateTimeButton({
-    required this.label,
-    required this.isSelected,
-    required this.onPressed,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: TouchTargets.min,
-      decoration: BoxDecoration(
-        color: isSelected
-            ? BrandColors.text1.withValues(alpha: 0.1)
-            : BrandColors.bg3,
-        border: Border.all(
-          color: isSelected ? BrandColors.text1 : BrandColors.border,
-          width: isSelected ? 2 : 1,
-        ),
-        borderRadius: BorderRadius.circular(Radii.sm),
-      ),
-      child: InkWell(
-        onTap: onPressed,
-        borderRadius: BorderRadius.circular(Radii.sm),
-        child: Center(
-          child: Text(
-            label,
-            style: AppText.bodyMedium.copyWith(
-              color: isSelected ? BrandColors.text1 : BrandColors.text2,
-              fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-            ),
           ),
         ),
       ),

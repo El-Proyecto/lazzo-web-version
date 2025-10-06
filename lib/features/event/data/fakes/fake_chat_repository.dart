@@ -95,10 +95,15 @@ class FakeChatRepository implements ChatRepository {
     await Future.delayed(const Duration(milliseconds: 300));
     final eventMessages = _messages.where((m) => m.eventId == eventId).toList();
 
-    // Sort by creation time descending (newest first)
-    eventMessages.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    // Sort by creation time ascending (oldest first) for proper chat display
+    eventMessages.sort((a, b) => a.createdAt.compareTo(b.createdAt));
 
-    return eventMessages.take(limit).toList();
+    // Take the last 'limit' messages (most recent)
+    final recentMessages = eventMessages.length > limit
+        ? eventMessages.sublist(eventMessages.length - limit)
+        : eventMessages;
+
+    return recentMessages;
   }
 
   @override

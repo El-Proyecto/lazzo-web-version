@@ -3,178 +3,7 @@ import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/constants/text_styles.dart';
 import '../../../../shared/themes/colors.dart';
 
-/// Chat preview widget for event page
-/// Shows recent messages and rounded input
-class ChatPreviewWidget extends StatefulWidget {
-  final List<ChatMessagePreview> recentMessages;
-  final int newMessagesCount;
-  final VoidCallback onOpenChat;
-  final Function(String message) onSendMessage;
-  final String? currentUserId;
-
-  const ChatPreviewWidget({
-    super.key,
-    required this.recentMessages,
-    required this.newMessagesCount,
-    required this.onOpenChat,
-    required this.onSendMessage,
-    this.currentUserId,
-  });
-
-  @override
-  State<ChatPreviewWidget> createState() => _ChatPreviewWidgetState();
-}
-
-class _ChatPreviewWidgetState extends State<ChatPreviewWidget> {
-  final TextEditingController _controller = TextEditingController();
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    // Show only 2-3 most recent messages
-    final displayMessages = widget.recentMessages.take(3).toList();
-    
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(Pads.sectionH),
-      decoration: BoxDecoration(
-        color: BrandColors.bg2,
-        borderRadius: BorderRadius.circular(Radii.md),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header
-          InkWell(
-            onTap: widget.onOpenChat,
-            borderRadius: BorderRadius.circular(Radii.sm),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: Gaps.xxs),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Chat', style: AppText.labelLarge),
-                      if (widget.newMessagesCount > 0) ...[
-                        const SizedBox(height: 2),
-                        Text(
-                          '${widget.newMessagesCount} new message${widget.newMessagesCount > 1 ? 's' : ''}',
-                          style: AppText.bodyMedium.copyWith(
-                            color: BrandColors.text2,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                  const Icon(
-                    Icons.chevron_right,
-                    size: IconSizes.sm,
-                    color: BrandColors.text2,
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: Gaps.md),
-
-          // Recent messages
-          if (displayMessages.isEmpty) ...[
-            Center(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: Gaps.lg),
-                child: Text(
-                  'No messages yet',
-                  style: AppText.bodyMedium.copyWith(color: BrandColors.text2),
-                ),
-              ),
-            ),
-          ] else ...[
-            ...displayMessages.map(
-              (msg) => Padding(
-                padding: const EdgeInsets.only(bottom: Gaps.md),
-                child: _MessageBubble(
-                  userName: msg.userName,
-                  userAvatar: msg.userAvatar,
-                  content: msg.content,
-                  timestamp: msg.timestamp,
-                  isCurrentUser: msg.userId == widget.currentUserId,
-                ),
-              ),
-            ),
-          ],
-          const SizedBox(height: Gaps.sm),
-
-          // Fully rounded input field with send button inside
-          Container(
-            decoration: BoxDecoration(
-              color: BrandColors.bg3,
-              borderRadius: BorderRadius.circular(24),
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _controller,
-                    style: AppText.bodyMedium,
-                    decoration: InputDecoration(
-                      hintText: 'Write a message...',
-                      hintStyle: AppText.bodyMedium.copyWith(
-                        color: BrandColors.text2,
-                      ),
-                      filled: false,
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: Pads.ctlH,
-                        vertical: Pads.ctlV,
-                      ),
-                      border: InputBorder.none,
-                    ),
-                  ),
-                ),
-                // Send button inside the rounded box
-                Padding(
-                  padding: const EdgeInsets.only(right: 4),
-                  child: Container(
-                    width: 36,
-                    height: 36,
-                    decoration: const BoxDecoration(
-                      color: BrandColors.planning,
-                      shape: BoxShape.circle,
-                    ),
-                    child: IconButton(
-                      onPressed: () {
-                        if (_controller.text.trim().isNotEmpty) {
-                          widget.onSendMessage(_controller.text.trim());
-                          _controller.clear();
-                        }
-                      },
-                      padding: EdgeInsets.zero,
-                      icon: const Icon(
-                        Icons.send,
-                        size: 18,
-                        color: BrandColors.text1,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Chat message preview data model
+/// Model for chat message preview in the widget
 class ChatMessagePreview {
   final String userId;
   final String userName;
@@ -191,120 +20,285 @@ class ChatMessagePreview {
   });
 }
 
-/// Internal message bubble widget - only shows avatar for other users
-class _MessageBubble extends StatelessWidget {
-  final String userName;
-  final String? userAvatar;
-  final String content;
-  final DateTime timestamp;
-  final bool isCurrentUser;
+/// Chat preview widget showing recent messages and input
+class ChatPreviewWidget extends StatefulWidget {
+  final int newMessagesCount;
+  final String currentUserId;
+  final List<ChatMessagePreview> recentMessages;
+  final VoidCallback onOpenChat;
+  final Function(String content) onSendMessage;
 
-  const _MessageBubble({
-    required this.userName,
-    this.userAvatar,
-    required this.content,
-    required this.timestamp,
-    required this.isCurrentUser,
+  const ChatPreviewWidget({
+    super.key,
+    required this.newMessagesCount,
+    required this.currentUserId,
+    required this.recentMessages,
+    required this.onOpenChat,
+    required this.onSendMessage,
   });
 
   @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: isCurrentUser ? MainAxisAlignment.end : MainAxisAlignment.start,
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Avatar on the left ONLY for other users
-        if (!isCurrentUser) ...[
-          CircleAvatar(
-            radius: 16,
-            backgroundColor: BrandColors.bg3,
-            child: userAvatar != null
-                ? ClipOval(
-                    child: Image.network(
-                      userAvatar!,
-                      width: 32,
-                      height: 32,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) => _buildDefaultAvatar(),
-                    ),
-                  )
-                : _buildDefaultAvatar(),
-          ),
-          const SizedBox(width: Gaps.xs),
-        ],
+  State<ChatPreviewWidget> createState() => _ChatPreviewWidgetState();
+}
 
-        // Message bubble
-        Flexible(
-          child: Column(
-            crossAxisAlignment: isCurrentUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+class _ChatPreviewWidgetState extends State<ChatPreviewWidget> {
+  final TextEditingController _controller = TextEditingController();
+  final FocusNode _focusNode = FocusNode();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  void _sendMessage() {
+    final content = _controller.text.trim();
+    if (content.isNotEmpty) {
+      widget.onSendMessage(content);
+      _controller.clear();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Sort messages by timestamp ascending (oldest first) for proper display order
+    final sortedMessages = [...widget.recentMessages]
+      ..sort((a, b) => a.timestamp.compareTo(b.timestamp));
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(Pads.sectionH),
+      decoration: BoxDecoration(
+        color: BrandColors.bg2,
+        borderRadius: BorderRadius.circular(Radii.md),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: Pads.ctlH,
-                  vertical: Pads.ctlV,
-                ),
-                decoration: BoxDecoration(
-                  color: isCurrentUser ? BrandColors.planning.withValues(alpha: 0.15) : BrandColors.bg3,
-                  borderRadius: BorderRadius.only(
-                    topLeft: Radius.circular(isCurrentUser ? Radii.md : Radii.smAlt),
-                    topRight: Radius.circular(isCurrentUser ? Radii.smAlt : Radii.md),
-                    bottomLeft: const Radius.circular(Radii.md),
-                    bottomRight: const Radius.circular(Radii.md),
-                  ),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (!isCurrentUser)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: Gaps.xxs),
-                        child: Text(
-                          userName,
-                          style: AppText.bodyMediumEmph.copyWith(fontSize: 12),
+              Row(
+                children: [
+                  Text('Chat', style: AppText.labelLarge),
+                  if (widget.newMessagesCount > 0) ...[
+                    const SizedBox(width: Gaps.xs),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: Gaps.xs,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: BrandColors.planning,
+                        borderRadius: BorderRadius.circular(Radii.pill),
+                      ),
+                      child: Text(
+                        widget.newMessagesCount.toString(),
+                        style: AppText.bodyMedium.copyWith(
+                          color: BrandColors.bg1,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
-                    Text(content, style: AppText.bodyMedium),
+                    ),
                   ],
-                ),
+                ],
               ),
-              const SizedBox(height: Gaps.xxs),
-              // Timestamp below bubble
-              Text(
-                _formatTime(timestamp),
-                style: AppText.bodyMedium.copyWith(
-                  color: BrandColors.text2,
-                  fontSize: 11,
+              InkWell(
+                onTap: widget.onOpenChat,
+                borderRadius: BorderRadius.circular(Radii.sm),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: Gaps.xs,
+                    vertical: Gaps.xxs,
+                  ),
+                  child: Row(
+                    children: [
+                      Text(
+                        'Open chat',
+                        style: AppText.bodyMedium.copyWith(
+                          color: BrandColors.text2,
+                        ),
+                      ),
+                      const SizedBox(width: Gaps.xxs),
+                      const Icon(
+                        Icons.chevron_right,
+                        size: IconSizes.sm,
+                        color: BrandColors.text2,
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ],
           ),
-        ),
-      ],
-    );
-  }
 
-  Widget _buildDefaultAvatar() {
-    return Text(
-      userName.isNotEmpty ? userName[0].toUpperCase() : '?',
-      style: AppText.bodyMediumEmph.copyWith(
-        color: BrandColors.text2,
-        fontSize: 14,
+          const SizedBox(height: Gaps.md),
+
+          // Recent messages (showing oldest to newest for proper order)
+          if (sortedMessages.isNotEmpty) ...[
+            ...sortedMessages.map(
+              (message) => Padding(
+                padding: const EdgeInsets.only(bottom: Gaps.sm),
+                child: _MessageBubble(
+                  message: message,
+                  isCurrentUser: message.userId == widget.currentUserId,
+                ),
+              ),
+            ),
+            const SizedBox(height: Gaps.md),
+          ],
+
+          // Message input
+          Row(
+            children: [
+              Expanded(
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: BrandColors.bg3,
+                    borderRadius: BorderRadius.circular(Radii.pill),
+                    border: Border.all(color: BrandColors.border),
+                  ),
+                  child: TextField(
+                    controller: _controller,
+                    focusNode: _focusNode,
+                    decoration: InputDecoration(
+                      hintText: 'Type a message...',
+                      hintStyle: AppText.bodyMedium.copyWith(
+                        color: BrandColors.text2,
+                      ),
+                      border: InputBorder.none,
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: Pads.ctlH,
+                        vertical: Pads.ctlV,
+                      ),
+                    ),
+                    style: AppText.bodyMedium.copyWith(
+                      color: BrandColors.text1,
+                    ),
+                    textCapitalization: TextCapitalization.sentences,
+                    onSubmitted: (_) => _sendMessage(),
+                  ),
+                ),
+              ),
+              const SizedBox(width: Gaps.sm),
+              InkWell(
+                onTap: _sendMessage,
+                borderRadius: BorderRadius.circular(Radii.pill),
+                child: Container(
+                  width: TouchTargets.min,
+                  height: TouchTargets.min,
+                  decoration: BoxDecoration(
+                    color: BrandColors.planning,
+                    borderRadius: BorderRadius.circular(Radii.pill),
+                  ),
+                  child: const Icon(
+                    Icons.send,
+                    color: BrandColors.bg1,
+                    size: IconSizes.sm,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
+}
 
-  String _formatTime(DateTime time) {
-    final now = DateTime.now();
-    final diff = now.difference(time);
+/// Individual message bubble
+class _MessageBubble extends StatelessWidget {
+  final ChatMessagePreview message;
+  final bool isCurrentUser;
 
-    if (diff.inMinutes < 1) {
-      return 'now';
-    } else if (diff.inMinutes < 60) {
-      return '${diff.inMinutes}min ago';
-    } else if (diff.inHours < 24) {
-      return '${diff.inHours}h ago';
-    } else {
-      return '${diff.inDays}d ago';
-    }
+  const _MessageBubble({required this.message, required this.isCurrentUser});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: isCurrentUser
+          ? MainAxisAlignment.end
+          : MainAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (!isCurrentUser) ...[
+          // Avatar for other users
+          CircleAvatar(
+            radius: 14,
+            backgroundColor: BrandColors.bg3,
+            backgroundImage: message.userAvatar != null
+                ? NetworkImage(message.userAvatar!)
+                : null,
+            child: message.userAvatar == null
+                ? Text(
+                    message.userName[0].toUpperCase(),
+                    style: AppText.bodyMedium.copyWith(
+                      color: BrandColors.text2,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  )
+                : null,
+          ),
+          const SizedBox(width: Gaps.xs),
+        ],
+
+        // Message content
+        Flexible(
+          child: Container(
+            padding: const EdgeInsets.symmetric(
+              horizontal: Pads.ctlH,
+              vertical: Gaps.sm,
+            ),
+            decoration: BoxDecoration(
+              color: isCurrentUser ? BrandColors.planning : BrandColors.bg3,
+              borderRadius: BorderRadius.circular(Radii.md),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (!isCurrentUser) ...[
+                  Text(
+                    message.userName,
+                    style: AppText.bodyMedium.copyWith(
+                      color: BrandColors.text2,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                ],
+                Text(
+                  message.content,
+                  style: AppText.bodyMedium.copyWith(
+                    color: isCurrentUser ? BrandColors.bg1 : BrandColors.text1,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+
+        if (isCurrentUser) ...[
+          const SizedBox(width: Gaps.xs),
+          // Avatar for current user
+          CircleAvatar(
+            radius: 14,
+            backgroundColor: BrandColors.planning.withOpacity(0.2),
+            child: Text(
+              message.userName[0].toUpperCase(),
+              style: AppText.bodyMedium.copyWith(
+                color: BrandColors.planning,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
   }
 }

@@ -143,11 +143,11 @@ class EventPage extends ConsumerWidget {
                   onOpenChat: () {
                     // TODO: Navigate to full chat page
                   },
-                  onSendMessage: (content) {
-                    ref
+                  onSendMessage: (content) async {
+                    await ref
                         .read(sendMessageProvider.notifier)
                         .sendMessage(eventId, content);
-                    // Refresh messages
+                    // Refresh messages after sending
                     ref.invalidate(recentMessagesProvider(eventId));
                   },
                 ),
