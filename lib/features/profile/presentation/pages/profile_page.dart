@@ -9,7 +9,7 @@ import '../../domain/entities/profile_entity.dart';
 import '../providers/profile_providers.dart';
 
 /// Profile page displaying user information and memories
-/// Follows mobile-first design and responsive layout
+/// Uses simple provider architecture with automatic sync
 class ProfilePage extends ConsumerWidget {
   const ProfilePage({super.key});
 
@@ -21,7 +21,9 @@ class ProfilePage extends ConsumerWidget {
       backgroundColor: BrandColors.bg1,
       appBar: ProfileAppBar(onEditPressed: () => _onEditProfile(context)),
       body: profileAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
+        loading: () => const Center(
+          child: CircularProgressIndicator(color: BrandColors.planning),
+        ),
         error: (error, stack) => Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -39,36 +41,42 @@ class ProfilePage extends ConsumerWidget {
                 ).textTheme.bodyLarge?.copyWith(color: BrandColors.text2),
               ),
               const SizedBox(height: Gaps.sm),
-              TextButton(
-                onPressed: () => ref.refresh(currentUserProfileProvider),
+              Text(
+                error.toString(),
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: BrandColors.text2,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: Gaps.md),
+              ElevatedButton(
+                onPressed: () => ref.invalidate(currentUserProfileProvider),
                 child: const Text('Retry'),
               ),
             ],
           ),
         ),
-        data: (profile) => SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: Insets.screenH),
-          child: Column(
-            children: [
-              const SizedBox(height: Gaps.lg),
-
-              // User Info Section
-              UserInfoCard(
-                name: profile.name,
-                profileImageUrl: profile.profileImageUrl,
-                location: profile.location,
-                birthday: profile.birthday,
-              ),
-
-              const SizedBox(height: Gaps.lg), // Reduced from 40px to 24px
-              // Memories Section
-              MemoriesSection(
-                memories: profile.memories,
-                onMemoryTap: (memory) => _onMemoryTap(context, memory),
-              ),
-
-              const SizedBox(height: Gaps.lg),
-            ],
+        data: (profile) => RefreshIndicator(
+          onRefresh: () async {
+            // 🎯 SIMPLE: Just invalidate and wait
+            ref.invalidate(currentUserProfileProvider);
+            await ref.read(currentUserProfileProvider.future);
+          },
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.symmetric(horizontal: Insets.screenH),
+            child: Column(
+              children: [
+                const SizedBox(height: Gaps.lg),
+                UserInfoCard(profile: profile),
+                const SizedBox(height: Gaps.lg),
+                MemoriesSection(
+                  memories: profile.memories,
+                  onMemoryTap: (memory) => _onMemoryTap(context, memory),
+                ),
+                const SizedBox(height: Gaps.lg),
+              ],
+            ),
           ),
         ),
       ),

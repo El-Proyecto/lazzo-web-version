@@ -2,21 +2,16 @@ import 'package:flutter/material.dart';
 import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/constants/text_styles.dart';
 import '../../../../shared/themes/colors.dart';
+import '../../domain/entities/profile_entity.dart';
 
 /// Tokenized user info card showing profile picture, name, location and birthday
 /// Used for displaying user profile information
 class UserInfoCard extends StatelessWidget {
-  final String name;
-  final String? profileImageUrl;
-  final String? location;
-  final DateTime? birthday;
+  final ProfileEntity profile;
 
   const UserInfoCard({
     super.key,
-    required this.name,
-    this.profileImageUrl,
-    this.location,
-    this.birthday,
+    required this.profile,
   });
 
   @override
@@ -31,18 +26,18 @@ class UserInfoCard extends StatelessWidget {
           width: 152,
           height: 152,
           decoration: ShapeDecoration(
-            image: profileImageUrl != null
+            image: profile.profileImageUrl != null
                 ? DecorationImage(
-                    image: NetworkImage(profileImageUrl!),
+                    image: NetworkImage(profile.profileImageUrl!),
                     fit: BoxFit.cover,
                   )
                 : null,
-            color: profileImageUrl == null ? BrandColors.bg3 : null,
+            color: profile.profileImageUrl == null ? BrandColors.bg3 : null,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(76),
             ),
           ),
-          child: profileImageUrl == null
+          child: profile.profileImageUrl == null
               ? const Icon(Icons.person, size: 64, color: BrandColors.text2)
               : null,
         ),
@@ -51,12 +46,12 @@ class UserInfoCard extends StatelessWidget {
 
         // Name
         Text(
-          name,
+          profile.name,
           style: AppText.headlineMedium.copyWith(color: BrandColors.text1),
         ),
 
         // Location (if provided)
-        if (location != null) ...[
+        if (profile.location != null) ...[
           const SizedBox(height: Gaps.xxs),
           Row(
             mainAxisSize: MainAxisSize.min,
@@ -68,7 +63,7 @@ class UserInfoCard extends StatelessWidget {
               ),
               const SizedBox(width: Gaps.xs),
               Text(
-                location!,
+                profile.location!,
                 style: AppText.titleMediumEmph.copyWith(
                   color: BrandColors.text2,
                 ),
@@ -78,7 +73,7 @@ class UserInfoCard extends StatelessWidget {
         ],
 
         // Birthday (if provided)
-        if (birthday != null) ...[
+        if (profile.birthday != null) ...[
           const SizedBox(height: Gaps.xxs),
           Row(
             mainAxisSize: MainAxisSize.min,
@@ -93,7 +88,7 @@ class UserInfoCard extends StatelessWidget {
               ),
               const SizedBox(width: Gaps.xs),
               Text(
-                _formatBirthday(birthday!),
+                _formatBirthday(profile.birthday!),
                 style: AppText.titleMediumEmph.copyWith(
                   color: BrandColors.text2,
                 ),

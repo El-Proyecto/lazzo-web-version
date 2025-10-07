@@ -15,7 +15,7 @@ import '../features/groups/presentation/pages/group_created_page.dart';
 import '../features/create_event/presentation/pages/create_event_page.dart';
 import '../features/inbox/presentation/pages/inbox_page.dart';
 import '../features/profile/presentation/pages/profile_page.dart';
-import '../features/profile/presentation/edit_profile_page.dart';
+import '../features/profile/presentation/pages/edit_profile_page.dart';
 import '../features/event/presentation/pages/event_page.dart';
 
 class AppRouter {
