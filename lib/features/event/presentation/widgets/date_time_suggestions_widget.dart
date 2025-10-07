@@ -121,35 +121,40 @@ class _DateTimeSuggestionsWidgetState extends State<DateTimeSuggestionsWidget> {
         children: [
           // Header
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('Date & Time Suggestions', style: AppText.labelLarge),
-              InkWell(
-                onTap: () => _showViewVotesBottomSheet(context),
-                borderRadius: BorderRadius.circular(10),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: Gaps.xs,
-                    vertical: Gaps.xxs,
-                  ),
-                  child: Row(
-                    children: [
-                      Text(
-                        'View votes',
-                        style: AppText.bodyMedium.copyWith(
-                          color: BrandColors.text2,
-                        ),
-                      ),
-                      const SizedBox(width: Gaps.xxs),
-                      const Icon(
-                        Icons.chevron_right,
-                        size: IconSizes.sm,
-                        color: BrandColors.text2,
-                      ),
-                    ],
-                  ),
+              Expanded(
+                child: Text(
+                  'Date & Time Suggestions',
+                  style: AppText.labelLarge,
                 ),
               ),
+              // Only show view votes if there are any votes
+              if (widget.suggestions.any((s) => s.voteCount > 0)) ...[
+                InkWell(
+                  onTap: () => _showViewVotesBottomSheet(context),
+                  borderRadius: BorderRadius.circular(10),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      vertical: Gaps.xxs,
+                    ),
+                    child: Row(
+                      children: [
+                        Text(
+                          'View votes',
+                          style: AppText.bodyMedium.copyWith(
+                            color: BrandColors.text2,
+                          ),
+                        ),
+                        const Icon(
+                          Icons.chevron_right,
+                          size: IconSizes.sm,
+                          color: BrandColors.text2,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
             ],
           ),
           const SizedBox(height: Gaps.md),
@@ -457,23 +462,34 @@ class _SuggestionVoteSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Section title with count
-        Text(
-          '$count Votes',
-          style: AppText.bodyMediumEmph.copyWith(color: BrandColors.text1),
+        // Header: título à esquerda, contador à direita
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.baseline,
+          textBaseline: TextBaseline.alphabetic,
+          children: [
+            Expanded(
+              child: Text(
+                title,
+                style: AppText.labelLarge.copyWith(color: BrandColors.planning),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            Text(
+              '$count ${count == 1 ? "Vote" : "Votes"}',
+              style: AppText.bodyMediumEmph.copyWith(color: BrandColors.text1),
+            ),
+          ],
         ),
-        const SizedBox(height: Gaps.xs),
-        Text(
-          title,
-          style: AppText.labelLarge.copyWith(color: BrandColors.planning),
-        ),
+
         if (subtitle != null) ...[
           const SizedBox(height: Gaps.xxs),
           Text(
             subtitle!,
             style: AppText.bodyMedium.copyWith(color: BrandColors.text2),
+            overflow: TextOverflow.ellipsis,
           ),
         ],
+
         const SizedBox(height: Gaps.md),
 
         // Vote list

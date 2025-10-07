@@ -116,7 +116,7 @@ class _AddSuggestionBottomSheetState
     return Container(
       height: bottomSheetHeight,
       decoration: const BoxDecoration(
-        color: BrandColors.bg1,
+        color: BrandColors.bg2,
         borderRadius: BorderRadius.only(
           topLeft: Radius.circular(Radii.md),
           topRight: Radius.circular(Radii.md),
@@ -172,194 +172,166 @@ class _AddSuggestionBottomSheetState
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: Pads.sectionH),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Start Date & Time Row
-                  _buildDateTimeRow(
-                    label: 'Start',
-                    date: startDate,
-                    time: startTime,
-                    isDatePickerExpanded: isStartDatePickerExpanded,
-                    isTimePickerExpanded: isStartTimePickerExpanded,
-                    onDateTap: () {
-                      setState(() {
-                        isStartDatePickerExpanded = !isStartDatePickerExpanded;
-                        isStartTimePickerExpanded = false;
-                        isEndDatePickerExpanded = false;
-                        isEndTimePickerExpanded = false;
-                      });
-                    },
-                    onTimeTap: () {
-                      setState(() {
-                        isStartTimePickerExpanded = !isStartTimePickerExpanded;
-                        isStartDatePickerExpanded = false;
-                        isEndDatePickerExpanded = false;
-                        isEndTimePickerExpanded = false;
-                      });
-                    },
+                  // Scrollable content
+                  Expanded(
+                    child: SingleChildScrollView(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Start Date & Time Row
+                          _buildDateTimeRow(
+                            label: 'Start',
+                            date: startDate,
+                            time: startTime,
+                            isDatePickerExpanded: isStartDatePickerExpanded,
+                            isTimePickerExpanded: isStartTimePickerExpanded,
+                            onDateTap: () {
+                              setState(() {
+                                isStartDatePickerExpanded =
+                                    !isStartDatePickerExpanded;
+                                isStartTimePickerExpanded = false;
+                                isEndDatePickerExpanded = false;
+                                isEndTimePickerExpanded = false;
+                              });
+                            },
+                            onTimeTap: () {
+                              setState(() {
+                                isStartTimePickerExpanded =
+                                    !isStartTimePickerExpanded;
+                                isStartDatePickerExpanded = false;
+                                isEndDatePickerExpanded = false;
+                                isEndTimePickerExpanded = false;
+                              });
+                            },
+                          ),
+
+                          if (isStartDatePickerExpanded) ...[
+                            const SizedBox(height: Gaps.sm),
+                            InlineDatePicker(
+                              selectedDate: startDate,
+                              onDateChanged: (date) {
+                                setState(() {
+                                  startDate = date;
+                                  isStartDatePickerExpanded = false;
+                                });
+                              },
+                            ),
+                          ],
+
+                          if (isStartTimePickerExpanded) ...[
+                            const SizedBox(height: Gaps.sm),
+                            InlineTimePicker(
+                              selectedTime: startTime,
+                              onTimeChanged: (time) {
+                                setState(() {
+                                  startTime = time;
+                                });
+                              },
+                            ),
+                          ],
+
+                          const SizedBox(height: Gaps.sm),
+
+                          // End Date & Time Row
+                          _buildDateTimeRow(
+                            label: 'End',
+                            date: endDate,
+                            time: endTime,
+                            isDatePickerExpanded: isEndDatePickerExpanded,
+                            isTimePickerExpanded: isEndTimePickerExpanded,
+                            onDateTap: () {
+                              setState(() {
+                                isEndDatePickerExpanded =
+                                    !isEndDatePickerExpanded;
+                                isEndTimePickerExpanded = false;
+                                isStartDatePickerExpanded = false;
+                                isStartTimePickerExpanded = false;
+                              });
+                            },
+                            onTimeTap: () {
+                              setState(() {
+                                isEndTimePickerExpanded =
+                                    !isEndTimePickerExpanded;
+                                isEndDatePickerExpanded = false;
+                                isStartDatePickerExpanded = false;
+                                isStartTimePickerExpanded = false;
+                              });
+                            },
+                          ),
+
+                          if (isEndDatePickerExpanded) ...[
+                            const SizedBox(height: Gaps.sm),
+                            InlineDatePicker(
+                              selectedDate: endDate,
+                              onDateChanged: (date) {
+                                setState(() {
+                                  endDate = date;
+                                  isEndDatePickerExpanded = false;
+                                });
+                              },
+                            ),
+                          ],
+
+                          if (isEndTimePickerExpanded) ...[
+                            const SizedBox(height: Gaps.sm),
+                            InlineTimePicker(
+                              selectedTime: endTime,
+                              onTimeChanged: (time) {
+                                setState(() {
+                                  endTime = time;
+                                });
+                              },
+                            ),
+                          ],
+
+                          const SizedBox(height: Gaps.lg),
+                        ],
+                      ),
+                    ),
                   ),
 
-                  if (isStartDatePickerExpanded) ...[
-                    const SizedBox(height: Gaps.sm),
-                    InlineDatePicker(
-                      selectedDate: startDate,
-                      onDateChanged: (date) {
-                        setState(() {
-                          startDate = date;
-                          isStartDatePickerExpanded = false;
-                        });
-                      },
-                    ),
-                  ],
-
-                  if (isStartTimePickerExpanded) ...[
-                    const SizedBox(height: Gaps.sm),
-                    InlineTimePicker(
-                      selectedTime: startTime,
-                      onTimeChanged: (time) {
-                        setState(() {
-                          startTime = time;
-                        });
-                      },
-                    ),
-                  ],
-
-                  const SizedBox(height: Gaps.sm),
-
-                  // End Date & Time Row
-                  _buildDateTimeRow(
-                    label: 'End',
-                    date: endDate,
-                    time: endTime,
-                    isDatePickerExpanded: isEndDatePickerExpanded,
-                    isTimePickerExpanded: isEndTimePickerExpanded,
-                    onDateTap: () {
-                      setState(() {
-                        isEndDatePickerExpanded = !isEndDatePickerExpanded;
-                        isEndTimePickerExpanded = false;
-                        isStartDatePickerExpanded = false;
-                        isStartTimePickerExpanded = false;
-                      });
-                    },
-                    onTimeTap: () {
-                      setState(() {
-                        isEndTimePickerExpanded = !isEndTimePickerExpanded;
-                        isEndDatePickerExpanded = false;
-                        isStartDatePickerExpanded = false;
-                        isStartTimePickerExpanded = false;
-                      });
-                    },
-                  ),
-
-                  if (isEndDatePickerExpanded) ...[
-                    const SizedBox(height: Gaps.sm),
-                    InlineDatePicker(
-                      selectedDate: endDate,
-                      onDateChanged: (date) {
-                        setState(() {
-                          endDate = date;
-                          isEndDatePickerExpanded = false;
-                        });
-                      },
-                    ),
-                  ],
-
-                  if (isEndTimePickerExpanded) ...[
-                    const SizedBox(height: Gaps.sm),
-                    InlineTimePicker(
-                      selectedTime: endTime,
-                      onTimeChanged: (time) {
-                        setState(() {
-                          endTime = time;
-                        });
-                      },
-                    ),
-                  ],
-
-                  const Spacer(),
-
-                  // Error message
-                  if (_timeValidationError != null) ...[
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(Pads.ctlH),
-                      margin: const EdgeInsets.only(bottom: Gaps.sm),
-                      decoration: BoxDecoration(
-                        color: BrandColors.cantVote.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(Radii.sm),
-                        border: Border.all(
-                          color: BrandColors.cantVote.withValues(alpha: 0.3),
-                        ),
-                      ),
-                      child: Text(
-                        _timeValidationError!,
-                        style: AppText.bodyMedium.copyWith(
-                          color: BrandColors.cantVote,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                    ),
-                  ],
-
-                  // Submit button - Green when changes are made and valid
-                  createSuggestionState.when(
-                    data: (_) => SizedBox(
-                      width: double.infinity,
-                      child: FilledButton(
-                        onPressed: _hasChanges && _isTimeValid
-                            ? _submitSuggestion
-                            : null,
-                        style: FilledButton.styleFrom(
-                          backgroundColor: _hasChanges && _isTimeValid
-                              ? BrandColors
-                                    .planning // Green when valid
-                              : BrandColors.text1.withValues(alpha: 0.3),
-                          foregroundColor: BrandColors.bg1,
-                          padding: const EdgeInsets.symmetric(
-                            vertical: Pads.ctlV,
-                          ),
-                          shape: RoundedRectangleBorder(
+                  // Fixed bottom section
+                  Column(
+                    children: [
+                      // Error message
+                      if (_timeValidationError != null) ...[
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(Pads.ctlH),
+                          margin: const EdgeInsets.only(bottom: Gaps.sm),
+                          decoration: BoxDecoration(
+                            color: BrandColors.cantVote.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(Radii.sm),
+                            border: Border.all(
+                              color: BrandColors.cantVote.withValues(
+                                alpha: 0.3,
+                              ),
+                            ),
+                          ),
+                          child: Text(
+                            _timeValidationError!,
+                            style: AppText.bodyMedium.copyWith(
+                              color: BrandColors.cantVote,
+                            ),
+                            textAlign: TextAlign.center,
                           ),
                         ),
-                        child: Text(
-                          'Add Suggestion',
-                          style: AppText.bodyMediumEmph,
-                        ),
-                      ),
-                    ),
-                    loading: () => SizedBox(
-                      width: double.infinity,
-                      child: FilledButton(
-                        onPressed: null,
-                        style: FilledButton.styleFrom(
-                          backgroundColor: BrandColors.text2,
-                          foregroundColor: BrandColors.bg1,
-                          padding: const EdgeInsets.symmetric(
-                            vertical: Pads.ctlV,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(Radii.sm),
-                          ),
-                        ),
-                        child: Text('Adding...', style: AppText.bodyMediumEmph),
-                      ),
-                    ),
-                    error: (error, _) => Column(
-                      children: [
-                        Text(
-                          'Error: $error',
-                          style: AppText.bodyMedium.copyWith(color: Colors.red),
-                        ),
-                        const SizedBox(height: Gaps.sm),
-                        SizedBox(
+                      ],
+
+                      // Submit button - Green when changes are made and valid
+                      createSuggestionState.when(
+                        data: (_) => SizedBox(
                           width: double.infinity,
                           child: FilledButton(
                             onPressed: _hasChanges && _isTimeValid
                                 ? _submitSuggestion
                                 : null,
                             style: FilledButton.styleFrom(
-                              backgroundColor: BrandColors.planning,
+                              backgroundColor: _hasChanges && _isTimeValid
+                                  ? BrandColors
+                                        .planning // Green when valid
+                                  : BrandColors.text1.withValues(alpha: 0.3),
                               foregroundColor: BrandColors.bg1,
                               padding: const EdgeInsets.symmetric(
                                 vertical: Pads.ctlV,
@@ -369,17 +341,72 @@ class _AddSuggestionBottomSheetState
                               ),
                             ),
                             child: Text(
-                              'Try Again',
+                              'Add Suggestion',
                               style: AppText.bodyMediumEmph,
                             ),
                           ),
                         ),
-                      ],
-                    ),
-                  ),
+                        loading: () => SizedBox(
+                          width: double.infinity,
+                          child: FilledButton(
+                            onPressed: null,
+                            style: FilledButton.styleFrom(
+                              backgroundColor: BrandColors.text2,
+                              foregroundColor: BrandColors.bg1,
+                              padding: const EdgeInsets.symmetric(
+                                vertical: Pads.ctlV,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(Radii.sm),
+                              ),
+                            ),
+                            child: Text(
+                              'Adding...',
+                              style: AppText.bodyMediumEmph,
+                            ),
+                          ),
+                        ),
+                        error: (error, _) => Column(
+                          children: [
+                            Text(
+                              'Error: $error',
+                              style: AppText.bodyMedium.copyWith(
+                                color: Colors.red,
+                              ),
+                            ),
+                            const SizedBox(height: Gaps.sm),
+                            SizedBox(
+                              width: double.infinity,
+                              child: FilledButton(
+                                onPressed: _hasChanges && _isTimeValid
+                                    ? _submitSuggestion
+                                    : null,
+                                style: FilledButton.styleFrom(
+                                  backgroundColor: BrandColors.planning,
+                                  foregroundColor: BrandColors.bg1,
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: Pads.ctlV,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(
+                                      Radii.sm,
+                                    ),
+                                  ),
+                                ),
+                                child: Text(
+                                  'Try Again',
+                                  style: AppText.bodyMediumEmph,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
 
-                  SizedBox(
-                    height: MediaQuery.of(context).padding.bottom + Gaps.md,
+                      SizedBox(
+                        height: MediaQuery.of(context).padding.bottom + Gaps.md,
+                      ),
+                    ],
                   ),
                 ],
               ),

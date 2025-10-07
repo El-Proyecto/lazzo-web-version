@@ -40,6 +40,9 @@ class RsvpWidget extends StatelessWidget {
   final VoidCallback? onAddSuggestion;
   final DateTime? eventStartDateTime;
   final DateTime? eventEndDateTime;
+  final bool isHost; // Whether current user is host/admin
+  final VoidCallback? onPickAsFinal; // Callback for pick as final
+  final bool hasSuggestions; // Whether suggestions already exist
 
   const RsvpWidget({
     super.key,
@@ -53,6 +56,9 @@ class RsvpWidget extends StatelessWidget {
     this.onAddSuggestion,
     this.eventStartDateTime,
     this.eventEndDateTime,
+    this.isHost = false,
+    this.onPickAsFinal,
+    this.hasSuggestions = false,
   });
 
   @override
@@ -70,35 +76,35 @@ class RsvpWidget extends StatelessWidget {
         children: [
           // Header
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('Can you make it?', style: AppText.labelLarge),
-              InkWell(
-                onTap: () => _showViewVotesBottomSheet(context),
-                borderRadius: BorderRadius.circular(Radii.sm),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: Gaps.xs,
-                    vertical: Gaps.xxs,
-                  ),
-                  child: Row(
-                    children: [
-                      Text(
-                        'View votes',
-                        style: AppText.bodyMedium.copyWith(
+              Expanded(
+                child: Text('Can you make it?', style: AppText.labelLarge),
+              ),
+              // Only show view votes if there are any votes
+              if (goingCount + notGoingCount + pendingCount > 0) ...[
+                InkWell(
+                  onTap: () => _showViewVotesBottomSheet(context),
+                  borderRadius: BorderRadius.circular(Radii.sm),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: Gaps.xxs),
+                    child: Row(
+                      children: [
+                        Text(
+                          'View votes',
+                          style: AppText.bodyMedium.copyWith(
+                            color: BrandColors.text2,
+                          ),
+                        ),
+                        const Icon(
+                          Icons.chevron_right,
+                          size: IconSizes.sm,
                           color: BrandColors.text2,
                         ),
-                      ),
-                      const SizedBox(width: Gaps.xxs),
-                      const Icon(
-                        Icons.chevron_right,
-                        size: IconSizes.sm,
-                        color: BrandColors.text2,
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
-              ),
+              ],
             ],
           ),
           const SizedBox(height: Gaps.md),
@@ -128,8 +134,33 @@ class RsvpWidget extends StatelessWidget {
             ],
           ),
 
-          // Add suggestion button (shown when user votes "not going")
-          if (userVote == false && onAddSuggestion != null) ...[
+          // Pick as Final button (only for host when they have voted)
+          if (isHost && userVote != null && onPickAsFinal != null) ...[
+            const SizedBox(height: Gaps.sm),
+            SizedBox(
+              width: double.infinity,
+              child: FilledButton(
+                onPressed: onPickAsFinal,
+                style: FilledButton.styleFrom(
+                  backgroundColor: Colors.green,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: Pads.ctlH,
+                    vertical: Pads.ctlV,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                child: Text('Pick as Final', style: AppText.bodyMediumEmph),
+              ),
+            ),
+          ],
+
+          // Add suggestion button (shown when user votes "not going" AND no suggestions exist)
+          if (userVote == false &&
+              onAddSuggestion != null &&
+              !hasSuggestions) ...[
             const SizedBox(height: Gaps.sm),
             SizedBox(
               width: double.infinity,
@@ -197,7 +228,11 @@ class RsvpWidget extends StatelessWidget {
 
           // Haven't Responded section
           if (pending.isNotEmpty) ...[
-            _VoteSection(title: 'Maybe', count: pending.length, votes: pending),
+            _VoteSection(
+              title: 'No response',
+              count: pending.length,
+              votes: pending,
+            ),
           ],
         ],
       ),
@@ -623,21 +658,27 @@ class _VoteSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Section title with count
-        Text(
-          '$count Votes',
-          style: AppText.bodyMediumEmph.copyWith(color: BrandColors.text1),
-        ),
-        const SizedBox(height: Gaps.xs),
-        Text(
-          title,
-          style: AppText.labelLarge.copyWith(color: _getTitleColor()),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.baseline,
+          textBaseline: TextBaseline.alphabetic,
+          children: [
+            Expanded(
+              child: Text(
+                title,
+                style: AppText.labelLarge.copyWith(color: _getTitleColor()),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            Text(
+              '$count ${count == 1 ? "Vote" : "Votes"}',
+              style: AppText.bodyMediumEmph.copyWith(color: BrandColors.text1),
+            ),
+          ],
         ),
         const SizedBox(height: Gaps.md),
 
-        // Vote list
         ...votes.map(
-          (vote) => _VoteItem(vote: vote, showDate: title != 'Maybe'),
+          (vote) => _VoteItem(vote: vote, showDate: title != 'No response'),
         ),
       ],
     );
@@ -762,7 +803,7 @@ class _VoteButton extends StatelessWidget {
                 ),
               ),
               if (count > 0) ...[
-                const SizedBox(width: Gaps.xxs),
+                const SizedBox(width: Gaps.xs),
                 Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 6,
@@ -775,7 +816,7 @@ class _VoteButton extends StatelessWidget {
                   child: Text(
                     count.toString(),
                     style: AppText.bodyMedium.copyWith(
-                      color: isSelected ? BrandColors.bg1 : BrandColors.text2,
+                      color: isSelected ? BrandColors.text1 : BrandColors.text2,
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
                     ),

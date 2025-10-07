@@ -11,6 +11,7 @@ class ChatMessagePreview {
   final String? userAvatar;
   final String content;
   final DateTime timestamp;
+  final bool read;
 
   const ChatMessagePreview({
     required this.userId,
@@ -18,6 +19,7 @@ class ChatMessagePreview {
     this.userAvatar,
     required this.content,
     required this.timestamp,
+    required this.read,
   });
 }
 
@@ -63,9 +65,33 @@ class _ChatPreviewWidgetState extends State<ChatPreviewWidget> {
 
   @override
   Widget build(BuildContext context) {
-    // Sort messages by timestamp ascending (oldest first) for proper display order
+    // Sort messages by timestamp ascending (oldest first)
     final sortedMessages = [...widget.recentMessages]
       ..sort((a, b) => a.timestamp.compareTo(b.timestamp));
+
+    // Get unread messages from other users only
+    final unreadMessages = sortedMessages
+        .where((m) => !m.read && m.userId != widget.currentUserId)
+        .toList();
+
+    // Logic for messages to show:
+    // If there are unread messages, show all messages to provide context
+    // Otherwise, show last 2 messages as fallback
+    final messagesToShow = unreadMessages.isNotEmpty
+        ? sortedMessages // Show all messages when there are unread ones
+        : (sortedMessages.length >= 2
+              ? sortedMessages.sublist(sortedMessages.length - 2)
+              : sortedMessages);
+
+    // Calculate height constraints
+    final screenHeight = MediaQuery.of(context).size.height;
+    final maxChatHeight = screenHeight * 0.4;
+
+    // Estimate height per message (avatar + bubble + spacing + name + timestamp)
+    const double messageBubbleHeight = 72.0; // Increased for better spacing
+    final double neededHeight = messagesToShow.length * messageBubbleHeight;
+    final bool needsScroll = neededHeight > maxChatHeight;
+    final double chatHeight = needsScroll ? maxChatHeight : neededHeight;
 
     return Container(
       width: double.infinity,
@@ -82,7 +108,6 @@ class _ChatPreviewWidgetState extends State<ChatPreviewWidget> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text('Chat', style: AppText.labelLarge),
-              // Badge with unread count
               if (widget.newMessagesCount > 0)
                 InkWell(
                   onTap: widget.onOpenChat,
@@ -99,7 +124,7 @@ class _ChatPreviewWidgetState extends State<ChatPreviewWidget> {
                     child: Text(
                       '${widget.newMessagesCount} new',
                       style: AppText.bodyMedium.copyWith(
-                        color: BrandColors.bg1,
+                        color: BrandColors.text1,
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
                       ),
@@ -109,42 +134,63 @@ class _ChatPreviewWidgetState extends State<ChatPreviewWidget> {
             ],
           ),
 
-          const SizedBox(height: Gaps.md),
+          const SizedBox(height: Gaps.xxs),
 
-          // Recent messages with scrolling (max 2 visible)
-          if (sortedMessages.isNotEmpty) ...[
-            ConstrainedBox(
-              constraints: const BoxConstraints(
-                maxHeight: 120, // Approximate height for 2 messages
-              ),
-              child: ListView.builder(
-                shrinkWrap: true,
-                physics: const BouncingScrollPhysics(),
-                itemCount: sortedMessages.length,
-                itemBuilder: (context, index) {
-                  final message = sortedMessages[index];
-                  return Padding(
-                    padding: EdgeInsets.only(
-                      bottom: index < sortedMessages.length - 1 ? Gaps.sm : 0,
+          // Messages list with dynamic height
+          if (messagesToShow.isNotEmpty)
+            SizedBox(
+              height: chatHeight,
+              child: Stack(
+                children: [
+                  ListView.builder(
+                    reverse: true,
+                    physics: needsScroll
+                        ? const BouncingScrollPhysics()
+                        : const NeverScrollableScrollPhysics(),
+                    itemCount: messagesToShow.length,
+                    itemBuilder: (context, index) {
+                      final message =
+                          messagesToShow[messagesToShow.length - 1 - index];
+                      return Padding(
+                        padding: const EdgeInsets.only(top: Gaps.sm),
+                        child: _MessageBubble(
+                          message: message,
+                          isCurrentUser: message.userId == widget.currentUserId,
+                        ),
+                      );
+                    },
+                  ),
+                  // Fade-out gradient at the top when scrollable
+                  if (needsScroll)
+                    Positioned(
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      height: 16,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [
+                              BrandColors.bg2,
+                              BrandColors.bg2.withValues(alpha: 0.0),
+                            ],
+                          ),
+                        ),
+                      ),
                     ),
-                    child: _MessageBubble(
-                      message: message,
-                      isCurrentUser: message.userId == widget.currentUserId,
-                    ),
-                  );
-                },
+                ],
               ),
             ),
-            const SizedBox(height: Gaps.md),
-          ],
 
-          // Message input (English text, fully rounded corners, send button inside)
+          const SizedBox(height: Gaps.md),
+
+          // Message input
           Container(
             decoration: BoxDecoration(
               color: BrandColors.bg3,
-              borderRadius: BorderRadius.circular(
-                Radii.pill,
-              ), // Fully rounded corners
+              borderRadius: BorderRadius.circular(Radii.pill),
               border: Border.all(color: BrandColors.border),
             ),
             child: Row(
@@ -155,7 +201,7 @@ class _ChatPreviewWidgetState extends State<ChatPreviewWidget> {
                     focusNode: _focusNode,
                     style: AppText.bodyMedium,
                     decoration: InputDecoration(
-                      hintText: 'Type a message...', // English text
+                      hintText: 'Type a message…',
                       hintStyle: AppText.bodyMedium.copyWith(
                         color: BrandColors.text2,
                       ),
@@ -169,21 +215,17 @@ class _ChatPreviewWidgetState extends State<ChatPreviewWidget> {
                     onSubmitted: (_) => _sendMessage(),
                   ),
                 ),
-                // Send button inside the input bar
                 Container(
                   margin: const EdgeInsets.only(right: Gaps.xs),
                   decoration: BoxDecoration(
                     color: BrandColors.planning,
-                    borderRadius: BorderRadius.circular(
-                      Radii.pill,
-                    ), // Fully rounded send button
+                    borderRadius: BorderRadius.circular(Radii.pill),
                   ),
                   child: Material(
                     color: Colors.transparent,
                     child: InkWell(
                       onTap: () {
                         _sendMessage();
-                        // Add a subtle haptic feedback
                         HapticFeedback.lightImpact();
                       },
                       borderRadius: BorderRadius.circular(Radii.pill),
@@ -192,7 +234,7 @@ class _ChatPreviewWidgetState extends State<ChatPreviewWidget> {
                         child: const Icon(
                           Icons.send,
                           size: IconSizes.sm,
-                          color: BrandColors.bg1,
+                          color: BrandColors.text1,
                         ),
                       ),
                     ),
@@ -236,7 +278,6 @@ class _MessageBubble extends StatelessWidget {
           ? CrossAxisAlignment.end
           : CrossAxisAlignment.start,
       children: [
-        // Message bubble with avatar
         Row(
           mainAxisAlignment: isCurrentUser
               ? MainAxisAlignment.end
@@ -244,9 +285,8 @@ class _MessageBubble extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             if (!isCurrentUser) ...[
-              // Avatar for other users (made bigger as requested)
               CircleAvatar(
-                radius: 20, // Increased to 20 for bigger profile photos
+                radius: 20,
                 backgroundColor: BrandColors.bg3,
                 backgroundImage: message.userAvatar != null
                     ? NetworkImage(message.userAvatar!)
@@ -256,7 +296,7 @@ class _MessageBubble extends StatelessWidget {
                         message.userName[0].toUpperCase(),
                         style: AppText.bodyMedium.copyWith(
                           color: BrandColors.text2,
-                          fontSize: 16, // Increased font size proportionally
+                          fontSize: 16,
                           fontWeight: FontWeight.w600,
                         ),
                       )
@@ -264,8 +304,6 @@ class _MessageBubble extends StatelessWidget {
               ),
               const SizedBox(width: Gaps.xs),
             ],
-
-            // Message content
             Flexible(
               child: Container(
                 padding: const EdgeInsets.symmetric(
@@ -279,25 +317,16 @@ class _MessageBubble extends StatelessWidget {
                 child: Text(
                   message.content,
                   style: AppText.bodyMedium.copyWith(
-                    color: isCurrentUser ? BrandColors.bg1 : BrandColors.text1,
+                    color: isCurrentUser ? BrandColors.text1 : BrandColors.text1,
                   ),
                 ),
               ),
             ),
-
-            // Remove avatar for current user as requested
           ],
         ),
-
-        // Name and timestamp below the bubble (only show name for other users)
         const SizedBox(height: Gaps.xxs),
         Padding(
-          padding: EdgeInsets.only(
-            left: isCurrentUser
-                ? 0
-                : 44, // Account for bigger avatar width + spacing
-            right: isCurrentUser ? 0 : 0,
-          ),
+          padding: EdgeInsets.only(left: isCurrentUser ? 0 : 44),
           child: Row(
             mainAxisAlignment: isCurrentUser
                 ? MainAxisAlignment.end

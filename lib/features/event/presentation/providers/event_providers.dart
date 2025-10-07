@@ -117,12 +117,73 @@ final eventPollsProvider = FutureProvider.family<List<Poll>, String>((
 });
 
 // Recent messages state provider
-final recentMessagesProvider = FutureProvider.family<List<ChatMessage>, String>(
-  (ref, eventId) async {
-    final useCase = ref.watch(getRecentMessagesProvider);
-    return await useCase(eventId);
-  },
-);
+final recentMessagesProvider =
+    StateNotifierProvider.family<
+      MessagesNotifier,
+      AsyncValue<List<ChatMessage>>,
+      String
+    >((ref, eventId) {
+      return MessagesNotifier(
+        repository: ref.watch(chatRepositoryProvider),
+        eventId: eventId,
+      );
+    });
+
+// Unread messages count provider
+final unreadMessagesCountProvider = Provider.family<int, String>((
+  ref,
+  eventId,
+) {
+  final messagesAsync = ref.watch(recentMessagesProvider(eventId));
+
+  return messagesAsync.when(
+    data: (messages) {
+      // Count unread messages from other users only
+      return messages
+          .where((m) => !m.read && m.userId != 'current-user')
+          .length;
+    },
+    loading: () => 0,
+    error: (_, __) => 0,
+  );
+});
+
+// Messages notifier to manage state without losing messages
+class MessagesNotifier extends StateNotifier<AsyncValue<List<ChatMessage>>> {
+  final ChatRepository repository;
+  final String eventId;
+
+  MessagesNotifier({required this.repository, required this.eventId})
+    : super(const AsyncValue.loading()) {
+    _loadMessages();
+  }
+
+  Future<void> _loadMessages() async {
+    try {
+      final messages = await repository.getRecentMessages(eventId);
+      if (mounted) {
+        state = AsyncValue.data(messages);
+      }
+    } catch (error, stackTrace) {
+      if (mounted) {
+        state = AsyncValue.error(error, stackTrace);
+      }
+    }
+  }
+
+  Future<void> addMessage(ChatMessage message) async {
+    state.whenData((currentMessages) {
+      final updatedMessages = [...currentMessages, message];
+      // Sort by timestamp to maintain order
+      updatedMessages.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      state = AsyncValue.data(updatedMessages);
+    });
+  }
+
+  Future<void> refreshMessages() async {
+    await _loadMessages();
+  }
+}
 
 // Event suggestions state provider
 final eventSuggestionsProvider =
@@ -189,7 +250,10 @@ class UserRsvpNotifier extends StateNotifier<AsyncValue<Rsvp?>> {
 // Send message notifier
 final sendMessageProvider =
     StateNotifierProvider<SendMessageNotifier, AsyncValue<void>>((ref) {
-      return SendMessageNotifier(repository: ref.watch(chatRepositoryProvider));
+      return SendMessageNotifier(
+        repository: ref.watch(chatRepositoryProvider),
+        ref: ref,
+      );
     });
 
 // Create suggestion notifier
@@ -214,15 +278,24 @@ final toggleSuggestionVoteNotifierProvider =
 
 class SendMessageNotifier extends StateNotifier<AsyncValue<void>> {
   final ChatRepository repository;
+  final Ref ref;
 
-  SendMessageNotifier({required this.repository})
+  SendMessageNotifier({required this.repository, required this.ref})
     : super(const AsyncValue.data(null));
 
   Future<void> sendMessage(String eventId, String content) async {
     state = const AsyncValue.loading();
     try {
-      // TODO: Get current user ID from auth service
-      await repository.sendMessage(eventId, 'current-user', content);
+      // Send the message
+      final message = await repository.sendMessage(
+        eventId,
+        'current-user',
+        content,
+      );
+
+      // Add the message to the local state without losing other messages
+      ref.read(recentMessagesProvider(eventId).notifier).addMessage(message);
+
       state = const AsyncValue.data(null);
     } catch (error, stackTrace) {
       state = AsyncValue.error(error, stackTrace);
@@ -244,7 +317,41 @@ class CreateSuggestionNotifier extends StateNotifier<AsyncValue<void>> {
   }) async {
     state = const AsyncValue.loading();
     try {
-      // TODO: Get current user ID from auth service
+      // Check if this is the first suggestion
+      final existingSuggestions = await ref.read(
+        eventSuggestionsProvider(eventId).future,
+      );
+      final isFirstSuggestion = existingSuggestions.isEmpty;
+
+      // If this is the first suggestion, check for existing RSVP "Can" votes
+      // and automatically add current event date/time as a suggestion FIRST
+      if (isFirstSuggestion) {
+        try {
+          final event = await ref.read(eventDetailProvider(eventId).future);
+          final rsvps = await ref.read(eventRsvpsProvider(eventId).future);
+
+          // Check if there are "Can" votes and event has valid date/time
+          final canVotes = rsvps
+              .where((r) => r.status == RsvpStatus.going)
+              .toList();
+          if (canVotes.isNotEmpty &&
+              event.startDateTime != null &&
+              event.endDateTime != null) {
+            // Create suggestion for current event date/time FIRST
+            await createSuggestion(
+              eventId: eventId,
+              userId: 'current-user', // TODO: Get from auth service
+              startDateTime: event.startDateTime!,
+              endDateTime: event.endDateTime,
+            );
+          }
+        } catch (e) {
+          // Log error but don't fail the main operation
+          // print('Failed to auto-create event suggestion: $e');
+        }
+      }
+
+      // Create the requested suggestion AFTER the auto-suggestion
       await createSuggestion(
         eventId: eventId,
         userId: 'current-user',

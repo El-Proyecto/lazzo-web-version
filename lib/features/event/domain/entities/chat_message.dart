@@ -8,6 +8,7 @@ class ChatMessage {
   final String? userAvatar;
   final String content;
   final DateTime createdAt;
+  final bool read;
 
   const ChatMessage({
     required this.id,
@@ -17,6 +18,7 @@ class ChatMessage {
     this.userAvatar,
     required this.content,
     required this.createdAt,
+    this.read = false,
   });
 
   ChatMessage copyWith({
@@ -27,6 +29,7 @@ class ChatMessage {
     String? userAvatar,
     String? content,
     DateTime? createdAt,
+    bool? read,
   }) {
     return ChatMessage(
       id: id ?? this.id,
@@ -36,6 +39,7 @@ class ChatMessage {
       userAvatar: userAvatar ?? this.userAvatar,
       content: content ?? this.content,
       createdAt: createdAt ?? this.createdAt,
+      read: read ?? this.read,
     );
   }
 }
