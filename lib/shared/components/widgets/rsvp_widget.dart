@@ -134,7 +134,13 @@ class RsvpWidget extends StatelessWidget {
             SizedBox(
               width: double.infinity,
               child: OutlinedButton.icon(
-                onPressed: () => _showAddSuggestionBottomSheet(context),
+                onPressed: () {
+                  if (onAddSuggestion != null) {
+                    onAddSuggestion!();
+                  } else {
+                    _showAddSuggestionBottomSheet(context);
+                  }
+                },
                 icon: const Icon(Icons.add, size: IconSizes.sm),
                 label: Text('Add suggestion', style: AppText.bodyMediumEmph),
                 style: OutlinedButton.styleFrom(

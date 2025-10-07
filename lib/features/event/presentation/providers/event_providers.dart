@@ -3,19 +3,25 @@ import '../../data/fakes/fake_event_repository.dart';
 import '../../data/fakes/fake_rsvp_repository.dart';
 import '../../data/fakes/fake_poll_repository.dart';
 import '../../data/fakes/fake_chat_repository.dart';
+import '../../data/fakes/fake_suggestion_repository.dart';
 import '../../domain/entities/event_detail.dart';
 import '../../domain/entities/rsvp.dart';
 import '../../domain/entities/poll.dart';
 import '../../domain/entities/chat_message.dart';
+import '../../domain/entities/suggestion.dart';
 import '../../domain/repositories/event_repository.dart';
 import '../../domain/repositories/rsvp_repository.dart';
 import '../../domain/repositories/poll_repository.dart';
 import '../../domain/repositories/chat_repository.dart';
+import '../../domain/repositories/suggestion_repository.dart';
 import '../../domain/usecases/get_event_detail.dart';
 import '../../domain/usecases/get_event_rsvps.dart';
 import '../../domain/usecases/submit_rsvp.dart';
 import '../../domain/usecases/get_event_polls.dart';
 import '../../domain/usecases/get_recent_messages.dart';
+import '../../domain/usecases/get_event_suggestions.dart';
+import '../../domain/usecases/create_suggestion.dart';
+import '../../domain/usecases/toggle_suggestion_vote.dart';
 
 // Repository providers (default to fake implementations)
 final eventRepositoryProvider = Provider<EventRepository>((ref) {
@@ -32,6 +38,10 @@ final pollRepositoryProvider = Provider<PollRepository>((ref) {
 
 final chatRepositoryProvider = Provider<ChatRepository>((ref) {
   return FakeChatRepository();
+});
+
+final suggestionRepositoryProvider = Provider<SuggestionRepository>((ref) {
+  return FakeSuggestionRepository();
 });
 
 // Use case providers
@@ -53,6 +63,18 @@ final getEventPollsProvider = Provider<GetEventPolls>((ref) {
 
 final getRecentMessagesProvider = Provider<GetRecentMessages>((ref) {
   return GetRecentMessages(ref.watch(chatRepositoryProvider));
+});
+
+final getEventSuggestionsProvider = Provider<GetEventSuggestions>((ref) {
+  return GetEventSuggestions(ref.watch(suggestionRepositoryProvider));
+});
+
+final createSuggestionProvider = Provider<CreateSuggestion>((ref) {
+  return CreateSuggestion(ref.watch(suggestionRepositoryProvider));
+});
+
+final toggleSuggestionVoteProvider = Provider<ToggleSuggestionVote>((ref) {
+  return ToggleSuggestionVote(ref.watch(suggestionRepositoryProvider));
 });
 
 // Event detail state provider
@@ -102,6 +124,32 @@ final recentMessagesProvider = FutureProvider.family<List<ChatMessage>, String>(
   },
 );
 
+// Event suggestions state provider
+final eventSuggestionsProvider =
+    FutureProvider.family<List<Suggestion>, String>((ref, eventId) async {
+      final useCase = ref.watch(getEventSuggestionsProvider);
+      final result = await useCase(eventId);
+      return result;
+    });
+
+// Suggestion votes state provider
+final suggestionVotesProvider =
+    FutureProvider.family<List<SuggestionVote>, String>((ref, eventId) async {
+      final repository = ref.watch(suggestionRepositoryProvider);
+      return await repository.getEventSuggestionVotes(eventId);
+    });
+
+// User suggestion votes state provider
+final userSuggestionVotesProvider =
+    FutureProvider.family<List<SuggestionVote>, String>((ref, eventId) async {
+      final repository = ref.watch(suggestionRepositoryProvider);
+      // TODO: Get current user ID from auth service
+      return await repository.getUserSuggestionVotes(
+        eventId: eventId,
+        userId: 'current-user',
+      );
+    });
+
 // User RSVP state notifier
 class UserRsvpNotifier extends StateNotifier<AsyncValue<Rsvp?>> {
   final String eventId;
@@ -144,6 +192,26 @@ final sendMessageProvider =
       return SendMessageNotifier(repository: ref.watch(chatRepositoryProvider));
     });
 
+// Create suggestion notifier
+final createSuggestionNotifierProvider =
+    StateNotifierProvider<CreateSuggestionNotifier, AsyncValue<void>>((ref) {
+      return CreateSuggestionNotifier(
+        createSuggestion: ref.watch(createSuggestionProvider),
+        ref: ref,
+      );
+    });
+
+// Toggle suggestion vote notifier
+final toggleSuggestionVoteNotifierProvider =
+    StateNotifierProvider<ToggleSuggestionVoteNotifier, AsyncValue<void>>((
+      ref,
+    ) {
+      return ToggleSuggestionVoteNotifier(
+        toggleVote: ref.watch(toggleSuggestionVoteProvider),
+        ref: ref,
+      );
+    });
+
 class SendMessageNotifier extends StateNotifier<AsyncValue<void>> {
   final ChatRepository repository;
 
@@ -155,6 +223,69 @@ class SendMessageNotifier extends StateNotifier<AsyncValue<void>> {
     try {
       // TODO: Get current user ID from auth service
       await repository.sendMessage(eventId, 'current-user', content);
+      state = const AsyncValue.data(null);
+    } catch (error, stackTrace) {
+      state = AsyncValue.error(error, stackTrace);
+    }
+  }
+}
+
+class CreateSuggestionNotifier extends StateNotifier<AsyncValue<void>> {
+  final CreateSuggestion createSuggestion;
+  final Ref ref;
+
+  CreateSuggestionNotifier({required this.createSuggestion, required this.ref})
+    : super(const AsyncValue.data(null));
+
+  Future<void> createSuggestion_({
+    required String eventId,
+    required DateTime startDateTime,
+    DateTime? endDateTime,
+  }) async {
+    state = const AsyncValue.loading();
+    try {
+      // TODO: Get current user ID from auth service
+      await createSuggestion(
+        eventId: eventId,
+        userId: 'current-user',
+        startDateTime: startDateTime,
+        endDateTime: endDateTime,
+      );
+
+      // Invalidate providers to refresh data
+      ref.invalidate(eventSuggestionsProvider(eventId));
+      ref.invalidate(suggestionVotesProvider(eventId));
+      ref.invalidate(userSuggestionVotesProvider(eventId));
+
+      state = const AsyncValue.data(null);
+    } catch (error, stackTrace) {
+      state = AsyncValue.error(error, stackTrace);
+    }
+  }
+}
+
+class ToggleSuggestionVoteNotifier extends StateNotifier<AsyncValue<void>> {
+  final ToggleSuggestionVote toggleVote;
+  final Ref ref;
+
+  ToggleSuggestionVoteNotifier({required this.toggleVote, required this.ref})
+    : super(const AsyncValue.data(null));
+
+  Future<void> toggleVote_(String eventId, String suggestionId) async {
+    state = const AsyncValue.loading();
+    try {
+      // TODO: Get current user ID from auth service
+      await toggleVote(
+        suggestionId: suggestionId,
+        userId: 'current-user',
+        eventId: eventId,
+      );
+
+      // Invalidate providers to refresh data
+      ref.invalidate(eventSuggestionsProvider(eventId));
+      ref.invalidate(suggestionVotesProvider(eventId));
+      ref.invalidate(userSuggestionVotesProvider(eventId));
+
       state = const AsyncValue.data(null);
     } catch (error, stackTrace) {
       state = AsyncValue.error(error, stackTrace);

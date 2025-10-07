@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/constants/text_styles.dart';
 import '../../../../shared/themes/colors.dart';
+import '../../../../shared/components/dialogs/common_bottom_sheet.dart';
 
 /// Data model for date/time suggestion
 class DateTimeSuggestion {
@@ -10,6 +11,7 @@ class DateTimeSuggestion {
   final DateTime? endDateTime;
   final int voteCount;
   final bool hasUserVoted;
+  final List<SuggestionVote> votes; // List of votes for this suggestion
 
   const DateTimeSuggestion({
     required this.id,
@@ -17,12 +19,30 @@ class DateTimeSuggestion {
     this.endDateTime,
     required this.voteCount,
     required this.hasUserVoted,
+    this.votes = const [],
+  });
+}
+
+/// Individual vote for a suggestion
+class SuggestionVote {
+  final String id;
+  final String userId;
+  final String userName;
+  final String? userAvatar;
+  final DateTime? votedAt;
+
+  const SuggestionVote({
+    required this.id,
+    required this.userId,
+    required this.userName,
+    this.userAvatar,
+    this.votedAt,
   });
 }
 
 /// Widget that displays date/time suggestions as votable polls
 /// Only appears when suggestions are added from RSVP bottom sheet
-class DateTimeSuggestionsWidget extends StatelessWidget {
+class DateTimeSuggestionsWidget extends StatefulWidget {
   final List<DateTimeSuggestion> suggestions;
   final Function(String suggestionId) onVote;
   final Set<String> userVotes; // IDs of suggestions the user has voted for
@@ -42,8 +62,50 @@ class DateTimeSuggestionsWidget extends StatelessWidget {
   });
 
   @override
+  State<DateTimeSuggestionsWidget> createState() =>
+      _DateTimeSuggestionsWidgetState();
+}
+
+class _DateTimeSuggestionsWidgetState extends State<DateTimeSuggestionsWidget> {
+  late Set<String> _currentUserVotes;
+  Set<String> _pendingVotes = {}; // Track votes being processed
+
+  @override
+  void initState() {
+    super.initState();
+    _currentUserVotes = Set.from(widget.userVotes);
+  }
+
+  @override
+  void didUpdateWidget(DateTimeSuggestionsWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.userVotes != widget.userVotes) {
+      _currentUserVotes = Set.from(widget.userVotes);
+    }
+  }
+
+  void _handleVote(String suggestionId) {
+    // Prevent double-clicks
+    if (_pendingVotes.contains(suggestionId)) return;
+
+    _pendingVotes.add(suggestionId);
+
+    // Call the parent callback
+    widget.onVote(suggestionId);
+
+    // Remove from pending after a short delay
+    Future.delayed(const Duration(milliseconds: 500), () {
+      if (mounted) {
+        setState(() {
+          _pendingVotes.remove(suggestionId);
+        });
+      }
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
-    if (suggestions.isEmpty) {
+    if (widget.suggestions.isEmpty) {
       return const SizedBox.shrink();
     }
 
@@ -93,7 +155,7 @@ class DateTimeSuggestionsWidget extends StatelessWidget {
           const SizedBox(height: Gaps.md),
 
           // Suggestions list
-          ...suggestions.asMap().entries.map((entry) {
+          ...widget.suggestions.asMap().entries.map((entry) {
             final index = entry.key;
             final suggestion = entry.value;
 
@@ -112,7 +174,7 @@ class DateTimeSuggestionsWidget extends StatelessWidget {
               // Add Suggestion button
               Expanded(
                 child: OutlinedButton(
-                  onPressed: onAddSuggestion,
+                  onPressed: widget.onAddSuggestion,
                   style: OutlinedButton.styleFrom(
                     foregroundColor: BrandColors.text1,
                     side: const BorderSide(color: BrandColors.border),
@@ -129,15 +191,15 @@ class DateTimeSuggestionsWidget extends StatelessWidget {
               ),
 
               // Pick as Final button (only for host)
-              if (isHost) ...[
+              if (widget.isHost) ...[
                 const SizedBox(width: Gaps.sm),
                 Expanded(
                   child: FilledButton(
-                    onPressed: userVotes.isNotEmpty
-                        ? () => onPickAsFinal(userVotes.first)
+                    onPressed: _currentUserVotes.isNotEmpty
+                        ? () => widget.onPickAsFinal(_currentUserVotes.first)
                         : null,
                     style: FilledButton.styleFrom(
-                      backgroundColor: userVotes.isNotEmpty
+                      backgroundColor: _currentUserVotes.isNotEmpty
                           ? Colors.green
                           : BrandColors.text2,
                       foregroundColor: Colors.white,
@@ -161,14 +223,14 @@ class DateTimeSuggestionsWidget extends StatelessWidget {
   }
 
   Widget _buildSuggestionOption(DateTimeSuggestion suggestion) {
-    final hasUserVoted = userVotes.contains(suggestion.id);
+    final hasUserVoted = _currentUserVotes.contains(suggestion.id);
 
     return AnimatedScale(
       scale: hasUserVoted ? 1.02 : 1.0,
       duration: const Duration(milliseconds: 200),
       curve: Curves.easeOutCubic,
       child: InkWell(
-        onTap: () => onVote(suggestion.id),
+        onTap: () => _handleVote(suggestion.id),
         borderRadius: BorderRadius.circular(10),
         child: Container(
           width: double.infinity,
@@ -223,7 +285,12 @@ class DateTimeSuggestionsWidget extends StatelessWidget {
                             ? FontWeight.w600
                             : FontWeight.normal,
                       ),
-                      child: Text(_formatDate(suggestion.startDateTime)),
+                      child: Text(
+                        _formatDateRange(
+                          suggestion.startDateTime,
+                          suggestion.endDateTime,
+                        ),
+                      ),
                     ),
                     const SizedBox(height: Gaps.xxs),
                     // Time range
@@ -293,6 +360,23 @@ class DateTimeSuggestionsWidget extends StatelessWidget {
     return '$weekday, $month ${dateTime.day}';
   }
 
+  String _formatDateRange(DateTime startTime, DateTime? endTime) {
+    if (endTime == null) {
+      return _formatDate(startTime);
+    }
+
+    // Check if same day
+    final startDate = DateTime(startTime.year, startTime.month, startTime.day);
+    final endDate = DateTime(endTime.year, endTime.month, endTime.day);
+
+    if (startDate == endDate) {
+      return _formatDate(startTime);
+    } else {
+      // Different days - show both dates
+      return '${_formatDate(startTime)} - ${_formatDate(endTime)}';
+    }
+  }
+
   String _formatTimeRange(DateTime startTime, DateTime? endTime) {
     String formatTime(DateTime time) {
       final hour = time.hour;
@@ -313,115 +397,156 @@ class DateTimeSuggestionsWidget extends StatelessWidget {
   }
 
   void _showViewVotesBottomSheet(BuildContext context) {
-    showModalBottomSheet<void>(
+    // Organize votes by suggestion
+    final Map<String, List<SuggestionVote>> votesBySuggestion = {};
+    for (final suggestion in widget.suggestions) {
+      votesBySuggestion[suggestion.id] = suggestion.votes;
+    }
+
+    CommonBottomSheet.show(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (BuildContext context) {
-        return AnimatedContainer(
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeOutCubic,
-          height: MediaQuery.of(context).size.height * 0.85,
-          decoration: const BoxDecoration(
-            color: BrandColors.bg2,
-            borderRadius: BorderRadius.only(
-              topLeft: Radius.circular(Radii.md),
-              topRight: Radius.circular(Radii.md),
-            ),
-          ),
-          child: Column(
-            children: [
-              // Handle bar
-              Container(
-                width: 32,
-                height: 4,
-                margin: const EdgeInsets.only(top: Gaps.sm),
-                decoration: BoxDecoration(
-                  color: BrandColors.text2,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
+      title: 'Suggestion Votes',
+      content: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Create sections for each suggestion
+          ...widget.suggestions.map((suggestion) {
+            if (suggestion.votes.isEmpty) return const SizedBox.shrink();
 
-              // Header
-              Padding(
-                padding: const EdgeInsets.all(Pads.sectionH),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text('Suggestion Votes', style: AppText.titleMediumEmph),
-                    IconButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      icon: const Icon(Icons.close, color: BrandColors.text2),
-                    ),
-                  ],
-                ),
-              ),
-
-              // Content - organized by suggestions
-              Expanded(
-                child: ListView.builder(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: Pads.sectionH,
+            return Column(
+              children: [
+                _SuggestionVoteSection(
+                  title: _formatDateRange(
+                    suggestion.startDateTime,
+                    suggestion.endDateTime,
                   ),
-                  itemCount: suggestions.length,
-                  itemBuilder: (context, index) {
-                    final suggestion = suggestions[index];
-                    return AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
-                      margin: const EdgeInsets.only(bottom: Gaps.lg),
-                      padding: const EdgeInsets.all(Pads.sectionH),
-                      decoration: BoxDecoration(
-                        color: BrandColors.bg3,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // Suggestion details
-                          Text(
-                            _formatDate(suggestion.startDateTime),
-                            style: AppText.bodyMediumEmph,
-                          ),
-                          const SizedBox(height: Gaps.xxs),
-                          Text(
-                            _formatTimeRange(
-                              suggestion.startDateTime,
-                              suggestion.endDateTime,
-                            ),
-                            style: AppText.bodyMedium.copyWith(
-                              color: BrandColors.text2,
-                            ),
-                          ),
-                          const SizedBox(height: Gaps.sm),
-
-                          // Vote count
-                          Text(
-                            '${suggestion.voteCount} votes',
-                            style: AppText.bodyMedium.copyWith(
-                              color: BrandColors.planning,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-
-                          // TODO: Add list of users who voted for this suggestion
-                          const SizedBox(height: Gaps.xs),
-                          Text(
-                            'Users who voted: [To be implemented]',
-                            style: AppText.bodyMedium.copyWith(
-                              color: BrandColors.text2,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ],
-                      ),
-                    );
-                  },
+                  subtitle: _formatTimeRange(
+                    suggestion.startDateTime,
+                    suggestion.endDateTime,
+                  ),
+                  count: suggestion.votes.length,
+                  votes: suggestion.votes,
                 ),
-              ),
-            ],
-          ),
-        );
-      },
+                if (suggestion != widget.suggestions.last)
+                  const SizedBox(height: Gaps.lg),
+              ],
+            );
+          }),
+        ],
+      ),
     );
+  }
+}
+
+/// Vote section for a specific suggestion (similar to RSVP widget format)
+class _SuggestionVoteSection extends StatelessWidget {
+  final String title;
+  final String? subtitle;
+  final int count;
+  final List<SuggestionVote> votes;
+
+  const _SuggestionVoteSection({
+    required this.title,
+    this.subtitle,
+    required this.count,
+    required this.votes,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Section title with count
+        Text(
+          '$count Votes',
+          style: AppText.bodyMediumEmph.copyWith(color: BrandColors.text1),
+        ),
+        const SizedBox(height: Gaps.xs),
+        Text(
+          title,
+          style: AppText.labelLarge.copyWith(color: BrandColors.planning),
+        ),
+        if (subtitle != null) ...[
+          const SizedBox(height: Gaps.xxs),
+          Text(
+            subtitle!,
+            style: AppText.bodyMedium.copyWith(color: BrandColors.text2),
+          ),
+        ],
+        const SizedBox(height: Gaps.md),
+
+        // Vote list
+        ...votes.map((vote) => _SuggestionVoteItem(vote: vote)),
+      ],
+    );
+  }
+}
+
+/// Individual vote item for suggestions
+class _SuggestionVoteItem extends StatelessWidget {
+  final SuggestionVote vote;
+
+  const _SuggestionVoteItem({required this.vote});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: Gaps.sm),
+      child: Row(
+        children: [
+          // Avatar
+          CircleAvatar(
+            radius: 16,
+            backgroundColor: BrandColors.bg3,
+            child: vote.userAvatar != null
+                ? ClipOval(
+                    child: Image.network(
+                      vote.userAvatar!,
+                      width: 32,
+                      height: 32,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) =>
+                          _buildDefaultAvatar(),
+                    ),
+                  )
+                : _buildDefaultAvatar(),
+          ),
+          const SizedBox(width: Gaps.sm),
+
+          // Name
+          Expanded(child: Text(vote.userName, style: AppText.bodyMedium)),
+
+          // Date (if voted)
+          if (vote.votedAt != null)
+            Text(
+              _formatVoteDate(vote.votedAt!),
+              style: AppText.bodyMedium.copyWith(
+                color: BrandColors.text2,
+                fontSize: 12,
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDefaultAvatar() {
+    return const Icon(Icons.person, color: BrandColors.text2, size: 20);
+  }
+
+  String _formatVoteDate(DateTime date) {
+    final now = DateTime.now();
+    final difference = now.difference(date).inDays;
+
+    if (difference == 0) {
+      return 'Today';
+    } else if (difference == 1) {
+      return 'Yesterday';
+    } else if (difference < 7) {
+      return '${difference}d ago';
+    } else {
+      return '${date.day}/${date.month}';
+    }
   }
 }
