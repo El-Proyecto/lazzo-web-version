@@ -22,7 +22,18 @@ class AuthNotifier extends StateNotifier<AsyncValue<domain.User?>> {
   final AuthRepository repository;
 
   AuthNotifier(this.repository) : super(const AsyncLoading()) {
-    getCurrentUser();
+    _initializeAuth();
+  }
+
+  /// Inicializa o estado de autenticação verificando se há um usuário logado
+  Future<void> _initializeAuth() async {
+    try {
+      final user = await repository.getCurrentUser();
+      state = AsyncData(user);
+    } catch (e) {
+      // Se houver erro ao verificar usuário, assume que não está logado
+      state = const AsyncData(null);
+    }
   }
 
   Future<bool> login(String email) async {
@@ -46,13 +57,21 @@ class AuthNotifier extends StateNotifier<AsyncValue<domain.User?>> {
   }
 
   Future<void> getCurrentUser() async {
-    final user = await repository.getCurrentUser();
-    state = AsyncData(user);
+    try {
+      final user = await repository.getCurrentUser();
+      state = AsyncData(user);
+    } catch (e, st) {
+      state = AsyncError(e, st);
+    }
   }
 
   Future<void> logout() async {
-    await repository.logout();
-    state = const AsyncData(null);
+    try {
+      await repository.logout();
+      state = const AsyncData(null);
+    } catch (e, st) {
+      state = AsyncError(e, st);
+    }
   }
 
   Future<bool> signInWithGoogle() async {
@@ -71,6 +90,8 @@ class AuthNotifier extends StateNotifier<AsyncValue<domain.User?>> {
   Future<void> ensureUsersRow(String id, String email, {String? name}) async {
     try {
       await repository.ensureUsersRow(id, email, name: name);
+      // Após garantir a row do usuário, atualiza o estado
+      await getCurrentUser();
     } catch (e, st) {
       state = AsyncError(e, st);
     }

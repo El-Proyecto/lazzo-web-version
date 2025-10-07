@@ -202,7 +202,7 @@ class FakeGroupRepository implements GroupRepository {
     await Future.delayed(const Duration(milliseconds: 500));
 
     final createdGroup = group.copyWith(
-      id: _nextId++,
+      id: 'fake_group_${_nextId++}',
       createdAt: DateTime.now(),
     );
 

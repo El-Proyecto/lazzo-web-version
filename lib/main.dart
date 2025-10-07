@@ -50,6 +50,11 @@ import '../features/auth/data/repositories/users_repository.dart';
 
 // CREATE EVENT (P2 implementation)
 import 'features/create_event/presentation/providers/event_providers.dart';
+
+// GROUPS (P2 implementation)
+import 'features/groups/presentation/providers/groups_provider.dart';
+import 'features/groups/data/repositories/group_repository_impl.dart';
+import 'features/groups/data/data_sources/groups_data_source.dart';
 import 'features/create_event/data/repositories/event_repository_impl.dart';
 
 void main() async {
@@ -110,6 +115,13 @@ void main() async {
         // groupRepositoryProvider.overrideWith(
         //   (ref) => GroupRepositoryImpl(GroupRemoteDataSource(Supabase.instance.client)),
         // ),
+
+        // ✅ GROUPS repo -> real (Supabase) via DI (P2 implementation)
+        groupRepositoryProvider.overrideWith((ref) {
+          final client = Supabase.instance.client;
+          final dataSource = SupabaseGroupsDataSource(client);
+          return GroupRepositoryImpl(dataSource, client);
+        }),
 
         // Profile repo -> real (Supabase)
         profileRepositoryProvider.overrideWith(

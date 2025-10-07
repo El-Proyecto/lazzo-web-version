@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:qr_flutter/qr_flutter.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/constants/text_styles.dart';
@@ -95,8 +97,26 @@ class GroupCreatedPage extends StatelessWidget {
                   ),
                 );
               },
-              onShareLink: () {
-                // TODO: Implement share functionality
+              onShareLink: () async {
+                final groupLink = 'https://lazzo.app/groups/${group.id}';
+                final shareText = 'Join my group "${group.name}" on Lazzo!\n\n$groupLink';
+                
+                try {
+                  await Share.share(
+                    shareText,
+                    subject: 'Join ${group.name} on Lazzo',
+                  );
+                } catch (e) {
+                  // Fallback if share fails
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Unable to share. Link copied to clipboard instead.'),
+                      ),
+                    );
+                    Clipboard.setData(ClipboardData(text: groupLink));
+                  }
+                }
               },
             ),
 
@@ -252,15 +272,26 @@ class _QrCodeSection extends StatelessWidget {
             aspectRatio: 1.0, // Makes it square
             child: Container(
               width: double.infinity,
+              padding: const EdgeInsets.all(16.0), // Using concrete value instead of Insets.md
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(Radii.md),
               ),
-              child: const Center(
-                child: Text(
-                  'QR Code\n(Will be generated)',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.black, fontSize: 16),
+              child: QrImageView(
+                data: data,
+                version: QrVersions.auto,
+                size: double.infinity,
+                backgroundColor: Colors.white,
+                errorCorrectionLevel: QrErrorCorrectLevel.M,
+                padding: const EdgeInsets.all(8.0),
+                // Removed deprecated foregroundColor
+                eyeStyle: const QrEyeStyle(
+                  eyeShape: QrEyeShape.square,
+                  color: Colors.black,
+                ),
+                dataModuleStyle: const QrDataModuleStyle(
+                  dataModuleShape: QrDataModuleShape.square,
+                  color: Colors.black,
                 ),
               ),
             ),

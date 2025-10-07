@@ -1,14 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../domain/entities/group_entity.dart';
 import '../../domain/entities/group_permissions.dart';
-import '../../domain/repositories/group_repository.dart';
 import '../../domain/usecases/create_group.dart';
-import '../../data/fakes/fake_group_repository.dart';
-
-/// Provider for the group repository (fake by default)
-final groupRepositoryProvider = Provider<GroupRepository>((ref) {
-  return FakeGroupRepository();
-});
+import 'groups_provider.dart'; // Import the shared provider
 
 /// Provider for create group use case
 final createGroupUseCaseProvider = Provider<CreateGroup>((ref) {
@@ -49,7 +43,7 @@ class CreateGroupController extends StateNotifier<AsyncValue<GroupEntity?>> {
         photoUrl: photoPath,
         permissions: GroupPermissions(
           membersCanInvite: canAddMembers,
-          membersCanAddPhotos: canEditSettings,
+          membersCanAddMembers: canEditSettings,
           membersCanCreateEvents: canSendMessages,
         ),
       );

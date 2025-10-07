@@ -2,7 +2,7 @@ import 'group_permissions.dart';
 
 /// Group entity representing a group in the domain layer
 class GroupEntity {
-  final int? id;
+  final String? id;
   final String name;
   final String? description;
   final String? photoUrl;
@@ -19,7 +19,7 @@ class GroupEntity {
   });
 
   GroupEntity copyWith({
-    int? id,
+    String? id,
     String? name,
     String? description,
     String? photoUrl,

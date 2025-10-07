@@ -18,9 +18,34 @@ class GroupsPage extends ConsumerStatefulWidget {
   ConsumerState<GroupsPage> createState() => _GroupsPageState();
 }
 
-class _GroupsPageState extends ConsumerState<GroupsPage> {
+class _GroupsPageState extends ConsumerState<GroupsPage> with WidgetsBindingObserver {
   String _searchQuery = '';
   GroupFilter _selectedFilter = GroupFilter.all;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    // Force refresh groups every time the page is initialized
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(groupsControllerProvider).refreshGroups();
+    });
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    // Refresh groups when app comes back to foreground
+    if (state == AppLifecycleState.resumed) {
+      ref.read(groupsControllerProvider).refreshGroups();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
