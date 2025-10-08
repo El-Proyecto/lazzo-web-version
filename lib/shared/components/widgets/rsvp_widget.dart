@@ -653,6 +653,13 @@ class _VoteSection extends StatelessWidget {
     }
   }
 
+  String _getCountText() {
+    if (title == 'No response') {
+      return '$count ${count == 1 ? "left" : "left"}';
+    }
+    return '$count ${count == 1 ? "Vote" : "Votes"}';
+  }
+
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -670,7 +677,7 @@ class _VoteSection extends StatelessWidget {
               ),
             ),
             Text(
-              '$count ${count == 1 ? "Vote" : "Votes"}',
+              _getCountText(),
               style: AppText.bodyMediumEmph.copyWith(color: BrandColors.text1),
             ),
           ],
@@ -691,6 +698,11 @@ class _VoteItem extends StatelessWidget {
   final bool showDate;
 
   const _VoteItem({required this.vote, this.showDate = true});
+
+  String get _displayName {
+    // Show "You" for current user, otherwise show the user name
+    return vote.userId == 'current-user' ? 'You' : vote.userName;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -718,7 +730,7 @@ class _VoteItem extends StatelessWidget {
           const SizedBox(width: Gaps.sm),
 
           // Name
-          Expanded(child: Text(vote.userName, style: AppText.bodyMedium)),
+          Expanded(child: Text(_displayName, style: AppText.bodyMedium)),
 
           // Date (if voted and should show date)
           if (showDate && vote.votedAt != null)

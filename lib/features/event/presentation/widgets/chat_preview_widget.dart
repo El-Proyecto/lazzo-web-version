@@ -47,6 +47,14 @@ class ChatPreviewWidget extends StatefulWidget {
 class _ChatPreviewWidgetState extends State<ChatPreviewWidget> {
   final TextEditingController _controller = TextEditingController();
   final FocusNode _focusNode = FocusNode();
+  late final DateTime _widgetInitTime;
+
+  @override
+  void initState() {
+    super.initState();
+    // Track when the widget was initialized to filter out old user messages
+    _widgetInitTime = DateTime.now();
+  }
 
   @override
   void dispose() {
@@ -69,30 +77,34 @@ class _ChatPreviewWidgetState extends State<ChatPreviewWidget> {
     final sortedMessages = [...widget.recentMessages]
       ..sort((a, b) => a.timestamp.compareTo(b.timestamp));
 
-    // Get unread messages from other users only
+    // Get only unread messages from other users
     final unreadMessages = sortedMessages
         .where((m) => !m.read && m.userId != widget.currentUserId)
         .toList();
 
-    // Logic for messages to show:
-    // If there are unread messages, show all messages to provide context
-    // Otherwise, show last 2 messages as fallback
-    final messagesToShow = unreadMessages.isNotEmpty
-        ? sortedMessages // Show all messages when there are unread ones
-        : (sortedMessages.length >= 2
-              ? sortedMessages.sublist(sortedMessages.length - 2)
-              : sortedMessages);
+    // Get current user's messages ONLY if they were sent after widget initialization
+    // This ensures we only show messages sent through the current chat input
+    final currentUserMessages = sortedMessages
+        .where(
+          (m) =>
+              m.userId == widget.currentUserId &&
+              m.timestamp.isAfter(_widgetInitTime),
+        )
+        .toList();
+
+    // Combine unread messages + current user messages, sorted by timestamp
+    final messagesToShow = [...unreadMessages, ...currentUserMessages]
+      ..sort((a, b) => a.timestamp.compareTo(b.timestamp));
 
     // Calculate height constraints
     final screenHeight = MediaQuery.of(context).size.height;
     final maxChatHeight = screenHeight * 0.4;
 
     // Estimate height per message (avatar + bubble + spacing + name + timestamp)
-    const double messageBubbleHeight = 72.0; // Increased for better spacing
+    const double messageBubbleHeight = 72.0;
     final double neededHeight = messagesToShow.length * messageBubbleHeight;
     final bool needsScroll = neededHeight > maxChatHeight;
     final double chatHeight = needsScroll ? maxChatHeight : neededHeight;
-
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(Pads.sectionH),
@@ -317,7 +329,9 @@ class _MessageBubble extends StatelessWidget {
                 child: Text(
                   message.content,
                   style: AppText.bodyMedium.copyWith(
-                    color: isCurrentUser ? BrandColors.text1 : BrandColors.text1,
+                    color: isCurrentUser
+                        ? BrandColors.text1
+                        : BrandColors.text1,
                   ),
                 ),
               ),

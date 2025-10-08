@@ -63,6 +63,7 @@ class EventPage extends ConsumerWidget {
                 title: event.name,
                 location: event.location?.displayName,
                 dateTime: event.startDateTime,
+                endDateTime: event.endDateTime,
               ),
               const SizedBox(height: Gaps.xl),
 
@@ -73,34 +74,47 @@ class EventPage extends ConsumerWidget {
                     data: (userRsvp) {
                       return suggestionsAsync.when(
                         data: (suggestions) {
+                          // Calculate dynamic counts from actual RSVP data
+                          final goingCount = rsvps
+                              .where((r) => r.status == RsvpStatus.going)
+                              .length;
+                          final notGoingCount = rsvps
+                              .where((r) => r.status == RsvpStatus.notGoing)
+                              .length;
+                          final pendingCount = rsvps
+                              .where((r) => r.status == RsvpStatus.pending)
+                              .length;
+
                           return rsvp_widget.RsvpWidget(
-                            goingCount: event.goingCount,
-                            notGoingCount: event.notGoingCount,
-                            pendingCount: rsvps
-                                .where((r) => r.status == RsvpStatus.pending)
-                                .length,
+                            goingCount: goingCount,
+                            notGoingCount: notGoingCount,
+                            pendingCount: pendingCount,
                             userVote: _getUserVoteStatus(userRsvp),
-                            onGoingPressed: () {
+                            onGoingPressed: () async {
                               final currentStatus =
                                   userRsvp?.status ?? RsvpStatus.pending;
                               final newStatus =
                                   currentStatus == RsvpStatus.going
                                   ? RsvpStatus.pending
                                   : RsvpStatus.going;
-                              ref
+                              await ref
                                   .read(userRsvpProvider(eventId).notifier)
-                                  .submitVote(newStatus);
+                                  .submitVote(newStatus, ref: ref);
+                              // Invalidate RSVP data to refresh counts AFTER vote is submitted
+                              ref.invalidate(eventRsvpsProvider(eventId));
                             },
-                            onNotGoingPressed: () {
+                            onNotGoingPressed: () async {
                               final currentStatus =
                                   userRsvp?.status ?? RsvpStatus.pending;
                               final newStatus =
                                   currentStatus == RsvpStatus.notGoing
                                   ? RsvpStatus.pending
                                   : RsvpStatus.notGoing;
-                              ref
+                              await ref
                                   .read(userRsvpProvider(eventId).notifier)
-                                  .submitVote(newStatus);
+                                  .submitVote(newStatus, ref: ref);
+                              // Invalidate RSVP data to refresh counts AFTER vote is submitted
+                              ref.invalidate(eventRsvpsProvider(eventId));
                             },
                             allVotes: rsvps
                                 .map(

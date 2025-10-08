@@ -10,6 +10,7 @@ class EventHeader extends StatelessWidget {
   final String title;
   final String? location;
   final DateTime? dateTime;
+  final DateTime? endDateTime;
 
   const EventHeader({
     super.key,
@@ -17,6 +18,7 @@ class EventHeader extends StatelessWidget {
     required this.title,
     this.location,
     this.dateTime,
+    this.endDateTime,
   });
 
   @override
@@ -50,29 +52,54 @@ class EventHeader extends StatelessWidget {
           const SizedBox(height: Gaps.xxs),
           _InfoRow(
             icon: Icons.calendar_today,
-            text: _formatDateTime(dateTime!),
+            text: _formatDateTime(dateTime!, endDateTime),
           ),
         ],
       ],
     );
   }
 
-  String _formatDateTime(DateTime dt) {
+  String _formatDateTime(DateTime startDt, DateTime? endDt) {
     final months = [
       'Jan',
-      'Fev',
+      'Feb',
       'Mar',
-      'Abr',
-      'Mai',
+      'Apr',
+      'May',
       'Jun',
       'Jul',
-      'Ago',
-      'Set',
-      'Out',
+      'Aug',
+      'Sep',
+      'Oct',
       'Nov',
-      'Dez',
+      'Dec',
     ];
-    return '${dt.day} ${months[dt.month - 1]} · ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+
+    final startDay = startDt.day;
+    final startMonth = months[startDt.month - 1];
+    final startTime =
+        '${startDt.hour.toString().padLeft(2, '0')}:${startDt.minute.toString().padLeft(2, '0')}';
+
+    if (endDt == null) {
+      // Only start date and time
+      return '$startDay $startMonth · $startTime';
+    }
+
+    final endDay = endDt.day;
+    final endMonth = months[endDt.month - 1];
+    final endTime =
+        '${endDt.hour.toString().padLeft(2, '0')}:${endDt.minute.toString().padLeft(2, '0')}';
+
+    // Check if same day
+    if (startDt.year == endDt.year &&
+        startDt.month == endDt.month &&
+        startDt.day == endDt.day) {
+      // Same day: "15 Oct · 10:00 - 18:00"
+      return '$startDay $startMonth · $startTime - $endTime';
+    } else {
+      // Different days: "15 Oct 10:00 - 16 Oct 18:00"
+      return '$startDay $startMonth $startTime - $endDay $endMonth $endTime';
+    }
   }
 }
 

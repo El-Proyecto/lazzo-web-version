@@ -332,7 +332,10 @@ class _AddSuggestionBottomSheetState
                                   ? BrandColors
                                         .planning // Green when valid
                                   : BrandColors.text1.withValues(alpha: 0.3),
-                              foregroundColor: BrandColors.bg1,
+                              foregroundColor: _hasChanges && _isTimeValid
+                                  ? BrandColors
+                                        .text1 // Green text when enabled
+                                  : BrandColors.bg1,
                               padding: const EdgeInsets.symmetric(
                                 vertical: Pads.ctlV,
                               ),

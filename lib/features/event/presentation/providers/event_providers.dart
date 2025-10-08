@@ -232,17 +232,83 @@ class UserRsvpNotifier extends StateNotifier<AsyncValue<Rsvp?>> {
     }
   }
 
-  Future<void> submitVote(RsvpStatus status) async {
+  Future<void> submitVote(RsvpStatus status, {WidgetRef? ref}) async {
     try {
       // TODO: Get current user ID from auth service
       final rsvp = await repository.submitRsvp(eventId, 'current-user', status);
       state = AsyncValue.data(rsvp);
 
-      // No need to reload, the repository should return the updated RSVP
+      // If changing to "Can" (going), auto-vote for current event suggestion
+      // If changing from "Can" to something else, remove vote from current event suggestion
+      if (ref != null) {
+        try {
+          await _syncWithCurrentEventSuggestion(status, ref);
+        } catch (e) {
+          // Log error but don't fail the RSVP submission
+          // print('Failed to sync RSVP with suggestion vote: $e');
+        }
+      }
     } catch (error, stackTrace) {
       state = AsyncValue.error(error, stackTrace);
       // Reload on error to get consistent state
       _loadUserRsvp();
+    }
+  }
+
+  Future<void> _syncWithCurrentEventSuggestion(
+    RsvpStatus status,
+    WidgetRef ref,
+  ) async {
+    try {
+      // Get suggestions to find the current event suggestion
+      final suggestions = await ref.read(
+        eventSuggestionsProvider(eventId).future,
+      );
+      if (suggestions.isEmpty) return;
+
+      // Find current event suggestion (it should be the first one with event's date/time)
+      final event = await ref.read(eventDetailProvider(eventId).future);
+      if (event.startDateTime == null) return;
+
+      final currentEventSuggestion = suggestions.firstWhere(
+        (s) =>
+            s.startDateTime.isAtSameMomentAs(event.startDateTime!) &&
+            (s.endDateTime?.isAtSameMomentAs(
+                  event.endDateTime ?? event.startDateTime!,
+                ) ??
+                true),
+        orElse: () => suggestions
+            .first, // Fallback to first suggestion if exact match not found
+      );
+
+      final suggestionRepository = ref.read(suggestionRepositoryProvider);
+      final userVotes = await ref.read(
+        userSuggestionVotesProvider(eventId).future,
+      );
+      final hasVotedForCurrentSuggestion = userVotes.any(
+        (vote) => vote.suggestionId == currentEventSuggestion.id,
+      );
+
+      if (status == RsvpStatus.going && !hasVotedForCurrentSuggestion) {
+        // User voted "Can" - add vote for current event suggestion
+        await suggestionRepository.voteOnSuggestion(
+          suggestionId: currentEventSuggestion.id,
+          userId: 'current-user',
+        );
+        ref.invalidate(suggestionVotesProvider(eventId));
+        ref.invalidate(userSuggestionVotesProvider(eventId));
+      } else if (status != RsvpStatus.going && hasVotedForCurrentSuggestion) {
+        // User voted "Can't" or "Pending" - remove vote from current event suggestion
+        await suggestionRepository.removeVoteFromSuggestion(
+          suggestionId: currentEventSuggestion.id,
+          userId: 'current-user',
+        );
+        ref.invalidate(suggestionVotesProvider(eventId));
+        ref.invalidate(userSuggestionVotesProvider(eventId));
+      }
+    } catch (e) {
+      // Log but don't throw
+      // print('Error syncing RSVP with suggestion: $e');
     }
   }
 }
@@ -323,6 +389,8 @@ class CreateSuggestionNotifier extends StateNotifier<AsyncValue<void>> {
       );
       final isFirstSuggestion = existingSuggestions.isEmpty;
 
+      String? currentEventSuggestionId;
+
       // If this is the first suggestion, check for existing RSVP "Can" votes
       // and automatically add current event date/time as a suggestion FIRST
       if (isFirstSuggestion) {
@@ -338,12 +406,27 @@ class CreateSuggestionNotifier extends StateNotifier<AsyncValue<void>> {
               event.startDateTime != null &&
               event.endDateTime != null) {
             // Create suggestion for current event date/time FIRST
-            await createSuggestion(
+            final currentEventSuggestion = await createSuggestion(
               eventId: eventId,
               userId: 'current-user', // TODO: Get from auth service
               startDateTime: event.startDateTime!,
               endDateTime: event.endDateTime,
             );
+            currentEventSuggestionId = currentEventSuggestion.id;
+
+            // Vote for the current event suggestion with all "Can" voters
+            final suggestionRepository = ref.read(suggestionRepositoryProvider);
+            for (final vote in canVotes) {
+              try {
+                await suggestionRepository.voteOnSuggestion(
+                  suggestionId: currentEventSuggestionId,
+                  userId: vote.userId,
+                );
+              } catch (e) {
+                // Log error but continue with other votes
+                // print('Failed to auto-vote for user ${vote.userId}: $e');
+              }
+            }
           }
         } catch (e) {
           // Log error but don't fail the main operation
@@ -352,11 +435,18 @@ class CreateSuggestionNotifier extends StateNotifier<AsyncValue<void>> {
       }
 
       // Create the requested suggestion AFTER the auto-suggestion
-      await createSuggestion(
+      final userSuggestion = await createSuggestion(
         eventId: eventId,
         userId: 'current-user',
         startDateTime: startDateTime,
         endDateTime: endDateTime,
+      );
+
+      // Automatically vote for the user's new suggestion
+      final suggestionRepository = ref.read(suggestionRepositoryProvider);
+      await suggestionRepository.voteOnSuggestion(
+        suggestionId: userSuggestion.id,
+        userId: 'current-user',
       );
 
       // Invalidate providers to refresh data
@@ -381,12 +471,64 @@ class ToggleSuggestionVoteNotifier extends StateNotifier<AsyncValue<void>> {
   Future<void> toggleVote_(String eventId, String suggestionId) async {
     state = const AsyncValue.loading();
     try {
+      // Check if this is the current event suggestion before toggling
+      final isCurrentEventSuggestion = await _isCurrentEventSuggestion(
+        eventId,
+        suggestionId,
+      );
+
+      // Get current vote status
+      final userVotes = await ref.read(
+        userSuggestionVotesProvider(eventId).future,
+      );
+      final hasCurrentVote = userVotes.any(
+        (vote) => vote.suggestionId == suggestionId,
+      );
+
       // TODO: Get current user ID from auth service
       await toggleVote(
         suggestionId: suggestionId,
         userId: 'current-user',
         eventId: eventId,
       );
+
+      // If this is the current event suggestion, sync with RSVP
+      if (isCurrentEventSuggestion) {
+        try {
+          final rsvpRepository = ref.read(rsvpRepositoryProvider);
+          final currentRsvp = await rsvpRepository.getUserRsvp(
+            eventId,
+            'current-user',
+          );
+
+          if (!hasCurrentVote) {
+            // User just voted for current event suggestion - change RSVP to "Can"
+            if (currentRsvp?.status != RsvpStatus.going) {
+              await rsvpRepository.submitRsvp(
+                eventId,
+                'current-user',
+                RsvpStatus.going,
+              );
+              ref.invalidate(userRsvpProvider(eventId));
+              ref.invalidate(eventRsvpsProvider(eventId));
+            }
+          } else {
+            // User just removed vote from current event suggestion - change RSVP to "Can't"
+            if (currentRsvp?.status != RsvpStatus.notGoing) {
+              await rsvpRepository.submitRsvp(
+                eventId,
+                'current-user',
+                RsvpStatus.notGoing,
+              );
+              ref.invalidate(userRsvpProvider(eventId));
+              ref.invalidate(eventRsvpsProvider(eventId));
+            }
+          }
+        } catch (e) {
+          // Log error but don't fail suggestion vote
+          // print('Failed to sync suggestion vote with RSVP: $e');
+        }
+      }
 
       // Invalidate providers to refresh data
       ref.invalidate(eventSuggestionsProvider(eventId));
@@ -396,6 +538,36 @@ class ToggleSuggestionVoteNotifier extends StateNotifier<AsyncValue<void>> {
       state = const AsyncValue.data(null);
     } catch (error, stackTrace) {
       state = AsyncValue.error(error, stackTrace);
+    }
+  }
+
+  Future<bool> _isCurrentEventSuggestion(
+    String eventId,
+    String suggestionId,
+  ) async {
+    try {
+      final suggestions = await ref.read(
+        eventSuggestionsProvider(eventId).future,
+      );
+      if (suggestions.isEmpty) return false;
+
+      final event = await ref.read(eventDetailProvider(eventId).future);
+      if (event.startDateTime == null) return false;
+
+      // Find the suggestion with matching date/time to current event
+      final currentEventSuggestion = suggestions.firstWhere(
+        (s) =>
+            s.startDateTime.isAtSameMomentAs(event.startDateTime!) &&
+            (s.endDateTime?.isAtSameMomentAs(
+                  event.endDateTime ?? event.startDateTime!,
+                ) ??
+                true),
+        orElse: () => suggestions.first, // Fallback to first suggestion
+      );
+
+      return currentEventSuggestion.id == suggestionId;
+    } catch (e) {
+      return false;
     }
   }
 }
