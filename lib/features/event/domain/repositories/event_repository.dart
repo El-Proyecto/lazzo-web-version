@@ -8,4 +8,11 @@ abstract class EventRepository {
 
   /// Check if user is the event host
   Future<bool> isUserHost(String eventId, String userId);
+
+  /// Update event date/time
+  Future<EventDetail> updateEventDateTime(
+    String eventId,
+    DateTime startDateTime,
+    DateTime? endDateTime,
+  );
 }

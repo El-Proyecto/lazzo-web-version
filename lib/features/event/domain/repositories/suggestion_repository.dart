@@ -33,4 +33,7 @@ abstract class SuggestionRepository {
     required String eventId,
     required String userId,
   });
+
+  /// Clear all suggestions and votes for an event
+  Future<void> clearEventSuggestions(String eventId);
 }

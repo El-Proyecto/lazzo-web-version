@@ -175,4 +175,22 @@ class FakeRsvpRepository implements RsvpRepository {
         .where((r) => r.eventId == eventId && r.status == status)
         .toList();
   }
+
+  @override
+  Future<void> resetRsvpVotesFromSuggestion(
+    String eventId,
+    List<String> suggestionVoterUserIds,
+  ) async {
+    await Future.delayed(const Duration(milliseconds: 300));
+
+    // In a real implementation, this would:
+    // 1. Find all RSVP votes for the event that voted on the given suggestion
+    // 2. Update those votes to reflect their suggestion choice (going/not going)
+    // 3. Clear their suggestion vote data
+
+    // For fake implementation, just simulate the operation
+    print(
+      'Resetting RSVP votes for event $eventId from suggestion voters: $suggestionVoterUserIds',
+    );
+  }
 }

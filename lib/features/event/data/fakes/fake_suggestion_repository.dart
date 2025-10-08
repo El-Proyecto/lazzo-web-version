@@ -111,6 +111,24 @@ class FakeSuggestionRepository implements SuggestionRepository {
         .toList();
   }
 
+  @override
+  Future<void> clearEventSuggestions(String eventId) async {
+    // Simulate network delay
+    await Future.delayed(const Duration(milliseconds: 300));
+
+    // Get all suggestion IDs for this event
+    final eventSuggestions = _suggestions[eventId] ?? [];
+    final suggestionIds = eventSuggestions.map((s) => s.id).toList();
+
+    // Remove all votes for these suggestions
+    for (final suggestionId in suggestionIds) {
+      _votes.remove(suggestionId);
+    }
+
+    // Remove all suggestions for this event
+    _suggestions.remove(eventId);
+  }
+
   // Helper methods to generate fake user data
   String _getUserName(String userId) {
     switch (userId) {

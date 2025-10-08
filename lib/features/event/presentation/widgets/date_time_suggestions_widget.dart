@@ -48,8 +48,10 @@ class DateTimeSuggestionsWidget extends StatefulWidget {
   final Set<String> userVotes; // IDs of suggestions the user has voted for
   final bool isHost; // Whether current user is host/admin
   final VoidCallback onAddSuggestion; // Callback for add suggestion button
-  final Function(String suggestionId)
-  onPickAsFinal; // Callback for pick as final
+  final Function(DateTimeSuggestion selectedSuggestion)
+  onSetDate; // Callback for set date
+  final DateTime? currentEventStartDateTime; // Current event start date/time
+  final DateTime? currentEventEndDateTime; // Current event end date/time
 
   const DateTimeSuggestionsWidget({
     super.key,
@@ -58,7 +60,9 @@ class DateTimeSuggestionsWidget extends StatefulWidget {
     required this.userVotes,
     required this.isHost,
     required this.onAddSuggestion,
-    required this.onPickAsFinal,
+    required this.onSetDate,
+    this.currentEventStartDateTime,
+    this.currentEventEndDateTime,
   });
 
   @override
@@ -68,7 +72,9 @@ class DateTimeSuggestionsWidget extends StatefulWidget {
 
 class _DateTimeSuggestionsWidgetState extends State<DateTimeSuggestionsWidget> {
   late Set<String> _currentUserVotes;
-  Set<String> _pendingVotes = {}; // Track votes being processed
+  final Set<String> _pendingVotes = {}; // Track votes being processed
+  bool _isSelectionMode = false; // Whether in date selection mode
+  String? _selectedSuggestionId; // ID of selected suggestion for set date
 
   @override
   void initState() {
@@ -85,6 +91,16 @@ class _DateTimeSuggestionsWidgetState extends State<DateTimeSuggestionsWidget> {
   }
 
   void _handleVote(String suggestionId) {
+    // If in selection mode, handle selection instead of voting
+    if (_isSelectionMode) {
+      setState(() {
+        _selectedSuggestionId = _selectedSuggestionId == suggestionId
+            ? null
+            : suggestionId;
+      });
+      return;
+    }
+
     // Prevent double-clicks
     if (_pendingVotes.contains(suggestionId)) return;
 
@@ -101,6 +117,46 @@ class _DateTimeSuggestionsWidgetState extends State<DateTimeSuggestionsWidget> {
         });
       }
     });
+  }
+
+  void _enterSelectionMode() {
+    setState(() {
+      _isSelectionMode = true;
+      _selectedSuggestionId = null;
+    });
+  }
+
+  void _exitSelectionMode() {
+    setState(() {
+      _isSelectionMode = false;
+      _selectedSuggestionId = null;
+    });
+  }
+
+  void _confirmDateSelection() {
+    if (_selectedSuggestionId != null) {
+      final selectedSuggestion = widget.suggestions.firstWhere(
+        (s) => s.id == _selectedSuggestionId,
+      );
+      widget.onSetDate(selectedSuggestion);
+    }
+  }
+
+  /// Check if a suggestion matches the current event date/time
+  bool _isCurrentEventSuggestion(DateTimeSuggestion suggestion) {
+    if (widget.currentEventStartDateTime == null) return false;
+
+    // Compare start date/time
+    if (suggestion.startDateTime != widget.currentEventStartDateTime) {
+      return false;
+    }
+
+    // Compare end date/time (both must be null or both must match)
+    if (suggestion.endDateTime != widget.currentEventEndDateTime) {
+      return false;
+    }
+
+    return true;
   }
 
   @override
@@ -134,9 +190,7 @@ class _DateTimeSuggestionsWidgetState extends State<DateTimeSuggestionsWidget> {
                   onTap: () => _showViewVotesBottomSheet(context),
                   borderRadius: BorderRadius.circular(10),
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      vertical: Gaps.xxs,
-                    ),
+                    padding: const EdgeInsets.symmetric(vertical: Gaps.xxs),
                     child: Row(
                       children: [
                         Text(
@@ -176,36 +230,35 @@ class _DateTimeSuggestionsWidgetState extends State<DateTimeSuggestionsWidget> {
           const SizedBox(height: Gaps.lg),
           Row(
             children: [
-              // Add Suggestion button
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: widget.onAddSuggestion,
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: BrandColors.text1,
-                    side: const BorderSide(color: BrandColors.border),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: Pads.ctlH,
-                      vertical: Pads.ctlV,
+              if (_isSelectionMode) ...[
+                // Cancel button in selection mode
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: _exitSelectionMode,
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: BrandColors.text1,
+                      side: const BorderSide(color: BrandColors.border),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: Pads.ctlH,
+                        vertical: Pads.ctlV,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
                     ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
+                    child: Text('Cancel', style: AppText.bodyMediumEmph),
                   ),
-                  child: Text('Add Suggestion', style: AppText.bodyMediumEmph),
                 ),
-              ),
-
-              // Pick as Final button (only for host)
-              if (widget.isHost) ...[
                 const SizedBox(width: Gaps.sm),
+                // Confirm button in selection mode
                 Expanded(
                   child: FilledButton(
-                    onPressed: _currentUserVotes.isNotEmpty
-                        ? () => widget.onPickAsFinal(_currentUserVotes.first)
+                    onPressed: _selectedSuggestionId != null
+                        ? _confirmDateSelection
                         : null,
                     style: FilledButton.styleFrom(
-                      backgroundColor: _currentUserVotes.isNotEmpty
-                          ? Colors.green
+                      backgroundColor: _selectedSuggestionId != null
+                          ? BrandColors.planning
                           : BrandColors.text2,
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(
@@ -216,9 +269,54 @@ class _DateTimeSuggestionsWidgetState extends State<DateTimeSuggestionsWidget> {
                         borderRadius: BorderRadius.circular(10),
                       ),
                     ),
-                    child: Text('Pick as Final', style: AppText.bodyMediumEmph),
+                    child: Text('Confirm', style: AppText.bodyMediumEmph),
                   ),
                 ),
+              ] else ...[
+                // Add Suggestion button
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: widget.onAddSuggestion,
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: BrandColors.text1,
+                      side: const BorderSide(color: BrandColors.border),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: Pads.ctlH,
+                        vertical: Pads.ctlV,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                    child: Text(
+                      'Add Suggestion',
+                      style: AppText.bodyMediumEmph,
+                    ),
+                  ),
+                ),
+
+                // Set Date button (only for host)
+                if (widget.isHost) ...[
+                  const SizedBox(width: Gaps.sm),
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: _enterSelectionMode,
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: BrandColors.text1,
+                        side: const BorderSide(color: BrandColors.border),
+                        backgroundColor: BrandColors.bg3,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: Pads.ctlH,
+                          vertical: Pads.ctlV,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      child: Text('Set Date', style: AppText.bodyMediumEmph),
+                    ),
+                  ),
+                ],
               ],
             ],
           ),
@@ -229,49 +327,93 @@ class _DateTimeSuggestionsWidgetState extends State<DateTimeSuggestionsWidget> {
 
   Widget _buildSuggestionOption(DateTimeSuggestion suggestion) {
     final hasUserVoted = _currentUserVotes.contains(suggestion.id);
+    final isCurrentEvent = _isCurrentEventSuggestion(suggestion);
+    final isSelected =
+        _isSelectionMode && _selectedSuggestionId == suggestion.id;
 
     return AnimatedScale(
       scale: hasUserVoted ? 1.02 : 1.0,
       duration: const Duration(milliseconds: 200),
       curve: Curves.easeOutCubic,
       child: InkWell(
-        onTap: () => _handleVote(suggestion.id),
+        onTap: isCurrentEvent ? null : () => _handleVote(suggestion.id),
         borderRadius: BorderRadius.circular(10),
         child: Container(
           width: double.infinity,
           padding: const EdgeInsets.all(Pads.ctlH),
           decoration: BoxDecoration(
-            color: hasUserVoted
+            color: _isSelectionMode
+                ? (isSelected
+                      ? BrandColors.planning.withValues(alpha: 0.1)
+                      : BrandColors.bg3)
+                : isCurrentEvent
+                ? BrandColors.bg3
+                : hasUserVoted
                 ? BrandColors.planning.withValues(alpha: 0.1)
                 : BrandColors.bg3,
             borderRadius: BorderRadius.circular(10),
-            border: hasUserVoted
+            border: _isSelectionMode
+                ? (isSelected
+                      ? Border.all(color: BrandColors.planning, width: 1)
+                      : null)
+                : isCurrentEvent
+                ? null
+                : hasUserVoted
                 ? Border.all(color: BrandColors.planning, width: 1)
                 : null,
           ),
           child: Row(
             children: [
-              // Vote indicator
-              AnimatedContainer(
-                duration: const Duration(milliseconds: 150),
-                width: 20,
-                height: 20,
-                decoration: BoxDecoration(
+              // Vote indicator, star for current event, or selection indicator
+              if (isCurrentEvent) ...[
+                const Icon(Icons.star, size: 20, color: BrandColors.text2),
+                ] else if (_isSelectionMode) ...[
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 150),
+                  width: 20,
+                  height: 20,
+                  decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: hasUserVoted
-                      ? BrandColors.planning
-                      : Colors.transparent,
+                  color: isSelected ? BrandColors.planning : Colors.transparent,
                   border: Border.all(
-                    color: hasUserVoted
-                        ? BrandColors.planning
-                        : BrandColors.text2,
-                    width: 1.5,
+                    color: isSelected ? BrandColors.planning : BrandColors.text2,
+                    width: isSelected ? 2.2 : 1.5,
+                  ),
+                  ),
+                  child: Center(
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 150),
+                    width: isSelected ? 8 : 0,
+                    height: isSelected ? 8 : 0,
+                    decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: isSelected ? Colors.white : Colors.transparent,
+                    ),
+                  ),
                   ),
                 ),
-                child: hasUserVoted
-                    ? const Icon(Icons.check, size: 12, color: Colors.white)
-                    : null,
-              ),
+              ] else ...[
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 150),
+                  width: 20,
+                  height: 20,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: hasUserVoted
+                        ? BrandColors.planning
+                        : Colors.transparent,
+                    border: Border.all(
+                      color: hasUserVoted
+                          ? BrandColors.planning
+                          : BrandColors.text2,
+                      width: 1.5,
+                    ),
+                  ),
+                  child: hasUserVoted
+                      ? const Icon(Icons.check, size: 12, color: Colors.white)
+                      : null,
+                ),
+              ],
               const SizedBox(width: Gaps.sm),
 
               // Date and time info
@@ -283,10 +425,20 @@ class _DateTimeSuggestionsWidgetState extends State<DateTimeSuggestionsWidget> {
                     AnimatedDefaultTextStyle(
                       duration: const Duration(milliseconds: 150),
                       style: AppText.bodyMedium.copyWith(
-                        color: hasUserVoted
+                        color: _isSelectionMode
+                            ? (isSelected
+                                  ? BrandColors.text1
+                                  : BrandColors.text1)
+                            : isCurrentEvent
+                            ? BrandColors.text2
+                            : hasUserVoted
                             ? BrandColors.text1
                             : BrandColors.text1,
-                        fontWeight: hasUserVoted
+                        fontWeight: _isSelectionMode
+                            ? (isSelected ? FontWeight.w600 : FontWeight.normal)
+                            : isCurrentEvent
+                            ? FontWeight.normal
+                            : hasUserVoted
                             ? FontWeight.w600
                             : FontWeight.normal,
                       ),
@@ -321,7 +473,11 @@ class _DateTimeSuggestionsWidgetState extends State<DateTimeSuggestionsWidget> {
                   vertical: Gaps.xxs,
                 ),
                 decoration: BoxDecoration(
-                  color: hasUserVoted
+                  color: _isSelectionMode
+                      ? (isSelected ? BrandColors.planning : BrandColors.border)
+                      : isCurrentEvent
+                      ? BrandColors.border
+                      : hasUserVoted
                       ? BrandColors.planning
                       : BrandColors.border,
                   borderRadius: BorderRadius.circular(Radii.pill),
@@ -329,7 +485,13 @@ class _DateTimeSuggestionsWidgetState extends State<DateTimeSuggestionsWidget> {
                 child: Text(
                   '${suggestion.voteCount}',
                   style: AppText.bodyMedium.copyWith(
-                    color: hasUserVoted ? Colors.white : BrandColors.text2,
+                    color: _isSelectionMode
+                        ? (isSelected ? Colors.white : BrandColors.text2)
+                        : isCurrentEvent
+                        ? BrandColors.text2
+                        : hasUserVoted
+                        ? Colors.white
+                        : BrandColors.text2,
                     fontWeight: FontWeight.w600,
                     fontSize: 12,
                   ),
@@ -386,10 +548,9 @@ class _DateTimeSuggestionsWidgetState extends State<DateTimeSuggestionsWidget> {
     String formatTime(DateTime time) {
       final hour = time.hour;
       final minute = time.minute;
-      final period = hour >= 12 ? 'PM' : 'AM';
-      final displayHour = hour > 12 ? hour - 12 : (hour == 0 ? 12 : hour);
+      final hourStr = hour.toString().padLeft(2, '0');
       final minuteStr = minute.toString().padLeft(2, '0');
-      return '$displayHour:$minuteStr $period';
+      return '$hourStr:$minuteStr';
     }
 
     final startFormatted = formatTime(startTime);

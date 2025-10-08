@@ -41,7 +41,6 @@ class RsvpWidget extends StatelessWidget {
   final DateTime? eventStartDateTime;
   final DateTime? eventEndDateTime;
   final bool isHost; // Whether current user is host/admin
-  final VoidCallback? onPickAsFinal; // Callback for pick as final
   final bool hasSuggestions; // Whether suggestions already exist
 
   const RsvpWidget({
@@ -57,7 +56,6 @@ class RsvpWidget extends StatelessWidget {
     this.eventStartDateTime,
     this.eventEndDateTime,
     this.isHost = false,
-    this.onPickAsFinal,
     this.hasSuggestions = false,
   });
 
@@ -133,29 +131,6 @@ class RsvpWidget extends StatelessWidget {
               ),
             ],
           ),
-
-          // Pick as Final button (only for host when they have voted)
-          if (isHost && userVote != null && onPickAsFinal != null) ...[
-            const SizedBox(height: Gaps.sm),
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton(
-                onPressed: onPickAsFinal,
-                style: FilledButton.styleFrom(
-                  backgroundColor: Colors.green,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: Pads.ctlH,
-                    vertical: Pads.ctlV,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
-                child: Text('Pick as Final', style: AppText.bodyMediumEmph),
-              ),
-            ),
-          ],
 
           // Add suggestion button (shown when user votes "not going" AND no suggestions exist)
           if (userVote == false &&

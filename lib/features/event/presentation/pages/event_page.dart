@@ -157,9 +157,6 @@ class EventPage extends ConsumerWidget {
                             isHost:
                                 event.hostId ==
                                 'current-user', // TODO: Get from auth service
-                            onPickAsFinal: () {
-                              // TODO: Implement RSVP pick as final logic
-                            },
                             hasSuggestions: suggestions.isNotEmpty,
                           );
                         },
@@ -231,9 +228,6 @@ class EventPage extends ConsumerWidget {
                           isHost:
                               event.hostId ==
                               'current-user', // TODO: Get from auth service
-                          onPickAsFinal: () {
-                            // TODO: Implement RSVP pick as final logic
-                          },
                           hasSuggestions:
                               false, // Default to false when loading
                         ),
@@ -305,9 +299,6 @@ class EventPage extends ConsumerWidget {
                           isHost:
                               event.hostId ==
                               'current-user', // TODO: Get from auth service
-                          onPickAsFinal: () {
-                            // TODO: Implement RSVP pick as final logic
-                          },
                           hasSuggestions: false, // Default to false on error
                         ),
                       );
@@ -373,6 +364,8 @@ class EventPage extends ConsumerWidget {
                               DateTimeSuggestionsWidget(
                                 suggestions: dateTimeSuggestions,
                                 userVotes: userVoteIds,
+                                currentEventStartDateTime: event.startDateTime,
+                                currentEventEndDateTime: event.endDateTime,
                                 onVote: (suggestionId) {
                                   ref
                                       .read(
@@ -401,8 +394,12 @@ class EventPage extends ConsumerWidget {
                                     );
                                   }
                                 },
-                                onPickAsFinal: (suggestionId) {
-                                  // TODO: Implement pick as final logic
+                                onSetDate: (selectedSuggestion) async {
+                                  await _setEventDate(
+                                    context,
+                                    ref,
+                                    selectedSuggestion,
+                                  );
                                 },
                               ),
                               const SizedBox(height: Gaps.xl),
@@ -542,5 +539,73 @@ class EventPage extends ConsumerWidget {
   String? _getUserVotedOption(dynamic poll) {
     // TODO: Implement logic to check if current user voted
     return null;
+  }
+
+  /// Implements the complete Set Date business logic
+  /// 1. Updates the event's date and time to match the selected suggestion
+  /// 2. Resets RSVP votes from suggestion voters to match their "Can" votes
+  /// 3. Clears all date/time suggestions for the event
+  Future<void> _setEventDate(
+    BuildContext context,
+    WidgetRef ref,
+    DateTimeSuggestion selectedSuggestion,
+  ) async {
+    try {
+      // Step 1: Update the event's date and time
+      final eventRepository = ref.read(eventRepositoryProvider);
+      await eventRepository.updateEventDateTime(
+        eventId,
+        selectedSuggestion.startDateTime,
+        selectedSuggestion.endDateTime,
+      );
+
+      // Step 2: Get all users who voted on the selected suggestion
+      // In this implementation, we'll just get all suggestion voters
+      final suggestionVotesAsync = ref.read(suggestionVotesProvider(eventId));
+      final suggestionVotes = suggestionVotesAsync.value ?? [];
+
+      final suggestionVoters = suggestionVotes
+          .where((vote) => vote.suggestionId == selectedSuggestion.id)
+          .map((vote) => vote.userId)
+          .toList();
+
+      final rsvpRepository = ref.read(rsvpRepositoryProvider);
+      await rsvpRepository.resetRsvpVotesFromSuggestion(
+        eventId,
+        suggestionVoters,
+      );
+
+      // Step 3: Clear all suggestions for this event
+      final suggestionRepository = ref.read(suggestionRepositoryProvider);
+      await suggestionRepository.clearEventSuggestions(eventId);
+
+      // Step 4: Invalidate providers to refresh the UI
+      ref.invalidate(eventDetailProvider(eventId));
+      ref.invalidate(eventRsvpsProvider(eventId));
+      ref.invalidate(userRsvpProvider(eventId));
+      ref.invalidate(eventSuggestionsProvider(eventId));
+      ref.invalidate(suggestionVotesProvider(eventId));
+      ref.invalidate(userSuggestionVotesProvider(eventId));
+
+      // Step 5: Show success feedback
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Event date has been set successfully!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (error) {
+      // Show error feedback
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to set event date: $error'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 }
