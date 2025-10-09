@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:share_plus/share_plus.dart';
 
@@ -9,11 +10,68 @@ import '../../../../shared/themes/colors.dart';
 import '../../../../shared/components/nav/common_app_bar.dart';
 import '../../../../routes/app_router.dart';
 import '../../domain/entities/group_entity.dart';
+import '../providers/groups_provider.dart';
 
-class GroupCreatedPage extends StatelessWidget {
+class GroupCreatedPage extends ConsumerStatefulWidget {
   final GroupEntity group;
 
   const GroupCreatedPage({super.key, required this.group});
+
+  @override
+  ConsumerState<GroupCreatedPage> createState() => _GroupCreatedPageState();
+}
+
+class _GroupCreatedPageState extends ConsumerState<GroupCreatedPage> {
+  late String qrCodeData;
+
+  @override
+  void initState() {
+    super.initState();
+    qrCodeData = 'https://lazzo.app/groups/${widget.group.id}';
+    
+    print('🎯 [GroupCreatedPage] Initialized with group: ${widget.group.id}');
+    print('   📱 Generated QR code: $qrCodeData');
+    print('   🔍 Group has qrCode field: ${widget.group.qrCode}');
+    print('   🔍 Group has groupUrl field: ${widget.group.groupUrl}');
+    
+    // Salvar QR code no Supabase (funciona como backup se não foi salvo na criação)
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _saveQrCode();
+    });
+  }
+
+  Future<void> _saveQrCode() async {
+    try {
+      print('🔄 Iniciando salvamento do QR code para o grupo ${widget.group.id}');
+      print('   📱 QR Code Data: $qrCodeData');
+      
+      // Validar se o grupo tem ID
+      if (widget.group.id == null || widget.group.id!.isEmpty) {
+        print('❌ Erro: Grupo não tem ID válido!');
+        print('   🔍 Group: ${widget.group.toString()}');
+        return;
+      }
+      
+      // Se o grupo já tem QR code, não precisamos salvar novamente
+      if (widget.group.qrCode != null && widget.group.qrCode!.isNotEmpty) {
+        print('✅ Grupo já tem QR code salvo: ${widget.group.qrCode}');
+        return;
+      }
+      
+      final saveQrCode = ref.read(saveGroupQrCodeProvider);
+      
+      print('   💾 Chamando saveGroupQrCode...');
+      await saveQrCode(widget.group.id!, qrCodeData);
+      
+      print('✅ QR code salvo com sucesso para o grupo ${widget.group.id}');
+    } catch (e) {
+      print('❌ Erro ao salvar QR code: $e');
+      print('   Stack trace: ${StackTrace.current}');
+      
+      // Não mostrar erro ao usuário, pois o QR code visual ainda funciona
+      // O importante é que a funcionalidade visual esteja ok
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -41,14 +99,14 @@ class GroupCreatedPage extends StatelessWidget {
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(Radii.md),
                 color: BrandColors.bg2,
-                image: group.photoUrl != null
+                image: widget.group.photoUrl != null
                     ? DecorationImage(
-                        image: NetworkImage(group.photoUrl!),
+                        image: NetworkImage(widget.group.photoUrl!),
                         fit: BoxFit.cover,
                       )
                     : null,
               ),
-              child: group.photoUrl == null
+              child: widget.group.photoUrl == null
                   ? const Icon(Icons.group, size: 60, color: BrandColors.text2)
                   : null,
             ),
@@ -72,7 +130,7 @@ class GroupCreatedPage extends StatelessWidget {
                 children: [
                   const TextSpan(text: 'Invite people to join '),
                   TextSpan(
-                    text: group.name,
+                    text: widget.group.name,
                     style: AppText.bodyMedium.copyWith(
                       color: BrandColors.text1,
                     ),
@@ -85,10 +143,10 @@ class GroupCreatedPage extends StatelessWidget {
 
             // Share link section
             _ShareLinkSection(
-              linkUrl: 'https://lazzo.app/groups/${group.id}',
+              linkUrl: qrCodeData,
               onCopyLink: () {
                 Clipboard.setData(
-                  ClipboardData(text: 'https://lazzo.app/groups/${group.id}'),
+                  ClipboardData(text: qrCodeData),
                 );
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
@@ -98,13 +156,12 @@ class GroupCreatedPage extends StatelessWidget {
                 );
               },
               onShareLink: () async {
-                final groupLink = 'https://lazzo.app/groups/${group.id}';
-                final shareText = 'Join my group "${group.name}" on Lazzo!\n\n$groupLink';
+                final shareText = 'Join my group "${widget.group.name}" on Lazzo!\n\n$qrCodeData';
                 
                 try {
                   await Share.share(
                     shareText,
-                    subject: 'Join ${group.name} on Lazzo',
+                    subject: 'Join ${widget.group.name} on Lazzo',
                   );
                 } catch (e) {
                   // Fallback if share fails
@@ -114,7 +171,7 @@ class GroupCreatedPage extends StatelessWidget {
                         content: Text('Unable to share. Link copied to clipboard instead.'),
                       ),
                     );
-                    Clipboard.setData(ClipboardData(text: groupLink));
+                    Clipboard.setData(ClipboardData(text: qrCodeData));
                   }
                 }
               },
@@ -123,7 +180,7 @@ class GroupCreatedPage extends StatelessWidget {
             const SizedBox(height: Gaps.lg),
 
             // QR Code section (square)
-            _QrCodeSection(data: 'https://lazzo.app/groups/${group.id}'),
+            _QrCodeSection(data: qrCodeData),
           ],
         ),
       ),
@@ -238,65 +295,40 @@ class _ShareLinkSection extends StatelessWidget {
 class _QrCodeSection extends StatelessWidget {
   final String data;
 
-  const _QrCodeSection({required this.data});
+  const _QrCodeSection({
+    required this.data,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(Insets.screenH),
-      decoration: BoxDecoration(
-        color: BrandColors.bg2,
-        borderRadius: BorderRadius.circular(Radii.md),
-      ),
-      child: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'QR Code',
-                style: AppText.titleMediumEmph.copyWith(
-                  color: BrandColors.text1,
-                ),
-              ),
-              Text(
-                'Scan to join',
-                style: AppText.bodyMedium.copyWith(color: BrandColors.text2),
-              ),
-            ],
-          ),
-          const SizedBox(height: Gaps.xs),
-          // Square QR Code container
-          AspectRatio(
-            aspectRatio: 1.0, // Makes it square
-            child: Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(16.0), // Using concrete value instead of Insets.md
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(Radii.md),
-              ),
-              child: QrImageView(
-                data: data,
-                version: QrVersions.auto,
-                size: double.infinity,
-                backgroundColor: Colors.white,
-                errorCorrectionLevel: QrErrorCorrectLevel.M,
-                padding: const EdgeInsets.all(8.0),
-                // Removed deprecated foregroundColor
-                eyeStyle: const QrEyeStyle(
-                  eyeShape: QrEyeShape.square,
-                  color: Colors.black,
-                ),
-                dataModuleStyle: const QrDataModuleStyle(
-                  dataModuleShape: QrDataModuleShape.square,
-                  color: Colors.black,
-                ),
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(Gaps.md),
+        child: Column(
+          children: [
+            Text(
+              'QR Code',
+              style: AppText.titleMediumEmph.copyWith(
+                color: BrandColors.text1,
               ),
             ),
-          ),
-        ],
+            const SizedBox(height: Gaps.sm),
+            QrImageView(
+              data: data,
+              version: QrVersions.auto,
+              size: 200.0,
+              backgroundColor: Colors.white,
+            ),
+            const SizedBox(height: Gaps.sm),
+            Text(
+              'Members can scan this QR code to join your group',
+              style: AppText.bodyMedium.copyWith(
+                color: BrandColors.text2,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
       ),
     );
   }

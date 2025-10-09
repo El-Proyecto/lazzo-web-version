@@ -1,5 +1,6 @@
 import '../entities/group.dart';
 import '../entities/group_entity.dart';
+import 'package:image_picker/image_picker.dart';
 
 /// Interface do repositório de grupos
 abstract class GroupRepository {
@@ -15,15 +16,23 @@ abstract class GroupRepository {
   /// Cria um novo grupo (original interface)
   Future<Group> createGroup({
     required String name,
-    String? avatarUrl,
+    String? photoPath,  // atualizado de avatarUrl para photoPath
     List<String>? memberIds,
   });
 
   /// Cria um novo grupo (nova interface para create_group feature)
   Future<GroupEntity> createGroupEntity(GroupEntity group);
 
-  /// Uploads a group photo and returns the URL
-  Future<String> uploadGroupPhoto(String imagePath, String groupId);
+  /// Upload de foto de capa do grupo com compressão WebP
+  /// Retorna o path do arquivo no storage (não URL)
+  Future<String> uploadGroupCoverPhoto(XFile imageFile, String groupId);
+
+  /// Obtém signed URL para foto de capa do grupo
+  /// Cache busting usando photoUpdatedAt
+  Future<String?> getGroupCoverUrl(String? photoPath, DateTime? photoUpdatedAt);
+
+  /// Salva o QR code do grupo no Supabase
+  Future<void> saveGroupQrCode(String groupId, String qrCodeData);
 
   /// Convida membros para o grupo
   Future<void> inviteMembers(String groupId, List<String> memberIds);

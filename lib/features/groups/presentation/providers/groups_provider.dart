@@ -39,6 +39,16 @@ final toggleGroupArchiveProvider = Provider<ToggleGroupArchive>((ref) {
   return ToggleGroupArchive(ref.watch(groupRepositoryProvider));
 });
 
+// QR Code save provider
+final saveGroupQrCodeProvider = Provider<Future<void> Function(String, String)>((ref) {
+  final repository = ref.watch(groupRepositoryProvider);
+  print('🔧 [Provider] Creating saveGroupQrCode function with repository: ${repository.runtimeType}');
+  return (String groupId, String qrCodeData) async {
+    print('📞 [Provider] saveGroupQrCode called with groupId: $groupId, qrCodeData: $qrCodeData');
+    return await repository.saveGroupQrCode(groupId, qrCodeData);
+  };
+});
+
 // Groups state provider
 final groupsProvider = FutureProvider<List<Group>>((ref) async {
   final getUserGroups = ref.watch(getUserGroupsProvider);

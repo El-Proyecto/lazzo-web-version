@@ -49,6 +49,9 @@ dependencies:
   qr_flutter: ^4.1.0
   # Native share functionality
   share_plus: ^10.0.3
+  # Image processing and compression
+  image: ^4.2.0
+  flutter_image_compress: ^2.3.0
   integration_test:
     sdk: flutter
   # The following adds the Cupertino Icons font to your application.
