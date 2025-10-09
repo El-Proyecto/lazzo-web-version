@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../shared/components/inputs/segmented_control.dart';
@@ -82,8 +83,11 @@ class _AddSuggestionBottomSheetState
   final TextEditingController _addressSearchController =
       TextEditingController();
   LocationInfo? _selectedLocation;
-  List<LocationInfo> _searchResults = [];
+  List<LocationSuggestion> _searchResults = [];
   bool _isSearching = false;
+  bool _showSuggestions = false;
+  Timer? _searchTimer;
+  bool _showValidationError = false;
 
   @override
   void initState() {
@@ -108,39 +112,66 @@ class _AddSuggestionBottomSheetState
     _tabController.dispose();
     _locationNameController.dispose();
     _addressSearchController.dispose();
+    _searchTimer?.cancel();
     super.dispose();
   }
 
   bool get _hasChanges {
-    return startDate != widget.eventStartDate ||
-        startTime != widget.eventStartTime ||
-        endDate != widget.eventEndDate ||
-        endTime != widget.eventEndTime;
+    if (_selectedType == SuggestionType.dateTime) {
+      return startDate != widget.eventStartDate ||
+          startTime != widget.eventStartTime ||
+          endDate != widget.eventEndDate ||
+          endTime != widget.eventEndTime;
+    } else {
+      // Location type
+      return _selectedLocation != null ||
+          _locationNameController.text.trim().isNotEmpty ||
+          _addressSearchController.text.trim().isNotEmpty;
+    }
   }
 
   bool get _isTimeValid {
-    final startDateTime = DateTime(
-      startDate.year,
-      startDate.month,
-      startDate.day,
-      startTime.hour,
-      startTime.minute,
-    );
+    if (_selectedType == SuggestionType.dateTime) {
+      final startDateTime = DateTime(
+        startDate.year,
+        startDate.month,
+        startDate.day,
+        startTime.hour,
+        startTime.minute,
+      );
 
-    final endDateTime = DateTime(
-      endDate.year,
-      endDate.month,
-      endDate.day,
-      endTime.hour,
-      endTime.minute,
-    );
+      final endDateTime = DateTime(
+        endDate.year,
+        endDate.month,
+        endDate.day,
+        endTime.hour,
+        endTime.minute,
+      );
 
-    return endDateTime.isAfter(startDateTime);
+      return endDateTime.isAfter(startDateTime);
+    } else {
+      // For location type, we need at least one field filled
+      return _selectedLocation != null ||
+          _locationNameController.text.trim().isNotEmpty ||
+          _addressSearchController.text.trim().isNotEmpty;
+    }
   }
 
-  String? get _timeValidationError {
-    if (!_isTimeValid) {
-      return 'End time must be after start time';
+  String? get _validationError {
+    if (!_showValidationError) return null;
+
+    if (_selectedType == SuggestionType.dateTime) {
+      if (!_hasChanges) {
+        return 'Please select different dates/times from the original event';
+      }
+      if (!_isTimeValid) {
+        return 'End time must be after start time';
+      }
+    } else {
+      // Location type
+      if (!_hasChanges) {
+        return 'Please fill at least one location field';
+      }
     }
     return null;
   }
@@ -149,7 +180,6 @@ class _AddSuggestionBottomSheetState
   Widget build(BuildContext context) {
     final screenHeight = MediaQuery.of(context).size.height;
     final bottomSheetHeight = screenHeight * 0.90; // Almost full length
-    final createSuggestionState = ref.watch(createSuggestionNotifierProvider);
 
     return Container(
       height: bottomSheetHeight,
@@ -355,13 +385,107 @@ class _AddSuggestionBottomSheetState
   }
 
   Widget _buildLocationContent() {
+    return _buildLocationInput();
+  }
+
+  Widget _buildLocationInput() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // TODO: Add location fields here
-        const Center(child: Text('Location content coming soon...')),
+        // Location name field
+        _buildTextField(
+          hintText: 'Location name (optional)',
+          icon: Icons.edit_location_alt,
+          controller: _locationNameController,
+          onChanged: (value) {
+            if (_showValidationError) {
+              setState(() {
+                _showValidationError = false;
+              });
+            }
+          },
+        ),
+
+        const SizedBox(height: Gaps.sm),
+
+        // Address search field
+        _buildTextField(
+          hintText: 'Search address or place',
+          icon: Icons.search,
+          controller: _addressSearchController,
+          onChanged: (value) {
+            if (_showValidationError) {
+              setState(() {
+                _showValidationError = false;
+              });
+            }
+            _handleAddressSearch(value);
+          },
+          onSubmitted: (value) => _handleEnterKeyPressed(),
+        ),
+
+        // Suggestions list
+        if (_showSuggestions) ...[
+          const SizedBox(height: Gaps.sm),
+          _buildSuggestionsList(),
+        ],
+
+        const SizedBox(height: Gaps.md),
+
+        // Action Buttons
+        Row(
+          children: [
+            Expanded(
+              child: _buildActionButton(
+                icon: Icons.my_location,
+                text: 'Current location',
+                onTap: () => _useCurrentLocation(),
+              ),
+            ),
+            const SizedBox(width: Gaps.sm),
+            Expanded(
+              child: _buildActionButton(
+                icon: Icons.map_outlined,
+                text: 'Pick on map',
+                onTap: () => _pickOnMap(),
+              ),
+            ),
+          ],
+        ),
+
+        // Map preview (always visible)
+        if (_selectedLocation != null) ...[
+          const SizedBox(height: Gaps.md),
+          _buildMapPreview(),
+        ],
+
         const SizedBox(height: Gaps.lg),
       ],
+    );
+  }
+
+  Widget _buildMapPreview() {
+    return Container(
+      width: double.infinity,
+      height: 150,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(Radii.sm),
+        border: Border.all(color: BrandColors.border, width: 1),
+        color: BrandColors.bg3,
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.map, size: 48, color: BrandColors.text2),
+          const SizedBox(height: Gaps.xs),
+          Text(
+            'Map Preview',
+            style: AppText.bodyMedium.copyWith(color: BrandColors.text2),
+          ),
+          // TODO: P2 - Integrate with Google Maps to show actual location preview
+          // TODO: P2 - Add tap functionality to open in external Maps app
+        ],
+      ),
     );
   }
 
@@ -371,7 +495,7 @@ class _AddSuggestionBottomSheetState
     return Column(
       children: [
         // Error message
-        if (_timeValidationError != null) ...[
+        if (_validationError != null) ...[
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(Pads.ctlH),
@@ -384,7 +508,7 @@ class _AddSuggestionBottomSheetState
               ),
             ),
             child: Text(
-              _timeValidationError!,
+              _validationError!,
               style: AppText.bodyMedium.copyWith(color: BrandColors.cantVote),
               textAlign: TextAlign.center,
             ),
@@ -396,16 +520,16 @@ class _AddSuggestionBottomSheetState
           data: (_) => SizedBox(
             width: double.infinity,
             child: FilledButton(
-              onPressed: _hasChanges && _isTimeValid ? _submitSuggestion : null,
+              onPressed: _handleAddSuggestionPressed,
               style: FilledButton.styleFrom(
                 backgroundColor: _hasChanges && _isTimeValid
                     ? BrandColors
                           .planning // Green when valid
-                    : BrandColors.text1.withValues(alpha: 0.3),
+                    : BrandColors.border,
                 foregroundColor: _hasChanges && _isTimeValid
                     ? BrandColors
                           .text1 // Green text when enabled
-                    : BrandColors.bg1,
+                    : BrandColors.text2,
                 padding: const EdgeInsets.symmetric(vertical: Pads.ctlV),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(Radii.sm),
@@ -439,9 +563,7 @@ class _AddSuggestionBottomSheetState
               SizedBox(
                 width: double.infinity,
                 child: FilledButton(
-                  onPressed: _hasChanges && _isTimeValid
-                      ? _submitSuggestion
-                      : null,
+                  onPressed: _handleAddSuggestionPressed,
                   style: FilledButton.styleFrom(
                     backgroundColor: BrandColors.planning,
                     foregroundColor: BrandColors.bg1,
@@ -511,43 +633,472 @@ class _AddSuggestionBottomSheetState
     );
   }
 
+  void _handleAddSuggestionPressed() {
+    // Always show validation errors when button is pressed
+    if (!_hasChanges || !_isTimeValid) {
+      setState(() {
+        _showValidationError = true;
+      });
+      return;
+    }
+
+    // If validation passes, proceed with submission
+    _submitSuggestion();
+  }
+
   Future<void> _submitSuggestion() async {
-    if (!_hasChanges || !_isTimeValid) return;
+    // This method is called only when validation has already passed
+    if (_selectedType == SuggestionType.dateTime) {
+      // Handle datetime suggestion
+      final startDateTime = DateTime(
+        startDate.year,
+        startDate.month,
+        startDate.day,
+        startTime.hour,
+        startTime.minute,
+      );
 
-    final startDateTime = DateTime(
-      startDate.year,
-      startDate.month,
-      startDate.day,
-      startTime.hour,
-      startTime.minute,
-    );
+      final endDateTime = DateTime(
+        endDate.year,
+        endDate.month,
+        endDate.day,
+        endTime.hour,
+        endTime.minute,
+      );
 
-    final endDateTime = DateTime(
-      endDate.year,
-      endDate.month,
-      endDate.day,
-      endTime.hour,
-      endTime.minute,
-    );
-
-    await ref
-        .read(createSuggestionNotifierProvider.notifier)
-        .createSuggestion_(
-          eventId: widget.eventId,
-          startDateTime: startDateTime,
-          endDateTime: endDateTime,
-        );
+      await ref
+          .read(createSuggestionNotifierProvider.notifier)
+          .createSuggestion_(
+            eventId: widget.eventId,
+            startDateTime: startDateTime,
+            endDateTime: endDateTime,
+          );
+    } else {
+      // Handle location suggestion (P1 - fake implementation)
+      // For P1, we just simulate a successful submission
+      await Future.delayed(const Duration(milliseconds: 800));
+    }
 
     if (mounted) {
       // Show success and close
+      final suggestionType = _selectedType == SuggestionType.dateTime
+          ? 'Date/Time'
+          : 'Location';
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Suggestion added!'),
+        SnackBar(
+          content: Text('$suggestionType suggestion added!'),
           backgroundColor: Colors.green,
         ),
       );
       Navigator.of(context).pop();
     }
+  }
+
+  // Location helper methods
+  Widget _buildTextField({
+    required String hintText,
+    required IconData icon,
+    required TextEditingController controller,
+    VoidCallback? onTap,
+    Function(String)? onChanged,
+    Function(String)? onSubmitted,
+    bool readOnly = false,
+  }) {
+    return TextField(
+      controller: controller,
+      readOnly: readOnly,
+      onTap: onTap,
+      onChanged: onChanged,
+      onSubmitted: onSubmitted,
+      style: AppText.bodyMedium.copyWith(color: BrandColors.text1),
+      decoration: InputDecoration(
+        hintText: hintText,
+        hintStyle: AppText.bodyMedium.copyWith(color: BrandColors.text2),
+        prefixIcon: Padding(
+          padding: const EdgeInsets.only(left: Pads.ctlH, right: Gaps.xs),
+          child: Icon(icon, color: BrandColors.text2, size: 18),
+        ),
+        filled: true,
+        fillColor: BrandColors.bg3,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(Radii.sm),
+          borderSide: BorderSide(
+            color: BrandColors.text2.withValues(alpha: 0.2),
+            width: 1,
+          ),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(Radii.sm),
+          borderSide: BorderSide(
+            color: BrandColors.text2.withValues(alpha: 0.2),
+            width: 1,
+          ),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(Radii.sm),
+          borderSide: const BorderSide(color: BrandColors.planning, width: 1),
+        ),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: Pads.ctlH,
+          vertical: Pads.ctlV,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildActionButton({
+    required IconData icon,
+    required String text,
+    required VoidCallback onTap,
+    bool isSecondary = false,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(
+          horizontal: Pads.ctlH - 2,
+          vertical: Pads.ctlV,
+        ),
+        decoration: BoxDecoration(
+          color: BrandColors.bg3,
+          borderRadius: BorderRadius.circular(Radii.sm),
+          border: Border.all(
+            color: isSecondary
+                ? BrandColors.text2.withValues(alpha: 0.3)
+                : BrandColors.planning,
+            width: 1,
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              icon,
+              color: isSecondary ? BrandColors.text2 : BrandColors.planning,
+              size: 16,
+            ),
+            const SizedBox(width: Gaps.xs),
+            Flexible(
+              child: Text(
+                text,
+                style: AppText.bodyMedium.copyWith(
+                  color: isSecondary ? BrandColors.text1 : BrandColors.planning,
+                  fontWeight: FontWeight.w500,
+                  fontSize: 12,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSuggestionsList() {
+    if (_isSearching) {
+      return Container(
+        padding: const EdgeInsets.all(Pads.ctlV),
+        decoration: BoxDecoration(
+          color: BrandColors.bg3,
+          borderRadius: BorderRadius.circular(Radii.sm),
+          border: Border.all(
+            color: BrandColors.text2.withValues(alpha: 0.2),
+            width: 1,
+          ),
+        ),
+        child: Row(
+          children: [
+            const SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                valueColor: AlwaysStoppedAnimation<Color>(BrandColors.text2),
+              ),
+            ),
+            const SizedBox(width: Gaps.sm),
+            Text(
+              'Searching...',
+              style: AppText.bodyMedium.copyWith(color: BrandColors.text2),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (_searchResults.isEmpty) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(Pads.ctlV),
+        decoration: BoxDecoration(
+          color: BrandColors.bg3,
+          borderRadius: BorderRadius.circular(Radii.sm),
+          border: Border.all(
+            color: BrandColors.text2.withValues(alpha: 0.2),
+            width: 1,
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'No results found',
+              style: AppText.bodyMedium.copyWith(color: BrandColors.text2),
+            ),
+            const SizedBox(height: Gaps.xs),
+            Text(
+              'Try using current location or pick on map',
+              style: AppText.bodyMedium.copyWith(color: BrandColors.text2),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Container(
+      decoration: BoxDecoration(
+        color: BrandColors.bg3,
+        borderRadius: BorderRadius.circular(Radii.sm),
+        border: Border.all(
+          color: BrandColors.text2.withValues(alpha: 0.2),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        children: _searchResults.asMap().entries.map((entry) {
+          final index = entry.key;
+          final suggestion = entry.value;
+          return _buildSuggestionTile(suggestion, index == 0);
+        }).toList(),
+      ),
+    );
+  }
+
+  Widget _buildSuggestionTile(LocationSuggestion suggestion, bool isTopMatch) {
+    return InkWell(
+      onTap: () => _selectSuggestion(suggestion),
+      borderRadius: BorderRadius.circular(Radii.sm),
+      child: Container(
+        padding: const EdgeInsets.all(Pads.ctlV),
+        child: Row(
+          children: [
+            Icon(
+              isTopMatch ? Icons.star : Icons.location_on,
+              color: BrandColors.text2,
+              size: 18,
+            ),
+            const SizedBox(width: Gaps.sm),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    suggestion.name,
+                    style: AppText.bodyMedium.copyWith(
+                      color: BrandColors.text1,
+                      fontWeight: isTopMatch
+                          ? FontWeight.w600
+                          : FontWeight.normal,
+                    ),
+                  ),
+                  if (suggestion.address != suggestion.name) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      suggestion.address,
+                      style: AppText.bodyMedium.copyWith(
+                        color: BrandColors.text2,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _handleAddressSearch(String query) {
+    // Cancel previous timer
+    _searchTimer?.cancel();
+
+    if (query.length < 3) {
+      setState(() {
+        _searchResults.clear();
+        _showSuggestions = false;
+        _isSearching = false;
+      });
+      return;
+    }
+
+    setState(() {
+      _isSearching = true;
+      _showSuggestions = true;
+    });
+
+    // Start new debounce timer
+    _searchTimer = Timer(const Duration(milliseconds: 500), () {
+      if (mounted) {
+        final fakeResults = _generateFakeLocationResults(query);
+        setState(() {
+          _searchResults = fakeResults;
+          _isSearching = false;
+        });
+      }
+    });
+  }
+
+  List<LocationSuggestion> _generateFakeLocationResults(String query) {
+    // Fake search results for P1 implementation
+    final fakeLocations = [
+      LocationSuggestion(
+        id: 'fake-1',
+        name: 'Café Central',
+        address: 'Rua da Betesga, 1200-109 Lisboa',
+        latitude: 38.7071,
+        longitude: -9.1363,
+      ),
+      LocationSuggestion(
+        id: 'fake-2',
+        name: 'Restaurante Ramiro',
+        address: 'Av. Almirante Reis, 1A, 1150-007 Lisboa',
+        latitude: 38.7242,
+        longitude: -9.1342,
+      ),
+      LocationSuggestion(
+        id: 'fake-3',
+        name: 'Miradouro da Senhora do Monte',
+        address: 'Largo Monte, 1170-253 Lisboa',
+        latitude: 38.7185,
+        longitude: -9.1333,
+      ),
+    ];
+
+    // Filter results based on query
+    return fakeLocations
+        .where(
+          (location) =>
+              location.name.toLowerCase().contains(query.toLowerCase()) ||
+              location.address.toLowerCase().contains(query.toLowerCase()),
+        )
+        .take(3)
+        .toList();
+  }
+
+  void _handleEnterKeyPressed() {
+    final addressText = _addressSearchController.text.trim();
+
+    if (addressText.isEmpty) {
+      // Clear location when address field is empty and enter is pressed
+      setState(() {
+        _selectedLocation = null;
+        _showSuggestions = false;
+        _searchResults.clear();
+        _showValidationError = false;
+      });
+      return;
+    }
+
+    if (_searchResults.isNotEmpty) {
+      _selectSuggestion(_searchResults.first);
+    } else {
+      if (addressText.isNotEmpty) {
+        final addressOnlyLocation = LocationInfo(
+          id: 'typed-address-${DateTime.now().millisecondsSinceEpoch}',
+          displayName: _locationNameController.text.isNotEmpty
+              ? _locationNameController.text
+              : null,
+          formattedAddress: addressText,
+          latitude: 38.7223, // Default Lisbon coordinates
+          longitude: -9.1393,
+        );
+
+        setState(() {
+          _selectedLocation = addressOnlyLocation;
+          _showSuggestions = false;
+          _searchResults.clear();
+          _showValidationError = false; // Reset validation error
+        });
+      }
+    }
+  }
+
+  void _selectSuggestion(LocationSuggestion suggestion) {
+    final location = LocationInfo(
+      id: suggestion.id,
+      displayName: _locationNameController.text.isNotEmpty
+          ? _locationNameController.text
+          : null,
+      formattedAddress: suggestion.address,
+      latitude: suggestion.latitude,
+      longitude: suggestion.longitude,
+    );
+
+    setState(() {
+      _selectedLocation = location;
+      _showSuggestions = false;
+      _searchResults.clear();
+      _showValidationError = false; // Reset validation error
+    });
+  }
+
+  void _useCurrentLocation() {
+    // For P1, use fake current location
+    final currentLocation = LocationInfo(
+      id: 'current-location-${DateTime.now().millisecondsSinceEpoch}',
+      displayName: _locationNameController.text.isNotEmpty
+          ? _locationNameController.text
+          : 'Current Location',
+      formattedAddress: 'Rua do Porto, 456, Lisboa, Portugal',
+      latitude: 38.7223,
+      longitude: -9.1393,
+    );
+
+    setState(() {
+      _selectedLocation = currentLocation;
+      _showSuggestions = false;
+      _searchResults.clear();
+      _showValidationError = false; // Reset validation error
+    });
+  }
+
+  void _pickOnMap() {
+    // For P1, show dialog about P2 implementation
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: BrandColors.bg2,
+        title: Text(
+          'Pick on Map',
+          style: AppText.titleMediumEmph.copyWith(color: BrandColors.text1),
+        ),
+        content: Text(
+          'Map picking functionality will be implemented in P2 phase. For now, using default location.',
+          style: AppText.bodyMedium.copyWith(color: BrandColors.text2),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text(
+              'Cancel',
+              style: AppText.labelLarge.copyWith(color: BrandColors.text2),
+            ),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              _useCurrentLocation(); // Use default location
+            },
+            child: Text(
+              'Use Default',
+              style: AppText.labelLarge.copyWith(color: BrandColors.planning),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildSegmentedControl() {
