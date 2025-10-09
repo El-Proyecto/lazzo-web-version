@@ -6,11 +6,14 @@ abstract class SuggestionRepository {
   Future<List<Suggestion>> getEventSuggestions(String eventId);
 
   /// Create a new suggestion
+  /// Automatically creates a "current" suggestion if this is the first suggestion for the event
   Future<Suggestion> createSuggestion({
     required String eventId,
     required String userId,
     required DateTime startDateTime,
     DateTime? endDateTime,
+    DateTime? currentEventStartDateTime,
+    DateTime? currentEventEndDateTime,
   });
 
   /// Get all votes for event suggestions

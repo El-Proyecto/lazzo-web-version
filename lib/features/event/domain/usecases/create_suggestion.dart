@@ -12,12 +12,16 @@ class CreateSuggestion {
     required String userId,
     required DateTime startDateTime,
     DateTime? endDateTime,
+    DateTime? currentEventStartDateTime,
+    DateTime? currentEventEndDateTime,
   }) async {
     return await repository.createSuggestion(
       eventId: eventId,
       userId: userId,
       startDateTime: startDateTime,
       endDateTime: endDateTime,
+      currentEventStartDateTime: currentEventStartDateTime,
+      currentEventEndDateTime: currentEventEndDateTime,
     );
   }
 }

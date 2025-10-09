@@ -39,31 +39,8 @@ class DateTimeWidget extends StatelessWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Calendar icon
-              Container(
-                width: 56,
-                height: 56,
-                decoration: BoxDecoration(
-                  color: BrandColors.bg3,
-                  borderRadius: BorderRadius.circular(Radii.sm),
-                ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      _getMonthAbbreviation(startDateTime.month),
-                      style: AppText.bodyMedium.copyWith(
-                        color: BrandColors.text2,
-                        fontSize: 10,
-                      ),
-                    ),
-                    Text(
-                      startDateTime.day.toString(),
-                      style: AppText.titleMediumEmph.copyWith(fontSize: 20),
-                    ),
-                  ],
-                ),
-              ),
+              // Calendar icon - show multi-day if applicable
+              _buildCalendarIcon(),
               const SizedBox(width: Gaps.sm),
 
               // Date and time text
@@ -72,7 +49,7 @@ class DateTimeWidget extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      _getFullDate(startDateTime),
+                      _getDateRange(startDateTime, endDateTime),
                       style: AppText.bodyMediumEmph,
                     ),
                     const SizedBox(height: Gaps.xxs),
@@ -112,6 +89,119 @@ class DateTimeWidget extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  Widget _buildCalendarIcon() {
+    // Check if it's a multi-day event
+    if (endDateTime != null && !_isSameDay(startDateTime, endDateTime!)) {
+      // Multi-day event - show range indicator
+      return Container(
+        width: 56,
+        height: 56,
+        decoration: BoxDecoration(
+          color: BrandColors.bg3,
+          borderRadius: BorderRadius.circular(Radii.sm),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              '${startDateTime.day}-${endDateTime!.day}',
+              style: AppText.bodyMedium.copyWith(
+                color: BrandColors.text1,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            Text(
+              _getMonthAbbreviation(startDateTime.month),
+              style: AppText.bodyMedium.copyWith(
+                color: BrandColors.text2,
+                fontSize: 10,
+              ),
+            ),
+          ],
+        ),
+      );
+    } else {
+      // Single day event
+      return Container(
+        width: 56,
+        height: 56,
+        decoration: BoxDecoration(
+          color: BrandColors.bg3,
+          borderRadius: BorderRadius.circular(Radii.sm),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              _getMonthAbbreviation(startDateTime.month),
+              style: AppText.bodyMedium.copyWith(
+                color: BrandColors.text2,
+                fontSize: 10,
+              ),
+            ),
+            Text(
+              startDateTime.day.toString(),
+              style: AppText.titleMediumEmph.copyWith(fontSize: 20),
+            ),
+          ],
+        ),
+      );
+    }
+  }
+
+  String _getDateRange(DateTime start, DateTime? end) {
+    if (end == null || _isSameDay(start, end)) {
+      return _getFullDate(start);
+    }
+
+    // Multi-day event
+    if (start.month == end.month && start.year == end.year) {
+      // Same month - show: "Monday, 12 - Friday, 15 October"
+      return '${_getWeekday(start)}, ${start.day} - ${_getWeekday(end)}, ${end.day} ${_getMonthName(start.month)}';
+    } else {
+      // Different months - show full dates
+      return '${_getFullDate(start)} - ${_getFullDate(end)}';
+    }
+  }
+
+  bool _isSameDay(DateTime date1, DateTime date2) {
+    return date1.year == date2.year &&
+        date1.month == date2.month &&
+        date1.day == date2.day;
+  }
+
+  String _getWeekday(DateTime date) {
+    const weekdays = [
+      'Monday',
+      'Tuesday',
+      'Wednesday',
+      'Thursday',
+      'Friday',
+      'Saturday',
+      'Sunday',
+    ];
+    return weekdays[date.weekday - 1];
+  }
+
+  String _getMonthName(int month) {
+    const months = [
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December',
+    ];
+    return months[month - 1];
   }
 
   String _getMonthAbbreviation(int month) {

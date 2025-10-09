@@ -1,5 +1,7 @@
 import '../../domain/entities/rsvp.dart';
 import '../../domain/repositories/rsvp_repository.dart';
+import 'fake_event_repository.dart';
+import 'fake_suggestion_repository.dart';
 
 /// Fake RSVP repository for development
 class FakeRsvpRepository implements RsvpRepository {
@@ -165,6 +167,12 @@ class FakeRsvpRepository implements RsvpRepository {
       _rsvps.add(newRsvp);
     }
 
+    // Update event counts
+    await _updateEventCounts(eventId);
+
+    // Sync current suggestion votes with updated RSVP status
+    await FakeSuggestionRepository.syncCurrentSuggestionWithRsvp(eventId);
+
     return newRsvp;
   }
 
@@ -183,14 +191,52 @@ class FakeRsvpRepository implements RsvpRepository {
   ) async {
     await Future.delayed(const Duration(milliseconds: 300));
 
-    // In a real implementation, this would:
-    // 1. Find all RSVP votes for the event that voted on the given suggestion
-    // 2. Update those votes to reflect their suggestion choice (going/not going)
-    // 3. Clear their suggestion vote data
+    // Get all RSVPs for this event to update their status
+    final eventRsvps = _rsvps.where((rsvp) => rsvp.eventId == eventId).toList();
 
-    // For fake implementation, just simulate the operation
-    print(
-      'Resetting RSVP votes for event $eventId from suggestion voters: $suggestionVoterUserIds',
-    );
+    // Update each RSVP based on whether they voted on the suggestion
+    for (int i = 0; i < eventRsvps.length; i++) {
+      final currentRsvp = eventRsvps[i];
+      final rsvpIndex = _rsvps.indexWhere((r) => r.id == currentRsvp.id);
+
+      if (rsvpIndex >= 0) {
+        // Determine new status: "going" if they voted, "pending" otherwise
+        final newStatus = suggestionVoterUserIds.contains(currentRsvp.userId)
+            ? RsvpStatus.going
+            : RsvpStatus.pending;
+
+        // Create updated RSVP with new status
+        final updatedRsvp = Rsvp(
+          id: currentRsvp.id,
+          eventId: currentRsvp.eventId,
+          userId: currentRsvp.userId,
+          userName: currentRsvp.userName,
+          userAvatar: currentRsvp.userAvatar,
+          status: newStatus,
+          createdAt: currentRsvp.createdAt,
+        );
+
+        _rsvps[rsvpIndex] = updatedRsvp;
+      }
+    }
+
+    // Update event counts
+    await _updateEventCounts(eventId);
+
+    // Sync current suggestion votes with updated RSVP status
+    await FakeSuggestionRepository.syncCurrentSuggestionWithRsvp(eventId);
+  }
+
+  Future<void> _updateEventCounts(String eventId) async {
+    final eventRsvps = _rsvps.where((r) => r.eventId == eventId).toList();
+    final goingCount = eventRsvps
+        .where((r) => r.status == RsvpStatus.going)
+        .length;
+    final notGoingCount = eventRsvps
+        .where((r) => r.status == RsvpStatus.notGoing)
+        .length;
+
+    // Update counts in FakeEventRepository
+    FakeEventRepository.updateRsvpCounts(eventId, goingCount, notGoingCount);
   }
 }

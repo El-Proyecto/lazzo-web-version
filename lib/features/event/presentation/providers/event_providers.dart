@@ -383,63 +383,17 @@ class CreateSuggestionNotifier extends StateNotifier<AsyncValue<void>> {
   }) async {
     state = const AsyncValue.loading();
     try {
-      // Check if this is the first suggestion
-      final existingSuggestions = await ref.read(
-        eventSuggestionsProvider(eventId).future,
-      );
-      final isFirstSuggestion = existingSuggestions.isEmpty;
+      // Create the requested suggestion
+      // Get event details for current dates
+      final event = await ref.read(eventDetailProvider(eventId).future);
 
-      String? currentEventSuggestionId;
-
-      // If this is the first suggestion, check for existing RSVP "Can" votes
-      // and automatically add current event date/time as a suggestion FIRST
-      if (isFirstSuggestion) {
-        try {
-          final event = await ref.read(eventDetailProvider(eventId).future);
-          final rsvps = await ref.read(eventRsvpsProvider(eventId).future);
-
-          // Check if there are "Can" votes and event has valid date/time
-          final canVotes = rsvps
-              .where((r) => r.status == RsvpStatus.going)
-              .toList();
-          if (canVotes.isNotEmpty &&
-              event.startDateTime != null &&
-              event.endDateTime != null) {
-            // Create suggestion for current event date/time FIRST
-            final currentEventSuggestion = await createSuggestion(
-              eventId: eventId,
-              userId: 'current-user', // TODO: Get from auth service
-              startDateTime: event.startDateTime!,
-              endDateTime: event.endDateTime,
-            );
-            currentEventSuggestionId = currentEventSuggestion.id;
-
-            // Vote for the current event suggestion with all "Can" voters
-            final suggestionRepository = ref.read(suggestionRepositoryProvider);
-            for (final vote in canVotes) {
-              try {
-                await suggestionRepository.voteOnSuggestion(
-                  suggestionId: currentEventSuggestionId,
-                  userId: vote.userId,
-                );
-              } catch (e) {
-                // Log error but continue with other votes
-                // print('Failed to auto-vote for user ${vote.userId}: $e');
-              }
-            }
-          }
-        } catch (e) {
-          // Log error but don't fail the main operation
-          // print('Failed to auto-create event suggestion: $e');
-        }
-      }
-
-      // Create the requested suggestion AFTER the auto-suggestion
       final userSuggestion = await createSuggestion(
         eventId: eventId,
         userId: 'current-user',
         startDateTime: startDateTime,
         endDateTime: endDateTime,
+        currentEventStartDateTime: event.startDateTime,
+        currentEventEndDateTime: event.endDateTime,
       );
 
       // Automatically vote for the user's new suggestion

@@ -560,7 +560,6 @@ class EventPage extends ConsumerWidget {
       );
 
       // Step 2: Get all users who voted on the selected suggestion
-      // In this implementation, we'll just get all suggestion voters
       final suggestionVotesAsync = ref.read(suggestionVotesProvider(eventId));
       final suggestionVotes = suggestionVotesAsync.value ?? [];
 
