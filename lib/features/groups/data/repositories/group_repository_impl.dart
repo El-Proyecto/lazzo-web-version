@@ -64,20 +64,31 @@ class GroupRepositoryImpl implements GroupRepository {
       
       // Se precisamos fazer upload da foto, fazer agora com ID correto
       if (groupData['needs_photo_upload'] == true) {
-        final imageFile = XFile(groupData['temp_photo_path']);
-        await uploadGroupCoverPhoto(imageFile, realGroupId);
+        print('📸 [Repository] Processing photo upload...');
+        print('   📁 Photo path: ${groupData['temp_photo_path']}');
+        print('   🏷️  Group ID: $realGroupId');
         
-        // Recarregar dados atualizados
-        final updatedGroups = await _dataSource.getUserGroups(user.id);
-        final updatedGroup = updatedGroups.firstWhere(
-          (g) => g['id'] == createdGroupData['id'],
-        );
-        
-        // Certificar que tem QR code atualizado
-        updatedGroup['qr_code'] = realQrCodeData;
-        updatedGroup['group_url'] = realQrCodeData;
-        
-        return GroupEntityModel.fromJson(updatedGroup);
+        try {
+          final imageFile = XFile(groupData['temp_photo_path']);
+          final uploadedPath = await uploadGroupCoverPhoto(imageFile, realGroupId);
+          print('   ✅ Photo upload completed: $uploadedPath');
+          
+          // Recarregar dados atualizados
+          final updatedGroups = await _dataSource.getUserGroups(user.id);
+          final updatedGroup = updatedGroups.firstWhere(
+            (g) => g['id'] == createdGroupData['id'],
+          );
+          
+          // Certificar que tem QR code atualizado
+          updatedGroup['qr_code'] = realQrCodeData;
+          updatedGroup['group_url'] = realQrCodeData;
+          
+          print('   ✅ Group data reloaded with photo');
+          return GroupEntityModel.fromJson(updatedGroup);
+        } catch (e) {
+          print('   ❌ Photo upload failed: $e');
+          // Continue without photo if upload fails
+        }
       }
 
       // Certificar que a resposta tem QR code atualizado

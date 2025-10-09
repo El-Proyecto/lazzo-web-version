@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:io';
 import '../../../shared/constants/spacing.dart';
 import '../../../shared/constants/text_styles.dart';
 import '../../../shared/themes/colors.dart';
@@ -69,13 +70,7 @@ class PhotoSelector extends StatelessWidget {
                 ClipRRect(
                   borderRadius: BorderRadius.circular(Radii.md),
                   child: hasPhoto
-                      ? Image.network(
-                          photoUrl!,
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) {
-                            return const _PhotoPlaceholder();
-                          },
-                        )
+                      ? _buildPhotoImage(photoUrl!)
                       : const _PhotoPlaceholder(),
                 ),
 
@@ -117,6 +112,30 @@ class PhotoSelector extends StatelessWidget {
         ),
       ],
     );
+  }
+
+  /// Helper method to build photo image based on URL or local path
+  Widget _buildPhotoImage(String photoPath) {
+    // Check if it's a URL or local file path
+    if (photoPath.startsWith('http://') || photoPath.startsWith('https://')) {
+      // Network image
+      return Image.network(
+        photoPath,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) {
+          return const _PhotoPlaceholder();
+        },
+      );
+    } else {
+      // Local file
+      return Image.file(
+        File(photoPath),
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) {
+          return const _PhotoPlaceholder();
+        },
+      );
+    }
   }
 }
 

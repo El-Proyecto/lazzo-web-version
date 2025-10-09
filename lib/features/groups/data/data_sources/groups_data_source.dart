@@ -57,7 +57,8 @@ class SupabaseGroupsDataSource implements GroupsDataSource {
   @override
   Future<String> uploadGroupCoverPhoto(Uint8List imageBytes, String groupId) async {
     try {
-      print('📤 Starting group cover photo upload for group: $groupId');
+      print('📤 [DataSource] Starting group cover photo upload for group: $groupId');
+      print('   🗂️ Bucket name: $_bucketName');
       
       // 1) Gerar path único para o arquivo
       final timestamp = DateTime.now().millisecondsSinceEpoch;
@@ -67,27 +68,34 @@ class SupabaseGroupsDataSource implements GroupsDataSource {
       print('   📁 Upload path: $path');
       print('   📊 Image size: ${(imageBytes.length / 1024).toStringAsFixed(1)}KB');
       
-      // 2) Upload para bucket group-photos
-      await _client.storage
+      // 2) Upload para bucket group-photos-private
+      print('   📤 Uploading to Supabase Storage...');
+      final uploadResponse = await _client.storage
           .from(_bucketName)
           .uploadBinary(path, imageBytes);
       
+      print('   📦 Upload response: $uploadResponse');
       print('   ✅ Upload successful');
       
       // 3) Atualizar registro do grupo com novo path e timestamp
-      await _client
+      print('   💾 Updating groups table...');
+      final updateResponse = await _client
           .from('groups')
           .update({
             'photo_url': path,
             'photo_updated_at': DateTime.now().toIso8601String(),
           })
-          .eq('id', groupId);
+          .eq('id', groupId)
+          .select();
       
+      print('   📦 Database update response: $updateResponse');
       print('   ✅ Database updated with photo metadata');
       
       return path;
     } catch (e) {
       print('   ❌ Upload failed: $e');
+      print('   📍 Error type: ${e.runtimeType}');
+      print('   📍 Error details: $e');
       throw Exception('Failed to upload group cover photo: $e');
     }
   }
