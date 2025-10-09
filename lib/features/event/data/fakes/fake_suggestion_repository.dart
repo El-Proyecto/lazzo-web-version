@@ -47,26 +47,34 @@ class FakeSuggestionRepository implements SuggestionRepository {
     );
 
     // If this is the first suggestion and we have current event dates,
-    // create a "current" suggestion first
+    // create a "current" suggestion first (only if it doesn't already exist)
     final allSuggestions = <Suggestion>[...existingSuggestions];
 
     if (isFirstSuggestion && currentEventStartDateTime != null) {
-      final currentDateSuggestion = Suggestion(
-        id: 'current_event_suggestion_${++_suggestionIdCounter}',
-        eventId: eventId,
-        userId: 'system', // System-generated suggestion
-        userName: 'Event Date',
-        userAvatar: null,
-        startDateTime: currentEventStartDateTime,
-        endDateTime: currentEventEndDateTime,
-        createdAt: DateTime.now().subtract(
-          const Duration(seconds: 1),
-        ), // Make it appear first chronologically
+      // Check if a current suggestion already exists
+      final hasCurrentSuggestion = existingSuggestions.any(
+        (s) =>
+            s.userId == 'system' && s.id.contains('current_event_suggestion'),
       );
-      allSuggestions.add(currentDateSuggestion);
 
-      // Auto-vote all users with RSVP "going" status on the current suggestion
-      await _autoVoteFromRsvps(eventId, currentDateSuggestion.id);
+      if (!hasCurrentSuggestion) {
+        final currentDateSuggestion = Suggestion(
+          id: 'current_event_suggestion_${++_suggestionIdCounter}',
+          eventId: eventId,
+          userId: 'system', // System-generated suggestion
+          userName: 'Event Date',
+          userAvatar: null,
+          startDateTime: currentEventStartDateTime,
+          endDateTime: currentEventEndDateTime,
+          createdAt: DateTime.now().subtract(
+            const Duration(seconds: 1),
+          ), // Make it appear first chronologically
+        );
+        allSuggestions.add(currentDateSuggestion);
+
+        // Auto-vote all users with RSVP "going" status on the current suggestion
+        await _autoVoteFromRsvps(eventId, currentDateSuggestion.id);
+      }
     }
 
     // Add the new user suggestion
@@ -183,34 +191,41 @@ class FakeSuggestionRepository implements SuggestionRepository {
     return null;
   }
 
-  /// Auto-vote users with RSVP "going" status on a suggestion
+  /// Auto-vote all users with RSVP "going" status on the specified suggestion
   Future<void> _autoVoteFromRsvps(String eventId, String suggestionId) async {
     try {
-      // Get the fake RSVP repository instance
       final rsvpRepository = FakeRsvpRepository();
       final rsvps = await rsvpRepository.getEventRsvps(eventId);
 
-      // Find all users with "going" status
+      // Get existing votes to prevent duplicates
+      final existingVotes = _votes[suggestionId] ?? [];
+
+      // Find all users with "going" status and auto-vote them
       final goingUsers = rsvps
           .where((rsvp) => rsvp.status.name == 'going')
           .toList();
 
-      // Auto-vote each "going" user on the current suggestion
       for (final rsvp in goingUsers) {
-        final vote = SuggestionVote(
-          id: 'auto_vote_${++_voteIdCounter}',
-          suggestionId: suggestionId,
-          userId: rsvp.userId,
-          userName: rsvp.userName,
-          userAvatar: rsvp.userAvatar,
-          createdAt: DateTime.now(),
+        // Check if user already has a vote to prevent duplicates
+        final hasExistingVote = existingVotes.any(
+          (vote) => vote.userId == rsvp.userId,
         );
 
-        _votes[suggestionId] = [...(_votes[suggestionId] ?? []), vote];
+        if (!hasExistingVote) {
+          final vote = SuggestionVote(
+            id: 'auto_vote_${++_voteIdCounter}',
+            suggestionId: suggestionId,
+            userId: rsvp.userId,
+            userName: _getUserName(rsvp.userId), // Use consistent naming
+            userAvatar: rsvp.userAvatar,
+            createdAt: DateTime.now(),
+          );
+
+          _votes[suggestionId] = [...(_votes[suggestionId] ?? []), vote];
+        }
       }
     } catch (e) {
-      // Silently fail if RSVPs can't be accessed
-      // This prevents breaking the suggestion creation
+      // Silently fail if RSVP data can't be retrieved
     }
   }
 
@@ -220,13 +235,14 @@ class FakeSuggestionRepository implements SuggestionRepository {
     try {
       // Find the current event suggestion
       final suggestions = _suggestions[eventId] ?? [];
+
       final currentSuggestion = suggestions.firstWhere(
         (s) =>
             s.userId == 'system' && s.id.contains('current_event_suggestion'),
         orElse: () => throw Exception('No current suggestion found'),
       );
 
-      // Clear existing votes for the current suggestion
+      // Clear existing votes for the current suggestion to avoid duplicates
       _votes[currentSuggestion.id] = [];
 
       // Get updated RSVP data
@@ -238,13 +254,18 @@ class FakeSuggestionRepository implements SuggestionRepository {
           .where((rsvp) => rsvp.status.name == 'going')
           .toList();
 
-      // Add votes for each "going" user
+      // Create a temporary instance to access the _getUserName method
+      final tempInstance = FakeSuggestionRepository();
+
+      // Add votes for each "going" user using consistent naming
       for (final rsvp in goingUsers) {
         final vote = SuggestionVote(
           id: 'sync_vote_${++_voteIdCounter}',
           suggestionId: currentSuggestion.id,
           userId: rsvp.userId,
-          userName: rsvp.userName,
+          userName: tempInstance._getUserName(
+            rsvp.userId,
+          ), // Use consistent naming
           userAvatar: rsvp.userAvatar,
           createdAt: DateTime.now(),
         );
@@ -259,6 +280,8 @@ class FakeSuggestionRepository implements SuggestionRepository {
       // This prevents breaking other operations
     }
   }
+
+  // Helper methods to generate fake user data
 
   /// Clear all data (for testing)
   static void clearAll() {

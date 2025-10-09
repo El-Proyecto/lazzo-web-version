@@ -260,55 +260,19 @@ class UserRsvpNotifier extends StateNotifier<AsyncValue<Rsvp?>> {
     WidgetRef ref,
   ) async {
     try {
-      // Get suggestions to find the current event suggestion
-      final suggestions = await ref.read(
-        eventSuggestionsProvider(eventId).future,
-      );
-      if (suggestions.isEmpty) return;
+      // NOTE: Manual sync is disabled because the FakeRsvpRepository.submitRsvp()
+      // already calls FakeSuggestionRepository.syncCurrentSuggestionWithRsvp()
+      // which handles vote synchronization automatically.
+      //
+      // Keeping this method for potential future use with real Supabase implementation
+      // where sync might need to be handled differently.
 
-      // Find current event suggestion (it should be the first one with event's date/time)
-      final event = await ref.read(eventDetailProvider(eventId).future);
-      if (event.startDateTime == null) return;
+      // Just invalidate providers to refresh the UI with updated data
+      ref.invalidate(suggestionVotesProvider(eventId));
+      ref.invalidate(userSuggestionVotesProvider(eventId));
 
-      final currentEventSuggestion = suggestions.firstWhere(
-        (s) =>
-            s.startDateTime.isAtSameMomentAs(event.startDateTime!) &&
-            (s.endDateTime?.isAtSameMomentAs(
-                  event.endDateTime ?? event.startDateTime!,
-                ) ??
-                true),
-        orElse: () => suggestions
-            .first, // Fallback to first suggestion if exact match not found
-      );
-
-      final suggestionRepository = ref.read(suggestionRepositoryProvider);
-      final userVotes = await ref.read(
-        userSuggestionVotesProvider(eventId).future,
-      );
-      final hasVotedForCurrentSuggestion = userVotes.any(
-        (vote) => vote.suggestionId == currentEventSuggestion.id,
-      );
-
-      if (status == RsvpStatus.going && !hasVotedForCurrentSuggestion) {
-        // User voted "Can" - add vote for current event suggestion
-        await suggestionRepository.voteOnSuggestion(
-          suggestionId: currentEventSuggestion.id,
-          userId: 'current-user',
-        );
-        ref.invalidate(suggestionVotesProvider(eventId));
-        ref.invalidate(userSuggestionVotesProvider(eventId));
-      } else if (status != RsvpStatus.going && hasVotedForCurrentSuggestion) {
-        // User voted "Can't" or "Pending" - remove vote from current event suggestion
-        await suggestionRepository.removeVoteFromSuggestion(
-          suggestionId: currentEventSuggestion.id,
-          userId: 'current-user',
-        );
-        ref.invalidate(suggestionVotesProvider(eventId));
-        ref.invalidate(userSuggestionVotesProvider(eventId));
-      }
     } catch (e) {
-      // Log but don't throw
-      // print('Error syncing RSVP with suggestion: $e');
+      print('❌ Error in provider sync: $e');
     }
   }
 }

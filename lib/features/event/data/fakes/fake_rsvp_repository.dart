@@ -5,7 +5,7 @@ import 'fake_suggestion_repository.dart';
 
 /// Fake RSVP repository for development
 class FakeRsvpRepository implements RsvpRepository {
-  final List<Rsvp> _rsvps = [
+  static final List<Rsvp> _rsvps = [
     // Can votes (5 people)
     Rsvp(
       id: 'rsvp-1',
@@ -139,41 +139,47 @@ class FakeRsvpRepository implements RsvpRepository {
     String userId,
     RsvpStatus status,
   ) async {
-    await Future.delayed(const Duration(milliseconds: 400));
+    // Simulate network delay
+    await Future.delayed(const Duration(milliseconds: 300));
 
-    final existingIndex = _rsvps.indexWhere(
+    // Find current user name from existing RSVPs or generate one
+    String userName;
+    String? userAvatar;
+
+    final existingRsvp = _rsvps.firstWhere(
       (r) => r.eventId == eventId && r.userId == userId,
+      orElse: () => Rsvp(
+        id: '',
+        eventId: eventId,
+        userId: userId,
+        userName: userId == 'current-user' ? 'Carlos Pereira' : 'User $userId',
+        userAvatar: null,
+        status: RsvpStatus.pending,
+        createdAt: DateTime.now(),
+      ),
     );
 
-    final newRsvp = Rsvp(
-      id: existingIndex >= 0
-          ? _rsvps[existingIndex].id
-          : 'rsvp-new-${_rsvps.length}',
+    userName = existingRsvp.userName;
+    userAvatar = existingRsvp.userAvatar;
+
+    final rsvp = Rsvp(
+      id: 'rsvp_${DateTime.now().millisecondsSinceEpoch}',
       eventId: eventId,
       userId: userId,
-      userName: existingIndex >= 0
-          ? _rsvps[existingIndex].userName
-          : 'Current User',
-      userAvatar: existingIndex >= 0 ? _rsvps[existingIndex].userAvatar : null,
+      userName: userName,
+      userAvatar: userAvatar,
       status: status,
-      createdAt: existingIndex >= 0
-          ? _rsvps[existingIndex].createdAt
-          : DateTime.now(),
+      createdAt: DateTime.now(),
     );
 
-    if (existingIndex >= 0) {
-      _rsvps[existingIndex] = newRsvp;
-    } else {
-      _rsvps.add(newRsvp);
-    }
+    // Remove any existing RSVP for this user/event
+    _rsvps.removeWhere((r) => r.eventId == eventId && r.userId == userId);
+    _rsvps.add(rsvp);
 
-    // Update event counts
-    await _updateEventCounts(eventId);
-
-    // Sync current suggestion votes with updated RSVP status
+    // Sync with current suggestion votes after RSVP change
     await FakeSuggestionRepository.syncCurrentSuggestionWithRsvp(eventId);
 
-    return newRsvp;
+    return rsvp;
   }
 
   @override
