@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../shared/components/common/page_segmented_control.dart';
 import '../../../../shared/themes/colors.dart';
 import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/constants/text_styles.dart';
@@ -78,36 +79,9 @@ class _InboxPageState extends ConsumerState<InboxPage>
   }
 
   Widget _buildTabBar() {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: Insets.screenH),
-      padding: const EdgeInsets.all(4),
-      decoration: ShapeDecoration(
-        color: BrandColors.bg2,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(Radii.md),
-        ),
-      ),
-      child: TabBar(
-        controller: _tabController,
-        indicator: ShapeDecoration(
-          color: BrandColors.bg3,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(Radii.md),
-          ),
-        ),
-        indicatorSize: TabBarIndicatorSize.tab,
-        dividerColor: Colors.transparent,
-        labelColor: BrandColors.text1,
-        unselectedLabelColor: BrandColors.text2,
-        labelStyle: AppText.labelLarge,
-        unselectedLabelStyle: AppText.labelLarge,
-        labelPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 0),
-        tabs: const [
-          Tab(text: 'Notifications'),
-          Tab(text: 'Actions'),
-          Tab(text: 'Payments'),
-        ],
-      ),
+    return PageSegmentedControl(
+      controller: _tabController,
+      labels: const ['Notifications', 'Actions', 'Payments'],
     );
   }
 

@@ -8,7 +8,7 @@ class Gaps {
 }
 
 class Radii {
-  static const sm = 6.0, smAlt = 10.0, md = 16.0, pill = 24.0, nav = 36.0;
+  static const sm = 6.0, smAlt = 10.0, xs = 12.0, md = 16.0, pill = 24.0, nav = 36.0;
 }
 
 class Pads {

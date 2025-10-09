@@ -39,4 +39,40 @@ abstract class SuggestionRepository {
 
   /// Clear all suggestions and votes for an event
   Future<void> clearEventSuggestions(String eventId);
+
+  // Location suggestion methods
+
+  /// Get all location suggestions for an event
+  Future<List<LocationSuggestion>> getEventLocationSuggestions(String eventId);
+
+  /// Create a new location suggestion
+  Future<LocationSuggestion> createLocationSuggestion({
+    required String eventId,
+    required String userId,
+    required String locationName,
+    String? address,
+    double? latitude,
+    double? longitude,
+  });
+
+  /// Get all votes for event location suggestions
+  Future<List<SuggestionVote>> getEventLocationSuggestionVotes(String eventId);
+
+  /// Vote on a location suggestion
+  Future<SuggestionVote> voteOnLocationSuggestion({
+    required String suggestionId,
+    required String userId,
+  });
+
+  /// Remove vote from a location suggestion
+  Future<void> removeVoteFromLocationSuggestion({
+    required String suggestionId,
+    required String userId,
+  });
+
+  /// Get user's votes for event location suggestions
+  Future<List<SuggestionVote>> getUserLocationSuggestionVotes({
+    required String eventId,
+    required String userId,
+  });
 }

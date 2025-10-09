@@ -211,6 +211,34 @@ final userSuggestionVotesProvider =
       );
     });
 
+// Location suggestions state provider
+final eventLocationSuggestionsProvider =
+    FutureProvider.family<List<LocationSuggestion>, String>((
+      ref,
+      eventId,
+    ) async {
+      final repository = ref.watch(suggestionRepositoryProvider);
+      return await repository.getEventLocationSuggestions(eventId);
+    });
+
+// Location suggestion votes state provider
+final locationSuggestionVotesProvider =
+    FutureProvider.family<List<SuggestionVote>, String>((ref, eventId) async {
+      final repository = ref.watch(suggestionRepositoryProvider);
+      return await repository.getEventLocationSuggestionVotes(eventId);
+    });
+
+// User location suggestion votes state provider
+final userLocationSuggestionVotesProvider =
+    FutureProvider.family<List<SuggestionVote>, String>((ref, eventId) async {
+      final repository = ref.watch(suggestionRepositoryProvider);
+      // TODO: Get current user ID from auth service
+      return await repository.getUserLocationSuggestionVotes(
+        eventId: eventId,
+        userId: 'current-user',
+      );
+    });
+
 // User RSVP state notifier
 class UserRsvpNotifier extends StateNotifier<AsyncValue<Rsvp?>> {
   final String eventId;
@@ -270,7 +298,6 @@ class UserRsvpNotifier extends StateNotifier<AsyncValue<Rsvp?>> {
       // Just invalidate providers to refresh the UI with updated data
       ref.invalidate(suggestionVotesProvider(eventId));
       ref.invalidate(userSuggestionVotesProvider(eventId));
-
     } catch (e) {
       print('❌ Error in provider sync: $e');
     }
@@ -302,6 +329,29 @@ final toggleSuggestionVoteNotifierProvider =
     ) {
       return ToggleSuggestionVoteNotifier(
         toggleVote: ref.watch(toggleSuggestionVoteProvider),
+        ref: ref,
+      );
+    });
+
+// Create location suggestion notifier
+final createLocationSuggestionNotifierProvider =
+    StateNotifierProvider<CreateLocationSuggestionNotifier, AsyncValue<void>>((
+      ref,
+    ) {
+      return CreateLocationSuggestionNotifier(
+        repository: ref.watch(suggestionRepositoryProvider),
+        ref: ref,
+      );
+    });
+
+// Toggle location suggestion vote notifier
+final toggleLocationSuggestionVoteNotifierProvider =
+    StateNotifierProvider<
+      ToggleLocationSuggestionVoteNotifier,
+      AsyncValue<void>
+    >((ref) {
+      return ToggleLocationSuggestionVoteNotifier(
+        repository: ref.watch(suggestionRepositoryProvider),
         ref: ref,
       );
     });
@@ -486,6 +536,100 @@ class ToggleSuggestionVoteNotifier extends StateNotifier<AsyncValue<void>> {
       return currentEventSuggestion.id == suggestionId;
     } catch (e) {
       return false;
+    }
+  }
+}
+
+class CreateLocationSuggestionNotifier extends StateNotifier<AsyncValue<void>> {
+  final SuggestionRepository repository;
+  final Ref ref;
+
+  CreateLocationSuggestionNotifier({
+    required this.repository,
+    required this.ref,
+  }) : super(const AsyncValue.data(null));
+
+  Future<void> createLocationSuggestion({
+    required String eventId,
+    required String locationName,
+    String? address,
+    double? latitude,
+    double? longitude,
+  }) async {
+    state = const AsyncValue.loading();
+    try {
+      // Create the requested location suggestion
+      final userSuggestion = await repository.createLocationSuggestion(
+        eventId: eventId,
+        userId: 'current-user',
+        locationName: locationName,
+        address: address,
+        latitude: latitude,
+        longitude: longitude,
+      );
+
+      // Automatically vote for the user's new suggestion
+      await repository.voteOnLocationSuggestion(
+        suggestionId: userSuggestion.id,
+        userId: 'current-user',
+      );
+
+      // Invalidate providers to refresh data
+      ref.invalidate(eventLocationSuggestionsProvider(eventId));
+      ref.invalidate(locationSuggestionVotesProvider(eventId));
+      ref.invalidate(userLocationSuggestionVotesProvider(eventId));
+
+      state = const AsyncValue.data(null);
+    } catch (error, stackTrace) {
+      state = AsyncValue.error(error, stackTrace);
+    }
+  }
+}
+
+class ToggleLocationSuggestionVoteNotifier
+    extends StateNotifier<AsyncValue<void>> {
+  final SuggestionRepository repository;
+  final Ref ref;
+
+  ToggleLocationSuggestionVoteNotifier({
+    required this.repository,
+    required this.ref,
+  }) : super(const AsyncValue.data(null));
+
+  Future<void> toggleVote(String eventId, String suggestionId) async {
+    state = const AsyncValue.loading();
+    try {
+      // Get current vote status
+      final userVotes = await ref.read(
+        userLocationSuggestionVotesProvider(eventId).future,
+      );
+      final hasCurrentVote = userVotes.any(
+        (vote) => vote.suggestionId == suggestionId,
+      );
+
+      // TODO: Get current user ID from auth service
+      if (hasCurrentVote) {
+        // Remove vote
+        await repository.removeVoteFromLocationSuggestion(
+          suggestionId: suggestionId,
+          userId: 'current-user',
+        );
+      } else {
+        // Add vote
+        await repository.voteOnLocationSuggestion(
+          suggestionId: suggestionId,
+          userId: 'current-user',
+        );
+      }
+
+      // Invalidate providers to refresh data
+      ref.invalidate(eventLocationSuggestionsProvider(eventId));
+      ref.invalidate(locationSuggestionVotesProvider(eventId));
+      ref.invalidate(userLocationSuggestionVotesProvider(eventId));
+
+      state = const AsyncValue.data(null);
+    } catch (error, stackTrace) {
+      state = AsyncValue.error(error, stackTrace);
     }
   }
 }

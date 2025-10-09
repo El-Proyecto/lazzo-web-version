@@ -12,6 +12,7 @@ import '../../domain/entities/rsvp.dart';
 import '../providers/event_providers.dart';
 import '../widgets/chat_preview_widget.dart';
 import '../widgets/date_time_suggestions_widget.dart';
+import '../widgets/location_suggestions_widget.dart';
 import '../widgets/add_suggestion_bottom_sheet.dart';
 
 /// Event detail page
@@ -403,6 +404,103 @@ class EventPage extends ConsumerWidget {
                                 },
                               ),
                               const SizedBox(height: Gaps.xl),
+                              // Location suggestions widget
+                              Consumer(
+                                builder: (context, ref, child) {
+                                  final locationSuggestionsAsync = ref.watch(
+                                    eventLocationSuggestionsProvider(eventId),
+                                  );
+                                  final locationVotesAsync = ref.watch(
+                                    locationSuggestionVotesProvider(eventId),
+                                  );
+                                  final userLocationVotesAsync = ref.watch(
+                                    userLocationSuggestionVotesProvider(
+                                      eventId,
+                                    ),
+                                  );
+
+                                  return locationSuggestionsAsync.when(
+                                    data: (locationSuggestions) {
+                                      return locationVotesAsync.when(
+                                        data: (locationVotes) {
+                                          return userLocationVotesAsync.when(
+                                            data: (userLocationVotes) {
+                                              final userLocationVoteIds =
+                                                  userLocationVotes
+                                                      .map(
+                                                        (vote) =>
+                                                            vote.suggestionId,
+                                                      )
+                                                      .toSet();
+
+                                              return Column(
+                                                children: [
+                                                  LocationSuggestionsWidget(
+                                                    suggestions:
+                                                        locationSuggestions,
+                                                    allVotes: locationVotes,
+                                                    userVotes:
+                                                        userLocationVoteIds,
+                                                    onVote: (suggestionId) {
+                                                      ref
+                                                          .read(
+                                                            toggleLocationSuggestionVoteNotifierProvider
+                                                                .notifier,
+                                                          )
+                                                          .toggleVote(
+                                                            eventId,
+                                                            suggestionId,
+                                                          );
+                                                    },
+                                                    isHost:
+                                                        event.hostId ==
+                                                        'current-user',
+                                                    onAddSuggestion: () {
+                                                      showAddSuggestionBottomSheet(
+                                                        context,
+                                                        eventId: eventId,
+                                                        eventStartDate: event
+                                                            .startDateTime!,
+                                                        eventStartTime:
+                                                            TimeOfDay.fromDateTime(
+                                                              event
+                                                                  .startDateTime!,
+                                                            ),
+                                                        eventEndDate:
+                                                            event.endDateTime!,
+                                                        eventEndTime:
+                                                            TimeOfDay.fromDateTime(
+                                                              event
+                                                                  .endDateTime!,
+                                                            ),
+                                                        type: SuggestionType
+                                                            .location,
+                                                      );
+                                                    },
+                                                  ),
+                                                  const SizedBox(
+                                                    height: Gaps.xl,
+                                                  ),
+                                                ],
+                                              );
+                                            },
+                                            loading: () =>
+                                                const SizedBox.shrink(),
+                                            error: (error, stack) =>
+                                                const SizedBox.shrink(),
+                                          );
+                                        },
+                                        loading: () => const SizedBox.shrink(),
+                                        error: (error, stack) =>
+                                            const SizedBox.shrink(),
+                                      );
+                                    },
+                                    loading: () => const SizedBox.shrink(),
+                                    error: (error, stack) =>
+                                        const SizedBox.shrink(),
+                                  );
+                                },
+                              ),
                             ],
                           );
                         },

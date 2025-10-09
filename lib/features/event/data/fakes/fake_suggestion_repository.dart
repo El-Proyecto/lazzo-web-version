@@ -281,13 +281,145 @@ class FakeSuggestionRepository implements SuggestionRepository {
     }
   }
 
+  // Location suggestions storage
+  static final Map<String, List<LocationSuggestion>> _locationSuggestions = {};
+  static final Map<String, List<SuggestionVote>> _locationVotes = {};
+  static int _locationSuggestionIdCounter = 0;
+
+  @override
+  Future<List<LocationSuggestion>> getEventLocationSuggestions(
+    String eventId,
+  ) async {
+    // Simulate network delay
+    await Future.delayed(const Duration(milliseconds: 300));
+
+    final suggestions = _locationSuggestions[eventId] ?? [];
+    return suggestions;
+  }
+
+  @override
+  Future<LocationSuggestion> createLocationSuggestion({
+    required String eventId,
+    required String userId,
+    required String locationName,
+    String? address,
+    double? latitude,
+    double? longitude,
+  }) async {
+    // Simulate network delay
+    await Future.delayed(const Duration(milliseconds: 500));
+
+    // Create the new location suggestion
+    final suggestion = LocationSuggestion(
+      id: 'location_suggestion_${++_locationSuggestionIdCounter}',
+      eventId: eventId,
+      userId: userId,
+      userName: _getUserName(userId),
+      userAvatar: _getUserAvatar(userId),
+      locationName: locationName,
+      address: address,
+      latitude: latitude,
+      longitude: longitude,
+      createdAt: DateTime.now(),
+    );
+
+    // Add to storage
+    final existingSuggestions = _locationSuggestions[eventId] ?? [];
+    _locationSuggestions[eventId] = [...existingSuggestions, suggestion];
+
+    return suggestion;
+  }
+
+  @override
+  Future<List<SuggestionVote>> getEventLocationSuggestionVotes(
+    String eventId,
+  ) async {
+    // Simulate network delay
+    await Future.delayed(const Duration(milliseconds: 200));
+
+    final eventLocationSuggestions = _locationSuggestions[eventId] ?? [];
+    final eventLocationSuggestionIds = eventLocationSuggestions
+        .map((s) => s.id)
+        .toSet();
+
+    return _locationVotes.values
+        .expand((votes) => votes)
+        .where((vote) => eventLocationSuggestionIds.contains(vote.suggestionId))
+        .toList();
+  }
+
+  @override
+  Future<SuggestionVote> voteOnLocationSuggestion({
+    required String suggestionId,
+    required String userId,
+  }) async {
+    // Simulate network delay
+    await Future.delayed(const Duration(milliseconds: 300));
+
+    final vote = SuggestionVote(
+      id: 'location_vote_${++_voteIdCounter}',
+      suggestionId: suggestionId,
+      userId: userId,
+      userName: _getUserName(userId),
+      userAvatar: _getUserAvatar(userId),
+      createdAt: DateTime.now(),
+    );
+
+    _locationVotes[suggestionId] = [
+      ...(_locationVotes[suggestionId] ?? []),
+      vote,
+    ];
+
+    return vote;
+  }
+
+  @override
+  Future<void> removeVoteFromLocationSuggestion({
+    required String suggestionId,
+    required String userId,
+  }) async {
+    // Simulate network delay
+    await Future.delayed(const Duration(milliseconds: 300));
+
+    final votes = _locationVotes[suggestionId] ?? [];
+    _locationVotes[suggestionId] = votes
+        .where((vote) => vote.userId != userId)
+        .toList();
+  }
+
+  @override
+  Future<List<SuggestionVote>> getUserLocationSuggestionVotes({
+    required String eventId,
+    required String userId,
+  }) async {
+    // Simulate network delay
+    await Future.delayed(const Duration(milliseconds: 200));
+
+    final eventLocationSuggestions = _locationSuggestions[eventId] ?? [];
+    final eventLocationSuggestionIds = eventLocationSuggestions
+        .map((s) => s.id)
+        .toSet();
+
+    return _locationVotes.values
+        .expand((votes) => votes)
+        .where(
+          (vote) =>
+              eventLocationSuggestionIds.contains(vote.suggestionId) &&
+              vote.userId == userId,
+        )
+        .toList();
+  }
+
   // Helper methods to generate fake user data
 
   /// Clear all data (for testing)
   static void clearAll() {
     _suggestions.clear();
     _votes.clear();
+    _locationSuggestions.clear();
+    _locationVotes.clear();
     _suggestionIdCounter = 0;
+    _locationSuggestionIdCounter = 0;
     _voteIdCounter = 0;
   }
 }
