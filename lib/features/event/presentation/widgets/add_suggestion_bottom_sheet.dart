@@ -148,7 +148,7 @@ class _AddSuggestionBottomSheetState
   @override
   Widget build(BuildContext context) {
     final screenHeight = MediaQuery.of(context).size.height;
-    final bottomSheetHeight = screenHeight * 0.85; // Almost full length
+    final bottomSheetHeight = screenHeight * 0.90; // Almost full length
     final createSuggestionState = ref.watch(createSuggestionNotifierProvider);
 
     return Container(
@@ -203,7 +203,7 @@ class _AddSuggestionBottomSheetState
             ),
           ),
 
-          const SizedBox(height: Gaps.lg),
+          const SizedBox(height: Gaps.md),
 
           // Segmented Control
           Padding(

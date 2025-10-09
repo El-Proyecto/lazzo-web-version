@@ -28,7 +28,7 @@ class BottomSheetSegmentedControl extends StatelessWidget {
       decoration: ShapeDecoration(
         color: BrandColors.bg3,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(Radii.xs),
+          borderRadius: BorderRadius.circular(Radii.smAlt),
         ),
       ),
       child: TabBar(
@@ -37,7 +37,7 @@ class BottomSheetSegmentedControl extends StatelessWidget {
         indicator: ShapeDecoration(
           color: BrandColors.border,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(Radii.xs),
+            borderRadius: BorderRadius.circular(Radii.smAlt),
           ),
         ),
         indicatorSize: TabBarIndicatorSize.tab,
