@@ -8,11 +8,16 @@ abstract class GroupsDataSource {
   Future<String> getGroupCoverSignedUrl(String photoPath);
   Future<void> saveGroupQrCode(String groupId, String qrCodeData);
   Future<List<Map<String, dynamic>>> getUserGroups(String userId);
+  Future<List<Map<String, dynamic>>> getArchivedGroups(String userId);
+  Future<void> leaveGroup(String groupId, String userId);
+  Future<void> updateGroupMemberState(String groupId, String userId, String state);
+  Future<void> toggleMute(String groupId, String userId, bool isMuted);
+  Future<void> togglePin(String groupId, String userId, bool isPinned);
 }
 
 class SupabaseGroupsDataSource implements GroupsDataSource {
   final SupabaseClient _client;
-  static const String _bucketName = 'group-photos-private'; // bucket privado
+  static const String _bucketName = 'group-photos'; // bucket para fotos de grupos
 
   SupabaseGroupsDataSource(this._client);
 
@@ -182,11 +187,12 @@ class SupabaseGroupsDataSource implements GroupsDataSource {
   @override
   Future<List<Map<String, dynamic>>> getUserGroups(String userId) async {
     try {
-      // STEP 1: Busca os IDs dos grupos onde o usuário é membro
+      // STEP 1: Busca os IDs dos grupos onde o usuário é membro (só grupos ativos)
       final memberResponse = await _client
           .from('group_members')
-          .select('group_id')
-          .eq('user_id', userId);
+          .select('group_id, group_state, is_muted, is_pinned')
+          .eq('user_id', userId)
+          .neq('group_state', 'archived'); // Filtra grupos arquivados
 
       if (memberResponse.isEmpty) {
         return [];
@@ -220,6 +226,128 @@ class SupabaseGroupsDataSource implements GroupsDataSource {
       return List<Map<String, dynamic>>.from(groupsResponse);
     } catch (e) {
       throw Exception('Failed to fetch user groups: $e');
+    }
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> getArchivedGroups(String userId) async {
+    try {
+      print('🗄️ Fetching archived groups for: $userId');
+
+      // STEP 1: Busca os IDs dos grupos arquivados do usuário
+      final memberResponse = await _client
+          .from('group_members')
+          .select('group_id, group_state, is_muted, is_pinned')
+          .eq('user_id', userId)
+          .eq('group_state', 'archived'); // Só grupos arquivados
+
+      if (memberResponse.isEmpty) {
+        return [];
+      }
+
+      // Extrai apenas os IDs dos grupos
+      final groupIds = memberResponse
+          .map((member) => member['group_id'] as String)
+          .toList();
+
+      // STEP 2: Busca os detalhes dos grupos arquivados
+      final groupsResponse = await _client
+          .from('groups')
+          .select('''
+            id,
+            name,
+            photo_url,
+            photo_updated_at,
+            qr_code,
+            group_url,
+            created_by,
+            created_at,
+            members_can_invite,
+            members_can_add_members,
+            members_can_create_events
+          ''')
+          .filter('id', 'in', '(${groupIds.join(',')})')
+          .order('created_at', ascending: false);
+
+      return List<Map<String, dynamic>>.from(groupsResponse);
+    } catch (e) {
+      throw Exception('Failed to fetch archived groups: $e');
+    }
+  }
+
+  @override
+  Future<void> leaveGroup(String groupId, String userId) async {
+    try {
+      print('👋 [DataSource] User leaving group: $groupId');
+      
+      // Remove o usuário da tabela group_members
+      await _client
+          .from('group_members')
+          .delete()
+          .eq('group_id', groupId)
+          .eq('user_id', userId);
+      
+      print('   ✅ User removed from group members');
+    } catch (e) {
+      print('   ❌ Failed to leave group: $e');
+      throw Exception('Failed to leave group: $e');
+    }
+  }
+
+  @override
+  Future<void> updateGroupMemberState(String groupId, String userId, String state) async {
+    try {
+      print('📁 [DataSource] Updating group member state: $state for group: $groupId');
+      
+      // Atualiza o group_state na tabela group_members
+      await _client
+          .from('group_members')
+          .update({'group_state': state})
+          .eq('group_id', groupId)
+          .eq('user_id', userId);
+      
+      print('   ✅ Group member state updated to: $state');
+    } catch (e) {
+      print('   ❌ Failed to update group state: $e');
+      throw Exception('Failed to update group state: $e');
+    }
+  }
+
+  @override
+  Future<void> toggleMute(String groupId, String userId, bool isMuted) async {
+    try {
+      print('🔇 [DataSource] ${isMuted ? 'Muting' : 'Unmuting'} group: $groupId');
+      
+      // Atualiza o is_muted na tabela group_members
+      await _client
+          .from('group_members')
+          .update({'is_muted': isMuted})
+          .eq('group_id', groupId)
+          .eq('user_id', userId);
+      
+      print('   ✅ Group ${isMuted ? 'muted' : 'unmuted'} successfully');
+    } catch (e) {
+      print('   ❌ Failed to toggle mute: $e');
+      throw Exception('Failed to toggle mute: $e');
+    }
+  }
+
+  @override
+  Future<void> togglePin(String groupId, String userId, bool isPinned) async {
+    try {
+      print('📌 [DataSource] ${isPinned ? 'Pinning' : 'Unpinning'} group: $groupId');
+      
+      // Atualiza o is_pinned na tabela group_members
+      await _client
+          .from('group_members')
+          .update({'is_pinned': isPinned})
+          .eq('group_id', groupId)
+          .eq('user_id', userId);
+      
+      print('   ✅ Group ${isPinned ? 'pinned' : 'unpinned'} successfully');
+    } catch (e) {
+      print('   ❌ Failed to toggle pin: $e');
+      throw Exception('Failed to toggle pin: $e');
     }
   }
 }

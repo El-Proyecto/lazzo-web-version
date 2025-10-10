@@ -2,8 +2,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../domain/entities/group.dart';
 import '../../domain/repositories/group_repository.dart';
 import '../../domain/usecases/get_user_groups.dart';
+import '../../domain/usecases/get_archived_groups.dart';
 import '../../domain/usecases/search_groups.dart';
 import '../../domain/usecases/leave_group.dart';
+import '../../domain/usecases/archive_group.dart';
 import '../../domain/usecases/toggle_group_mute.dart';
 import '../../domain/usecases/toggle_group_pin.dart';
 import '../../domain/usecases/toggle_group_archive.dart';
@@ -19,12 +21,20 @@ final getUserGroupsProvider = Provider<GetUserGroups>((ref) {
   return GetUserGroups(ref.watch(groupRepositoryProvider));
 });
 
+final getArchivedGroupsProvider = Provider<GetArchivedGroups>((ref) {
+  return GetArchivedGroups(ref.watch(groupRepositoryProvider));
+});
+
 final searchGroupsProvider = Provider<SearchGroups>((ref) {
   return SearchGroups(ref.watch(groupRepositoryProvider));
 });
 
 final leaveGroupProvider = Provider<LeaveGroup>((ref) {
   return LeaveGroup(ref.watch(groupRepositoryProvider));
+});
+
+final archiveGroupProvider = Provider<ArchiveGroup>((ref) {
+  return ArchiveGroup(ref.watch(groupRepositoryProvider));
 });
 
 final toggleGroupMuteProvider = Provider<ToggleGroupMute>((ref) {
@@ -49,10 +59,28 @@ final saveGroupQrCodeProvider = Provider<Future<void> Function(String, String)>(
   };
 });
 
+// Provider para converter photoPath em URL
+final groupCoverUrlProvider = FutureProvider.family<String?, (String?, DateTime?)>((ref, params) async {
+  final (photoPath, photoUpdatedAt) = params;
+  
+  if (photoPath == null || photoPath.isEmpty) {
+    return null;
+  }
+  
+  final repository = ref.watch(groupRepositoryProvider);
+  return await repository.getGroupCoverUrl(photoPath, photoUpdatedAt);
+});
+
 // Groups state provider
 final groupsProvider = FutureProvider<List<Group>>((ref) async {
   final getUserGroups = ref.watch(getUserGroupsProvider);
   return await getUserGroups.call();
+});
+
+// Archived groups provider
+final archivedGroupsProvider = FutureProvider<List<Group>>((ref) async {
+  final getArchivedGroups = ref.watch(getArchivedGroupsProvider);
+  return await getArchivedGroups.call();
 });
 
 // Search provider
@@ -79,6 +107,14 @@ class GroupsController {
     await leaveGroup.call(groupId);
     // Refresh da lista após sair do grupo
     _ref.invalidate(groupsProvider);
+  }
+
+  Future<void> archiveGroup(String groupId) async {
+    final archiveGroup = _ref.read(archiveGroupProvider);
+    await archiveGroup.call(groupId);
+    // Refresh das listas após arquivar
+    _ref.invalidate(groupsProvider);
+    _ref.invalidate(archivedGroupsProvider);
   }
 
   Future<void> toggleMute(String groupId, bool isMuted) async {

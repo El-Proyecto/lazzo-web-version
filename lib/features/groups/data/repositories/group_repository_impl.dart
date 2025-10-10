@@ -190,12 +190,55 @@ class GroupRepositoryImpl implements GroupRepository {
           addPhotosCount: null,
           addPhotosTimeLeft: null,
           status: GroupStatus.active,
-          isPinned: false,
+          isMuted: data['is_muted'] as bool? ?? false, // Novo campo
+          isPinned: data['is_pinned'] as bool? ?? false, // Novo campo
           memberCount: 1, // Por agora, apenas o criador
         );
       }).toList();
     } catch (e) {
       throw Exception('Failed to fetch user groups: $e');
+    }
+  }
+
+  @override
+  Future<List<Group>> getArchivedGroups() async {
+    try {
+      final user = _client.auth.currentUser;
+      if (user == null) {
+        return [];
+      }
+
+      final groupsData = await _dataSource.getArchivedGroups(user.id);
+      
+      // Converter para o formato Group existente com status archived
+      return groupsData.map((data) {
+        // Parse photo_updated_at se existe
+        DateTime? photoUpdatedAt;
+        if (data['photo_updated_at'] != null) {
+          photoUpdatedAt = DateTime.parse(data['photo_updated_at'] as String);
+        }
+
+        return Group(
+          id: data['id'].toString(),
+          name: data['name'] as String,
+          photoPath: data['photo_url'] as String?, 
+          photoUpdatedAt: photoUpdatedAt,
+          lastActivity: 'Archived ${_formatDate(data['created_at'])}',
+          lastActivityTime: data['created_at'] != null 
+              ? DateTime.parse(data['created_at'] as String)
+              : null,
+          unreadCount: null,
+          openActionsCount: null,
+          addPhotosCount: null,
+          addPhotosTimeLeft: null,
+          status: GroupStatus.archived, // Status específico para arquivados
+          isMuted: data['is_muted'] as bool? ?? false, // Novo campo
+          isPinned: data['is_pinned'] as bool? ?? false, // Novo campo
+          memberCount: 1,
+        );
+      }).toList();
+    } catch (e) {
+      throw Exception('Failed to fetch archived groups: $e');
     }
   }
 
@@ -281,7 +324,7 @@ class GroupRepositoryImpl implements GroupRepository {
     throw UnimplementedError('Member invitations not implemented yet');
   }
 
-  @override
+  /*@override
   Future<void> leaveGroup(String groupId) async {
     try {
       final user = _client.auth.currentUser;
@@ -296,23 +339,82 @@ class GroupRepositoryImpl implements GroupRepository {
       throw Exception('Failed to leave group: $e');
     }
   }
-
+  */
   @override
   Future<void> toggleMute(String groupId, bool isMuted) async {
-    // TODO: Implementar mute/unmute
-    throw UnimplementedError('Mute/unmute not implemented yet');
+    try {
+      final user = _client.auth.currentUser;
+      if (user == null) {
+        throw Exception('User not authenticated');
+      }
+
+      print('🔇 [Repository] ${isMuted ? 'Muting' : 'Unmuting'} group: $groupId');
+      await _dataSource.toggleMute(groupId, user.id, isMuted);
+      print('   ✅ Group ${isMuted ? 'muted' : 'unmuted'} successfully');
+    } catch (e) {
+      throw Exception('Failed to toggle mute: $e');
+    }
   }
 
   @override
   Future<void> togglePin(String groupId) async {
-    // TODO: Implementar pin/unpin
-    throw UnimplementedError('Pin/unpin not implemented yet');
+    try {
+      final user = _client.auth.currentUser;
+      if (user == null) {
+        throw Exception('User not authenticated');
+      }
+
+      // Primeiro, buscar o estado atual do pin
+      final groups = await getUserGroups();
+      final currentGroup = groups.where((g) => g.id == groupId).firstOrNull;
+      
+      if (currentGroup == null) {
+        throw Exception('Group not found');
+      }
+
+      final newPinnedState = !currentGroup.isPinned;
+      
+      print('📌 [Repository] ${newPinnedState ? 'Pinning' : 'Unpinning'} group: $groupId');
+      await _dataSource.togglePin(groupId, user.id, newPinnedState);
+      print('   ✅ Group ${newPinnedState ? 'pinned' : 'unpinned'} successfully');
+    } catch (e) {
+      throw Exception('Failed to toggle pin: $e');
+    }
+  }
+
+  @override
+  Future<void> leaveGroup(String groupId) async {
+    try {
+      final user = _client.auth.currentUser;
+      if (user == null) {
+        throw Exception('User not authenticated');
+      }
+
+      print('👋 [Repository] User leaving group: $groupId');
+      await _dataSource.leaveGroup(groupId, user.id);
+      print('   ✅ Successfully left group');
+    } catch (e) {
+      throw Exception('Failed to leave group: $e');
+    }
   }
 
   @override
   Future<void> toggleArchive(String groupId) async {
-    // TODO: Implementar archive/unarchive
-    throw UnimplementedError('Archive/unarchive not implemented yet');
+    try {
+      final user = _client.auth.currentUser;
+      if (user == null) {
+        throw Exception('User not authenticated');
+      }
+
+      print('🗄️ [Repository] Toggling archive for group: $groupId');
+      
+      // Por agora, vamos sempre arquivar (não toggle)
+      // Em futuras iterações, podemos verificar o estado atual e fazer toggle
+      await _dataSource.updateGroupMemberState(groupId, user.id, 'archived');
+      print('   ✅ Group archived successfully');
+    } catch (e) {
+      throw Exception('Failed to archive group: $e');
+    }
   }
 
   @override

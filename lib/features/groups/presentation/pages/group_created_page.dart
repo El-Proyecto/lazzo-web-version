@@ -11,6 +11,7 @@ import '../../../../shared/components/nav/common_app_bar.dart';
 import '../../../../routes/app_router.dart';
 import '../../domain/entities/group_entity.dart';
 import '../providers/groups_provider.dart';
+import '../widgets/group_photo_image.dart';
 
 class GroupCreatedPage extends ConsumerStatefulWidget {
   final GroupEntity group;
@@ -93,22 +94,11 @@ class _GroupCreatedPageState extends ConsumerState<GroupCreatedPage> {
             const SizedBox(height: Gaps.xs),
 
             // Group photo with rounded corners (not circle)
-            Container(
+            GroupPhotoImage(
+              photoPath: widget.group.photoUrl,
+              photoUpdatedAt: null, // GroupEntity doesn't have photoUpdatedAt yet
               width: 120,
               height: 120,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(Radii.md),
-                color: BrandColors.bg2,
-                image: widget.group.photoUrl != null
-                    ? DecorationImage(
-                        image: NetworkImage(widget.group.photoUrl!),
-                        fit: BoxFit.cover,
-                      )
-                    : null,
-              ),
-              child: widget.group.photoUrl == null
-                  ? const Icon(Icons.group, size: 60, color: BrandColors.text2)
-                  : null,
             ),
 
             const SizedBox(height: Gaps.lg),

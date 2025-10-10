@@ -161,7 +161,16 @@ class FakeGroupRepository implements GroupRepository {
   Future<List<Group>> getUserGroups() async {
     // Simular delay da rede
     await Future.delayed(const Duration(milliseconds: 500));
-    return List.from(_mockGroups);
+    // Retorna apenas grupos não arquivados
+    return _mockGroups.where((group) => group.status != GroupStatus.archived).toList();
+  }
+
+  @override
+  Future<List<Group>> getArchivedGroups() async {
+    // Simular delay da rede
+    await Future.delayed(const Duration(milliseconds: 500));
+    // Retorna apenas grupos arquivados
+    return _mockGroups.where((group) => group.status == GroupStatus.archived).toList();
   }
 
   @override
@@ -252,7 +261,7 @@ class FakeGroupRepository implements GroupRepository {
         addPhotosCount: group.addPhotosCount,
         addPhotosTimeLeft: group.addPhotosTimeLeft,
         status: group.status,
-        isMuted: !group.isMuted, // Toggle mute status
+        isMuted: isMuted, // Definir o valor passado, não toggle
         isPinned: group.isPinned,
         memberCount: group.memberCount,
       );

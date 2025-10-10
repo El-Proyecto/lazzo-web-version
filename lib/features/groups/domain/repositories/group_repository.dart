@@ -4,8 +4,11 @@ import 'package:image_picker/image_picker.dart';
 
 /// Interface do repositório de grupos
 abstract class GroupRepository {
-  /// Obtém todos os grupos do usuário
+  /// Obtém todos os grupos do usuário (apenas ativos)
   Future<List<Group>> getUserGroups();
+
+  /// Obtém grupos arquivados do usuário
+  Future<List<Group>> getArchivedGroups();
 
   /// Busca grupos por termo
   Future<List<Group>> searchGroups(String searchTerm);
