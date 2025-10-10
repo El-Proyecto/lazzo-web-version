@@ -403,104 +403,6 @@ class EventPage extends ConsumerWidget {
                                   );
                                 },
                               ),
-                              const SizedBox(height: Gaps.xl),
-                              // Location suggestions widget
-                              Consumer(
-                                builder: (context, ref, child) {
-                                  final locationSuggestionsAsync = ref.watch(
-                                    eventLocationSuggestionsProvider(eventId),
-                                  );
-                                  final locationVotesAsync = ref.watch(
-                                    locationSuggestionVotesProvider(eventId),
-                                  );
-                                  final userLocationVotesAsync = ref.watch(
-                                    userLocationSuggestionVotesProvider(
-                                      eventId,
-                                    ),
-                                  );
-
-                                  return locationSuggestionsAsync.when(
-                                    data: (locationSuggestions) {
-                                      return locationVotesAsync.when(
-                                        data: (locationVotes) {
-                                          return userLocationVotesAsync.when(
-                                            data: (userLocationVotes) {
-                                              final userLocationVoteIds =
-                                                  userLocationVotes
-                                                      .map(
-                                                        (vote) =>
-                                                            vote.suggestionId,
-                                                      )
-                                                      .toSet();
-
-                                              return Column(
-                                                children: [
-                                                  LocationSuggestionsWidget(
-                                                    suggestions:
-                                                        locationSuggestions,
-                                                    allVotes: locationVotes,
-                                                    userVotes:
-                                                        userLocationVoteIds,
-                                                    onVote: (suggestionId) {
-                                                      ref
-                                                          .read(
-                                                            toggleLocationSuggestionVoteNotifierProvider
-                                                                .notifier,
-                                                          )
-                                                          .toggleVote(
-                                                            eventId,
-                                                            suggestionId,
-                                                          );
-                                                    },
-                                                    isHost:
-                                                        event.hostId ==
-                                                        'current-user',
-                                                    onAddSuggestion: () {
-                                                      showAddSuggestionBottomSheet(
-                                                        context,
-                                                        eventId: eventId,
-                                                        eventStartDate: event
-                                                            .startDateTime!,
-                                                        eventStartTime:
-                                                            TimeOfDay.fromDateTime(
-                                                              event
-                                                                  .startDateTime!,
-                                                            ),
-                                                        eventEndDate:
-                                                            event.endDateTime!,
-                                                        eventEndTime:
-                                                            TimeOfDay.fromDateTime(
-                                                              event
-                                                                  .endDateTime!,
-                                                            ),
-                                                        type: SuggestionType
-                                                            .location,
-                                                      );
-                                                    },
-                                                  ),
-                                                  const SizedBox(
-                                                    height: Gaps.xl,
-                                                  ),
-                                                ],
-                                              );
-                                            },
-                                            loading: () =>
-                                                const SizedBox.shrink(),
-                                            error: (error, stack) =>
-                                                const SizedBox.shrink(),
-                                          );
-                                        },
-                                        loading: () => const SizedBox.shrink(),
-                                        error: (error, stack) =>
-                                            const SizedBox.shrink(),
-                                      );
-                                    },
-                                    loading: () => const SizedBox.shrink(),
-                                    error: (error, stack) =>
-                                        const SizedBox.shrink(),
-                                  );
-                                },
-                              ),
                             ],
                           );
                         },
@@ -516,6 +418,101 @@ class EventPage extends ConsumerWidget {
                 },
                 loading: () => const SizedBox.shrink(),
                 error: (error, stack) => const SizedBox.shrink(),
+              ),
+
+              // Location suggestions widget (independent of datetime suggestions)
+              Consumer(
+                builder: (context, ref, child) {
+                  final locationSuggestionsAsync = ref.watch(
+                    eventLocationSuggestionsProvider(eventId),
+                  );
+                  final locationVotesAsync = ref.watch(
+                    locationSuggestionVotesProvider(eventId),
+                  );
+                  final userLocationVotesAsync = ref.watch(
+                    userLocationSuggestionVotesProvider(eventId),
+                  );
+
+                  return locationSuggestionsAsync.when(
+                    data: (locationSuggestions) {
+                      // Only show widget when there are location suggestions
+                      if (locationSuggestions.isEmpty) {
+                        return const SizedBox.shrink();
+                      }
+
+                      return locationVotesAsync.when(
+                        data: (locationVotes) {
+                          return userLocationVotesAsync.when(
+                            data: (userLocationVotes) {
+                              final userLocationVoteIds = userLocationVotes
+                                  .map((vote) => vote.suggestionId)
+                                  .toSet();
+
+                              return Padding(
+                                padding: const EdgeInsets.only(
+                                  top:
+                                      Gaps.xl +
+                                      Gaps.md, // Mais espaçamento em cima
+                                  bottom: Gaps.sm, // Menos espaçamento em baixo
+                                ),
+                                child: LocationSuggestionsWidget(
+                                  suggestions: locationSuggestions,
+                                  allVotes: locationVotes,
+                                  userVotes: userLocationVoteIds,
+                                  onVote: (suggestionId) {
+                                    ref
+                                        .read(
+                                          toggleLocationSuggestionVoteNotifierProvider
+                                              .notifier,
+                                        )
+                                        .toggleVote(eventId, suggestionId);
+                                  },
+                                  isHost: event.hostId == 'current-user',
+                                  onAddSuggestion: () {
+                                    showAddSuggestionBottomSheet(
+                                      context,
+                                      eventId: eventId,
+                                      eventStartDate: event.startDateTime!,
+                                      eventStartTime: TimeOfDay.fromDateTime(
+                                        event.startDateTime!,
+                                      ),
+                                      eventEndDate: event.endDateTime!,
+                                      eventEndTime: TimeOfDay.fromDateTime(
+                                        event.endDateTime!,
+                                      ),
+                                      type: SuggestionType.location,
+                                    );
+                                  },
+                                  onPickLocation: (selectedLocation) {
+                                    // TODO P2: Implement pick location functionality
+                                    // This will set the event location to the selected suggestion
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                          'Location "${selectedLocation.locationName}" selected! (P2 implementation needed)',
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                  currentEventLocationName:
+                                      event.location?.displayName,
+                                  currentEventAddress:
+                                      event.location?.formattedAddress,
+                                ),
+                              );
+                            },
+                            loading: () => const SizedBox.shrink(),
+                            error: (error, stack) => const SizedBox.shrink(),
+                          );
+                        },
+                        loading: () => const SizedBox.shrink(),
+                        error: (error, stack) => const SizedBox.shrink(),
+                      );
+                    },
+                    loading: () => const SizedBox.shrink(),
+                    error: (error, stack) => const SizedBox.shrink(),
+                  );
+                },
               ),
 
               // Chat Preview

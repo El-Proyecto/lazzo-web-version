@@ -309,6 +309,10 @@ class FakeSuggestionRepository implements SuggestionRepository {
     // Simulate network delay
     await Future.delayed(const Duration(milliseconds: 500));
 
+    // Check if this is the first suggestion for this event
+    final existingSuggestions = _locationSuggestions[eventId] ?? [];
+    final isFirstSuggestion = existingSuggestions.isEmpty;
+
     // Create the new location suggestion
     final suggestion = LocationSuggestion(
       id: 'location_suggestion_${++_locationSuggestionIdCounter}',
@@ -323,9 +327,41 @@ class FakeSuggestionRepository implements SuggestionRepository {
       createdAt: DateTime.now(),
     );
 
-    // Add to storage
-    final existingSuggestions = _locationSuggestions[eventId] ?? [];
-    _locationSuggestions[eventId] = [...existingSuggestions, suggestion];
+    // If this is the first suggestion, create a "current event location" suggestion first
+    final allSuggestions = <LocationSuggestion>[...existingSuggestions];
+
+    if (isFirstSuggestion) {
+      // Check if a current suggestion already exists
+      final hasCurrentSuggestion = existingSuggestions.any(
+        (s) => s.userId == 'system' && s.id.contains('current_event_location'),
+      );
+
+      if (!hasCurrentSuggestion) {
+        final currentLocationSuggestion = LocationSuggestion(
+          id: 'current_event_location_${++_locationSuggestionIdCounter}',
+          eventId: eventId,
+          userId: 'system', // System-generated suggestion
+          userName: 'Event Location',
+          userAvatar: null,
+          locationName: 'Praia do Meco',
+          address: null, // No address for current event location
+          latitude: null,
+          longitude: null,
+          createdAt: DateTime.now().subtract(
+            const Duration(seconds: 1),
+          ), // Make it slightly older
+        );
+
+        // Add current suggestion first
+        allSuggestions.add(currentLocationSuggestion);
+      }
+    }
+
+    // Add the new user suggestion
+    allSuggestions.add(suggestion);
+
+    // Store updated list
+    _locationSuggestions[eventId] = allSuggestions;
 
     return suggestion;
   }

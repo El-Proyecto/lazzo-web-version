@@ -21,6 +21,7 @@ import '../../domain/usecases/get_event_polls.dart';
 import '../../domain/usecases/get_recent_messages.dart';
 import '../../domain/usecases/get_event_suggestions.dart';
 import '../../domain/usecases/create_suggestion.dart';
+import '../../domain/usecases/create_location_suggestion.dart';
 import '../../domain/usecases/toggle_suggestion_vote.dart';
 
 // Repository providers (default to fake implementations)
@@ -71,6 +72,12 @@ final getEventSuggestionsProvider = Provider<GetEventSuggestions>((ref) {
 
 final createSuggestionProvider = Provider<CreateSuggestion>((ref) {
   return CreateSuggestion(ref.watch(suggestionRepositoryProvider));
+});
+
+final createLocationSuggestionProvider = Provider<CreateLocationSuggestion>((
+  ref,
+) {
+  return CreateLocationSuggestion(ref.watch(suggestionRepositoryProvider));
 });
 
 final toggleSuggestionVoteProvider = Provider<ToggleSuggestionVote>((ref) {
@@ -218,7 +225,8 @@ final eventLocationSuggestionsProvider =
       eventId,
     ) async {
       final repository = ref.watch(suggestionRepositoryProvider);
-      return await repository.getEventLocationSuggestions(eventId);
+      final suggestions = await repository.getEventLocationSuggestions(eventId);
+      return suggestions;
     });
 
 // Location suggestion votes state provider

@@ -490,7 +490,10 @@ class _AddSuggestionBottomSheetState
   }
 
   Widget _buildBottomSection() {
-    final createSuggestionState = ref.watch(createSuggestionNotifierProvider);
+    // Watch the appropriate provider based on suggestion type
+    final createSuggestionState = _selectedType == SuggestionType.dateTime
+        ? ref.watch(createSuggestionNotifierProvider)
+        : ref.watch(createLocationSuggestionNotifierProvider);
 
     return Column(
       children: [
@@ -674,9 +677,34 @@ class _AddSuggestionBottomSheetState
             endDateTime: endDateTime,
           );
     } else {
-      // Handle location suggestion (P1 - fake implementation)
-      // For P1, we just simulate a successful submission
-      await Future.delayed(const Duration(milliseconds: 800));
+      // Handle location suggestion
+      if (_selectedLocation != null) {
+        // Use selected location from search
+        await ref
+            .read(createLocationSuggestionNotifierProvider.notifier)
+            .createLocationSuggestion(
+              eventId: widget.eventId,
+              locationName:
+                  _selectedLocation!.displayName ?? 'Selected Location',
+              address: _selectedLocation!.formattedAddress,
+              latitude: _selectedLocation!.latitude,
+              longitude: _selectedLocation!.longitude,
+            );
+      } else if (_locationNameController.text.trim().isNotEmpty ||
+          _addressSearchController.text.trim().isNotEmpty) {
+        // Use manually entered location data
+        await ref
+            .read(createLocationSuggestionNotifierProvider.notifier)
+            .createLocationSuggestion(
+              eventId: widget.eventId,
+              locationName: _locationNameController.text.trim().isNotEmpty
+                  ? _locationNameController.text.trim()
+                  : 'Custom Location',
+              address: _addressSearchController.text.trim().isNotEmpty
+                  ? _addressSearchController.text.trim()
+                  : null,
+            );
+      }
     }
 
     if (mounted) {
