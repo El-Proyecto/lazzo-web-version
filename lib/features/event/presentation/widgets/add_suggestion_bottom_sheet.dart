@@ -476,7 +476,7 @@ class _AddSuggestionBottomSheetState
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.map, size: 48, color: BrandColors.text2),
+          const Icon(Icons.map, size: 48, color: BrandColors.text2),
           const SizedBox(height: Gaps.xs),
           Text(
             'Map Preview',
@@ -981,21 +981,21 @@ class _AddSuggestionBottomSheetState
   List<LocationSuggestion> _generateFakeLocationResults(String query) {
     // Fake search results for P1 implementation
     final fakeLocations = [
-      LocationSuggestion(
+      const LocationSuggestion(
         id: 'fake-1',
         name: 'Café Central',
         address: 'Rua da Betesga, 1200-109 Lisboa',
         latitude: 38.7071,
         longitude: -9.1363,
       ),
-      LocationSuggestion(
+      const LocationSuggestion(
         id: 'fake-2',
         name: 'Restaurante Ramiro',
         address: 'Av. Almirante Reis, 1A, 1150-007 Lisboa',
         latitude: 38.7242,
         longitude: -9.1342,
       ),
-      LocationSuggestion(
+      const LocationSuggestion(
         id: 'fake-3',
         name: 'Miradouro da Senhora do Monte',
         address: 'Largo Monte, 1170-253 Lisboa',

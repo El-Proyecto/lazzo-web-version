@@ -840,8 +840,9 @@ class _LocationSectionState extends State<LocationSection>
 
     if (placemark.street?.isNotEmpty == true) parts.add(placemark.street!);
     if (placemark.locality?.isNotEmpty == true) parts.add(placemark.locality!);
-    if (placemark.administrativeArea?.isNotEmpty == true)
+    if (placemark.administrativeArea?.isNotEmpty == true) {
       parts.add(placemark.administrativeArea!);
+    }
     if (placemark.country?.isNotEmpty == true) parts.add(placemark.country!);
 
     return parts.join(', ');

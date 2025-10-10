@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/constants/text_styles.dart';
 import '../../../../shared/themes/colors.dart';
+import '../../../../shared/components/dialogs/common_bottom_sheet.dart';
 import '../../domain/entities/suggestion.dart';
 
 /// Widget that displays location suggestions as votable polls
@@ -110,22 +111,9 @@ class _LocationSuggestionsWidgetState extends State<LocationSuggestionsWidget> {
 
   /// Check if a suggestion matches the current event location
   bool _isCurrentEventSuggestion(LocationSuggestion suggestion) {
-    if (widget.currentEventLocationName == null &&
-        widget.currentEventAddress == null) {
-      return false;
-    }
-
-    // Compare location name
-    if (suggestion.locationName != widget.currentEventLocationName) {
-      return false;
-    }
-
-    // Compare address
-    if (suggestion.address != widget.currentEventAddress) {
-      return false;
-    }
-
-    return true;
+    // Check if it's a system-generated current event location suggestion
+    return suggestion.userId == 'system' &&
+        suggestion.id.contains('current_event_location');
   }
 
   // Helper method to get vote count for a specific suggestion
@@ -434,7 +422,7 @@ class _LocationSuggestionsWidgetState extends State<LocationSuggestionsWidget> {
                     const SizedBox(height: Gaps.xxs),
                     // Address
                     Text(
-                      suggestion.address ?? 'endereço não definido',
+                      suggestion.address ?? 'address not defined',
                       style: AppText.bodyMedium.copyWith(
                         color: BrandColors.text2,
                         fontSize: 12,
@@ -484,216 +472,161 @@ class _LocationSuggestionsWidgetState extends State<LocationSuggestionsWidget> {
   }
 
   void _showViewVotesBottomSheet(BuildContext context) {
-    showModalBottomSheet(
+    // Organize votes by suggestion
+    final Map<String, List<SuggestionVote>> votesBySuggestion = {};
+    for (final suggestion in widget.suggestions) {
+      votesBySuggestion[suggestion.id] = _getVotesForSuggestion(suggestion.id);
+    }
+
+    CommonBottomSheet.show(
       context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (context) => Container(
-        constraints: BoxConstraints(
-          maxHeight: MediaQuery.of(context).size.height * 0.6,
-        ),
-        decoration: const BoxDecoration(
-          color: BrandColors.bg2,
-          borderRadius: BorderRadius.only(
-            topLeft: Radius.circular(Radii.md),
-            topRight: Radius.circular(Radii.md),
-          ),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Header with grabber
-            const SizedBox(height: Gaps.sm),
-            Center(
-              child: Container(
-                width: 32,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: BrandColors.border,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ),
-            const SizedBox(height: Gaps.md),
+      title: 'Suggestion Votes',
+      content: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Create sections for each suggestion
+          ...widget.suggestions.map((suggestion) {
+            final votes = _getVotesForSuggestion(suggestion.id);
+            if (votes.isEmpty) return const SizedBox.shrink();
 
-            // Title
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: Pads.sectionH),
-              child: Text(
-                'Location Votes',
-                style: AppText.labelLarge.copyWith(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
+            return Column(
+              children: [
+                _LocationSuggestionVoteSection(
+                  title: suggestion.locationName,
+                  subtitle: suggestion.address ?? 'address not defined',
+                  count: votes.length,
+                  votes: votes,
                 ),
-              ),
-            ),
-            const SizedBox(height: Gaps.sm),
-
-            // Instructions
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: Pads.sectionH),
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(Pads.ctlH),
-                decoration: BoxDecoration(
-                  color: BrandColors.bg3,
-                  borderRadius: BorderRadius.circular(Radii.sm),
-                ),
-                child: Text(
-                  'See who voted for each location suggestion.',
-                  style: AppText.bodyMedium.copyWith(color: BrandColors.text2),
-                ),
-              ),
-            ),
-            const SizedBox(height: Gaps.md),
-
-            // Votes list
-            Expanded(
-              child: ListView.separated(
-                padding: const EdgeInsets.symmetric(horizontal: Pads.sectionH),
-                itemCount: widget.suggestions.length,
-                separatorBuilder: (context, index) =>
-                    const SizedBox(height: Gaps.md),
-                itemBuilder: (context, index) {
-                  final suggestion = widget.suggestions[index];
-                  return _buildVoteCard(suggestion);
-                },
-              ),
-            ),
-            SizedBox(height: MediaQuery.of(context).padding.bottom + Gaps.md),
-          ],
-        ),
+                if (suggestion != widget.suggestions.last)
+                  const SizedBox(height: Gaps.lg),
+              ],
+            );
+          }),
+        ],
       ),
     );
   }
+}
 
-  Widget _buildVoteCard(LocationSuggestion suggestion) {
-    final votes = _getVotesForSuggestion(suggestion.id);
+/// Vote section for a specific location suggestion (similar to date_time widget format)
+class _LocationSuggestionVoteSection extends StatelessWidget {
+  final String title;
+  final String? subtitle;
+  final int count;
+  final List<SuggestionVote> votes;
 
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(Pads.ctlH),
-      decoration: BoxDecoration(
-        color: BrandColors.bg1,
-        borderRadius: BorderRadius.circular(Radii.sm),
-        border: Border.all(color: BrandColors.border),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Location info
-          Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      suggestion.locationName,
-                      style: AppText.bodyMedium.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    if (suggestion.address != null) ...[
-                      const SizedBox(height: Gaps.xxs),
-                      Text(
-                        suggestion.address!,
-                        style: AppText.bodyMedium.copyWith(
-                          color: BrandColors.text2,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: Gaps.xs,
-                  vertical: Gaps.xxs,
-                ),
-                decoration: BoxDecoration(
-                  color: BrandColors.planning,
-                  borderRadius: BorderRadius.circular(Radii.pill),
-                ),
-                child: Text(
-                  '${_getVoteCount(suggestion.id)}',
-                  style: AppText.bodyMedium.copyWith(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 12,
-                  ),
-                ),
-              ),
-            ],
-          ),
+  const _LocationSuggestionVoteSection({
+    required this.title,
+    this.subtitle,
+    required this.count,
+    required this.votes,
+  });
 
-          if (votes.isNotEmpty) ...[
-            const SizedBox(height: Gaps.sm),
-            const Divider(color: BrandColors.border),
-            const SizedBox(height: Gaps.sm),
-
-            // Voters list
-            ...votes.map(
-              (vote) => Padding(
-                padding: const EdgeInsets.only(bottom: Gaps.xs),
-                child: Row(
-                  children: [
-                    // Avatar placeholder
-                    CircleAvatar(
-                      radius: 12,
-                      backgroundColor: BrandColors.bg3,
-                      child: vote.userAvatar != null
-                          ? ClipOval(
-                              child: Image.network(
-                                vote.userAvatar!,
-                                width: 24,
-                                height: 24,
-                                fit: BoxFit.cover,
-                              ),
-                            )
-                          : Icon(
-                              Icons.person,
-                              size: 14,
-                              color: BrandColors.text2,
-                            ),
-                    ),
-                    const SizedBox(width: Gaps.xs),
-                    Expanded(
-                      child: Text(
-                        vote.userName,
-                        style: AppText.bodyMedium.copyWith(fontSize: 12),
-                      ),
-                    ),
-                    Text(
-                      _formatVoteTime(vote.createdAt),
-                      style: AppText.bodyMedium.copyWith(
-                        color: BrandColors.text2,
-                        fontSize: 10,
-                      ),
-                    ),
-                  ],
-                ),
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Header: título à esquerda, contador à direita
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.baseline,
+          textBaseline: TextBaseline.alphabetic,
+          children: [
+            Expanded(
+              child: Text(
+                title,
+                style: AppText.labelLarge.copyWith(color: BrandColors.planning),
+                overflow: TextOverflow.ellipsis,
               ),
             ),
+            Text(
+              '$count ${count == 1 ? "Vote" : "Votes"}',
+              style: AppText.bodyMediumEmph.copyWith(color: BrandColors.text1),
+            ),
           ],
+        ),
+
+        if (subtitle != null) ...[
+          const SizedBox(height: Gaps.xxs),
+          Text(
+            subtitle!,
+            style: AppText.bodyMedium.copyWith(color: BrandColors.text2),
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+
+        const SizedBox(height: Gaps.md),
+
+        // Vote list
+        ...votes.map((vote) => _LocationSuggestionVoteItem(vote: vote)),
+      ],
+    );
+  }
+}
+
+/// Individual vote item for location suggestions
+class _LocationSuggestionVoteItem extends StatelessWidget {
+  final SuggestionVote vote;
+
+  const _LocationSuggestionVoteItem({required this.vote});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: Gaps.sm),
+      child: Row(
+        children: [
+          // Avatar
+          CircleAvatar(
+            radius: 16,
+            backgroundColor: BrandColors.bg3,
+            child: vote.userAvatar != null
+                ? ClipOval(
+                    child: Image.network(
+                      vote.userAvatar!,
+                      width: 32,
+                      height: 32,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) =>
+                          _buildDefaultAvatar(),
+                    ),
+                  )
+                : _buildDefaultAvatar(),
+          ),
+          const SizedBox(width: Gaps.sm),
+
+          // Name
+          Expanded(child: Text(vote.userName, style: AppText.bodyMedium)),
+
+          // Date (if voted)
+          Text(
+            _formatVoteDate(vote.createdAt),
+            style: AppText.bodyMedium.copyWith(
+              color: BrandColors.text2,
+              fontSize: 12,
+            ),
+          ),
         ],
       ),
     );
   }
 
-  String _formatVoteTime(DateTime voteTime) {
-    final now = DateTime.now();
-    final difference = now.difference(voteTime);
+  Widget _buildDefaultAvatar() {
+    return const Icon(Icons.person, color: BrandColors.text2, size: 20);
+  }
 
-    if (difference.inMinutes < 1) {
-      return 'now';
-    } else if (difference.inMinutes < 60) {
-      return '${difference.inMinutes}m';
-    } else if (difference.inHours < 24) {
-      return '${difference.inHours}h';
+  String _formatVoteDate(DateTime date) {
+    final now = DateTime.now();
+    final difference = now.difference(date).inDays;
+
+    if (difference == 0) {
+      return 'Today';
+    } else if (difference == 1) {
+      return 'Yesterday';
+    } else if (difference < 7) {
+      return '${difference}d ago';
     } else {
-      return '${difference.inDays}d';
+      return '${date.day}/${date.month}';
     }
   }
 }

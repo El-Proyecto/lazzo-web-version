@@ -281,6 +281,103 @@ class FakeSuggestionRepository implements SuggestionRepository {
     }
   }
 
+  /// Auto-vote all users with RSVP "going" status on the specified location suggestion
+  Future<void> _autoVoteFromLocationRsvps(
+    String eventId,
+    String suggestionId,
+  ) async {
+    try {
+      final rsvpRepository = FakeRsvpRepository();
+      final rsvps = await rsvpRepository.getEventRsvps(eventId);
+
+      // Get existing votes to prevent duplicates
+      final existingVotes = _locationVotes[suggestionId] ?? [];
+
+      // Find all users with "going" status and auto-vote them
+      final goingUsers = rsvps
+          .where((rsvp) => rsvp.status.name == 'going')
+          .toList();
+
+      for (final rsvp in goingUsers) {
+        // Check if user already has a vote to prevent duplicates
+        final hasExistingVote = existingVotes.any(
+          (vote) => vote.userId == rsvp.userId,
+        );
+
+        if (!hasExistingVote) {
+          final vote = SuggestionVote(
+            id: 'auto_location_vote_${++_voteIdCounter}',
+            suggestionId: suggestionId,
+            userId: rsvp.userId,
+            userName: _getUserName(rsvp.userId), // Use consistent naming
+            userAvatar: rsvp.userAvatar,
+            createdAt: DateTime.now(),
+          );
+
+          _locationVotes[suggestionId] = [
+            ...(_locationVotes[suggestionId] ?? []),
+            vote,
+          ];
+        }
+      }
+    } catch (e) {
+      // Silently fail if RSVP data can't be retrieved
+    }
+  }
+
+  /// Sync current location suggestion votes with RSVP status
+  /// This method should be called after RSVP data is updated (e.g., after Set Date)
+  static Future<void> syncCurrentLocationSuggestionWithRsvp(
+    String eventId,
+  ) async {
+    try {
+      // Find the current event location suggestion
+      final locationSuggestions = _locationSuggestions[eventId] ?? [];
+
+      final currentLocationSuggestion = locationSuggestions.firstWhere(
+        (s) => s.userId == 'system' && s.id.contains('current_event_location'),
+        orElse: () => throw Exception('No current location suggestion found'),
+      );
+
+      // Clear existing votes for the current location suggestion to avoid duplicates
+      _locationVotes[currentLocationSuggestion.id] = [];
+
+      // Get updated RSVP data
+      final rsvpRepository = FakeRsvpRepository();
+      final rsvps = await rsvpRepository.getEventRsvps(eventId);
+
+      // Find all users with "going" status
+      final goingUsers = rsvps
+          .where((rsvp) => rsvp.status.name == 'going')
+          .toList();
+
+      // Create a temporary instance to access the _getUserName method
+      final tempInstance = FakeSuggestionRepository();
+
+      // Add votes for each "going" user using consistent naming
+      for (final rsvp in goingUsers) {
+        final vote = SuggestionVote(
+          id: 'sync_location_vote_${++_voteIdCounter}',
+          suggestionId: currentLocationSuggestion.id,
+          userId: rsvp.userId,
+          userName: tempInstance._getUserName(
+            rsvp.userId,
+          ), // Use consistent naming
+          userAvatar: rsvp.userAvatar,
+          createdAt: DateTime.now(),
+        );
+
+        _locationVotes[currentLocationSuggestion.id] = [
+          ...(_locationVotes[currentLocationSuggestion.id] ?? []),
+          vote,
+        ];
+      }
+    } catch (e) {
+      // Silently fail if current location suggestion doesn't exist or can't be synced
+      // This prevents breaking other operations
+    }
+  }
+
   // Location suggestions storage
   static final Map<String, List<LocationSuggestion>> _locationSuggestions = {};
   static final Map<String, List<SuggestionVote>> _locationVotes = {};
@@ -354,6 +451,9 @@ class FakeSuggestionRepository implements SuggestionRepository {
 
         // Add current suggestion first
         allSuggestions.add(currentLocationSuggestion);
+
+        // Auto-vote all users with RSVP "going" status on the current location suggestion
+        await _autoVoteFromLocationRsvps(eventId, currentLocationSuggestion.id);
       }
     }
 

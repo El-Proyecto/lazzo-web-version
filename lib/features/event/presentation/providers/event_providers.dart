@@ -306,6 +306,10 @@ class UserRsvpNotifier extends StateNotifier<AsyncValue<Rsvp?>> {
       // Just invalidate providers to refresh the UI with updated data
       ref.invalidate(suggestionVotesProvider(eventId));
       ref.invalidate(userSuggestionVotesProvider(eventId));
+
+      // Also invalidate location suggestion providers to sync location votes with RSVP
+      ref.invalidate(locationSuggestionVotesProvider(eventId));
+      ref.invalidate(userLocationSuggestionVotesProvider(eventId));
     } catch (e) {
       print('❌ Error in provider sync: $e');
     }

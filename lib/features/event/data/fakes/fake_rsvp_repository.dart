@@ -179,6 +179,11 @@ class FakeRsvpRepository implements RsvpRepository {
     // Sync with current suggestion votes after RSVP change
     await FakeSuggestionRepository.syncCurrentSuggestionWithRsvp(eventId);
 
+    // Sync with current location suggestion votes after RSVP change
+    await FakeSuggestionRepository.syncCurrentLocationSuggestionWithRsvp(
+      eventId,
+    );
+
     return rsvp;
   }
 
@@ -231,6 +236,11 @@ class FakeRsvpRepository implements RsvpRepository {
 
     // Sync current suggestion votes with updated RSVP status
     await FakeSuggestionRepository.syncCurrentSuggestionWithRsvp(eventId);
+
+    // Sync current location suggestion votes with updated RSVP status
+    await FakeSuggestionRepository.syncCurrentLocationSuggestionWithRsvp(
+      eventId,
+    );
   }
 
   Future<void> _updateEventCounts(String eventId) async {
