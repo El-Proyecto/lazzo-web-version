@@ -22,6 +22,8 @@ void showAddSuggestionBottomSheet(
   required DateTime eventEndDate,
   required TimeOfDay eventEndTime,
   SuggestionType type = SuggestionType.dateTime,
+  String? currentEventLocationName,
+  String? currentEventAddress,
 }) {
   showModalBottomSheet(
     context: context,
@@ -34,6 +36,8 @@ void showAddSuggestionBottomSheet(
       eventEndDate: eventEndDate,
       eventEndTime: eventEndTime,
       suggestionType: type,
+      currentEventLocationName: currentEventLocationName,
+      currentEventAddress: currentEventAddress,
     ),
   );
 }
@@ -46,6 +50,8 @@ class _AddSuggestionBottomSheet extends ConsumerStatefulWidget {
   final DateTime eventEndDate;
   final TimeOfDay eventEndTime;
   final SuggestionType suggestionType;
+  final String? currentEventLocationName;
+  final String? currentEventAddress;
 
   const _AddSuggestionBottomSheet({
     required this.eventId,
@@ -54,6 +60,8 @@ class _AddSuggestionBottomSheet extends ConsumerStatefulWidget {
     required this.eventEndDate,
     required this.eventEndTime,
     required this.suggestionType,
+    this.currentEventLocationName,
+    this.currentEventAddress,
   });
 
   @override
@@ -689,6 +697,8 @@ class _AddSuggestionBottomSheetState
               address: _selectedLocation!.formattedAddress,
               latitude: _selectedLocation!.latitude,
               longitude: _selectedLocation!.longitude,
+              currentEventLocationName: widget.currentEventLocationName,
+              currentEventAddress: widget.currentEventAddress,
             );
       } else if (_locationNameController.text.trim().isNotEmpty ||
           _addressSearchController.text.trim().isNotEmpty) {
@@ -703,6 +713,8 @@ class _AddSuggestionBottomSheetState
               address: _addressSearchController.text.trim().isNotEmpty
                   ? _addressSearchController.text.trim()
                   : null,
+              currentEventLocationName: widget.currentEventLocationName,
+              currentEventAddress: widget.currentEventAddress,
             );
       }
     }

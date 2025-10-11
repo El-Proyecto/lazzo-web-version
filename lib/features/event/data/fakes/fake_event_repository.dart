@@ -151,4 +151,49 @@ class FakeEventRepository implements EventRepository {
 
     return updatedEvent;
   }
+
+  @override
+  Future<EventDetail> updateEventLocation(
+    String eventId,
+    String locationName,
+    String address,
+    double latitude,
+    double longitude,
+  ) async {
+    _initializeIfEmpty();
+
+    final existingEvent = _events[eventId];
+    if (existingEvent == null) {
+      throw Exception('Event not found');
+    }
+
+    await Future.delayed(const Duration(milliseconds: 500));
+
+    // Update the event with new location
+    final updatedEvent = EventDetail(
+      id: existingEvent.id,
+      name: existingEvent.name,
+      emoji: existingEvent.emoji,
+      groupId: existingEvent.groupId,
+      startDateTime: existingEvent.startDateTime,
+      endDateTime: existingEvent.endDateTime,
+      location: EventLocation(
+        id: 'location-${DateTime.now().millisecondsSinceEpoch}',
+        displayName: locationName,
+        formattedAddress: address,
+        latitude: latitude,
+        longitude: longitude,
+      ),
+      status: existingEvent.status,
+      createdAt: existingEvent.createdAt,
+      hostId: existingEvent.hostId,
+      goingCount: existingEvent.goingCount,
+      notGoingCount: existingEvent.notGoingCount,
+    );
+
+    // Store the updated event
+    _events[eventId] = updatedEvent;
+
+    return updatedEvent;
+  }
 }

@@ -9,9 +9,12 @@ import '../../../../shared/components/widgets/poll_widget.dart';
 import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/themes/colors.dart';
 import '../../domain/entities/rsvp.dart';
+import '../../domain/entities/suggestion.dart';
 import '../providers/event_providers.dart';
 import '../widgets/chat_preview_widget.dart';
-import '../widgets/date_time_suggestions_widget.dart';
+import '../widgets/date_time_suggestions_widget.dart'
+    show DateTimeSuggestionsWidget, DateTimeSuggestion;
+import '../widgets/date_time_suggestions_widget.dart' as datetime_widget;
 import '../widgets/location_suggestions_widget.dart';
 import '../widgets/add_suggestion_bottom_sheet.dart';
 
@@ -191,6 +194,11 @@ class EventPage extends ConsumerWidget {
                                                     ? SuggestionType.location
                                                     : SuggestionType
                                                           .dateTime, // Start with Location tab if location suggestions exist
+                                                currentEventLocationName:
+                                                    event.location?.displayName,
+                                                currentEventAddress: event
+                                                    .location
+                                                    ?.formattedAddress,
                                               );
                                             }
                                           }
@@ -554,7 +562,7 @@ class EventPage extends ConsumerWidget {
                                   (vote) => vote.suggestionId == suggestion.id,
                                 )
                                 .map(
-                                  (vote) => SuggestionVote(
+                                  (vote) => datetime_widget.SuggestionVote(
                                     id: vote.id,
                                     userId: vote.userId,
                                     userName: vote.userName,
@@ -570,76 +578,76 @@ class EventPage extends ConsumerWidget {
                               endDateTime: suggestion.endDateTime,
                               voteCount: suggestionVotes.length,
                               hasUserVoted: userVotes.any(
-                              (vote) => vote.suggestionId == suggestion.id,
+                                (vote) => vote.suggestionId == suggestion.id,
                               ),
                               votes: suggestionVotes,
                             );
-                            }).toList();
+                          }).toList();
 
-                            final userVoteIds = userVotes
+                          final userVoteIds = userVotes
                               .map((vote) => vote.suggestionId)
                               .toSet();
 
-                            return Column(
+                          return Column(
                             children: [
                               DateTimeSuggestionsWidget(
-                              suggestions: dateTimeSuggestions,
-                              userVotes: userVoteIds,
-                              currentEventStartDateTime: event.startDateTime,
-                              currentEventEndDateTime: event.endDateTime,
-                              onVote: (suggestionId) {
-                                ref
-                                  .read(
-                                  toggleSuggestionVoteNotifierProvider
-                                    .notifier,
-                                  )
-                                  .toggleVote_(eventId, suggestionId);
-                              },
-                              isHost:
-                                event.hostId ==
-                                'current-user', // TODO: Get from auth service
-                              onAddSuggestion: () {
-                                if (event.startDateTime != null &&
-                                  event.endDateTime != null) {
-                                showAddSuggestionBottomSheet(
-                                  context,
-                                  eventId: eventId,
-                                  eventStartDate: event.startDateTime!,
-                                  eventStartTime: TimeOfDay.fromDateTime(
-                                  event.startDateTime!,
-                                  ),
-                                  eventEndDate: event.endDateTime!,
-                                  eventEndTime: TimeOfDay.fromDateTime(
-                                  event.endDateTime!,
-                                  ),
-                                );
-                                }
-                              },
-                              onSetDate: (selectedSuggestion) async {
-                                await _setEventDate(
-                                context,
-                                ref,
-                                selectedSuggestion,
-                                );
-                              },
+                                suggestions: dateTimeSuggestions,
+                                userVotes: userVoteIds,
+                                currentEventStartDateTime: event.startDateTime,
+                                currentEventEndDateTime: event.endDateTime,
+                                onVote: (suggestionId) {
+                                  ref
+                                      .read(
+                                        toggleSuggestionVoteNotifierProvider
+                                            .notifier,
+                                      )
+                                      .toggleVote_(eventId, suggestionId);
+                                },
+                                isHost:
+                                    event.hostId ==
+                                    'current-user', // TODO: Get from auth service
+                                onAddSuggestion: () {
+                                  if (event.startDateTime != null &&
+                                      event.endDateTime != null) {
+                                    showAddSuggestionBottomSheet(
+                                      context,
+                                      eventId: eventId,
+                                      eventStartDate: event.startDateTime!,
+                                      eventStartTime: TimeOfDay.fromDateTime(
+                                        event.startDateTime!,
+                                      ),
+                                      eventEndDate: event.endDateTime!,
+                                      eventEndTime: TimeOfDay.fromDateTime(
+                                        event.endDateTime!,
+                                      ),
+                                    );
+                                  }
+                                },
+                                onSetDate: (selectedSuggestion) async {
+                                  await _setEventDate(
+                                    context,
+                                    ref,
+                                    selectedSuggestion,
+                                  );
+                                },
                               ),
                               const SizedBox(height: Gaps.lg),
                             ],
-                            );
-                          },
-                          loading: () =>
-                            const Center(child: CircularProgressIndicator()),
-                          error: (error, stack) => const SizedBox.shrink(),
                           );
                         },
                         loading: () =>
-                          const Center(child: CircularProgressIndicator()),
+                            const Center(child: CircularProgressIndicator()),
                         error: (error, stack) => const SizedBox.shrink(),
-                        );
-                      },
-                      loading: () => const SizedBox.shrink(),
-                      error: (error, stack) => const SizedBox.shrink(),
-                      ),
+                      );
+                    },
+                    loading: () =>
+                        const Center(child: CircularProgressIndicator()),
+                    error: (error, stack) => const SizedBox.shrink(),
+                  );
+                },
+                loading: () => const SizedBox.shrink(),
+                error: (error, stack) => const SizedBox.shrink(),
+              ),
 
               // Location suggestions widget (independent of datetime suggestions)
               Consumer(
@@ -699,17 +707,17 @@ class EventPage extends ConsumerWidget {
                                         event.endDateTime!,
                                       ),
                                       type: SuggestionType.location,
+                                      currentEventLocationName:
+                                          event.location?.displayName,
+                                      currentEventAddress:
+                                          event.location?.formattedAddress,
                                     );
                                   },
-                                  onPickLocation: (selectedLocation) {
-                                    // TODO P2: Implement pick location functionality
-                                    // This will set the event location to the selected suggestion
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text(
-                                          'Location "${selectedLocation.locationName}" selected! (P2 implementation needed)',
-                                        ),
-                                      ),
+                                  onPickLocation: (selectedLocation) async {
+                                    await _setEventLocation(
+                                      context,
+                                      ref,
+                                      selectedLocation,
                                     );
                                   },
                                   currentEventLocationName:
@@ -792,7 +800,6 @@ class EventPage extends ConsumerWidget {
                 ),
                 const SizedBox(height: Gaps.lg),
               ],
-
 
               // Polls (if no date/location or if there are suggestions)
               pollsAsync.when(
@@ -915,6 +922,77 @@ class EventPage extends ConsumerWidget {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Failed to set event date: $error'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  /// Implements the complete Set Location business logic
+  /// 1. Updates the event's location to match the selected suggestion
+  /// 2. Resets RSVP votes from suggestion voters to match their "Can" votes
+  /// 3. Clears all location suggestions for the event
+  Future<void> _setEventLocation(
+    BuildContext context,
+    WidgetRef ref,
+    LocationSuggestion selectedSuggestion,
+  ) async {
+    try {
+      // Step 1: Update the event's location
+      final eventRepository = ref.read(eventRepositoryProvider);
+      await eventRepository.updateEventLocation(
+        eventId,
+        selectedSuggestion.locationName,
+        selectedSuggestion.address ?? '',
+        selectedSuggestion.latitude ?? 0.0,
+        selectedSuggestion.longitude ?? 0.0,
+      );
+
+      // Step 2: Get all users who voted on the selected suggestion
+      final locationVotesAsync = ref.read(
+        locationSuggestionVotesProvider(eventId),
+      );
+      final locationVotes = locationVotesAsync.value ?? [];
+
+      final suggestionVoters = locationVotes
+          .where((vote) => vote.suggestionId == selectedSuggestion.id)
+          .map((vote) => vote.userId)
+          .toList();
+
+      final rsvpRepository = ref.read(rsvpRepositoryProvider);
+      await rsvpRepository.resetRsvpVotesFromSuggestion(
+        eventId,
+        suggestionVoters,
+      );
+
+      // Step 3: Clear all location suggestions for this event
+      final suggestionRepository = ref.read(suggestionRepositoryProvider);
+      await suggestionRepository.clearEventLocationSuggestions(eventId);
+
+      // Step 4: Invalidate providers to refresh the UI
+      ref.invalidate(eventDetailProvider(eventId));
+      ref.invalidate(eventRsvpsProvider(eventId));
+      ref.invalidate(userRsvpProvider(eventId));
+      ref.invalidate(eventLocationSuggestionsProvider(eventId));
+      ref.invalidate(locationSuggestionVotesProvider(eventId));
+      ref.invalidate(userLocationSuggestionVotesProvider(eventId));
+
+      // Step 5: Show success feedback
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Event location has been set successfully!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (error) {
+      // Show error feedback
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to set event location: $error'),
             backgroundColor: Colors.red,
           ),
         );

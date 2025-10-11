@@ -14,6 +14,8 @@ class CreateLocationSuggestion {
     String? address,
     double? latitude,
     double? longitude,
+    String? currentEventLocationName,
+    String? currentEventAddress,
   }) async {
     return await repository.createLocationSuggestion(
       eventId: eventId,
@@ -22,6 +24,8 @@ class CreateLocationSuggestion {
       address: address,
       latitude: latitude,
       longitude: longitude,
+      currentEventLocationName: currentEventLocationName,
+      currentEventAddress: currentEventAddress,
     );
   }
 }

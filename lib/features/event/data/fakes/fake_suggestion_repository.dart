@@ -402,6 +402,8 @@ class FakeSuggestionRepository implements SuggestionRepository {
     String? address,
     double? latitude,
     double? longitude,
+    String? currentEventLocationName,
+    String? currentEventAddress,
   }) async {
     // Simulate network delay
     await Future.delayed(const Duration(milliseconds: 500));
@@ -427,7 +429,7 @@ class FakeSuggestionRepository implements SuggestionRepository {
     // If this is the first suggestion, create a "current event location" suggestion first
     final allSuggestions = <LocationSuggestion>[...existingSuggestions];
 
-    if (isFirstSuggestion) {
+    if (isFirstSuggestion && currentEventLocationName != null) {
       // Check if a current suggestion already exists
       final hasCurrentSuggestion = existingSuggestions.any(
         (s) => s.userId == 'system' && s.id.contains('current_event_location'),
@@ -440,8 +442,8 @@ class FakeSuggestionRepository implements SuggestionRepository {
           userId: 'system', // System-generated suggestion
           userName: 'Event Location',
           userAvatar: null,
-          locationName: 'Praia do Meco',
-          address: null, // No address for current event location
+          locationName: currentEventLocationName,
+          address: currentEventAddress,
           latitude: null,
           longitude: null,
           createdAt: DateTime.now().subtract(
@@ -544,6 +546,29 @@ class FakeSuggestionRepository implements SuggestionRepository {
               vote.userId == userId,
         )
         .toList();
+  }
+
+  @override
+  Future<void> clearEventLocationSuggestions(String eventId) async {
+    // Simulate network delay
+    await Future.delayed(const Duration(milliseconds: 300));
+
+    // Get all location suggestion IDs for this event
+    final locationSuggestions = _locationSuggestions[eventId] ?? [];
+    final locationSuggestionIds = locationSuggestions.map((s) => s.id).toSet();
+
+    // Remove location suggestions for this event
+    _locationSuggestions.remove(eventId);
+
+    // Remove all votes for these location suggestions
+    _locationVotes.forEach((eventId, votes) {
+      _locationVotes[eventId] = votes
+          .where((vote) => !locationSuggestionIds.contains(vote.suggestionId))
+          .toList();
+    });
+
+    // Clean up empty vote lists
+    _locationVotes.removeWhere((eventId, votes) => votes.isEmpty);
   }
 
   // Helper methods to generate fake user data

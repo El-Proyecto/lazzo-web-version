@@ -111,9 +111,19 @@ class _LocationSuggestionsWidgetState extends State<LocationSuggestionsWidget> {
 
   /// Check if a suggestion matches the current event location
   bool _isCurrentEventSuggestion(LocationSuggestion suggestion) {
-    // Check if it's a system-generated current event location suggestion
-    return suggestion.userId == 'system' &&
-        suggestion.id.contains('current_event_location');
+    if (widget.currentEventLocationName == null) return false;
+
+    // Compare location name
+    if (suggestion.locationName != widget.currentEventLocationName) {
+      return false;
+    }
+
+    // Compare address (both must be null or both must match)
+    if (suggestion.address != widget.currentEventAddress) {
+      return false;
+    }
+
+    return true;
   }
 
   // Helper method to get vote count for a specific suggestion
@@ -282,7 +292,7 @@ class _LocationSuggestionsWidgetState extends State<LocationSuggestionsWidget> {
                         ),
                       ),
                       child: Text(
-                        'Pick Location',
+                        'Set Location',
                         style: AppText.bodyMediumEmph,
                       ),
                     ),

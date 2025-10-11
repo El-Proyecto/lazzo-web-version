@@ -53,6 +53,8 @@ abstract class SuggestionRepository {
     String? address,
     double? latitude,
     double? longitude,
+    String? currentEventLocationName,
+    String? currentEventAddress,
   });
 
   /// Get all votes for event location suggestions
@@ -75,4 +77,7 @@ abstract class SuggestionRepository {
     required String eventId,
     required String userId,
   });
+
+  /// Clear all location suggestions and votes for an event
+  Future<void> clearEventLocationSuggestions(String eventId);
 }

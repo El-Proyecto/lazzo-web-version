@@ -567,6 +567,8 @@ class CreateLocationSuggestionNotifier extends StateNotifier<AsyncValue<void>> {
     String? address,
     double? latitude,
     double? longitude,
+    String? currentEventLocationName,
+    String? currentEventAddress,
   }) async {
     state = const AsyncValue.loading();
     try {
@@ -578,6 +580,8 @@ class CreateLocationSuggestionNotifier extends StateNotifier<AsyncValue<void>> {
         address: address,
         latitude: latitude,
         longitude: longitude,
+        currentEventLocationName: currentEventLocationName,
+        currentEventAddress: currentEventAddress,
       );
 
       // Automatically vote for the user's new suggestion

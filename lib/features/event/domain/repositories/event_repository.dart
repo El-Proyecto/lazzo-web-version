@@ -15,4 +15,13 @@ abstract class EventRepository {
     DateTime startDateTime,
     DateTime? endDateTime,
   );
+
+  /// Update event location
+  Future<EventDetail> updateEventLocation(
+    String eventId,
+    String locationName,
+    String address,
+    double latitude,
+    double longitude,
+  );
 }

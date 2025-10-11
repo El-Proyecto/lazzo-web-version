@@ -40,7 +40,7 @@ class LocationWidget extends StatelessWidget {
               Text('Location', style: AppText.labelLarge),
               const SizedBox(height: 2),
               Text(
-                displayName,
+                _buildLocationText(),
                 style: AppText.bodyMedium.copyWith(
                   color: BrandColors.text2,
                   fontSize: 12,
@@ -86,6 +86,14 @@ class LocationWidget extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  /// Build location text in format "Name • Address" if address exists, otherwise just "Name"
+  String _buildLocationText() {
+    if (formattedAddress.isNotEmpty && formattedAddress != displayName) {
+      return '$displayName • $formattedAddress';
+    }
+    return displayName;
   }
 
   Future<void> _openInMaps(double lat, double lng) async {
