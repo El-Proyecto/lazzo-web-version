@@ -5,6 +5,7 @@ import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../../../../shared/components/common/create_event_segmented_control.dart';
 import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/constants/text_styles.dart';
 import '../../../../shared/themes/colors.dart';
@@ -31,8 +32,10 @@ class LocationSection extends StatefulWidget {
   State<LocationSection> createState() => _LocationSectionState();
 }
 
-class _LocationSectionState extends State<LocationSection> {
+class _LocationSectionState extends State<LocationSection>
+    with SingleTickerProviderStateMixin {
   LocationState _currentState = LocationState.decideLater;
+  late TabController _tabController;
   final TextEditingController _locationNameController = TextEditingController();
   final TextEditingController _addressSearchController =
       TextEditingController();
@@ -48,6 +51,12 @@ class _LocationSectionState extends State<LocationSection> {
     super.initState();
     _currentState = widget.initialState;
 
+    _tabController = TabController(
+      length: 2,
+      vsync: this,
+      initialIndex: _currentState == LocationState.decideLater ? 0 : 1,
+    );
+
     // Initialize controllers with existing data if available
     if (widget.selectedLocation != null) {
       _locationNameController.text = widget.selectedLocation!.displayName ?? '';
@@ -58,6 +67,7 @@ class _LocationSectionState extends State<LocationSection> {
   @override
   void dispose() {
     _searchDebounceTimer?.cancel();
+    _tabController.dispose();
     _locationNameController.dispose();
     _addressSearchController.dispose();
     super.dispose();
@@ -101,27 +111,18 @@ class _LocationSectionState extends State<LocationSection> {
           style: AppText.titleMediumEmph.copyWith(color: BrandColors.text1),
         ),
 
-        // Toggle buttons
-        Container(
-          padding: const EdgeInsets.all(Gaps.xs),
-          decoration: BoxDecoration(
-            color: BrandColors.bg3,
-            borderRadius: BorderRadius.circular(Radii.smAlt),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _ToggleButton(
-                text: 'Decide later',
-                isSelected: _currentState == LocationState.decideLater,
-                onTap: () => _changeState(LocationState.decideLater),
-              ),
-              _ToggleButton(
-                text: 'Set Now',
-                isSelected: _currentState == LocationState.setNow,
-                onTap: () => _changeState(LocationState.setNow),
-              ),
-            ],
+        // Segmented Control
+        SizedBox(
+          width: 200, // Fixed width to prevent overflow
+          child: CreateEventSegmentedControl(
+            controller: _tabController,
+            labels: const ['Decide later', 'Set Now'],
+            onTap: (index) {
+              final newState = index == 0
+                  ? LocationState.decideLater
+                  : LocationState.setNow;
+              _changeState(newState);
+            },
           ),
         ),
       ],
@@ -177,7 +178,8 @@ class _LocationSectionState extends State<LocationSection> {
             rotateGesturesEnabled: false,
             mapToolbarEnabled: false,
             myLocationButtonEnabled: false,
-            onTap: (_) => _openInMaps(location), // Ao clicar no mapa, abrir Maps
+            onTap: (_) =>
+                _openInMaps(location), // Ao clicar no mapa, abrir Maps
           ),
         ),
 
@@ -440,7 +442,6 @@ class _LocationSectionState extends State<LocationSection> {
       widget.onLocationChanged?.call(currentLocation);
       widget.onStateChanged?.call(LocationState.setNow);
       HapticFeedback.lightImpact();
-
     } catch (e) {
       // Erro ao obter localização, usar localização padrão
       print('Erro ao obter localização atual: $e');
@@ -517,7 +518,6 @@ class _LocationSectionState extends State<LocationSection> {
         // Se não conseguir abrir mapas, mostrar um diálogo personalizado
         _showMapPickerDialog();
       }
-
     } catch (e) {
       print('Erro ao abrir Pick on Map: $e');
       _showMapPickerDialog();
@@ -552,7 +552,9 @@ class _LocationSectionState extends State<LocationSection> {
             },
             child: Text(
               'Usar Exemplo',
-              style: AppText.labelLarge.copyWith(color: Theme.of(context).colorScheme.primary),
+              style: AppText.labelLarge.copyWith(
+                color: Theme.of(context).colorScheme.primary,
+              ),
             ),
           ),
         ],
@@ -585,7 +587,9 @@ class _LocationSectionState extends State<LocationSection> {
   void _openInMaps(LocationInfo location) async {
     final lat = location.latitude;
     final lng = location.longitude;
-    final label = Uri.encodeComponent(location.displayName ?? location.formattedAddress);
+    final label = Uri.encodeComponent(
+      location.displayName ?? location.formattedAddress,
+    );
 
     // Platform-specific URL schemes - ordered by preference and platform
     List<String> mapUrls = [
@@ -610,13 +614,10 @@ class _LocationSectionState extends State<LocationSection> {
     for (String mapUrl in mapUrls) {
       try {
         Uri uri = Uri.parse(mapUrl);
-        
+
         // Check if the URL can be launched
         if (await canLaunchUrl(uri)) {
-          launched = await launchUrl(
-            uri,
-            mode: LaunchMode.externalApplication,
-          );
+          launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
           if (launched) {
             // Successfully launched, break out of loop
             break;
@@ -648,6 +649,13 @@ class _LocationSectionState extends State<LocationSection> {
     setState(() {
       _currentState = newState;
     });
+
+    // Update tab controller to match new state
+    final newIndex = newState == LocationState.decideLater ? 0 : 1;
+    if (_tabController.index != newIndex) {
+      _tabController.animateTo(newIndex);
+    }
+
     if (newState == LocationState.decideLater) {
       widget.onLocationChanged?.call(null);
     }
@@ -742,7 +750,8 @@ class _LocationSectionState extends State<LocationSection> {
       Position? userLocation;
       try {
         LocationPermission permission = await Geolocator.checkPermission();
-        if (permission == LocationPermission.always || permission == LocationPermission.whileInUse) {
+        if (permission == LocationPermission.always ||
+            permission == LocationPermission.whileInUse) {
           userLocation = await Geolocator.getCurrentPosition(
             desiredAccuracy: LocationAccuracy.low,
             timeLimit: const Duration(seconds: 5),
@@ -760,12 +769,16 @@ class _LocationSectionState extends State<LocationSection> {
       if (userLocation != null) {
         locations.sort((a, b) {
           double distanceA = Geolocator.distanceBetween(
-            userLocation!.latitude, userLocation.longitude,
-            a.latitude, a.longitude,
+            userLocation!.latitude,
+            userLocation.longitude,
+            a.latitude,
+            a.longitude,
           );
           double distanceB = Geolocator.distanceBetween(
-            userLocation.latitude, userLocation.longitude,
-            b.latitude, b.longitude,
+            userLocation.latitude,
+            userLocation.longitude,
+            b.latitude,
+            b.longitude,
           );
           return distanceA.compareTo(distanceB);
         });
@@ -774,41 +787,46 @@ class _LocationSectionState extends State<LocationSection> {
       // Process exactly 3 results (or fewer if not available)
       for (int i = 0; i < locations.length && i < 3; i++) {
         Location location = locations[i];
-        
+
         try {
           // Get readable address from coordinates
           List<Placemark> placemarks = await placemarkFromCoordinates(
-            location.latitude, 
-            location.longitude
+            location.latitude,
+            location.longitude,
           );
-          
+
           if (placemarks.isNotEmpty) {
             Placemark placemark = placemarks.first;
-            
+
             // Build formatted address
             String formattedAddress = _buildFormattedAddress(placemark);
             String displayName = _buildDisplayName(placemark, query);
-            
-            suggestions.add(LocationSuggestion(
-              id: '${location.latitude}_${location.longitude}',
-              name: displayName,
-              address: formattedAddress,
-              latitude: location.latitude,
-              longitude: location.longitude,
-            ));
+
+            suggestions.add(
+              LocationSuggestion(
+                id: '${location.latitude}_${location.longitude}',
+                name: displayName,
+                address: formattedAddress,
+                latitude: location.latitude,
+                longitude: location.longitude,
+              ),
+            );
           }
         } catch (e) {
           // If reverse geocoding fails, use basic info
-          suggestions.add(LocationSuggestion(
-            id: '${location.latitude}_${location.longitude}',
-            name: query,
-            address: '${location.latitude.toStringAsFixed(4)}, ${location.longitude.toStringAsFixed(4)}',
-            latitude: location.latitude,
-            longitude: location.longitude,
-          ));
+          suggestions.add(
+            LocationSuggestion(
+              id: '${location.latitude}_${location.longitude}',
+              name: query,
+              address:
+                  '${location.latitude.toStringAsFixed(4)}, ${location.longitude.toStringAsFixed(4)}',
+              latitude: location.latitude,
+              longitude: location.longitude,
+            ),
+          );
         }
       }
-      
+
       return suggestions;
     } catch (e) {
       // Return empty list on geocoding failure
@@ -819,19 +837,22 @@ class _LocationSectionState extends State<LocationSection> {
   /// Build formatted address from placemark
   String _buildFormattedAddress(Placemark placemark) {
     List<String> parts = [];
-    
+
     if (placemark.street?.isNotEmpty == true) parts.add(placemark.street!);
     if (placemark.locality?.isNotEmpty == true) parts.add(placemark.locality!);
-    if (placemark.administrativeArea?.isNotEmpty == true) parts.add(placemark.administrativeArea!);
+    if (placemark.administrativeArea?.isNotEmpty == true) {
+      parts.add(placemark.administrativeArea!);
+    }
     if (placemark.country?.isNotEmpty == true) parts.add(placemark.country!);
-    
+
     return parts.join(', ');
   }
 
   /// Build display name from placemark and query
   String _buildDisplayName(Placemark placemark, String query) {
     // Prefer name, then locality, then fall back to query
-    if (placemark.name?.isNotEmpty == true && placemark.name != placemark.street) {
+    if (placemark.name?.isNotEmpty == true &&
+        placemark.name != placemark.street) {
       return placemark.name!;
     }
     if (placemark.locality?.isNotEmpty == true) {
@@ -839,8 +860,6 @@ class _LocationSectionState extends State<LocationSection> {
     }
     return query;
   }
-
-
 
   Widget _buildSuggestionsList() {
     if (_isSearching) {
@@ -1041,43 +1060,6 @@ class _LocationSectionState extends State<LocationSection> {
     // Don't force state change here - let parent decide
 
     HapticFeedback.lightImpact();
-  }
-}
-
-class _ToggleButton extends StatelessWidget {
-  final String text;
-  final bool isSelected;
-  final VoidCallback? onTap;
-
-  const _ToggleButton({
-    required this.text,
-    required this.isSelected,
-    this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(
-          horizontal: Pads.ctlH - 2,
-          vertical: 5,
-        ),
-        decoration: BoxDecoration(
-          color: isSelected ? BrandColors.planning : Colors.transparent,
-          borderRadius: BorderRadius.circular(Radii.smAlt),
-        ),
-        child: Text(
-          text,
-          style: AppText.labelLarge.copyWith(
-            color: BrandColors.text1,
-            fontWeight: isSelected ? FontWeight.w500 : FontWeight.w400,
-            fontSize: 13,
-          ),
-        ),
-      ),
-    );
   }
 }
 

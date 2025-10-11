@@ -54,11 +54,9 @@ class AppRouter {
     profile: (context) => const ProfilePage(),
     editProfile: (context) => const EditProfilePage(),
     event: (context) {
-      final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
-      return EventPage(
-        eventId: args?['eventId'],
-        section: args?['section'],
-      );
+      final args =
+          ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+      return EventPage(eventId: args?['eventId'] ?? 'event-1');
     },
     loginPage: (context) => const LoginPage(),
 
@@ -71,7 +69,7 @@ class AppRouter {
       final args =
           ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
       return OtpVerificationPage(
-        email: args['email'], 
+        email: args['email'],
         name: args['name'], // Optional name parameter
       );
     },

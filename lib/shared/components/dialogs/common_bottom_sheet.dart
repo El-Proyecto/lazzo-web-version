@@ -64,7 +64,7 @@ class CommonBottomSheet extends StatelessWidget {
         maxHeight: maxHeight ?? MediaQuery.of(context).size.height * 0.9,
       ),
       decoration: const BoxDecoration(
-        color: BrandColors.bg1,
+        color: BrandColors.bg2,
         borderRadius: BorderRadius.only(
           topLeft: Radius.circular(Radii.md),
           topRight: Radius.circular(Radii.md),
@@ -74,21 +74,22 @@ class CommonBottomSheet extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           if (showGrabber) ...[
-            const GrabberBar(),
-            const SizedBox(height: Gaps.md),
+            const Padding(
+              padding: EdgeInsets.only(top: Gaps.sm),
+              child: Center(child: GrabberBar()),
+            ),
           ],
 
           // Header
           Padding(
-            padding: contentPadding ?? const EdgeInsets.all(Pads.sectionH),
+            padding: const EdgeInsets.symmetric(horizontal: Gaps.lg),
             child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Expanded(
-                  child: Text(
-                    title,
-                    style: AppText.titleMediumEmph.copyWith(
-                      color: BrandColors.text1,
-                    ),
+                Text(
+                  title,
+                  style: AppText.titleMediumEmph.copyWith(
+                    color: BrandColors.text1,
                   ),
                 ),
                 if (onClose != null)
@@ -101,12 +102,18 @@ class CommonBottomSheet extends StatelessWidget {
             ),
           ),
 
-          const SizedBox(height: Gaps.sm),
+          const SizedBox(height: 12),
 
           // Content
           Flexible(
             child: SingleChildScrollView(
-              padding: contentPadding ?? const EdgeInsets.all(Pads.sectionH),
+              padding:
+                  contentPadding ??
+                  const EdgeInsets.only(
+                    left: Gaps.lg,
+                    right: Gaps.lg,
+                    bottom: Gaps.lg,
+                  ),
               child: content,
             ),
           ),

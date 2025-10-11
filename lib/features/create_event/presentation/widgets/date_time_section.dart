@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../shared/components/common/create_event_segmented_control.dart';
 import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/constants/text_styles.dart';
 import '../../../../shared/themes/colors.dart';
@@ -41,13 +42,26 @@ class DateTimeSection extends StatefulWidget {
   State<DateTimeSection> createState() => _DateTimeSectionState();
 }
 
-class _DateTimeSectionState extends State<DateTimeSection> {
+class _DateTimeSectionState extends State<DateTimeSection>
+    with SingleTickerProviderStateMixin {
   DateTimeState _currentState = DateTimeState.decideLater;
+  late TabController _tabController;
 
   @override
   void initState() {
     super.initState();
     _currentState = widget.initialState;
+    _tabController = TabController(
+      length: 2,
+      vsync: this,
+      initialIndex: _currentState == DateTimeState.decideLater ? 0 : 1,
+    );
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
   }
 
   @override
@@ -101,27 +115,18 @@ class _DateTimeSectionState extends State<DateTimeSection> {
           style: AppText.titleMediumEmph.copyWith(color: BrandColors.text1),
         ),
 
-        // Toggle buttons
-        Container(
-          padding: const EdgeInsets.all(Gaps.xs),
-          decoration: BoxDecoration(
-            color: BrandColors.bg3,
-            borderRadius: BorderRadius.circular(Radii.smAlt),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _ToggleButton(
-                text: 'Decide later',
-                isSelected: _currentState == DateTimeState.decideLater,
-                onTap: () => _changeState(DateTimeState.decideLater),
-              ),
-              _ToggleButton(
-                text: 'Set Now',
-                isSelected: _currentState == DateTimeState.setNow,
-                onTap: () => _changeState(DateTimeState.setNow),
-              ),
-            ],
+        // Segmented Control
+        SizedBox(
+          width: 200, // Fixed width to prevent overflow
+          child: CreateEventSegmentedControl(
+            controller: _tabController,
+            labels: const ['Decide later', 'Set Now'],
+            onTap: (index) {
+              final newState = index == 0
+                  ? DateTimeState.decideLater
+                  : DateTimeState.setNow;
+              _changeState(newState);
+            },
           ),
         ),
       ],
@@ -158,45 +163,15 @@ class _DateTimeSectionState extends State<DateTimeSection> {
     setState(() {
       _currentState = newState;
     });
+
+    // Update tab controller to match new state
+    final newIndex = newState == DateTimeState.decideLater ? 0 : 1;
+    if (_tabController.index != newIndex) {
+      _tabController.animateTo(newIndex);
+    }
+
     // Notify parent of state change for validation
     widget.onStateChanged?.call(newState);
-  }
-}
-
-class _ToggleButton extends StatelessWidget {
-  final String text;
-  final bool isSelected;
-  final VoidCallback? onTap;
-
-  const _ToggleButton({
-    required this.text,
-    required this.isSelected,
-    this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(
-          horizontal: Pads.ctlH - 2,
-          vertical: 5,
-        ),
-        decoration: BoxDecoration(
-          color: isSelected ? BrandColors.planning : Colors.transparent,
-          borderRadius: BorderRadius.circular(Radii.smAlt),
-        ),
-        child: Text(
-          text,
-          style: AppText.labelLarge.copyWith(
-            color: BrandColors.text1,
-            fontWeight: isSelected ? FontWeight.w500 : FontWeight.w400,
-            fontSize: 13,
-          ),
-        ),
-      ),
-    );
   }
 }
 
