@@ -151,7 +151,7 @@ final unreadMessagesCountProvider = Provider.family<int, String>((
           .length;
     },
     loading: () => 0,
-    error: (_, __) => 0,
+    error: (_, stackTrace) => 0,
   );
 });
 
