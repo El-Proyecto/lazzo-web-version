@@ -17,6 +17,7 @@ class EventGroupSelector extends StatelessWidget {
   final VoidCallback? onGroupPressed;
   final String? nameError;
   final String? groupError;
+  final bool isGroupReadOnly;
 
   const EventGroupSelector({
     super.key,
@@ -30,6 +31,7 @@ class EventGroupSelector extends StatelessWidget {
     this.onGroupPressed,
     this.nameError,
     this.groupError,
+    this.isGroupReadOnly = false,
   });
 
   @override
@@ -76,12 +78,17 @@ class EventGroupSelector extends StatelessWidget {
                   child: Row(
                     children: [
                       Expanded(
-                        child: Text(
-                          eventName,
-                          style: AppText.bodyLarge.copyWith(
-                            color: eventName == 'Add Event Name'
-                                ? BrandColors.text2
-                                : BrandColors.text1,
+                        child: SizedBox(
+                          height: 24, // Fixed height for single line
+                          child: Text(
+                            eventName,
+                            style: AppText.bodyLarge.copyWith(
+                              color: eventName == 'Add Event Name'
+                                  ? BrandColors.text2
+                                  : BrandColors.text1,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                       ),
@@ -101,12 +108,12 @@ class EventGroupSelector extends StatelessWidget {
             // Seleção de grupo
             GestureDetector(
               key: groupButtonKey,
-              onTap: onGroupPressed,
+              onTap: isGroupReadOnly ? null : onGroupPressed,
               child: Container(
                 width: 48,
                 height: 48,
                 decoration: BoxDecoration(
-                  color: BrandColors.bg2,
+                  color: isGroupReadOnly ? BrandColors.bg3 : BrandColors.bg2,
                   borderRadius: BorderRadius.circular(Radii.smAlt),
                   border: groupError != null
                       ? Border.all(color: Colors.red, width: 1)
@@ -115,9 +122,11 @@ class EventGroupSelector extends StatelessWidget {
                 child: Center(
                   child: selectedGroup != null
                       ? _GroupIcon(group: selectedGroup!)
-                      : const Icon(
+                      : Icon(
                           Icons.group_add,
-                          color: BrandColors.text2,
+                          color: isGroupReadOnly
+                              ? BrandColors.text2.withOpacity(0.5)
+                              : BrandColors.text2,
                           size: 20,
                         ),
                 ),

@@ -4,11 +4,12 @@ import '../../../../shared/constants/text_styles.dart';
 import '../../../../shared/themes/colors.dart';
 
 /// AppBar tokenizada para criação/edição de eventos
-/// Inclui botão back, título editável e botão de histórico
+/// Inclui botão back, título editável e botão de histórico ou ação customizada
 class CreateEventAppBar extends StatelessWidget implements PreferredSizeWidget {
   final String title;
   final VoidCallback? onBackPressed;
   final VoidCallback? onHistoryPressed;
+  final Widget? trailingAction; // Custom trailing widget
   final bool isEditable;
   final ValueChanged<String>? onTitleChanged;
 
@@ -17,6 +18,7 @@ class CreateEventAppBar extends StatelessWidget implements PreferredSizeWidget {
     required this.title,
     this.onBackPressed,
     this.onHistoryPressed,
+    this.trailingAction,
     this.isEditable = false,
     this.onTitleChanged,
   });
@@ -47,11 +49,11 @@ class CreateEventAppBar extends StatelessWidget implements PreferredSizeWidget {
               ),
             ),
 
-            // Título fixo
+            // Título
             Expanded(
               child: Center(
                 child: Text(
-                  'Create Event',
+                  title, // Use the title parameter instead of hard-coded
                   style: AppText.dropdownTitle.copyWith(
                     color: BrandColors.text1,
                     fontSize: 22,
@@ -62,8 +64,8 @@ class CreateEventAppBar extends StatelessWidget implements PreferredSizeWidget {
               ),
             ),
 
-            // Botão Histórico
-            GestureDetector(
+            // Botão Histórico ou ação customizada
+            trailingAction ?? GestureDetector(
               onTap: onHistoryPressed,
               child: Container(
                 width: 32,
