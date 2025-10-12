@@ -7,7 +7,6 @@ import '../../domain/repositories/group_repository.dart';
 import '../data_sources/groups_data_source.dart';
 import '../models/group_entity_model.dart';
 import '../../../../shared/models/group_enums.dart';
-import '../../../../shared/utils/image_compression_service.dart';
 
 class GroupRepositoryImpl implements GroupRepository {
   final GroupsDataSource _dataSource;
@@ -35,22 +34,34 @@ class GroupRepositoryImpl implements GroupRepository {
       
       print('🎯 Creating group with initial QR code: $qrCodeData');
       
-      // Preparar dados com nova estrutura photo_path/photo_updated_at
+      // Handle photo upload BEFORE creating group in database
+      String? uploadedPhotoPath;
       if (group.photoUrl != null && group.photoUrl!.isNotEmpty) {
-        // Se é um caminho local, sinalizar que precisa de upload
+        // If it's a local path, upload it first
         if (!group.photoUrl!.startsWith('http')) {
-          // Será processado após criação do grupo
-          groupData['needs_photo_upload'] = true;
-          groupData['temp_photo_path'] = group.photoUrl;
+          print('📸 [Repository] Uploading photo before group creation...');
+          try {
+            // Upload photo to storage and get storage path
+            uploadedPhotoPath = await _dataSource.ensureStoragePath(
+              input: group.photoUrl!,
+              groupId: 'temp_${DateTime.now().millisecondsSinceEpoch}', // temporary ID for upload
+              bucket: 'group-photos',
+            );
+            print('   ✅ Photo uploaded to storage: $uploadedPhotoPath');
+          } catch (e) {
+            print('   ❌ Photo upload failed: $e');
+            // Continue without photo if upload fails
+            uploadedPhotoPath = null;
+          }
         } else {
-          // Se já é URL, deixar campos nulos por enquanto
-          groupData['photo_url'] = null;
-          groupData['photo_updated_at'] = null;
+          // If it's already a URL, use it directly
+          uploadedPhotoPath = group.photoUrl;
         }
-      } else {
-        groupData['photo_url'] = null;
-        groupData['photo_updated_at'] = null;
       }
+      
+      // Set photo_url with the uploaded storage path (or null if no photo/upload failed)
+      groupData['photo_url'] = uploadedPhotoPath;
+      groupData['photo_updated_at'] = uploadedPhotoPath != null ? DateTime.now().toIso8601String() : null;
 
       // Criar grupo
       final createdGroupData = await _dataSource.createGroup(user.id, groupData);
@@ -62,32 +73,28 @@ class GroupRepositoryImpl implements GroupRepository {
       print('🔄 Updating QR code with real group ID: $realGroupId');
       await _dataSource.saveGroupQrCode(realGroupId, realQrCodeData);
       
-      // Se precisamos fazer upload da foto, fazer agora com ID correto
-      if (groupData['needs_photo_upload'] == true) {
-        print('📸 [Repository] Processing photo upload...');
-        print('   📁 Photo path: ${groupData['temp_photo_path']}');
-        print('   🏷️  Group ID: $realGroupId');
-        
+      // If we uploaded a photo with temporary ID, we need to move it to the correct group folder
+      if (uploadedPhotoPath != null && uploadedPhotoPath.contains('temp_')) {
+        print('📸 [Repository] Moving photo to correct group folder...');
         try {
-          final imageFile = XFile(groupData['temp_photo_path']);
-          final uploadedPath = await uploadGroupCoverPhoto(imageFile, realGroupId);
-          print('   ✅ Photo upload completed: $uploadedPath');
-          
-          // Recarregar dados atualizados
-          final updatedGroups = await _dataSource.getUserGroups(user.id);
-          final updatedGroup = updatedGroups.firstWhere(
-            (g) => g['id'] == createdGroupData['id'],
+          // Re-upload with correct group ID
+          final finalStoragePath = await _dataSource.ensureStoragePath(
+            input: group.photoUrl!, // original local path
+            groupId: realGroupId,    // real group ID
+            bucket: 'group-photos',
           );
           
-          // Certificar que tem QR code atualizado
-          updatedGroup['qr_code'] = realQrCodeData;
-          updatedGroup['group_url'] = realQrCodeData;
+          // Update database with final storage path
+          await _dataSource.updateGroupPhoto(realGroupId, finalStoragePath);
           
-          print('   ✅ Group data reloaded with photo');
-          return GroupEntityModel.fromJson(updatedGroup);
+          print('   ✅ Photo moved to final location: $finalStoragePath');
+          
+          // Update the created group data with final photo path
+          createdGroupData['photo_url'] = finalStoragePath;
+          createdGroupData['photo_updated_at'] = DateTime.now().toIso8601String();
         } catch (e) {
-          print('   ❌ Photo upload failed: $e');
-          // Continue without photo if upload fails
+          print('   ❌ Failed to move photo to final location: $e');
+          // Keep the temporary upload path
         }
       }
 
@@ -107,14 +114,18 @@ class GroupRepositoryImpl implements GroupRepository {
     try {
       print('🚀 Starting group cover photo upload process');
       
-      // 1) Comprimir imagem para WebP
-      final compressedBytes = await ImageCompressionService.compressToWebP(imageFile);
+      // Use ensureStoragePath to handle local files properly
+      final storagePath = await _dataSource.ensureStoragePath(
+        input: imageFile.path,
+        groupId: groupId,
+        bucket: 'group-photos',
+      );
       
-      // 2) Upload para bucket privado
-      final photoPath = await _dataSource.uploadGroupCoverPhoto(compressedBytes, groupId);
+      // Update database with the storage path
+      await _dataSource.updateGroupPhoto(groupId, storagePath);
       
-      print('✅ Group cover photo upload completed: $photoPath');
-      return photoPath;
+      print('✅ Group cover photo upload completed: $storagePath');
+      return storagePath;
     } catch (e) {
       print('❌ Group cover photo upload failed: $e');
       throw Exception('Failed to upload group cover photo: $e');
@@ -128,11 +139,17 @@ class GroupRepositoryImpl implements GroupRepository {
     }
 
     try {
-      // Cache busting: incluir timestamp no processo para verificar se URL ainda é válida
-      // Por simplicidade, sempre geramos nova signed URL
+      // If it's a local path, we can't generate a signed URL
+      // This indicates the photo hasn't been properly uploaded to storage
+      if (photoPath.startsWith('/') || photoPath.contains('cache') || photoPath.contains('data/user')) {
+        print('⚠️ Cannot get URL for local path: $photoPath');
+        return null;
+      }
+      
+      // Generate signed URL for storage path
       final signedUrl = await _dataSource.getGroupCoverSignedUrl(photoPath);
       
-      // Adicionar timestamp como query param para cache busting
+      // Add timestamp as query param for cache busting
       final timestamp = photoUpdatedAt?.millisecondsSinceEpoch ?? DateTime.now().millisecondsSinceEpoch;
       final urlWithCacheBuster = signedUrl.contains('?') 
           ? '$signedUrl&t=$timestamp'
@@ -175,10 +192,18 @@ class GroupRepositoryImpl implements GroupRepository {
           photoUpdatedAt = DateTime.parse(data['photo_updated_at'] as String);
         }
 
+        // Clean photo path - if it's a local path, set it to null
+        String? cleanPhotoPath = data['photo_url'] as String?;
+        if (cleanPhotoPath != null && _isLocalPath(cleanPhotoPath)) {
+          print('⚠️ Filtering out local path in getUserGroups: $cleanPhotoPath');
+          cleanPhotoPath = null;
+          photoUpdatedAt = null; // Also clear the timestamp for invalid paths
+        }
+
         return Group(
           id: data['id'].toString(),
           name: data['name'] as String,
-          photoPath: data['photo_url'] as String?, // novo campo
+          photoPath: cleanPhotoPath, // cleaned path
           photoUpdatedAt: photoUpdatedAt, // novo campo
           // avatarUrl será calculado dinamicamente via getGroupCoverUrl
           lastActivity: 'Created ${_formatDate(data['created_at'])}',
@@ -218,10 +243,18 @@ class GroupRepositoryImpl implements GroupRepository {
           photoUpdatedAt = DateTime.parse(data['photo_updated_at'] as String);
         }
 
+        // Clean photo path - if it's a local path, set it to null
+        String? cleanPhotoPath = data['photo_url'] as String?;
+        if (cleanPhotoPath != null && _isLocalPath(cleanPhotoPath)) {
+          print('⚠️ Filtering out local path in getArchivedGroups: $cleanPhotoPath');
+          cleanPhotoPath = null;
+          photoUpdatedAt = null; // Also clear the timestamp for invalid paths
+        }
+
         return Group(
           id: data['id'].toString(),
           name: data['name'] as String,
-          photoPath: data['photo_url'] as String?, 
+          photoPath: cleanPhotoPath, // cleaned path
           photoUpdatedAt: photoUpdatedAt,
           lastActivity: 'Archived ${_formatDate(data['created_at'])}',
           lastActivityTime: data['created_at'] != null 
@@ -429,5 +462,16 @@ class GroupRepositoryImpl implements GroupRepository {
     } catch (e) {
       throw Exception('Failed to get group members: $e');
     }
+  }
+
+  /// Helper method to detect if a path is a local device path
+  bool _isLocalPath(String path) {
+    return path.startsWith('/') ||
+           path.startsWith('file://') ||
+           path.startsWith('content://') ||
+           path.contains('/data/') ||
+           path.contains('/var/') ||
+           path.contains('/Users/') ||
+           path.contains('cache');
   }
 }

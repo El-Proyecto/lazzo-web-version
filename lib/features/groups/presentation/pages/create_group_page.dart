@@ -5,10 +5,10 @@ import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/constants/text_styles.dart';
 import '../../../../shared/themes/colors.dart';
 import '../../../../shared/components/nav/common_app_bar.dart';
-import '../../../../shared/components/inputs/photo_selector.dart';
 import '../../../../routes/app_router.dart';
 import '../../domain/entities/group_entity.dart';
 import '../widgets/group_permissions_section.dart';
+import '../widgets/group_photo_selector_with_camera.dart';
 import '../providers/create_group_provider.dart';
 
 /// Page for creating a new group
@@ -45,12 +45,20 @@ class _CreateGroupPageState extends ConsumerState<CreateGroupPage> {
   }
 
   void _handlePhotoSelection() async {
-    print('📸 [CreateGroup] Starting photo selection...');
-    
+    print('📸 [CreateGroup] Starting photo selection from gallery...');
+    await _selectPhoto(ImageSource.gallery);
+  }
+
+  void _handleCameraPhoto() async {
+    print('📸 [CreateGroup] Starting photo capture from camera...');
+    await _selectPhoto(ImageSource.camera);
+  }
+
+  Future<void> _selectPhoto(ImageSource source) async {
     try {
       final ImagePicker picker = ImagePicker();
       final XFile? image = await picker.pickImage(
-        source: ImageSource.gallery,
+        source: source,
         maxWidth: 1024,
         maxHeight: 1024,
         imageQuality: 85,
@@ -209,15 +217,14 @@ class _CreateGroupPageState extends ConsumerState<CreateGroupPage> {
           children: [
             const SizedBox(height: Gaps.xs),
 
-            // Photo selector
-            PhotoSelector(
+            // Photo selector with camera support
+            GroupPhotoSelectorWithCamera(
               photoUrl: _selectedPhotoPath,
-              onPhotoSelected: _handlePhotoSelection,
+              onGallerySelected: _handlePhotoSelection,
+              onCameraSelected: _handleCameraPhoto,
               onPhotoRemoved: _handlePhotoRemoval,
               addPhotoText: 'Add Photo',
               size: 120,
-              showEditOverlay:
-                  false, // Don't show edit overlay, text indicates editability
               showRemoveOption: true,
             ),
 

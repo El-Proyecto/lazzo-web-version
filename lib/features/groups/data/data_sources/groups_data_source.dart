@@ -1,5 +1,8 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'dart:typed_data';
+import 'dart:io';
+import 'package:image_picker/image_picker.dart';
+import '../../../../shared/utils/image_compression_service.dart';
 
 /// Data source for group operations with Supabase
 abstract class GroupsDataSource {
@@ -7,12 +10,14 @@ abstract class GroupsDataSource {
   Future<String> uploadGroupCoverPhoto(Uint8List imageBytes, String groupId);
   Future<String> getGroupCoverSignedUrl(String photoPath);
   Future<void> saveGroupQrCode(String groupId, String qrCodeData);
+  Future<void> updateGroupPhoto(String groupId, String photoPath);
   Future<List<Map<String, dynamic>>> getUserGroups(String userId);
   Future<List<Map<String, dynamic>>> getArchivedGroups(String userId);
   Future<void> leaveGroup(String groupId, String userId);
   Future<void> updateGroupMemberState(String groupId, String userId, String state);
   Future<void> toggleMute(String groupId, String userId, bool isMuted);
   Future<void> togglePin(String groupId, String userId, bool isPinned);
+  Future<String> ensureStoragePath({required String input, required String groupId, String bucket});
 }
 
 class SupabaseGroupsDataSource implements GroupsDataSource {
@@ -39,6 +44,10 @@ class SupabaseGroupsDataSource implements GroupsDataSource {
             'members_can_invite': groupData['members_can_invite'] ?? false,
             'members_can_add_members': groupData['members_can_add_members'] ?? false,
             'members_can_create_events': groupData['members_can_create_events'] ?? false,
+            // Novos campos movidos para groups table
+            'is_pinned': false,
+            'is_muted': false,
+            'group_state': 'active',
           })
           .select()
           .single();
@@ -53,8 +62,10 @@ class SupabaseGroupsDataSource implements GroupsDataSource {
             'joined_at': DateTime.now().toIso8601String(),
           });
 
+      print('✅ [DataSource] Group created successfully: ${response['id']}');
       return response;
     } catch (e) {
+      print('❌ [DataSource] Failed to create group: $e');
       throw Exception('Failed to create group: $e');
     }
   }
@@ -62,45 +73,20 @@ class SupabaseGroupsDataSource implements GroupsDataSource {
   @override
   Future<String> uploadGroupCoverPhoto(Uint8List imageBytes, String groupId) async {
     try {
-      print('📤 [DataSource] Starting group cover photo upload for group: $groupId');
-      print('   🗂️ Bucket name: $_bucketName');
-      
-      // 1) Gerar path único para o arquivo
       final timestamp = DateTime.now().millisecondsSinceEpoch;
-      final fileName = 'cover_${timestamp}.webp';
-      final path = 'groups/$groupId/$fileName';
+      final fileName = '$groupId/cover_$timestamp.webp';
       
-      print('   📁 Upload path: $path');
-      print('   📊 Image size: ${(imageBytes.length / 1024).toStringAsFixed(1)}KB');
-      
-      // 2) Upload para bucket group-photos-private
-      print('   📤 Uploading to Supabase Storage...');
-      final uploadResponse = await _client.storage
+      await _client.storage
           .from(_bucketName)
-          .uploadBinary(path, imageBytes);
+          .uploadBinary(fileName, imageBytes, fileOptions: const FileOptions(
+            contentType: 'image/webp',
+            upsert: true, // Permitir substituir foto existente
+          ));
       
-      print('   📦 Upload response: $uploadResponse');
-      print('   ✅ Upload successful');
-      
-      // 3) Atualizar registro do grupo com novo path e timestamp
-      print('   💾 Updating groups table...');
-      final updateResponse = await _client
-          .from('groups')
-          .update({
-            'photo_url': path,
-            'photo_updated_at': DateTime.now().toIso8601String(),
-          })
-          .eq('id', groupId)
-          .select();
-      
-      print('   📦 Database update response: $updateResponse');
-      print('   ✅ Database updated with photo metadata');
-      
-      return path;
+      print('✅ [DataSource] Group cover photo uploaded: $fileName');
+      return fileName; // Retorna apenas o path, não a URL completa
     } catch (e) {
-      print('   ❌ Upload failed: $e');
-      print('   📍 Error type: ${e.runtimeType}');
-      print('   📍 Error details: $e');
+      print('❌ [DataSource] Failed to upload group cover photo: $e');
       throw Exception('Failed to upload group cover photo: $e');
     }
   }
@@ -108,65 +94,106 @@ class SupabaseGroupsDataSource implements GroupsDataSource {
   @override
   Future<String> getGroupCoverSignedUrl(String photoPath) async {
     try {
-      print('🔗 Generating signed URL for: $photoPath');
+      print('🔗 [DataSource] Getting signed URL for: $photoPath');
       
-      // Gerar signed URL com TTL de 1 hora
+      // Validate that it's a storage path, not a local path
+      if (photoPath.startsWith('/') || photoPath.contains('cache') || photoPath.contains('data/user')) {
+        print('   ❌ Invalid path detected (local path instead of storage path): $photoPath');
+        throw Exception('Invalid photo path - local paths are not supported');
+      }
+      
       final signedUrl = await _client.storage
           .from(_bucketName)
-          .createSignedUrl(photoPath, 3600); // 3600 segundos = 1 hora
+          .createSignedUrl(photoPath, 3600); // 1 hora de validade
       
-      print('   ✅ Signed URL generated (expires in 1h)');
-      
+      print('   ✅ Signed URL created successfully');
       return signedUrl;
     } catch (e) {
-      print('   ❌ Failed to generate signed URL: $e');
-      throw Exception('Failed to generate signed URL: $e');
+      print('   ❌ Failed to create signed URL: $e');
+      throw Exception('Failed to get signed URL: $e');
     }
+  }
+
+  /// Ensures the input path is a valid storage path, uploading local files if needed
+  @override
+  Future<String> ensureStoragePath({
+    required String input,
+    required String groupId,
+    String bucket = 'group-photos',
+  }) async {
+    // 1) Already a URL?
+    if (input.startsWith('http://') || input.startsWith('https://')) {
+      return input;
+    }
+
+    // 2) Is local? Upload and return object path
+    final isLocal = input.startsWith('/') ||
+                    input.startsWith('file://') ||
+                    input.startsWith('content://') ||
+                    input.contains('/data/') ||
+                    input.contains('cache');
+    
+    if (isLocal) {
+      print('📤 Converting local path to storage path: $input');
+      
+      // Check if file exists
+      final file = File(input.replaceFirst('file://', ''));
+      if (!await file.exists()) {
+        throw Exception('Local file does not exist: $input');
+      }
+      
+      // Create XFile and compress using existing service
+      final xFile = XFile(input);
+      final compressedBytes = await ImageCompressionService.compressToWebP(xFile);
+      
+      // Create object path with timestamp for versioning
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      final objectPath = 'groups/$groupId/cover_$timestamp.webp';
+      
+      // Upload to storage
+      await _client.storage.from(bucket).uploadBinary(
+        objectPath, 
+        compressedBytes,
+        fileOptions: const FileOptions(
+          contentType: 'image/webp',
+          upsert: true,
+        ),
+      );
+      
+      print('✅ Local file uploaded to storage: $objectPath');
+      return objectPath; // Return just the object path
+    }
+
+    // 3) Looks like storage path (bucket/object or just object)
+    if (RegExp(r'^[^/]+/.+').hasMatch(input)) {
+      // If it includes bucket name, extract just the object path
+      if (input.startsWith('$bucket/')) {
+        return input.substring(bucket.length + 1);
+      }
+      return input;
+    }
+
+    throw Exception('Path não reconhecido: $input');
   }
 
   @override
   Future<void> saveGroupQrCode(String groupId, String qrCodeData) async {
     try {
-      print('💾 [DataSource] Saving QR code for group: $groupId');
-      print('   📱 QR Code Data: $qrCodeData');
+      print('🔖 [DataSource] Saving QR code for group: $groupId');
       
-      // Gerar group_url baseado no QR code data
-      final groupUrl = qrCodeData; // O QR code data já é a URL
-      
-      print('   🔗 Group URL: $groupUrl');
-      print('   📤 Enviando update para Supabase...');
-      
-      // Primeiro vamos tentar buscar o grupo para verificar se existe
-      final existingGroup = await _client
-          .from('groups')
-          .select('id, name')
-          .eq('id', groupId)
-          .maybeSingle();
-      
-      if (existingGroup == null) {
-        throw Exception('Group with ID $groupId not found');
-      }
-      
-      print('   ✅ Group found: ${existingGroup['name']}');
-      
-      // Atualizar registro do grupo com QR code e group_url
-      final response = await _client
+      // Primeiro, tenta salvar qr_code e group_url
+      await _client
           .from('groups')
           .update({
             'qr_code': qrCodeData,
-            'group_url': groupUrl,
+            'group_url': 'https://lazzo.app/g/$groupId', // URL do grupo para compartilhamento
           })
-          .eq('id', groupId)
-          .select();
+          .eq('id', groupId);
       
-      print('   📦 Supabase response: $response');
       print('   ✅ QR code and group URL saved successfully');
     } catch (e) {
-      print('   ❌ Failed to save QR code: $e');
-      print('   📍 Error details: ${e.runtimeType}');
-      
-      // Se for erro de schema, vamos tentar só salvar o qr_code
-      if (e.toString().contains('column') && e.toString().contains('does not exist')) {
+      // Se falhar, tenta salvar apenas o qr_code (para compatibilidade)
+      if (e.toString().contains('group_url')) {
         print('   🔄 Tentando salvar apenas qr_code...');
         try {
           await _client
@@ -185,14 +212,33 @@ class SupabaseGroupsDataSource implements GroupsDataSource {
   }
 
   @override
+  Future<void> updateGroupPhoto(String groupId, String photoPath) async {
+    try {
+      print('📸 [DataSource] Updating group photo: $groupId -> $photoPath');
+      
+      await _client
+          .from('groups')
+          .update({
+            'photo_url': photoPath,
+            'photo_updated_at': DateTime.now().toIso8601String(),
+          })
+          .eq('id', groupId);
+      
+      print('   ✅ Group photo updated successfully');
+    } catch (e) {
+      print('   ❌ Failed to update group photo: $e');
+      throw Exception('Failed to update group photo: $e');
+    }
+  }
+
+  @override
   Future<List<Map<String, dynamic>>> getUserGroups(String userId) async {
     try {
-      // STEP 1: Busca os IDs dos grupos onde o usuário é membro (só grupos ativos)
+      // STEP 1: Busca os IDs dos grupos onde o usuário é membro
       final memberResponse = await _client
           .from('group_members')
-          .select('group_id, group_state, is_muted, is_pinned')
-          .eq('user_id', userId)
-          .neq('group_state', 'archived'); // Filtra grupos arquivados
+          .select('group_id')
+          .eq('user_id', userId);
 
       if (memberResponse.isEmpty) {
         return [];
@@ -203,8 +249,8 @@ class SupabaseGroupsDataSource implements GroupsDataSource {
           .map((member) => member['group_id'] as String)
           .toList();
 
-      // STEP 2: Busca os detalhes dos grupos usando os IDs (sem JOIN)
-      // Selecionando todos os campos incluindo qr_code e group_url
+      // STEP 2: Busca os detalhes dos grupos usando os IDs (só grupos ativos)
+      // Selecionando todos os campos incluindo qr_code, group_url, is_pinned, is_muted, group_state
       final groupsResponse = await _client
           .from('groups')
           .select('''
@@ -218,9 +264,13 @@ class SupabaseGroupsDataSource implements GroupsDataSource {
             created_at,
             members_can_invite,
             members_can_add_members,
-            members_can_create_events
+            members_can_create_events,
+            is_pinned,
+            is_muted,
+            group_state
           ''')
           .filter('id', 'in', '(${groupIds.join(',')})')
+          .neq('group_state', 'archived') // Filtra grupos arquivados
           .order('created_at', ascending: false);
 
       return List<Map<String, dynamic>>.from(groupsResponse);
@@ -234,12 +284,11 @@ class SupabaseGroupsDataSource implements GroupsDataSource {
     try {
       print('🗄️ Fetching archived groups for: $userId');
 
-      // STEP 1: Busca os IDs dos grupos arquivados do usuário
+      // STEP 1: Busca os IDs dos grupos onde o usuário é membro
       final memberResponse = await _client
           .from('group_members')
-          .select('group_id, group_state, is_muted, is_pinned')
-          .eq('user_id', userId)
-          .eq('group_state', 'archived'); // Só grupos arquivados
+          .select('group_id')
+          .eq('user_id', userId);
 
       if (memberResponse.isEmpty) {
         return [];
@@ -250,7 +299,7 @@ class SupabaseGroupsDataSource implements GroupsDataSource {
           .map((member) => member['group_id'] as String)
           .toList();
 
-      // STEP 2: Busca os detalhes dos grupos arquivados
+      // STEP 2: Busca os detalhes dos grupos arquivados usando os IDs
       final groupsResponse = await _client
           .from('groups')
           .select('''
@@ -264,13 +313,19 @@ class SupabaseGroupsDataSource implements GroupsDataSource {
             created_at,
             members_can_invite,
             members_can_add_members,
-            members_can_create_events
+            members_can_create_events,
+            is_pinned,
+            is_muted,
+            group_state
           ''')
           .filter('id', 'in', '(${groupIds.join(',')})')
+          .eq('group_state', 'archived') // Só grupos arquivados
           .order('created_at', ascending: false);
 
+      print('   ✅ Found ${groupsResponse.length} archived groups');
       return List<Map<String, dynamic>>.from(groupsResponse);
     } catch (e) {
+      print('   ❌ Failed to fetch archived groups: $e');
       throw Exception('Failed to fetch archived groups: $e');
     }
   }
@@ -297,16 +352,15 @@ class SupabaseGroupsDataSource implements GroupsDataSource {
   @override
   Future<void> updateGroupMemberState(String groupId, String userId, String state) async {
     try {
-      print('📁 [DataSource] Updating group member state: $state for group: $groupId');
+      print('📁 [DataSource] Updating group state: $state for group: $groupId');
       
-      // Atualiza o group_state na tabela group_members
+      // Atualiza o group_state na tabela groups (não mais em group_members)
       await _client
-          .from('group_members')
+          .from('groups')
           .update({'group_state': state})
-          .eq('group_id', groupId)
-          .eq('user_id', userId);
+          .eq('id', groupId);
       
-      print('   ✅ Group member state updated to: $state');
+      print('   ✅ Group state updated to: $state');
     } catch (e) {
       print('   ❌ Failed to update group state: $e');
       throw Exception('Failed to update group state: $e');
@@ -318,12 +372,11 @@ class SupabaseGroupsDataSource implements GroupsDataSource {
     try {
       print('🔇 [DataSource] ${isMuted ? 'Muting' : 'Unmuting'} group: $groupId');
       
-      // Atualiza o is_muted na tabela group_members
+      // Atualiza o is_muted na tabela groups (não mais em group_members)
       await _client
-          .from('group_members')
+          .from('groups')
           .update({'is_muted': isMuted})
-          .eq('group_id', groupId)
-          .eq('user_id', userId);
+          .eq('id', groupId);
       
       print('   ✅ Group ${isMuted ? 'muted' : 'unmuted'} successfully');
     } catch (e) {
@@ -337,12 +390,11 @@ class SupabaseGroupsDataSource implements GroupsDataSource {
     try {
       print('📌 [DataSource] ${isPinned ? 'Pinning' : 'Unpinning'} group: $groupId');
       
-      // Atualiza o is_pinned na tabela group_members
+      // Atualiza o is_pinned na tabela groups (não mais em group_members)
       await _client
-          .from('group_members')
+          .from('groups')
           .update({'is_pinned': isPinned})
-          .eq('group_id', groupId)
-          .eq('user_id', userId);
+          .eq('id', groupId);
       
       print('   ✅ Group ${isPinned ? 'pinned' : 'unpinned'} successfully');
     } catch (e) {

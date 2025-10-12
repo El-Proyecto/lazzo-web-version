@@ -95,8 +95,8 @@ class _GroupCreatedPageState extends ConsumerState<GroupCreatedPage> {
 
             // Group photo with rounded corners (not circle)
             GroupPhotoImage(
-              photoPath: widget.group.photoUrl,
-              photoUpdatedAt: null, // GroupEntity doesn't have photoUpdatedAt yet
+              photoPath: widget.group.photoUrl, // GroupEntity.photoUrl maps to photoPath in widget
+              photoUpdatedAt: null, // GroupEntity doesn't have photoUpdatedAt field
               width: 120,
               height: 120,
             ),
