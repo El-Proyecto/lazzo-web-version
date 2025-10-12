@@ -249,8 +249,7 @@ class SupabaseGroupsDataSource implements GroupsDataSource {
           .map((member) => member['group_id'] as String)
           .toList();
 
-      // STEP 2: Busca os detalhes dos grupos usando os IDs (só grupos ativos)
-      // Selecionando todos os campos incluindo qr_code, group_url, is_pinned, is_muted, group_state
+      // STEP 2: Busca os detalhes dos grupos com JOIN das configurações do usuário
       final groupsResponse = await _client
           .from('groups')
           .select('''
@@ -265,15 +264,33 @@ class SupabaseGroupsDataSource implements GroupsDataSource {
             members_can_invite,
             members_can_add_members,
             members_can_create_events,
-            is_pinned,
-            is_muted,
-            group_state
+            group_user_settings!left(
+              is_muted,
+              is_pinned,
+              group_state
+            )
           ''')
           .filter('id', 'in', '(${groupIds.join(',')})')
-          .neq('group_state', 'archived') // Filtra grupos arquivados
+          .filter('group_user_settings.user_id', 'eq', userId)
           .order('created_at', ascending: false);
 
-      return List<Map<String, dynamic>>.from(groupsResponse);
+      // Processa os resultados para achatar as configurações do usuário
+      final processedGroups = groupsResponse.map((group) {
+        final userSettings = group['group_user_settings'] as List?;
+        final currentUserSettings = userSettings?.isNotEmpty == true 
+            ? userSettings!.first 
+            : {'is_muted': false, 'is_pinned': false, 'group_state': 'active'};
+
+        // Remove a configuração aninhada e adiciona os campos na raiz
+        group.remove('group_user_settings');
+        group['is_muted'] = currentUserSettings['is_muted'] ?? false;
+        group['is_pinned'] = currentUserSettings['is_pinned'] ?? false;
+        group['group_state'] = currentUserSettings['group_state'] ?? 'active';
+
+        return group;
+      }).where((group) => group['group_state'] != 'archived').toList(); // Filtra arquivados
+
+      return List<Map<String, dynamic>>.from(processedGroups);
     } catch (e) {
       throw Exception('Failed to fetch user groups: $e');
     }
@@ -299,7 +316,7 @@ class SupabaseGroupsDataSource implements GroupsDataSource {
           .map((member) => member['group_id'] as String)
           .toList();
 
-      // STEP 2: Busca os detalhes dos grupos arquivados usando os IDs
+      // STEP 2: Busca os detalhes dos grupos com JOIN das configurações do usuário
       final groupsResponse = await _client
           .from('groups')
           .select('''
@@ -314,16 +331,35 @@ class SupabaseGroupsDataSource implements GroupsDataSource {
             members_can_invite,
             members_can_add_members,
             members_can_create_events,
-            is_pinned,
-            is_muted,
-            group_state
+            group_user_settings!left(
+              is_muted,
+              is_pinned,
+              group_state
+            )
           ''')
           .filter('id', 'in', '(${groupIds.join(',')})')
-          .eq('group_state', 'archived') // Só grupos arquivados
+          .filter('group_user_settings.user_id', 'eq', userId)
+          .filter('group_user_settings.group_state', 'eq', 'archived')
           .order('created_at', ascending: false);
 
-      print('   ✅ Found ${groupsResponse.length} archived groups');
-      return List<Map<String, dynamic>>.from(groupsResponse);
+      // Processa os resultados para achatar as configurações do usuário
+      final processedGroups = groupsResponse.map((group) {
+        final userSettings = group['group_user_settings'] as List?;
+        final currentUserSettings = userSettings?.isNotEmpty == true 
+            ? userSettings!.first 
+            : {'is_muted': false, 'is_pinned': false, 'group_state': 'active'};
+
+        // Remove a configuração aninhada e adiciona os campos na raiz
+        group.remove('group_user_settings');
+        group['is_muted'] = currentUserSettings['is_muted'] ?? false;
+        group['is_pinned'] = currentUserSettings['is_pinned'] ?? false;
+        group['group_state'] = currentUserSettings['group_state'] ?? 'active';
+
+        return group;
+      }).toList();
+
+      print('   ✅ Found ${processedGroups.length} archived groups');
+      return List<Map<String, dynamic>>.from(processedGroups);
     } catch (e) {
       print('   ❌ Failed to fetch archived groups: $e');
       throw Exception('Failed to fetch archived groups: $e');
@@ -354,11 +390,15 @@ class SupabaseGroupsDataSource implements GroupsDataSource {
     try {
       print('📁 [DataSource] Updating group state: $state for group: $groupId');
       
-      // Atualiza o group_state na tabela groups (não mais em group_members)
+      // Upsert na tabela group_user_settings
       await _client
-          .from('groups')
-          .update({'group_state': state})
-          .eq('id', groupId);
+          .from('group_user_settings')
+          .upsert({
+            'group_id': groupId,
+            'user_id': userId,
+            'group_state': state,
+            'updated_at': DateTime.now().toIso8601String(),
+          });
       
       print('   ✅ Group state updated to: $state');
     } catch (e) {
@@ -370,13 +410,17 @@ class SupabaseGroupsDataSource implements GroupsDataSource {
   @override
   Future<void> toggleMute(String groupId, String userId, bool isMuted) async {
     try {
-      print('🔇 [DataSource] ${isMuted ? 'Muting' : 'Unmuting'} group: $groupId');
+      print('🔇 [DataSource] ${isMuted ? 'Muting' : 'Unmuting'} group: $groupId for user: $userId');
       
-      // Atualiza o is_muted na tabela groups (não mais em group_members)
+      // Upsert na tabela group_user_settings
       await _client
-          .from('groups')
-          .update({'is_muted': isMuted})
-          .eq('id', groupId);
+          .from('group_user_settings')
+          .upsert({
+            'group_id': groupId,
+            'user_id': userId,
+            'is_muted': isMuted,
+            'updated_at': DateTime.now().toIso8601String(),
+          });
       
       print('   ✅ Group ${isMuted ? 'muted' : 'unmuted'} successfully');
     } catch (e) {
@@ -388,13 +432,17 @@ class SupabaseGroupsDataSource implements GroupsDataSource {
   @override
   Future<void> togglePin(String groupId, String userId, bool isPinned) async {
     try {
-      print('📌 [DataSource] ${isPinned ? 'Pinning' : 'Unpinning'} group: $groupId');
+      print('📌 [DataSource] ${isPinned ? 'Pinning' : 'Unpinning'} group: $groupId for user: $userId');
       
-      // Atualiza o is_pinned na tabela groups (não mais em group_members)
+      // Upsert na tabela group_user_settings
       await _client
-          .from('groups')
-          .update({'is_pinned': isPinned})
-          .eq('id', groupId);
+          .from('group_user_settings')
+          .upsert({
+            'group_id': groupId,
+            'user_id': userId,
+            'is_pinned': isPinned,
+            'updated_at': DateTime.now().toIso8601String(),
+          });
       
       print('   ✅ Group ${isPinned ? 'pinned' : 'unpinned'} successfully');
     } catch (e) {

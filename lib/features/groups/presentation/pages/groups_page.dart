@@ -322,6 +322,10 @@ class _GroupsPageState extends ConsumerState<GroupsPage> with WidgetsBindingObse
 
   void _handleOpenActions(String groupId) {
     print('Open actions for group: $groupId');
+    // Navegar para o filtro de actions
+    setState(() {
+      _selectedFilter = GroupFilter.actions;
+    });
   }
 
   void _handleMute(String groupId) {
@@ -329,17 +333,29 @@ class _GroupsPageState extends ConsumerState<GroupsPage> with WidgetsBindingObse
     final controller = ref.read(groupsControllerProvider);
     final groups = ref.read(groupsProvider).value ?? [];
     final group = groups.firstWhere((g) => g.id == groupId);
-    controller.toggleMute(groupId, group.isMuted);
+    
+    // Toggle: se está muted, vai unmute (false), se não está muted, vai mute (true)
+    final newMutedState = !group.isMuted;
+    controller.toggleMute(groupId, newMutedState);
   }
 
   void _handleLeaveGroup(String groupId) {
     print('Leave group: $groupId');
+    final controller = ref.read(groupsControllerProvider);
+    controller.leaveGroup(groupId);
   }
 
   void _handleArchive(String groupId) {
     print('Toggle archive for group: $groupId');
     final controller = ref.read(groupsControllerProvider);
     controller.toggleArchive(groupId);
+    
+    // Após arquivar, navegar para o filtro de archived
+    Future.delayed(const Duration(milliseconds: 500), () {
+      setState(() {
+        _selectedFilter = GroupFilter.archived;
+      });
+    });
   }
 
   void _handlePin(String groupId) {
