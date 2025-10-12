@@ -49,7 +49,10 @@ class _GroupsPageState extends ConsumerState<GroupsPage> with WidgetsBindingObse
 
   @override
   Widget build(BuildContext context) {
-    final groupsAsync = ref.watch(groupsProvider);
+    // Use different providers based on selected filter
+    final groupsAsync = _selectedFilter == GroupFilter.archived
+        ? ref.watch(archivedGroupsProvider)
+        : ref.watch(groupsProvider);
 
     return Scaffold(
       backgroundColor: BrandColors.bg1,
@@ -73,14 +76,53 @@ class _GroupsPageState extends ConsumerState<GroupsPage> with WidgetsBindingObse
             ),
           ),
 
-          // Lista de grupos com filtros incluídos na lista para rolagem
+          // Filtros sempre visíveis
+          Padding(
+            padding: const EdgeInsets.only(
+              left: Insets.screenH,
+              right: Insets.screenH,
+              bottom: Gaps.xs,
+            ),
+            child: Row(
+              children: [
+                CustomFilterChip(
+                  label: 'All',
+                  isSelected: _selectedFilter == GroupFilter.all,
+                  onTap: () => setState(
+                    () => _selectedFilter = GroupFilter.all,
+                  ),
+                ),
+                const SizedBox(width: Gaps.sm),
+                CustomFilterChip(
+                  label: 'Actions',
+                  isSelected: _selectedFilter == GroupFilter.actions,
+                  onTap: () => setState(
+                    () => _selectedFilter = GroupFilter.actions,
+                  ),
+                ),
+                const SizedBox(width: Gaps.sm),
+                CustomFilterChip(
+                  label: 'Archived',
+                  isSelected: _selectedFilter == GroupFilter.archived,
+                  onTap: () => setState(
+                    () => _selectedFilter = GroupFilter.archived,
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // Lista de grupos
           Expanded(
             child: groupsAsync.when(
               data: (groups) {
                 var filteredGroups = groups;
 
-                // Aplicar filtro por status
-                filteredGroups = _applyStatusFilter(filteredGroups);
+                // Para filtro archived, já vem do provider correto, não precisa filtrar
+                if (_selectedFilter != GroupFilter.archived) {
+                  // Aplicar filtro por status (apenas para All e Actions)
+                  filteredGroups = _applyStatusFilter(filteredGroups);
+                }
 
                 // Aplicar filtro de busca
                 if (_searchQuery.isNotEmpty) {
@@ -102,52 +144,9 @@ class _GroupsPageState extends ConsumerState<GroupsPage> with WidgetsBindingObse
 
                 return ListView.builder(
                   padding: EdgeInsets.zero,
-                  itemCount: filteredGroups.length + 1, // +1 para os filtros
+                  itemCount: filteredGroups.length, // Apenas grupos, filtros fora
                   itemBuilder: (context, index) {
-                    // Primeiro item é a linha de filtros
-                    if (index == 0) {
-                      return Padding(
-                        padding: const EdgeInsets.only(
-                          left: Insets.screenH,
-                          right: Insets.screenH,
-                          bottom: Gaps.xs,
-                        ),
-                        child: Row(
-                          children: [
-                            CustomFilterChip(
-                              label: 'All',
-                              isSelected: _selectedFilter == GroupFilter.all,
-                              onTap: () => setState(
-                                () => _selectedFilter = GroupFilter.all,
-                              ),
-                            ),
-                            const SizedBox(width: Gaps.sm),
-                            CustomFilterChip(
-                              label: 'Actions',
-                              isSelected:
-                                  _selectedFilter == GroupFilter.actions,
-                              onTap: () => setState(
-                                () => _selectedFilter = GroupFilter.actions,
-                              ),
-                            ),
-                            const SizedBox(width: Gaps.sm),
-                            CustomFilterChip(
-                              label: 'Archived',
-                              isSelected:
-                                  _selectedFilter == GroupFilter.archived,
-                              onTap: () => setState(
-                                () => _selectedFilter = GroupFilter.archived,
-                              ),
-                            ),
-                          ],
-                        ),
-                      );
-                    }
-
-                    // Os demais itens são os grupos
-                    final group =
-                        filteredGroups[index -
-                            1]; // -1 para compensar o índice dos filtros
+                    final group = filteredGroups[index];
                     return GroupCard(
                       group: group,
                       onTap: () => _handleGroupTap(group.id),
@@ -350,12 +349,7 @@ class _GroupsPageState extends ConsumerState<GroupsPage> with WidgetsBindingObse
     final controller = ref.read(groupsControllerProvider);
     controller.toggleArchive(groupId);
     
-    // Após arquivar, navegar para o filtro de archived
-    Future.delayed(const Duration(milliseconds: 500), () {
-      setState(() {
-        _selectedFilter = GroupFilter.archived;
-      });
-    });
+    // Não redirecionar automaticamente - deixar user escolher quando ver
   }
 
   void _handlePin(String groupId) {
@@ -364,14 +358,16 @@ class _GroupsPageState extends ConsumerState<GroupsPage> with WidgetsBindingObse
     controller.togglePin(groupId);
   }
 
-  /// Aplica filtro por status dos grupos
+  /// Aplica filtro por status dos grupos (apenas para All e Actions)
   List<Group> _applyStatusFilter(List<Group> groups) {
     switch (_selectedFilter) {
       case GroupFilter.all:
+        // Retorna todos os grupos ativos (não arquivados)
         return groups
             .where((group) => group.status != GroupStatus.archived)
             .toList();
       case GroupFilter.actions:
+        // Retorna apenas grupos ativos com ações abertas
         return groups
             .where(
               (group) =>
@@ -381,9 +377,8 @@ class _GroupsPageState extends ConsumerState<GroupsPage> with WidgetsBindingObse
             )
             .toList();
       case GroupFilter.archived:
-        return groups
-            .where((group) => group.status == GroupStatus.archived)
-            .toList();
+        // Este caso não deve ser chamado, pois usar o archivedGroupsProvider
+        return groups;
     }
   }
 

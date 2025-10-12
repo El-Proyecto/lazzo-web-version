@@ -140,5 +140,6 @@ class GroupsController {
 
   void refreshGroups() {
     _ref.invalidate(groupsProvider);
+    _ref.invalidate(archivedGroupsProvider);
   }
 }

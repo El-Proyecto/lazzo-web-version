@@ -29,7 +29,7 @@ class SupabaseGroupsDataSource implements GroupsDataSource {
   @override
   Future<Map<String, dynamic>> createGroup(String userId, Map<String, dynamic> groupData) async {
     try {
-      // Insere o grupo na tabela groups com nova estrutura
+      // Insere o grupo na tabela groups (sem configurações de usuário)
       final response = await _client
           .from('groups')
           .insert({
@@ -44,10 +44,6 @@ class SupabaseGroupsDataSource implements GroupsDataSource {
             'members_can_invite': groupData['members_can_invite'] ?? false,
             'members_can_add_members': groupData['members_can_add_members'] ?? false,
             'members_can_create_events': groupData['members_can_create_events'] ?? false,
-            // Novos campos movidos para groups table
-            'is_pinned': false,
-            'is_muted': false,
-            'group_state': 'active',
           })
           .select()
           .single();
@@ -60,6 +56,17 @@ class SupabaseGroupsDataSource implements GroupsDataSource {
             'user_id': userId,
             'role': 'admin',
             'joined_at': DateTime.now().toIso8601String(),
+          });
+
+      // Cria configurações padrão para o criador do grupo
+      await _client
+          .from('group_user_settings')
+          .insert({
+            'group_id': response['id'],
+            'user_id': userId,
+            'is_muted': false,
+            'is_pinned': false,
+            'group_state': 'active',
           });
 
       print('✅ [DataSource] Group created successfully: ${response['id']}');
@@ -267,19 +274,34 @@ class SupabaseGroupsDataSource implements GroupsDataSource {
             group_user_settings!left(
               is_muted,
               is_pinned,
-              group_state
+              group_state,
+              user_id
             )
           ''')
           .filter('id', 'in', '(${groupIds.join(',')})')
-          .filter('group_user_settings.user_id', 'eq', userId)
           .order('created_at', ascending: false);
 
       // Processa os resultados para achatar as configurações do usuário
       final processedGroups = groupsResponse.map((group) {
         final userSettings = group['group_user_settings'] as List?;
-        final currentUserSettings = userSettings?.isNotEmpty == true 
-            ? userSettings!.first 
-            : {'is_muted': false, 'is_pinned': false, 'group_state': 'active'};
+        
+        // Filtra para pegar apenas as configurações do usuário atual
+        Map<String, dynamic>? currentUserSettings;
+        if (userSettings != null && userSettings.isNotEmpty) {
+          for (final setting in userSettings) {
+            if (setting['user_id'] == userId) {
+              currentUserSettings = setting;
+              break;
+            }
+          }
+        }
+        
+        // Se não encontrou configurações, usa defaults
+        currentUserSettings ??= {
+          'is_muted': false, 
+          'is_pinned': false, 
+          'group_state': 'active'
+        };
 
         // Remove a configuração aninhada e adiciona os campos na raiz
         group.remove('group_user_settings');
@@ -316,7 +338,27 @@ class SupabaseGroupsDataSource implements GroupsDataSource {
           .map((member) => member['group_id'] as String)
           .toList();
 
-      // STEP 2: Busca os detalhes dos grupos com JOIN das configurações do usuário
+      // STEP 2: Busca apenas grupos onde o usuário tem group_state = 'archived'
+      final archivedGroupIds = <String>[];
+      
+      // Busca configurações do usuário para identificar grupos arquivados
+      final userSettings = await _client
+          .from('group_user_settings')
+          .select('group_id')
+          .filter('user_id', 'eq', userId)
+          .filter('group_id', 'in', '(${groupIds.join(',')})')
+          .filter('group_state', 'eq', 'archived');
+      
+      for (final setting in userSettings) {
+        archivedGroupIds.add(setting['group_id'] as String);
+      }
+      
+      if (archivedGroupIds.isEmpty) {
+        print('   ✅ Found 0 archived groups');
+        return [];
+      }
+      
+      // STEP 3: Busca detalhes dos grupos arquivados com LEFT JOIN para configurações
       final groupsResponse = await _client
           .from('groups')
           .select('''
@@ -334,26 +376,40 @@ class SupabaseGroupsDataSource implements GroupsDataSource {
             group_user_settings!left(
               is_muted,
               is_pinned,
-              group_state
+              group_state,
+              user_id
             )
           ''')
-          .filter('id', 'in', '(${groupIds.join(',')})')
-          .filter('group_user_settings.user_id', 'eq', userId)
-          .filter('group_user_settings.group_state', 'eq', 'archived')
+          .filter('id', 'in', '(${archivedGroupIds.join(',')})')
           .order('created_at', ascending: false);
 
       // Processa os resultados para achatar as configurações do usuário
       final processedGroups = groupsResponse.map((group) {
         final userSettings = group['group_user_settings'] as List?;
-        final currentUserSettings = userSettings?.isNotEmpty == true 
-            ? userSettings!.first 
-            : {'is_muted': false, 'is_pinned': false, 'group_state': 'active'};
+        
+        // Filtra para pegar apenas as configurações do usuário atual
+        Map<String, dynamic>? currentUserSettings;
+        if (userSettings != null && userSettings.isNotEmpty) {
+          for (final setting in userSettings) {
+            if (setting['user_id'] == userId) {
+              currentUserSettings = setting;
+              break;
+            }
+          }
+        }
+        
+        // Se não encontrou configurações, usa defaults (mas para archived deve ter)
+        currentUserSettings ??= {
+          'is_muted': false, 
+          'is_pinned': false, 
+          'group_state': 'archived'
+        };
 
         // Remove a configuração aninhada e adiciona os campos na raiz
         group.remove('group_user_settings');
         group['is_muted'] = currentUserSettings['is_muted'] ?? false;
         group['is_pinned'] = currentUserSettings['is_pinned'] ?? false;
-        group['group_state'] = currentUserSettings['group_state'] ?? 'active';
+        group['group_state'] = currentUserSettings['group_state'] ?? 'archived';
 
         return group;
       }).toList();
