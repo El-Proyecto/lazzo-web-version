@@ -357,22 +357,6 @@ class GroupRepositoryImpl implements GroupRepository {
     throw UnimplementedError('Member invitations not implemented yet');
   }
 
-  /*@override
-  Future<void> leaveGroup(String groupId) async {
-    try {
-      final user = _client.auth.currentUser;
-      if (user == null) throw Exception('User not authenticated');
-
-      await _client
-          .from('group_members')
-          .delete()
-          .eq('group_id', groupId)
-          .eq('user_id', user.id);
-    } catch (e) {
-      throw Exception('Failed to leave group: $e');
-    }
-  }
-  */
   @override
   Future<void> toggleMute(String groupId, bool isMuted) async {
     try {
@@ -440,13 +424,10 @@ class GroupRepositoryImpl implements GroupRepository {
       }
 
       print('🗄️ [Repository] Toggling archive for group: $groupId');
-      
-      // Por agora, vamos sempre arquivar (não toggle)
-      // Em futuras iterações, podemos verificar o estado atual e fazer toggle
-      await _dataSource.updateGroupMemberState(groupId, user.id, 'archived');
-      print('   ✅ Group archived successfully');
+      await _dataSource.toggleArchive(groupId, user.id);
+      print('   ✅ Group archive toggled successfully');
     } catch (e) {
-      throw Exception('Failed to archive group: $e');
+      throw Exception('Failed to toggle archive: $e');
     }
   }
 

@@ -120,22 +120,25 @@ class GroupsController {
   Future<void> toggleMute(String groupId, bool isMuted) async {
     final toggleMute = _ref.read(toggleGroupMuteProvider);
     await toggleMute.call(groupId, isMuted);
-    // Refresh da lista após mudança
+    // Refresh de ambas as listas (grupo pode estar em qualquer uma)
     _ref.invalidate(groupsProvider);
+    _ref.invalidate(archivedGroupsProvider);
   }
 
   Future<void> togglePin(String groupId) async {
     final togglePin = _ref.read(toggleGroupPinProvider);
     await togglePin.call(groupId);
-    // Refresh da lista após alternar pin
+    // Refresh de ambas as listas (grupo pode estar em qualquer uma)
     _ref.invalidate(groupsProvider);
+    _ref.invalidate(archivedGroupsProvider);
   }
 
   Future<void> toggleArchive(String groupId) async {
     final toggleArchive = _ref.read(toggleGroupArchiveProvider);
     await toggleArchive.call(groupId);
-    // Refresh da lista após alternar arquivo
+    // Refresh de ambas as listas após alternar arquivo (grupo pode mudar de lista)
     _ref.invalidate(groupsProvider);
+    _ref.invalidate(archivedGroupsProvider);
   }
 
   void refreshGroups() {

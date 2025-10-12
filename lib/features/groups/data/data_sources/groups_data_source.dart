@@ -17,6 +17,7 @@ abstract class GroupsDataSource {
   Future<void> updateGroupMemberState(String groupId, String userId, String state);
   Future<void> toggleMute(String groupId, String userId, bool isMuted);
   Future<void> togglePin(String groupId, String userId, bool isPinned);
+  Future<void> toggleArchive(String groupId, String userId);
   Future<String> ensureStoragePath({required String input, required String groupId, String bucket});
 }
 
@@ -504,6 +505,42 @@ class SupabaseGroupsDataSource implements GroupsDataSource {
     } catch (e) {
       print('   ❌ Failed to toggle pin: $e');
       throw Exception('Failed to toggle pin: $e');
+    }
+  }
+
+  @override
+  Future<void> toggleArchive(String groupId, String userId) async {
+    try {
+      print('🗄️ [DataSource] Toggling archive for group: $groupId, user: $userId');
+      
+      // Primeiro, busca o estado atual do grupo para o usuário
+      final currentSettings = await _client
+          .from('group_user_settings')
+          .select('group_state')
+          .eq('group_id', groupId)
+          .eq('user_id', userId)
+          .maybeSingle();
+      
+      // Determina o novo estado (toggle entre 'active' e 'archived')
+      final currentState = currentSettings?['group_state'] ?? 'active';
+      final newState = currentState == 'archived' ? 'active' : 'archived';
+      
+      print('   Current state: $currentState -> New state: $newState');
+      
+      // Upsert na tabela group_user_settings
+      await _client
+          .from('group_user_settings')
+          .upsert({
+            'group_id': groupId,
+            'user_id': userId,
+            'group_state': newState,
+            'updated_at': DateTime.now().toIso8601String(),
+          });
+      
+      print('   ✅ Group ${newState == 'archived' ? 'archived' : 'unarchived'} successfully');
+    } catch (e) {
+      print('   ❌ Failed to toggle archive: $e');
+      throw Exception('Failed to toggle archive: $e');
     }
   }
 }

@@ -242,8 +242,10 @@ class _GroupsPageState extends ConsumerState<GroupsPage> with WidgetsBindingObse
     String groupId,
     GlobalKey cardKey,
   ) {
-    // Encontra o grupo atual na lista
-    final groupsAsync = ref.read(groupsProvider);
+    // Encontra o grupo na lista atual (baseado no filtro selecionado)
+    final groupsAsync = _selectedFilter == GroupFilter.archived
+        ? ref.read(archivedGroupsProvider)
+        : ref.read(groupsProvider);
     final groups = groupsAsync.value ?? [];
     final group = groups.firstWhere(
       (g) => g.id == groupId,
@@ -330,7 +332,12 @@ class _GroupsPageState extends ConsumerState<GroupsPage> with WidgetsBindingObse
   void _handleMute(String groupId) {
     print('Toggle mute for group: $groupId');
     final controller = ref.read(groupsControllerProvider);
-    final groups = ref.read(groupsProvider).value ?? [];
+    
+    // Busca o grupo na lista atual (baseado no filtro selecionado)
+    final groupsAsync = _selectedFilter == GroupFilter.archived
+        ? ref.read(archivedGroupsProvider)
+        : ref.read(groupsProvider);
+    final groups = groupsAsync.value ?? [];
     final group = groups.firstWhere((g) => g.id == groupId);
     
     // Toggle: se está muted, vai unmute (false), se não está muted, vai mute (true)
