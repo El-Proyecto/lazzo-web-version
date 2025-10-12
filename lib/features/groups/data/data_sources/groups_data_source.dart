@@ -428,14 +428,53 @@ class SupabaseGroupsDataSource implements GroupsDataSource {
     try {
       print('👋 [DataSource] User leaving group: $groupId');
       
-      // Remove o usuário da tabela group_members
+      // STEP 1: Verificar quantos membros tem o grupo
+      final membersCount = await _client
+          .from('group_members')
+          .select('user_id')
+          .eq('group_id', groupId)
+          .count();
+      
+      print('   📊 Group has ${membersCount.count} members');
+      
+      // STEP 2: Remove o usuário da tabela group_members
       await _client
           .from('group_members')
           .delete()
           .eq('group_id', groupId)
           .eq('user_id', userId);
       
-      print('   ✅ User removed from group members');
+      print('   ✅ User removed from group_members');
+      
+      // STEP 3: Remove configurações do usuário para este grupo
+      await _client
+          .from('group_user_settings')
+          .delete()
+          .eq('group_id', groupId)
+          .eq('user_id', userId);
+      
+      print('   ✅ User settings removed from group_user_settings');
+      
+      // STEP 4: Se era o último membro, apagar o grupo completamente
+      if (membersCount.count <= 1) {
+        print('   🗑️ Last member leaving - deleting group');
+        
+        // Remove todas as configurações restantes do grupo
+        await _client
+            .from('group_user_settings')
+            .delete()
+            .eq('group_id', groupId);
+        
+        // Remove o grupo da tabela groups
+        await _client
+            .from('groups')
+            .delete()
+            .eq('id', groupId);
+        
+        print('   ✅ Group deleted completely (was last member)');
+      }
+      
+      print('   ✅ Leave group process completed');
     } catch (e) {
       print('   ❌ Failed to leave group: $e');
       throw Exception('Failed to leave group: $e');

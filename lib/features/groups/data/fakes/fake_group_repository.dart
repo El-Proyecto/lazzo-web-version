@@ -239,7 +239,13 @@ class FakeGroupRepository implements GroupRepository {
   @override
   Future<void> leaveGroup(String groupId) async {
     await Future.delayed(const Duration(milliseconds: 400));
+    
+    // Simula remoção do grupo da lista do usuário
+    // (no fake, assumimos que o usuário sempre deixa o grupo, e o grupo é removido da sua lista)
+    final removedCount = _mockGroups.where((group) => group.id == groupId).length;
     _mockGroups.removeWhere((group) => group.id == groupId);
+    
+    print('🎭 [Fake] User left group $groupId - removed from user\'s list ($removedCount groups removed)');
   }
 
   @override

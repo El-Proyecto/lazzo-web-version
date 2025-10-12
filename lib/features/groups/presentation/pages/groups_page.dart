@@ -346,9 +346,63 @@ class _GroupsPageState extends ConsumerState<GroupsPage> with WidgetsBindingObse
   }
 
   void _handleLeaveGroup(String groupId) {
-    print('Leave group: $groupId');
-    final controller = ref.read(groupsControllerProvider);
-    controller.leaveGroup(groupId);
+    // Busca o nome do grupo para mostrar no diálogo
+    final groupsAsync = _selectedFilter == GroupFilter.archived
+        ? ref.read(archivedGroupsProvider)
+        : ref.read(groupsProvider);
+    final groups = groupsAsync.value ?? [];
+    final group = groups.firstWhere(
+      (g) => g.id == groupId,
+      orElse: () => const Group(
+        id: '',
+        name: 'Unknown Group',
+        status: GroupStatus.active,
+        memberCount: 0,
+      ),
+    );
+
+    // Mostra diálogo de confirmação
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: BrandColors.bg1,
+          title: Text(
+            'Leave Group',
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+              color: BrandColors.text1,
+            ),
+          ),
+          content: Text(
+            'Are you sure you want to leave "${group.name}"?\n\nThis action cannot be undone.',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: BrandColors.text2,
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text(
+                'Cancel',
+                style: TextStyle(color: BrandColors.text2),
+              ),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                print('Leave group confirmed: $groupId');
+                final controller = ref.read(groupsControllerProvider);
+                controller.leaveGroup(groupId);
+              },
+              child: const Text(
+                'Leave',
+                style: TextStyle(color: BrandColors.cantVote),
+              ),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   void _handleArchive(String groupId) {

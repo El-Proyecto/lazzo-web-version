@@ -105,8 +105,9 @@ class GroupsController {
   Future<void> leaveGroup(String groupId) async {
     final leaveGroup = _ref.read(leaveGroupProvider);
     await leaveGroup.call(groupId);
-    // Refresh da lista após sair do grupo
+    // Refresh de ambas as listas após sair do grupo (grupo pode estar em qualquer uma)
     _ref.invalidate(groupsProvider);
+    _ref.invalidate(archivedGroupsProvider);
   }
 
   Future<void> archiveGroup(String groupId) async {
