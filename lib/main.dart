@@ -30,8 +30,10 @@ import '../features/home/presentation/providers/pending_event_providers.dart';
 // import '../features/inbox/data/repositories/action_repository_impl.dart';
 // import '../features/inbox/presentation/providers/actions_provider.dart';
 
-// GROUPS - TODO: Add real implementation imports when available
-// import '../features/groups/presentation/providers/groups_provider.dart';
+// GROUPS - Real implementation
+import '../features/groups/presentation/providers/groups_provider.dart';
+import '../features/groups/data/data_sources/groups_data_source.dart';
+import '../features/groups/data/repositories/group_repository_impl.dart';
 
 // PROFILE - Real implementation
 import '../features/profile/data/data_sources/profile_remote_data_source.dart';

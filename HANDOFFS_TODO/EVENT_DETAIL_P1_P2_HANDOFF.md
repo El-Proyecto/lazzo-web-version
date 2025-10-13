@@ -491,17 +491,17 @@ class ChatRepositoryImpl implements ChatRepository {
 #### **Update main.dart**
 ```dart
 // Add imports
-import 'features/event/data/data_sources/event_remote_data_source.dart';
-import 'features/event/data/data_sources/rsvp_remote_data_source.dart';
-import 'features/event/data/data_sources/suggestion_remote_data_source.dart';
-import 'features/event/data/data_sources/poll_remote_data_source.dart';
-import 'features/event/data/data_sources/chat_remote_data_source.dart';
-import 'features/event/data/repositories/event_repository_impl.dart';
-import 'features/event/data/repositories/rsvp_repository_impl.dart';
-import 'features/event/data/repositories/suggestion_repository_impl.dart';
-import 'features/event/data/repositories/poll_repository_impl.dart';
-import 'features/event/data/repositories/chat_repository_impl.dart';
-import 'features/event/presentation/providers/event_providers.dart';
+import '../HANDOFFS/features/event/data/data_sources/event_remote_data_source.dart';
+import '../HANDOFFS/features/event/data/data_sources/rsvp_remote_data_source.dart';
+import '../HANDOFFS/features/event/data/data_sources/suggestion_remote_data_source.dart';
+import '../HANDOFFS/features/event/data/data_sources/poll_remote_data_source.dart';
+import '../HANDOFFS/features/event/data/data_sources/chat_remote_data_source.dart';
+import '../HANDOFFS/features/event/data/repositories/event_repository_impl.dart';
+import '../HANDOFFS/features/event/data/repositories/rsvp_repository_impl.dart';
+import '../HANDOFFS/features/event/data/repositories/suggestion_repository_impl.dart';
+import '../HANDOFFS/features/event/data/repositories/poll_repository_impl.dart';
+import '../HANDOFFS/features/event/data/repositories/chat_repository_impl.dart';
+import '../HANDOFFS/features/event/presentation/providers/event_providers.dart';
 
 // Add to ProviderScope overrides
 ProviderScope(
