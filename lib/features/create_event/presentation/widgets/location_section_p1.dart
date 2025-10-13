@@ -391,7 +391,7 @@ class _LocationSectionP1State extends State<LocationSectionP1>
 
   void _performMockSearch(String query) {
     // Mock search results for P1
-    
+
     // Simulate API delay
     Timer(const Duration(milliseconds: 500), () {
       setState(() {

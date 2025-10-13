@@ -12,7 +12,7 @@ class LazzoApp extends StatelessWidget {
       theme: buildDarkTheme(),
       darkTheme: buildDarkTheme(),
       themeMode: ThemeMode.dark,
-      initialRoute: AppRouter.event, // Start at event page to test navigation
+      initialRoute: AppRouter.event,
       routes: AppRouter.routes,
       // onGenerateRoute: ... (se precisares mais tarde)
     );

@@ -65,19 +65,20 @@ class CreateEventAppBar extends StatelessWidget implements PreferredSizeWidget {
             ),
 
             // Botão Histórico ou ação customizada
-            trailingAction ?? GestureDetector(
-              onTap: onHistoryPressed,
-              child: Container(
-                width: 32,
-                height: 32,
-                alignment: Alignment.center,
-                child: const Icon(
-                  Icons.history,
-                  color: BrandColors.text1,
-                  size: 20,
+            trailingAction ??
+                GestureDetector(
+                  onTap: onHistoryPressed,
+                  child: Container(
+                    width: 32,
+                    height: 32,
+                    alignment: Alignment.center,
+                    child: const Icon(
+                      Icons.history,
+                      color: BrandColors.text1,
+                      size: 20,
+                    ),
+                  ),
                 ),
-              ),
-            ),
           ],
         ),
       ),

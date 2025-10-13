@@ -259,12 +259,49 @@ class _EventNameEditBottomSheet extends StatefulWidget {
 
 class _EventNameEditBottomSheetState extends State<_EventNameEditBottomSheet> {
   late TextEditingController _controller;
+  String? _errorMessage;
+  bool _showSaveAttempted = false;
 
   @override
   void initState() {
     super.initState();
-    // Start with empty field, only use initialName as placeholder context
-    _controller = TextEditingController(text: '');
+    // Start with the current name if it's not the placeholder
+    String initialText = '';
+    if (widget.initialName.isNotEmpty &&
+        widget.initialName != 'Add Event Name' &&
+        widget.initialName != 'e.g., Dinner at Tasca') {
+      initialText = widget.initialName;
+    }
+    _controller = TextEditingController(text: initialText);
+
+    // Listen for changes to update button state and clear errors
+    _controller.addListener(() {
+      setState(() {
+        if (_showSaveAttempted && _controller.text.trim().isNotEmpty) {
+          _errorMessage = null;
+        }
+      });
+    });
+  }
+
+  bool _isFormValid() {
+    return _controller.text.trim().isNotEmpty;
+  }
+
+  void _handleSave() {
+    setState(() {
+      _showSaveAttempted = true;
+    });
+
+    if (_controller.text.trim().isEmpty) {
+      setState(() {
+        _errorMessage = 'Event name is required';
+      });
+      return;
+    }
+
+    widget.onChanged?.call(_controller.text.trim());
+    Navigator.of(context).pop();
   }
 
   @override
@@ -314,11 +351,7 @@ class _EventNameEditBottomSheetState extends State<_EventNameEditBottomSheet> {
               autofocus: true,
               style: AppText.bodyLarge.copyWith(color: BrandColors.text1),
               decoration: InputDecoration(
-                hintText:
-                    widget.initialName.isNotEmpty &&
-                        widget.initialName != 'e.g., Dinner at Tasca'
-                    ? widget.initialName
-                    : 'e.g., Dinner at Tasca',
+                hintText: 'e.g., Dinner at Tasca',
                 hintStyle: AppText.bodyLarge.copyWith(color: BrandColors.text2),
                 filled: true,
                 fillColor: BrandColors.bg3,
@@ -326,6 +359,8 @@ class _EventNameEditBottomSheetState extends State<_EventNameEditBottomSheet> {
                   borderRadius: BorderRadius.circular(Radii.smAlt),
                   borderSide: BorderSide.none,
                 ),
+                errorText: _errorMessage,
+                errorStyle: AppText.bodyMedium.copyWith(color: Colors.red),
               ),
             ),
 
@@ -338,7 +373,9 @@ class _EventNameEditBottomSheetState extends State<_EventNameEditBottomSheet> {
                     onPressed: () => Navigator.of(context).pop(),
                     style: TextButton.styleFrom(
                       backgroundColor: BrandColors.bg3,
-                      padding: const EdgeInsets.symmetric(vertical: Pads.ctlV),
+                      padding: const EdgeInsets.symmetric(
+                        vertical: Pads.ctlVSm,
+                      ),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(Radii.md),
                       ),
@@ -354,12 +391,16 @@ class _EventNameEditBottomSheetState extends State<_EventNameEditBottomSheet> {
                 const SizedBox(width: Gaps.sm),
                 Expanded(
                   child: ElevatedButton(
-                    onPressed: () {
-                      widget.onChanged?.call(_controller.text);
-                      Navigator.of(context).pop();
-                    },
+                    onPressed: _isFormValid()
+                        ? _handleSave
+                        : () => _handleSave(),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: BrandColors.planning,
+                      backgroundColor: _isFormValid()
+                          ? BrandColors.planning
+                          : BrandColors.bg3,
+                      padding: const EdgeInsets.symmetric(
+                        vertical: Pads.ctlVSm,
+                      ),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(Radii.smAlt),
                       ),
@@ -367,7 +408,9 @@ class _EventNameEditBottomSheetState extends State<_EventNameEditBottomSheet> {
                     child: Text(
                       'Save',
                       style: AppText.labelLarge.copyWith(
-                        color: BrandColors.text1,
+                        color: _isFormValid()
+                            ? Colors.white
+                            : BrandColors.text2,
                       ),
                     ),
                   ),

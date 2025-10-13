@@ -1,15 +1,29 @@
 import 'package:flutter/material.dart';
-import '../../../../shared/constants/spacing.dart';
-import '../../../../shared/constants/text_styles.dart';
-import '../../../../shared/themes/colors.dart';
+import '../../constants/spacing.dart';
+import '../../constants/text_styles.dart';
+import '../../themes/colors.dart';
 
-/// Dialog de confirmação para sair da criação de evento
-/// Oferece opções para salvar rascunho ou descartar alterações
-class ExitConfirmationDialog extends StatelessWidget {
-  final VoidCallback? onSaveDraft;
-  final VoidCallback? onDiscard;
+/// Dialog de confirmação comum e reutilizável
+/// Padrão usado em toda a aplicação para ações destrutivas e confirmações
+class ConfirmationDialog extends StatelessWidget {
+  final String title;
+  final String message;
+  final String confirmText;
+  final String? cancelText;
+  final VoidCallback? onConfirm;
+  final VoidCallback? onCancel;
+  final bool isDestructive;
 
-  const ExitConfirmationDialog({super.key, this.onSaveDraft, this.onDiscard});
+  const ConfirmationDialog({
+    super.key,
+    required this.title,
+    required this.message,
+    required this.confirmText,
+    this.cancelText,
+    this.onConfirm,
+    this.onCancel,
+    this.isDestructive = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -24,15 +38,16 @@ class ExitConfirmationDialog extends StatelessWidget {
         children: [
           // Título
           Text(
-            'Save your progress?',
+            title,
             style: AppText.titleMediumEmph.copyWith(color: BrandColors.text1),
+            textAlign: TextAlign.center,
           ),
 
           const SizedBox(height: Gaps.md),
 
-          // Descrição
+          // Mensagem
           Text(
-            'You have unsaved changes. Would you like to save a draft before leaving?',
+            message,
             style: AppText.bodyMedium.copyWith(color: BrandColors.text2),
             textAlign: TextAlign.center,
           ),
@@ -42,24 +57,24 @@ class ExitConfirmationDialog extends StatelessWidget {
           // Botões lado a lado
           Row(
             children: [
-              // Discard button
+              // Cancel button
               Expanded(
                 child: TextButton(
                   onPressed: () {
                     Navigator.of(context).pop();
-                    onDiscard?.call();
+                    onCancel?.call();
                   },
                   style: TextButton.styleFrom(
                     backgroundColor: BrandColors.bg3,
                     padding: const EdgeInsets.symmetric(vertical: Pads.ctlVSm),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(Radii.md),
+                      borderRadius: BorderRadius.circular(Radii.smAlt),
                     ),
                   ),
                   child: Text(
-                    'Discard',
-                    style: AppText.titleMediumEmph.copyWith(
-                      color: BrandColors.text2,
+                    cancelText ?? 'Cancel',
+                    style: AppText.labelLarge.copyWith(
+                      color: BrandColors.text1,
                     ),
                   ),
                 ),
@@ -67,24 +82,27 @@ class ExitConfirmationDialog extends StatelessWidget {
 
               const SizedBox(width: Gaps.sm),
 
-              // Save Draft button (highlighted)
+              // Confirm button
               Expanded(
-                child: ElevatedButton(
+                child: TextButton(
                   onPressed: () {
                     Navigator.of(context).pop();
-                    onSaveDraft?.call();
+                    onConfirm?.call();
                   },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: BrandColors.planning,
+                  style: TextButton.styleFrom(
+                    backgroundColor: isDestructive
+                        ? BrandColors.cantVote
+                        : BrandColors.planning,
                     padding: const EdgeInsets.symmetric(vertical: Pads.ctlVSm),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(Radii.md),
+                      borderRadius: BorderRadius.circular(Radii.smAlt),
                     ),
                   ),
                   child: Text(
-                    'Save Changes',
-                    style: AppText.titleMediumEmph.copyWith(
-                      color: BrandColors.text1,
+                    confirmText,
+                    style: AppText.labelLarge.copyWith(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
                 ),

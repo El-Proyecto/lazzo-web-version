@@ -1,27 +1,30 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/constants/text_styles.dart';
 import '../widgets/event_group_selector.dart';
 import '../widgets/date_time_section.dart';
-import '../widgets/location_section_p1.dart'; // Use P1 version without Google Maps
+import '../widgets/location_section.dart'; // Use original version from commit 6641830
 import '../widgets/create_event_app_bar.dart'; // Import CreateEventAppBar
 // import '../../../../shared/models/event_draft.dart'; // Commented for P1 - conflicts with Google Maps
 // import '../../../../services/draft_service.dart'; // Commented for P1
 import '../../../../shared/themes/colors.dart';
 import '../../domain/entities/event.dart';
+import '../../../../shared/components/dialogs/confirmation_dialog.dart';
+import '../providers/event_providers.dart';
 
 /// Página para edição de eventos existentes
 /// Reutiliza todos os widgets tokenizados da criação de eventos
-class EditEventPage extends StatefulWidget {
+class EditEventPage extends ConsumerStatefulWidget {
   final Event event;
 
   const EditEventPage({super.key, required this.event});
 
   @override
-  State<EditEventPage> createState() => _EditEventPageState();
+  ConsumerState<EditEventPage> createState() => _EditEventPageState();
 }
 
-class _EditEventPageState extends State<EditEventPage> {
+class _EditEventPageState extends ConsumerState<EditEventPage> {
   // Estado do evento
   String _eventName = '';
   String _eventEmoji = '🍖';
@@ -41,7 +44,18 @@ class _EditEventPageState extends State<EditEventPage> {
 
   // Controle de estado
   bool _showValidationErrors = false;
-  bool _hasUnsavedChanges = false;
+
+  // Valores iniciais para detectar alterações
+  late String _initialEventName;
+  late String _initialEventEmoji;
+  late GroupInfo? _initialSelectedGroup;
+  late DateTime? _initialSelectedDate;
+  late TimeOfDay? _initialSelectedTime;
+  late DateTime? _initialEndDate;
+  late TimeOfDay? _initialEndTime;
+  late LocationInfo? _initialSelectedLocation;
+  late DateTimeState _initialDateTimeState;
+  late LocationState _initialLocationState;
 
   // Validation errors
   String? _nameError;
@@ -60,10 +74,20 @@ class _EditEventPageState extends State<EditEventPage> {
     _eventName = event.name;
     _eventEmoji = event.emoji;
 
-    // TODO: Load group from groupId - for now using mock data
-    _selectedGroup = _getMockGroups()
+    // Load group from groupId - using mock data for now
+    final mockGroups = _getMockGroups();
+    _selectedGroup = mockGroups
         .where((group) => group.id == event.groupId)
         .firstOrNull;
+
+    // Se não encontrar o grupo nos mocks, criar um temporário com o ID do evento
+    if (_selectedGroup == null && event.groupId.isNotEmpty) {
+      _selectedGroup = GroupInfo(
+        id: event.groupId,
+        name: 'Grupo ${event.groupId}',
+        memberCount: 1,
+      );
+    }
 
     if (event.startDateTime != null) {
       _selectedDate = DateTime(
@@ -94,6 +118,37 @@ class _EditEventPageState extends State<EditEventPage> {
       );
       _locationState = LocationState.setNow;
     }
+
+    // Armazenar valores iniciais após todas as inicializações
+    _storeInitialValues();
+  }
+
+  /// Armazena os valores iniciais para detectar alterações
+  void _storeInitialValues() {
+    _initialEventName = _eventName;
+    _initialEventEmoji = _eventEmoji;
+    _initialSelectedGroup = _selectedGroup;
+    _initialSelectedDate = _selectedDate;
+    _initialSelectedTime = _selectedTime;
+    _initialEndDate = _endDate;
+    _initialEndTime = _endTime;
+    _initialSelectedLocation = _selectedLocation;
+    _initialDateTimeState = _dateTimeState;
+    _initialLocationState = _locationState;
+  }
+
+  /// Detecta se há alterações não salvas
+  bool _hasChanges() {
+    return _eventName != _initialEventName ||
+        _eventEmoji != _initialEventEmoji ||
+        _selectedGroup?.id != _initialSelectedGroup?.id ||
+        _selectedDate != _initialSelectedDate ||
+        _selectedTime != _initialSelectedTime ||
+        _endDate != _initialEndDate ||
+        _endTime != _initialEndTime ||
+        _selectedLocation?.id != _initialSelectedLocation?.id ||
+        _dateTimeState != _initialDateTimeState ||
+        _locationState != _initialLocationState;
   }
 
   /// Cria o rascunho atual (Commented for P1)
@@ -112,23 +167,6 @@ class _EditEventPageState extends State<EditEventPage> {
   //     createdAt: DateTime.now(),
   //   );
   // }
-
-  /// Salva rascunho e marca mudanças (Commented for P1)
-  Future<void> _saveDraftAndMarkChanged() async {
-    // Commented for P1 - no draft functionality
-    // final draft = _createCurrentDraft();
-    // await _draftService.saveDraft(drift);
-    _markUnsavedChanges();
-  }
-
-  /// Marca que há mudanças não salvas
-  void _markUnsavedChanges() {
-    if (!_hasUnsavedChanges) {
-      setState(() {
-        _hasUnsavedChanges = true;
-      });
-    }
-  }
 
   /// Valida os campos obrigatórios
   bool _validateForm() {
@@ -171,16 +209,34 @@ class _EditEventPageState extends State<EditEventPage> {
 
   /// Verifica se o formulário é válido (sem mostrar erros)
   bool _isFormValid() {
-    return _eventName.trim().isNotEmpty &&
-        _selectedGroup != null &&
+    // Nome é obrigatório
+    bool nameValid = _eventName.trim().isNotEmpty;
+
+    // Grupo é obrigatório - mas na edição mantemos o grupo original se não foi alterado
+    bool groupValid = _selectedGroup != null || widget.event.groupId.isNotEmpty;
+
+    // Data/hora é válida se for "decide later" ou se tiver ambos data e hora definidos
+    bool dateTimeValid =
         (_dateTimeState == DateTimeState.decideLater ||
-            (_selectedDate != null && _selectedTime != null)) &&
+        (_selectedDate != null && _selectedTime != null));
+
+    // Localização é válida se for "decide later" ou se tiver localização definida
+    bool locationValid =
         (_locationState == LocationState.decideLater ||
-            _selectedLocation != null);
+        _selectedLocation != null);
+
+    return nameValid && groupValid && dateTimeValid && locationValid;
   }
 
   /// Lida com a tentativa de salvar o evento
   void _handleSaveEvent() {
+    // Se o botão está verde (isFormValid && hasChanges), salva diretamente
+    if (_isFormValid() && _hasChanges()) {
+      _updateEvent();
+      return;
+    }
+
+    // Caso contrário, mostra os erros de validação
     if (!_showValidationErrors) {
       setState(() {
         _showValidationErrors = true;
@@ -196,163 +252,183 @@ class _EditEventPageState extends State<EditEventPage> {
   void _showConfirmEventDialog() {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: BrandColors.bg2,
-        title: Text(
-          'Atualizar Evento',
-          style: AppText.titleMediumEmph.copyWith(color: BrandColors.text1),
-        ),
-        content: Text(
-          'Tem certeza que deseja salvar as alterações?',
-          style: AppText.bodyMedium.copyWith(color: BrandColors.text2),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: Text(
-              'Cancelar',
-              style: AppText.labelLarge.copyWith(color: BrandColors.text2),
-            ),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-              _updateEvent();
-            },
-            child: Text(
-              'Salvar Alterações',
-              style: AppText.labelLarge.copyWith(color: BrandColors.planning),
-            ),
-          ),
-        ],
+      builder: (context) => ConfirmationDialog(
+        title: 'Atualizar Evento',
+        message: 'Tem certeza que deseja salvar as alterações?',
+        confirmText: 'Salvar Alterações',
+        cancelText: 'Cancelar',
+        isDestructive: false,
+        onConfirm: _updateEvent,
       ),
     );
   }
 
   /// Atualiza o evento
-  void _updateEvent() {
-    // TODO: Implement update event use case call
-    print('Updating event: ${widget.event.id}');
-    print('Name: $_eventName');
-    print('Emoji: $_eventEmoji');
-    print('Group: ${_selectedGroup?.name}');
-    print('Date/Time State: $_dateTimeState');
-    print('Location State: $_locationState');
+  Future<void> _updateEvent() async {
+    final controller = ref.read(editEventControllerProvider.notifier);
 
-    // Clear draft after successful update (Commented for P1)
-    // _draftService.clearDraft();
+    // Construct DateTime objects from date/time components
+    DateTime? startDateTime;
+    DateTime? endDateTime;
 
-    // Navigate back
-    Navigator.of(context).pop();
+    if (_dateTimeState == DateTimeState.setNow &&
+        _selectedDate != null &&
+        _selectedTime != null) {
+      startDateTime = DateTime(
+        _selectedDate!.year,
+        _selectedDate!.month,
+        _selectedDate!.day,
+        _selectedTime!.hour,
+        _selectedTime!.minute,
+      );
+
+      if (_endDate != null && _endTime != null) {
+        endDateTime = DateTime(
+          _endDate!.year,
+          _endDate!.month,
+          _endDate!.day,
+          _endTime!.hour,
+          _endTime!.minute,
+        );
+      }
+    }
+
+    // Convert LocationInfo to EventLocation
+    EventLocation? eventLocation;
+    if (_locationState == LocationState.setNow && _selectedLocation != null) {
+      final loc = _selectedLocation!;
+      eventLocation = EventLocation(
+        id: loc.id,
+        displayName: loc.displayName ?? loc.formattedAddress,
+        formattedAddress: loc.formattedAddress,
+        latitude: loc.latitude,
+        longitude: loc.longitude,
+      );
+    }
+
+    // Call the use case through the controller
+    await controller.updateEvent(
+      eventId: widget.event.id,
+      name: _eventName,
+      emoji: _eventEmoji,
+      groupId: widget.event.groupId, // Keep original group for edit
+      startDateTime: startDateTime,
+      endDateTime: endDateTime,
+      location: eventLocation,
+    );
+
+    // Reset initial values after successful update
+    setState(() {
+      _storeInitialValues();
+    });
+
+    // Navigate back to previous page
+    // Pop twice: once for dialog (if shown), once for edit page
+    if (mounted && Navigator.of(context).canPop()) {
+      Navigator.of(context).pop(); // Close dialog if shown
+    }
+    if (mounted && Navigator.of(context).canPop()) {
+      Navigator.of(context).pop(); // Return to previous page
+    }
   }
 
   /// Mostra dialog de confirmação de exclusão
   void _showDeleteConfirmationDialog() {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: BrandColors.bg2,
-        title: Text(
-          'Excluir Evento',
-          style: AppText.titleMediumEmph.copyWith(color: BrandColors.text1),
-        ),
-        content: Text(
-          'Tem certeza que deseja excluir este evento? Esta ação não pode ser desfeita.',
-          style: AppText.bodyMedium.copyWith(color: BrandColors.text2),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: Text(
-              'Cancelar',
-              style: AppText.labelLarge.copyWith(color: BrandColors.text2),
-            ),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-              _deleteEvent();
-            },
-            child: Text(
-              'Excluir',
-              style: AppText.labelLarge.copyWith(color: Colors.red),
-            ),
-          ),
-        ],
+      builder: (context) => ConfirmationDialog(
+        title: 'Delete Event',
+        message:
+            'Are you sure you want to delete this event? This action cannot be undone.',
+        confirmText: 'Delete',
+        cancelText: 'Cancel',
+        isDestructive: true,
+        onConfirm: _deleteEvent,
       ),
     );
   }
 
   /// Exclui o evento
-  void _deleteEvent() {
-    // TODO: Implement delete event use case call
-    print('Deleting event: ${widget.event.id}');
+  Future<void> _deleteEvent() async {
+    final controller = ref.read(editEventControllerProvider.notifier);
+
+    // Call delete through controller
+    await controller.deleteEvent(widget.event.id);
 
     // Navigate back
-    Navigator.of(context).pop();
+    if (mounted && Navigator.of(context).canPop()) {
+      Navigator.of(context).pop(); // Close dialog
+    }
+    if (mounted && Navigator.of(context).canPop()) {
+      Navigator.of(context).pop(); // Return to previous page
+    }
   }
 
-  /// Lida com tentativa de sair da página
-  Future<bool> _handleWillPop() async {
-    if (_hasUnsavedChanges) {
-      // TODO: Implement proper exit confirmation dialog
-      final shouldExit = await showDialog<bool>(
-        context: context,
-        builder: (context) => AlertDialog(
-          backgroundColor: BrandColors.bg2,
-          title: Text(
-            'Descartar Alterações?',
-            style: AppText.titleMediumEmph.copyWith(color: BrandColors.text1),
-          ),
-          content: Text(
-            'Você tem alterações não salvas. Deseja descartá-las?',
-            style: AppText.bodyMedium.copyWith(color: BrandColors.text2),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: Text(
-                'Cancelar',
-                style: AppText.labelLarge.copyWith(color: BrandColors.text2),
-              ),
-            ),
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(true),
-              child: Text(
-                'Descartar',
-                style: AppText.labelLarge.copyWith(color: Colors.red),
-              ),
-            ),
-          ],
-        ),
-      );
-
-      if (shouldExit == true) {
-        // await _draftService.clearDraft(); // Commented for P1
-        return true;
-      }
-      return false;
+  /// Lida com o botão de voltar ou tentativa de sair
+  void _handleBackPressed() {
+    if (_hasChanges()) {
+      _showUnsavedChangesDialog();
+    } else {
+      Navigator.of(context).pop();
     }
-    return true;
+  }
+
+  /// Mostra dialog de confirmação para alterações não salvas
+  void _showUnsavedChangesDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => ConfirmationDialog(
+        title: 'Unsaved Changes',
+        message:
+            'You have unsaved changes. Do you want to save them before leaving?',
+        confirmText: 'Save',
+        cancelText: 'Discard',
+        isDestructive: false,
+        onConfirm: () {
+          if (_isFormValid()) {
+            _updateEvent(); // This already navigates back
+          } else {
+            // Close dialog first, then show validation errors
+            Navigator.of(context).pop();
+            setState(() {
+              _showValidationErrors = true;
+            });
+          }
+        },
+        onCancel: () {
+          Navigator.of(context).pop(); // Sair sem salvar
+        },
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
+    // Listen to edit state for loading/error handling
+    ref.listen<EditEventState>(editEventControllerProvider, (previous, next) {
+      if (next.error != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: ${next.error}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    });
+
+    final editState = ref.watch(editEventControllerProvider);
     return PopScope(
-      canPop: !_hasUnsavedChanges,
+      canPop: !_hasChanges(),
       onPopInvokedWithResult: (didPop, result) async {
-        if (!didPop && _hasUnsavedChanges) {
-          final shouldPop = await _handleWillPop();
-          if (shouldPop && mounted) {
-            Navigator.of(context).pop();
-          }
+        if (!didPop && _hasChanges()) {
+          _showUnsavedChangesDialog();
         }
       },
       child: Scaffold(
         backgroundColor: BrandColors.bg1,
         appBar: CreateEventAppBar(
           title: 'Edit Event',
-          onBackPressed: () => Navigator.of(context).pop(),
+          onBackPressed: _handleBackPressed,
           trailingAction: GestureDetector(
             onTap: _showDeleteConfirmationDialog,
             child: Container(
@@ -361,7 +437,7 @@ class _EditEventPageState extends State<EditEventPage> {
               alignment: Alignment.center,
               child: const Icon(
                 Icons.delete_outline,
-                color: Colors.red,
+                color: BrandColors.cantVote,
                 size: 20,
               ),
             ),
@@ -388,7 +464,6 @@ class _EditEventPageState extends State<EditEventPage> {
                         setState(() {
                           _eventName = value;
                         });
-                        _saveDraftAndMarkChanged();
 
                         // Clear name error if valid
                         if (_showValidationErrors && value.trim().isNotEmpty) {
@@ -401,16 +476,15 @@ class _EditEventPageState extends State<EditEventPage> {
                         setState(() {
                           _eventEmoji = emoji;
                         });
-                        _saveDraftAndMarkChanged();
                       },
                       onGroupPressed: null, // Disabled for edit mode
                       nameError: _showValidationErrors ? _nameError : null,
                       groupError: _showValidationErrors ? _groupError : null,
                     ),
 
-                    const SizedBox(height: Gaps.xl),
+                    const SizedBox(height: Gaps.md),
 
-                    // Seção de Data e Hora
+                    // Seção de Date & Time
                     DateTimeSection(
                       startDate: _selectedDate,
                       startTime: _selectedTime,
@@ -427,38 +501,33 @@ class _EditEventPageState extends State<EditEventPage> {
                             _endTime = null;
                           }
                         });
-                        _saveDraftAndMarkChanged();
                       },
                       onStartDateChanged: (date) {
                         setState(() {
                           _selectedDate = date;
                         });
-                        _saveDraftAndMarkChanged();
                       },
                       onStartTimeChanged: (time) {
                         setState(() {
                           _selectedTime = time;
                         });
-                        _saveDraftAndMarkChanged();
                       },
                       onEndDateChanged: (date) {
                         setState(() {
                           _endDate = date;
                         });
-                        _saveDraftAndMarkChanged();
                       },
                       onEndTimeChanged: (time) {
                         setState(() {
                           _endTime = time;
                         });
-                        _saveDraftAndMarkChanged();
                       },
                     ),
 
-                    const SizedBox(height: Gaps.xl),
+                    const SizedBox(height: Gaps.md),
 
                     // Seção de Localização
-                    LocationSectionP1(
+                    LocationSection(
                       selectedLocation: _selectedLocation,
                       initialState: _locationState,
                       onStateChanged: (state) {
@@ -468,17 +537,15 @@ class _EditEventPageState extends State<EditEventPage> {
                             _selectedLocation = null;
                           }
                         });
-                        _saveDraftAndMarkChanged();
                       },
                       onLocationChanged: (location) {
                         setState(() {
                           _selectedLocation = location;
                         });
-                        _saveDraftAndMarkChanged();
                       },
                     ),
 
-                    const SizedBox(height: Gaps.xl),
+                    const SizedBox(height: 24),
                   ],
                 ),
               ),
@@ -491,12 +558,15 @@ class _EditEventPageState extends State<EditEventPage> {
                 width: double.infinity,
                 height: 56,
                 child: ElevatedButton(
-                  onPressed: _isFormValid() ? _handleSaveEvent : null,
+                  onPressed:
+                      (_isFormValid() && _hasChanges() && !editState.isLoading)
+                      ? _handleSaveEvent
+                      : null,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: _isFormValid()
+                    backgroundColor: (_isFormValid() && _hasChanges())
                         ? BrandColors.planning
                         : BrandColors.bg3,
-                    foregroundColor: _isFormValid()
+                    foregroundColor: (_isFormValid() && _hasChanges())
                         ? Colors.white
                         : BrandColors.text2,
                     shape: RoundedRectangleBorder(
@@ -504,12 +574,25 @@ class _EditEventPageState extends State<EditEventPage> {
                     ),
                     elevation: 0,
                   ),
-                  child: Text(
-                    'Salvar Alterações',
-                    style: AppText.labelLarge.copyWith(
-                      color: _isFormValid() ? Colors.white : BrandColors.text2,
-                    ),
-                  ),
+                  child: editState.isLoading
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              Colors.white,
+                            ),
+                          ),
+                        )
+                      : Text(
+                          'Save Changes',
+                          style: AppText.labelLarge.copyWith(
+                            color: (_isFormValid() && _hasChanges())
+                                ? Colors.white
+                                : BrandColors.text2,
+                          ),
+                        ),
                 ),
               ),
             ),

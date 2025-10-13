@@ -101,6 +101,106 @@ class CreateEventController extends StateNotifier<CreateEventState> {
   }
 }
 
+/// Edit Event Controller provider for managing edit operations
+final editEventControllerProvider =
+    StateNotifierProvider<EditEventController, EditEventState>((ref) {
+      return EditEventController(
+        updateEventUseCase: ref.watch(updateEventUseCaseProvider),
+        deleteEventUseCase: ref.watch(deleteEventUseCaseProvider),
+      );
+    });
+
+/// State class for edit event form
+class EditEventState {
+  final bool isLoading;
+  final String? error;
+  final Event? updatedEvent;
+  final bool isDeleting;
+  final bool isDeleted;
+
+  const EditEventState({
+    this.isLoading = false,
+    this.error,
+    this.updatedEvent,
+    this.isDeleting = false,
+    this.isDeleted = false,
+  });
+
+  EditEventState copyWith({
+    bool? isLoading,
+    String? error,
+    Event? updatedEvent,
+    bool? isDeleting,
+    bool? isDeleted,
+  }) {
+    return EditEventState(
+      isLoading: isLoading ?? this.isLoading,
+      error: error,
+      updatedEvent: updatedEvent ?? this.updatedEvent,
+      isDeleting: isDeleting ?? this.isDeleting,
+      isDeleted: isDeleted ?? this.isDeleted,
+    );
+  }
+}
+
+/// Controller for managing edit event operations
+class EditEventController extends StateNotifier<EditEventState> {
+  final UpdateEventUseCase _updateEventUseCase;
+  final DeleteEventUseCase _deleteEventUseCase;
+
+  EditEventController({
+    required UpdateEventUseCase updateEventUseCase,
+    required DeleteEventUseCase deleteEventUseCase,
+  }) : _updateEventUseCase = updateEventUseCase,
+       _deleteEventUseCase = deleteEventUseCase,
+       super(const EditEventState());
+
+  /// Update an existing event
+  Future<void> updateEvent({
+    required String eventId,
+    required String name,
+    required String emoji,
+    required String groupId,
+    DateTime? startDateTime,
+    DateTime? endDateTime,
+    EventLocation? location,
+  }) async {
+    state = state.copyWith(isLoading: true, error: null);
+
+    try {
+      final updatedEvent = await _updateEventUseCase.execute(
+        eventId: eventId,
+        name: name,
+        emoji: emoji,
+        groupId: groupId,
+        startDateTime: startDateTime,
+        endDateTime: endDateTime,
+        location: location,
+      );
+      state = state.copyWith(isLoading: false, updatedEvent: updatedEvent);
+    } catch (e) {
+      state = state.copyWith(isLoading: false, error: e.toString());
+    }
+  }
+
+  /// Delete an event
+  Future<void> deleteEvent(String eventId) async {
+    state = state.copyWith(isDeleting: true, error: null);
+
+    try {
+      await _deleteEventUseCase.execute(eventId);
+      state = state.copyWith(isDeleting: false, isDeleted: true);
+    } catch (e) {
+      state = state.copyWith(isDeleting: false, error: e.toString());
+    }
+  }
+
+  /// Reset state
+  void reset() {
+    state = const EditEventState();
+  }
+}
+
 /// Provider for getting events by group
 final eventsForGroupProvider = FutureProvider.family<List<Event>, String>((
   ref,

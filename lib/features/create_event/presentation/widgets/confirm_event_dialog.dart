@@ -36,15 +36,16 @@ class ConfirmEventBottomSheet extends ConsumerStatefulWidget {
   });
 
   @override
-  ConsumerState<ConfirmEventBottomSheet> createState() => _ConfirmEventBottomSheetState();
+  ConsumerState<ConfirmEventBottomSheet> createState() =>
+      _ConfirmEventBottomSheetState();
 }
 
-class _ConfirmEventBottomSheetState extends ConsumerState<ConfirmEventBottomSheet> {
-
+class _ConfirmEventBottomSheetState
+    extends ConsumerState<ConfirmEventBottomSheet> {
   /// Cria o evento usando os providers do Riverpod
   Future<void> _createEvent() async {
     final controller = ref.read(createEventControllerProvider.notifier);
-    
+
     try {
       // Criar entidade de localização se necessário
       EventLocation? eventLocation;
@@ -57,7 +58,7 @@ class _ConfirmEventBottomSheetState extends ConsumerState<ConfirmEventBottomShee
           longitude: widget.selectedLocation!.longitude,
         );
       }
-      
+
       // Converter TimeOfDay para DateTime se necessário
       DateTime? startDateTime;
       if (widget.selectedDate != null && widget.selectedTime != null) {
@@ -69,7 +70,7 @@ class _ConfirmEventBottomSheetState extends ConsumerState<ConfirmEventBottomShee
           widget.selectedTime!.minute,
         );
       }
-      
+
       DateTime? endDateTime;
       if (widget.endDate != null && widget.endTime != null) {
         endDateTime = DateTime(
@@ -80,7 +81,7 @@ class _ConfirmEventBottomSheetState extends ConsumerState<ConfirmEventBottomShee
           widget.endTime!.minute,
         );
       }
-      
+
       // Criar entidade do evento
       final event = Event(
         id: '', // Será gerado pelo Supabase
@@ -93,17 +94,17 @@ class _ConfirmEventBottomSheetState extends ConsumerState<ConfirmEventBottomShee
         status: EventStatus.pending,
         createdAt: DateTime.now(),
       );
-      
+
       // Enviar para o Supabase via provider
       await controller.createEvent(event);
-      
+
       // Fechar dialog
       if (mounted) {
         Navigator.of(context).pop();
-        
+
         // Chamar callback se fornecido
         widget.onEventCreated?.call();
-        
+
         // Mostrar mensagem de sucesso
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -230,7 +231,9 @@ class _ConfirmEventBottomSheetState extends ConsumerState<ConfirmEventBottomShee
                       onPressed: () => _createEvent(),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: BrandColors.planning,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        padding: const EdgeInsets.symmetric(
+                          vertical: Pads.ctlVSm,
+                        ),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(16),
                         ),
