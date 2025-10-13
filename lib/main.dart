@@ -110,6 +110,13 @@ void main() async {
         //   (ref) => GroupRepositoryImpl(GroupRemoteDataSource(Supabase.instance.client)),
         // ),
 
+        // ✅ GROUPS repo -> real (Supabase) via DI (P2 implementation)
+        groupRepositoryProvider.overrideWith((ref) {
+          final client = Supabase.instance.client;
+          final dataSource = SupabaseGroupsDataSource(client);
+          return GroupRepositoryImpl(dataSource, client);
+        }),
+
         // Profile repo -> real (Supabase)
         profileRepositoryProvider.overrideWith(
           (ref) => ProfileRepositoryImpl(

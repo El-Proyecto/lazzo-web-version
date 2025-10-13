@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/constants/text_styles.dart';
 import '../../../../shared/themes/colors.dart';
 import '../../../../shared/components/nav/common_app_bar.dart';
-import '../../../../shared/components/inputs/photo_selector.dart';
 import '../../../../routes/app_router.dart';
 import '../../domain/entities/group_entity.dart';
 import '../widgets/group_permissions_section.dart';
+import '../widgets/group_photo_selector_with_camera.dart';
 import '../providers/create_group_provider.dart';
 
 /// Page for creating a new group
@@ -43,12 +44,46 @@ class _CreateGroupPageState extends ConsumerState<CreateGroupPage> {
     super.dispose();
   }
 
-  void _handlePhotoSelection() {
-    // Mock photo selection with realistic URL
-    setState(() {
-      _selectedPhotoPath =
-          'https://images.unsplash.com/photo-1511632765486-a01980e01a18?w=400&h=400&fit=crop&crop=face';
-    });
+  void _handlePhotoSelection() async {
+    print('📸 [CreateGroup] Starting photo selection from gallery...');
+    await _selectPhoto(ImageSource.gallery);
+  }
+
+  void _handleCameraPhoto() async {
+    print('📸 [CreateGroup] Starting photo capture from camera...');
+    await _selectPhoto(ImageSource.camera);
+  }
+
+  Future<void> _selectPhoto(ImageSource source) async {
+    try {
+      final ImagePicker picker = ImagePicker();
+      final XFile? image = await picker.pickImage(
+        source: source,
+        maxWidth: 1024,
+        maxHeight: 1024,
+        imageQuality: 85,
+      );
+
+      if (image != null) {
+        print('   ✅ Photo selected: ${image.path}');
+        setState(() {
+          _selectedPhotoPath = image.path;
+        });
+      } else {
+        print('   ❌ No photo selected');
+      }
+    } catch (e) {
+      print('   ❌ Photo selection failed: $e');
+      // Show error to user
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to select photo: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   void _handlePhotoRemoval() {
@@ -182,15 +217,14 @@ class _CreateGroupPageState extends ConsumerState<CreateGroupPage> {
           children: [
             const SizedBox(height: Gaps.xs),
 
-            // Photo selector
-            PhotoSelector(
+            // Photo selector with camera support
+            GroupPhotoSelectorWithCamera(
               photoUrl: _selectedPhotoPath,
-              onPhotoSelected: _handlePhotoSelection,
+              onGallerySelected: _handlePhotoSelection,
+              onCameraSelected: _handleCameraPhoto,
               onPhotoRemoved: _handlePhotoRemoval,
               addPhotoText: 'Add Photo',
               size: 120,
-              showEditOverlay:
-                  false, // Don't show edit overlay, text indicates editability
               showRemoveOption: true,
             ),
 

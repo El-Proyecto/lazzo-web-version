@@ -1,49 +1,52 @@
 import 'package:flutter/material.dart';
 import 'dart:io';
-import '../../../shared/constants/spacing.dart';
-import '../../../shared/constants/text_styles.dart';
-import '../../../shared/themes/colors.dart';
+import '../../../../shared/constants/spacing.dart';
+import '../../../../shared/constants/text_styles.dart';
+import '../../../../shared/themes/colors.dart';
 
-/// Enum for photo source selection
-enum PhotoSourceAction { gallery, camera, remove }
-
-/// Shared component for photo selection with edit overlay
-/// Combines functionality from EditableProfilePhoto and PhotoChangeBottomSheet
-class PhotoSelector extends StatelessWidget {
+/// Enhanced photo selector for groups with separate camera and gallery callbacks
+class GroupPhotoSelectorWithCamera extends StatelessWidget {
   final String? photoUrl;
-  final VoidCallback? onPhotoSelected;
+  final VoidCallback? onGallerySelected;
+  final VoidCallback? onCameraSelected;
   final VoidCallback? onPhotoRemoved;
   final String addPhotoText;
   final double size;
-  final bool showEditOverlay;
   final bool showRemoveOption;
 
-  const PhotoSelector({
+  const GroupPhotoSelectorWithCamera({
     super.key,
     this.photoUrl,
-    this.onPhotoSelected,
+    this.onGallerySelected,
+    this.onCameraSelected,
     this.onPhotoRemoved,
     this.addPhotoText = 'Add Photo',
     this.size = 120,
-    this.showEditOverlay = true,
     this.showRemoveOption = true,
   });
 
   void _showPhotoSelectionBottomSheet(BuildContext context) {
-    PhotoSelectionBottomSheet.show(
+    showModalBottomSheet(
       context: context,
-      showRemoveOption: showRemoveOption && photoUrl != null,
-      onAction: (action) {
-        switch (action) {
-          case PhotoSourceAction.gallery:
-          case PhotoSourceAction.camera:
-            onPhotoSelected?.call();
-            break;
-          case PhotoSourceAction.remove:
-            onPhotoRemoved?.call();
-            break;
-        }
-      },
+      backgroundColor: BrandColors.bg2,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(Radii.md)),
+      ),
+      builder: (context) => _PhotoSelectionBottomSheet(
+        showRemoveOption: showRemoveOption && photoUrl != null,
+        onGallery: () {
+          Navigator.pop(context);
+          onGallerySelected?.call();
+        },
+        onCamera: () {
+          Navigator.pop(context);
+          onCameraSelected?.call();
+        },
+        onRemove: () {
+          Navigator.pop(context);
+          onPhotoRemoved?.call();
+        },
+      ),
     );
   }
 
@@ -52,8 +55,8 @@ class PhotoSelector extends StatelessWidget {
     final hasPhoto = photoUrl != null && photoUrl!.isNotEmpty;
 
     return Column(
-      mainAxisSize: MainAxisSize.min,
       children: [
+        // Photo container
         GestureDetector(
           onTap: () => _showPhotoSelectionBottomSheet(context),
           child: Container(
@@ -63,41 +66,12 @@ class PhotoSelector extends StatelessWidget {
               color: BrandColors.bg2,
               borderRadius: BorderRadius.circular(Radii.md),
             ),
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                // Photo or placeholder
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(Radii.md),
-                  child: hasPhoto
-                      ? _buildPhotoImage(photoUrl!)
-                      : const _PhotoPlaceholder(),
-                ),
-
-                // Edit overlay (only show when there's a photo and showEditOverlay is true)
-                if (hasPhoto && showEditOverlay)
-                  Positioned(
-                    bottom: 0,
-                    left: 0,
-                    right: 0,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: Gaps.xs),
-                      decoration: BoxDecoration(
-                        color: BrandColors.bg1.withValues(alpha: 0.8),
-                        borderRadius: const BorderRadius.only(
-                          bottomLeft: Radius.circular(Radii.md),
-                          bottomRight: Radius.circular(Radii.md),
-                        ),
-                      ),
-                      child: const Icon(
-                        Icons.edit,
-                        color: BrandColors.text1,
-                        size: IconSizes.sm,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
+            child: hasPhoto
+                ? ClipRRect(
+                    borderRadius: BorderRadius.circular(Radii.md),
+                    child: _buildPhotoImage(photoUrl!),
+                  )
+                : const _PhotoPlaceholder(),
           ),
         ),
 
@@ -148,56 +122,26 @@ class _PhotoPlaceholder extends StatelessWidget {
     return const Center(
       child: Icon(
         Icons.add_a_photo_outlined,
-        size: IconSizes.lg,
+        size: 48,
         color: BrandColors.text2,
       ),
     );
   }
 }
 
-/// Bottom sheet for photo selection options
-class PhotoSelectionBottomSheet extends StatelessWidget {
+/// Bottom sheet for photo selection with specific callbacks
+class _PhotoSelectionBottomSheet extends StatelessWidget {
   final bool showRemoveOption;
-  final Function(PhotoSourceAction) onAction;
+  final VoidCallback onGallery;
+  final VoidCallback onCamera;
+  final VoidCallback onRemove;
 
-  const PhotoSelectionBottomSheet({
-    super.key,
+  const _PhotoSelectionBottomSheet({
     required this.showRemoveOption,
-    required this.onAction,
+    required this.onGallery,
+    required this.onCamera,
+    required this.onRemove,
   });
-
-  static Future<void> show({
-    required BuildContext context,
-    required bool showRemoveOption,
-    required Function(PhotoSourceAction) onAction,
-  }) {
-    return showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (context) => Container(
-        width: double.infinity,
-        decoration: const ShapeDecoration(
-          color: BrandColors.bg2,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.only(
-              topLeft: Radius.circular(Radii.pill),
-              topRight: Radius.circular(Radii.pill),
-            ),
-          ),
-        ),
-        child: SafeArea(
-          child: PhotoSelectionBottomSheet(
-            showRemoveOption: showRemoveOption,
-            onAction: (action) {
-              Navigator.of(context).pop();
-              onAction(action);
-            },
-          ),
-        ),
-      ),
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -219,7 +163,7 @@ class PhotoSelectionBottomSheet extends StatelessWidget {
           _PhotoOption(
             icon: Icons.photo_library_outlined,
             title: 'Choose from Gallery',
-            onTap: () => onAction(PhotoSourceAction.gallery),
+            onTap: onGallery,
           ),
 
           const SizedBox(height: Gaps.md),
@@ -228,7 +172,7 @@ class PhotoSelectionBottomSheet extends StatelessWidget {
           _PhotoOption(
             icon: Icons.camera_alt_outlined,
             title: 'Take Photo',
-            onTap: () => onAction(PhotoSourceAction.camera),
+            onTap: onCamera,
           ),
 
           // Remove option (conditional)
@@ -237,7 +181,7 @@ class PhotoSelectionBottomSheet extends StatelessWidget {
             _PhotoOption(
               icon: Icons.delete_outline,
               title: 'Remove Photo',
-              onTap: () => onAction(PhotoSourceAction.remove),
+              onTap: onRemove,
               isDestructive: true,
             ),
           ],
@@ -249,7 +193,7 @@ class PhotoSelectionBottomSheet extends StatelessWidget {
   }
 }
 
-/// Individual photo option in the bottom sheet
+/// Individual photo option widget
 class _PhotoOption extends StatelessWidget {
   final IconData icon;
   final String title;
@@ -265,26 +209,30 @@ class _PhotoOption extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    return InkWell(
       onTap: onTap,
+      borderRadius: BorderRadius.circular(Radii.md),
       child: Container(
-        padding: const EdgeInsets.all(Pads.ctlV),
+        padding: const EdgeInsets.symmetric(
+          horizontal: Insets.screenH,
+          vertical: Gaps.md,
+        ),
         decoration: BoxDecoration(
-          color: BrandColors.bg2,
+          color: BrandColors.bg3,
           borderRadius: BorderRadius.circular(Radii.md),
         ),
         child: Row(
           children: [
             Icon(
               icon,
-              color: isDestructive ? BrandColors.cantVote : BrandColors.text1,
+              color: isDestructive ? Colors.red : BrandColors.text1,
               size: IconSizes.md,
             ),
-            const SizedBox(width: Gaps.sm),
+            const SizedBox(width: Gaps.md),
             Text(
               title,
               style: AppText.bodyMedium.copyWith(
-                color: isDestructive ? BrandColors.cantVote : BrandColors.text1,
+                color: isDestructive ? Colors.red : BrandColors.text1,
               ),
             ),
           ],

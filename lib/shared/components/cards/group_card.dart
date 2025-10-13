@@ -5,6 +5,7 @@ import '../../themes/colors.dart';
 import '../../models/group_enums.dart';
 import '../badges/group_badge.dart';
 import '../../../features/groups/domain/entities/group.dart';
+import '../../../features/groups/presentation/widgets/group_photo_image.dart';
 
 /// Card tokenizado para exibir informações de um grupo
 class GroupCard extends StatefulWidget {
@@ -60,25 +61,14 @@ class _GroupCardState extends State<GroupCard> {
   Widget _buildAvatar() {
     return Stack(
       children: [
-        // Avatar
-        Container(
+        // Avatar usando GroupPhotoImage
+        GroupPhotoImage(
+          photoPath: widget.group.photoPath,
+          photoUpdatedAt: widget.group.photoUpdatedAt,
           width: 56,
           height: 56,
-          decoration: ShapeDecoration(
-            color: BrandColors.bg3,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(Radii.smAlt),
-            ),
-            image: widget.group.avatarUrl != null
-                ? DecorationImage(
-                    image: NetworkImage(widget.group.avatarUrl!),
-                    fit: BoxFit.cover,
-                  )
-                : null,
-          ),
-          child: widget.group.avatarUrl == null
-              ? const Icon(Icons.group, color: BrandColors.text2, size: 28)
-              : null,
+          borderRadius: BorderRadius.circular(Radii.smAlt),
+          placeholder: const Icon(Icons.group, color: BrandColors.text2, size: 28),
         ),
 
         // Ícones no canto superior do avatar

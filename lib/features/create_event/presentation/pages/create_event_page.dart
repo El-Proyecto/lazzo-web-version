@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/constants/text_styles.dart';
 import '../widgets/create_event_app_bar.dart';
@@ -12,17 +13,18 @@ import '../widgets/exit_confirmation_dialog.dart';
 import '../../../../shared/models/event_draft.dart';
 import '../../../../services/draft_service.dart';
 import '../../../../shared/themes/colors.dart';
+import '../../../groups/presentation/providers/groups_provider.dart';
 
 /// Página principal para criação de eventos
 /// Usa todos os widgets tokenizados e reutilizáveis
-class CreateEventPage extends StatefulWidget {
+class CreateEventPage extends ConsumerStatefulWidget {
   const CreateEventPage({super.key});
 
   @override
-  State<CreateEventPage> createState() => _CreateEventPageState();
+  ConsumerState<CreateEventPage> createState() => _CreateEventPageState();
 }
 
-class _CreateEventPageState extends State<CreateEventPage> {
+class _CreateEventPageState extends ConsumerState<CreateEventPage> {
   // Estado do evento
   String _eventName = '';
   String _eventEmoji = '🍖';
@@ -58,20 +60,37 @@ class _CreateEventPageState extends State<CreateEventPage> {
   }
 
   /// Verifica se existe um grupo pré-selecionado nos argumentos de navegação
-  void _handleNavigationArguments() {
+  void _handleNavigationArguments() async {
     final arguments =
         ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
     if (arguments != null && arguments['groupId'] != null) {
       final groupId = arguments['groupId'] as String;
-      final groups = _getMockGroups();
-      final selectedGroup = groups
-          .where((group) => group.id == groupId)
-          .firstOrNull;
-      if (selectedGroup != null && mounted) {
-        setState(() {
-          _selectedGroup = selectedGroup;
-        });
-      }
+      
+      // Buscar grupos reais do Supabase
+      final groupsAsync = ref.read(groupsProvider);
+      groupsAsync.when(
+        data: (groups) {
+          final selectedGroup = groups
+              .where((group) => group.id == groupId)
+              .firstOrNull;
+          if (selectedGroup != null && mounted) {
+            setState(() {
+              _selectedGroup = GroupInfo(
+                id: selectedGroup.id,
+                name: selectedGroup.name,
+                memberCount: selectedGroup.memberCount,
+              );
+            });
+          }
+        },
+        loading: () {
+          // Groups are loading, we'll handle this in the group selection dialog
+        },
+        error: (error, stackTrace) {
+          // Handle error if needed
+          print('Error loading groups: $error');
+        },
+      );
     }
   }
 
@@ -542,18 +561,70 @@ class _CreateEventPageState extends State<CreateEventPage> {
       isDismissible: true,
       enableDrag: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => GroupSelectionBottomSheet(
-        groups: _getMockGroups(),
-        onGroupSelected: (group) {
-          setState(() {
-            _selectedGroup = group;
-            // Clear error if group is now selected
-            if (_showValidationErrors) {
-              _groupError = null;
-            }
-          });
+      builder: (context) => Consumer(
+        builder: (context, ref, child) {
+          final groupsAsync = ref.watch(groupsProvider);
+          
+          return groupsAsync.when(
+            data: (groups) {
+              // Convert Group entities to GroupInfo for the dialog
+              final groupInfos = groups.map((group) => GroupInfo(
+                id: group.id,
+                name: group.name,
+                memberCount: group.memberCount,
+              )).toList();
+              
+              return GroupSelectionBottomSheet(
+                groups: groupInfos,
+                onGroupSelected: (group) {
+                  setState(() {
+                    _selectedGroup = group;
+                    // Clear error if group is now selected
+                    if (_showValidationErrors) {
+                      _groupError = null;
+                    }
+                  });
+                },
+                onCreateGroup: _createNewGroup,
+              );
+            },
+            loading: () => Container(
+              height: 400,
+              decoration: const BoxDecoration(
+                color: BrandColors.bg1,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+              ),
+              child: const Center(
+                child: CircularProgressIndicator(color: BrandColors.planning),
+              ),
+            ),
+            error: (error, stackTrace) => Container(
+              height: 400,
+              decoration: const BoxDecoration(
+                color: BrandColors.bg1,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+              ),
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.error_outline, 
+                        size: 48, color: BrandColors.cantVote),
+                    const SizedBox(height: 16),
+                    Text('Error loading groups',
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            color: BrandColors.cantVote)),
+                    const SizedBox(height: 8),
+                    Text(error.toString(),
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: BrandColors.text2),
+                        textAlign: TextAlign.center),
+                  ],
+                ),
+              ),
+            ),
+          );
         },
-        onCreateGroup: _createNewGroup,
       ),
     );
   }
@@ -660,19 +731,6 @@ class _CreateEventPageState extends State<CreateEventPage> {
         location: 'Cinemas NOS Amoreiras',
         groupId: 'group2',
       ),
-    ];
-  }
-
-  List<GroupInfo> _getMockGroups() {
-    return [
-      const GroupInfo(id: '1', name: 'Obama Care', memberCount: 8),
-      const GroupInfo(id: '2', name: 'Beach Volleyball', memberCount: 12),
-      const GroupInfo(id: '3', name: 'Study Group', memberCount: 6),
-      const GroupInfo(id: '4', name: 'Family', memberCount: 5),
-      const GroupInfo(id: '5', name: 'Work Team', memberCount: 15),
-      const GroupInfo(id: '6', name: 'Weekend Warriors', memberCount: 10),
-      const GroupInfo(id: '7', name: 'Hiking Squad', memberCount: 7),
-      const GroupInfo(id: '8', name: 'Cooking Class', memberCount: 9),
     ];
   }
 }

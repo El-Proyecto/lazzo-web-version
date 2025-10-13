@@ -2,6 +2,7 @@ import '../../domain/entities/group.dart';
 import '../../domain/entities/group_entity.dart';
 import '../../domain/repositories/group_repository.dart';
 import '../../../../shared/models/group_enums.dart';
+import 'package:image_picker/image_picker.dart';
 
 /// Implementação fake do repositório de grupos para desenvolvimento
 class FakeGroupRepository implements GroupRepository {
@@ -10,7 +11,8 @@ class FakeGroupRepository implements GroupRepository {
     Group(
       id: '1',
       name: 'Obama Care',
-      avatarUrl: 'https://i.pravatar.cc/150?img=1',
+      photoPath: 'groups/1/cover_1.webp',
+      photoUpdatedAt: DateTime.now().subtract(const Duration(days: 1)),
       lastActivity: 'Decide date · closes Tuesday',
       lastActivityTime: DateTime.now().subtract(const Duration(minutes: 30)),
       unreadCount: 2,
@@ -21,10 +23,11 @@ class FakeGroupRepository implements GroupRepository {
       isPinned: true, // Grupo afixado
       memberCount: 8,
     ),
-    const Group(
+    Group(
       id: '2',
       name: 'Beach Volleyball',
-      avatarUrl: 'https://i.pravatar.cc/150?img=2',
+      photoPath: 'groups/2/cover_2.webp',
+      photoUpdatedAt: DateTime.now().subtract(const Duration(hours: 2)),
       lastActivity: 'Add photos · 2h left',
       lastActivityTime: null,
       unreadCount: null,
@@ -35,10 +38,11 @@ class FakeGroupRepository implements GroupRepository {
       isPinned: false,
       memberCount: 12,
     ),
-    const Group(
+    Group(
       id: '3',
       name: 'Study Group',
-      avatarUrl: 'https://i.pravatar.cc/150?img=3',
+      photoPath: 'groups/3/cover_3.webp',
+      photoUpdatedAt: DateTime.now().subtract(const Duration(hours: 4)),
       lastActivity: 'Add photos · 4h left',
       lastActivityTime: null,
       unreadCount: null,
@@ -51,7 +55,8 @@ class FakeGroupRepository implements GroupRepository {
     Group(
       id: '4',
       name: 'Family',
-      avatarUrl: 'https://i.pravatar.cc/150?img=4',
+      photoPath: 'groups/4/cover_4.webp',
+      photoUpdatedAt: DateTime.now().subtract(const Duration(days: 2)),
       lastActivity: 'Last event: Piquenique na praia',
       lastActivityTime: DateTime.now().subtract(const Duration(days: 2)),
       unreadCount: 1,
@@ -64,7 +69,8 @@ class FakeGroupRepository implements GroupRepository {
     const Group(
       id: '5',
       name: 'Work Team',
-      avatarUrl: null,
+      photoPath: null, // sem foto
+      photoUpdatedAt: null,
       lastActivity: 'No events — create one',
       lastActivityTime: null,
       unreadCount: null,
@@ -78,7 +84,8 @@ class FakeGroupRepository implements GroupRepository {
     Group(
       id: '6',
       name: 'Weekend Warriors',
-      avatarUrl: 'https://i.pravatar.cc/150?img=6',
+      photoPath: 'groups/6/cover_6.webp',
+      photoUpdatedAt: DateTime.now().subtract(const Duration(hours: 2)),
       lastActivity: 'Vote a place · 3 options',
       lastActivityTime: DateTime.now().subtract(const Duration(hours: 2)),
       unreadCount: 3,
@@ -93,7 +100,8 @@ class FakeGroupRepository implements GroupRepository {
     Group(
       id: '7',
       name: 'Hiking Squad',
-      avatarUrl: 'https://i.pravatar.cc/150?img=7',
+      photoPath: 'groups/7/cover_7.webp',
+      photoUpdatedAt: DateTime.now(),
       lastActivity: 'Live now · ends in 1h 20m',
       lastActivityTime: DateTime.now(),
       unreadCount: null,
@@ -103,12 +111,13 @@ class FakeGroupRepository implements GroupRepository {
       status: GroupStatus.active,
       memberCount: 7,
     ),
-    Group(
+    const Group(
       id: '8',
       name: 'Cooking Class',
-      avatarUrl: null,
+      photoPath: null, // sem foto
+      photoUpdatedAt: null,
       lastActivity: 'Memory ready to share',
-      lastActivityTime: DateTime.now().subtract(const Duration(hours: 6)),
+      lastActivityTime: null,
       unreadCount: null,
       openActionsCount: null,
       addPhotosCount: 1,
@@ -119,7 +128,8 @@ class FakeGroupRepository implements GroupRepository {
     Group(
       id: '9',
       name: 'Old Project',
-      avatarUrl: 'https://i.pravatar.cc/150?img=9',
+      photoPath: 'groups/9/cover_9.webp',
+      photoUpdatedAt: DateTime.now().subtract(const Duration(days: 30)),
       lastActivity: 'Project completed',
       lastActivityTime: DateTime.now().subtract(const Duration(days: 30)),
       unreadCount: null,
@@ -132,7 +142,8 @@ class FakeGroupRepository implements GroupRepository {
     Group(
       id: '10',
       name: 'Summer Camp 2024',
-      avatarUrl: 'https://i.pravatar.cc/150?img=10',
+      photoPath: 'groups/10/cover_10.webp',
+      photoUpdatedAt: DateTime.now().subtract(const Duration(days: 60)),
       lastActivity: 'Memories saved',
       lastActivityTime: DateTime.now().subtract(const Duration(days: 60)),
       unreadCount: null,
@@ -150,7 +161,16 @@ class FakeGroupRepository implements GroupRepository {
   Future<List<Group>> getUserGroups() async {
     // Simular delay da rede
     await Future.delayed(const Duration(milliseconds: 500));
-    return List.from(_mockGroups);
+    // Retorna apenas grupos não arquivados
+    return _mockGroups.where((group) => group.status != GroupStatus.archived).toList();
+  }
+
+  @override
+  Future<List<Group>> getArchivedGroups() async {
+    // Simular delay da rede
+    await Future.delayed(const Duration(milliseconds: 500));
+    // Retorna apenas grupos arquivados
+    return _mockGroups.where((group) => group.status == GroupStatus.archived).toList();
   }
 
   @override
@@ -177,7 +197,7 @@ class FakeGroupRepository implements GroupRepository {
   @override
   Future<Group> createGroup({
     required String name,
-    String? avatarUrl,
+    String? photoPath,  // atualizado de avatarUrl para photoPath
     List<String>? memberIds,
   }) async {
     await Future.delayed(const Duration(milliseconds: 800));
@@ -185,7 +205,7 @@ class FakeGroupRepository implements GroupRepository {
     final newGroup = Group(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       name: name,
-      avatarUrl: avatarUrl,
+      photoPath: photoPath,  // usando photoPath
       lastActivity: 'No events — create one',
       addPhotosTimeLeft: null,
       status: GroupStatus.active,
@@ -202,7 +222,7 @@ class FakeGroupRepository implements GroupRepository {
     await Future.delayed(const Duration(milliseconds: 500));
 
     final createdGroup = group.copyWith(
-      id: _nextId++,
+      id: 'fake_group_${_nextId++}',
       createdAt: DateTime.now(),
     );
 
@@ -219,7 +239,13 @@ class FakeGroupRepository implements GroupRepository {
   @override
   Future<void> leaveGroup(String groupId) async {
     await Future.delayed(const Duration(milliseconds: 400));
+    
+    // Simula remoção do grupo da lista do usuário
+    // (no fake, assumimos que o usuário sempre deixa o grupo, e o grupo é removido da sua lista)
+    final removedCount = _mockGroups.where((group) => group.id == groupId).length;
     _mockGroups.removeWhere((group) => group.id == groupId);
+    
+    print('🎭 [Fake] User left group $groupId - removed from user\'s list ($removedCount groups removed)');
   }
 
   @override
@@ -232,7 +258,8 @@ class FakeGroupRepository implements GroupRepository {
       final updatedGroup = Group(
         id: group.id,
         name: group.name,
-        avatarUrl: group.avatarUrl,
+        photoPath: group.photoPath,
+        photoUpdatedAt: group.photoUpdatedAt,
         lastActivity: group.lastActivity,
         lastActivityTime: group.lastActivityTime,
         unreadCount: group.unreadCount,
@@ -240,7 +267,7 @@ class FakeGroupRepository implements GroupRepository {
         addPhotosCount: group.addPhotosCount,
         addPhotosTimeLeft: group.addPhotosTimeLeft,
         status: group.status,
-        isMuted: !group.isMuted, // Toggle mute status
+        isMuted: isMuted, // Definir o valor passado, não toggle
         isPinned: group.isPinned,
         memberCount: group.memberCount,
       );
@@ -258,7 +285,8 @@ class FakeGroupRepository implements GroupRepository {
       final updatedGroup = Group(
         id: group.id,
         name: group.name,
-        avatarUrl: group.avatarUrl,
+        photoPath: group.photoPath,
+        photoUpdatedAt: group.photoUpdatedAt,
         lastActivity: group.lastActivity,
         lastActivityTime: group.lastActivityTime,
         unreadCount: group.unreadCount,
@@ -288,7 +316,8 @@ class FakeGroupRepository implements GroupRepository {
       final updatedGroup = Group(
         id: group.id,
         name: group.name,
-        avatarUrl: group.avatarUrl,
+        photoPath: group.photoPath,
+        photoUpdatedAt: group.photoUpdatedAt,
         lastActivity: group.lastActivity,
         lastActivityTime: group.lastActivityTime,
         unreadCount: group.unreadCount,
@@ -313,9 +342,30 @@ class FakeGroupRepository implements GroupRepository {
   }
 
   @override
-  Future<String> uploadGroupPhoto(String imagePath, String groupId) async {
+  Future<String> uploadGroupCoverPhoto(XFile imageFile, String groupId) async {
     // Simulate photo upload
     await Future.delayed(const Duration(seconds: 1));
-    return 'https://example.com/groups/$groupId/photo.jpg';
+    return 'groups/$groupId/cover_${DateTime.now().millisecondsSinceEpoch}.webp';
+  }
+
+  @override
+  Future<String?> getGroupCoverUrl(String? photoPath, DateTime? photoUpdatedAt) async {
+    if (photoPath == null || photoPath.isEmpty) {
+      return null;
+    }
+    
+    // Simulate signed URL generation
+    await Future.delayed(const Duration(milliseconds: 200));
+    
+    // Mock signed URL with cache busting
+    final timestamp = photoUpdatedAt?.millisecondsSinceEpoch ?? DateTime.now().millisecondsSinceEpoch;
+    return 'https://mock-storage.example.com/$photoPath?signed=true&t=$timestamp';
+  }
+
+  @override
+  Future<void> saveGroupQrCode(String groupId, String qrCodeData) async {
+    // Simulate QR code save
+    await Future.delayed(const Duration(milliseconds: 200));
+    print('Mock: QR code saved for group $groupId: $qrCodeData');
   }
 }

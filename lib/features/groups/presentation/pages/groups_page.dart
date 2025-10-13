@@ -18,13 +18,41 @@ class GroupsPage extends ConsumerStatefulWidget {
   ConsumerState<GroupsPage> createState() => _GroupsPageState();
 }
 
-class _GroupsPageState extends ConsumerState<GroupsPage> {
+class _GroupsPageState extends ConsumerState<GroupsPage> with WidgetsBindingObserver {
   String _searchQuery = '';
   GroupFilter _selectedFilter = GroupFilter.all;
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    // Force refresh groups every time the page is initialized
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(groupsControllerProvider).refreshGroups();
+    });
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    // Refresh groups when app comes back to foreground
+    if (state == AppLifecycleState.resumed) {
+      ref.read(groupsControllerProvider).refreshGroups();
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final groupsAsync = ref.watch(groupsProvider);
+    // Use different providers based on selected filter
+    final groupsAsync = _selectedFilter == GroupFilter.archived
+        ? ref.watch(archivedGroupsProvider)
+        : ref.watch(groupsProvider);
 
     return Scaffold(
       backgroundColor: BrandColors.bg1,
@@ -48,14 +76,53 @@ class _GroupsPageState extends ConsumerState<GroupsPage> {
             ),
           ),
 
-          // Lista de grupos com filtros incluídos na lista para rolagem
+          // Filtros sempre visíveis
+          Padding(
+            padding: const EdgeInsets.only(
+              left: Insets.screenH,
+              right: Insets.screenH,
+              bottom: Gaps.xs,
+            ),
+            child: Row(
+              children: [
+                CustomFilterChip(
+                  label: 'All',
+                  isSelected: _selectedFilter == GroupFilter.all,
+                  onTap: () => setState(
+                    () => _selectedFilter = GroupFilter.all,
+                  ),
+                ),
+                const SizedBox(width: Gaps.sm),
+                CustomFilterChip(
+                  label: 'Actions',
+                  isSelected: _selectedFilter == GroupFilter.actions,
+                  onTap: () => setState(
+                    () => _selectedFilter = GroupFilter.actions,
+                  ),
+                ),
+                const SizedBox(width: Gaps.sm),
+                CustomFilterChip(
+                  label: 'Archived',
+                  isSelected: _selectedFilter == GroupFilter.archived,
+                  onTap: () => setState(
+                    () => _selectedFilter = GroupFilter.archived,
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // Lista de grupos
           Expanded(
             child: groupsAsync.when(
               data: (groups) {
                 var filteredGroups = groups;
 
-                // Aplicar filtro por status
-                filteredGroups = _applyStatusFilter(filteredGroups);
+                // Para filtro archived, já vem do provider correto, não precisa filtrar
+                if (_selectedFilter != GroupFilter.archived) {
+                  // Aplicar filtro por status (apenas para All e Actions)
+                  filteredGroups = _applyStatusFilter(filteredGroups);
+                }
 
                 // Aplicar filtro de busca
                 if (_searchQuery.isNotEmpty) {
@@ -77,52 +144,9 @@ class _GroupsPageState extends ConsumerState<GroupsPage> {
 
                 return ListView.builder(
                   padding: EdgeInsets.zero,
-                  itemCount: filteredGroups.length + 1, // +1 para os filtros
+                  itemCount: filteredGroups.length, // Apenas grupos, filtros fora
                   itemBuilder: (context, index) {
-                    // Primeiro item é a linha de filtros
-                    if (index == 0) {
-                      return Padding(
-                        padding: const EdgeInsets.only(
-                          left: Insets.screenH,
-                          right: Insets.screenH,
-                          bottom: Gaps.xs,
-                        ),
-                        child: Row(
-                          children: [
-                            CustomFilterChip(
-                              label: 'All',
-                              isSelected: _selectedFilter == GroupFilter.all,
-                              onTap: () => setState(
-                                () => _selectedFilter = GroupFilter.all,
-                              ),
-                            ),
-                            const SizedBox(width: Gaps.sm),
-                            CustomFilterChip(
-                              label: 'Actions',
-                              isSelected:
-                                  _selectedFilter == GroupFilter.actions,
-                              onTap: () => setState(
-                                () => _selectedFilter = GroupFilter.actions,
-                              ),
-                            ),
-                            const SizedBox(width: Gaps.sm),
-                            CustomFilterChip(
-                              label: 'Archived',
-                              isSelected:
-                                  _selectedFilter == GroupFilter.archived,
-                              onTap: () => setState(
-                                () => _selectedFilter = GroupFilter.archived,
-                              ),
-                            ),
-                          ],
-                        ),
-                      );
-                    }
-
-                    // Os demais itens são os grupos
-                    final group =
-                        filteredGroups[index -
-                            1]; // -1 para compensar o índice dos filtros
+                    final group = filteredGroups[index];
                     return GroupCard(
                       group: group,
                       onTap: () => _handleGroupTap(group.id),
@@ -218,8 +242,10 @@ class _GroupsPageState extends ConsumerState<GroupsPage> {
     String groupId,
     GlobalKey cardKey,
   ) {
-    // Encontra o grupo atual na lista
-    final groupsAsync = ref.read(groupsProvider);
+    // Encontra o grupo na lista atual (baseado no filtro selecionado)
+    final groupsAsync = _selectedFilter == GroupFilter.archived
+        ? ref.read(archivedGroupsProvider)
+        : ref.read(groupsProvider);
     final groups = groupsAsync.value ?? [];
     final group = groups.firstWhere(
       (g) => g.id == groupId,
@@ -297,24 +323,94 @@ class _GroupsPageState extends ConsumerState<GroupsPage> {
 
   void _handleOpenActions(String groupId) {
     print('Open actions for group: $groupId');
+    // Navegar para o filtro de actions
+    setState(() {
+      _selectedFilter = GroupFilter.actions;
+    });
   }
 
   void _handleMute(String groupId) {
     print('Toggle mute for group: $groupId');
     final controller = ref.read(groupsControllerProvider);
-    final groups = ref.read(groupsProvider).value ?? [];
+    
+    // Busca o grupo na lista atual (baseado no filtro selecionado)
+    final groupsAsync = _selectedFilter == GroupFilter.archived
+        ? ref.read(archivedGroupsProvider)
+        : ref.read(groupsProvider);
+    final groups = groupsAsync.value ?? [];
     final group = groups.firstWhere((g) => g.id == groupId);
-    controller.toggleMute(groupId, group.isMuted);
+    
+    // Toggle: se está muted, vai unmute (false), se não está muted, vai mute (true)
+    final newMutedState = !group.isMuted;
+    controller.toggleMute(groupId, newMutedState);
   }
 
   void _handleLeaveGroup(String groupId) {
-    print('Leave group: $groupId');
+    // Busca o nome do grupo para mostrar no diálogo
+    final groupsAsync = _selectedFilter == GroupFilter.archived
+        ? ref.read(archivedGroupsProvider)
+        : ref.read(groupsProvider);
+    final groups = groupsAsync.value ?? [];
+    final group = groups.firstWhere(
+      (g) => g.id == groupId,
+      orElse: () => const Group(
+        id: '',
+        name: 'Unknown Group',
+        status: GroupStatus.active,
+        memberCount: 0,
+      ),
+    );
+
+    // Mostra diálogo de confirmação
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: BrandColors.bg1,
+          title: Text(
+            'Leave Group',
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+              color: BrandColors.text1,
+            ),
+          ),
+          content: Text(
+            'Are you sure you want to leave "${group.name}"?\n\nThis action cannot be undone.',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: BrandColors.text2,
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text(
+                'Cancel',
+                style: TextStyle(color: BrandColors.text2),
+              ),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                print('Leave group confirmed: $groupId');
+                final controller = ref.read(groupsControllerProvider);
+                controller.leaveGroup(groupId);
+              },
+              child: const Text(
+                'Leave',
+                style: TextStyle(color: BrandColors.cantVote),
+              ),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   void _handleArchive(String groupId) {
     print('Toggle archive for group: $groupId');
     final controller = ref.read(groupsControllerProvider);
     controller.toggleArchive(groupId);
+    
+    // Não redirecionar automaticamente - deixar user escolher quando ver
   }
 
   void _handlePin(String groupId) {
@@ -323,14 +419,16 @@ class _GroupsPageState extends ConsumerState<GroupsPage> {
     controller.togglePin(groupId);
   }
 
-  /// Aplica filtro por status dos grupos
+  /// Aplica filtro por status dos grupos (apenas para All e Actions)
   List<Group> _applyStatusFilter(List<Group> groups) {
     switch (_selectedFilter) {
       case GroupFilter.all:
+        // Retorna todos os grupos ativos (não arquivados)
         return groups
             .where((group) => group.status != GroupStatus.archived)
             .toList();
       case GroupFilter.actions:
+        // Retorna apenas grupos ativos com ações abertas
         return groups
             .where(
               (group) =>
@@ -340,9 +438,8 @@ class _GroupsPageState extends ConsumerState<GroupsPage> {
             )
             .toList();
       case GroupFilter.archived:
-        return groups
-            .where((group) => group.status == GroupStatus.archived)
-            .toList();
+        // Este caso não deve ser chamado, pois usar o archivedGroupsProvider
+        return groups;
     }
   }
 

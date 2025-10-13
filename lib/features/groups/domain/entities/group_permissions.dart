@@ -1,23 +1,23 @@
 /// Permission settings for group creation
 class GroupPermissions {
   final bool membersCanInvite;
-  final bool membersCanAddPhotos;
+  final bool membersCanAddMembers;
   final bool membersCanCreateEvents;
 
   const GroupPermissions({
     this.membersCanInvite = false,
-    this.membersCanAddPhotos = false,
+    this.membersCanAddMembers = false,
     this.membersCanCreateEvents = false,
   });
 
   GroupPermissions copyWith({
     bool? membersCanInvite,
-    bool? membersCanAddPhotos,
+    bool? membersCanAddMembers,
     bool? membersCanCreateEvents,
   }) {
     return GroupPermissions(
       membersCanInvite: membersCanInvite ?? this.membersCanInvite,
-      membersCanAddPhotos: membersCanAddPhotos ?? this.membersCanAddPhotos,
+      membersCanAddMembers: membersCanAddMembers ?? this.membersCanAddMembers,
       membersCanCreateEvents:
           membersCanCreateEvents ?? this.membersCanCreateEvents,
     );
@@ -28,7 +28,7 @@ class GroupPermissions {
     if (identical(this, other)) return true;
     return other is GroupPermissions &&
         other.membersCanInvite == membersCanInvite &&
-        other.membersCanAddPhotos == membersCanAddPhotos &&
+        other.membersCanAddMembers == membersCanAddMembers &&
         other.membersCanCreateEvents == membersCanCreateEvents;
   }
 
@@ -36,13 +36,13 @@ class GroupPermissions {
   int get hashCode {
     return Object.hash(
       membersCanInvite,
-      membersCanAddPhotos,
+      membersCanAddMembers,
       membersCanCreateEvents,
     );
   }
 
   @override
   String toString() {
-    return 'GroupPermissions(membersCanInvite: $membersCanInvite, membersCanAddPhotos: $membersCanAddPhotos, membersCanCreateEvents: $membersCanCreateEvents)';
+    return 'GroupPermissions(membersCanInvite: $membersCanInvite, membersCanAddMembers: $membersCanAddMembers, membersCanCreateEvents: $membersCanCreateEvents)';
   }
 }

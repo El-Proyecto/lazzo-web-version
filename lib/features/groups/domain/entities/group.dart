@@ -4,7 +4,10 @@ import '../../../../shared/models/group_enums.dart';
 class Group {
   final String id;
   final String name;
+  @Deprecated('Use photoPath and photoUpdatedAt instead')
   final String? avatarUrl;
+  final String? photoPath;           // ex: "{groupId}/cover.webp"
+  final DateTime? photoUpdatedAt;    // timestamp da última atualização da foto
   final String? lastActivity;
   final DateTime? lastActivityTime;
   final int? unreadCount;
@@ -19,7 +22,10 @@ class Group {
   const Group({
     required this.id,
     required this.name,
+    @Deprecated('Use photoPath and photoUpdatedAt instead')
     this.avatarUrl,
+    this.photoPath,
+    this.photoUpdatedAt,
     this.lastActivity,
     this.lastActivityTime,
     this.unreadCount,

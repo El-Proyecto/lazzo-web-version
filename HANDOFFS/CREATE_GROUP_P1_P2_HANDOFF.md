@@ -1,5 +1,8 @@
 # Create Group Feature - P1 to P2 Handoff Document
 
+---------------------------------- DONE ---------------------------------- 
+
+
 **Date:** December 2024  
 **From:** Role P1 (UI + State + Contracts)  
 **To:** Role P2 (Data + Supabase)  
