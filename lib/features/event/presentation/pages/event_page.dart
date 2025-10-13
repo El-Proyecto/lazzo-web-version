@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../routes/app_router.dart';
+import '../../../create_event/domain/entities/event.dart' as create_event;
 import '../../../../shared/components/nav/common_app_bar.dart';
 import '../../../../shared/components/sections/event_header.dart';
 import '../../../../shared/components/widgets/rsvp_widget.dart' as rsvp_widget;
@@ -49,7 +51,38 @@ class EventPage extends ConsumerWidget {
         trailing: IconButton(
           icon: const Icon(Icons.edit, color: BrandColors.text1),
           onPressed: () {
-            // TODO: Navigate to edit event page
+            // Only navigate if event data is available
+            final eventData = eventAsync.value;
+            if (eventData != null) {
+              // Convert EventDetail to Event for edit page
+              final editEvent = create_event.Event(
+                id: eventData.id,
+                name: eventData.name,
+                emoji: eventData.emoji,
+                groupId: eventData.groupId,
+                startDateTime: eventData.startDateTime,
+                endDateTime: eventData.endDateTime,
+                location: eventData.location != null
+                    ? create_event.EventLocation(
+                        id: eventData.location!.id,
+                        displayName: eventData.location!.displayName,
+                        formattedAddress: eventData.location!.formattedAddress,
+                        latitude: eventData.location!.latitude,
+                        longitude: eventData.location!.longitude,
+                      )
+                    : null,
+                status: create_event
+                    .EventStatus
+                    .confirmed, // Default status for existing events
+                createdAt: eventData.createdAt,
+              );
+
+              Navigator.pushNamed(
+                context,
+                AppRouter.editEvent,
+                arguments: {'event': editEvent},
+              );
+            }
           },
         ),
       ),

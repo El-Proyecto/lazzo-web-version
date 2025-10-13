@@ -4,11 +4,50 @@ import '../../domain/repositories/event_repository.dart';
 /// Fake implementation of EventRepository for development and testing
 /// Returns mock data without external dependencies
 class FakeEventRepository implements EventRepository {
-  final List<Event> _events = [];
-  int _idCounter = 1;
+  static final List<Event> _events = [];
+  static int _idCounter = 1;
+
+  // Initialize with some test data
+  static void _initializeTestData() {
+    if (_events.isEmpty) {
+      _events.addAll([
+        Event(
+          id: '1',
+          name: 'Churrascada no Parque',
+          emoji: '🍖',
+          groupId: '1',
+          startDateTime: DateTime.now().add(const Duration(days: 2, hours: 14)),
+          endDateTime: DateTime.now().add(const Duration(days: 2, hours: 20)),
+          location: const EventLocation(
+            id: 'loc-1',
+            displayName: 'Parque da Cidade',
+            formattedAddress: 'Parque da Cidade, Lisboa, Portugal',
+            latitude: 38.7223,
+            longitude: -9.1393,
+          ),
+          status: EventStatus.confirmed,
+          createdAt: DateTime.now().subtract(const Duration(days: 1)),
+        ),
+        Event(
+          id: '2',
+          name: 'Jantar de Aniversário',
+          emoji: '🎂',
+          groupId: '2',
+          startDateTime: DateTime.now().add(const Duration(days: 5, hours: 19)),
+          endDateTime: DateTime.now().add(const Duration(days: 5, hours: 23)),
+          status: EventStatus.pending,
+          createdAt: DateTime.now().subtract(const Duration(hours: 12)),
+        ),
+      ]);
+      _idCounter = 3;
+    }
+  }
 
   @override
   Future<Event> createEvent(Event event) async {
+    // Initialize test data if needed
+    _initializeTestData();
+
     // Simulate network delay
     await Future.delayed(const Duration(milliseconds: 500));
 
@@ -25,6 +64,9 @@ class FakeEventRepository implements EventRepository {
 
   @override
   Future<Event?> getEventById(String id) async {
+    // Initialize test data if needed
+    _initializeTestData();
+
     await Future.delayed(const Duration(milliseconds: 200));
     return _events.where((e) => e.id == id).firstOrNull;
   }

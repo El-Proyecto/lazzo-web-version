@@ -3,6 +3,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../domain/entities/event.dart';
 import '../../domain/repositories/event_repository.dart';
 import '../../domain/usecases/create_event.dart';
+import '../../domain/usecases/update_event.dart';
+import '../../domain/usecases/delete_event.dart';
 import '../../data/data_sources/event_data_source.dart';
 import '../../data/fakes/fake_event_repository.dart';
 
@@ -23,12 +25,23 @@ final createEventUseCaseProvider = Provider<CreateEventUseCase>((ref) {
   return CreateEventUseCase(ref.watch(eventRepositoryProvider));
 });
 
-/// Create Event Controller provider for managing form state
-final createEventControllerProvider = StateNotifierProvider<CreateEventController, CreateEventState>((ref) {
-  return CreateEventController(
-    createEventUseCase: ref.watch(createEventUseCaseProvider),
-  );
+/// UpdateEventUseCase provider
+final updateEventUseCaseProvider = Provider<UpdateEventUseCase>((ref) {
+  return UpdateEventUseCase(ref.watch(eventRepositoryProvider));
 });
+
+/// DeleteEventUseCase provider
+final deleteEventUseCaseProvider = Provider<DeleteEventUseCase>((ref) {
+  return DeleteEventUseCase(ref.watch(eventRepositoryProvider));
+});
+
+/// Create Event Controller provider for managing form state
+final createEventControllerProvider =
+    StateNotifierProvider<CreateEventController, CreateEventState>((ref) {
+      return CreateEventController(
+        createEventUseCase: ref.watch(createEventUseCaseProvider),
+      );
+    });
 
 /// State class for create event form
 class CreateEventState {
@@ -59,15 +72,14 @@ class CreateEventState {
 class CreateEventController extends StateNotifier<CreateEventState> {
   final CreateEventUseCase _createEventUseCase;
 
-  CreateEventController({
-    required CreateEventUseCase createEventUseCase,
-  }) : _createEventUseCase = createEventUseCase,
-       super(const CreateEventState());
+  CreateEventController({required CreateEventUseCase createEventUseCase})
+    : _createEventUseCase = createEventUseCase,
+      super(const CreateEventState());
 
   /// Create a new event
   Future<void> createEvent(Event event) async {
     state = state.copyWith(isLoading: true, error: null);
-    
+
     try {
       final createdEvent = await _createEventUseCase.execute(
         name: event.name,
@@ -77,15 +89,9 @@ class CreateEventController extends StateNotifier<CreateEventState> {
         endDateTime: event.endDateTime,
         location: event.location,
       );
-      state = state.copyWith(
-        isLoading: false,
-        createdEvent: createdEvent,
-      );
+      state = state.copyWith(isLoading: false, createdEvent: createdEvent);
     } catch (e) {
-      state = state.copyWith(
-        isLoading: false,
-        error: e.toString(),
-      );
+      state = state.copyWith(isLoading: false, error: e.toString());
     }
   }
 
@@ -95,19 +101,123 @@ class CreateEventController extends StateNotifier<CreateEventState> {
   }
 }
 
+/// Edit Event Controller provider for managing edit operations
+final editEventControllerProvider =
+    StateNotifierProvider<EditEventController, EditEventState>((ref) {
+      return EditEventController(
+        updateEventUseCase: ref.watch(updateEventUseCaseProvider),
+        deleteEventUseCase: ref.watch(deleteEventUseCaseProvider),
+      );
+    });
+
+/// State class for edit event form
+class EditEventState {
+  final bool isLoading;
+  final String? error;
+  final Event? updatedEvent;
+  final bool isDeleting;
+  final bool isDeleted;
+
+  const EditEventState({
+    this.isLoading = false,
+    this.error,
+    this.updatedEvent,
+    this.isDeleting = false,
+    this.isDeleted = false,
+  });
+
+  EditEventState copyWith({
+    bool? isLoading,
+    String? error,
+    Event? updatedEvent,
+    bool? isDeleting,
+    bool? isDeleted,
+  }) {
+    return EditEventState(
+      isLoading: isLoading ?? this.isLoading,
+      error: error,
+      updatedEvent: updatedEvent ?? this.updatedEvent,
+      isDeleting: isDeleting ?? this.isDeleting,
+      isDeleted: isDeleted ?? this.isDeleted,
+    );
+  }
+}
+
+/// Controller for managing edit event operations
+class EditEventController extends StateNotifier<EditEventState> {
+  final UpdateEventUseCase _updateEventUseCase;
+  final DeleteEventUseCase _deleteEventUseCase;
+
+  EditEventController({
+    required UpdateEventUseCase updateEventUseCase,
+    required DeleteEventUseCase deleteEventUseCase,
+  }) : _updateEventUseCase = updateEventUseCase,
+       _deleteEventUseCase = deleteEventUseCase,
+       super(const EditEventState());
+
+  /// Update an existing event
+  Future<void> updateEvent({
+    required String eventId,
+    required String name,
+    required String emoji,
+    required String groupId,
+    DateTime? startDateTime,
+    DateTime? endDateTime,
+    EventLocation? location,
+  }) async {
+    state = state.copyWith(isLoading: true, error: null);
+
+    try {
+      final updatedEvent = await _updateEventUseCase.execute(
+        eventId: eventId,
+        name: name,
+        emoji: emoji,
+        groupId: groupId,
+        startDateTime: startDateTime,
+        endDateTime: endDateTime,
+        location: location,
+      );
+      state = state.copyWith(isLoading: false, updatedEvent: updatedEvent);
+    } catch (e) {
+      state = state.copyWith(isLoading: false, error: e.toString());
+    }
+  }
+
+  /// Delete an event
+  Future<void> deleteEvent(String eventId) async {
+    state = state.copyWith(isDeleting: true, error: null);
+
+    try {
+      await _deleteEventUseCase.execute(eventId);
+      state = state.copyWith(isDeleting: false, isDeleted: true);
+    } catch (e) {
+      state = state.copyWith(isDeleting: false, error: e.toString());
+    }
+  }
+
+  /// Reset state
+  void reset() {
+    state = const EditEventState();
+  }
+}
+
 /// Provider for getting events by group
-final eventsForGroupProvider = FutureProvider.family<List<Event>, String>((ref, groupId) async {
+final eventsForGroupProvider = FutureProvider.family<List<Event>, String>((
+  ref,
+  groupId,
+) async {
   final repository = ref.watch(eventRepositoryProvider);
   return repository.getEventsForGroup(groupId);
 });
 
 /// Provider for searching locations
-final locationSearchProvider = FutureProvider.family<List<EventLocation>, String>((ref, query) async {
-  if (query.isEmpty) return [];
-  
-  final repository = ref.watch(eventRepositoryProvider);
-  return repository.searchLocations(query);
-});
+final locationSearchProvider =
+    FutureProvider.family<List<EventLocation>, String>((ref, query) async {
+      if (query.isEmpty) return [];
+
+      final repository = ref.watch(eventRepositoryProvider);
+      return repository.searchLocations(query);
+    });
 
 /// Provider for getting current location
 final currentLocationProvider = FutureProvider<EventLocation?>((ref) async {

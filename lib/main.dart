@@ -48,14 +48,8 @@ import '../features/auth/presentation/providers/users_repository_provider.dart';
 import '../features/auth/data/datasources/users_remote_datasource.dart';
 import '../features/auth/data/repositories/users_repository.dart';
 
-// CREATE EVENT (P2 implementation)
-import 'features/create_event/presentation/providers/event_providers.dart';
-
-// GROUPS (P2 implementation)
-import 'features/groups/presentation/providers/groups_provider.dart';
-import 'features/groups/data/repositories/group_repository_impl.dart';
-import 'features/groups/data/data_sources/groups_data_source.dart';
-import 'features/create_event/data/repositories/event_repository_impl.dart';
+// CREATE EVENT & EVENT FEATURES (P1 - fake only, no imports needed)
+// Default fake repositories will be used automatically
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -143,11 +137,9 @@ void main() async {
           return UsersRepository(UsersRemoteDatasource(client));
         }),
 
-        // ✅ CREATE EVENT repo -> real (Supabase) via DI (P2 implementation)
-        eventRepositoryProvider.overrideWith((ref) {
-          final client = Supabase.instance.client;
-          return EventRepositoryImpl(client);
-        }),
+        // EVENT FEATURES -> fake-only (P1 implementation)
+        // Both create_event and event features use fake repositories for P1
+        // No Supabase integration needed yet
       ],
       child: const LazzoApp(),
     ),

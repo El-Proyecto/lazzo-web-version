@@ -341,12 +341,12 @@ class _EmojiSelectorBottomSheetState extends State<EmojiSelectorBottomSheet>
   Widget build(BuildContext context) {
     // Calculate height for 8x4 grid:
     // - Grabber bar + padding: 12 + 4 = 16
-    // - Header + spacing: 50 + 12 = 62
-    // - Tab bar + spacing: 48 + 16 = 64
+    // - Header + spacing: 44 + 12 = 56
+    // - Tab bar + spacing: 40 + 16 = 56
     // - Grid: 4 rows * 48px (emoji size + spacing) = 192
-    // - Bottom padding: 16
-    // Total: 350px
-    const double bottomSheetHeight = 350;
+    // - Bottom padding: 24
+    // Total: 344px (reduced to fix overflow)
+    const double bottomSheetHeight = 344;
 
     return Container(
       width: double.infinity,
@@ -368,7 +368,8 @@ class _EmojiSelectorBottomSheetState extends State<EmojiSelectorBottomSheet>
           ),
 
           // Header
-          Padding(
+          Container(
+            height: 44,
             padding: const EdgeInsets.symmetric(horizontal: Gaps.lg),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -381,13 +382,19 @@ class _EmojiSelectorBottomSheetState extends State<EmojiSelectorBottomSheet>
                 ),
                 IconButton(
                   onPressed: () => Navigator.of(context).pop(),
-                  icon: const Icon(Icons.close, color: BrandColors.text2),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                  icon: const Icon(
+                    Icons.close,
+                    color: BrandColors.text2,
+                    size: 20,
+                  ),
                 ),
               ],
             ),
           ),
 
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
 
           // Tab bar para categorias
           TabBarTheme(
@@ -396,7 +403,7 @@ class _EmojiSelectorBottomSheetState extends State<EmojiSelectorBottomSheet>
               tabAlignment: TabAlignment.fill,
             ),
             child: Container(
-              height: 40, // Altura fixa menor
+              height: 36, // Reduced height
               margin: const EdgeInsets.symmetric(horizontal: Gaps.lg),
               child: TabBar(
                 controller: _tabController,
@@ -408,7 +415,7 @@ class _EmojiSelectorBottomSheetState extends State<EmojiSelectorBottomSheet>
                 labelColor: BrandColors.planning,
                 unselectedLabelColor: BrandColors.text2,
                 dividerColor: Colors.transparent,
-                indicatorSize: TabBarIndicatorSize.tab, // Mudança aqui
+                indicatorSize: TabBarIndicatorSize.tab,
                 onTap: (index) {
                   _pageController.animateToPage(
                     index,
@@ -418,11 +425,11 @@ class _EmojiSelectorBottomSheetState extends State<EmojiSelectorBottomSheet>
                 },
                 tabs: _categories.map((category) {
                   return Container(
-                    height: 40, // Altura específica para cada tab
+                    height: 36,
                     alignment: Alignment.center,
                     child: Icon(
                       category.icon,
-                      size: 18,
+                      size: 16,
                       color: BrandColors.text2,
                     ),
                   );
@@ -431,11 +438,10 @@ class _EmojiSelectorBottomSheetState extends State<EmojiSelectorBottomSheet>
             ),
           ),
 
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
 
-          // Grid de emojis
-          SizedBox(
-            height: 192,
+          // Grid de emojis - use Expanded to take remaining space
+          Expanded(
             child: PageView.builder(
               controller: _pageController,
               onPageChanged: (index) {
@@ -448,12 +454,13 @@ class _EmojiSelectorBottomSheetState extends State<EmojiSelectorBottomSheet>
                   padding: const EdgeInsets.symmetric(horizontal: Gaps.lg),
                   child: GridView.builder(
                     physics: const NeverScrollableScrollPhysics(),
-                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 8,
-                      childAspectRatio: 1,
-                      crossAxisSpacing: 8,
-                      mainAxisSpacing: 8,
-                    ),
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 8,
+                          childAspectRatio: 1,
+                          crossAxisSpacing: 6,
+                          mainAxisSpacing: 6,
+                        ),
                     itemCount: category.emojis.length > 32
                         ? 32
                         : category.emojis.length, // Limit to 4 rows (8x4=32)
@@ -471,7 +478,7 @@ class _EmojiSelectorBottomSheetState extends State<EmojiSelectorBottomSheet>
                             color: isSelected
                                 ? BrandColors.planning.withOpacity(0.1)
                                 : BrandColors.bg3,
-                            borderRadius: BorderRadius.circular(8),
+                            borderRadius: BorderRadius.circular(6),
                             border: isSelected
                                 ? Border.all(
                                     color: BrandColors.planning,
@@ -480,7 +487,10 @@ class _EmojiSelectorBottomSheetState extends State<EmojiSelectorBottomSheet>
                                 : null,
                           ),
                           child: Center(
-                            child: Text(emoji, style: const TextStyle(fontSize: 24)),
+                            child: Text(
+                              emoji,
+                              style: const TextStyle(fontSize: 20),
+                            ),
                           ),
                         ),
                       );
@@ -491,8 +501,8 @@ class _EmojiSelectorBottomSheetState extends State<EmojiSelectorBottomSheet>
             ),
           ),
 
-          // Bottom padding for keyboard
-          SizedBox(height: MediaQuery.of(context).viewInsets.bottom + 16),
+          // Bottom padding
+          const SizedBox(height: 16),
         ],
       ),
     );
