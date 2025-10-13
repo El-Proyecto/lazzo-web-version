@@ -147,7 +147,7 @@ class ActionCard extends StatelessWidget {
       ),
       decoration: ShapeDecoration(
         color: isOverdue
-            ? BrandColors.cantVote.withOpacity(0.1)
+            ? BrandColors.cantVote.withValues(alpha: 0.1)
             : BrandColors.bg3,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(Radii.sm),

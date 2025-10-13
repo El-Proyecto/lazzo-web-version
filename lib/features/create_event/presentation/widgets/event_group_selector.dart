@@ -125,7 +125,7 @@ class EventGroupSelector extends StatelessWidget {
                       : Icon(
                           Icons.group_add,
                           color: isGroupReadOnly
-                              ? BrandColors.text2.withOpacity(0.5)
+                              ? BrandColors.text2.withValues(alpha: 0.5)
                               : BrandColors.text2,
                           size: 20,
                         ),
@@ -342,9 +342,7 @@ class _EventNameEditBottomSheetState extends State<_EventNameEditBottomSheet> {
               'Event Name',
               style: AppText.titleMediumEmph.copyWith(color: BrandColors.text1),
             ),
-
             const SizedBox(height: Gaps.md),
-
             TextField(
               key: widget.nameFieldKey,
               controller: _controller,
@@ -363,9 +361,7 @@ class _EventNameEditBottomSheetState extends State<_EventNameEditBottomSheet> {
                 errorStyle: AppText.bodyMedium.copyWith(color: Colors.red),
               ),
             ),
-
             const SizedBox(height: Gaps.lg),
-
             Row(
               children: [
                 Expanded(
@@ -391,9 +387,8 @@ class _EventNameEditBottomSheetState extends State<_EventNameEditBottomSheet> {
                 const SizedBox(width: Gaps.sm),
                 Expanded(
                   child: ElevatedButton(
-                    onPressed: _isFormValid()
-                        ? _handleSave
-                        : () => _handleSave(),
+                    onPressed:
+                        _isFormValid() ? _handleSave : () => _handleSave(),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: _isFormValid()
                           ? BrandColors.planning
@@ -408,9 +403,8 @@ class _EventNameEditBottomSheetState extends State<_EventNameEditBottomSheet> {
                     child: Text(
                       'Save',
                       style: AppText.labelLarge.copyWith(
-                        color: _isFormValid()
-                            ? Colors.white
-                            : BrandColors.text2,
+                        color:
+                            _isFormValid() ? Colors.white : BrandColors.text2,
                       ),
                     ),
                   ),

@@ -409,7 +409,7 @@ class _EmojiSelectorBottomSheetState extends State<EmojiSelectorBottomSheet>
                 controller: _tabController,
                 isScrollable: false,
                 indicator: BoxDecoration(
-                  color: BrandColors.planning.withOpacity(0.1),
+                  color: BrandColors.planning.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(Radii.sm),
                 ),
                 labelColor: BrandColors.planning,
@@ -456,11 +456,11 @@ class _EmojiSelectorBottomSheetState extends State<EmojiSelectorBottomSheet>
                     physics: const NeverScrollableScrollPhysics(),
                     gridDelegate:
                         const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 8,
-                          childAspectRatio: 1,
-                          crossAxisSpacing: 6,
-                          mainAxisSpacing: 6,
-                        ),
+                      crossAxisCount: 8,
+                      childAspectRatio: 1,
+                      crossAxisSpacing: 6,
+                      mainAxisSpacing: 6,
+                    ),
                     itemCount: category.emojis.length > 32
                         ? 32
                         : category.emojis.length, // Limit to 4 rows (8x4=32)
@@ -476,7 +476,7 @@ class _EmojiSelectorBottomSheetState extends State<EmojiSelectorBottomSheet>
                         child: Container(
                           decoration: BoxDecoration(
                             color: isSelected
-                                ? BrandColors.planning.withOpacity(0.1)
+                                ? BrandColors.planning.withValues(alpha: 0.1)
                                 : BrandColors.bg3,
                             borderRadius: BorderRadius.circular(6),
                             border: isSelected

@@ -88,9 +88,8 @@ class _ProfileAvatarState extends State<ProfileAvatar> {
 
       // Se for String (v2.x), usa diretamente; se numa versão antiga vier como objeto com 'signedUrl',
       // tenta aceder a essa propriedade de forma dinâmica.
-      final String? url = signed is String
-          ? signed
-          : (signed as dynamic).signedUrl as String?;
+      final String? url =
+          signed is String ? signed : (signed as dynamic).signedUrl as String?;
 
       setState(() => _resolvedUrl = url);
     } catch (e) {
@@ -146,7 +145,7 @@ class _ProfileAvatarState extends State<ProfileAvatar> {
       content = Image.network(
         _resolvedUrl!,
         fit: BoxFit.cover,
-        errorBuilder: (_, ___, __) => Center(child: placeholder()),
+        errorBuilder: (_, __, ___) => Center(child: placeholder()),
       );
     } else {
       content = Center(child: placeholder());

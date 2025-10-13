@@ -58,7 +58,8 @@ class _InlineDatePickerState extends State<InlineDatePicker> {
       children: [
         GestureDetector(
           onTap: _previousMonth,
-          child: const Icon(Icons.chevron_left, color: BrandColors.text2, size: 20),
+          child: const Icon(Icons.chevron_left,
+              color: BrandColors.text2, size: 20),
         ),
         Text(
           _formatMonth(_currentMonth),
@@ -69,7 +70,8 @@ class _InlineDatePickerState extends State<InlineDatePicker> {
         ),
         GestureDetector(
           onTap: _nextMonth,
-          child: const Icon(Icons.chevron_right, color: BrandColors.text2, size: 20),
+          child: const Icon(Icons.chevron_right,
+              color: BrandColors.text2, size: 20),
         ),
       ],
     );
@@ -122,13 +124,13 @@ class _InlineDatePickerState extends State<InlineDatePicker> {
     // Days of the month
     for (int day = 1; day <= daysInMonth; day++) {
       final date = DateTime(_currentMonth.year, _currentMonth.month, day);
-      final isSelected =
-          _selectedDate != null &&
+      final isSelected = _selectedDate != null &&
           _selectedDate!.year == date.year &&
           _selectedDate!.month == date.month &&
           _selectedDate!.day == date.day;
       final isToday = _isToday(date);
-      final isPast = date.isBefore(DateTime.now().subtract(const Duration(days: 1)));
+      final isPast =
+          date.isBefore(DateTime.now().subtract(const Duration(days: 1)));
 
       dayWidgets.add(
         GestureDetector(
@@ -140,12 +142,12 @@ class _InlineDatePickerState extends State<InlineDatePicker> {
               color: isSelected
                   ? BrandColors.planning
                   : isToday
-                  ? BrandColors.bg2
-                  : Colors.transparent,
+                      ? BrandColors.bg2
+                      : Colors.transparent,
               borderRadius: BorderRadius.circular(16),
               border: isToday && !isSelected
                   ? Border.all(
-                      color: BrandColors.planning.withOpacity(0.5),
+                      color: BrandColors.planning.withValues(alpha: 0.5),
                       width: 1,
                     )
                   : null,
@@ -155,10 +157,10 @@ class _InlineDatePickerState extends State<InlineDatePicker> {
                 day.toString(),
                 style: AppText.bodyMedium.copyWith(
                   color: isPast
-                      ? BrandColors.text2.withOpacity(0.5)
+                      ? BrandColors.text2.withValues(alpha: 0.5)
                       : isSelected
-                      ? BrandColors.text1
-                      : BrandColors.text1,
+                          ? BrandColors.text1
+                          : BrandColors.text1,
                   fontSize: 12,
                   fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
                 ),
@@ -193,7 +195,8 @@ class _InlineDatePickerState extends State<InlineDatePicker> {
     return Column(
       children: rows
           .map(
-            (row) => Padding(padding: const EdgeInsets.only(bottom: 4), child: row),
+            (row) =>
+                Padding(padding: const EdgeInsets.only(bottom: 4), child: row),
           )
           .toList(),
     );

@@ -53,7 +53,8 @@ class _InlineTimePickerState extends State<InlineTimePicker> {
   Widget build(BuildContext context) {
     return Container(
       height: 120,
-      padding: const EdgeInsets.symmetric(horizontal: Pads.ctlH, vertical: Pads.ctlV),
+      padding: const EdgeInsets.symmetric(
+          horizontal: Pads.ctlH, vertical: Pads.ctlV),
       decoration: BoxDecoration(
         color: BrandColors.bg3,
         borderRadius: BorderRadius.circular(Radii.smAlt),
@@ -146,7 +147,7 @@ class _InlineTimePickerState extends State<InlineTimePicker> {
         onSelectedItemChanged: onSelectedItemChanged,
         selectionOverlay: Container(
           decoration: BoxDecoration(
-            color: BrandColors.planning.withOpacity(0.1),
+            color: BrandColors.planning.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(4),
           ),
         ),

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../../../shared/components/inputs/inputBox.dart';
+import '../../../../shared/components/inputs/input_box.dart';
 
 class EmailInput extends StatelessWidget {
   final TextEditingController controller;

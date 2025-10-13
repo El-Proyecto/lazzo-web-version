@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import '../features/auth/presentation/pages/authenticated_page.dart';
 import '../features/auth/presentation/pages/login/login_page.dart';
 import '../features/home/presentation/pages/home.dart';
-import '../features/auth/presentation/pages/verifyotp.dart';
+import '../features/auth/presentation/pages/verify_otp.dart';
 import '../features/auth/presentation/pages/login/login_otp_verification.dart';
 import '../features/auth/presentation/pages/auth_page.dart';
 import '../features/auth/presentation/pages/finish_setup.dart';
@@ -76,7 +76,6 @@ class AppRouter {
       return EventPage(eventId: args?['eventId'] ?? 'event-1');
     },
     loginPage: (context) => const LoginPage(),
-
     loginVerification: (context) {
       final args =
           ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;

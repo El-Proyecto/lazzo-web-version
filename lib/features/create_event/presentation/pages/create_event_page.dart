@@ -65,14 +65,13 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
         ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
     if (arguments != null && arguments['groupId'] != null) {
       final groupId = arguments['groupId'] as String;
-      
+
       // Buscar grupos reais do Supabase
       final groupsAsync = ref.read(groupsProvider);
       groupsAsync.when(
         data: (groups) {
-          final selectedGroup = groups
-              .where((group) => group.id == groupId)
-              .firstOrNull;
+          final selectedGroup =
+              groups.where((group) => group.id == groupId).firstOrNull;
           if (selectedGroup != null && mounted) {
             setState(() {
               _selectedGroup = GroupInfo(
@@ -172,8 +171,7 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
 
   /// Verifica se o formulário é válido
   bool get _isFormValid {
-    final basicFieldsValid =
-        _nameError == null &&
+    final basicFieldsValid = _nameError == null &&
         _groupError == null &&
         _eventName.trim().isNotEmpty &&
         _eventName != 'Add Event Name' &&
@@ -345,15 +343,17 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
       barrierDismissible: true,
       builder: (context) => ExitConfirmationDialog(
         onSaveDraft: () async {
+          final navigator = Navigator.of(context);
           await _saveDraft();
           if (mounted) {
-            Navigator.of(context).pop(); // Exit Create Event page
+            navigator.pop(); // Exit Create Event page
           }
         },
         onDiscard: () async {
+          final navigator = Navigator.of(context);
           await _draftService.clearDraft();
           if (mounted) {
-            Navigator.of(context).pop(); // Exit Create Event page
+            navigator.pop(); // Exit Create Event page
           }
         },
       ),
@@ -362,8 +362,16 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
 
   @override
   Widget build(BuildContext context) {
-    return WillPopScope(
-      onWillPop: _onWillPop,
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+        final navigator = Navigator.of(context);
+        final shouldPop = await _onWillPop();
+        if (shouldPop && mounted) {
+          navigator.pop();
+        }
+      },
       child: Scaffold(
         backgroundColor: BrandColors.bg1,
         appBar: CreateEventAppBar(
@@ -371,9 +379,10 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
           isEditable: false,
           onHistoryPressed: _showEventHistory,
           onBackPressed: () async {
+            final navigator = Navigator.of(context);
             final shouldPop = await _onWillPop();
             if (shouldPop && mounted) {
-              Navigator.of(context).pop();
+              navigator.pop();
             }
           },
         ),
@@ -492,9 +501,8 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
                     key: const Key('continue_button'),
                     onPressed: _handleContinuePressed,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: _isFormValid
-                          ? BrandColors.planning
-                          : BrandColors.bg3,
+                      backgroundColor:
+                          _isFormValid ? BrandColors.planning : BrandColors.bg3,
                       padding: const EdgeInsets.symmetric(vertical: 12),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(16),
@@ -564,16 +572,18 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
       builder: (context) => Consumer(
         builder: (context, ref, child) {
           final groupsAsync = ref.watch(groupsProvider);
-          
+
           return groupsAsync.when(
             data: (groups) {
               // Convert Group entities to GroupInfo for the dialog
-              final groupInfos = groups.map((group) => GroupInfo(
-                id: group.id,
-                name: group.name,
-                memberCount: group.memberCount,
-              )).toList();
-              
+              final groupInfos = groups
+                  .map((group) => GroupInfo(
+                        id: group.id,
+                        name: group.name,
+                        memberCount: group.memberCount,
+                      ))
+                  .toList();
+
               return GroupSelectionBottomSheet(
                 groups: groupInfos,
                 onGroupSelected: (group) {
@@ -608,16 +618,20 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(Icons.error_outline, 
+                    const Icon(Icons.error_outline,
                         size: 48, color: BrandColors.cantVote),
                     const SizedBox(height: 16),
                     Text('Error loading groups',
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            color: BrandColors.cantVote)),
+                        style: Theme.of(context)
+                            .textTheme
+                            .titleMedium
+                            ?.copyWith(color: BrandColors.cantVote)),
                     const SizedBox(height: 8),
                     Text(error.toString(),
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: BrandColors.text2),
+                        style: Theme.of(context)
+                            .textTheme
+                            .bodyMedium
+                            ?.copyWith(color: BrandColors.text2),
                         textAlign: TextAlign.center),
                   ],
                 ),

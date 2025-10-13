@@ -68,7 +68,7 @@ class _ResendOtpButtonState extends State<ResendOtpButton> {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(Radii.md),
             side: BorderSide(
-              color: BrandColors.text2.withOpacity(0.3), // Borda sutil
+              color: BrandColors.text2.withValues(alpha: 0.3), // Borda sutil
               width: 1,
             ),
           ),

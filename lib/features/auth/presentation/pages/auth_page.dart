@@ -7,7 +7,7 @@ import '../../../../shared/components/sections/lazzo_header.dart';
 import '../widgets/welcome_section.dart';
 import '../providers/auth_provider.dart';
 import '../../../../shared/themes/colors.dart';
-import 'verifyotp.dart';
+import 'verify_otp.dart';
 import './login/login_page.dart';
 
 // Domínio: para tipar o listen
@@ -34,7 +34,6 @@ class _AuthPageState extends ConsumerState<AuthPage> {
     super.initState();
     _nameController.addListener(_validateForm);
     _emailController.addListener(_validateForm);
-    
   }
 
   @override
@@ -82,7 +81,7 @@ class _AuthPageState extends ConsumerState<AuthPage> {
         context,
         MaterialPageRoute(
           builder: (_) => OtpVerificationPage(
-            email: email, 
+            email: email,
             name: name,
           ),
         ),
@@ -142,6 +141,7 @@ class _AuthPageState extends ConsumerState<AuthPage> {
           _pendingOAuth = false;
 
           // Garantir row no backend (se necessário)
+          final navigator = Navigator.of(context);
           final n = ref.read(authProvider.notifier);
           await n.ensureUsersRow(
             u.id,
@@ -150,7 +150,7 @@ class _AuthPageState extends ConsumerState<AuthPage> {
           );
 
           if (mounted) {
-            Navigator.pushNamedAndRemoveUntil(context, '/home', (_) => false);
+            navigator.pushNamedAndRemoveUntil('/home', (_) => false);
           }
         },
       );

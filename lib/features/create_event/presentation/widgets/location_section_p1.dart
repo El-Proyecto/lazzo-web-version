@@ -158,9 +158,9 @@ class _LocationSectionP1State extends State<LocationSectionP1>
             width: double.infinity,
             padding: const EdgeInsets.all(Pads.ctlV),
             decoration: BoxDecoration(
-              color: Colors.red.withOpacity(0.1),
+              color: Colors.red.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(Radii.sm),
-              border: Border.all(color: Colors.red.withOpacity(0.3)),
+              border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
             ),
             child: Text(
               widget.validationError!,
@@ -217,7 +217,6 @@ class _LocationSectionP1State extends State<LocationSectionP1>
           style: AppText.labelLarge.copyWith(color: BrandColors.text1),
         ),
         const SizedBox(height: Gaps.sm),
-
         TextField(
           controller: _locationNameController,
           onChanged: _onLocationNameChanged,
@@ -241,9 +240,7 @@ class _LocationSectionP1State extends State<LocationSectionP1>
             filled: true,
           ),
         ),
-
         const SizedBox(height: Gaps.sm),
-
         Text(
           'O endereço específico será definido mais tarde',
           style: AppText.bodyMedium.copyWith(color: BrandColors.text2),

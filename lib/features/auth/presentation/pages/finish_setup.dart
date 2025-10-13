@@ -109,10 +109,11 @@ class _CreateProfilePageState extends ConsumerState<CreateProfilePage> {
     bool showSuccess = false,
     String successMsg = 'Saved',
   }) async {
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
     try {
       await _repo.upsertPatch(patch);
-      if (showSuccess) {
-        ScaffoldMessenger.of(context).showSnackBar(
+      if (showSuccess && mounted) {
+        scaffoldMessenger.showSnackBar(
           SnackBar(
             content: Text(successMsg),
             behavior: SnackBarBehavior.floating,
@@ -120,12 +121,14 @@ class _CreateProfilePageState extends ConsumerState<CreateProfilePage> {
         );
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Could not save: $e'),
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
+      if (mounted) {
+        scaffoldMessenger.showSnackBar(
+          SnackBar(
+            content: Text('Could not save: $e'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
     }
   }
 
@@ -151,14 +154,14 @@ class _CreateProfilePageState extends ConsumerState<CreateProfilePage> {
 
     // Email vindo por argumento da rota (se existir)
     final routeArgs = ModalRoute.of(context)?.settings.arguments;
-    final String? routeEmail = (routeArgs is Map && routeArgs['email'] is String)
-        ? (routeArgs['email'] as String?)
-        : null;
+    final String? routeEmail =
+        (routeArgs is Map && routeArgs['email'] is String)
+            ? (routeArgs['email'] as String?)
+            : null;
 
     // Prioridade: override local > argumento de rota > auth user
-    final String? effectiveEmail = (_emailOverride ?? routeEmail ?? user?.email)
-        ?.trim()
-        .toLowerCase();
+    final String? effectiveEmail =
+        (_emailOverride ?? routeEmail ?? user?.email)?.trim().toLowerCase();
 
     return Scaffold(
       backgroundColor: const Color(0xFF181818),

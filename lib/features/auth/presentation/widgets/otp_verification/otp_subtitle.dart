@@ -17,7 +17,7 @@ class OtpSubtitle extends StatelessWidget {
             TextSpan(
               text: 'We sent a link to ',
               style: TextStyle(
-                color: theme.colorScheme.onSurface.withOpacity(0.65),
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.65),
                 fontSize: 16,
                 fontFamily: 'Roboto',
                 fontWeight: FontWeight.w400,

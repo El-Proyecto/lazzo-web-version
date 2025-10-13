@@ -19,7 +19,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 version: 1.0.0+1
 
 environment:
-  sdk: ^3.8.1
+  sdk: ^3.5.0
 
 # Dependencies specify other packages that your package needs in order to work.
 # To automatically upgrade your package dependencies to the latest versions
@@ -48,6 +48,7 @@ dependencies:
   # QR Code generation for group invitations
   qr_flutter: ^4.1.0
   # Native share functionality
+  shared_preferences: ^2.2.2
   share_plus: ^10.0.3
   # Image processing and compression
   image: ^4.2.0
