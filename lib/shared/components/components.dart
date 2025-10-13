@@ -9,6 +9,9 @@ export 'cards/action_card.dart';
 // Badge Components
 export 'badges/group_badge.dart';
 
+// Chip Components
+export 'chips/event_status_chip.dart';
+
 // Input Components
 export 'inputs/search_bar.dart';
 export 'inputs/toggle_switch.dart';

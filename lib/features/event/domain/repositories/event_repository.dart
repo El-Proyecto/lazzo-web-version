@@ -24,4 +24,10 @@ abstract class EventRepository {
     double latitude,
     double longitude,
   );
+
+  /// Update event status
+  Future<EventDetail> updateEventStatus(
+    String eventId,
+    EventStatus status,
+  );
 }

@@ -4,6 +4,8 @@ import '../../../../routes/app_router.dart';
 import '../../../create_event/domain/entities/event.dart' as create_event;
 import '../../../../shared/components/nav/common_app_bar.dart';
 import '../../../../shared/components/sections/event_header.dart';
+import '../../../../shared/components/chips/event_status_chip.dart';
+import '../../../../shared/components/dialogs/confirmation_dialog.dart';
 import '../../../../shared/components/widgets/rsvp_widget.dart' as rsvp_widget;
 import '../../../../shared/components/widgets/location_widget.dart';
 import '../../../../shared/components/widgets/date_time_widget.dart';
@@ -12,6 +14,7 @@ import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/themes/colors.dart';
 import '../../domain/entities/rsvp.dart';
 import '../../domain/entities/suggestion.dart';
+import '../../domain/entities/event_detail.dart';
 import '../providers/event_providers.dart';
 import '../widgets/chat_preview_widget.dart';
 import '../widgets/date_time_suggestions_widget.dart'
@@ -26,6 +29,62 @@ class EventPage extends ConsumerWidget {
   final String eventId;
 
   const EventPage({super.key, required this.eventId});
+
+  /// Show dialog to change event status
+  void _showStatusChangeDialog(
+    BuildContext context,
+    WidgetRef ref,
+    String eventId,
+    EventStatus currentStatus,
+  ) {
+    final isConfirmed = currentStatus == EventStatus.confirmed;
+
+    showDialog(
+      context: context,
+      builder: (context) => ConfirmationDialog(
+        title: isConfirmed ? 'Unmark Event' : 'Confirm Event',
+        message: isConfirmed
+            ? 'Are you sure you want to unmark this event as confirmed?'
+            : 'Are you sure you want to confirm this event?',
+        confirmText: isConfirmed ? 'Unmark' : 'Confirm',
+        cancelText: 'Cancel',
+        isDestructive: isConfirmed,
+        onConfirm: () async {
+          final newStatus =
+              isConfirmed ? EventStatus.pending : EventStatus.confirmed;
+
+          await ref
+              .read(eventStatusNotifierProvider(eventId).notifier)
+              .updateStatus(eventId, newStatus);
+
+          // Show success message
+          if (context.mounted) {
+            _showStatusMessage(context, newStatus);
+          }
+        },
+      ),
+    );
+  }
+
+  /// Show message banner when status changes
+  void _showStatusMessage(BuildContext context, EventStatus newStatus) {
+    final isConfirmed = newStatus == EventStatus.confirmed;
+    final message = isConfirmed
+        ? 'Event confirmed successfully!'
+        : 'Event unmarked successfully!';
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: isConfirmed ? BrandColors.planning : BrandColors.text2,
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.all(Gaps.md),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(Radii.sm),
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -71,8 +130,7 @@ class EventPage extends ConsumerWidget {
                         longitude: eventData.location!.longitude,
                       )
                     : null,
-                status: create_event
-                    .EventStatus
+                status: create_event.EventStatus
                     .confirmed, // Default status for existing events
                 createdAt: eventData.createdAt,
               );
@@ -101,6 +159,22 @@ class EventPage extends ConsumerWidget {
                 location: event.location?.displayName,
                 dateTime: event.startDateTime,
                 endDateTime: event.endDateTime,
+              ),
+              const SizedBox(height: Gaps.md),
+
+              // Event status chip
+              Consumer(
+                builder: (context, ref, child) {
+                  return EventStatusChip(
+                    status: event.status,
+                    onTap: () => _showStatusChangeDialog(
+                      context,
+                      ref,
+                      eventId,
+                      event.status,
+                    ),
+                  );
+                },
               ),
               const SizedBox(height: Gaps.lg),
 
@@ -143,13 +217,12 @@ class EventPage extends ConsumerWidget {
                                     pendingCount: pendingCount,
                                     userVote: _getUserVoteStatus(userRsvp),
                                     onGoingPressed: () async {
-                                      final currentStatus =
-                                          userRsvp?.status ??
+                                      final currentStatus = userRsvp?.status ??
                                           RsvpStatus.pending;
                                       final newStatus =
                                           currentStatus == RsvpStatus.going
-                                          ? RsvpStatus.pending
-                                          : RsvpStatus.going;
+                                              ? RsvpStatus.pending
+                                              : RsvpStatus.going;
                                       await ref
                                           .read(
                                             userRsvpProvider(eventId).notifier,
@@ -161,13 +234,12 @@ class EventPage extends ConsumerWidget {
                                       );
                                     },
                                     onNotGoingPressed: () async {
-                                      final currentStatus =
-                                          userRsvp?.status ??
+                                      final currentStatus = userRsvp?.status ??
                                           RsvpStatus.pending;
                                       final newStatus =
                                           currentStatus == RsvpStatus.notGoing
-                                          ? RsvpStatus.pending
-                                          : RsvpStatus.notGoing;
+                                              ? RsvpStatus.pending
+                                              : RsvpStatus.notGoing;
                                       await ref
                                           .read(
                                             userRsvpProvider(eventId).notifier,
@@ -187,22 +259,20 @@ class EventPage extends ConsumerWidget {
                                             userAvatar: r.userAvatar,
                                             status: r.status == RsvpStatus.going
                                                 ? rsvp_widget
-                                                      .RsvpVoteStatus
-                                                      .going
+                                                    .RsvpVoteStatus.going
                                                 : r.status ==
-                                                      RsvpStatus.notGoing
-                                                ? rsvp_widget
-                                                      .RsvpVoteStatus
-                                                      .notGoing
-                                                : rsvp_widget
-                                                      .RsvpVoteStatus
-                                                      .pending,
+                                                        RsvpStatus.notGoing
+                                                    ? rsvp_widget
+                                                        .RsvpVoteStatus.notGoing
+                                                    : rsvp_widget
+                                                        .RsvpVoteStatus.pending,
                                             votedAt: r.createdAt,
                                           ),
                                         )
                                         .toList(),
-                                    onAddSuggestion:
-                                        _getUserVoteStatus(userRsvp) == false
+                                    onAddSuggestion: _getUserVoteStatus(
+                                                userRsvp) ==
+                                            false
                                         ? () {
                                             if (event.startDateTime != null &&
                                                 event.endDateTime != null) {
@@ -213,36 +283,32 @@ class EventPage extends ConsumerWidget {
                                                     event.startDateTime!,
                                                 eventStartTime:
                                                     TimeOfDay.fromDateTime(
-                                                      event.startDateTime!,
-                                                    ),
+                                                  event.startDateTime!,
+                                                ),
                                                 eventEndDate:
                                                     event.endDateTime!,
                                                 eventEndTime:
                                                     TimeOfDay.fromDateTime(
-                                                      event.endDateTime!,
-                                                    ),
-                                                type:
-                                                    locationSuggestions
+                                                  event.endDateTime!,
+                                                ),
+                                                type: locationSuggestions
                                                         .isNotEmpty
                                                     ? SuggestionType.location
                                                     : SuggestionType
-                                                          .dateTime, // Start with Location tab if location suggestions exist
+                                                        .dateTime, // Start with Location tab if location suggestions exist
                                                 currentEventLocationName:
                                                     event.location?.displayName,
                                                 currentEventAddress: event
-                                                    .location
-                                                    ?.formattedAddress,
+                                                    .location?.formattedAddress,
                                               );
                                             }
                                           }
                                         : null,
                                     eventStartDateTime: event.startDateTime,
                                     eventEndDateTime: event.endDateTime,
-                                    isHost:
-                                        event.hostId ==
+                                    isHost: event.hostId ==
                                         'current-user', // TODO: Get from auth service
-                                    hasSuggestions:
-                                        suggestions.isNotEmpty ||
+                                    hasSuggestions: suggestions.isNotEmpty ||
                                         locationSuggestions.isNotEmpty,
                                   );
                                 },
@@ -260,8 +326,8 @@ class EventPage extends ConsumerWidget {
                                         userRsvp?.status ?? RsvpStatus.pending;
                                     final newStatus =
                                         currentStatus == RsvpStatus.going
-                                        ? RsvpStatus.pending
-                                        : RsvpStatus.going;
+                                            ? RsvpStatus.pending
+                                            : RsvpStatus.going;
                                     ref
                                         .read(
                                           userRsvpProvider(eventId).notifier,
@@ -273,8 +339,8 @@ class EventPage extends ConsumerWidget {
                                         userRsvp?.status ?? RsvpStatus.pending;
                                     final newStatus =
                                         currentStatus == RsvpStatus.notGoing
-                                        ? RsvpStatus.pending
-                                        : RsvpStatus.notGoing;
+                                            ? RsvpStatus.pending
+                                            : RsvpStatus.notGoing;
                                     ref
                                         .read(
                                           userRsvpProvider(eventId).notifier,
@@ -291,43 +357,41 @@ class EventPage extends ConsumerWidget {
                                           status: r.status == RsvpStatus.going
                                               ? rsvp_widget.RsvpVoteStatus.going
                                               : r.status == RsvpStatus.notGoing
-                                              ? rsvp_widget
-                                                    .RsvpVoteStatus
-                                                    .notGoing
-                                              : rsvp_widget
-                                                    .RsvpVoteStatus
-                                                    .pending,
+                                                  ? rsvp_widget
+                                                      .RsvpVoteStatus.notGoing
+                                                  : rsvp_widget
+                                                      .RsvpVoteStatus.pending,
                                           votedAt: r.createdAt,
                                         ),
                                       )
                                       .toList(),
                                   onAddSuggestion:
                                       _getUserVoteStatus(userRsvp) == false
-                                      ? () {
-                                          if (event.startDateTime != null &&
-                                              event.endDateTime != null) {
-                                            showAddSuggestionBottomSheet(
-                                              context,
-                                              eventId: eventId,
-                                              eventStartDate:
-                                                  event.startDateTime!,
-                                              eventStartTime:
-                                                  TimeOfDay.fromDateTime(
+                                          ? () {
+                                              if (event.startDateTime != null &&
+                                                  event.endDateTime != null) {
+                                                showAddSuggestionBottomSheet(
+                                                  context,
+                                                  eventId: eventId,
+                                                  eventStartDate:
+                                                      event.startDateTime!,
+                                                  eventStartTime:
+                                                      TimeOfDay.fromDateTime(
                                                     event.startDateTime!,
                                                   ),
-                                              eventEndDate: event.endDateTime!,
-                                              eventEndTime:
-                                                  TimeOfDay.fromDateTime(
+                                                  eventEndDate:
+                                                      event.endDateTime!,
+                                                  eventEndTime:
+                                                      TimeOfDay.fromDateTime(
                                                     event.endDateTime!,
                                                   ),
-                                            );
-                                          }
-                                        }
-                                      : null,
+                                                );
+                                              }
+                                            }
+                                          : null,
                                   eventStartDateTime: event.startDateTime,
                                   eventEndDateTime: event.endDateTime,
-                                  isHost:
-                                      event.hostId ==
+                                  isHost: event.hostId ==
                                       'current-user', // TODO: Get from auth service
                                   hasSuggestions:
                                       false, // Default to false when loading
@@ -346,8 +410,8 @@ class EventPage extends ConsumerWidget {
                                         userRsvp?.status ?? RsvpStatus.pending;
                                     final newStatus =
                                         currentStatus == RsvpStatus.going
-                                        ? RsvpStatus.pending
-                                        : RsvpStatus.going;
+                                            ? RsvpStatus.pending
+                                            : RsvpStatus.going;
                                     ref
                                         .read(
                                           userRsvpProvider(eventId).notifier,
@@ -359,8 +423,8 @@ class EventPage extends ConsumerWidget {
                                         userRsvp?.status ?? RsvpStatus.pending;
                                     final newStatus =
                                         currentStatus == RsvpStatus.notGoing
-                                        ? RsvpStatus.pending
-                                        : RsvpStatus.notGoing;
+                                            ? RsvpStatus.pending
+                                            : RsvpStatus.notGoing;
                                     ref
                                         .read(
                                           userRsvpProvider(eventId).notifier,
@@ -377,43 +441,41 @@ class EventPage extends ConsumerWidget {
                                           status: r.status == RsvpStatus.going
                                               ? rsvp_widget.RsvpVoteStatus.going
                                               : r.status == RsvpStatus.notGoing
-                                              ? rsvp_widget
-                                                    .RsvpVoteStatus
-                                                    .notGoing
-                                              : rsvp_widget
-                                                    .RsvpVoteStatus
-                                                    .pending,
+                                                  ? rsvp_widget
+                                                      .RsvpVoteStatus.notGoing
+                                                  : rsvp_widget
+                                                      .RsvpVoteStatus.pending,
                                           votedAt: r.createdAt,
                                         ),
                                       )
                                       .toList(),
                                   onAddSuggestion:
                                       _getUserVoteStatus(userRsvp) == false
-                                      ? () {
-                                          if (event.startDateTime != null &&
-                                              event.endDateTime != null) {
-                                            showAddSuggestionBottomSheet(
-                                              context,
-                                              eventId: eventId,
-                                              eventStartDate:
-                                                  event.startDateTime!,
-                                              eventStartTime:
-                                                  TimeOfDay.fromDateTime(
+                                          ? () {
+                                              if (event.startDateTime != null &&
+                                                  event.endDateTime != null) {
+                                                showAddSuggestionBottomSheet(
+                                                  context,
+                                                  eventId: eventId,
+                                                  eventStartDate:
+                                                      event.startDateTime!,
+                                                  eventStartTime:
+                                                      TimeOfDay.fromDateTime(
                                                     event.startDateTime!,
                                                   ),
-                                              eventEndDate: event.endDateTime!,
-                                              eventEndTime:
-                                                  TimeOfDay.fromDateTime(
+                                                  eventEndDate:
+                                                      event.endDateTime!,
+                                                  eventEndTime:
+                                                      TimeOfDay.fromDateTime(
                                                     event.endDateTime!,
                                                   ),
-                                            );
-                                          }
-                                        }
-                                      : null,
+                                                );
+                                              }
+                                            }
+                                          : null,
                                   eventStartDateTime: event.startDateTime,
                                   eventEndDateTime: event.endDateTime,
-                                  isHost:
-                                      event.hostId ==
+                                  isHost: event.hostId ==
                                       'current-user', // TODO: Get from auth service
                                   hasSuggestions:
                                       false, // Default to false on error
@@ -444,8 +506,8 @@ class EventPage extends ConsumerWidget {
                                 userRsvp?.status ?? RsvpStatus.pending;
                             final newStatus =
                                 currentStatus == RsvpStatus.notGoing
-                                ? RsvpStatus.pending
-                                : RsvpStatus.notGoing;
+                                    ? RsvpStatus.pending
+                                    : RsvpStatus.notGoing;
                             ref
                                 .read(userRsvpProvider(eventId).notifier)
                                 .submitVote(newStatus);
@@ -460,8 +522,8 @@ class EventPage extends ConsumerWidget {
                                   status: r.status == RsvpStatus.going
                                       ? rsvp_widget.RsvpVoteStatus.going
                                       : r.status == RsvpStatus.notGoing
-                                      ? rsvp_widget.RsvpVoteStatus.notGoing
-                                      : rsvp_widget.RsvpVoteStatus.pending,
+                                          ? rsvp_widget.RsvpVoteStatus.notGoing
+                                          : rsvp_widget.RsvpVoteStatus.pending,
                                   votedAt: r.createdAt,
                                 ),
                               )
@@ -487,8 +549,7 @@ class EventPage extends ConsumerWidget {
                               : null,
                           eventStartDateTime: event.startDateTime,
                           eventEndDateTime: event.endDateTime,
-                          isHost:
-                              event.hostId ==
+                          isHost: event.hostId ==
                               'current-user', // TODO: Get from auth service
                           hasSuggestions:
                               false, // Default to false when loading
@@ -515,8 +576,8 @@ class EventPage extends ConsumerWidget {
                                 userRsvp?.status ?? RsvpStatus.pending;
                             final newStatus =
                                 currentStatus == RsvpStatus.notGoing
-                                ? RsvpStatus.pending
-                                : RsvpStatus.notGoing;
+                                    ? RsvpStatus.pending
+                                    : RsvpStatus.notGoing;
                             ref
                                 .read(userRsvpProvider(eventId).notifier)
                                 .submitVote(newStatus);
@@ -531,8 +592,8 @@ class EventPage extends ConsumerWidget {
                                   status: r.status == RsvpStatus.going
                                       ? rsvp_widget.RsvpVoteStatus.going
                                       : r.status == RsvpStatus.notGoing
-                                      ? rsvp_widget.RsvpVoteStatus.notGoing
-                                      : rsvp_widget.RsvpVoteStatus.pending,
+                                          ? rsvp_widget.RsvpVoteStatus.notGoing
+                                          : rsvp_widget.RsvpVoteStatus.pending,
                                   votedAt: r.createdAt,
                                 ),
                               )
@@ -558,8 +619,7 @@ class EventPage extends ConsumerWidget {
                               : null,
                           eventStartDateTime: event.startDateTime,
                           eventEndDateTime: event.endDateTime,
-                          isHost:
-                              event.hostId ==
+                          isHost: event.hostId ==
                               'current-user', // TODO: Get from auth service
                           hasSuggestions: false, // Default to false on error
                         ),
@@ -636,8 +696,7 @@ class EventPage extends ConsumerWidget {
                                       )
                                       .toggleVote_(eventId, suggestionId);
                                 },
-                                isHost:
-                                    event.hostId ==
+                                isHost: event.hostId ==
                                     'current-user', // TODO: Get from auth service
                                 onAddSuggestion: () {
                                   if (event.startDateTime != null &&

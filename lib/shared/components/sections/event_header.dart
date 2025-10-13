@@ -29,7 +29,7 @@ class EventHeader extends StatelessWidget {
         // Emoji
         Text(
           emoji,
-          style: const TextStyle(fontSize: 64, height: 1.0),
+          style: const TextStyle(fontSize: 80, height: 1.0),
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: Gaps.xs),

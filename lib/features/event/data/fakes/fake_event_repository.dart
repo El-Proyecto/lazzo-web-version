@@ -107,8 +107,7 @@ class FakeEventRepository implements EventRepository {
     _initializeIfEmpty();
 
     // Get the existing event or create a default one
-    final existingEvent =
-        _events[eventId] ??
+    final existingEvent = _events[eventId] ??
         EventDetail(
           id: eventId,
           name: 'Churrascada em Sesimbra',
@@ -185,6 +184,42 @@ class FakeEventRepository implements EventRepository {
         longitude: longitude,
       ),
       status: existingEvent.status,
+      createdAt: existingEvent.createdAt,
+      hostId: existingEvent.hostId,
+      goingCount: existingEvent.goingCount,
+      notGoingCount: existingEvent.notGoingCount,
+    );
+
+    // Store the updated event
+    _events[eventId] = updatedEvent;
+
+    return updatedEvent;
+  }
+
+  @override
+  Future<EventDetail> updateEventStatus(
+    String eventId,
+    EventStatus status,
+  ) async {
+    _initializeIfEmpty();
+
+    final existingEvent = _events[eventId];
+    if (existingEvent == null) {
+      throw Exception('Event not found');
+    }
+
+    await Future.delayed(const Duration(milliseconds: 300));
+
+    // Update the event with new status
+    final updatedEvent = EventDetail(
+      id: existingEvent.id,
+      name: existingEvent.name,
+      emoji: existingEvent.emoji,
+      groupId: existingEvent.groupId,
+      startDateTime: existingEvent.startDateTime,
+      endDateTime: existingEvent.endDateTime,
+      location: existingEvent.location,
+      status: status,
       createdAt: existingEvent.createdAt,
       hostId: existingEvent.hostId,
       goingCount: existingEvent.goingCount,
