@@ -459,13 +459,37 @@ class SupabaseGroupsDataSource implements GroupsDataSource {
       if (membersCount.count <= 1) {
         print('   🗑️ Last member leaving - deleting group');
         
-        // Remove todas as configurações restantes do grupo
+        // STEP 4.1: Buscar dados do grupo para verificar se tem imagem
+        final groupData = await _client
+            .from('groups')
+            .select('photo_url')
+            .eq('id', groupId)
+            .maybeSingle();
+        
+        // STEP 4.2: Apagar imagem do storage se existir
+        if (groupData != null && groupData['photo_url'] != null) {
+          final photoPath = groupData['photo_url'] as String;
+          if (photoPath.isNotEmpty) {
+            try {
+              print('   📸 Deleting group image from storage: $photoPath');
+              await _client.storage
+                  .from(_bucketName)
+                  .remove([photoPath]);
+              print('   ✅ Group image deleted from storage');
+            } catch (e) {
+              print('   ⚠️ Failed to delete group image: $e (continuing with group deletion)');
+              // Continue mesmo se falhar a remoção da imagem
+            }
+          }
+        }
+        
+        // STEP 4.3: Remove todas as configurações restantes do grupo
         await _client
             .from('group_user_settings')
             .delete()
             .eq('group_id', groupId);
         
-        // Remove o grupo da tabela groups
+        // STEP 4.4: Remove o grupo da tabela groups
         await _client
             .from('groups')
             .delete()
