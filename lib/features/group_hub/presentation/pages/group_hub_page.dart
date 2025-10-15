@@ -97,7 +97,7 @@ class _GroupHubPageState extends ConsumerState<GroupHubPage>
             width: 80,
             height: 80,
             decoration: BoxDecoration(
-              shape: BoxShape.circle,
+              borderRadius: BorderRadius.circular(16),
               color: BrandColors.bg3,
               image: widget.groupPhotoUrl != null
                   ? DecorationImage(

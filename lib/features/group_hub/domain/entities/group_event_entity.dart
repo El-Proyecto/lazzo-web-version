@@ -1,3 +1,5 @@
+import '../../../../shared/components/widgets/rsvp_widget.dart';
+
 /// Group event entity for display in group hub
 /// Contains essential info needed for event cards in the Events section
 class GroupEventEntity {
@@ -9,6 +11,10 @@ class GroupEventEntity {
   final GroupEventStatus status;
   final int goingCount;
   final List<String> attendeeAvatars; // Profile picture URLs
+  final List<String> attendeeNames; // Names of attendees
+  final bool?
+      userVote; // true = going, false = not going, null = pending/not voted
+  final List<RsvpVote> allVotes; // All votes for the bottom sheet
 
   const GroupEventEntity({
     required this.id,
@@ -19,6 +25,9 @@ class GroupEventEntity {
     required this.status,
     required this.goingCount,
     required this.attendeeAvatars,
+    required this.attendeeNames,
+    this.userVote,
+    this.allVotes = const [],
   });
 
   GroupEventEntity copyWith({
@@ -30,6 +39,9 @@ class GroupEventEntity {
     GroupEventStatus? status,
     int? goingCount,
     List<String>? attendeeAvatars,
+    List<String>? attendeeNames,
+    bool? userVote,
+    List<RsvpVote>? allVotes,
   }) {
     return GroupEventEntity(
       id: id ?? this.id,
@@ -40,6 +52,9 @@ class GroupEventEntity {
       status: status ?? this.status,
       goingCount: goingCount ?? this.goingCount,
       attendeeAvatars: attendeeAvatars ?? this.attendeeAvatars,
+      attendeeNames: attendeeNames ?? this.attendeeNames,
+      userVote: userVote ?? this.userVote,
+      allVotes: allVotes ?? this.allVotes,
     );
   }
 
@@ -54,7 +69,10 @@ class GroupEventEntity {
         other.location == location &&
         other.status == status &&
         other.goingCount == goingCount &&
-        other.attendeeAvatars == attendeeAvatars;
+        other.attendeeAvatars == attendeeAvatars &&
+        other.attendeeNames == attendeeNames &&
+        other.userVote == userVote &&
+        other.allVotes == allVotes;
   }
 
   @override
@@ -68,6 +86,9 @@ class GroupEventEntity {
       status,
       goingCount,
       attendeeAvatars,
+      attendeeNames,
+      userVote,
+      allVotes,
     );
   }
 }
