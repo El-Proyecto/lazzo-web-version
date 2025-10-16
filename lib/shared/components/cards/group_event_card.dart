@@ -7,20 +7,42 @@ import '../widgets/votes_bottom_sheet.dart';
 
 /// Reusable event card for group hub Events section
 /// Shows event details with date, status, attendees, and going count
-class GroupEventCard extends StatelessWidget {
+class GroupEventCard extends StatefulWidget {
   final GroupEventEntity event;
   final VoidCallback? onTap;
+  final Function(String eventId, bool vote)? onVoteChanged;
 
   const GroupEventCard({
     super.key,
     required this.event,
     this.onTap,
+    this.onVoteChanged,
   });
+
+  @override
+  State<GroupEventCard> createState() => _GroupEventCardState();
+}
+
+class _GroupEventCardState extends State<GroupEventCard> {
+  late GroupEventEntity _currentEvent;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentEvent = widget.event;
+  }
+
+  void _updateVote(bool vote) {
+    setState(() {
+      _currentEvent = _currentEvent.copyWith(userVote: vote);
+    });
+    widget.onVoteChanged?.call(_currentEvent.id, vote);
+  }
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: onTap,
+      onTap: widget.onTap,
       child: Container(
         padding: const EdgeInsets.all(Pads.sectionH),
         decoration: BoxDecoration(
@@ -52,7 +74,7 @@ class GroupEventCard extends StatelessWidget {
       children: [
         // Date
         Text(
-          event.date != null ? _formatEventDate(event.date!) : 'To be decided',
+          _currentEvent.date != null ? _formatEventDate(_currentEvent.date!) : 'To be decided',
           style: AppText.bodyMedium.copyWith(
             color: BrandColors.text2,
             fontWeight: FontWeight.w500,
@@ -66,23 +88,23 @@ class GroupEventCard extends StatelessWidget {
             vertical: Pads.ctlVXss,
           ),
           decoration: BoxDecoration(
-            color: event.status == GroupEventStatus.confirmed
+            color: _currentEvent.status == GroupEventStatus.confirmed
                 ? BrandColors.planning
                 : BrandColors.bg3,
             borderRadius: BorderRadius.circular(Radii.pill),
             border: Border.all(
-              color: event.status == GroupEventStatus.confirmed
+              color: _currentEvent.status == GroupEventStatus.confirmed
                   ? BrandColors.planning
                   : BrandColors.border,
               width: 1,
             ),
           ),
           child: Text(
-            event.status == GroupEventStatus.confirmed
+            _currentEvent.status == GroupEventStatus.confirmed
                 ? 'Confirmed'
                 : 'Pending',
             style: AppText.labelLarge.copyWith(
-              color: event.status == GroupEventStatus.confirmed
+              color: _currentEvent.status == GroupEventStatus.confirmed
                   ? Colors.white
                   : BrandColors.text1,
               fontWeight: FontWeight.w500,
@@ -98,7 +120,7 @@ class GroupEventCard extends StatelessWidget {
       children: [
         // Event emoji
         Text(
-          event.emoji,
+          _currentEvent.emoji,
           style: const TextStyle(fontSize: 42),
         ),
         const SizedBox(width: Gaps.md),
@@ -109,17 +131,17 @@ class GroupEventCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                event.name,
+                _currentEvent.name,
                 style: AppText.titleMediumEmph.copyWith(
                   color: BrandColors.text1,
                 ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
-              if (event.location != null) ...[
+              if (_currentEvent.location != null) ...[
                 const SizedBox(height: 2),
                 Text(
-                  event.location!,
+                  _currentEvent.location!,
                   style: AppText.bodyMedium.copyWith(
                     color: BrandColors.text2,
                   ),
@@ -167,50 +189,56 @@ class GroupEventCard extends StatelessWidget {
   void _showVotesBottomSheet(BuildContext context) {
     VotesBottomSheet.show(
       context: context,
-      allVotes: event.allVotes,
+      allVotes: _currentEvent.allVotes,
+      eventName: _currentEvent.name,
+      eventEmoji: _currentEvent.emoji,
+      eventDate: _currentEvent.date != null ? _formatEventDate(_currentEvent.date!) : null,
+      eventLocation: _currentEvent.location,
+      userVote: _currentEvent.userVote,
+      onVoteChanged: (vote) => _updateVote(vote),
     );
   }
 
   String _buildAttendeeText() {
     // If user hasn't voted yet, show "Tap to vote!" message
-    if (event.userVote == null) {
-      return '${event.goingCount} going • Tap to vote!';
+    if (_currentEvent.userVote == null) {
+      return '${_currentEvent.goingCount} going • Tap to vote!';
     }
 
-    if (event.attendeeNames.isEmpty) {
-      return '${event.goingCount} going';
+    if (_currentEvent.attendeeNames.isEmpty) {
+      return '${_currentEvent.goingCount} going';
     }
 
-    if (event.attendeeNames.length == 1) {
-      return '${event.goingCount} going • ${event.attendeeNames.first}';
+    if (_currentEvent.attendeeNames.length == 1) {
+      return '${_currentEvent.goingCount} going • ${_currentEvent.attendeeNames.first}';
     }
 
-    if (event.attendeeNames.length == 2) {
-      return '${event.goingCount} going • ${event.attendeeNames[0]} and ${event.attendeeNames[1]}';
+    if (_currentEvent.attendeeNames.length == 2) {
+      return '${_currentEvent.goingCount} going • ${_currentEvent.attendeeNames[0]} and ${_currentEvent.attendeeNames[1]}';
     }
 
-    if (event.attendeeNames.length >= 3) {
-      final othersCount = event.attendeeNames.length - 2;
-      return '${event.goingCount} going • ${event.attendeeNames[0]}, ${event.attendeeNames[1]} and $othersCount other${othersCount > 1 ? 's' : ''}';
+    if (_currentEvent.attendeeNames.length >= 3) {
+      final othersCount = _currentEvent.attendeeNames.length - 2;
+      return '${_currentEvent.goingCount} going • ${_currentEvent.attendeeNames[0]}, ${_currentEvent.attendeeNames[1]} and $othersCount other${othersCount > 1 ? 's' : ''}';
     }
 
-    return '${event.goingCount} going';
+    return '${_currentEvent.goingCount} going';
   }
 
   Widget _buildAttendeeAvatars() {
     const avatarSize = 24.0;
     const overlap = 8.0;
 
-    if (event.attendeeAvatars.isEmpty) {
+    if (_currentEvent.attendeeAvatars.isEmpty) {
       return const SizedBox.shrink();
     }
 
     // Always show max 2 avatars + overflow indicator if there are more than 2
-    final hasOverflow = event.attendeeAvatars.length > 2;
+    final hasOverflow = _currentEvent.attendeeAvatars.length > 2;
     final visibleAvatars = hasOverflow
-        ? event.attendeeAvatars.take(2).toList()
-        : event.attendeeAvatars.take(3).toList();
-    final remainingCount = hasOverflow ? event.attendeeAvatars.length - 2 : 0;
+        ? _currentEvent.attendeeAvatars.take(2).toList()
+        : _currentEvent.attendeeAvatars.take(3).toList();
+    final remainingCount = hasOverflow ? _currentEvent.attendeeAvatars.length - 2 : 0;
 
     final totalWidth = hasOverflow
         ? avatarSize +

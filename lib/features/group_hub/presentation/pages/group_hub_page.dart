@@ -68,7 +68,7 @@ class _GroupHubPageState extends ConsumerState<GroupHubPage>
 
             // Segmented control
             _buildSegmentedControl(),
-            const SizedBox(height: Gaps.lg),
+            const SizedBox(height: Gaps.md),
 
             // Content sections
             Expanded(
@@ -129,7 +129,7 @@ class _GroupHubPageState extends ConsumerState<GroupHubPage>
           // Member count
           Text(
             '${widget.memberCount} Members',
-            style: AppText.bodyMedium.copyWith(
+            style: AppText.bodyMediumEmph.copyWith(
               color: BrandColors.text2,
             ),
           ),
@@ -192,17 +192,31 @@ class _GroupHubPageState extends ConsumerState<GroupHubPage>
 
         return ListView.separated(
           padding: const EdgeInsets.symmetric(horizontal: Insets.screenH),
-          itemCount: events.length,
-          separatorBuilder: (context, index) => const SizedBox(height: Gaps.md),
+          itemCount: events.length + 1,
+          separatorBuilder: (context, index) {
+            if (index == events.length - 1) {
+              // After last event, no separator (bottom padding handled below)
+              return const SizedBox.shrink();
+            }
+            return const SizedBox(height: Gaps.md);
+          },
           itemBuilder: (context, index) {
-            final event = events[index];
-            return GroupEventCard(
-              event: event,
-              onTap: () {
-                // TODO: Navigate to event detail
-                print('Navigate to event: ${event.id}');
-              },
-            );
+            if (index < events.length) {
+              final event = events[index];
+              return GroupEventCard(
+                event: event,
+                onTap: () {
+                  // TODO: Navigate to event detail
+                  print('Navigate to event: ${event.id}');
+                },
+                onVoteChanged: (eventId, vote) {
+                  // TODO: Implement vote persistence
+                  print('Vote changed for event $eventId: $vote');
+                },
+              );
+            } else {
+              return const SizedBox(height: Gaps.md);
+            }
           },
         );
       },
