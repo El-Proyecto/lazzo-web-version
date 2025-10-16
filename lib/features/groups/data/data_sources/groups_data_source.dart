@@ -466,18 +466,34 @@ class SupabaseGroupsDataSource implements GroupsDataSource {
             .eq('id', groupId)
             .maybeSingle();
         
-        // STEP 4.2: Apagar imagem do storage se existir
+        // STEP 4.2: Apagar TODOS os ficheiros do folder do grupo no storage
         if (groupData != null && groupData['photo_url'] != null) {
           final photoPath = groupData['photo_url'] as String;
           if (photoPath.isNotEmpty) {
             try {
-              print('   📸 Deleting group image from storage: $photoPath');
-              await _client.storage
+              print('   📸 Deleting entire group folder from storage: groups/$groupId/');
+              
+              // List all files in the group's folder
+              final filesList = await _client.storage
                   .from(_bucketName)
-                  .remove([photoPath]);
-              print('   ✅ Group image deleted from storage');
+                  .list(path: 'groups/$groupId');
+              
+              // Extract file paths (append folder prefix to each file name)
+              final filePaths = filesList
+                  .map((file) => 'groups/$groupId/${file.name}')
+                  .toList();
+              
+              if (filePaths.isNotEmpty) {
+                // Delete all files in the folder
+                await _client.storage
+                    .from(_bucketName)
+                    .remove(filePaths);
+                print('   ✅ Deleted ${filePaths.length} file(s) from group folder');
+              } else {
+                print('   ℹ️ No files found in group folder');
+              }
             } catch (e) {
-              print('   ⚠️ Failed to delete group image: $e (continuing with group deletion)');
+              print('   ⚠️ Failed to delete group folder: $e (continuing with group deletion)');
               // Continue mesmo se falhar a remoção da imagem
             }
           }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
 import '../widgets/ios_birthday_picker_card.dart';
 import '../widgets/editable_profile_photo.dart';
 import '../widgets/editable_info_card.dart';
@@ -371,26 +372,101 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
     
     switch (action) {
       case PhotoSourceAction.gallery:
-        // TODO: Implement gallery picker
-        _showSnackBar('Gallery picker not implemented yet');
+        await _pickImageFromGallery(profile);
         break;
       case PhotoSourceAction.camera:
-        // TODO: Implement camera picker
-        _showSnackBar('Camera picker not implemented yet');
+        await _pickImageFromCamera(profile);
         break;
       case PhotoSourceAction.remove:
-        final updatedProfile = profile.copyWith(profileImageUrl: null);
-        try {
-          // 🎯 SIMPLE: Use controller to update and sync UI
-          final controller = ref.read(editProfileControllerProvider);
-          await controller.updateProfile(updatedProfile);
-          
-          print('✅ [EditProfilePage] Photo removed successfully');
-        } catch (e) {
-          print('❌ [EditProfilePage] Photo removal failed: $e');
-          _showSnackBar('Failed to remove photo');
-        }
+        await _removePhoto(profile);
         break;
+    }
+  }
+
+  Future<void> _pickImageFromGallery(ProfileEntity profile) async {
+    try {
+      final picker = ImagePicker();
+      final XFile? image = await picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 1024,
+        maxHeight: 1024,
+        imageQuality: 85,
+      );
+
+      if (image != null) {
+        await _uploadProfilePicture(image, profile);
+      }
+    } catch (e) {
+      print('❌ [EditProfilePage] Gallery picker failed: $e');
+      _showSnackBar('Failed to pick image from gallery');
+    }
+  }
+
+  Future<void> _pickImageFromCamera(ProfileEntity profile) async {
+    try {
+      final picker = ImagePicker();
+      final XFile? image = await picker.pickImage(
+        source: ImageSource.camera,
+        maxWidth: 1024,
+        maxHeight: 1024,
+        imageQuality: 85,
+      );
+
+      if (image != null) {
+        await _uploadProfilePicture(image, profile);
+      }
+    } catch (e) {
+      print('❌ [EditProfilePage] Camera picker failed: $e');
+      _showSnackBar('Failed to take photo');
+    }
+  }
+
+  Future<void> _uploadProfilePicture(XFile image, ProfileEntity profile) async {
+    try {
+      print('📤 [EditProfilePage] Uploading profile picture...');
+      
+      // Show loading
+      _showSnackBar('Uploading photo...');
+      
+      final controller = ref.read(editProfileControllerProvider);
+      
+      // Upload the image and get the storage path
+      final imagePath = await ref.read(profileRepositoryProvider).uploadProfilePicture(image);
+      
+      print('✅ [EditProfilePage] Image uploaded to: $imagePath');
+      
+      // Update profile with new image path
+      final updatedProfile = profile.copyWith(profileImageUrl: imagePath);
+      await controller.updateProfile(updatedProfile);
+      
+      print('✅ [EditProfilePage] Profile updated with new photo');
+      _showSnackBar('Photo updated successfully');
+    } catch (e) {
+      print('❌ [EditProfilePage] Photo upload failed: $e');
+      _showSnackBar('Failed to upload photo');
+    }
+  }
+
+  Future<void> _removePhoto(ProfileEntity profile) async {
+    try {
+      print('🗑️ [EditProfilePage] Removing profile photo...');
+      
+      final controller = ref.read(editProfileControllerProvider);
+      
+      // Delete the image from storage if it exists
+      if (profile.profileImageUrl != null && profile.profileImageUrl!.isNotEmpty) {
+        await ref.read(profileRepositoryProvider).deleteProfilePicture();
+      }
+      
+      // Update profile to remove image reference
+      final updatedProfile = profile.copyWith(profileImageUrl: null);
+      await controller.updateProfile(updatedProfile);
+      
+      print('✅ [EditProfilePage] Photo removed successfully');
+      _showSnackBar('Photo removed successfully');
+    } catch (e) {
+      print('❌ [EditProfilePage] Photo removal failed: $e');
+      _showSnackBar('Failed to remove photo');
     }
   }
 

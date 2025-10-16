@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/constants/text_styles.dart';
+import '../../../../routes/app_router.dart';
 import '../widgets/create_event_app_bar.dart';
 import '../widgets/event_group_selector.dart';
 import '../widgets/date_time_section.dart';
@@ -724,12 +725,50 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
     });
   }
 
-  void _createNewGroup() {
-    // Navegar para página de criação de grupo
-    // Por enquanto, mostrar snackbar
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Create Group feature coming soon!')),
+  void _createNewGroup() async {
+    print('🎯 [CreateEvent] Navigating to create group page');
+    
+    // Save current draft before navigating
+    await _saveDraft();
+    
+    // Navigate to create group page and wait for result
+    final result = await Navigator.of(context).pushNamed(
+      AppRouter.createGroup,
+      arguments: {'fromCreateEvent': true},
     );
+    
+    // Check if a group was created and returned
+    if (result != null && result is Map<String, dynamic>) {
+      final groupId = result['groupId'] as String?;
+      final groupName = result['groupName'] as String?;
+      final memberCount = result['memberCount'] as int?;
+      
+      if (groupId != null && groupName != null && mounted) {
+        print('✅ [CreateEvent] Group created: $groupId');
+        
+        setState(() {
+          _selectedGroup = GroupInfo(
+            id: groupId,
+            name: groupName,
+            memberCount: memberCount ?? 1,
+            imageUrl: result['imageUrl'] as String?,
+          );
+          
+          // Clear error if group is now selected
+          if (_showValidationErrors) {
+            _groupError = null;
+          }
+        });
+        
+        // Show success message
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Group "$groupName" created!'),
+            backgroundColor: BrandColors.planning,
+          ),
+        );
+      }
+    }
   }
 
   void _onEventCreated() async {

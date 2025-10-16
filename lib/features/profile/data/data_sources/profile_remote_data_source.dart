@@ -92,12 +92,12 @@ class ProfileRemoteDataSource {
         userId: user.id,
       );
       
-      // Update database with the storage path
+      // Update database with the storage path (use updated_at instead of photo_updated_at)
       await client
           .from('users')
           .update({
             'avatar_url': storagePath,
-            'photo_updated_at': DateTime.now().toIso8601String(),
+            'updated_at': DateTime.now().toIso8601String(),
           })
           .eq('id', user.id);
       
@@ -168,8 +168,10 @@ class ProfileRemoteDataSource {
       final compressedBytes = await ImageCompressionService.compressToWebP(xFile);
       
       // Create object path with timestamp for versioning
+      // CRITICAL: Path MUST start with userId (not "users/userId") for RLS policy to work
+      // Policy checks: (storage.foldername(name))[1] = auth.uid()::text
       final timestamp = DateTime.now().millisecondsSinceEpoch;
-      final objectPath = 'users/$userId/profile_$timestamp.webp';
+      final objectPath = '$userId/profile_$timestamp.webp';
       
       // Upload to storage
       await client.storage.from(_bucketName).uploadBinary(
@@ -218,12 +220,12 @@ class ProfileRemoteDataSource {
         print('   ✅ Profile picture deleted from storage');
       }
 
-      // Update database to remove avatar_url
+      // Update database to remove avatar_url (use updated_at instead of photo_updated_at)
       await client
           .from('users')
           .update({
             'avatar_url': null,
-            'photo_updated_at': DateTime.now().toIso8601String(),
+            'updated_at': DateTime.now().toIso8601String(),
           })
           .eq('id', user.id);
 
