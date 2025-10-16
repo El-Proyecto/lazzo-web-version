@@ -107,92 +107,96 @@ class _VotesBottomSheetContentState extends State<_VotesBottomSheetContent> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-          // Handle
-          Container(
-            margin: const EdgeInsets.only(top: Gaps.sm),
-            width: 36,
-            height: 4,
-            decoration: BoxDecoration(
-              color: BrandColors.border,
-              borderRadius: BorderRadius.circular(2),
+            // Handle
+            Container(
+              margin: const EdgeInsets.only(top: Gaps.sm),
+              width: 36,
+              height: 4,
+              decoration: BoxDecoration(
+                color: BrandColors.border,
+                borderRadius: BorderRadius.circular(2),
+              ),
             ),
-          ),
 
-          // Header
-          Padding(
-            padding: const EdgeInsets.all(Pads.sectionH),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    _isVotingState 
-                        ? (_currentUserVote == null ? 'Cast your vote' : 'Vote')
-                        : 'Votes',
-                    style: AppText.titleMediumEmph.copyWith(
-                      color: BrandColors.text1,
+            // Header
+            Padding(
+              padding: const EdgeInsets.all(Pads.sectionH),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      _isVotingState
+                          ? (_currentUserVote == null
+                              ? 'Cast your vote'
+                              : 'Vote')
+                          : 'Votes',
+                      style: AppText.titleMediumEmph.copyWith(
+                        color: BrandColors.text1,
+                      ),
                     ),
                   ),
-                ),
-                if (_isVotingState && _currentUserVote != null) ...[
-                  GestureDetector(
-                    onTap: _toggleState,
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          'See votes',
-                          style: AppText.bodyMediumEmph.copyWith(
+                  if (_isVotingState && _currentUserVote != null) ...[
+                    GestureDetector(
+                      onTap: _toggleState,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            'See votes',
+                            style: AppText.bodyMediumEmph.copyWith(
+                              color: BrandColors.text2,
+                            ),
+                          ),
+                          const SizedBox(width: Gaps.xs),
+                          const Icon(
+                            Icons.chevron_right,
+                            size: 16,
                             color: BrandColors.text2,
                           ),
-                        ),
-                        const SizedBox(width: Gaps.xs),
-                        const Icon(
-                          Icons.chevron_right,
-                          size: 16,
-                          color: BrandColors.text2,
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
-                ] else if (!_isVotingState && _currentUserVote != null) ...[
-                  GestureDetector(
-                    onTap: _toggleState,
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          _getVoteLabel(),
-                          style: AppText.bodyMediumEmph.copyWith(
+                  ] else if (!_isVotingState && _currentUserVote != null) ...[
+                    GestureDetector(
+                      onTap: _toggleState,
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            _getVoteLabel(),
+                            style: AppText.bodyMediumEmph.copyWith(
+                              color: BrandColors.text2,
+                            ),
+                          ),
+                          const SizedBox(width: Gaps.xs),
+                          const Icon(
+                            Icons.edit,
+                            size: 16,
                             color: BrandColors.text2,
                           ),
-                        ),
-                        const SizedBox(width: Gaps.xs),
-                        const Icon(
-                          Icons.edit,
-                          size: 16,
-                          color: BrandColors.text2,
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
+                  ],
                 ],
-              ],
+              ),
             ),
-          ),
 
-          // Content
-          Flexible(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: Pads.sectionH),
-              child:
-                  _isVotingState ? _buildVotingContent() : _buildVotedContent(),
+            // Content
+            Flexible(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: Pads.sectionH),
+                child: _isVotingState
+                    ? _buildVotingContent()
+                    : _buildVotedContent(),
+              ),
             ),
-          ),
 
-          // Bottom padding
-          SizedBox(height: MediaQuery.of(context).viewInsets.bottom + Gaps.lg),
-        ],
-      ),
+            // Bottom padding
+            SizedBox(
+                height: MediaQuery.of(context).viewInsets.bottom + Gaps.lg),
+          ],
+        ),
       ),
     );
   }

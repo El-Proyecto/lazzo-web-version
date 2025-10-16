@@ -74,7 +74,9 @@ class _GroupEventCardState extends State<GroupEventCard> {
       children: [
         // Date
         Text(
-          _currentEvent.date != null ? _formatEventDate(_currentEvent.date!) : 'To be decided',
+          _currentEvent.date != null
+              ? _formatEventDate(_currentEvent.date!)
+              : 'To be decided',
           style: AppText.bodyMedium.copyWith(
             color: BrandColors.text2,
             fontWeight: FontWeight.w500,
@@ -192,7 +194,9 @@ class _GroupEventCardState extends State<GroupEventCard> {
       allVotes: _currentEvent.allVotes,
       eventName: _currentEvent.name,
       eventEmoji: _currentEvent.emoji,
-      eventDate: _currentEvent.date != null ? _formatEventDate(_currentEvent.date!) : null,
+      eventDate: _currentEvent.date != null
+          ? _formatEventDate(_currentEvent.date!)
+          : null,
       eventLocation: _currentEvent.location,
       userVote: _currentEvent.userVote,
       onVoteChanged: (vote) => _updateVote(vote),
@@ -238,7 +242,8 @@ class _GroupEventCardState extends State<GroupEventCard> {
     final visibleAvatars = hasOverflow
         ? _currentEvent.attendeeAvatars.take(2).toList()
         : _currentEvent.attendeeAvatars.take(3).toList();
-    final remainingCount = hasOverflow ? _currentEvent.attendeeAvatars.length - 2 : 0;
+    final remainingCount =
+        hasOverflow ? _currentEvent.attendeeAvatars.length - 2 : 0;
 
     final totalWidth = hasOverflow
         ? avatarSize +
