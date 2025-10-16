@@ -4,13 +4,14 @@ import '../../constants/spacing.dart';
 import '../../constants/text_styles.dart';
 import '../../themes/colors.dart';
 import '../widgets/votes_bottom_sheet.dart';
+import '../widgets/rsvp_widget.dart';
 
 /// Reusable event card for group hub Events section
 /// Shows event details with date, status, attendees, and going count
 class GroupEventCard extends StatefulWidget {
   final GroupEventEntity event;
   final VoidCallback? onTap;
-  final Function(String eventId, bool vote)? onVoteChanged;
+  final Function(String eventId, bool? vote)? onVoteChanged;
 
   const GroupEventCard({
     super.key,
@@ -32,9 +33,51 @@ class _GroupEventCardState extends State<GroupEventCard> {
     _currentEvent = widget.event;
   }
 
-  void _updateVote(bool vote) {
+  void _updateVote(bool? vote) {
     setState(() {
-      _currentEvent = _currentEvent.copyWith(userVote: vote);
+      // Update the vote and recalculate going count and attendee data
+      final updatedVotes = List<RsvpVote>.from(_currentEvent.allVotes);
+
+      // Remove existing user vote if any
+      updatedVotes.removeWhere((v) => v.userId == 'current_user');
+
+      // Add new vote if not null
+      if (vote != null) {
+        final newVote = RsvpVote(
+          id: 'vote_current_user_${DateTime.now().millisecondsSinceEpoch}',
+          userId: 'current_user',
+          userName: 'You',
+          userAvatar: null,
+          status: vote ? RsvpVoteStatus.going : RsvpVoteStatus.notGoing,
+          votedAt: DateTime.now(),
+        );
+        updatedVotes.add(newVote);
+      }
+
+      // Recalculate going count and attendee lists
+      final goingVotes =
+          updatedVotes.where((v) => v.status == RsvpVoteStatus.going).toList();
+      final newGoingCount = goingVotes.length;
+
+      // Sort votes to prioritize user first if they voted "Can"
+      goingVotes.sort((a, b) {
+        if (a.userId == 'current_user') return -1;
+        if (b.userId == 'current_user') return 1;
+        return 0;
+      });
+
+      final newAttendeeNames = goingVotes.map((v) => v.userName).toList();
+      final newAttendeeAvatars =
+          goingVotes.map((v) => v.userAvatar ?? '').toList();
+
+      _currentEvent = _currentEvent.copyWith(
+        userVote: vote,
+        allVotes: updatedVotes,
+        goingCount: newGoingCount,
+        attendeeNames: newAttendeeNames,
+        attendeeAvatars: newAttendeeAvatars,
+        updateUserVote: true, // Allow explicit null setting
+      );
     });
     widget.onVoteChanged?.call(_currentEvent.id, vote);
   }

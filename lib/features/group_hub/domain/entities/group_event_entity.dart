@@ -42,6 +42,7 @@ class GroupEventEntity {
     List<String>? attendeeNames,
     bool? userVote,
     List<RsvpVote>? allVotes,
+    bool updateUserVote = false, // Flag to allow explicit null setting
   }) {
     return GroupEventEntity(
       id: id ?? this.id,
@@ -53,7 +54,7 @@ class GroupEventEntity {
       goingCount: goingCount ?? this.goingCount,
       attendeeAvatars: attendeeAvatars ?? this.attendeeAvatars,
       attendeeNames: attendeeNames ?? this.attendeeNames,
-      userVote: userVote ?? this.userVote,
+      userVote: updateUserVote ? userVote : (userVote ?? this.userVote),
       allVotes: allVotes ?? this.allVotes,
     );
   }

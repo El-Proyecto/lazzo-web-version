@@ -14,7 +14,7 @@ class VotesBottomSheet {
     String? eventDate,
     String? eventLocation,
     bool? userVote, // true = going, false = not going, null = not voted
-    Function(bool)? onVoteChanged, // Updated callback
+    Function(bool?)? onVoteChanged, // Updated callback to handle null (unvote)
   }) {
     showModalBottomSheet(
       context: context,
@@ -41,7 +41,7 @@ class _VotesBottomSheetContent extends StatefulWidget {
   final String? eventDate;
   final String? eventLocation;
   final bool? initialUserVote;
-  final Function(bool)? onVoteChanged;
+  final Function(bool?)? onVoteChanged;
 
   const _VotesBottomSheetContent({
     required this.allVotes,
@@ -61,11 +61,13 @@ class _VotesBottomSheetContent extends StatefulWidget {
 class _VotesBottomSheetContentState extends State<_VotesBottomSheetContent> {
   late bool _isVotingState;
   late bool? _currentUserVote;
+  late List<RsvpVote> _currentVotes;
 
   @override
   void initState() {
     super.initState();
     _currentUserVote = widget.initialUserVote;
+    _currentVotes = List.from(widget.allVotes); // Create mutable copy
     // Start in voting state if user hasn't voted yet
     _isVotingState = _currentUserVote == null;
   }
@@ -77,25 +79,70 @@ class _VotesBottomSheetContentState extends State<_VotesBottomSheetContent> {
   }
 
   String _getVoteLabel() {
-    if (_currentUserVote == true) return 'You voted: Can';
-    if (_currentUserVote == false) return 'You voted: Can\'t';
-    return '';
+    if (_currentUserVote == true) return 'Can';
+    if (_currentUserVote == false) return 'Can\'t';
+    return 'Vote';
   }
 
   void _handleVote(bool vote) {
     setState(() {
-      _currentUserVote = vote;
-      _isVotingState = false; // Switch to voted state after voting
+      final bool isSameVote = _currentUserVote == vote;
+
+      if (isSameVote) {
+        // Same vote clicked - unvote (remove vote)
+        _currentUserVote = null;
+        _removeUserVote();
+        // Stay in voting state when unvoting
+        _isVotingState = true;
+      } else {
+        // Different vote or first vote - always switch to voted state after voting
+        _currentUserVote = vote;
+        _updateUserVote(vote);
+        _isVotingState = false;
+      }
     });
-    widget.onVoteChanged?.call(vote);
+    widget.onVoteChanged?.call(_currentUserVote);
+  }
+
+  void _updateUserVote(bool vote) {
+    // Remove existing user vote if any
+    _currentVotes.removeWhere((v) => v.userId == 'current_user');
+
+    // Add new user vote
+    final newVote = RsvpVote(
+      id: 'vote_current_user_${DateTime.now().millisecondsSinceEpoch}',
+      userId: 'current_user',
+      userName: 'You',
+      userAvatar: null,
+      status: vote ? RsvpVoteStatus.going : RsvpVoteStatus.notGoing,
+      votedAt: DateTime.now(),
+    );
+    _currentVotes.add(newVote);
+  }
+
+  void _removeUserVote() {
+    // Remove existing user vote if any
+    _currentVotes.removeWhere((v) => v.userId == 'current_user');
+
+    // Add user as pending (no response) to show in "No response" section
+    final pendingVote = RsvpVote(
+      id: 'vote_current_user_pending_${DateTime.now().millisecondsSinceEpoch}',
+      userId: 'current_user',
+      userName: 'You',
+      userAvatar: null,
+      status: RsvpVoteStatus.pending,
+      votedAt: null, // No vote time for pending votes
+    );
+    _currentVotes.add(pendingVote);
   }
 
   @override
   Widget build(BuildContext context) {
+    final screenHeight = MediaQuery.of(context).size.height;
+    final bottomSheetHeight = screenHeight * 0.52; // 52% for medium size
+
     return Container(
-      constraints: BoxConstraints(
-        maxHeight: MediaQuery.of(context).size.height * 0.9,
-      ),
+      height: bottomSheetHeight,
       decoration: const BoxDecoration(
         color: BrandColors.bg2,
         borderRadius: BorderRadius.only(
@@ -103,110 +150,102 @@ class _VotesBottomSheetContentState extends State<_VotesBottomSheetContent> {
           topRight: Radius.circular(Radii.md),
         ),
       ),
-      child: IntrinsicHeight(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Handle
-            Container(
-              margin: const EdgeInsets.only(top: Gaps.sm),
-              width: 36,
-              height: 4,
-              decoration: BoxDecoration(
-                color: BrandColors.border,
-                borderRadius: BorderRadius.circular(2),
-              ),
+      child: Column(
+        children: [
+          // Handle
+          Container(
+            margin: const EdgeInsets.only(top: Gaps.sm),
+            width: 36,
+            height: 4,
+            decoration: BoxDecoration(
+              color: BrandColors.border,
+              borderRadius: BorderRadius.circular(2),
             ),
+          ),
 
-            // Header
-            Padding(
-              padding: const EdgeInsets.all(Pads.sectionH),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      _isVotingState
-                          ? (_currentUserVote == null
-                              ? 'Cast your vote'
-                              : 'Vote')
-                          : 'Votes',
-                      style: AppText.titleMediumEmph.copyWith(
-                        color: BrandColors.text1,
-                      ),
+          // Header
+          Padding(
+            padding: const EdgeInsets.all(Pads.sectionH),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    _isVotingState
+                        ? (_currentUserVote == null ? 'Can you make it?' : 'Vote')
+                        : 'Votes',
+                    style: AppText.titleMediumEmph.copyWith(
+                      color: BrandColors.text1,
                     ),
                   ),
-                  if (_isVotingState && _currentUserVote != null) ...[
-                    GestureDetector(
-                      onTap: _toggleState,
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            'See votes',
-                            style: AppText.bodyMediumEmph.copyWith(
-                              color: BrandColors.text2,
-                            ),
-                          ),
-                          const SizedBox(width: Gaps.xs),
-                          const Icon(
-                            Icons.chevron_right,
-                            size: 16,
+                ),
+                if (_isVotingState && _currentVotes.isNotEmpty) ...[
+                  GestureDetector(
+                    onTap: _toggleState,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'View votes',
+                          style: AppText.bodyMediumEmph.copyWith(
                             color: BrandColors.text2,
                           ),
-                        ],
-                      ),
+                        ),
+                        const SizedBox(width: Gaps.xxs),
+                        const Icon(
+                          Icons.chevron_right,
+                          size: 16,
+                          color: BrandColors.text2,
+                        ),
+                      ],
                     ),
-                  ] else if (!_isVotingState && _currentUserVote != null) ...[
-                    GestureDetector(
-                      onTap: _toggleState,
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            _getVoteLabel(),
-                            style: AppText.bodyMediumEmph.copyWith(
-                              color: BrandColors.text2,
-                            ),
-                          ),
-                          const SizedBox(width: Gaps.xs),
-                          const Icon(
-                            Icons.edit,
-                            size: 16,
+                  ),
+                ] else if (!_isVotingState) ...[
+                  GestureDetector(
+                    onTap: _toggleState,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          _getVoteLabel(),
+                          style: AppText.bodyMediumEmph.copyWith(
                             color: BrandColors.text2,
                           ),
-                        ],
-                      ),
+                        ),
+                        const SizedBox(width: Gaps.xs),
+                        const Icon(
+                          Icons.edit,
+                          size: 16,
+                          color: BrandColors.text2,
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
                 ],
-              ),
+              ],
             ),
+          ),
 
-            // Content
-            Flexible(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: Pads.sectionH),
-                child: _isVotingState
-                    ? _buildVotingContent()
-                    : _buildVotedContent(),
-              ),
+          // Content
+          Flexible(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: Pads.sectionH),
+              child:
+                  _isVotingState ? _buildVotingContent() : _buildVotedContent(),
             ),
+          ),
 
-            // Bottom padding
-            SizedBox(
-                height: MediaQuery.of(context).viewInsets.bottom + Gaps.lg),
-          ],
-        ),
+          // Bottom padding
+          SizedBox(height: MediaQuery.of(context).viewInsets.bottom + Gaps.lg),
+        ],
       ),
     );
   }
 
   Widget _buildVotingContent() {
     final going =
-        widget.allVotes.where((v) => v.status == RsvpVoteStatus.going).length;
-    final notGoing = widget.allVotes
-        .where((v) => v.status == RsvpVoteStatus.notGoing)
-        .length;
+        _currentVotes.where((v) => v.status == RsvpVoteStatus.going).length;
+    final notGoing =
+        _currentVotes.where((v) => v.status == RsvpVoteStatus.notGoing).length;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -246,42 +285,43 @@ class _VotesBottomSheetContentState extends State<_VotesBottomSheetContent> {
 
   Widget _buildVotedContent() {
     final going =
-        widget.allVotes.where((v) => v.status == RsvpVoteStatus.going).toList();
-    final notGoing = widget.allVotes
+        _currentVotes.where((v) => v.status == RsvpVoteStatus.going).toList();
+    final notGoing = _currentVotes
         .where((v) => v.status == RsvpVoteStatus.notGoing)
         .toList();
-    final pending = widget.allVotes
-        .where((v) => v.status == RsvpVoteStatus.pending)
-        .toList();
+    final pending =
+        _currentVotes.where((v) => v.status == RsvpVoteStatus.pending).toList();
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Can section
-        if (going.isNotEmpty) ...[
-          _VoteSection(title: 'Can', count: going.length, votes: going),
-          const SizedBox(height: Gaps.md),
-        ],
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Can section
+          if (going.isNotEmpty) ...[
+            _VoteSection(title: 'Can', count: going.length, votes: going),
+            const SizedBox(height: Gaps.md),
+          ],
 
-        // Can't section
-        if (notGoing.isNotEmpty) ...[
-          _VoteSection(
-            title: 'Can\'t',
-            count: notGoing.length,
-            votes: notGoing,
-          ),
-          const SizedBox(height: Gaps.md),
-        ],
+          // Can't section
+          if (notGoing.isNotEmpty) ...[
+            _VoteSection(
+              title: 'Can\'t',
+              count: notGoing.length,
+              votes: notGoing,
+            ),
+            const SizedBox(height: Gaps.md),
+          ],
 
-        // Haven't Responded section
-        if (pending.isNotEmpty) ...[
-          _VoteSection(
-            title: 'No response',
-            count: pending.length,
-            votes: pending,
-          ),
+          // Haven't Responded section
+          if (pending.isNotEmpty) ...[
+            _VoteSection(
+              title: 'No response',
+              count: pending.length,
+              votes: pending,
+            ),
+          ],
         ],
-      ],
+      ),
     );
   }
 
