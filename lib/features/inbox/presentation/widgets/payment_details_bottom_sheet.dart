@@ -213,7 +213,7 @@ class PaymentDetailsBottomSheet extends StatelessWidget {
   }
 
   String _getGroupName(String groupId) {
-    // In a real app, this would come from a Group entity
+    // In a realwd app, this would come from a Group entity
     switch (groupId) {
       case 'group1':
         return 'Dinner Group';
