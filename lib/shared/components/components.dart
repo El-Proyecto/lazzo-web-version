@@ -24,6 +24,7 @@ export 'common/create_event_segmented_control.dart';
 
 // Section Components
 export 'sections/event_header.dart';
+export 'sections/memories_section.dart';
 
 // Widget Components
 export 'widgets/rsvp_widget.dart';

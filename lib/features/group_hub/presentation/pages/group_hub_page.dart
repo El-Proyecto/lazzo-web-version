@@ -3,12 +3,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../shared/components/nav/common_app_bar.dart';
 import '../../../../shared/components/common/page_segmented_control.dart';
 import '../../../../shared/components/cards/group_event_card.dart';
+import '../../../../shared/components/sections/memories_section.dart';
 import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/constants/text_styles.dart';
 import '../../../../shared/themes/colors.dart';
 import '../providers/group_hub_providers.dart';
 import '../widgets/group_expense_card.dart';
 import '../../domain/entities/group_expense_entity.dart';
+import '../../domain/entities/group_memory_entity.dart';
 import '../widgets/expense_detail_bottom_sheet.dart';
 import '../../domain/entities/expense_participant_entity.dart';
 
@@ -282,9 +284,36 @@ class _GroupHubPageState extends ConsumerState<GroupHubPage>
           );
         }
 
-        // Sort expenses by date (most recent first)
+        // Sort expenses by payment status and date
+        // Order: Active -> Paid -> Settled (within each group: most recent first)
         final sortedExpenses = List<GroupExpenseEntity>.from(expenses)
-          ..sort((a, b) => b.date.compareTo(a.date));
+          ..sort((a, b) {
+            final statusA = _getPaymentStatus(a);
+            final statusB = _getPaymentStatus(b);
+
+            // Define priority order: Active (empty) = 0, Paid = 1, Settled = 2
+            int getPriority(String status) {
+              switch (status) {
+                case 'Settled':
+                  return 2;
+                case 'Paid':
+                  return 1;
+                default:
+                  return 0; // Active expenses (empty status)
+              }
+            }
+
+            final priorityA = getPriority(statusA);
+            final priorityB = getPriority(statusB);
+
+            // First sort by priority
+            if (priorityA != priorityB) {
+              return priorityA.compareTo(priorityB);
+            }
+
+            // If same priority, sort by date (most recent first)
+            return b.date.compareTo(a.date);
+          });
 
         return ListView.separated(
           padding: const EdgeInsets.symmetric(horizontal: Insets.screenH),
@@ -343,11 +372,20 @@ class _GroupHubPageState extends ConsumerState<GroupHubPage>
           ],
         ),
       ),
-      data: (memories) => _buildEmptyState(
-        icon: Icons.photo_library_outlined,
-        title: 'No memories yet',
-        subtitle: 'Group memories will appear here',
-      ),
+      data: (memories) {
+        if (memories.isEmpty) {
+          return _buildEmptyState(
+            icon: Icons.photo_library_outlined,
+            title: 'No memories yet',
+            subtitle: 'Group memories will appear here',
+          );
+        }
+
+        return MemoriesSection<GroupMemoryEntity>(
+          memories: memories,
+          enableScroll: true,
+        );
+      },
     );
   }
 

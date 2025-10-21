@@ -1,6 +1,8 @@
+import '../../../../shared/components/sections/memories_section.dart';
+
 /// Group memory entity for display in group hub
 /// Contains essential info needed for memory cards in the Memories section
-class GroupMemoryEntity {
+class GroupMemoryEntity implements MemoryData {
   final String id;
   final String title;
   final String? location;
@@ -16,6 +18,17 @@ class GroupMemoryEntity {
     required this.coverImageUrl,
     required this.photoCount,
   });
+
+  // Implement MemoryData interface
+  String get memoryId => id;
+
+  String get memoryTitle => title;
+
+  String? get memoryCoverPhotoUrl => coverImageUrl;
+
+  DateTime get memoryCreatedAt => date;
+
+  int get memoryPhotoCount => photoCount;
 
   GroupMemoryEntity copyWith({
     String? id,
