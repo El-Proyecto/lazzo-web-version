@@ -58,7 +58,7 @@ class GroupExpenseCard extends StatelessWidget {
                       : '${isOwedToUser ? '+' : '-'}€${userAmount.toStringAsFixed(2)}',
                   style: AppText.bodyMediumEmph.copyWith(
                     color: paymentStatus.isNotEmpty
-                        ? BrandColors.planning
+                        ? BrandColors.text1
                         : (isOwedToUser
                             ? BrandColors.planning
                             : BrandColors.cantVote),
@@ -80,8 +80,9 @@ class GroupExpenseCard extends StatelessWidget {
                     '${_formatDate(expense.date)} • $eventName',
                     style: AppText.bodyMedium.copyWith(
                       color: BrandColors.text2,
-                      fontSize: 12,
                     ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
                 // Total amount (always show)
@@ -89,8 +90,6 @@ class GroupExpenseCard extends StatelessWidget {
                   'Total: €${totalAmount.toStringAsFixed(2)}',
                   style: AppText.bodyMedium.copyWith(
                     color: BrandColors.text2,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w400,
                   ),
                 ),
               ],

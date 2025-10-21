@@ -420,7 +420,7 @@ class _GroupHubPageState extends ConsumerState<GroupHubPage>
     final participants = _expenseParticipants[expense.id] ?? [];
     final currentUserParticipant = participants.firstWhere(
       (p) => p.id == 'current_user',
-      orElse: () => ExpenseParticipant(
+      orElse: () => const ExpenseParticipant(
         id: 'current_user',
         name: 'You',
         amount: 0,
@@ -496,19 +496,19 @@ class _GroupHubPageState extends ConsumerState<GroupHubPage>
             hasPaid: true,
             paidAt: baseDate,
           ),
-          ExpenseParticipant(
+          const ExpenseParticipant(
             id: 'current_user',
             name: 'You',
             amount: amountPerPerson,
             hasPaid: false,
           ),
-          ExpenseParticipant(
+          const ExpenseParticipant(
             id: 'ana',
             name: 'Ana',
             amount: amountPerPerson,
             hasPaid: false,
           ),
-          ExpenseParticipant(
+          const ExpenseParticipant(
             id: 'joao',
             name: 'João',
             amount: amountPerPerson,
@@ -555,7 +555,7 @@ class _GroupHubPageState extends ConsumerState<GroupHubPage>
             hasPaid: true,
             paidAt: baseDate,
           ),
-          ExpenseParticipant(
+          const ExpenseParticipant(
             id: 'current_user',
             name: 'You',
             amount: amountPerPerson,
@@ -568,7 +568,7 @@ class _GroupHubPageState extends ConsumerState<GroupHubPage>
             hasPaid: true,
             paidAt: baseDate.add(const Duration(hours: 4)),
           ),
-          ExpenseParticipant(
+          const ExpenseParticipant(
             id: 'ana',
             name: 'Ana',
             amount: amountPerPerson,
@@ -584,19 +584,19 @@ class _GroupHubPageState extends ConsumerState<GroupHubPage>
             hasPaid: true,
             paidAt: baseDate,
           ),
-          ExpenseParticipant(
+          const ExpenseParticipant(
             id: 'marco',
             name: 'Marco',
             amount: amountPerPerson,
             hasPaid: false,
           ),
-          ExpenseParticipant(
+          const ExpenseParticipant(
             id: 'ana',
             name: 'Ana',
             amount: amountPerPerson,
             hasPaid: false,
           ),
-          ExpenseParticipant(
+          const ExpenseParticipant(
             id: 'joao',
             name: 'João',
             amount: amountPerPerson,

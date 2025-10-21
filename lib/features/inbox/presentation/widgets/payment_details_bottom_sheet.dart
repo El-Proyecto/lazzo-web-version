@@ -70,7 +70,10 @@ class PaymentDetailsBottomSheet extends StatelessWidget {
             // Content
             Flexible(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.only(left: Pads.sectionH, right: Pads.sectionH, bottom: Pads.sectionH),
+                padding: const EdgeInsets.only(
+                    left: Pads.sectionH,
+                    right: Pads.sectionH,
+                    bottom: Pads.sectionH),
                 child: PaymentDetailsBottomSheet(
                   paymentGroup: paymentGroup,
                   onPaymentTap: onPaymentTap,
@@ -102,8 +105,7 @@ class PaymentDetailsBottomSheet extends StatelessWidget {
 
   Widget _buildPaymentItem(PaymentEntity payment) {
     // Determine if this specific payment is owed to user or we owe
-    final paymentIsOwedToUser =
-        payment.fromUserId != 'current_user' &&
+    final paymentIsOwedToUser = payment.fromUserId != 'current_user' &&
         payment.toUserId == 'current_user';
 
     return GestureDetector(
@@ -154,7 +156,6 @@ class PaymentDetailsBottomSheet extends StatelessWidget {
                   _getEventName(payment.eventId ?? ''),
                   style: AppText.bodyMedium.copyWith(
                     color: BrandColors.text2,
-                    fontSize: 12,
                   ),
                 ),
                 const SizedBox(width: Gaps.sm),
@@ -164,7 +165,6 @@ class PaymentDetailsBottomSheet extends StatelessWidget {
                   _getGroupName(payment.groupId ?? ''),
                   style: AppText.bodyMedium.copyWith(
                     color: BrandColors.text2,
-                    fontSize: 12,
                   ),
                 ),
                 const Spacer(),
@@ -172,7 +172,6 @@ class PaymentDetailsBottomSheet extends StatelessWidget {
                   _formatDate(payment.createdAt),
                   style: AppText.bodyMedium.copyWith(
                     color: BrandColors.text2,
-                    fontSize: 12,
                   ),
                 ),
               ],

@@ -171,7 +171,9 @@ class _VotesBottomSheetContentState extends State<_VotesBottomSheetContent> {
                 Expanded(
                   child: Text(
                     _isVotingState
-                        ? (_currentUserVote == null ? 'Can you make it?' : 'Vote')
+                        ? (_currentUserVote == null
+                            ? 'Can you make it?'
+                            : 'Vote')
                         : 'Votes',
                     style: AppText.titleMediumEmph.copyWith(
                       color: BrandColors.text1,
@@ -441,7 +443,6 @@ class _VoteButton extends StatelessWidget {
                     count.toString(),
                     style: AppText.bodyMedium.copyWith(
                       color: isSelected ? BrandColors.text1 : BrandColors.text2,
-                      fontSize: 12,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -562,7 +563,6 @@ class _VoteItem extends StatelessWidget {
               _formatVoteTime(vote.votedAt!),
               style: AppText.bodyMedium.copyWith(
                 color: BrandColors.text2,
-                fontSize: 12,
               ),
             ),
         ],

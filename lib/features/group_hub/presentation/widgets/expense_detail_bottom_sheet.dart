@@ -122,6 +122,8 @@ class _ExpenseDetailBottomSheetState extends State<ExpenseDetailBottomSheet> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  const SizedBox(height: Pads.sectionH),
+
                   // Paid section
                   if (paidParticipants.isNotEmpty) ...[
                     _buildSectionHeader(
@@ -129,7 +131,7 @@ class _ExpenseDetailBottomSheetState extends State<ExpenseDetailBottomSheet> {
                     const SizedBox(height: Gaps.md),
                     ...paidParticipants.map((participant) =>
                         _buildParticipantRow(participant, true)),
-                    const SizedBox(height: Gaps.lg),
+                    const SizedBox(height: Gaps.xs),
                   ],
 
                   // Owes section
@@ -139,15 +141,20 @@ class _ExpenseDetailBottomSheetState extends State<ExpenseDetailBottomSheet> {
                     const SizedBox(height: Gaps.md),
                     ...oweParticipants.map((participant) =>
                         _buildParticipantRow(participant, false)),
-                    const SizedBox(height: Gaps.lg),
                   ],
 
-                  // Extra padding for button space
-                  if (showMarkAsPaidButton) const SizedBox(height: 80),
+                  // Exact 32px spacing before button
+                  if (showMarkAsPaidButton) const SizedBox(height: 32),
                 ],
               ),
             ),
           ),
+
+          // Check if any cooldown banner should be shown
+          if (_showCooldownBanner.values.any((show) => show))
+            _buildCooldownBanner(_showCooldownBanner.keys.firstWhere(
+              (key) => _showCooldownBanner[key] == true,
+            )),
 
           // Fixed bottom button
           if (showMarkAsPaidButton)
@@ -275,7 +282,6 @@ class _ExpenseDetailBottomSheetState extends State<ExpenseDetailBottomSheet> {
               _formatTime(participant.paidAt),
               style: AppText.bodyMedium.copyWith(
                 color: BrandColors.text2,
-                fontSize: 12,
               ),
             )
           else if (widget.isCurrentUserPayer)
@@ -290,52 +296,42 @@ class _ExpenseDetailBottomSheetState extends State<ExpenseDetailBottomSheet> {
       name.isNotEmpty ? name[0].toUpperCase() : '?',
       style: AppText.bodyMediumEmph.copyWith(
         color: BrandColors.text2,
-        fontSize: 14,
       ),
     );
   }
 
   Widget _buildNotifyButton(String participantId) {
     final isNotificationSent = _notificationSent[participantId] ?? false;
-    final showCooldownBanner = _showCooldownBanner[participantId] ?? false;
 
-    return Column(
-      children: [
-        GestureDetector(
-          onTap: () => _handleNotificationTap(participantId),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(
-              color: isNotificationSent ? BrandColors.bg2 : BrandColors.bg3,
-              borderRadius: BorderRadius.circular(Radii.sm),
-              border: isNotificationSent
-                  ? Border.all(color: BrandColors.bg3, width: 1)
-                  : null,
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  isNotificationSent ? Icons.schedule : Icons.notifications,
-                  size: 14,
-                  color: BrandColors.text1,
-                ),
-                const SizedBox(width: 4),
-                Text(
-                  'Notify',
-                  style: AppText.bodyMedium.copyWith(
-                    color: BrandColors.text1,
-                    fontSize: 12,
-                  ),
-                ),
-              ],
-            ),
-          ),
+    return GestureDetector(
+      onTap: () => _handleNotificationTap(participantId),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: isNotificationSent ? BrandColors.bg2 : BrandColors.bg3,
+          borderRadius: BorderRadius.circular(Radii.sm),
+          border: isNotificationSent
+              ? Border.all(color: BrandColors.bg3, width: 1)
+              : null,
         ),
-
-        // Cooldown banner for this specific participant
-        if (showCooldownBanner) _buildCooldownBanner(participantId),
-      ],
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              isNotificationSent ? Icons.schedule : Icons.notifications,
+              size: 14,
+              color: BrandColors.text1,
+            ),
+            const SizedBox(width: 4),
+            Text(
+              'Notify',
+              style: AppText.bodyMedium.copyWith(
+                color: BrandColors.text1,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -343,21 +339,23 @@ class _ExpenseDetailBottomSheetState extends State<ExpenseDetailBottomSheet> {
     final timeLeft = _getTimeUntilNextNotification(participantId);
 
     return Container(
-      margin: const EdgeInsets.only(top: Gaps.xs),
-      padding: const EdgeInsets.symmetric(
-        horizontal: Gaps.xs,
-        vertical: 2,
-      ),
-      decoration: BoxDecoration(
+      width: double.infinity,
+      padding: const EdgeInsets.all(Pads.sectionH),
+      decoration: const BoxDecoration(
         color: BrandColors.bg3,
-        borderRadius: BorderRadius.circular(Radii.sm),
       ),
-      child: Text(
-        'Can notify again in $timeLeft',
-        style: AppText.bodyMedium.copyWith(
-          color: BrandColors.text2,
-          fontSize: 10,
-        ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Icons.schedule, size: 16, color: BrandColors.text2),
+          const SizedBox(width: Gaps.xs),
+          Text(
+            'Can notify again in $timeLeft',
+            style: AppText.bodyMedium.copyWith(
+              color: BrandColors.text2,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -446,9 +444,6 @@ class _ExpenseDetailBottomSheetState extends State<ExpenseDetailBottomSheet> {
       ),
       decoration: const BoxDecoration(
         color: BrandColors.bg2,
-        border: Border(
-          top: BorderSide(color: BrandColors.bg3, width: 1),
-        ),
       ),
       child: SizedBox(
         width: double.infinity,
