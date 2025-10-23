@@ -20,9 +20,10 @@ class NavigationBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       height: 90,
-      padding: const EdgeInsets.symmetric(
-        horizontal: Gaps.lg,
-        vertical: Gaps.xs,
+      padding: const EdgeInsets.only(
+        left: Gaps.lg,
+        right: Gaps.lg,
+        bottom: Gaps.xs,
       ),
       decoration: const ShapeDecoration(
         color: BrandColors.bg2,
@@ -48,16 +49,19 @@ class NavigationBar extends StatelessWidget {
     final opacity = isSelected ? 1.0 : 0.6;
 
     return GestureDetector(
+      behavior: HitTestBehavior.opaque,
       onTap: () => onTap(index),
       child: Opacity(
         opacity: opacity,
         child: SizedBox(
-          width: 32,
-          height: 32,
-          child: Icon(
-            isSelected ? iconFilled : iconOutlined,
-            color: BrandColors.text1,
-            size: 24,
+          width: 48,
+          height: 48,
+          child: Center(
+            child: Icon(
+              isSelected ? iconFilled : iconOutlined,
+              color: BrandColors.text1,
+              size: 28,
+            ),
           ),
         ),
       ),
@@ -73,16 +77,22 @@ class NavigationBar extends StatelessWidget {
 
     return GestureDetector(
       onTap: () => onTap(2),
-      child: Container(
-        width: 44,
-        height: 44,
-        decoration: ShapeDecoration(
-          color: buttonColor,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(Radii.smAlt),
+      child: SizedBox(
+        width: 48,
+        height: 48,
+        child: Center(
+          child: Container(
+            width: 40,
+            height: 40,
+            decoration: ShapeDecoration(
+              color: buttonColor,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(Radii.smAlt),
+              ),
+            ),
+            child: Icon(icon, color: Colors.white, size: 24),
           ),
         ),
-        child: Icon(icon, color: Colors.white, size: 24),
       ),
     );
   }
