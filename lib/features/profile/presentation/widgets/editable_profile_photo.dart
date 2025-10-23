@@ -21,7 +21,7 @@ class EditableProfilePhoto extends StatelessWidget {
       onTap: onTap,
       child: Stack(
         children: [
-          // Profile photo
+          // Profile photo (now using signed URL from repository)
           Container(
             width: size,
             height: size,
@@ -36,6 +36,19 @@ class EditableProfilePhoto extends StatelessWidget {
                   ? Image.network(
                       profileImageUrl!,
                       fit: BoxFit.cover,
+                      loadingBuilder: (context, child, loadingProgress) {
+                        if (loadingProgress == null) return child;
+                        return Center(
+                          child: CircularProgressIndicator(
+                            value: loadingProgress.expectedTotalBytes != null
+                                ? loadingProgress.cumulativeBytesLoaded /
+                                    loadingProgress.expectedTotalBytes!
+                                : null,
+                            color: BrandColors.planning,
+                            strokeWidth: 2,
+                          ),
+                        );
+                      },
                       errorBuilder: (context, error, stackTrace) =>
                           _buildPlaceholder(),
                     )

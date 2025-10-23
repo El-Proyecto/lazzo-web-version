@@ -22,7 +22,25 @@ class ProfileRepositoryImpl implements ProfileRepository {
     final memoryModels = await remote.fetchUserMemories(profileModel.id);
     final memories = memoryModels.map((m) => m.toEntity()).toList();
 
-    return profileModel.toEntity(memories: memories);
+    // Get signed URL for profile picture if it exists
+    String? signedUrl;
+    if (profileModel.avatarUrl != null && profileModel.avatarUrl!.isNotEmpty) {
+      signedUrl = await remote.getProfilePictureSignedUrl(profileModel.avatarUrl);
+    }
+
+    // Create a new model with signed URL if available
+    final modelWithSignedUrl = signedUrl != null
+        ? ProfileModel(
+            id: profileModel.id,
+            name: profileModel.name,
+            email: profileModel.email,
+            avatarUrl: signedUrl,
+            city: profileModel.city,
+            birthDate: profileModel.birthDate,
+          )
+        : profileModel;
+
+    return modelWithSignedUrl.toEntity(memories: memories);
   }
 
   @override
@@ -36,7 +54,25 @@ class ProfileRepositoryImpl implements ProfileRepository {
     final memoryModels = await remote.fetchUserMemories(userId);
     final memories = memoryModels.map((m) => m.toEntity()).toList();
 
-    return profileModel.toEntity(memories: memories);
+    // Get signed URL for profile picture if it exists
+    String? signedUrl;
+    if (profileModel.avatarUrl != null && profileModel.avatarUrl!.isNotEmpty) {
+      signedUrl = await remote.getProfilePictureSignedUrl(profileModel.avatarUrl);
+    }
+
+    // Create a new model with signed URL if available
+    final modelWithSignedUrl = signedUrl != null
+        ? ProfileModel(
+            id: profileModel.id,
+            name: profileModel.name,
+            email: profileModel.email,
+            avatarUrl: signedUrl,
+            city: profileModel.city,
+            birthDate: profileModel.birthDate,
+          )
+        : profileModel;
+
+    return modelWithSignedUrl.toEntity(memories: memories);
   }
 
   @override

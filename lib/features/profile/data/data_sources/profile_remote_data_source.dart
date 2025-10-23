@@ -199,28 +199,43 @@ class ProfileRemoteDataSource {
     throw Exception('Unrecognized path: $input');
   }
 
-  /// Delete profile picture from storage
+  /// Delete profile picture from storage (deletes entire user folder)
   Future<void> deleteProfilePicture(String? currentAvatarUrl) async {
-    if (currentAvatarUrl == null || currentAvatarUrl.isEmpty) {
-      return;
-    }
-
     try {
       final user = client.auth.currentUser;
       if (user == null) throw Exception('No authenticated user');
 
-      print('🗑️ [ProfileDataSource] Deleting profile picture: $currentAvatarUrl');
+      print('🗑️ [ProfileDataSource] Deleting all profile pictures for user: ${user.id}');
 
-      // Only delete if it's a storage path (not a URL)
-      if (!currentAvatarUrl.startsWith('http')) {
-        await client.storage
+      // Delete ALL files in the user's folder, not just the current avatar
+      // This ensures cleanup of old/orphaned profile pictures
+      try {
+        // List all files in user's folder
+        final filesList = await client.storage
             .from(_bucketName)
-            .remove([currentAvatarUrl]);
+            .list(path: user.id);
         
-        print('   ✅ Profile picture deleted from storage');
+        if (filesList.isNotEmpty) {
+          // Build full paths for all files
+          final filePaths = filesList
+              .map((file) => '${user.id}/${file.name}')
+              .toList();
+          
+          // Delete all files
+          await client.storage
+              .from(_bucketName)
+              .remove(filePaths);
+          
+          print('   ✅ Deleted ${filePaths.length} file(s) from user folder');
+        } else {
+          print('   ℹ️ No files found in user folder');
+        }
+      } catch (e) {
+        print('   ⚠️ Failed to delete files from storage: $e (continuing with DB update)');
+        // Continue with database update even if storage deletion fails
       }
 
-      // Update database to remove avatar_url (use updated_at instead of photo_updated_at)
+      // Update database to remove avatar_url
       await client
           .from('users')
           .update({

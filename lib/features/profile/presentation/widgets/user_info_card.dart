@@ -21,25 +21,40 @@ class UserInfoCard extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.center,
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        // Profile Picture
+        // Profile Picture (now using signed URL from repository)
         Container(
           width: 152,
           height: 152,
           decoration: ShapeDecoration(
-            image: profile.profileImageUrl != null
-                ? DecorationImage(
-                    image: NetworkImage(profile.profileImageUrl!),
-                    fit: BoxFit.cover,
-                  )
-                : null,
-            color: profile.profileImageUrl == null ? BrandColors.bg3 : null,
+            color: BrandColors.bg3,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(76),
             ),
           ),
-          child: profile.profileImageUrl == null
-              ? const Icon(Icons.person, size: 64, color: BrandColors.text2)
-              : null,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(76),
+            child: profile.profileImageUrl != null && profile.profileImageUrl!.isNotEmpty
+                ? Image.network(
+                    profile.profileImageUrl!,
+                    fit: BoxFit.cover,
+                    loadingBuilder: (context, child, loadingProgress) {
+                      if (loadingProgress == null) return child;
+                      return Center(
+                        child: CircularProgressIndicator(
+                          value: loadingProgress.expectedTotalBytes != null
+                              ? loadingProgress.cumulativeBytesLoaded /
+                                  loadingProgress.expectedTotalBytes!
+                              : null,
+                          color: BrandColors.planning,
+                          strokeWidth: 2,
+                        ),
+                      );
+                    },
+                    errorBuilder: (context, error, stackTrace) =>
+                        const Icon(Icons.person, size: 64, color: BrandColors.text2),
+                  )
+                : const Icon(Icons.person, size: 64, color: BrandColors.text2),
+          ),
         ),
 
         const SizedBox(height: Gaps.xs),
