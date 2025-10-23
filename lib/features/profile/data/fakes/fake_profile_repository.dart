@@ -1,5 +1,6 @@
 import '../../domain/entities/profile_entity.dart';
 import '../../domain/repositories/profile_repository.dart';
+import 'package:image_picker/image_picker.dart';
 
 /// Fake implementation of ProfileRepository for development and testing
 /// Returns mock data for profile operations
@@ -116,5 +117,38 @@ class FakeProfileRepository implements ProfileRepository {
     }
 
     return user.memories;
+  }
+
+  @override
+  Future<String> uploadProfilePicture(XFile imageFile) async {
+    // Simulate upload delay
+    await Future.delayed(const Duration(seconds: 1));
+    
+    // Return fake URL
+    final timestamp = DateTime.now().millisecondsSinceEpoch;
+    return 'https://picsum.photos/200/200?random=$timestamp';
+  }
+
+  @override
+  Future<String?> getProfilePictureUrl(String? avatarUrl) async {
+    if (avatarUrl == null || avatarUrl.isEmpty) {
+      return null;
+    }
+    
+    // Simulate async delay
+    await Future.delayed(const Duration(milliseconds: 100));
+    
+    // Return fake signed URL with cache busting
+    final timestamp = DateTime.now().millisecondsSinceEpoch;
+    return 'https://picsum.photos/200/200?random=$timestamp&path=$avatarUrl';
+  }
+
+  @override
+  Future<void> deleteProfilePicture() async {
+    // Simulate deletion delay
+    await Future.delayed(const Duration(milliseconds: 500));
+    
+    // In a fake implementation, we just log the operation
+    print('Fake: Deleted profile picture');
   }
 }

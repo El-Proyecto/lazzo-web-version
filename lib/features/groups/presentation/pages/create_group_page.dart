@@ -10,6 +10,7 @@ import '../../domain/entities/group_entity.dart';
 import '../widgets/group_permissions_section.dart';
 import '../widgets/group_photo_selector_with_camera.dart';
 import '../providers/create_group_provider.dart';
+import '../providers/groups_provider.dart';
 
 /// Page for creating a new group
 class CreateGroupPage extends ConsumerStatefulWidget {
@@ -28,6 +29,7 @@ class _CreateGroupPageState extends ConsumerState<CreateGroupPage> {
   bool _canSendMessages = false;
   String? _selectedPhotoPath;
   String? _nameError;
+  bool _fromCreateEvent = false;
 
   @override
   void initState() {
@@ -35,6 +37,18 @@ class _CreateGroupPageState extends ConsumerState<CreateGroupPage> {
     _nameController.addListener(() {
       setState(() {}); // Rebuild to update button state
     });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    
+    // Check if we came from create event page
+    final arguments = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+    if (arguments != null && arguments['fromCreateEvent'] == true) {
+      _fromCreateEvent = true;
+      print('🎯 [CreateGroup] Opened from CreateEvent page');
+    }
   }
 
   @override
@@ -188,13 +202,35 @@ class _CreateGroupPageState extends ConsumerState<CreateGroupPage> {
     // Listen to state changes for navigation
     ref.listen<AsyncValue<GroupEntity?>>(createGroupProvider, (previous, next) {
       next.whenOrNull(
-        data: (createdGroup) {
+        data: (createdGroup) async {
           if (createdGroup != null) {
-            // Navigate to Group Created page
-            Navigator.of(context).pushNamed(
-              AppRouter.groupCreated,
-              arguments: {'group': createdGroup},
-            );
+            // If coming from create event, return group data
+            if (_fromCreateEvent) {
+              print('✅ [CreateGroup] Returning group to CreateEvent: ${createdGroup.id}');
+              
+              // Get the group cover URL if available
+              String? imageUrl;
+              if (createdGroup.photoUrl != null && createdGroup.photoUrl!.isNotEmpty) {
+                try {
+                  imageUrl = await ref.read(groupCoverUrlProvider((createdGroup.photoUrl, null)).future);
+                } catch (e) {
+                  print('⚠️ [CreateGroup] Failed to get cover URL: $e');
+                }
+              }
+              
+              Navigator.of(context).pop({
+                'groupId': createdGroup.id,
+                'groupName': createdGroup.name,
+                'memberCount': 1,
+                'imageUrl': imageUrl,
+              });
+            } else {
+              // Navigate to Group Created page
+              Navigator.of(context).pushNamed(
+                AppRouter.groupCreated,
+                arguments: {'group': createdGroup},
+              );
+            }
           }
         },
         error: (error, stack) {

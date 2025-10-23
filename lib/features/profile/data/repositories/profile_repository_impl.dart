@@ -1,5 +1,6 @@
 // Real implementation using Supabase data source
 
+import 'package:image_picker/image_picker.dart';
 import '../../domain/entities/profile_entity.dart';
 import '../../domain/repositories/profile_repository.dart';
 import '../data_sources/profile_remote_data_source.dart';
@@ -21,7 +22,25 @@ class ProfileRepositoryImpl implements ProfileRepository {
     final memoryModels = await remote.fetchUserMemories(profileModel.id);
     final memories = memoryModels.map((m) => m.toEntity()).toList();
 
-    return profileModel.toEntity(memories: memories);
+    // Get signed URL for profile picture if it exists
+    String? signedUrl;
+    if (profileModel.avatarUrl != null && profileModel.avatarUrl!.isNotEmpty) {
+      signedUrl = await remote.getProfilePictureSignedUrl(profileModel.avatarUrl);
+    }
+
+    // Create a new model with signed URL if available
+    final modelWithSignedUrl = signedUrl != null
+        ? ProfileModel(
+            id: profileModel.id,
+            name: profileModel.name,
+            email: profileModel.email,
+            avatarUrl: signedUrl,
+            city: profileModel.city,
+            birthDate: profileModel.birthDate,
+          )
+        : profileModel;
+
+    return modelWithSignedUrl.toEntity(memories: memories);
   }
 
   @override
@@ -35,7 +54,25 @@ class ProfileRepositoryImpl implements ProfileRepository {
     final memoryModels = await remote.fetchUserMemories(userId);
     final memories = memoryModels.map((m) => m.toEntity()).toList();
 
-    return profileModel.toEntity(memories: memories);
+    // Get signed URL for profile picture if it exists
+    String? signedUrl;
+    if (profileModel.avatarUrl != null && profileModel.avatarUrl!.isNotEmpty) {
+      signedUrl = await remote.getProfilePictureSignedUrl(profileModel.avatarUrl);
+    }
+
+    // Create a new model with signed URL if available
+    final modelWithSignedUrl = signedUrl != null
+        ? ProfileModel(
+            id: profileModel.id,
+            name: profileModel.name,
+            email: profileModel.email,
+            avatarUrl: signedUrl,
+            city: profileModel.city,
+            birthDate: profileModel.birthDate,
+          )
+        : profileModel;
+
+    return modelWithSignedUrl.toEntity(memories: memories);
   }
 
   @override
@@ -54,5 +91,52 @@ class ProfileRepositoryImpl implements ProfileRepository {
   Future<List<MemoryEntity>> getUserMemories(String userId) async {
     final memoryModels = await remote.fetchUserMemories(userId);
     return memoryModels.map((m) => m.toEntity()).toList();
+  }
+
+  @override
+  Future<String> uploadProfilePicture(XFile imageFile) async {
+    try {
+      print('🚀 [Repository] Starting profile picture upload process');
+      
+      final storagePath = await remote.uploadProfilePicture(imageFile);
+      
+      print('✅ [Repository] Profile picture upload completed: $storagePath');
+      return storagePath;
+    } catch (e) {
+      print('❌ [Repository] Profile picture upload failed: $e');
+      throw Exception('Failed to upload profile picture: $e');
+    }
+  }
+
+  @override
+  Future<String?> getProfilePictureUrl(String? avatarUrl) async {
+    if (avatarUrl == null || avatarUrl.isEmpty) {
+      return null;
+    }
+
+    try {
+      // Generate signed URL for private storage
+      final signedUrl = await remote.getProfilePictureSignedUrl(avatarUrl);
+      return signedUrl;
+    } catch (e) {
+      print('⚠️ [Repository] Failed to get profile picture URL: $e');
+      return null;
+    }
+  }
+
+  @override
+  Future<void> deleteProfilePicture() async {
+    try {
+      print('🗑️ [Repository] Deleting profile picture');
+      
+      // First get current profile to find current avatar URL
+      final profile = await getCurrentUserProfile();
+      await remote.deleteProfilePicture(profile.profileImageUrl);
+      
+      print('✅ [Repository] Profile picture deleted successfully');
+    } catch (e) {
+      print('❌ [Repository] Failed to delete profile picture: $e');
+      throw Exception('Failed to delete profile picture: $e');
+    }
   }
 }
