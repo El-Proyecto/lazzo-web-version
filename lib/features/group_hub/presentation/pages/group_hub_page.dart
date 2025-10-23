@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../shared/components/nav/common_app_bar.dart';
 import '../../../../shared/components/common/page_segmented_control.dart';
 import '../../../../shared/components/cards/group_event_card.dart';
-import '../../../../shared/components/sections/memories_section.dart';
+import '../../../../shared/components/cards/memory_card.dart';
 import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/constants/text_styles.dart';
 import '../../../../shared/themes/colors.dart';
@@ -37,11 +38,78 @@ class _GroupHubPageState extends ConsumerState<GroupHubPage>
   late TabController _tabController;
   final Map<String, List<ExpenseParticipant>> _expenseParticipants = {};
 
+  // Scroll snap state and controllers
+  bool _isSnapped = false;
+  late ScrollController _eventsScrollController;
+  late ScrollController _expensesScrollController;
+  late ScrollController _memoriesScrollController;
+
+  // Track primary scroll axis to detect vertical vs horizontal movement
+  Axis? _primaryScrollAxis;
+
+  // Prevent multiple rapid unsnap calls
+  bool _isUnsnapping = false;
+
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
     _initializeExpenseParticipants();
+    _initializeScrollControllers();
+  }
+
+  void _initializeScrollControllers() {
+    _eventsScrollController = ScrollController();
+    _expensesScrollController = ScrollController();
+    _memoriesScrollController = ScrollController();
+
+    // Listen for scroll down at the top of section scrolls to unsnap
+    _eventsScrollController.addListener(_onSectionScrollChanged);
+    _expensesScrollController.addListener(_onSectionScrollChanged);
+    _memoriesScrollController.addListener(_onSectionScrollChanged);
+  }
+
+  void _onSectionScrollChanged() {
+    final currentController = _getCurrentSectionScrollController();
+    if (currentController == null || !currentController.hasClients) return;
+
+    final pixels = currentController.position.pixels;
+    final direction = currentController.position.userScrollDirection;
+
+    // If scrolling down and at/near the top of section, unsnap
+    // Check for pixels <= 1 to account for floating point precision and overscroll
+    if (_isSnapped &&
+        !_isUnsnapping &&
+        pixels <= 1.0 &&
+        direction == ScrollDirection.forward) {
+      _isUnsnapping = true;
+      _setSnapState(false);
+      // Reset flag after a short delay
+      Future.delayed(const Duration(milliseconds: 100), () {
+        _isUnsnapping = false;
+      });
+    }
+  }
+
+  ScrollController? _getCurrentSectionScrollController() {
+    switch (_tabController.index) {
+      case 0:
+        return _eventsScrollController;
+      case 1:
+        return _expensesScrollController;
+      case 2:
+        return _memoriesScrollController;
+      default:
+        return null;
+    }
+  }
+
+  void _setSnapState(bool snapped) {
+    if (_isSnapped != snapped) {
+      setState(() {
+        _isSnapped = snapped;
+      });
+    }
   }
 
   void _initializeExpenseParticipants() {
@@ -55,6 +123,9 @@ class _GroupHubPageState extends ConsumerState<GroupHubPage>
   @override
   void dispose() {
     _tabController.dispose();
+    _eventsScrollController.dispose();
+    _expensesScrollController.dispose();
+    _memoriesScrollController.dispose();
     super.dispose();
   }
 
@@ -62,44 +133,204 @@ class _GroupHubPageState extends ConsumerState<GroupHubPage>
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: BrandColors.bg1,
-      appBar: CommonAppBar(
-        title: '',
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: BrandColors.text1),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-        trailing: IconButton(
-          icon: const Icon(Icons.settings, color: BrandColors.text1),
-          onPressed: () {
-            // TODO: Navigate to group settings
-          },
-        ),
-      ),
+      appBar: _buildAppBar(),
       body: SafeArea(
-        child: Column(
-          children: [
-            // Group information section
-            _buildGroupInfo(),
-            const SizedBox(height: Gaps.lg),
+        child: GestureDetector(
+          // Detect vertical drag up to snap when not snapped
+          onVerticalDragUpdate: (details) {
+            if (!_isSnapped && details.delta.dy < 0) {
+              // Only snap if drag is primarily vertical (not diagonal)
+              final horizontalMovement = details.delta.dx.abs();
+              final verticalMovement = details.delta.dy.abs();
 
-            // Segmented control
-            _buildSegmentedControl(),
-            const SizedBox(height: Gaps.md),
-
-            // Content sections
-            Expanded(
-              child: TabBarView(
-                controller: _tabController,
-                children: [
-                  _buildEventsSection(),
-                  _buildExpensesSection(),
-                  _buildMemoriesSection(),
-                ],
-              ),
-            ),
-          ],
+              if (verticalMovement > horizontalMovement * 1.5) {
+                // Trigger snap immediately
+                _setSnapState(true);
+              }
+            }
+          },
+          child: NotificationListener<ScrollNotification>(
+            onNotification: _handleScrollNotification,
+            child: _isSnapped ? _buildSnappedView() : _buildNormalView(),
+          ),
         ),
       ),
+    );
+  }
+
+  PreferredSizeWidget _buildAppBar() {
+    return CommonAppBar(
+      title: _isSnapped ? widget.groupName : '',
+      leading: IconButton(
+        icon: const Icon(Icons.arrow_back, color: BrandColors.text1),
+        onPressed: () => Navigator.of(context).pop(),
+      ),
+      trailing: IconButton(
+        icon: const Icon(Icons.settings, color: BrandColors.text1),
+        onPressed: () {
+          // TODO: Navigate to group settings
+        },
+      ),
+    );
+  }
+
+  bool _handleScrollNotification(ScrollNotification notification) {
+    // Track scroll start to determine primary axis
+    if (notification is ScrollStartNotification) {
+      _primaryScrollAxis = null; // Reset
+      return false;
+    }
+
+    if (notification is ScrollUpdateNotification && !_isSnapped) {
+      final scrollDelta = notification.scrollDelta;
+      final axis = notification.metrics.axis;
+
+      // On first update, determine the primary scroll axis
+      if (_primaryScrollAxis == null &&
+          scrollDelta != null &&
+          scrollDelta.abs() > 0) {
+        _primaryScrollAxis = axis;
+      }
+
+      // Only respond if primary axis is vertical
+      if (_primaryScrollAxis == Axis.vertical && axis == Axis.vertical) {
+        if (scrollDelta != null && scrollDelta < 0) {
+          // Scrolling up vertically - snap the view immediately
+          _setSnapState(true);
+          return true;
+        }
+      }
+    }
+
+    // Reset on scroll end
+    if (notification is ScrollEndNotification) {
+      _primaryScrollAxis = null;
+    }
+
+    return false;
+  }
+
+  Widget _buildNormalView() {
+    return Column(
+      children: [
+        // Group information section
+        _buildGroupInfo(),
+        const SizedBox(height: Gaps.lg),
+
+        // Segmented control
+        _buildSegmentedControl(),
+        const SizedBox(height: Gaps.md),
+
+        // Content sections
+        Expanded(
+          child: TabBarView(
+            controller: _tabController,
+            children: [
+              _buildEventsSection(),
+              _buildExpensesSection(),
+              _buildMemoriesSection(),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSnappedView() {
+    return Column(
+      children: [
+        // Segmented control fixed at top
+        NotificationListener<ScrollNotification>(
+          onNotification: _handleSegmentedControlScroll,
+          child: _buildSegmentedControl(),
+        ),
+
+        // Content sections with individual scroll controllers
+        Expanded(
+          child: TabBarView(
+            controller: _tabController,
+            children: [
+              _buildEventsSection(),
+              _buildExpensesSection(),
+              _buildMemoriesSection(),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  bool _handleSegmentedControlScroll(ScrollNotification notification) {
+    // When in snapped mode, detect vertical scroll down to unsnap
+    if (_isSnapped && notification is ScrollUpdateNotification) {
+      final scrollDelta = notification.scrollDelta;
+      final axis = notification.metrics.axis;
+
+      // Only detect vertical scrolls, not horizontal (TabBarView swipes)
+      if (axis == Axis.vertical) {
+        if (scrollDelta != null && scrollDelta > 0) {
+          // Scrolling down vertically - unsnap immediately
+          _setSnapState(false);
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  Widget _buildMemoriesGrid(List<GroupMemoryEntity> memories) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final cardWidth = (constraints.maxWidth - Gaps.xs) / 2;
+
+        return Column(
+          children: [
+            for (int i = 0; i < memories.length; i += 2)
+              Padding(
+                padding: EdgeInsets.only(
+                  bottom: i + 2 < memories.length ? Gaps.xs : 0,
+                ),
+                child: Row(
+                  children: [
+                    // First memory in row
+                    Expanded(
+                      child: SizedBox(
+                        width: cardWidth,
+                        child: MemoryCard(
+                          title: memories[i].title,
+                          coverImageUrl: memories[i].coverImageUrl,
+                          date: memories[i].date,
+                          location: memories[i].location,
+                        ),
+                      ),
+                    ),
+
+                    // Spacing between cards
+                    const SizedBox(width: Gaps.xs),
+
+                    // Second memory in row (if exists)
+                    if (i + 1 < memories.length)
+                      Expanded(
+                        child: SizedBox(
+                          width: cardWidth,
+                          child: MemoryCard(
+                            title: memories[i + 1].title,
+                            coverImageUrl: memories[i + 1].coverImageUrl,
+                            date: memories[i + 1].date,
+                            location: memories[i + 1].location,
+                          ),
+                        ),
+                      )
+                    else
+                      const Expanded(
+                        child: SizedBox(),
+                      ),
+                  ],
+                ),
+              ),
+          ],
+        );
+      },
     );
   }
 
@@ -207,7 +438,16 @@ class _GroupHubPageState extends ConsumerState<GroupHubPage>
         }
 
         return ListView.separated(
-          padding: const EdgeInsets.symmetric(horizontal: Insets.screenH),
+          controller: _eventsScrollController,
+          physics: _isSnapped
+              ? const AlwaysScrollableScrollPhysics()
+              : const NeverScrollableScrollPhysics(),
+          padding: EdgeInsets.only(
+            left: Insets.screenH,
+            right: Insets.screenH,
+            top: _isSnapped ? Gaps.md : 0,
+            bottom: Gaps.md,
+          ),
           itemCount: events.length + 1,
           separatorBuilder: (context, index) {
             if (index == events.length - 1) {
@@ -316,7 +556,16 @@ class _GroupHubPageState extends ConsumerState<GroupHubPage>
           });
 
         return ListView.separated(
-          padding: const EdgeInsets.symmetric(horizontal: Insets.screenH),
+          controller: _expensesScrollController,
+          physics: _isSnapped
+              ? const AlwaysScrollableScrollPhysics()
+              : const NeverScrollableScrollPhysics(),
+          padding: EdgeInsets.only(
+            left: Insets.screenH,
+            right: Insets.screenH,
+            top: _isSnapped ? Gaps.md : 0,
+            bottom: Gaps.md,
+          ),
           itemCount: sortedExpenses.length + 1,
           separatorBuilder: (context, index) {
             if (index == sortedExpenses.length - 1) {
@@ -381,9 +630,20 @@ class _GroupHubPageState extends ConsumerState<GroupHubPage>
           );
         }
 
-        return MemoriesSection<GroupMemoryEntity>(
-          memories: memories,
-          enableScroll: true,
+        return SingleChildScrollView(
+          controller: _memoriesScrollController,
+          physics: _isSnapped
+              ? const BouncingScrollPhysics(
+                  parent: AlwaysScrollableScrollPhysics(),
+                )
+              : const NeverScrollableScrollPhysics(),
+          padding: EdgeInsets.only(
+            left: Insets.screenH,
+            right: Insets.screenH,
+            top: _isSnapped ? Gaps.md : 0,
+            bottom: Gaps.lg,
+          ),
+          child: _buildMemoriesGrid(memories),
         );
       },
     );
