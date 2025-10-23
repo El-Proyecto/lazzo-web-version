@@ -534,12 +534,10 @@ class _AddSuggestionBottomSheetState
               onPressed: _handleAddSuggestionPressed,
               style: FilledButton.styleFrom(
                 backgroundColor: _hasChanges && _isTimeValid
-                    ? BrandColors
-                          .planning // Green when valid
+                    ? BrandColors.planning // Green when valid
                     : BrandColors.border,
                 foregroundColor: _hasChanges && _isTimeValid
-                    ? BrandColors
-                          .text1 // Green text when enabled
+                    ? BrandColors.text1 // Green text when enabled
                     : BrandColors.text2,
                 padding: const EdgeInsets.symmetric(vertical: Pads.ctlV),
                 shape: RoundedRectangleBorder(
@@ -615,7 +613,6 @@ class _AddSuggestionBottomSheetState
             style: AppText.bodyMedium.copyWith(
               color: BrandColors.text2,
               fontWeight: FontWeight.w500,
-              fontSize: 12,
             ),
           ),
         ),
@@ -721,9 +718,8 @@ class _AddSuggestionBottomSheetState
 
     if (mounted) {
       // Show success and close
-      final suggestionType = _selectedType == SuggestionType.dateTime
-          ? 'Date/Time'
-          : 'Location';
+      final suggestionType =
+          _selectedType == SuggestionType.dateTime ? 'Date/Time' : 'Location';
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('$suggestionType suggestion added!'),
@@ -824,7 +820,6 @@ class _AddSuggestionBottomSheetState
                 style: AppText.bodyMedium.copyWith(
                   color: isSecondary ? BrandColors.text1 : BrandColors.planning,
                   fontWeight: FontWeight.w500,
-                  fontSize: 12,
                 ),
                 overflow: TextOverflow.ellipsis,
               ),
@@ -937,9 +932,8 @@ class _AddSuggestionBottomSheetState
                     suggestion.name,
                     style: AppText.bodyMedium.copyWith(
                       color: BrandColors.text1,
-                      fontWeight: isTopMatch
-                          ? FontWeight.w600
-                          : FontWeight.normal,
+                      fontWeight:
+                          isTopMatch ? FontWeight.w600 : FontWeight.normal,
                     ),
                   ),
                   if (suggestion.address != suggestion.name) ...[
@@ -1148,9 +1142,8 @@ class _AddSuggestionBottomSheetState
       margin: EdgeInsets.zero,
       onTap: (index) {
         setState(() {
-          _selectedType = index == 0
-              ? SuggestionType.dateTime
-              : SuggestionType.location;
+          _selectedType =
+              index == 0 ? SuggestionType.dateTime : SuggestionType.location;
         });
       },
     );

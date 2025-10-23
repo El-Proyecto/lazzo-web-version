@@ -5,6 +5,7 @@
 export 'cards/memory_card.dart';
 export 'cards/group_card.dart';
 export 'cards/action_card.dart';
+export 'cards/group_event_card.dart';
 
 // Badge Components
 export 'badges/group_badge.dart';
@@ -23,6 +24,7 @@ export 'common/create_event_segmented_control.dart';
 
 // Section Components
 export 'sections/event_header.dart';
+export 'sections/memories_section.dart';
 
 // Widget Components
 export 'widgets/rsvp_widget.dart';

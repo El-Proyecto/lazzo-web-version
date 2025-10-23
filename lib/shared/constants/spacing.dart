@@ -12,7 +12,7 @@ class Radii {
 }
 
 class Pads {
-  static const ctlH = 16.0, ctlV = 12.0, sectionH = 16.0, sectionV = 12.0, ctlVSm = 12.0;
+  static const ctlH = 16.0, ctlV = 12.0, sectionH = 16.0, sectionV = 12.0, ctlVSm = 12.0, ctlVXss = 6.0;
 }
 
 class IconSizes {
