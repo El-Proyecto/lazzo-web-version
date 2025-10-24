@@ -16,7 +16,7 @@ class Pads {
 }
 
 class IconSizes {
-  static const sm = 16.0, md = 24.0, lg = 32.0;
+  static const sm = 16.0, smAlt = 20.0, md = 24.0, lg = 32.0;
 }
 
 class TouchTargets {

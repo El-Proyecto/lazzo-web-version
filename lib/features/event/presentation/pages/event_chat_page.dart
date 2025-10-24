@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../routes/app_router.dart';
 import '../../../../shared/components/nav/common_app_bar.dart';
 import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/constants/text_styles.dart';
@@ -162,7 +163,7 @@ class _EventChatPageState extends ConsumerState<EventChatPage> {
         backgroundColor: BrandColors.bg1,
         appBar: PreferredSize(
           preferredSize: Size.fromHeight(
-            kToolbarHeight +
+            (kToolbarHeight - 8) +
                 (eventAsync.value?.location != null ||
                         eventAsync.value?.startDateTime != null
                     ? 20
@@ -275,68 +276,73 @@ class _ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        AppBar(
-          backgroundColor: Colors.transparent,
-          surfaceTintColor: Colors.transparent,
-          shadowColor: Colors.transparent,
-          elevation: 0,
-          automaticallyImplyLeading: false,
-          titleSpacing: 0,
-          title: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: Insets.screenH),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                // Back button
-                GestureDetector(
-                  onTap: onBackPressed,
-                  child: Container(
-                    width: 32,
-                    height: 32,
-                    alignment: Alignment.center,
-                    child: const Icon(
-                      Icons.arrow_back_ios,
-                      color: BrandColors.text1,
-                      size: 20,
-                    ),
-                  ),
+        Padding(
+          padding: const EdgeInsets.only(top: 16),
+          child: AppBar(
+            backgroundColor: Colors.transparent,
+            surfaceTintColor: Colors.transparent,
+            shadowColor: Colors.transparent,
+            elevation: 0,
+            automaticallyImplyLeading: false,
+            titleSpacing: 0,
+            toolbarHeight:
+          kToolbarHeight - 32, // Reduce height to remove bottom padding
+            title: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: Insets.screenH),
+              child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            // Back button
+            GestureDetector(
+              onTap: onBackPressed,
+              child: Container(
+                width: 32,
+                height: 32,
+                alignment: Alignment.center,
+                child: const Icon(
+            Icons.arrow_back_ios,
+            color: BrandColors.text1,
+            size: 20,
                 ),
+              ),
+            ),
 
-                const SizedBox(width: Gaps.sm),
+            const SizedBox(width: Gaps.sm),
 
-                // Title (centered, same level as buttons)
-                Expanded(
-                  child: Text(
-                    title,
-                    style: AppText.titleMediumEmph.copyWith(
-                      color: BrandColors.text1,
-                      fontSize: 18,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    textAlign: TextAlign.center,
-                  ),
+            // Title (centered, same level as buttons)
+            Expanded(
+              child: Text(
+                title,
+                style: AppText.titleMediumEmph.copyWith(
+            color: BrandColors.text1,
+            fontSize: 18,
                 ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+              ),
+            ),
 
-                const SizedBox(width: Gaps.sm),
+            const SizedBox(width: Gaps.sm),
 
-                // Notification toggle button
-                GestureDetector(
-                  onTap: onToggleNotifications,
-                  child: Container(
-                    width: 32,
-                    height: 32,
-                    alignment: Alignment.center,
-                    child: Icon(
-                      notificationsMuted
-                          ? Icons.notifications_off
-                          : Icons.notifications,
-                      color: BrandColors.text1,
-                      size: 24,
-                    ),
-                  ),
+            // Notification toggle button
+            GestureDetector(
+              onTap: onToggleNotifications,
+              child: Container(
+                width: 32,
+                height: 32,
+                alignment: Alignment.center,
+                child: Icon(
+            notificationsMuted
+                ? Icons.notifications_off
+                : Icons.notifications,
+            color: BrandColors.text1,
+            size: 24,
                 ),
-              ],
+              ),
+            ),
+          ],
+              ),
             ),
           ),
         ),
@@ -387,7 +393,7 @@ class _ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
 
   @override
   Size get preferredSize {
-    double height = kToolbarHeight;
+    double height = kToolbarHeight - 8; // Match reduced toolbar height
 
     // Add space for subtitle if present
     if (subtitle != null) {
@@ -754,7 +760,7 @@ class _MessageBubble extends StatelessWidget {
   }
 }
 
-/// Chat input widget with send button
+/// Chat input widget with dynamic action button
 class _ChatInput extends StatelessWidget {
   final TextEditingController controller;
   final FocusNode focusNode;
@@ -776,117 +782,85 @@ class _ChatInput extends StatelessWidget {
       color: BrandColors.bg1,
       child: SafeArea(
         top: false,
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            // Add button (circular green button)
-            Container(
-              width: TouchTargets.min,
-              height: TouchTargets.min,
-              decoration: BoxDecoration(
-                color: BrandColors.planning,
-                borderRadius: BorderRadius.circular(Radii.pill),
-              ),
-              child: Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  onTap: () {
-                    // TODO: Implement attachment functionality
-                    HapticFeedback.lightImpact();
-                  },
-                  borderRadius: BorderRadius.circular(Radii.pill),
-                  child: const Icon(
-                    Icons.add,
+        child: Container(
+          constraints: const BoxConstraints(
+            maxHeight: 120,
+          ),
+          decoration: BoxDecoration(
+            color: BrandColors.bg3,
+            borderRadius: BorderRadius.circular(Radii.pill),
+            border: Border.all(color: BrandColors.border),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              // Message input field
+              Expanded(
+                child: TextField(
+                  controller: controller,
+                  focusNode: focusNode,
+                  style: AppText.bodyMedium.copyWith(
                     color: BrandColors.text1,
-                    size: IconSizes.md,
                   ),
+                  decoration: InputDecoration(
+                    hintText: 'Type a message',
+                    hintStyle: AppText.bodyMedium.copyWith(
+                      color: BrandColors.text2,
+                    ),
+                    border: InputBorder.none,
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: Pads.ctlH,
+                      vertical: Pads.ctlV,
+                    ),
+                  ),
+                  maxLines: null,
+                  textCapitalization: TextCapitalization.sentences,
+                  onSubmitted: (_) => onSend(),
                 ),
               ),
-            ),
 
-            const SizedBox(width: Gaps.sm),
+              // Dynamic action button: "+" when empty, "send" when text exists
+              ValueListenableBuilder<TextEditingValue>(
+                valueListenable: controller,
+                builder: (context, value, child) {
+                  final hasText = value.text.trim().isNotEmpty;
 
-            // Message input field
-            Expanded(
-              child: Container(
-                constraints: const BoxConstraints(
-                  maxHeight: 120,
-                ),
-                decoration: BoxDecoration(
-                  color: BrandColors.bg3,
-                  borderRadius: BorderRadius.circular(Radii.pill),
-                  border: Border.all(color: BrandColors.border),
-                ),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: controller,
-                        focusNode: focusNode,
-                        style: AppText.bodyMedium.copyWith(
+                  return Container(
+                    width: 36,
+                    height: 36,
+                    margin: const EdgeInsets.only(
+                      right: Gaps.xs,
+                      bottom: Gaps.xs,
+                    ),
+                    decoration: BoxDecoration(
+                      color: BrandColors.planning,
+                      borderRadius: BorderRadius.circular(Radii.pill),
+                    ),
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: () {
+                          if (hasText) {
+                            onSend();
+                          } else {
+                            // Navigate to create event page
+                            Navigator.pushNamed(context, AppRouter.createEvent);
+                          }
+                          HapticFeedback.lightImpact();
+                        },
+                        borderRadius: BorderRadius.circular(Radii.pill),
+                        child: Icon(
+                          hasText ? Icons.send : Icons.add,
+                          size: hasText ? IconSizes.sm : IconSizes.smAlt,
                           color: BrandColors.text1,
                         ),
-                        decoration: InputDecoration(
-                          hintText: 'Type a message',
-                          hintStyle: AppText.bodyMedium.copyWith(
-                            color: BrandColors.text2,
-                          ),
-                          border: InputBorder.none,
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: Pads.ctlH,
-                            vertical: Pads.ctlV,
-                          ),
-                        ),
-                        maxLines: null,
-                        textCapitalization: TextCapitalization.sentences,
-                        onSubmitted: (_) => onSend(),
                       ),
                     ),
-
-                    // Send button (appears when there's text)
-                    ValueListenableBuilder<TextEditingValue>(
-                      valueListenable: controller,
-                      builder: (context, value, child) {
-                        if (value.text.trim().isEmpty) {
-                          return const SizedBox.shrink();
-                        }
-
-                        return Container(
-                          margin: const EdgeInsets.only(
-                            right: Gaps.xs,
-                            bottom: Gaps.xs,
-                          ),
-                          decoration: BoxDecoration(
-                            color: BrandColors.planning,
-                            borderRadius: BorderRadius.circular(Radii.pill),
-                          ),
-                          child: Material(
-                            color: Colors.transparent,
-                            child: InkWell(
-                              onTap: () {
-                                onSend();
-                                HapticFeedback.lightImpact();
-                              },
-                              borderRadius: BorderRadius.circular(Radii.pill),
-                              child: Container(
-                                padding: const EdgeInsets.all(8),
-                                child: const Icon(
-                                  Icons.send,
-                                  size: IconSizes.sm,
-                                  color: BrandColors.text1,
-                                ),
-                              ),
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  ],
-                ),
+                  );
+                },
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
