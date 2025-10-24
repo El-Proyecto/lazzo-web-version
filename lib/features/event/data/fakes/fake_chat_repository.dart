@@ -94,6 +94,47 @@ class FakeChatRepository implements ChatRepository {
       createdAt: DateTime.now().subtract(const Duration(minutes: 1)),
       read: false, // UNREAD - New message!
     ),
+    // Example of consecutive messages from different people
+    ChatMessage(
+      id: 'msg-10',
+      eventId: 'event-1',
+      userId: 'user-2',
+      userName: 'Maria Santos',
+      userAvatar: null,
+      content: 'Ei pessoal!',
+      createdAt: DateTime.now().subtract(const Duration(seconds: 50)),
+      read: false,
+    ),
+    ChatMessage(
+      id: 'msg-11',
+      eventId: 'event-1',
+      userId: 'user-4',
+      userName: 'Ricardo Alves',
+      userAvatar: null,
+      content: 'Boa tarde!',
+      createdAt: DateTime.now().subtract(const Duration(seconds: 45)),
+      read: false,
+    ),
+    ChatMessage(
+      id: 'msg-12',
+      eventId: 'event-1',
+      userId: 'user-3',
+      userName: 'Ana Costa',
+      userAvatar: null,
+      content: 'Olá! 👋',
+      createdAt: DateTime.now().subtract(const Duration(seconds: 40)),
+      read: false,
+    ),
+    ChatMessage(
+      id: 'msg-13',
+      eventId: 'event-1',
+      userId: 'user-5',
+      userName: 'Sofia Lima',
+      userAvatar: null,
+      content: 'Bom dia a todos!',
+      createdAt: DateTime.now().subtract(const Duration(seconds: 35)),
+      read: false,
+    ),
   ];
 
   @override
