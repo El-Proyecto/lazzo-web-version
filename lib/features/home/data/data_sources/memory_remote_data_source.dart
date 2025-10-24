@@ -11,9 +11,8 @@ class MemoryRemoteDataSource {
     try {
       final r = await client
           .from('events')
-          .select('event_id, title, emoji, created_at')
-          .eq('suggested_by', userId)
-          .eq('state', 'ended')
+          .select('id, name, emoji, created_at')
+          .eq('status', 'ended')
           .order('created_at', ascending: false)
           .limit(1)
           .maybeSingle();

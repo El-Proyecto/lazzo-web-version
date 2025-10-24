@@ -19,6 +19,7 @@ class PendingEventExpandedCard extends StatelessWidget {
   final UserVoteStatus userVote; // User's current vote status
   final VoidCallback? onCollapse;
   final VoidCallback? onVoteAgain;
+  final VoidCallback? onTap;
 
   const PendingEventExpandedCard({
     super.key,
@@ -33,126 +34,130 @@ class PendingEventExpandedCard extends StatelessWidget {
     required this.userVote,
     this.onCollapse,
     this.onVoteAgain,
+    this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: Pads.ctlH,
-        vertical: Pads.ctlV,
-      ),
-      decoration: ShapeDecoration(
-        color: BrandColors.bg2,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(Radii.md),
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(
+          horizontal: Pads.ctlH,
+          vertical: Pads.ctlV,
         ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header row with title and collapse button
-          Row(
-            children: [
-              // Event info section
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Title row with emoji
-                    Row(
-                      children: [
-                        Text(emoji, style: const TextStyle(fontSize: 30)),
-                        const SizedBox(width: Gaps.xs),
-                        Expanded(
-                          child: Text(
-                            title,
-                            style: AppText.titleMediumEmph.copyWith(
-                              color: BrandColors.text1,
+        decoration: ShapeDecoration(
+          color: BrandColors.bg2,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(Radii.md),
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header row with title and collapse button
+            Row(
+              children: [
+                // Event info section
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Title row with emoji
+                      Row(
+                        children: [
+                          Text(emoji, style: const TextStyle(fontSize: 30)),
+                          const SizedBox(width: Gaps.xs),
+                          Expanded(
+                            child: Text(
+                              title,
+                              style: AppText.titleMediumEmph.copyWith(
+                                color: BrandColors.text1,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
                           ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: Gaps.xxs),
-                    // Date and location
-                    Text(
-                      '$dateTime • $location',
-                      style: AppText.bodyMedium.copyWith(
-                        color: BrandColors.text2,
+                        ],
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: Gaps.md),
-
-              // Vote Again Button
-              ExpandedCardButton(onTap: onVoteAgain),
-
-              const SizedBox(width: Gaps.xs),
-
-              // Collapse Button
-              GestureDetector(
-                onTap: onCollapse,
-                child: Container(
-                  width: IconSizes.lg,
-                  height: IconSizes.lg,
-                  decoration: ShapeDecoration(
-                    color: BrandColors.bg3,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(Radii.sm),
-                    ),
-                  ),
-                  child: const Icon(
-                    Icons.expand_less,
-                    size: 18,
-                    color: BrandColors.text1,
+                      const SizedBox(height: Gaps.xxs),
+                      // Date and location
+                      Text(
+                        '$dateTime • $location',
+                        style: AppText.bodyMedium.copyWith(
+                          color: BrandColors.text2,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
                   ),
                 ),
-              ),
-            ],
-          ),
+                const SizedBox(width: Gaps.md),
 
-          const SizedBox(height: Gaps.md),
+                // Vote Again Button
+                ExpandedCardButton(onTap: onVoteAgain),
 
-          // Voting sections
-          Column(
-            children: [
-              // "Can" section (Yes votes)
-              if (yesVoters.isNotEmpty)
-                _buildVoteSection(
-                  'Can',
-                  BrandColors.planning, // Green
-                  yesVoters.length,
-                  yesVoters,
+                const SizedBox(width: Gaps.xs),
+
+                // Collapse Button
+                GestureDetector(
+                  onTap: onCollapse,
+                  child: Container(
+                    width: IconSizes.lg,
+                    height: IconSizes.lg,
+                    decoration: ShapeDecoration(
+                      color: BrandColors.bg3,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(Radii.sm),
+                      ),
+                    ),
+                    child: const Icon(
+                      Icons.expand_less,
+                      size: 18,
+                      color: BrandColors.text1,
+                    ),
+                  ),
                 ),
+              ],
+            ),
 
-              if (yesVoters.isNotEmpty &&
-                  (noVoters.isNotEmpty || noResponseCount > 0))
-                const SizedBox(height: Gaps.xs),
+            const SizedBox(height: Gaps.md),
 
-              // "Can't" section (No votes)
-              if (noVoters.isNotEmpty)
-                _buildVoteSection(
-                  "Can't",
-                  BrandColors.cantVote, // Red
-                  noVoters.length,
-                  noVoters,
-                ),
+            // Voting sections
+            Column(
+              children: [
+                // "Can" section (Yes votes)
+                if (yesVoters.isNotEmpty)
+                  _buildVoteSection(
+                    'Can',
+                    BrandColors.planning, // Green
+                    yesVoters.length,
+                    yesVoters,
+                  ),
 
-              if (noVoters.isNotEmpty && noResponseCount > 0)
-                const SizedBox(height: Gaps.xs),
+                if (yesVoters.isNotEmpty &&
+                    (noVoters.isNotEmpty || noResponseCount > 0))
+                  const SizedBox(height: Gaps.xs),
 
-              // "No response" section
-              if (noResponseCount > 0) _buildNoResponseSection(),
-            ],
-          ),
-        ],
+                // "Can't" section (No votes)
+                if (noVoters.isNotEmpty)
+                  _buildVoteSection(
+                    "Can't",
+                    BrandColors.cantVote, // Red
+                    noVoters.length,
+                    noVoters,
+                  ),
+
+                if (noVoters.isNotEmpty && noResponseCount > 0)
+                  const SizedBox(height: Gaps.xs),
+
+                // "No response" section
+                if (noResponseCount > 0) _buildNoResponseSection(),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
