@@ -13,11 +13,14 @@ class ChatRepositoryImpl implements ChatRepository {
     String eventId, {
     int limit = 2,
   }) async {
+    print('🔍 DEBUG ChatRepository: Getting recent messages for eventId=$eventId');
     final models = await _remoteDataSource.getRecentMessages(
       eventId,
       limit: limit,
     );
-    return models.map((model) => model.toEntity()).toList();
+    final messages = models.map((model) => model.toEntity()).toList();
+    print('✅ DEBUG ChatRepository: Got ${messages.length} messages');
+    return messages;
   }
 
   @override
@@ -26,12 +29,15 @@ class ChatRepositoryImpl implements ChatRepository {
     String userId,
     String content,
   ) async {
+    print('🔍 DEBUG ChatRepository: Sending message to eventId=$eventId, userId=$userId, content="$content"');
     final model = await _remoteDataSource.sendMessage(
       eventId,
       userId,
       content,
     );
-    return model.toEntity();
+    final message = model.toEntity();
+    print('✅ DEBUG ChatRepository: Message sent with id=${message.id}');
+    return message;
   }
 
   @override

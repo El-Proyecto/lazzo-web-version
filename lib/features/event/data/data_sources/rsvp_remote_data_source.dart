@@ -20,7 +20,7 @@ class RsvpRemoteDataSource {
             pevent_id,
             rsvp,
             confirmed_at,
-            user:user_id(id, name, profile_picture_url)
+            user:user_id(id, name, avatar_url)
           ''')
           .eq('pevent_id', eventId)
           .order('confirmed_at', ascending: false);
@@ -45,7 +45,7 @@ class RsvpRemoteDataSource {
             pevent_id,
             rsvp,
             confirmed_at,
-            user:user_id(id, name, profile_picture_url)
+            user:user_id(id, name, avatar_url)
           ''')
           .eq('pevent_id', eventId)
           .eq('user_id', userId)
@@ -82,7 +82,7 @@ class RsvpRemoteDataSource {
             pevent_id,
             rsvp,
             confirmed_at,
-            user:user_id(id, name, profile_picture_url)
+            user:user_id(id, name, avatar_url)
           ''')
           .single();
 
@@ -107,7 +107,7 @@ class RsvpRemoteDataSource {
             pevent_id,
             rsvp,
             confirmed_at,
-            user:user_id(id, name, profile_picture_url)
+            user:user_id(id, name, avatar_url)
           ''')
           .eq('pevent_id', eventId)
           .eq('rsvp', status)

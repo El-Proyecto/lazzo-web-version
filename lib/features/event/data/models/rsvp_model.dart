@@ -30,7 +30,7 @@ class RsvpModel {
       userId: json['user_id'] as String,
       eventId: json['pevent_id'] as String, // event_participants uses 'pevent_id'
       userName: userData?['name'] as String? ?? 'Unknown User',
-      userAvatar: userData?['profile_picture_url'] as String?,
+      userAvatar: userData?['avatar_url'] as String?,
       status: json['rsvp'] as String? ?? 'pending', // event_participants uses 'rsvp' column
       confirmedAt: json['confirmed_at'] != null
           ? DateTime.parse(json['confirmed_at'] as String)

@@ -62,8 +62,12 @@ class EventDataSource {
     if (name != null) updateData['name'] = name;
     if (emoji != null) updateData['emoji'] = emoji;
     if (groupId != null) updateData['group_id'] = groupId;
-    if (startDateTime != null) updateData['start_datetime'] = startDateTime.toIso8601String();
-    if (endDateTime != null) updateData['end_datetime'] = endDateTime.toIso8601String();
+    if (startDateTime != null) {
+      updateData['start_datetime'] = startDateTime.toIso8601String();
+    }
+    if (endDateTime != null) {
+      updateData['end_datetime'] = endDateTime.toIso8601String();
+    }
     if (locationId != null) updateData['location_id'] = locationId;
     if (status != null) updateData['status'] = status;
 
@@ -71,8 +75,12 @@ class EventDataSource {
         .from('events')
         .update(updateData)
         .eq('id', id)
-        .select('id, name, emoji, group_id, start_datetime, end_datetime, location_id, status, created_by, created_at')
-        .single();
+        .select('id, name, emoji, group_id, start_datetime, end_datetime, location_id, status, created_by, created_at, updated_at')
+        .maybeSingle();
+
+    if (response == null) {
+      throw Exception('Event not found or user does not have permission to update it');
+    }
 
     return response;
   }

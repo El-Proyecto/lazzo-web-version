@@ -206,12 +206,15 @@ class MessagesNotifier extends StateNotifier<AsyncValue<List<ChatMessage>>> {
   }
 
   Future<void> _loadMessages() async {
+    print('🔍 DEBUG MessagesNotifier: Loading messages for eventId=$eventId');
     try {
       final messages = await repository.getRecentMessages(eventId);
+      print('✅ DEBUG MessagesNotifier: Loaded ${messages.length} messages');
       if (mounted) {
         state = AsyncValue.data(messages);
       }
     } catch (error, stackTrace) {
+      print('❌ DEBUG MessagesNotifier: Error loading messages: $error');
       if (mounted) {
         state = AsyncValue.error(error, stackTrace);
       }
@@ -219,11 +222,13 @@ class MessagesNotifier extends StateNotifier<AsyncValue<List<ChatMessage>>> {
   }
 
   Future<void> addMessage(ChatMessage message) async {
+    print('🔍 DEBUG MessagesNotifier: Adding message to local state');
     state.whenData((currentMessages) {
       final updatedMessages = [...currentMessages, message];
       // Sort by timestamp to maintain order
       updatedMessages.sort((a, b) => b.createdAt.compareTo(a.createdAt));
       state = AsyncValue.data(updatedMessages);
+      print('✅ DEBUG MessagesNotifier: Now have ${updatedMessages.length} messages');
     });
   }
 
@@ -305,9 +310,12 @@ class UserRsvpNotifier extends StateNotifier<AsyncValue<Rsvp?>> {
     state = const AsyncValue.loading();
     try {
       final currentUserId = ref.read(currentUserIdProvider);
+      print('🔍 DEBUG UserRsvpNotifier: Loading RSVP for eventId=$eventId, userId=$currentUserId');
       final userRsvp = await repository.getUserRsvp(eventId, currentUserId ?? '');
+      print('✅ DEBUG UserRsvpNotifier: Loaded RSVP status=${userRsvp?.status}');
       state = AsyncValue.data(userRsvp);
     } catch (error, stackTrace) {
+      print('❌ DEBUG UserRsvpNotifier: Error loading RSVP: $error');
       state = AsyncValue.error(error, stackTrace);
     }
   }
@@ -315,7 +323,9 @@ class UserRsvpNotifier extends StateNotifier<AsyncValue<Rsvp?>> {
   Future<void> submitVote(RsvpStatus status, {WidgetRef? ref}) async {
     try {
       final currentUserId = this.ref.read(currentUserIdProvider);
+      print('📝 DEBUG UserRsvpNotifier: Submitting vote status=$status for userId=$currentUserId');
       final rsvp = await repository.submitRsvp(eventId, currentUserId ?? '', status);
+      print('✅ DEBUG UserRsvpNotifier: Vote submitted, new status=${rsvp.status}');
       state = AsyncValue.data(rsvp);
 
       // If changing to "Can" (going), auto-vote for current event suggestion
@@ -458,9 +468,12 @@ class SendMessageNotifier extends StateNotifier<AsyncValue<void>> {
       : super(const AsyncValue.data(null));
 
   Future<void> sendMessage(String eventId, String content) async {
+    print('🔍 DEBUG SendMessageNotifier: Sending message to eventId=$eventId');
     state = const AsyncValue.loading();
     try {
       final currentUserId = ref.read(currentUserIdProvider);
+      print('🔍 DEBUG SendMessageNotifier: Current userId=$currentUserId');
+      
       // Send the message
       final message = await repository.sendMessage(
         eventId,
@@ -468,11 +481,14 @@ class SendMessageNotifier extends StateNotifier<AsyncValue<void>> {
         content,
       );
 
+      print('✅ DEBUG SendMessageNotifier: Message sent, adding to local state');
       // Add the message to the local state without losing other messages
       ref.read(recentMessagesProvider(eventId).notifier).addMessage(message);
 
       state = const AsyncValue.data(null);
+      print('✅ DEBUG SendMessageNotifier: Message successfully sent');
     } catch (error, stackTrace) {
+      print('❌ DEBUG SendMessageNotifier: Error sending message: $error');
       state = AsyncValue.error(error, stackTrace);
     }
   }

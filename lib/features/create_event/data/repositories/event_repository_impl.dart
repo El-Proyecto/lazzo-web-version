@@ -98,21 +98,20 @@ class EventRepositoryImpl implements EventRepository {
 			
 			final eventId = response['id'] as String;
 			
-			// Create initial RSVP for event creator (automatically "yes")
-			try {
-				print('👤 DEBUG: Creating initial RSVP for event creator...');
-				await _client.from('event_participants').insert({
-					'pevent_id': eventId,
-					'user_id': userId,
-					'rsvp': 'yes', // rsvp_status enum: pending, yes, no, maybe
-				});
-				print('👤 SUCCESS: Initial RSVP created for creator');
-			} catch (e) {
-				print('⚠️ WARNING: Failed to create initial RSVP: $e');
-				// Don't fail event creation if RSVP fails
-			}
-			
-			// If event has initial date/time, create it as a suggestion
+		// Create initial RSVP for event creator (automatically "yes")
+		try {
+			print('👤 DEBUG: Creating initial RSVP for event creator...');
+			await _client.from('event_participants').insert({
+				'pevent_id': eventId,
+				'user_id': userId,
+				'rsvp': 'yes', // rsvp_status enum: pending, yes, no, maybe
+				'confirmed_at': DateTime.now().toIso8601String(),
+			});
+			print('👤 SUCCESS: Initial RSVP created for creator with status=yes');
+		} catch (e) {
+			print('⚠️ WARNING: Failed to create initial RSVP: $e');
+			// Don't fail event creation if RSVP fails
+		}			// If event has initial date/time, create it as a suggestion
 			if (event.startDateTime != null) {
 				try {
 					print('📅 DEBUG: Creating initial date suggestion...');

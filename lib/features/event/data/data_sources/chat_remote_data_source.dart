@@ -23,7 +23,7 @@ class ChatRemoteDataSource {
             content,
             read,
             created_at,
-            user:user_id(id, name, profile_picture_url)
+            user:user_id(id, name, avatar_url)
           ''')
           .eq('event_id', eventId)
           .order('created_at', ascending: false)
@@ -61,7 +61,7 @@ class ChatRemoteDataSource {
             content,
             read,
             created_at,
-            user:user_id(id, name, profile_picture_url)
+            user:user_id(id, name, avatar_url)
           ''')
           .single();
 
@@ -85,7 +85,7 @@ class ChatRemoteDataSource {
             content,
             read,
             created_at,
-            user:user_id(id, name, profile_picture_url)
+            user:user_id(id, name, avatar_url)
           ''')
           .eq('event_id', eventId)
           .order('created_at', ascending: false);
