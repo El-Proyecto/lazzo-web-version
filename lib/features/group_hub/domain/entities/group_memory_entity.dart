@@ -4,9 +4,13 @@ import '../../../../shared/components/sections/memories_section.dart';
 /// Contains essential info needed for memory cards in the Memories section
 class GroupMemoryEntity implements MemoryData {
   final String id;
+  @override
   final String title;
+  @override
   final String? location;
+  @override
   final DateTime date;
+  @override
   final String coverImageUrl;
   final int photoCount;
 

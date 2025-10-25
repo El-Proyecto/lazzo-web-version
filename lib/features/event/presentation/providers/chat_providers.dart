@@ -3,6 +3,8 @@ import '../../domain/entities/chat_message.dart';
 import '../../domain/repositories/chat_repository.dart';
 import '../../domain/usecases/get_chat_messages.dart';
 import '../../domain/usecases/send_chat_message.dart';
+import '../../domain/usecases/pin_message.dart';
+import '../../domain/usecases/delete_message.dart';
 import 'event_providers.dart';
 
 /// Use case providers for chat
@@ -12,6 +14,14 @@ final getChatMessagesProvider = Provider<GetChatMessages>((ref) {
 
 final sendChatMessageProvider = Provider<SendChatMessage>((ref) {
   return SendChatMessage(ref.watch(chatRepositoryProvider));
+});
+
+final pinMessageProvider = Provider<PinMessage>((ref) {
+  return PinMessage(ref.watch(chatRepositoryProvider));
+});
+
+final deleteMessageProvider = Provider<DeleteMessage>((ref) {
+  return DeleteMessage(ref.watch(chatRepositoryProvider));
 });
 
 /// Chat messages state notifier
@@ -44,22 +54,52 @@ class ChatMessagesNotifier
   }
 
   /// Send a new message
-  Future<void> sendMessage(String content) async {
+  Future<void> sendMessage(String content, {ChatMessage? replyTo}) async {
     try {
-      // TODO: Get current user ID from auth service
       final newMessage = await repository.sendMessage(
         eventId,
         'current-user',
         content,
+        replyTo: replyTo,
       );
 
-      // Update state with new message
       state.whenData((messages) {
         final updatedMessages = [newMessage, ...messages];
         state = AsyncValue.data(updatedMessages);
       });
     } catch (error, stackTrace) {
-      // Keep current state but could show error to user
+      state = AsyncValue.error(error, stackTrace);
+    }
+  }
+
+  /// Pin or unpin a message
+  Future<void> togglePin(String messageId, bool isPinned) async {
+    try {
+      final updatedMessage = await repository.pinMessage(messageId, isPinned);
+
+      state.whenData((messages) {
+        final updatedMessages = messages.map((msg) {
+          return msg.id == messageId ? updatedMessage : msg;
+        }).toList();
+        state = AsyncValue.data(updatedMessages);
+      });
+    } catch (error, stackTrace) {
+      state = AsyncValue.error(error, stackTrace);
+    }
+  }
+
+  /// Delete a message
+  Future<void> deleteMessage(String messageId) async {
+    try {
+      final updatedMessage = await repository.deleteMessage(messageId);
+
+      state.whenData((messages) {
+        final updatedMessages = messages.map((msg) {
+          return msg.id == messageId ? updatedMessage : msg;
+        }).toList();
+        state = AsyncValue.data(updatedMessages);
+      });
+    } catch (error, stackTrace) {
       state = AsyncValue.error(error, stackTrace);
     }
   }

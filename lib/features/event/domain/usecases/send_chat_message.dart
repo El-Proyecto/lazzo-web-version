@@ -11,8 +11,14 @@ class SendChatMessage {
   Future<ChatMessage> call(
     String eventId,
     String userId,
-    String content,
-  ) async {
-    return repository.sendMessage(eventId, userId, content);
+    String content, {
+    ChatMessage? replyTo,
+  }) async {
+    return repository.sendMessage(
+      eventId,
+      userId,
+      content,
+      replyTo: replyTo,
+    );
   }
 }
