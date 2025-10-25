@@ -75,14 +75,14 @@ class ChatMessagesNotifier
   /// Pin or unpin a message
   Future<void> togglePin(String messageId, bool isPinned) async {
     try {
-      final updatedMessage = await repository.pinMessage(messageId, isPinned);
+      await repository.pinMessage(messageId, isPinned);
 
-      state.whenData((messages) {
-        final updatedMessages = messages.map((msg) {
-          return msg.id == messageId ? updatedMessage : msg;
-        }).toList();
-        state = AsyncValue.data(updatedMessages);
-      });
+      // Update state locally without showing loading
+      // Repository unpins others automatically
+      final messages = await repository.getAllMessages(eventId);
+      if (mounted) {
+        state = AsyncValue.data(messages);
+      }
     } catch (error, stackTrace) {
       state = AsyncValue.error(error, stackTrace);
     }

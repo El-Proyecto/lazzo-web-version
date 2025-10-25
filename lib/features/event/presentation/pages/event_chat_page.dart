@@ -108,7 +108,7 @@ class _EventChatPageState extends ConsumerState<EventChatPage> {
           if (_scrollController.hasClients) {
             _scrollController.animateTo(
               0,
-              duration: const Duration(milliseconds: 300),
+              duration: const Duration(milliseconds: 0),
               curve: Curves.easeOut,
             );
           }
@@ -125,12 +125,19 @@ class _EventChatPageState extends ConsumerState<EventChatPage> {
   void _showMessageMenu(ChatMessage message) {
     final isCurrentUser = message.userId == 'current-user';
 
-    // Unfocus to prevent keyboard opening when modal closes
-    FocusScope.of(context).unfocus();
+    // Store initial focus state
+    final hadFocus = _focusNode.hasFocus;
+
+    // Unfocus before showing modal
+    if (hadFocus) {
+      FocusScope.of(context).unfocus();
+    }
 
     showModalBottomSheet(
       context: context,
       backgroundColor: BrandColors.bg2,
+      isDismissible: true,
+      enableDrag: true,
       builder: (context) => _MessageActionMenu(
         message: message,
         isCurrentUser: isCurrentUser,
@@ -138,82 +145,68 @@ class _EventChatPageState extends ConsumerState<EventChatPage> {
         onReply: () => _replyToMessage(message),
         onDelete: isCurrentUser ? () => _deleteMessage(message) : null,
       ),
-    ).then((_) {
-      // Ensure focus is cleared when modal closes (tap outside)
-      FocusScope.of(context).unfocus();
+    ).whenComplete(() {
+      // Ensure keyboard stays closed when modal is dismissed without action
+      Future.delayed(const Duration(milliseconds: 0), () {
+        if (mounted && _replyingTo == null) {
+          FocusScope.of(context).unfocus();
+        }
+      });
     });
   }
 
   void _togglePin(ChatMessage message) {
-    print('🔧 [PIN] Starting togglePin for message: ${message.id}');
-    print('🔧 [PIN] Current focus state: ${_focusNode.hasFocus}');
     Navigator.pop(context);
-
-    // Explicitly unfocus to prevent keyboard
     FocusScope.of(context).unfocus();
 
     ref
         .read(chatMessagesProvider(widget.eventId).notifier)
         .togglePin(message.id, !message.isPinned);
     HapticFeedback.lightImpact();
-    print('🔧 [PIN] Completed togglePin - NO requestFocus called');
-    print('🔧 [PIN] Focus state after: ${_focusNode.hasFocus}');
   }
 
   void _replyToMessage(ChatMessage message) {
-    print('💬 [REPLY] Starting replyToMessage for message: ${message.id}');
-    print('💬 [REPLY] Current focus state BEFORE: ${_focusNode.hasFocus}');
-    print('💬 [REPLY] Navigator.canPop: ${Navigator.canPop(context)}');
-
     // Close bottom sheet if open
     if (Navigator.canPop(context)) {
-      print('💬 [REPLY] Popping navigator...');
       Navigator.pop(context);
     }
 
     setState(() {
       _replyingTo = message;
-      print('💬 [REPLY] Set _replyingTo to: ${message.id}');
     });
 
     // Request focus after frame to ensure keyboard opens
-    print('💬 [REPLY] Scheduling requestFocus for next frame...');
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _focusNode.requestFocus();
-      print('💬 [REPLY] Focus requested in post-frame callback');
-      print(
-          '💬 [REPLY] Focus state AFTER requestFocus: ${_focusNode.hasFocus}');
+      if (mounted) {
+        _focusNode.requestFocus();
+      }
     });
   }
 
   void _deleteMessage(ChatMessage message) {
-    print('🗑️  [DELETE] Starting deleteMessage for message: ${message.id}');
-    print('🗑️  [DELETE] Current focus state: ${_focusNode.hasFocus}');
     Navigator.pop(context);
-
-    // Explicitly unfocus to prevent keyboard
     FocusScope.of(context).unfocus();
 
     ref
         .read(chatMessagesProvider(widget.eventId).notifier)
         .deleteMessage(message.id);
     HapticFeedback.mediumImpact();
-    print('🗑️  [DELETE] Completed deleteMessage - NO requestFocus called');
-    print('🗑️  [DELETE] Focus state after: ${_focusNode.hasFocus}');
   }
 
   void _scrollToMessage(ChatMessage message) {
     final messageKey = _messageKeys[message.id];
     if (messageKey?.currentContext != null) {
-      // Add delay to ensure widget is rendered and positioned
-      Future.delayed(const Duration(milliseconds: 100), () {
+      // Delay to ensure widget is rendered and list is settled
+      Future.delayed(const Duration(milliseconds: 0), () {
+        if (!mounted) return;
+
         final context = messageKey?.currentContext;
-        if (context != null) {
+        if (context != null && context.mounted) {
           Scrollable.ensureVisible(
             context,
-            duration: const Duration(milliseconds: 300),
-            curve: Curves.easeInOut,
-            alignment: 0.5, // Center the message
+            duration: const Duration(milliseconds: 0),
+            curve: Curves.easeInOutCubic,
+            alignment: 0.5,
           );
           HapticFeedback.lightImpact();
         }
@@ -260,54 +253,36 @@ class _EventChatPageState extends ConsumerState<EventChatPage> {
     final messagesAsync = ref.watch(chatMessagesProvider(widget.eventId));
     final eventAsync = ref.watch(eventDetailProvider(widget.eventId));
 
+    // Use firstWhereOrNull from collection package for nullable result
+    final pinnedMessage = messagesAsync.maybeWhen(
+      data: (messages) => messages.where((m) => m.isPinned).isNotEmpty
+          ? messages.firstWhere((m) => m.isPinned)
+          : null,
+      orElse: () => null,
+    );
+
     return GestureDetector(
       onTap: () {
-        // Dismiss keyboard when tapping outside
         FocusScope.of(context).unfocus();
       },
       child: Scaffold(
         backgroundColor: BrandColors.bg1,
         appBar: PreferredSize(
-          preferredSize: Size.fromHeight(
-            (kToolbarHeight - 8) +
-                (eventAsync.value?.location != null ||
-                        eventAsync.value?.startDateTime != null
-                    ? 20
-                    : 0) +
-                (_showBanner ? 40 : 0),
-          ),
+          preferredSize: const Size.fromHeight(kToolbarHeight),
           child: eventAsync.when(
-            data: (event) {
-              final subtitle = _formatSubtitle(
-                event.startDateTime,
-                event.location?.displayName,
-              );
-
-              // Find pinned message from messages state
-              final messagesAsync =
-                  ref.watch(chatMessagesProvider(widget.eventId));
-              final pinnedMessage = messagesAsync.maybeWhen(
-                data: (messages) => messages.firstWhere(
-                  (m) => m.isPinned,
-                  orElse: () => messages.first,
-                ),
-                orElse: () => null,
-              );
-
-              return _ChatAppBar(
-                title: event.name,
-                subtitle: subtitle.isNotEmpty ? subtitle : null,
-                onBackPressed: () => Navigator.of(context).pop(),
-                notificationsMuted: _notificationsMuted,
-                showBanner: _showBanner,
-                onToggleNotifications: _toggleNotifications,
-                pinnedMessage:
-                    pinnedMessage?.isPinned == true ? pinnedMessage : null,
-                onPinnedMessageTap: pinnedMessage != null
-                    ? () => _scrollToMessage(pinnedMessage)
-                    : null,
-              );
-            },
+            data: (event) => _ChatAppBar(
+              title: event.name,
+              subtitle: _formatSubtitle(
+                  event.startDateTime, event.location?.displayName),
+              onBackPressed: () => Navigator.of(context).pop(),
+              notificationsMuted: _notificationsMuted,
+              showBanner: _showBanner,
+              onToggleNotifications: _toggleNotifications,
+              pinnedMessage: pinnedMessage,
+              onPinnedMessageTap: pinnedMessage != null
+                  ? () => _scrollToMessage(pinnedMessage)
+                  : null,
+            ),
             loading: () => CommonAppBar(
               title: '',
               leading: IconButton(
@@ -494,7 +469,6 @@ class _ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
                   subtitle!,
                   style: AppText.bodyMedium.copyWith(
                     color: BrandColors.text2,
-                    fontSize: 12,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -508,7 +482,7 @@ class _ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
                   width: double.infinity,
                   padding: const EdgeInsets.symmetric(
                     horizontal: Insets.screenH,
-                    vertical: Gaps.sm,
+                    vertical: Gaps.xs,
                   ),
                   color: BrandColors.bg3,
                   child: Row(
@@ -524,7 +498,6 @@ class _ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
                           pinnedMessage!.content,
                           style: AppText.bodyMedium.copyWith(
                             color: BrandColors.text1,
-                            fontSize: 13,
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -548,7 +521,6 @@ class _ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
                       : 'Chat message notifications enabled',
                   style: AppText.bodyMedium.copyWith(
                     color: BrandColors.text2,
-                    fontSize: 12,
                   ),
                   textAlign: TextAlign.center,
                 ),
@@ -562,11 +534,10 @@ class _ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
   @override
   Size get preferredSize {
     double height = kToolbarHeight - 32;
-    if (subtitle != null) height += 20 + Gaps.xs;
-    if (pinnedMessage != null) height += 24 + Gaps.sm * 2;
+    if (subtitle != null) height += 24 + Gaps.xs * 2;
+    if (pinnedMessage != null) height += 40;
     if (showBanner) height += 16 + Gaps.xs * 2;
-    // Clamp to prevent overflow: max 140px to fit within SafeArea constraints
-    return Size.fromHeight(height.clamp(kToolbarHeight, 140));
+    return Size.fromHeight(height);
   }
 }
 
@@ -679,7 +650,6 @@ class _MessagesList extends StatelessWidget {
         messageKeys.putIfAbsent(message.id, () => GlobalKey());
 
         return Column(
-          key: messageKeys[message.id],
           children: [
             // Date separator
             if (showDateSeparator)
@@ -697,8 +667,9 @@ class _MessagesList extends StatelessWidget {
                 child: _UnreadIndicator(),
               ),
 
-            // Message bubble
+            // Message bubble with GlobalKey for scrolling
             Padding(
+              key: messageKeys[message.id],
               padding: EdgeInsets.only(
                 top: isLastInGroup ? Gaps.xs : 2,
                 bottom: isLastInGroup ? Gaps.xs : 2,
@@ -744,7 +715,7 @@ class _DateSeparator extends StatelessWidget {
           label,
           style: AppText.bodyMedium.copyWith(
             color: BrandColors.text2,
-            fontSize: 11,
+            fontSize: 12,
             fontWeight: FontWeight.w500,
           ),
         ),
@@ -773,7 +744,7 @@ class _UnreadIndicator extends StatelessWidget {
             'New messages',
             style: AppText.bodyMedium.copyWith(
               color: BrandColors.planning,
-              fontSize: 11,
+              fontSize: 12,
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -923,7 +894,7 @@ class _MessageBubble extends StatelessWidget {
                     message.userName,
                     style: AppText.bodyMedium.copyWith(
                       color: BrandColors.text2,
-                      fontSize: 11,
+                      fontSize: 12,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
@@ -933,7 +904,7 @@ class _MessageBubble extends StatelessWidget {
                   _formatTimestamp(message.createdAt),
                   style: AppText.bodyMedium.copyWith(
                     color: BrandColors.text2,
-                    fontSize: 11,
+                    fontSize: 12,
                   ),
                 ),
               ],
@@ -1045,9 +1016,8 @@ class _ChatInput extends StatelessWidget {
                 ),
                 margin: const EdgeInsets.only(bottom: Gaps.xs),
                 decoration: BoxDecoration(
-                  color: BrandColors.bg3,
-                  borderRadius: BorderRadius.circular(Radii.sm),
-                  border: Border.all(color: BrandColors.border),
+                  color: BrandColors.bg2,
+                  borderRadius: BorderRadius.circular(Radii.pill),
                 ),
                 child: Row(
                   children: [
@@ -1066,7 +1036,7 @@ class _ChatInput extends StatelessWidget {
                             'Replying to ${replyingTo!.userName}',
                             style: AppText.bodyMedium.copyWith(
                               color: BrandColors.text2,
-                              fontSize: 11,
+                              fontSize: 12,
                               fontWeight: FontWeight.w500,
                             ),
                           ),
@@ -1074,7 +1044,6 @@ class _ChatInput extends StatelessWidget {
                             replyingTo!.content,
                             style: AppText.bodyMedium.copyWith(
                               color: BrandColors.text1,
-                              fontSize: 13,
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -1209,14 +1178,14 @@ class _MessageActionMenu extends StatelessWidget {
             // Pin/Unpin option
             _MenuOption(
               icon: message.isPinned ? Icons.push_pin : Icons.push_pin_outlined,
-              label: message.isPinned ? 'Desafixar' : 'Fixar',
+              label: message.isPinned ? 'Unpin' : 'Pin',
               onTap: onPin,
             ),
 
             // Reply option
             _MenuOption(
               icon: Icons.reply,
-              label: 'Responder',
+              label: 'Reply',
               onTap: onReply,
             ),
 
