@@ -18,6 +18,7 @@ import '../features/inbox/presentation/pages/inbox_page.dart';
 import '../features/profile/presentation/pages/profile_page.dart';
 import '../features/profile/presentation/pages/edit_profile_page.dart';
 import '../features/event/presentation/pages/event_page.dart';
+import '../features/event/presentation/pages/event_chat_page.dart';
 import '../features/group_hub/presentation/pages/group_hub_page.dart';
 
 class AppRouter {
@@ -33,6 +34,7 @@ class AppRouter {
   static const String profile = '/profile';
   static const String editProfile = '/edit-profile';
   static const String event = '/event';
+  static const String eventChat = '/event-chat';
   static const String groupHub = '/group-hub';
   static const String loginPage = '/login';
   static const String otpVerification = '/otp';
@@ -76,6 +78,11 @@ class AppRouter {
       final args =
           ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
       return EventPage(eventId: args?['eventId'] ?? 'event-1');
+    },
+    eventChat: (context) {
+      final args =
+          ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+      return EventChatPage(eventId: args?['eventId'] ?? 'event-1');
     },
     groupHub: (context) {
       final args =
