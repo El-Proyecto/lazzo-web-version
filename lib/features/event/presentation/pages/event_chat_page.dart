@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../routes/app_router.dart';
-import '../../../../shared/components/nav/common_app_bar.dart';
 import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/constants/text_styles.dart';
 import '../../../../shared/themes/colors.dart';
@@ -267,36 +266,33 @@ class _EventChatPageState extends ConsumerState<EventChatPage> {
       },
       child: Scaffold(
         backgroundColor: BrandColors.bg1,
-        appBar: PreferredSize(
-          preferredSize: const Size.fromHeight(kToolbarHeight),
-          child: eventAsync.when(
-            data: (event) => _ChatAppBar(
-              title: event.name,
-              subtitle: _formatSubtitle(
-                  event.startDateTime, event.location?.displayName),
-              onBackPressed: () => Navigator.of(context).pop(),
-              notificationsMuted: _notificationsMuted,
-              showBanner: _showBanner,
-              onToggleNotifications: _toggleNotifications,
-              pinnedMessage: pinnedMessage,
-              onPinnedMessageTap: pinnedMessage != null
-                  ? () => _scrollToMessage(pinnedMessage)
-                  : null,
-            ),
-            loading: () => CommonAppBar(
-              title: '',
-              leading: IconButton(
-                icon: const Icon(Icons.arrow_back, color: BrandColors.text1),
-                onPressed: () => Navigator.of(context).pop(),
-              ),
-            ),
-            error: (_, __) => CommonAppBar(
-              title: 'Chat',
-              leading: IconButton(
-                icon: const Icon(Icons.arrow_back, color: BrandColors.text1),
-                onPressed: () => Navigator.of(context).pop(),
-              ),
-            ),
+        appBar: eventAsync.when(
+          data: (event) => _ChatAppBar(
+            title: event.name,
+            subtitle: _formatSubtitle(
+                event.startDateTime, event.location?.displayName),
+            onBackPressed: () => Navigator.of(context).pop(),
+            notificationsMuted: _notificationsMuted,
+            showBanner: _showBanner,
+            onToggleNotifications: _toggleNotifications,
+            pinnedMessage: pinnedMessage,
+            onPinnedMessageTap: pinnedMessage != null
+                ? () => _scrollToMessage(pinnedMessage)
+                : null,
+          ),
+          loading: () => _ChatAppBar(
+            title: '',
+            onBackPressed: () => Navigator.of(context).pop(),
+            notificationsMuted: _notificationsMuted,
+            showBanner: false,
+            onToggleNotifications: () {},
+          ),
+          error: (_, __) => _ChatAppBar(
+            title: 'Chat',
+            onBackPressed: () => Navigator.of(context).pop(),
+            notificationsMuted: _notificationsMuted,
+            showBanner: false,
+            onToggleNotifications: () {},
           ),
         ),
         body: Column(
@@ -360,7 +356,8 @@ class _EventChatPageState extends ConsumerState<EventChatPage> {
   }
 }
 
-/// Custom app bar for chat with title and subtitle
+/// Dedicated chat AppBar with overflow-safe dynamic content
+/// Handles subtitle, pinned message banner, and notification banner
 class _ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
   final String title;
   final String? subtitle;
@@ -384,86 +381,85 @@ class _ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        AppBar(
-          backgroundColor: Colors.transparent,
-          surfaceTintColor: Colors.transparent,
-          shadowColor: Colors.transparent,
-          elevation: 0,
-          automaticallyImplyLeading: false,
-          titleSpacing: 0,
-          toolbarHeight: kToolbarHeight - 32,
-          title: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: Insets.screenH),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                // Back button
-                GestureDetector(
-                  onTap: onBackPressed,
-                  child: Container(
-                    width: 32,
-                    height: 32,
-                    alignment: Alignment.center,
-                    child: const Icon(
-                      Icons.arrow_back_ios,
-                      color: BrandColors.text1,
-                      size: 20,
-                    ),
-                  ),
-                ),
-
-                const SizedBox(width: Gaps.sm),
-
-                // Title (centered, same level as buttons)
-                Expanded(
-                  child: Text(
-                    title,
-                    style: AppText.titleMediumEmph.copyWith(
-                      color: BrandColors.text1,
-                      fontSize: 18,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-
-                const SizedBox(width: Gaps.sm),
-
-                // Notification toggle button
-                GestureDetector(
-                  onTap: onToggleNotifications,
-                  child: Container(
-                    width: 32,
-                    height: 32,
-                    alignment: Alignment.center,
-                    child: Icon(
-                      notificationsMuted
-                          ? Icons.notifications_off
-                          : Icons.notifications,
-                      color: BrandColors.text1,
-                      size: 24,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-
-        // Remove Flexible here!
-        Column(
+    return SafeArea(
+      bottom: false,
+      child: Container(
+        color: BrandColors.bg1,
+        child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            // Main AppBar row (back + title + notifications) - NO bottom padding
+            Padding(
+              padding: const EdgeInsets.only(
+                left: Insets.screenH,
+                right: Insets.screenH,
+                top: 12,
+              ),
+              child: SizedBox(
+                height: 32,
+                child: Row(
+                  children: [
+                    // Back button
+                    GestureDetector(
+                      onTap: onBackPressed,
+                      child: Container(
+                        width: 32,
+                        height: 32,
+                        alignment: Alignment.center,
+                        child: const Icon(
+                          Icons.arrow_back_ios,
+                          color: BrandColors.text1,
+                          size: 20,
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(width: Gaps.sm),
+
+                    // Title (centered)
+                    Expanded(
+                      child: Text(
+                        title,
+                        style: AppText.titleMediumEmph.copyWith(
+                          color: BrandColors.text1,
+                          fontSize: 18,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+
+                    const SizedBox(width: Gaps.sm),
+
+                    // Notification toggle button
+                    GestureDetector(
+                      onTap: onToggleNotifications,
+                      child: Container(
+                        width: 32,
+                        height: 32,
+                        alignment: Alignment.center,
+                        child: Icon(
+                          notificationsMuted
+                              ? Icons.notifications_off
+                              : Icons.notifications,
+                          color: BrandColors.text1,
+                          size: 24,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            // Subtitle (optional) - 8px from title (Gaps.xs)
             if (subtitle != null)
               Padding(
                 padding: const EdgeInsets.only(
                   left: Insets.screenH,
                   right: Insets.screenH,
-                  bottom: Gaps.xs,
+                  bottom: Gaps.xs
                 ),
                 child: Text(
                   subtitle!,
@@ -475,6 +471,8 @@ class _ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
                   textAlign: TextAlign.center,
                 ),
               ),
+
+            // Pinned message banner (optional)
             if (pinnedMessage != null)
               GestureDetector(
                 onTap: onPinnedMessageTap,
@@ -482,7 +480,7 @@ class _ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
                   width: double.infinity,
                   padding: const EdgeInsets.symmetric(
                     horizontal: Insets.screenH,
-                    vertical: Gaps.xs,
+                    vertical: Gaps.sm,
                   ),
                   color: BrandColors.bg3,
                   child: Row(
@@ -507,6 +505,8 @@ class _ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
                   ),
                 ),
               ),
+
+            // Notification banner (optional, auto-hides)
             if (showBanner)
               Container(
                 width: double.infinity,
@@ -527,16 +527,28 @@ class _ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
               ),
           ],
         ),
-      ],
+      ),
     );
   }
 
   @override
   Size get preferredSize {
-    double height = kToolbarHeight - 32;
-    if (subtitle != null) height += 24 + Gaps.xs * 2;
-    if (pinnedMessage != null) height += 40;
-    if (showBanner) height += 16 + Gaps.xs * 2;
+    // Calculate dynamic height based on content
+    double height = 44; // Base: 12 top padding + 32 row height
+
+    if (subtitle != null) {
+      height += 8 + 20; // 8px gap (Gaps.xs) + 14px text height = 20
+    }
+
+    if (pinnedMessage != null) {
+      height +=
+          8 + 37; // 8px gap + banner height (16 padding + 16 content) = 40
+    }
+
+    if (showBanner) {
+      height += 8 + 28; // 8px gap + banner height (8 padding + 16 content) = 32
+    }
+
     return Size.fromHeight(height);
   }
 }
