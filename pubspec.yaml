@@ -53,6 +53,8 @@ dependencies:
   # Image processing and compression
   image: ^4.2.0
   flutter_image_compress: ^2.3.0
+  # UUID generation for fake repositories
+  uuid: ^4.5.1
   integration_test:
     sdk: flutter
   # The following adds the Cupertino Icons font to your application.

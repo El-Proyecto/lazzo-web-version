@@ -20,7 +20,7 @@ class ConfirmEventBottomSheet extends ConsumerStatefulWidget {
   final DateTime? endDate;
   final TimeOfDay? endTime;
   final LocationInfo? selectedLocation;
-  final VoidCallback? onEventCreated; // Changed name for clarity
+  final Function(String eventId)? onEventCreated; // Changed to receive eventId
 
   const ConfirmEventBottomSheet({
     super.key,
@@ -98,12 +98,18 @@ class _ConfirmEventBottomSheetState
       // Enviar para o Supabase via provider
       await controller.createEvent(event);
 
+      // Obter o ID do evento criado do estado
+      final createdEvent = ref.read(createEventControllerProvider).createdEvent;
+      if (createdEvent == null || createdEvent.id.isEmpty) {
+        throw Exception('Failed to get created event ID');
+      }
+
       // Fechar dialog
       if (mounted) {
         Navigator.of(context).pop();
 
-        // Chamar callback se fornecido
-        widget.onEventCreated?.call();
+        // Chamar callback com o eventId
+        widget.onEventCreated?.call(createdEvent.id);
 
         // Mostrar mensagem de sucesso
         ScaffoldMessenger.of(context).showSnackBar(

@@ -31,6 +31,7 @@ class ToggleSuggestionVote {
       await repository.voteOnSuggestion(
         suggestionId: suggestionId,
         userId: userId,
+        eventId: eventId,
       );
       return true; // Vote added
     }

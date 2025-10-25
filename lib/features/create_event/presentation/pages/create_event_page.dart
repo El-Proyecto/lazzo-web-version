@@ -784,16 +784,17 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
     }
   }
 
-  void _onEventCreated() async {
+  void _onEventCreated(String eventId) async {
     // Clear draft since event is being created
     await _draftService.clearDraft();
 
-    // Navigate back to main layout (which includes home page with nav bar)
+    // Navigate to event detail page with the created event ID
     if (mounted) {
       Navigator.of(context).pushNamedAndRemoveUntil(
-        '/main',
+        '/event',
         (Route<dynamic> route) => false,
         arguments: {
+          'eventId': eventId,
           'showSuccessBanner': true,
           'eventName': _eventName.isEmpty ? 'Untitled Event' : _eventName,
           'groupName': _selectedGroup?.name ?? 'No Group',

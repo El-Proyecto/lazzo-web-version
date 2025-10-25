@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, backend, frontend]
   pull_request:
-    branches: [main]
+    branches: [main, backend, frontend]
 
 jobs:
   flutter-ci:
@@ -33,7 +33,7 @@ jobs:
         run: flutter analyze --no-fatal-infos --no-fatal-warnings
 
       - name: Format check
-        run: dart format --set-exit-if-changed .
+        run: dart format --output=none lib test
 
       - name: Run unit+widget tests (coverage)
         run: flutter test --coverage

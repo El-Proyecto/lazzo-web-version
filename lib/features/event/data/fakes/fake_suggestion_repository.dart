@@ -103,6 +103,7 @@ class FakeSuggestionRepository implements SuggestionRepository {
   Future<SuggestionVote> voteOnSuggestion({
     required String suggestionId,
     required String userId,
+    required String eventId,
   }) async {
     // Simulate network delay
     await Future.delayed(const Duration(milliseconds: 300));

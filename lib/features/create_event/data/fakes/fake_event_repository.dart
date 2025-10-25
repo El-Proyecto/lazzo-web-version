@@ -1,18 +1,19 @@
 import '../../domain/entities/event.dart';
 import '../../domain/repositories/event_repository.dart';
+import 'package:uuid/uuid.dart';
 
 /// Fake implementation of EventRepository for development and testing
 /// Returns mock data without external dependencies
 class FakeEventRepository implements EventRepository {
   static final List<Event> _events = [];
-  static int _idCounter = 1;
+  static const _uuid = Uuid();
 
   // Initialize with some test data
   static void _initializeTestData() {
     if (_events.isEmpty) {
       _events.addAll([
         Event(
-          id: '1',
+          id: 'event-1',
           name: 'Churrascada no Parque',
           emoji: '🍖',
           groupId: '1',
@@ -29,7 +30,7 @@ class FakeEventRepository implements EventRepository {
           createdAt: DateTime.now().subtract(const Duration(days: 1)),
         ),
         Event(
-          id: '2',
+          id: 'event-2',
           name: 'Jantar de Aniversário',
           emoji: '🎂',
           groupId: '2',
@@ -39,7 +40,6 @@ class FakeEventRepository implements EventRepository {
           createdAt: DateTime.now().subtract(const Duration(hours: 12)),
         ),
       ]);
-      _idCounter = 3;
     }
   }
 
@@ -51,13 +51,13 @@ class FakeEventRepository implements EventRepository {
     // Simulate network delay
     await Future.delayed(const Duration(milliseconds: 500));
 
+    // Generate UUID-compatible ID for compatibility with real Supabase
     final createdEvent = event.copyWith(
-      id: _idCounter.toString(),
+      id: _uuid.v4(),
       status: EventStatus.pending,
     );
 
     _events.add(createdEvent);
-    _idCounter++;
 
     return createdEvent;
   }

@@ -96,6 +96,58 @@ class EventRepositoryImpl implements EventRepository {
 			
 			print('📝 SUCCESS: Event created with ID: ${response['id']}');
 			
+			final eventId = response['id'] as String;
+			
+			// Create initial RSVP for event creator (automatically "yes")
+			try {
+				print('👤 DEBUG: Creating initial RSVP for event creator...');
+				await _client.from('event_participants').insert({
+					'pevent_id': eventId,
+					'user_id': userId,
+					'rsvp': 'yes', // rsvp_status enum: pending, yes, no, maybe
+				});
+				print('👤 SUCCESS: Initial RSVP created for creator');
+			} catch (e) {
+				print('⚠️ WARNING: Failed to create initial RSVP: $e');
+				// Don't fail event creation if RSVP fails
+			}
+			
+			// If event has initial date/time, create it as a suggestion
+			if (event.startDateTime != null) {
+				try {
+					print('📅 DEBUG: Creating initial date suggestion...');
+					await _client.from('event_date_options').insert({
+						'event_id': eventId,
+						'created_by': userId,
+						'starts_at': event.startDateTime!.toIso8601String(),
+						'ends_at': event.endDateTime?.toIso8601String(),
+					});
+					print('📅 SUCCESS: Initial date suggestion created');
+				} catch (e) {
+					print('⚠️ WARNING: Failed to create initial date suggestion: $e');
+					// Don't fail event creation if suggestion fails
+				}
+			}
+			
+			// If event has initial location, create it as a suggestion
+			if (event.location != null && locationId != null) {
+				try {
+					print('📍 DEBUG: Creating initial location suggestion...');
+					await _client.from('location_suggestions').insert({
+						'event_id': eventId,
+						'user_id': userId,
+						'location_name': event.location!.displayName,
+						'address': event.location!.formattedAddress,
+						'latitude': event.location!.latitude,
+						'longitude': event.location!.longitude,
+					});
+					print('📍 SUCCESS: Initial location suggestion created');
+				} catch (e) {
+					print('⚠️ WARNING: Failed to create initial location suggestion: $e');
+					// Don't fail event creation if suggestion fails
+				}
+			}
+			
 			return EventModel.fromJson(response).toEntity();
 		} catch (e, stackTrace) {
 			print('❌ ERROR creating event: $e');

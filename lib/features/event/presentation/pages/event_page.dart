@@ -88,6 +88,7 @@ class EventPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final currentUserId = ref.watch(currentUserIdProvider);
     final eventAsync = ref.watch(eventDetailProvider(eventId));
     final rsvpsAsync = ref.watch(eventRsvpsProvider(eventId));
     final userRsvpAsync = ref.watch(userRsvpProvider(eventId));
@@ -306,8 +307,7 @@ class EventPage extends ConsumerWidget {
                                         : null,
                                     eventStartDateTime: event.startDateTime,
                                     eventEndDateTime: event.endDateTime,
-                                    isHost: event.hostId ==
-                                        'current-user', // TODO: Get from auth service
+                                    isHost: event.hostId == currentUserId,
                                     hasSuggestions: suggestions.isNotEmpty ||
                                         locationSuggestions.isNotEmpty,
                                   );
@@ -391,8 +391,7 @@ class EventPage extends ConsumerWidget {
                                           : null,
                                   eventStartDateTime: event.startDateTime,
                                   eventEndDateTime: event.endDateTime,
-                                  isHost: event.hostId ==
-                                      'current-user', // TODO: Get from auth service
+                                  isHost: event.hostId == currentUserId,
                                   hasSuggestions:
                                       false, // Default to false when loading
                                 ),
@@ -475,8 +474,7 @@ class EventPage extends ConsumerWidget {
                                           : null,
                                   eventStartDateTime: event.startDateTime,
                                   eventEndDateTime: event.endDateTime,
-                                  isHost: event.hostId ==
-                                      'current-user', // TODO: Get from auth service
+                                  isHost: event.hostId == currentUserId,
                                   hasSuggestions:
                                       false, // Default to false on error
                                 ),
@@ -549,8 +547,7 @@ class EventPage extends ConsumerWidget {
                               : null,
                           eventStartDateTime: event.startDateTime,
                           eventEndDateTime: event.endDateTime,
-                          isHost: event.hostId ==
-                              'current-user', // TODO: Get from auth service
+                          isHost: event.hostId == currentUserId,
                           hasSuggestions:
                               false, // Default to false when loading
                         ),
@@ -619,19 +616,50 @@ class EventPage extends ConsumerWidget {
                               : null,
                           eventStartDateTime: event.startDateTime,
                           eventEndDateTime: event.endDateTime,
-                          isHost: event.hostId ==
-                              'current-user', // TODO: Get from auth service
+                          isHost: event.hostId == currentUserId,
                           hasSuggestions: false, // Default to false on error
                         ),
                       );
                     },
                     loading: () =>
                         const Center(child: CircularProgressIndicator()),
-                    error: (error, stack) => const SizedBox.shrink(),
+                    error: (error, stack) {
+                      // Show RSVP widget with empty votes on error
+                      return rsvp_widget.RsvpWidget(
+                        goingCount: 0,
+                        notGoingCount: 0,
+                        pendingCount: 0,
+                        userVote: null,
+                        onGoingPressed: () {},
+                        onNotGoingPressed: () {},
+                        allVotes: const [],
+                        onAddSuggestion: null,
+                        eventStartDateTime: event.startDateTime,
+                        eventEndDateTime: event.endDateTime,
+                        isHost: event.hostId == currentUserId,
+                        hasSuggestions: false,
+                      );
+                    },
                   );
                 },
                 loading: () => const Center(child: CircularProgressIndicator()),
-                error: (error, stack) => const SizedBox.shrink(),
+                error: (error, stack) {
+                  // Show RSVP widget with empty votes on error
+                  return rsvp_widget.RsvpWidget(
+                    goingCount: 0,
+                    notGoingCount: 0,
+                    pendingCount: 0,
+                    userVote: null,
+                    onGoingPressed: () {},
+                    onNotGoingPressed: () {},
+                    allVotes: const [],
+                    onAddSuggestion: null,
+                    eventStartDateTime: event.startDateTime,
+                    eventEndDateTime: event.endDateTime,
+                    isHost: event.hostId == currentUserId,
+                    hasSuggestions: false,
+                  );
+                },
               ),
               const SizedBox(height: Gaps.lg),
 
@@ -696,8 +724,7 @@ class EventPage extends ConsumerWidget {
                                       )
                                       .toggleVote_(eventId, suggestionId);
                                 },
-                                isHost: event.hostId ==
-                                    'current-user', // TODO: Get from auth service
+                                isHost: event.hostId == currentUserId,
                                 onAddSuggestion: () {
                                   if (event.startDateTime != null &&
                                       event.endDateTime != null) {
@@ -785,7 +812,7 @@ class EventPage extends ConsumerWidget {
                                         )
                                         .toggleVote(eventId, suggestionId);
                                   },
-                                  isHost: event.hostId == 'current-user',
+                                  isHost: event.hostId == currentUserId,
                                   onAddSuggestion: () {
                                     showAddSuggestionBottomSheet(
                                       context,
@@ -841,8 +868,7 @@ class EventPage extends ConsumerWidget {
                   );
                   return ChatPreviewWidget(
                     newMessagesCount: unreadCount,
-                    currentUserId:
-                        'current-user', // TODO: Get from auth provider
+                    currentUserId: currentUserId ?? '',
                     recentMessages: messages
                         .map(
                           (m) => ChatMessagePreview(
@@ -866,8 +892,27 @@ class EventPage extends ConsumerWidget {
                     },
                   );
                 },
-                loading: () => const Center(child: CircularProgressIndicator()),
-                error: (error, stack) => const SizedBox.shrink(),
+                loading: () => ChatPreviewWidget(
+                  newMessagesCount: 0,
+                  currentUserId: currentUserId ?? '',
+                  recentMessages: const [],
+                  onOpenChat: () {},
+                  onSendMessage: (content) async {},
+                ),
+                error: (error, stack) {
+                  // Show empty chat widget on error so users can still try to send messages
+                  return ChatPreviewWidget(
+                    newMessagesCount: 0,
+                    currentUserId: currentUserId ?? '',
+                    recentMessages: const [],
+                    onOpenChat: () {},
+                    onSendMessage: (content) async {
+                      await ref
+                          .read(sendMessageProvider.notifier)
+                          .sendMessage(eventId, content);
+                    },
+                  );
+                },
               ),
               const SizedBox(height: Gaps.lg),
 
@@ -917,11 +962,11 @@ class EventPage extends ConsumerWidget {
                               )
                               .toList(),
                           userVotedOptionId: _getUserVotedOption(poll),
-                          isHost: event.hostId == 'current-user',
+                          isHost: event.hostId == currentUserId,
                           onVote: (optionId) {
                             // TODO: Implement vote on poll
                           },
-                          onPickFinal: event.hostId == 'current-user'
+                          onPickFinal: event.hostId == currentUserId
                               ? (optionId) {
                                   // TODO: Implement pick final option
                                 }
