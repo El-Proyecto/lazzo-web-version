@@ -3,11 +3,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../../../shared/components/nav/common_app_bar.dart';
 import '../../../../shared/components/sections/cover_mosaic.dart';
-import '../../../../shared/components/sections/photo_grid.dart';
+import '../../../../shared/components/sections/hybrid_photo_grid.dart';
 import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/constants/text_styles.dart';
 import '../../../../shared/themes/colors.dart';
 import '../providers/memory_providers.dart';
+import '../../domain/entities/memory_entity.dart';
 
 /// Memory page displaying a completed event's photos
 /// Structure (top to bottom):
@@ -65,50 +66,36 @@ class MemoryPage extends ConsumerWidget {
               children: [
                 const SizedBox(height: Gaps.lg),
 
-                // Cover Mosaic
-                LayoutBuilder(
-                  builder: (context, constraints) {
-                    return CoverMosaic(
-                      covers: coverPhotos
-                          .map(
-                            (photo) => CoverPhotoData(
-                              id: photo.id,
-                              imageUrl: photo.coverUrl ?? photo.url,
-                              isPortrait: photo.isPortrait,
-                            ),
-                          )
-                          .toList(),
-                      containerWidth: constraints.maxWidth,
-                    );
-                  },
+                // Cover Mosaic (full width)
+                CoverMosaic(
+                  covers: coverPhotos
+                      .map(
+                        (photo) => CoverPhotoData(
+                          id: photo.id,
+                          imageUrl: photo.coverUrl ?? photo.url,
+                          isPortrait: photo.isPortrait,
+                        ),
+                      )
+                      .toList(),
+                  containerWidth: MediaQuery.of(context).size.width,
                 ),
 
                 const SizedBox(height: Gaps.lg),
 
-                // Event Title & Subtitle
+                // Event Title & Subtitle (center-aligned)
                 Padding(
                   padding:
                       const EdgeInsets.symmetric(horizontal: Insets.screenH),
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                    crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      // Title with emoji
-                      Row(
-                        children: [
-                          Text(
-                            memory.emoji,
-                            style: const TextStyle(fontSize: 28),
-                          ),
-                          const SizedBox(width: Gaps.xs),
-                          Expanded(
-                            child: Text(
-                              memory.title,
-                              style: AppText.headlineMedium.copyWith(
-                                color: BrandColors.text1,
-                              ),
-                            ),
-                          ),
-                        ],
+                      // Title
+                      Text(
+                        memory.title,
+                        style: AppText.headlineMedium.copyWith(
+                          color: BrandColors.text1,
+                        ),
+                        textAlign: TextAlign.center,
                       ),
 
                       const SizedBox(height: Gaps.xxs),
@@ -119,6 +106,7 @@ class MemoryPage extends ConsumerWidget {
                         style: AppText.bodyMedium.copyWith(
                           color: BrandColors.text2,
                         ),
+                        textAlign: TextAlign.center,
                       ),
                     ],
                   ),
@@ -126,17 +114,9 @@ class MemoryPage extends ConsumerWidget {
 
                 const SizedBox(height: Gaps.xl),
 
-                // Photo Grid
-                PhotoGrid(
-                  photos: gridPhotos
-                      .map(
-                        (photo) => GridPhotoData(
-                          id: photo.id,
-                          imageUrl: photo.thumbnailUrl ?? photo.url,
-                          isPortrait: photo.isPortrait,
-                        ),
-                      )
-                      .toList(),
+                // Hybrid Photo Grid with Clustering
+                HybridPhotoGrid(
+                  clusters: _buildClusters(gridPhotos),
                 ),
 
                 const SizedBox(height: Gaps.xl),
@@ -170,6 +150,79 @@ class MemoryPage extends ConsumerWidget {
       return '$location • $dateStr';
     }
     return dateStr;
+  }
+
+  /// Build photo clusters from grid photos
+  /// Groups photos by temporal proximity (same day/hour)
+  List<PhotoCluster> _buildClusters(List<MemoryPhoto> photos) {
+    if (photos.isEmpty) return [];
+
+    final clusters = <PhotoCluster>[];
+    final sorted = List<MemoryPhoto>.from(photos)
+      ..sort((a, b) => a.capturedAt.compareTo(b.capturedAt));
+
+    var currentCluster = <MemoryPhoto>[];
+    DateTime? currentDate;
+
+    for (final photo in sorted) {
+      final photoDate = DateTime(
+        photo.capturedAt.year,
+        photo.capturedAt.month,
+        photo.capturedAt.day,
+      );
+
+      if (currentDate == null || !_isSameDay(currentDate, photoDate)) {
+        // New cluster
+        if (currentCluster.isNotEmpty) {
+          clusters.add(PhotoCluster(
+            label: _formatClusterLabel(currentDate!),
+            photos: currentCluster
+                .map(
+                  (p) => HybridPhotoData(
+                    id: p.id,
+                    imageUrl: p.thumbnailUrl ?? p.url,
+                    isPortrait: p.isPortrait,
+                    aspectRatio: p.aspectRatio,
+                    capturedAt: p.capturedAt,
+                  ),
+                )
+                .toList(),
+          ));
+        }
+        currentCluster = [photo];
+        currentDate = photoDate;
+      } else {
+        currentCluster.add(photo);
+      }
+    }
+
+    // Add last cluster
+    if (currentCluster.isNotEmpty && currentDate != null) {
+      clusters.add(PhotoCluster(
+        label: _formatClusterLabel(currentDate),
+        photos: currentCluster
+            .map(
+              (p) => HybridPhotoData(
+                id: p.id,
+                imageUrl: p.thumbnailUrl ?? p.url,
+                isPortrait: p.isPortrait,
+                aspectRatio: p.aspectRatio,
+                capturedAt: p.capturedAt,
+              ),
+            )
+            .toList(),
+      ));
+    }
+
+    return clusters;
+  }
+
+  bool _isSameDay(DateTime a, DateTime b) {
+    return a.year == b.year && a.month == b.month && a.day == b.day;
+  }
+
+  String _formatClusterLabel(DateTime date) {
+    return DateFormat('d MMMM yyyy').format(date);
   }
 
   /// Handle share button press

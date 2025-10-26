@@ -3,7 +3,6 @@ class MemoryEntity {
   final String id;
   final String eventId;
   final String title;
-  final String emoji;
   final String? location;
   final DateTime eventDate;
   final List<MemoryPhoto> photos;
@@ -12,7 +11,6 @@ class MemoryEntity {
     required this.id,
     required this.eventId,
     required this.title,
-    required this.emoji,
     this.location,
     required this.eventDate,
     required this.photos,

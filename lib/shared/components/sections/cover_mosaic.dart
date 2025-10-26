@@ -37,68 +37,65 @@ class CoverMosaic extends StatelessWidget {
     }
 
     // Calculate cell dimensions based on spec
-    const padding = Insets.screenH; // 16px
+    // Full width - no horizontal padding at container level
     const gap = Gaps.xs; // 8px
-    final colW = (containerWidth - padding * 2 - gap * 3) / 4;
+    final colW = (containerWidth - gap * 3) / 4;
 
     // Get layouts based on number of covers and their orientations
     final layouts = _calculateLayouts(covers);
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: padding),
-      child: SizedBox(
-        height: colW * 2 + gap, // 2 rows
-        child: Stack(
-          children: List.generate(
-            covers.length,
-            (index) {
-              final cover = covers[index];
-              final layout = layouts[index];
+    return SizedBox(
+      height: colW * 2 + gap, // 2 rows
+      child: Stack(
+        children: List.generate(
+          covers.length,
+          (index) {
+            final cover = covers[index];
+            final layout = layouts[index];
 
-              final width =
-                  colW * layout.columnSpan + (layout.columnSpan - 1) * gap;
-              final height = colW * layout.rowSpan + (layout.rowSpan - 1) * gap;
-              final left = (layout.column - 1) * (colW + gap);
-              final top = (layout.row - 1) * (colW + gap);
+            final width =
+                colW * layout.columnSpan + (layout.columnSpan - 1) * gap;
+            final height = colW * layout.rowSpan + (layout.rowSpan - 1) * gap;
+            final left = (layout.column - 1) * (colW + gap);
+            final top = (layout.row - 1) * (colW + gap);
 
-              return Positioned(
-                left: left,
-                top: top,
-                width: width,
-                height: height,
-                child: GestureDetector(
-                  onTap: onPhotoTap,
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(Radii.sm),
-                    child: Image.network(
-                      cover.imageUrl,
-                      fit: BoxFit.cover,
-                      loadingBuilder: (context, child, loadingProgress) {
-                        if (loadingProgress == null) return child;
-                        return Container(
-                          color: const Color(0xFF2B2B2B),
-                          child: const Center(
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                            ),
+            return Positioned(
+              left: left,
+              top: top,
+              width: width,
+              height: height,
+              child: GestureDetector(
+                onTap: onPhotoTap,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(Radii.sm),
+                  child: Image.network(
+                    cover.imageUrl,
+                    fit: BoxFit.cover,
+                    loadingBuilder: (context, child, loadingProgress) {
+                      if (loadingProgress == null) return child;
+                      return Container(
+                        color: const Color(0xFF2B2B2B),
+                        child: const Center(
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
                           ),
-                        );
-                      },
-                      errorBuilder: (context, error, stackTrace) {
-                        return Container(
-                          color: const Color(0xFF2B2B2B),
-                          child: const Icon(
-                            Icons.broken_image,
-                            color: Color(0xFFA6A6A6),
-                          ),
-                        );
-                      },
-                    ),
+                        ),
+                      );
+                    },
+                    errorBuilder: (context, error, stackTrace) {
+                      return Container(
+                        color: const Color(0xFF2B2B2B),
+                        child: const Icon(
+                          Icons.broken_image,
+                          color: Color(0xFFA6A6A6),
+                        ),
+                      );
+                    },
                   ),
                 ),
-              );
-            },
-          ),
+              ),
+            );
+          },
         ),
       ),
     );

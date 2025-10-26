@@ -1,4 +1,3 @@
-// uso: EdgeInsets.symmetric(horizontal:Insets.screenH), SizedBox(height:Gaps.md)
 class Insets {
   static const screenH = 16.0, screenTop = 24.0, screenBottom = 16.0;
 }
