@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../constants/spacing.dart';
+import '../../themes/colors.dart';
 
 /// Photo grid widget for displaying all non-cover photos
 /// Following the layout spec from photos_layout_sizes.md
@@ -52,7 +53,7 @@ class PhotoGrid extends StatelessWidget {
                       loadingBuilder: (context, child, loadingProgress) {
                         if (loadingProgress == null) return child;
                         return Container(
-                          color: const Color(0xFF2B2B2B),
+                          color: BrandColors.bg3,
                           child: const Center(
                             child: CircularProgressIndicator(
                               strokeWidth: 2,
@@ -62,10 +63,10 @@ class PhotoGrid extends StatelessWidget {
                       },
                       errorBuilder: (context, error, stackTrace) {
                         return Container(
-                          color: const Color(0xFF2B2B2B),
+                          color: BrandColors.bg3,
                           child: const Icon(
                             Icons.broken_image,
-                            color: Color(0xFFA6A6A6),
+                            color: BrandColors.text2,
                           ),
                         );
                       },

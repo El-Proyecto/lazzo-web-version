@@ -1,5 +1,8 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import '../../constants/spacing.dart';
+import '../../constants/text_styles.dart';
 import '../../themes/colors.dart';
 
 /// Photo cluster for temporal grouping
@@ -61,10 +64,8 @@ class HybridPhotoGrid extends StatelessWidget {
                     ),
                     child: Text(
                       cluster.label,
-                      style: const TextStyle(
+                      style: AppText.bodyMedium.copyWith(
                         color: BrandColors.text2,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
                       ),
                     ),
                   ),
@@ -262,10 +263,16 @@ class HybridPhotoGrid extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: Gaps.xs),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: photos.map((photo) {
           return Padding(
             padding: EdgeInsets.only(right: photo == photos.last ? 0 : gap),
-            child: _buildPhotoTile(photo, colW, height),
+            child: _buildPhotoTile(
+              photo,
+              colW,
+              height,
+              rowHeight: height,
+            ),
           );
         }).toList(),
       ),
@@ -278,15 +285,26 @@ class HybridPhotoGrid extends StatelessWidget {
     final lWidth = colW * 2 + gap;
     final lHeight = lWidth * 9 / 16; // 16:9
     final pHeight = colW * 5 / 4; // 4:5
+    final rowHeight = math.max(lHeight, pHeight);
 
     return Padding(
       padding: const EdgeInsets.only(bottom: Gaps.xs),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          _buildPhotoTile(photos[0], lWidth, lHeight),
+          _buildPhotoTile(
+            photos[0],
+            lWidth,
+            lHeight,
+            rowHeight: rowHeight,
+          ),
           SizedBox(width: gap),
-          _buildPhotoTile(photos[1], colW, pHeight),
+          _buildPhotoTile(
+            photos[1],
+            colW,
+            pHeight,
+            rowHeight: rowHeight,
+          ),
         ],
       ),
     );
@@ -298,15 +316,26 @@ class HybridPhotoGrid extends StatelessWidget {
     final lWidth = colW * 2 + gap;
     final lHeight = lWidth * 9 / 16; // 16:9
     final pHeight = colW * 5 / 4; // 4:5
+    final rowHeight = math.max(lHeight, pHeight);
 
     return Padding(
       padding: const EdgeInsets.only(bottom: Gaps.xs),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          _buildPhotoTile(photos[0], colW, pHeight),
+          _buildPhotoTile(
+            photos[0],
+            colW,
+            pHeight,
+            rowHeight: rowHeight,
+          ),
           SizedBox(width: gap),
-          _buildPhotoTile(photos[1], lWidth, lHeight),
+          _buildPhotoTile(
+            photos[1],
+            lWidth,
+            lHeight,
+            rowHeight: rowHeight,
+          ),
         ],
       ),
     );
@@ -336,7 +365,12 @@ class HybridPhotoGrid extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: Gaps.xs),
       child: Center(
-        child: _buildPhotoTile(photo, colW, height),
+        child: _buildPhotoTile(
+          photo,
+          colW,
+          height,
+          rowHeight: height,
+        ),
       ),
     );
   }
@@ -348,42 +382,62 @@ class HybridPhotoGrid extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: Gaps.xs),
       child: Center(
-        child: _buildPhotoTile(photo, lWidth, lHeight),
+        child: _buildPhotoTile(
+          photo,
+          lWidth,
+          lHeight,
+          rowHeight: lHeight,
+        ),
       ),
     );
   }
 
   /// Build a single photo tile
-  Widget _buildPhotoTile(HybridPhotoData photo, double width, double height) {
+  Widget _buildPhotoTile(
+    HybridPhotoData photo,
+    double width,
+    double height, {
+    double? rowHeight,
+  }) {
+    final targetHeight = rowHeight ?? height;
+
     return GestureDetector(
       onTap: onPhotoTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
         width: width,
-        height: height,
+        height: targetHeight,
         child: ClipRRect(
           borderRadius: BorderRadius.circular(Radii.sm),
-          child: Image.network(
-            photo.imageUrl,
+          child: FittedBox(
             fit: BoxFit.cover,
-            loadingBuilder: (context, child, loadingProgress) {
-              if (loadingProgress == null) return child;
-              return Container(
-                color: BrandColors.bg2,
-                child: const Center(
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                ),
-              );
-            },
-            errorBuilder: (context, error, stackTrace) {
-              return Container(
-                color: BrandColors.bg2,
-                child: const Icon(
-                  Icons.broken_image,
-                  color: BrandColors.text2,
-                ),
-              );
-            },
+            alignment: Alignment.center,
+            child: SizedBox(
+              width: width,
+              height: height,
+              child: Image.network(
+                photo.imageUrl,
+                fit: BoxFit.cover,
+                loadingBuilder: (context, child, loadingProgress) {
+                  if (loadingProgress == null) return child;
+                  return Container(
+                    color: BrandColors.bg2,
+                    child: const Center(
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                  );
+                },
+                errorBuilder: (context, error, stackTrace) {
+                  return Container(
+                    color: BrandColors.bg2,
+                    child: const Icon(
+                      Icons.broken_image,
+                      color: BrandColors.text2,
+                    ),
+                  );
+                },
+              ),
+            ),
           ),
         ),
       ),

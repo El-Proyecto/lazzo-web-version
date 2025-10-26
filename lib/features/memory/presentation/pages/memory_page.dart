@@ -66,23 +66,26 @@ class MemoryPage extends ConsumerWidget {
               children: [
                 const SizedBox(height: Gaps.lg),
 
-                // Cover Mosaic (full width)
-                CoverMosaic(
-                  covers: coverPhotos
-                      .map(
-                        (photo) => CoverPhotoData(
-                          id: photo.id,
-                          imageUrl: photo.coverUrl ?? photo.url,
-                          isPortrait: photo.isPortrait,
-                        ),
-                      )
-                      .toList(),
-                  containerWidth: MediaQuery.of(context).size.width,
+                // Cover Mosaic (full width with horizontal padding)
+                Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: Insets.screenH),
+                  child: CoverMosaic(
+                    covers: coverPhotos
+                        .map(
+                          (photo) => CoverPhotoData(
+                            id: photo.id,
+                            imageUrl: photo.coverUrl ?? photo.url,
+                            isPortrait: photo.isPortrait,
+                          ),
+                        )
+                        .toList(),
+                  ),
                 ),
 
                 const SizedBox(height: Gaps.lg),
 
-                // Event Title & Subtitle (center-aligned)
+                // Event Title & Subtitle (full width, center-aligned)
                 Padding(
                   padding:
                       const EdgeInsets.symmetric(horizontal: Insets.screenH),
