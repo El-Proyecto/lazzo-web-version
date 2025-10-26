@@ -67,20 +67,16 @@ class MemoryPage extends ConsumerWidget {
                 const SizedBox(height: Gaps.lg),
 
                 // Cover Mosaic (full width with horizontal padding)
-                Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: Insets.screenH),
-                  child: CoverMosaic(
-                    covers: coverPhotos
-                        .map(
-                          (photo) => CoverPhotoData(
-                            id: photo.id,
-                            imageUrl: photo.coverUrl ?? photo.url,
-                            isPortrait: photo.isPortrait,
-                          ),
-                        )
-                        .toList(),
-                  ),
+                CoverMosaic(
+                  covers: coverPhotos
+                      .map(
+                        (photo) => CoverPhotoData(
+                          id: photo.id,
+                          imageUrl: photo.coverUrl ?? photo.url,
+                          isPortrait: photo.isPortrait,
+                        ),
+                      )
+                      .toList(),
                 ),
 
                 const SizedBox(height: Gaps.lg),
@@ -90,7 +86,7 @@ class MemoryPage extends ConsumerWidget {
                   padding:
                       const EdgeInsets.symmetric(horizontal: Insets.screenH),
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       // Title
                       Text(

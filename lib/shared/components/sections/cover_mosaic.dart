@@ -1,14 +1,14 @@
+// cover_mosaic.dart
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../../constants/spacing.dart';
 import '../../themes/colors.dart';
 
-/// Layout data for a single tile in the cover mosaic
 class CoverTileLayout {
-  final int column; // 1-4
-  final int row; // 1-2
-  final int columnSpan; // 1-2
-  final int rowSpan; // 1-2
-
+  final int column; // 1..4
+  final int row; // 1..2
+  final int columnSpan; // 1..4 (regra prática: 1..2, exceto HHH -> 4)
+  final int rowSpan; // 1..2
   const CoverTileLayout({
     required this.column,
     required this.row,
@@ -17,43 +17,65 @@ class CoverTileLayout {
   });
 }
 
-/// Cover mosaic widget that displays 1-3 cover photos
-/// Following the layout spec from photos_layout_sizes.md
 class CoverMosaic extends StatelessWidget {
   final List<CoverPhotoData> covers;
+
+  /// Horizontal padding around the mosaic; defaults to screen gutters.
+  final double horizontalPadding;
+
+  /// Gap between tiles; defaults to spacing token.
+  final double gap;
+
+  /// Tap handler for any tile.
   final VoidCallback? onPhotoTap;
 
   const CoverMosaic({
     super.key,
     required this.covers,
     this.onPhotoTap,
+    this.horizontalPadding = Insets.screenH,
+    this.gap = Gaps.xs,
   });
 
   @override
   Widget build(BuildContext context) {
-    if (covers.isEmpty) {
-      return const SizedBox.shrink();
-    }
+    if (covers.isEmpty) return const SizedBox.shrink();
+
+    // **Mostra no máximo 3 covers** (spec).
+    final visibleCovers = covers.take(3).toList(growable: false);
+    final layouts = _calculateLayouts(visibleCovers);
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        const gap = Gaps.xs; // 8px
-        final availableWidth = constraints.maxWidth;
-        if (availableWidth <= 0) {
+        final containerW = constraints.maxWidth;
+        final contentW = containerW - horizontalPadding * 2;
+        if (contentW <= 0) {
           return const SizedBox.shrink();
         }
 
-        final colW = (availableWidth - gap * 3) / 4;
-        final layouts = _calculateLayouts(covers);
+        final maxColumnUsed = layouts
+            .map((layout) => layout.column + layout.columnSpan - 1)
+            .fold<int>(1, math.max);
+        final columnCount = math.max(maxColumnUsed, 1);
 
-        return SizedBox(
-          width: availableWidth,
-          height: colW * 2 + gap, // 2 rows
-          child: Stack(
-            children: List.generate(
-              covers.length,
-              (index) {
-                final cover = covers[index];
+        final colW = (contentW - gap * (columnCount - 1)) / columnCount;
+        if (colW <= 0) {
+          return const SizedBox.shrink();
+        }
+
+        // Altura fixa 2 linhas de células quadradas + 1 gap vertical (spec).
+        final height = colW * 2 + gap;
+
+        final dpr = MediaQuery.of(context).devicePixelRatio;
+
+        return Padding(
+          padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
+          child: SizedBox(
+            width: contentW,
+            height: height,
+            child: Stack(
+              children: List.generate(visibleCovers.length, (index) {
+                final cover = visibleCovers[index];
                 final layout = layouts[index];
 
                 final width =
@@ -62,6 +84,10 @@ class CoverMosaic extends StatelessWidget {
                     colW * layout.rowSpan + (layout.rowSpan - 1) * gap;
                 final left = (layout.column - 1) * (colW + gap);
                 final top = (layout.row - 1) * (colW + gap);
+
+                // Sugestão perf: pedir aproximadamente o tamanho de apresentação × dpr
+                final cw = (width * dpr).round();
+                final ch = (height * dpr).round();
 
                 return Positioned(
                   left: left,
@@ -74,32 +100,33 @@ class CoverMosaic extends StatelessWidget {
                       borderRadius: BorderRadius.circular(Radii.sm),
                       child: Image.network(
                         cover.imageUrl,
-                        fit: BoxFit.cover,
-                        loadingBuilder: (context, child, loadingProgress) {
-                          if (loadingProgress == null) return child;
+                        fit: BoxFit.cover, // center-crop (spec 2.2)
+                        alignment: Alignment.center,
+                        // Se o teu CDN/Supabase suportar transform, estes hint params ajudam o cache.
+                        cacheWidth: cw > 0 ? cw : 1,
+                        cacheHeight: ch > 0 ? ch : 1,
+                        loadingBuilder: (context, child, progress) {
+                          if (progress == null) return child;
                           return Container(
                             color: BrandColors.bg3,
-                            child: const Center(
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                              ),
-                            ),
+                            alignment: Alignment.center,
+                            child:
+                                const CircularProgressIndicator(strokeWidth: 2),
                           );
                         },
-                        errorBuilder: (context, error, stackTrace) {
+                        errorBuilder: (context, _, __) {
                           return Container(
                             color: BrandColors.bg3,
-                            child: const Icon(
-                              Icons.broken_image,
-                              color: BrandColors.text2,
-                            ),
+                            alignment: Alignment.center,
+                            child: const Icon(Icons.broken_image,
+                                color: BrandColors.text2),
                           );
                         },
                       ),
                     ),
                   ),
                 );
-              },
+              }),
             ),
           ),
         );
@@ -107,106 +134,93 @@ class CoverMosaic extends StatelessWidget {
     );
   }
 
-  /// Calculate tile layouts based on cover count and orientations
+  /// Regras determinísticas de colocação (até 3 covers) — ver spec 2.3.
   List<CoverTileLayout> _calculateLayouts(List<CoverPhotoData> covers) {
     final count = covers.length.clamp(1, 3);
-    final orientations = covers.map((c) => c.isPortrait).toList();
+    final orientations = covers.take(count).map((c) => c.isPortrait).toList();
 
     if (count == 1) {
-      // Single cover → Big (2×2) centered at cols 2-3, rows 1-2
       return const [
-        CoverTileLayout(column: 2, row: 1, columnSpan: 2, rowSpan: 2),
-      ];
+        CoverTileLayout(column: 2, row: 1, columnSpan: 2, rowSpan: 2)
+      ]; // B centrado
     }
 
     if (count == 2) {
-      final isV = orientations[0];
-      final isV2 = orientations[1];
-
-      if (isV && !isV2) {
-        // [V, H] → V(col 1, rows 1-2) + H(cols 2-3, row 1)
+      final v1 = orientations[0], v2 = orientations[1];
+      if (v1 && !v2) {
         return const [
-          CoverTileLayout(column: 1, row: 1, columnSpan: 1, rowSpan: 2),
-          CoverTileLayout(column: 2, row: 1, columnSpan: 2, rowSpan: 1),
+          CoverTileLayout(column: 1, row: 1, columnSpan: 1, rowSpan: 2), // V
+          CoverTileLayout(column: 2, row: 1, columnSpan: 2, rowSpan: 1), // H
         ];
-      } else if (!isV && isV2) {
-        // [H, V] → H(cols 1-2, row 1) + V(col 4, rows 1-2)
+      } else if (!v1 && v2) {
         return const [
-          CoverTileLayout(column: 1, row: 1, columnSpan: 2, rowSpan: 1),
-          CoverTileLayout(column: 4, row: 1, columnSpan: 1, rowSpan: 2),
+          CoverTileLayout(column: 1, row: 1, columnSpan: 2, rowSpan: 1), // H
+          CoverTileLayout(column: 4, row: 1, columnSpan: 1, rowSpan: 2), // V
         ];
-      } else if (isV && isV2) {
-        // [V, V] → B(cols 1-2, rows 1-2) + V(col 4, rows 1-2)
+      } else if (v1 && v2) {
         return const [
-          CoverTileLayout(column: 1, row: 1, columnSpan: 2, rowSpan: 2),
-          CoverTileLayout(column: 4, row: 1, columnSpan: 1, rowSpan: 2),
+          CoverTileLayout(column: 1, row: 1, columnSpan: 2, rowSpan: 2), // B
+          CoverTileLayout(column: 4, row: 1, columnSpan: 1, rowSpan: 2), // V
         ];
       } else {
-        // [H, H] → H(cols 1-2, row 1) + H(cols 3-4, row 1)
         return const [
-          CoverTileLayout(column: 1, row: 1, columnSpan: 2, rowSpan: 1),
-          CoverTileLayout(column: 3, row: 1, columnSpan: 2, rowSpan: 1),
+          CoverTileLayout(column: 1, row: 1, columnSpan: 2, rowSpan: 1), // H
+          CoverTileLayout(column: 3, row: 1, columnSpan: 2, rowSpan: 1), // H
         ];
       }
     }
 
     // count == 3
-    final isV1 = orientations[0];
-    final isV2 = orientations[1];
-    final isV3 = orientations[2];
-
-    if (isV1 && !isV2 && !isV3) {
-      // [V, H, H] → V(col 1) + H(cols 2-3, row 1) + H(cols 2-3, row 2)
+    final v1 = orientations[0], v2 = orientations[1], v3 = orientations[2];
+    if (v1 && !v2 && !v3) {
       return const [
-        CoverTileLayout(column: 1, row: 1, columnSpan: 1, rowSpan: 2),
-        CoverTileLayout(column: 2, row: 1, columnSpan: 2, rowSpan: 1),
-        CoverTileLayout(column: 2, row: 2, columnSpan: 2, rowSpan: 1),
+        CoverTileLayout(column: 1, row: 1, columnSpan: 1, rowSpan: 2), // V
+        CoverTileLayout(column: 2, row: 1, columnSpan: 2, rowSpan: 1), // H
+        CoverTileLayout(column: 2, row: 2, columnSpan: 2, rowSpan: 1), // H
       ];
-    } else if (!isV1 && isV2 && !isV3) {
-      // [H, V, H] → H(cols 1-2, row 1) + V(col 4) + H(cols 1-2, row 2)
+    } else if (!v1 && v2 && !v3) {
       return const [
-        CoverTileLayout(column: 1, row: 1, columnSpan: 2, rowSpan: 1),
-        CoverTileLayout(column: 4, row: 1, columnSpan: 1, rowSpan: 2),
-        CoverTileLayout(column: 1, row: 2, columnSpan: 2, rowSpan: 1),
+        CoverTileLayout(column: 1, row: 1, columnSpan: 2, rowSpan: 1), // H
+        CoverTileLayout(column: 4, row: 1, columnSpan: 1, rowSpan: 2), // V
+        CoverTileLayout(column: 1, row: 2, columnSpan: 2, rowSpan: 1), // H
       ];
-    } else if (!isV1 && !isV2 && isV3) {
-      // [H, H, V] → H(cols 1-2, row 1) + H(cols 3-4, row 1) + V(col 4, rows 1-2)
+    } else if (!v1 && !v2 && v3) {
       return const [
-        CoverTileLayout(column: 1, row: 1, columnSpan: 2, rowSpan: 1),
-        CoverTileLayout(column: 3, row: 1, columnSpan: 2, rowSpan: 1),
-        CoverTileLayout(column: 4, row: 1, columnSpan: 1, rowSpan: 2),
+        CoverTileLayout(column: 1, row: 1, columnSpan: 2, rowSpan: 1), // H
+        CoverTileLayout(column: 3, row: 1, columnSpan: 2, rowSpan: 1), // H
+        CoverTileLayout(column: 4, row: 1, columnSpan: 1, rowSpan: 2), // V
       ];
-    } else if (isV1 && isV2 && !isV3) {
-      // [V, V, H] → V(col 1) + V(col 2) + H(cols 3-4, row 2)
+    } else if (v1 && v2 && !v3) {
       return const [
-        CoverTileLayout(column: 1, row: 1, columnSpan: 1, rowSpan: 2),
-        CoverTileLayout(column: 2, row: 1, columnSpan: 1, rowSpan: 2),
-        CoverTileLayout(column: 3, row: 2, columnSpan: 2, rowSpan: 1),
+        CoverTileLayout(column: 1, row: 1, columnSpan: 1, rowSpan: 2), // V
+        CoverTileLayout(column: 2, row: 1, columnSpan: 1, rowSpan: 2), // V
+        CoverTileLayout(column: 3, row: 2, columnSpan: 2, rowSpan: 1), // H
       ];
-    } else if (isV1 && isV2 && isV3) {
-      // [V, V, V] → B(cols 1-2) + V(col 3) + V(col 4)
+    } else if (v1 && v2 && v3) {
       return const [
-        CoverTileLayout(column: 1, row: 1, columnSpan: 2, rowSpan: 2),
-        CoverTileLayout(column: 3, row: 1, columnSpan: 1, rowSpan: 2),
-        CoverTileLayout(column: 4, row: 1, columnSpan: 1, rowSpan: 2),
+        CoverTileLayout(column: 1, row: 1, columnSpan: 2, rowSpan: 2), // B
+        CoverTileLayout(column: 3, row: 1, columnSpan: 1, rowSpan: 2), // V
+        CoverTileLayout(column: 4, row: 1, columnSpan: 1, rowSpan: 2), // V
       ];
     } else {
-      // [H, H, H] → H(cols 1-2, row 1) + H(cols 3-4, row 1) + H(cols 1-4, row 2)
+      // H, H, H
       return const [
-        CoverTileLayout(column: 1, row: 1, columnSpan: 2, rowSpan: 1),
-        CoverTileLayout(column: 3, row: 1, columnSpan: 2, rowSpan: 1),
-        CoverTileLayout(column: 1, row: 2, columnSpan: 4, rowSpan: 1),
+        CoverTileLayout(column: 1, row: 1, columnSpan: 2, rowSpan: 1), // H
+        CoverTileLayout(column: 3, row: 1, columnSpan: 2, rowSpan: 1), // H
+        CoverTileLayout(
+            column: 1,
+            row: 2,
+            columnSpan: 4,
+            rowSpan: 1), // H (spana 4 colunas)
       ];
     }
   }
 }
 
-/// Data model for a cover photo
 class CoverPhotoData {
   final String id;
   final String imageUrl;
   final bool isPortrait;
-
   const CoverPhotoData({
     required this.id,
     required this.imageUrl,

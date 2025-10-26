@@ -42,6 +42,7 @@ class HybridPhotoGrid extends StatelessWidget {
 
         final screenW = constraints.maxWidth;
         final colW = (screenW - padding * 2 - gap * 2) / columns;
+        final showClusterLabels = clusters.length > 1;
 
         return Padding(
           padding: const EdgeInsets.symmetric(horizontal: padding),
@@ -51,24 +52,24 @@ class HybridPhotoGrid extends StatelessWidget {
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Cluster label/chip
-                  Container(
-                    margin: const EdgeInsets.only(bottom: Gaps.sm),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: Pads.ctlH,
-                      vertical: Pads.ctlVXss,
-                    ),
-                    decoration: BoxDecoration(
-                      color: BrandColors.bg2,
-                      borderRadius: BorderRadius.circular(Radii.pill),
-                    ),
-                    child: Text(
-                      cluster.label,
-                      style: AppText.bodyMedium.copyWith(
-                        color: BrandColors.text2,
+                  if (showClusterLabels)
+                    Container(
+                      margin: const EdgeInsets.only(bottom: Gaps.sm),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: Pads.ctlH,
+                        vertical: Pads.ctlVXss,
+                      ),
+                      decoration: BoxDecoration(
+                        color: BrandColors.bg2,
+                        borderRadius: BorderRadius.circular(Radii.pill),
+                      ),
+                      child: Text(
+                        cluster.label,
+                        style: AppText.bodyMedium.copyWith(
+                          color: BrandColors.text2,
+                        ),
                       ),
                     ),
-                  ),
 
                   // Photos in cluster
                   ..._buildClusterRows(cluster.photos, colW, gap),
