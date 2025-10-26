@@ -91,7 +91,7 @@ class MemoryPage extends ConsumerWidget {
                       // Title
                       Text(
                         memory.title,
-                        style: AppText.headlineMedium.copyWith(
+                        style: AppText.subtitleMuted.copyWith(
                           color: BrandColors.text1,
                         ),
                         textAlign: TextAlign.center,

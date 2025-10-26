@@ -1,161 +1,37 @@
+// Removed unused import
 import '../../domain/entities/memory_entity.dart';
 import '../../domain/repositories/memory_repository.dart';
 
-enum FakeMemoryScenario {
-  mixedDefault,
-  singlePortrait,
-  portraitLandscape,
-  landscapePortrait,
-  doublePortrait,
-  doubleLandscape,
-  portraitLandscapeLandscape,
-  landscapePortraitLandscape,
-  landscapeLandscapePortrait,
-  portraitPortraitLandscape,
-  allPortrait,
-  allLandscape,
+/// Global test configuration for cover mosaic scenarios
+/// Modify these values to test different layouts
+class FakeMemoryConfig {
+  /// Number of portrait photos in covers (0-3)
+  static int coverPortraitCount = 1;
+
+  /// Number of landscape photos in covers (0-3)
+  static int coverLandscapeCount = 1;
+
+  /// Number of portrait photos in grid (non-covers)
+  static int gridPortraitCount = 3;
+
+  /// Number of landscape photos in grid (non-covers)
+  static int gridLandscapeCount = 3;
+
+  /// Max covers is 3
+  static int get totalCovers => coverPortraitCount + coverLandscapeCount;
 }
 
 class FakeMemoryRepository implements MemoryRepository {
-  static FakeMemoryScenario _activeScenario = FakeMemoryScenario.mixedDefault;
-
-  static void setScenario(FakeMemoryScenario scenario) {
-    _activeScenario = scenario;
-  }
-
-  static final Map<FakeMemoryScenario, Map<String, MemoryEntity>>
-      _scenarioMemories = {
-    FakeMemoryScenario.mixedDefault: {
-      'memory-1': _buildBeachDayMemory(),
-    },
-    FakeMemoryScenario.singlePortrait: {
-      'memory-1': _scenarioMemory(
-        id: 'memory-1',
-        eventId: 'event-1',
-        title: 'Cover: Single Portrait',
-        seed: 'single_portrait',
-        coverOrientations: const [true],
-        multiDay: false,
-      ),
-    },
-    FakeMemoryScenario.portraitLandscape: {
-      'memory-1': _scenarioMemory(
-        id: 'memory-1',
-        eventId: 'event-1',
-        title: 'Cover: Portrait + Landscape',
-        seed: 'portrait_landscape',
-        coverOrientations: const [true, false],
-        multiDay: false,
-      ),
-    },
-    FakeMemoryScenario.landscapePortrait: {
-      'memory-1': _scenarioMemory(
-        id: 'memory-1',
-        eventId: 'event-1',
-        title: 'Cover: Landscape + Portrait',
-        seed: 'landscape_portrait',
-        coverOrientations: const [false, true],
-        multiDay: false,
-      ),
-    },
-    FakeMemoryScenario.doublePortrait: {
-      'memory-1': _scenarioMemory(
-        id: 'memory-1',
-        eventId: 'event-1',
-        title: 'Cover: Portrait + Portrait',
-        seed: 'double_portrait',
-        coverOrientations: const [true, true],
-        multiDay: false,
-      ),
-    },
-    FakeMemoryScenario.doubleLandscape: {
-      'memory-1': _scenarioMemory(
-        id: 'memory-1',
-        eventId: 'event-1',
-        title: 'Cover: Landscape + Landscape',
-        seed: 'double_landscape',
-        coverOrientations: const [false, false],
-        multiDay: false,
-      ),
-    },
-    FakeMemoryScenario.portraitLandscapeLandscape: {
-      'memory-1': _scenarioMemory(
-        id: 'memory-1',
-        eventId: 'event-1',
-        title: 'Cover: Portrait + Landscape + Landscape',
-        seed: 'portrait_landscape_landscape',
-        coverOrientations: const [true, false, false],
-        multiDay: true,
-      ),
-    },
-    FakeMemoryScenario.landscapePortraitLandscape: {
-      'memory-1': _scenarioMemory(
-        id: 'memory-1',
-        eventId: 'event-1',
-        title: 'Cover: Landscape + Portrait + Landscape',
-        seed: 'landscape_portrait_landscape',
-        coverOrientations: const [false, true, false],
-        multiDay: true,
-      ),
-    },
-    FakeMemoryScenario.landscapeLandscapePortrait: {
-      'memory-1': _scenarioMemory(
-        id: 'memory-1',
-        eventId: 'event-1',
-        title: 'Cover: Landscape + Landscape + Portrait',
-        seed: 'landscape_landscape_portrait',
-        coverOrientations: const [false, false, true],
-        multiDay: true,
-      ),
-    },
-    FakeMemoryScenario.portraitPortraitLandscape: {
-      'memory-1': _scenarioMemory(
-        id: 'memory-1',
-        eventId: 'event-1',
-        title: 'Cover: Portrait + Portrait + Landscape',
-        seed: 'portrait_portrait_landscape',
-        coverOrientations: const [true, true, false],
-        multiDay: true,
-      ),
-    },
-    FakeMemoryScenario.allPortrait: {
-      'memory-1': _scenarioMemory(
-        id: 'memory-1',
-        eventId: 'event-1',
-        title: 'Cover: Portrait + Portrait + Portrait',
-        seed: 'all_portrait',
-        coverOrientations: const [true, true, true],
-        multiDay: true,
-      ),
-    },
-    FakeMemoryScenario.allLandscape: {
-      'memory-1': _scenarioMemory(
-        id: 'memory-1',
-        eventId: 'event-1',
-        title: 'Cover: Landscape + Landscape + Landscape',
-        seed: 'all_landscape',
-        coverOrientations: const [false, false, false],
-        multiDay: true,
-      ),
-    },
-  };
-
-  Map<String, MemoryEntity> get _memories =>
-      _scenarioMemories[_activeScenario]!;
-
   @override
   Future<MemoryEntity?> getMemoryById(String memoryId) async {
     await Future.delayed(const Duration(milliseconds: 500));
-    return _memories[memoryId];
+    return _buildDynamicMemory();
   }
 
   @override
   Future<MemoryEntity?> getMemoryByEventId(String eventId) async {
     await Future.delayed(const Duration(milliseconds: 500));
-    return _memories.values.firstWhere(
-      (memory) => memory.eventId == eventId,
-      orElse: () => _memories.values.first,
-    );
+    return _buildDynamicMemory();
   }
 
   @override
@@ -167,199 +43,147 @@ class FakeMemoryRepository implements MemoryRepository {
 
 final DateTime _baseDate = DateTime(2024, 7, 5);
 
-MemoryEntity _buildBeachDayMemory() {
-  final day1 = _baseDate;
-  final day2 = day1.add(const Duration(days: 1));
+/// Build memory from dynamic config
+MemoryEntity _buildDynamicMemory() {
+  final photos = <MemoryPhoto>[];
+  var timestamp = _baseDate;
+  var photoIndex = 1;
 
-  return MemoryEntity(
-    id: 'memory-1',
-    eventId: 'event-1',
-    title: 'Beach Day',
-    location: 'Marrakech, Morocco',
-    eventDate: day1,
-    photos: [
-      _portraitPhoto(
-        'bd_cover_1',
-        15,
-        day1.add(const Duration(hours: 14, minutes: 30)),
-      ),
-      _portraitPhoto(
-        'bd_cover_2',
-        8,
-        day1.add(const Duration(hours: 15)),
-      ),
-      _landscapePhoto(
-        'bd_cover_3',
-        12,
-        day1.add(const Duration(hours: 16)),
-      ),
-      _landscapePhoto(
-        'bd_cover_4',
-        10,
-        day1.add(const Duration(hours: 16, minutes: 30)),
-      ),
-      _portraitPhoto(
-        'bd_grid_1',
-        5,
-        day1.add(const Duration(hours: 17)),
-      ),
-      _landscapePhoto(
-        'bd_grid_2',
-        7,
-        day1.add(const Duration(hours: 17, minutes: 30)),
-      ),
-      _portraitPhoto(
-        'bd_grid_3',
-        6,
-        day1.add(const Duration(hours: 18)),
-      ),
-      _landscapePhoto(
-        'bd_grid_4',
-        4,
-        day1.add(const Duration(hours: 18, minutes: 30)),
-      ),
-      _portraitPhoto(
-        'bd_grid_5',
-        3,
-        day2.add(const Duration(hours: 10)),
-      ),
-      _landscapePhoto(
-        'bd_grid_6',
-        2,
-        day2.add(const Duration(hours: 10, minutes: 30)),
-      ),
-      _portraitPhoto(
-        'bd_grid_7',
-        4,
-        day2.add(const Duration(hours: 11)),
-      ),
-      _landscapePhoto(
-        'bd_grid_8',
-        3,
-        day2.add(const Duration(hours: 11, minutes: 30)),
-      ),
-      _portraitPhoto(
-        'bd_grid_9',
-        2,
-        day2.add(const Duration(hours: 14)),
-      ),
-    ],
-  );
-}
+  // CRITICAL: Votes devem ser atribuídos na ordem EXATA que queremos os covers
+  // Portraits devem ter votos MAIS ALTOS que landscapes para ficar em 1º após sort
 
-MemoryEntity _scenarioMemory({
-  required String id,
-  required String eventId,
-  required String title,
-  required String seed,
-  required List<bool> coverOrientations,
-  required bool multiDay,
-}) {
-  final coverVotes = [90, 80, 70];
-  final coverPhotos = <MemoryPhoto>[];
+  // Base votes: começam altos e decrescem
+  final baseVotes = [100, 90, 80];
 
-  for (var i = 0; i < coverOrientations.length; i++) {
-    final capturedAt = _baseDate.add(Duration(hours: i + 1));
-    final vote = coverVotes[i];
-    final photoId = '${seed}_cover_${i + 1}';
-    coverPhotos.add(
-      coverOrientations[i]
-          ? _portraitPhoto(photoId, vote, capturedAt)
-          : _landscapePhoto(photoId, vote, capturedAt),
-    );
+  // Criar lista de covers na ordem desejada (portraits primeiro)
+  final coverTypes = <bool>[]; // true = portrait, false = landscape
+
+  // Add portraits (serão os primeiros covers após sort por votos)
+  for (var i = 0; i < FakeMemoryConfig.coverPortraitCount; i++) {
+    coverTypes.add(true);
   }
 
-  final photos = <MemoryPhoto>[
-    ...coverPhotos,
-    ..._scenarioExtras(seed: seed, multiDay: multiDay),
-  ];
+  // Add landscapes (terão votos ligeiramente menores)
+  for (var i = 0; i < FakeMemoryConfig.coverLandscapeCount; i++) {
+    coverTypes.add(false);
+  }
 
-  return MemoryEntity(
-    id: id,
-    eventId: eventId,
-    title: title,
+  // Criar fotos de cover com votos que garantem a ordem correta
+  for (var i = 0; i < coverTypes.length; i++) {
+    final isPortrait = coverTypes[i];
+    final vote = baseVotes[i];
+
+    if (isPortrait) {
+      photos.add(MemoryPhoto(
+        id: 'cover_p_$photoIndex',
+        url: 'https://picsum.photos/seed/cover_p_$photoIndex/800/1000',
+        thumbnailUrl:
+            'https://picsum.photos/seed/cover_p_${photoIndex}_thumb/400/500',
+        coverUrl:
+            'https://picsum.photos/seed/cover_p_${photoIndex}_cover/1024/1280',
+        voteCount: vote,
+        capturedAt: timestamp,
+        aspectRatio: 0.8,
+        uploaderId: 'user-cover_p_$photoIndex',
+        uploaderName: 'User cover_p_$photoIndex',
+        isCover: true,
+      ));
+    } else {
+      photos.add(MemoryPhoto(
+        id: 'cover_l_$photoIndex',
+        url: 'https://picsum.photos/seed/cover_l_$photoIndex/1600/900',
+        thumbnailUrl:
+            'https://picsum.photos/seed/cover_l_${photoIndex}_thumb/800/450',
+        coverUrl:
+            'https://picsum.photos/seed/cover_l_${photoIndex}_cover/1600/900',
+        voteCount: vote,
+        capturedAt: timestamp,
+        aspectRatio: 16 / 9,
+        uploaderId: 'user-cover_l_$photoIndex',
+        uploaderName: 'User cover_l_$photoIndex',
+        isCover: true,
+      ));
+    }
+
+    timestamp = timestamp.add(const Duration(hours: 1));
+    photoIndex++;
+  }
+
+  // Add grid photos (votos baixos para não interferir)
+  for (var i = 0; i < FakeMemoryConfig.gridPortraitCount; i++) {
+    photos.add(MemoryPhoto(
+      id: 'grid_p_$photoIndex',
+      url: 'https://picsum.photos/seed/grid_p_$photoIndex/800/1000',
+      thumbnailUrl:
+          'https://picsum.photos/seed/grid_p_${photoIndex}_thumb/400/500',
+      coverUrl:
+          'https://picsum.photos/seed/grid_p_${photoIndex}_cover/1024/1280',
+      voteCount: 20 - i * 2,
+      capturedAt: timestamp,
+      aspectRatio: 0.8,
+      uploaderId: 'user-grid_p_$photoIndex',
+      uploaderName: 'User grid_p_$photoIndex',
+      isCover: false,
+    ));
+    timestamp = timestamp.add(const Duration(hours: 1));
+    photoIndex++;
+  }
+
+  for (var i = 0; i < FakeMemoryConfig.gridLandscapeCount; i++) {
+    photos.add(MemoryPhoto(
+      id: 'grid_l_$photoIndex',
+      url: 'https://picsum.photos/seed/grid_l_$photoIndex/1600/900',
+      thumbnailUrl:
+          'https://picsum.photos/seed/grid_l_${photoIndex}_thumb/800/450',
+      coverUrl:
+          'https://picsum.photos/seed/grid_l_${photoIndex}_cover/1600/900',
+      voteCount: 18 - i * 2,
+      capturedAt: timestamp,
+      aspectRatio: 16 / 9,
+      uploaderId: 'user-grid_l_$photoIndex',
+      uploaderName: 'User grid_l_$photoIndex',
+      isCover: false,
+    ));
+    timestamp = timestamp.add(const Duration(hours: 1));
+    photoIndex++;
+  }
+
+  final memory = MemoryEntity(
+    id: 'memory-dynamic',
+    eventId: 'event-dynamic',
+    title:
+        'Test: ${FakeMemoryConfig.coverPortraitCount}P + ${FakeMemoryConfig.coverLandscapeCount}L',
     location: 'Test Location',
     eventDate: _baseDate,
     photos: photos,
   );
+
+  // DEBUG: Log the configuration and results
+  print('━━━ FAKE MEMORY DEBUG ━━━');
+  print(
+      'Config: ${FakeMemoryConfig.coverPortraitCount}P + ${FakeMemoryConfig.coverLandscapeCount}L covers');
+  print('Total photos: ${photos.length}');
+  print('Cover photos (sorted by entity):');
+  for (var i = 0; i < memory.coverPhotos.length; i++) {
+    final photo = memory.coverPhotos[i];
+    final orientation = photo.isPortrait ? 'P' : 'L';
+    print('  [$i] $orientation - votes: ${photo.voteCount} - id: ${photo.id}');
+  }
+  print('Expected pattern: ${_buildExpectedPattern()}');
+  print('━━━━━━━━━━━━━━━━━━━━━━━');
+
+  return memory;
 }
 
-List<MemoryPhoto> _scenarioExtras({
-  required String seed,
-  required bool multiDay,
-}) {
-  final day2 = _baseDate.add(const Duration(days: 1));
-  final day3 = _baseDate.add(const Duration(days: 2));
-
-  DateTime dayOr(DateTime fallback, bool include) =>
-      include ? fallback : _baseDate;
-
-  return [
-    _portraitPhoto(
-      '${seed}_extra_1',
-      20,
-      _baseDate.add(const Duration(hours: 6)),
-    ),
-    _landscapePhoto(
-      '${seed}_extra_2',
-      18,
-      _baseDate.add(const Duration(hours: 6, minutes: 45)),
-    ),
-    _portraitPhoto(
-      '${seed}_extra_3',
-      16,
-      dayOr(day2, multiDay).add(const Duration(hours: 8)),
-    ),
-    _landscapePhoto(
-      '${seed}_extra_4',
-      14,
-      dayOr(day2, multiDay).add(const Duration(hours: 9, minutes: 30)),
-    ),
-    _portraitPhoto(
-      '${seed}_extra_5',
-      12,
-      dayOr(day3, multiDay).add(const Duration(hours: 10)),
-    ),
-    _landscapePhoto(
-      '${seed}_extra_6',
-      10,
-      dayOr(day3, multiDay).add(const Duration(hours: 12)),
-    ),
-  ];
+String _buildExpectedPattern() {
+  final pattern = <String>[];
+  for (var i = 0; i < FakeMemoryConfig.coverPortraitCount; i++) {
+    pattern.add('V');
+  }
+  for (var i = 0; i < FakeMemoryConfig.coverLandscapeCount; i++) {
+    pattern.add('H');
+  }
+  return '[${pattern.join(', ')}]';
 }
 
-MemoryPhoto _portraitPhoto(
-  String id,
-  int vote,
-  DateTime capturedAt,
-) {
-  return MemoryPhoto(
-    id: id,
-    url: 'https://picsum.photos/seed/$id/800/1000',
-    thumbnailUrl: 'https://picsum.photos/seed/${id}_thumb/400/500',
-    coverUrl: 'https://picsum.photos/seed/${id}_cover/1024/1280',
-    voteCount: vote,
-    capturedAt: capturedAt,
-    aspectRatio: 0.8,
-    uploaderId: 'user-$id',
-    uploaderName: 'User $id',
-  );
-}
-
-MemoryPhoto _landscapePhoto(
-  String id,
-  int vote,
-  DateTime capturedAt,
-) {
-  return MemoryPhoto(
-    id: id,
-    url: 'https://picsum.photos/seed/$id/1600/900',
-    thumbnailUrl: 'https://picsum.photos/seed/${id}_thumb/800/450',
-    coverUrl: 'https://picsum.photos/seed/${id}_cover/1600/900',
-    voteCount: vote,
-    capturedAt: capturedAt,
-    aspectRatio: 16 / 9,
-    uploaderId: 'user-$id',
-    uploaderName: 'User $id',
-  );
-}
+// Removed unused _portraitPhoto and _landscapePhoto functions

@@ -17,22 +17,7 @@ class MemoryEntity {
   });
 
   /// Get cover photos (up to 3, sorted by votes)
-  List<MemoryPhoto> get coverPhotos {
-    final sorted = List<MemoryPhoto>.from(photos)
-      ..sort((a, b) {
-        // Sort by votes (descending)
-        final voteCompare = b.voteCount.compareTo(a.voteCount);
-        if (voteCompare != 0) return voteCompare;
-
-        // Tie-breaker: prefer portrait
-        if (a.isPortrait && !b.isPortrait) return -1;
-        if (!a.isPortrait && b.isPortrait) return 1;
-
-        // Tie-breaker: newer timestamp
-        return b.capturedAt.compareTo(a.capturedAt);
-      });
-    return sorted.take(3).toList();
-  }
+  List<MemoryPhoto> get coverPhotos => photos.where((p) => p.isCover).toList();
 
   /// Get non-cover photos for the grid
   List<MemoryPhoto> get gridPhotos {
@@ -53,6 +38,7 @@ class MemoryPhoto {
   final double aspectRatio; // width / height
   final String uploaderId;
   final String uploaderName;
+  final bool isCover; // NOVO
 
   const MemoryPhoto({
     required this.id,
@@ -64,6 +50,7 @@ class MemoryPhoto {
     required this.aspectRatio,
     required this.uploaderId,
     required this.uploaderName,
+    required this.isCover,
   });
 
   /// Returns true if photo is portrait (vertical)
