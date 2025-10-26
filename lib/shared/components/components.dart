@@ -25,6 +25,8 @@ export 'common/create_event_segmented_control.dart';
 // Section Components
 export 'sections/event_header.dart';
 export 'sections/memories_section.dart';
+export 'sections/cover_mosaic.dart';
+export 'sections/photo_grid.dart';
 
 // Widget Components
 export 'widgets/rsvp_widget.dart';

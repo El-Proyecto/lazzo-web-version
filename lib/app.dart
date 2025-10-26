@@ -51,14 +51,14 @@ class AuthWrapper extends ConsumerWidget {
         // Se não está logado, vai para a página de auth
         if (user != null) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
-            Navigator.of(context).pushReplacementNamed(AppRouter.eventChat);
+            Navigator.of(context).pushReplacementNamed(AppRouter.memory);
           });
         } else {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             Navigator.of(context).pushReplacementNamed(AppRouter.auth);
           });
         }
-        
+
         return const Scaffold(
           body: Center(
             child: CircularProgressIndicator(),
