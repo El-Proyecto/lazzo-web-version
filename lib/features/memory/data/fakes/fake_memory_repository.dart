@@ -12,10 +12,10 @@ class FakeMemoryConfig {
   static int coverLandscapeCount = 1;
 
   /// Number of portrait photos in grid (non-covers)
-  static int gridPortraitCount = 3;
+  static int gridPortraitCount = 2;
 
   /// Number of landscape photos in grid (non-covers)
-  static int gridLandscapeCount = 3;
+  static int gridLandscapeCount = 4;
 
   /// Max covers is 3
   static int get totalCovers => coverPortraitCount + coverLandscapeCount;
@@ -158,32 +158,9 @@ MemoryEntity _buildDynamicMemory() {
     photos: photos,
   );
 
-  // DEBUG: Log the configuration and results
-  print('━━━ FAKE MEMORY DEBUG ━━━');
-  print(
-      'Config: ${FakeMemoryConfig.coverPortraitCount}P + ${FakeMemoryConfig.coverLandscapeCount}L covers');
-  print('Total photos: ${photos.length}');
-  print('Cover photos (sorted by entity):');
-  for (var i = 0; i < memory.coverPhotos.length; i++) {
-    final photo = memory.coverPhotos[i];
-    final orientation = photo.isPortrait ? 'P' : 'L';
-    print('  [$i] $orientation - votes: ${photo.voteCount} - id: ${photo.id}');
-  }
-  print('Expected pattern: ${_buildExpectedPattern()}');
-  print('━━━━━━━━━━━━━━━━━━━━━━━');
-
   return memory;
 }
 
-String _buildExpectedPattern() {
-  final pattern = <String>[];
-  for (var i = 0; i < FakeMemoryConfig.coverPortraitCount; i++) {
-    pattern.add('V');
-  }
-  for (var i = 0; i < FakeMemoryConfig.coverLandscapeCount; i++) {
-    pattern.add('H');
-  }
-  return '[${pattern.join(', ')}]';
-}
+// Removed unused _buildExpectedPattern function
 
 // Removed unused _portraitPhoto and _landscapePhoto functions

@@ -5,10 +5,10 @@ import '../../constants/spacing.dart';
 import '../../themes/colors.dart';
 
 class CoverTileLayout {
-  final int column;     // 1..N (normalmente 1..4)
-  final int row;        // 1..N (passa a suportar 3 linhas nos 3H)
+  final int column; // 1..N (normalmente 1..4)
+  final int row; // 1..N (passa a suportar 3 linhas nos 3H)
   final int columnSpan; // 1..4
-  final int rowSpan;    // 1..2
+  final int rowSpan; // 1..2
   const CoverTileLayout({
     required this.column,
     required this.row,
@@ -67,7 +67,7 @@ class CoverMosaic extends StatelessWidget {
                   cover.imageUrl,
                   fit: BoxFit.cover,
                   alignment: Alignment.center,
-                  color: Colors.black.withOpacity(0.30),
+                  color: Colors.black.withAlpha((0.30 * 255).round()),
                   colorBlendMode: BlendMode.darken,
                   filterQuality: FilterQuality.low,
                   width: width,
@@ -125,9 +125,8 @@ class CoverMosaic extends StatelessWidget {
         if (colW <= 0) return const SizedBox.shrink();
 
         // **ALTURA DINÂMICA** (suporta 3 filas p/ caso 3H com hero alto)
-        final maxRowUsed = layouts
-            .map((l) => l.row + l.rowSpan - 1)
-            .fold<int>(1, math.max);
+        final maxRowUsed =
+            layouts.map((l) => l.row + l.rowSpan - 1).fold<int>(1, math.max);
         final height = colW * maxRowUsed + gap * (maxRowUsed - 1);
 
         final dpr = MediaQuery.of(context).devicePixelRatio;
@@ -204,7 +203,7 @@ class CoverMosaic extends StatelessWidget {
     final hCount = n - vCount;
 
     // Helpers para devolver na mesma ordem de entrada
-    List<CoverTileLayout> _returnByIndex(Map<int, CoverTileLayout> m) =>
+    List<CoverTileLayout> returnByIndex(Map<int, CoverTileLayout> m) =>
         List.generate(n, (i) => m[i]!);
 
     // ----------------
@@ -213,24 +212,30 @@ class CoverMosaic extends StatelessWidget {
     if (n == 2) {
       // 2H -> ambas hero (2x2 lado a lado)
       if (hCount == 2) {
-      return _returnByIndex({
-        0: const CoverTileLayout(column: 1, row: 1, columnSpan: 2, rowSpan: 2),
-        1: const CoverTileLayout(column: 3, row: 1, columnSpan: 2, rowSpan: 2),
-      });
+        return returnByIndex({
+          0: const CoverTileLayout(
+              column: 1, row: 1, columnSpan: 2, rowSpan: 2),
+          1: const CoverTileLayout(
+              column: 3, row: 1, columnSpan: 2, rowSpan: 2),
+        });
       }
       // 2V -> ambas hero (2x2 lado a lado)
       if (vCount == 2) {
-      return _returnByIndex({
-        0: const CoverTileLayout(column: 1, row: 1, columnSpan: 2, rowSpan: 2),
-        1: const CoverTileLayout(column: 3, row: 1, columnSpan: 2, rowSpan: 2),
-      });
+        return returnByIndex({
+          0: const CoverTileLayout(
+              column: 1, row: 1, columnSpan: 2, rowSpan: 2),
+          1: const CoverTileLayout(
+              column: 3, row: 1, columnSpan: 2, rowSpan: 2),
+        });
       }
       // 1V e 1H -> ambos ficam hero (2x2 lado a lado)
       if (vCount == 1 && hCount == 1) {
-      return _returnByIndex({
-        0: const CoverTileLayout(column: 1, row: 1, columnSpan: 2, rowSpan: 2),
-        1: const CoverTileLayout(column: 3, row: 1, columnSpan: 2, rowSpan: 2),
-      });
+        return returnByIndex({
+          0: const CoverTileLayout(
+              column: 1, row: 1, columnSpan: 2, rowSpan: 2),
+          1: const CoverTileLayout(
+              column: 3, row: 1, columnSpan: 2, rowSpan: 2),
+        });
       }
     }
 
@@ -251,7 +256,7 @@ class CoverMosaic extends StatelessWidget {
             const CoverTileLayout(column: 3, row: 1, columnSpan: 1, rowSpan: 2);
         map[vIndices[1]] =
             const CoverTileLayout(column: 4, row: 1, columnSpan: 1, rowSpan: 2);
-        return _returnByIndex(map);
+        return returnByIndex(map);
       }
 
       // 3H -> o mais largo (o que apanha 4 colunas) ganha altura extra (rowSpan:2)

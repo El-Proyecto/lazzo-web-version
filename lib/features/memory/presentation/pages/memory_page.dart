@@ -118,7 +118,7 @@ class MemoryPage extends ConsumerWidget {
                   clusters: _buildClusters(gridPhotos),
                 ),
 
-                const SizedBox(height: Gaps.xl),
+                const SizedBox(height: Gaps.md),
               ],
             ),
           );

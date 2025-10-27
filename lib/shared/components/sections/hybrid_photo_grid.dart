@@ -17,7 +17,11 @@ class PhotoCluster {
 }
 
 /// Hybrid mosaic grid with row templates and temporal clustering
-/// Templates: PPP, LspanP, PLspan, LspanLspan
+/// Templates (by priority):
+/// 1) L+P / P+L (L full + P)
+/// 2) L½ + L½
+/// 3) P + P + P
+/// 4) L (full) alone [end of cluster only, except special 3L case]
 class HybridPhotoGrid extends StatelessWidget {
   final List<PhotoCluster> clusters;
   final VoidCallback? onPhotoTap;
@@ -36,12 +40,21 @@ class HybridPhotoGrid extends StatelessWidget {
 
     return LayoutBuilder(
       builder: (context, constraints) {
+        // Visual base: padding 16, gap 8, 3 visual columns -> 6 sub-grid units.
         const padding = Insets.screenH; // 16px
         const gap = Gaps.xs; // 8px
-        const columns = 3;
+        const subCols = 6; // 6-unit sub-grid (each visual column = 2 units)
 
         final screenW = constraints.maxWidth;
-        final colW = (screenW - padding * 2 - gap * 2) / columns;
+        final innerW = screenW - padding * 2;
+
+        // Pixel-snapped unit width (floor), then distribute leftover equally.
+        final unitW =
+            ((innerW - gap * (subCols - 1)) / subCols).floorToDouble();
+        final usedW = unitW * subCols + gap * (subCols - 1);
+        final leftover = (innerW - usedW).clamp(0, innerW);
+        final innerSidePad = leftover / 2;
+
         final showClusterLabels = clusters.length > 1;
 
         return Padding(
@@ -71,8 +84,9 @@ class HybridPhotoGrid extends StatelessWidget {
                       ),
                     ),
 
-                  // Photos in cluster
-                  ..._buildClusterRows(cluster.photos, colW, gap),
+                  // Photos in cluster (operate strictly within this cluster)
+                  ..._buildClusterRows(
+                      cluster.photos, unitW, gap, innerSidePad),
 
                   const SizedBox(height: Gaps.lg),
                 ],
@@ -84,316 +98,260 @@ class HybridPhotoGrid extends StatelessWidget {
     );
   }
 
-  /// Build rows for a cluster using greedy template matching
+  /// Build rows for a cluster using greedy priority selection.
+  /// Operates only within this cluster; no cross-cluster reordering.
   List<Widget> _buildClusterRows(
     List<HybridPhotoData> photos,
-    double colW,
+    double unitW,
     double gap,
+    double innerSidePad,
   ) {
     final rows = <Widget>[];
     final buffer = List<HybridPhotoData>.from(photos);
 
     while (buffer.isNotEmpty) {
-      final rowResult = _selectBestTemplate(buffer, colW, gap);
+      final rowResult = _selectBestTemplate(buffer, unitW, gap, innerSidePad);
       rows.add(rowResult.widget);
-      buffer.removeRange(0, rowResult.photosUsed);
+
+      // Remove ONLY the used indexes (descending order to keep indices valid).
+      final idxs = rowResult.usedIndexes.toList()..sort();
+      for (int k = idxs.length - 1; k >= 0; k--) {
+        buffer.removeAt(idxs[k]);
+      }
     }
 
     return rows;
   }
 
-  /// Select best template for current buffer using greedy algorithm
+  /// Select the best row template for the current buffer with lookahead ≤ 4.
   _TemplateResult _selectBestTemplate(
     List<HybridPhotoData> buffer,
-    double colW,
+    double unitW,
     double gap,
+    double innerSidePad,
   ) {
-    final lookAhead = buffer.length > 5 ? 5 : buffer.length;
-    final candidates = buffer.take(lookAhead).toList();
+    final la = math.min(4, buffer.length);
+    final cand = buffer.take(la).toList(growable: false);
 
-    // Try all templates and calculate penalty
-    final templates = <_TemplateResult>[];
+    bool isP(int i) => cand[i].isPortrait;
+    bool isL(int i) => !cand[i].isPortrait;
 
-    // Template 1: P P P (3 portraits)
-    if (candidates.length >= 3 &&
-        candidates[0].isPortrait &&
-        candidates[1].isPortrait &&
-        candidates[2].isPortrait) {
-      final penalty = _calculatePenalty(
-          [candidates[0], candidates[1], candidates[2]], 0, 0, 0);
-      templates.add(_TemplateResult(
-        widget: _buildPPPRow(
-            [candidates[0], candidates[1], candidates[2]], colW, gap),
-        photosUsed: 3,
-        penalty: penalty,
-      ));
-    }
-
-    // Template 2: Lspan P (landscape + portrait)
-    if (candidates.length >= 2) {
-      for (var i = 0; i < lookAhead - 1; i++) {
-        if (!candidates[i].isPortrait && candidates[i + 1].isPortrait) {
-          final reorderIndex = i;
-          final breakMismatch = _aspectRatioMismatch(candidates[i], false) +
-              _aspectRatioMismatch(candidates[i + 1], true);
-          final orphan = _orphanPenalty(buffer, i + 2);
-          final penalty = _calculatePenalty(
-            [candidates[i], candidates[i + 1]],
-            reorderIndex,
-            breakMismatch,
-            orphan,
-          );
-
-          if (reorderIndex <= 3) {
-            templates.add(_TemplateResult(
-              widget: _buildLspanPRow(
-                  [candidates[i], candidates[i + 1]], colW, gap),
-              photosUsed: i + 2,
-              penalty: penalty,
-            ));
+    // ---- Priority 1: L full + P (or P + L full) ----
+    // (a) L then P anywhere within lookahead
+    for (int i = 0; i < la - 1; i++) {
+      if (isL(i)) {
+        for (int j = i + 1; j < la; j++) {
+          if (isP(j)) {
+            return _TemplateResult(
+              widget: Padding(
+                padding: EdgeInsets.symmetric(horizontal: innerSidePad),
+                child: _buildRowLPlusP([cand[i], cand[j]], unitW, gap),
+              ),
+              usedIndexes: [i, j],
+              penalty: 0,
+            );
           }
         }
+        break; // found first L but no P after in lookahead
+      }
+    }
+    // (b) P then L anywhere within lookahead
+    for (int i = 0; i < la - 1; i++) {
+      if (isP(i)) {
+        for (int j = i + 1; j < la; j++) {
+          if (isL(j)) {
+            return _TemplateResult(
+              widget: Padding(
+                padding: EdgeInsets.symmetric(horizontal: innerSidePad),
+                child: _buildRowPPlusL([cand[i], cand[j]], unitW, gap),
+              ),
+              usedIndexes: [i, j],
+              penalty: 0,
+            );
+          }
+        }
+        break; // found first P but no L after in lookahead
       }
     }
 
-    // Template 3: P Lspan (portrait + landscape)
-    if (candidates.length >= 2) {
-      for (var i = 0; i < lookAhead - 1; i++) {
-        if (candidates[i].isPortrait && !candidates[i + 1].isPortrait) {
-          final reorderIndex = i;
-          final breakMismatch = _aspectRatioMismatch(candidates[i], true) +
-              _aspectRatioMismatch(candidates[i + 1], false);
-          final orphan = _orphanPenalty(buffer, i + 2);
-          final penalty = _calculatePenalty(
-            [candidates[i], candidates[i + 1]],
-            reorderIndex,
-            breakMismatch,
-            orphan,
-          );
-
-          if (reorderIndex <= 3) {
-            templates.add(_TemplateResult(
-              widget: _buildPLspanRow(
-                  [candidates[i], candidates[i + 1]], colW, gap),
-              photosUsed: i + 2,
-              penalty: penalty,
-            ));
-          }
-        }
-      }
-    }
-
-    // Template 4: Lspan Lspan (two landscapes, double height if consecutive)
-    if (candidates.length >= 2) {
-      for (var i = 0; i < lookAhead - 1; i++) {
-        if (!candidates[i].isPortrait && !candidates[i + 1].isPortrait) {
-          final reorderIndex = i;
-          final breakMismatch = _aspectRatioMismatch(candidates[i], false) +
-              _aspectRatioMismatch(candidates[i + 1], false);
-          final orphan = _orphanPenalty(buffer, i + 2);
-          final penalty = _calculatePenalty(
-            [candidates[i], candidates[i + 1]],
-            reorderIndex,
-            breakMismatch,
-            orphan,
-          );
-
-          if (reorderIndex <= 3) {
-            templates.add(_TemplateResult(
-              widget: _buildLspanLspanRow(
-                  [candidates[i], candidates[i + 1]], colW, gap),
-              photosUsed: i + 2,
-              penalty: penalty,
-            ));
-          }
-        }
-      }
-    }
-
-    // Fallback: single portrait or landscape
-    if (templates.isEmpty) {
-      if (candidates[0].isPortrait) {
+    // ---- Priority 2: L½ + L½ ----
+    // Two consecutive L before the first P in lookahead.
+    int firstP = cand.indexWhere((e) => e.isPortrait);
+    if (firstP == -1) firstP = la; // no P in lookahead
+    for (int i = 0; i < math.min(firstP - 1, la - 1); i++) {
+      if (isL(i) && isL(i + 1)) {
         return _TemplateResult(
-          widget: _buildSinglePRow(candidates[0], colW, gap),
-          photosUsed: 1,
-          penalty: 0,
-        );
-      } else {
-        return _TemplateResult(
-          widget: _buildSingleLRow(candidates[0], colW, gap),
-          photosUsed: 1,
+          widget: Padding(
+            padding: EdgeInsets.symmetric(horizontal: innerSidePad),
+            child: _buildRowLhalfLhalf([cand[i], cand[i + 1]], unitW, gap),
+          ),
+          usedIndexes: [i, i + 1],
           penalty: 0,
         );
       }
     }
 
-    // Select template with lowest penalty
-    templates.sort((a, b) => a.penalty.compareTo(b.penalty));
-    return templates.first;
-  }
-
-  /// Calculate penalty for a template
-  int _calculatePenalty(
-    List<HybridPhotoData> photos,
-    int reorderIndex,
-    int breakMismatch,
-    int orphan,
-  ) {
-    return reorderIndex + breakMismatch + orphan;
-  }
-
-  /// Penalty for aspect ratio mismatch (crop quality)
-  int _aspectRatioMismatch(HybridPhotoData photo, bool expectPortrait) {
-    final ar = photo.aspectRatio;
-    if (expectPortrait && (ar < 0.6 || ar > 1.0)) return 2;
-    if (!expectPortrait && (ar < 1.2 || ar > 2.0)) return 2;
-    return 0;
-  }
-
-  /// Penalty for leaving orphan landscape
-  int _orphanPenalty(List<HybridPhotoData> buffer, int usedCount) {
-    if (usedCount >= buffer.length) return 0;
-    final remaining = buffer.skip(usedCount).toList();
-    if (remaining.length == 1 && !remaining[0].isPortrait) return 3;
-    return 0;
-  }
-
-  /// Build P P P row (3 portraits)
-  Widget _buildPPPRow(List<HybridPhotoData> photos, double colW, double gap) {
-    final height = colW * 5 / 4; // 4:5
-    return Padding(
-      padding: const EdgeInsets.only(bottom: Gaps.xs),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: photos.map((photo) {
-          return Padding(
-            padding: EdgeInsets.only(right: photo == photos.last ? 0 : gap),
-            child: _buildPhotoTile(
-              photo,
-              colW,
-              height,
-              rowHeight: height,
-            ),
-          );
-        }).toList(),
-      ),
-    );
-  }
-
-  /// Build Lspan P row (landscape + portrait)
-  Widget _buildLspanPRow(
-      List<HybridPhotoData> photos, double colW, double gap) {
-    final lWidth = colW * 2 + gap;
-    final lHeight = lWidth * 9 / 16; // 16:9
-    final pHeight = colW * 5 / 4; // 4:5
-    final rowHeight = math.max(lHeight, pHeight);
-
-    return Padding(
-      padding: const EdgeInsets.only(bottom: Gaps.xs),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          _buildPhotoTile(
-            photos[0],
-            lWidth,
-            lHeight,
-            rowHeight: rowHeight,
-          ),
-          SizedBox(width: gap),
-          _buildPhotoTile(
-            photos[1],
-            colW,
-            pHeight,
-            rowHeight: rowHeight,
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// Build P Lspan row (portrait + landscape)
-  Widget _buildPLspanRow(
-      List<HybridPhotoData> photos, double colW, double gap) {
-    final lWidth = colW * 2 + gap;
-    final lHeight = lWidth * 9 / 16; // 16:9
-    final pHeight = colW * 5 / 4; // 4:5
-    final rowHeight = math.max(lHeight, pHeight);
-
-    return Padding(
-      padding: const EdgeInsets.only(bottom: Gaps.xs),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          _buildPhotoTile(
-            photos[0],
-            colW,
-            pHeight,
-            rowHeight: rowHeight,
-          ),
-          SizedBox(width: gap),
-          _buildPhotoTile(
-            photos[1],
-            lWidth,
-            lHeight,
-            rowHeight: rowHeight,
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// Build Lspan Lspan row (two landscapes stacked)
-  Widget _buildLspanLspanRow(
-      List<HybridPhotoData> photos, double colW, double gap) {
-    final lWidth = colW * 2 + gap;
-    final lHeight = lWidth * 9 / 16; // 16:9
-
-    return Padding(
-      padding: const EdgeInsets.only(bottom: Gaps.xs),
-      child: Column(
-        children: [
-          _buildPhotoTile(photos[0], lWidth, lHeight),
-          SizedBox(height: gap),
-          _buildPhotoTile(photos[1], lWidth, lHeight),
-        ],
-      ),
-    );
-  }
-
-  /// Build single portrait row (centered)
-  Widget _buildSinglePRow(HybridPhotoData photo, double colW, double gap) {
-    final height = colW * 5 / 4; // 4:5
-    return Padding(
-      padding: const EdgeInsets.only(bottom: Gaps.xs),
-      child: Center(
-        child: _buildPhotoTile(
-          photo,
-          colW,
-          height,
-          rowHeight: height,
+    // ---- Priority 3: P + P + P (must use the first three items if all P) ----
+    if (buffer.length >= 3 && isP(0) && isP(1) && isP(2)) {
+      return _TemplateResult(
+        widget: Padding(
+          padding: EdgeInsets.symmetric(horizontal: innerSidePad),
+          child: _buildRowPPP([cand[0], cand[1], cand[2]], unitW, gap),
         ),
-      ),
-    );
+        usedIndexes: const [0, 1, 2],
+        penalty: 0,
+      );
+    }
+
+    // ---- Priority 4: L full alone ----
+    // Only at end of cluster OR special case of exactly one item left.
+    if (buffer.length == 1 && isL(0)) {
+      return _TemplateResult(
+        widget: Padding(
+          padding: EdgeInsets.symmetric(horizontal: innerSidePad),
+          child: _buildRowLAlone(cand[0], unitW, gap),
+        ),
+        usedIndexes: const [0],
+        penalty: 0,
+      );
+    }
+
+    // ---- Fallbacks (safety) ----
+    if (isP(0)) {
+      return _TemplateResult(
+        widget: Padding(
+          padding: EdgeInsets.symmetric(horizontal: innerSidePad),
+          child: _buildRowPSingle(cand[0], unitW, gap),
+        ),
+        usedIndexes: const [0],
+        penalty: 0,
+      );
+    } else {
+      // Single landscape not at end → still allow full to keep flow (soft relax).
+      return _TemplateResult(
+        widget: Padding(
+          padding: EdgeInsets.symmetric(horizontal: innerSidePad),
+          child: _buildRowLAlone(cand[0], unitW, gap),
+        ),
+        usedIndexes: const [0],
+        penalty: 0,
+      );
+    }
   }
 
-  /// Build single landscape row (centered)
-  Widget _buildSingleLRow(HybridPhotoData photo, double colW, double gap) {
-    final lWidth = colW * 2 + gap;
-    final lHeight = lWidth * 9 / 16; // 16:9
+  // ---------- ROW BUILDERS (all enforce a single rowHeight) ----------
+
+  /// Row: L full + P
+  Widget _buildRowLPlusP(
+      List<HybridPhotoData> photos, double unitW, double gap) {
+    final wL = unitW * 4 + gap * 3; // span 4 units -> adds 3 inner gaps
+    final wP = unitW * 2 + gap; // span 2 units -> adds 1 inner gap
+    final hL = wL * 9 / 16;
+    final hP = wP * 5 / 4;
+    final rowH = math.max(hL, hP);
+
     return Padding(
       padding: const EdgeInsets.only(bottom: Gaps.xs),
-      child: Center(
-        child: _buildPhotoTile(
-          photo,
-          lWidth,
-          lHeight,
-          rowHeight: lHeight,
-        ),
+      child: Row(
+        children: [
+          _buildPhotoTile(photos[0], wL, hL, rowHeight: rowH),
+          SizedBox(width: gap),
+          _buildPhotoTile(photos[1], wP, hP, rowHeight: rowH),
+        ],
       ),
     );
   }
 
-  /// Build a single photo tile
+  /// Row: P + L full
+  Widget _buildRowPPlusL(
+      List<HybridPhotoData> photos, double unitW, double gap) {
+    final wL = unitW * 4 + gap * 3;
+    final wP = unitW * 2 + gap;
+    final hL = wL * 9 / 16;
+    final hP = wP * 5 / 4;
+    final rowH = math.max(hL, hP);
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: Gaps.xs),
+      child: Row(
+        children: [
+          _buildPhotoTile(photos[0], wP, hP, rowHeight: rowH),
+          SizedBox(width: gap),
+          _buildPhotoTile(photos[1], wL, hL, rowHeight: rowH),
+        ],
+      ),
+    );
+  }
+
+  /// Row: L½ + L½ (pair only)
+  Widget _buildRowLhalfLhalf(
+      List<HybridPhotoData> photos, double unitW, double gap) {
+    final wHalf = unitW * 3 + gap * 2; // span 3 units -> adds 2 inner gaps
+    final h = wHalf * 9 / 16; // 16:9
+    return Padding(
+      padding: const EdgeInsets.only(bottom: Gaps.xs),
+      child: Row(
+        children: [
+          _buildPhotoTile(photos[0], wHalf, h, rowHeight: h),
+          SizedBox(width: gap),
+          _buildPhotoTile(photos[1], wHalf, h, rowHeight: h),
+        ],
+      ),
+    );
+  }
+
+  /// Row: P + P + P
+  Widget _buildRowPPP(List<HybridPhotoData> photos, double unitW, double gap) {
+    final wP = unitW * 2 + gap;
+    final h = wP * 5 / 4; // 4:5
+    return Padding(
+      padding: const EdgeInsets.only(bottom: Gaps.xs),
+      child: Row(
+        children: [
+          _buildPhotoTile(photos[0], wP, h, rowHeight: h),
+          SizedBox(width: gap),
+          _buildPhotoTile(photos[1], wP, h, rowHeight: h),
+          SizedBox(width: gap),
+          _buildPhotoTile(photos[2], wP, h, rowHeight: h),
+        ],
+      ),
+    );
+  }
+
+  /// Row: L full alone (left-aligned)
+  Widget _buildRowLAlone(HybridPhotoData photo, double unitW, double gap) {
+    final wL = unitW * 4 + gap * 3;
+    final h = wL * 9 / 16;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: Gaps.xs),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.start,
+        children: [
+          _buildPhotoTile(photo, wL, h, rowHeight: h),
+        ],
+      ),
+    );
+  }
+
+  /// Row: single P (fallback safety)
+  Widget _buildRowPSingle(HybridPhotoData photo, double unitW, double gap) {
+    final wP = unitW * 2 + gap;
+    final h = wP * 5 / 4;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: Gaps.xs),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          _buildPhotoTile(photo, wP, h, rowHeight: h),
+        ],
+      ),
+    );
+  }
+
+  // ---------- TILE BUILDER ----------
+
+  /// Builds a single photo tile clipped and center-cropped.
+  /// width/height are the "natural" AR sizes; rowHeight enforces equal height in the row.
   Widget _buildPhotoTile(
     HybridPhotoData photo,
     double width,
@@ -407,7 +365,7 @@ class HybridPhotoGrid extends StatelessWidget {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
         width: width,
-        height: targetHeight,
+        height: targetHeight, // same height for all tiles in row
         child: ClipRRect(
           borderRadius: BorderRadius.circular(Radii.sm),
           child: FittedBox(
@@ -415,7 +373,7 @@ class HybridPhotoGrid extends StatelessWidget {
             alignment: Alignment.center,
             child: SizedBox(
               width: width,
-              height: height,
+              height: height, // maintained AR inside the FittedBox
               child: Image.network(
                 photo.imageUrl,
                 fit: BoxFit.cover,
@@ -449,12 +407,12 @@ class HybridPhotoGrid extends StatelessWidget {
 /// Template selection result
 class _TemplateResult {
   final Widget widget;
-  final int photosUsed;
+  final List<int> usedIndexes; // indexes in current lookahead/buffer prefix
   final int penalty;
 
   const _TemplateResult({
     required this.widget,
-    required this.photosUsed,
+    required this.usedIndexes,
     required this.penalty,
   });
 }
