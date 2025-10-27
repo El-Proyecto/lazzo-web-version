@@ -7,6 +7,7 @@ import '../providers/pending_event_providers.dart';
 import '../../../../shared/components/cards/pending_event_card.dart';
 import '../../../../shared/components/cards/pending_event_expanded_card.dart';
 import '../../../../routes/app_router.dart';
+import '../../../auth/presentation/providers/auth_provider.dart';
 import 'simple_vote_button.dart';
 import 'voting_button.dart';
 import 'voted_no_button.dart';
@@ -22,24 +23,22 @@ class PendingEventWidget extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final voteState = ref.watch(voteStateProvider(event.eventId));
     final voteNotifier = ref.read(voteStateProvider(event.eventId).notifier);
+    
+    final authState = ref.watch(authProvider);
+    final currentUser = authState.valueOrNull;
 
-    // Determine the current effective state
-    // Use voteState for user interactions, but respect event's initial state
+    print('🔍 Event ${event.eventId}: userVote=${event.userVote}, state=${voteState.status}');
+
     final effectiveStatus = _getEffectiveStatus(
       voteState.status,
-      event.voteStatus,
+      event.userVote,
     );
 
-    // Use expanded card for votersExpanded state
     if (effectiveStatus == VoteStatus.votersExpanded) {
-      // Get voters including user's vote if they voted
-      final votersWithUser = _getVotersIncludingUser(voteState);
-      final yesVoters = votersWithUser
-          .where((v) => v.response == 'yes')
-          .toList();
-      final noVoters = votersWithUser.where((v) => v.response == 'no').toList();
+      final yesVoters = _replaceCurrentUserName(event.goingUsers, currentUser?.id);
+      final noVoters = _replaceCurrentUserName(event.notGoingUsers, currentUser?.id);
+      final noResponseVoters = _replaceCurrentUserName(event.noResponseUsers, currentUser?.id);
 
-      // Determine user's vote status
       UserVoteStatus userVote = voteState.userVote == true
           ? UserVoteStatus.yes
           : voteState.userVote == false
@@ -53,8 +52,8 @@ class PendingEventWidget extends ConsumerWidget {
         location: event.location,
         yesVoters: yesVoters,
         noVoters: noVoters,
-        noResponseVoters: event.noResponseVoters,
-        noResponseCount: event.noResponseCount,
+        noResponseVoters: noResponseVoters,
+        noResponseCount: event.noResponseTotal,
         userVote: userVote,
         onCollapse: () => voteNotifier.toggleExpansion(),
         onVoteAgain: () => voteNotifier.resetToVoting(),
@@ -62,16 +61,19 @@ class PendingEventWidget extends ConsumerWidget {
       );
     }
 
-    // Use regular card for other states
     return PendingEventCard(
       emoji: event.emoji,
       title: event.title,
       dateTime: _formatDateTime(event.scheduledDate),
       location: event.location,
-      voteButton: _buildVoteButton(effectiveStatus, voteNotifier, voteState),
+      voteButton: _buildVoteButton(
+        effectiveStatus,
+        voteNotifier,
+        voteState,
+        currentUser?.id,
+      ),
       onTap: () => _navigateToEventDetail(context),
     );
-    
   }
 
   void _navigateToEventDetail(BuildContext context) {
@@ -82,46 +84,43 @@ class PendingEventWidget extends ConsumerWidget {
     );
   }
 
-  List<VoterInfo> _getVotersIncludingUser(VoteState voteState) {
-    final voters = List<VoterInfo>.from(event.voters);
+  List<VoterInfo> _replaceCurrentUserName(
+    List<VoterInfo> voters,
+    String? currentUserId,
+  ) {
+    if (currentUserId == null) return voters;
 
-    // Add user's vote if they have voted
-    if (voteState.userVote != null) {
-      final userVoter = VoterInfo(
-        name: 'Você', // Current user
-        avatarUrl: 'https://i.pravatar.cc/150?img=50', // User's avatar
-        response: voteState.userVote! ? 'yes' : 'no',
-        votedAt: DateTime.now(),
-      );
-      voters.add(userVoter);
-    }
-
-    // Sort by most recent first (null votedAt goes to end)
-    voters.sort((a, b) {
-      if (a.votedAt == null && b.votedAt == null) return 0;
-      if (a.votedAt == null) return 1;
-      if (b.votedAt == null) return -1;
-      return b.votedAt!.compareTo(a.votedAt!);
-    });
-
-    return voters;
+    return voters.map((voter) {
+      if (voter.id == currentUserId) {
+        return VoterInfo(
+          id: voter.id,
+          name: 'You',
+          avatarUrl: voter.avatarUrl,
+          votedAt: voter.votedAt,
+        );
+      }
+      return voter;
+    }).toList();
   }
 
+  // ✅ SIMPLIFICADO: usa bool? em vez de VoteStatus
   VoteStatus _getEffectiveStatus(
     VoteStatus voteStateStatus,
-    VoteStatus eventStatus,
+    bool? eventUserVote,
   ) {
-    // If vote state has been modified by user interaction, use it
+    // Prioriza estados de UI transitórios
     if (voteStateStatus == VoteStatus.votersExpanded) {
       return VoteStatus.votersExpanded;
     }
-    // If vote state is voting or if user has made new vote, use vote state
-    if (voteStateStatus == VoteStatus.voting ||
-        voteStateStatus == VoteStatus.voted) {
-      return voteStateStatus;
+    if (voteStateStatus == VoteStatus.voting) {
+      return VoteStatus.voting;
     }
-    // Otherwise use the event's initial state
-    return eventStatus;
+    if (voteStateStatus == VoteStatus.voted) {
+      return VoteStatus.voted;
+    }
+    
+    // Fallback: usa dados do backend
+    return eventUserVote == null ? VoteStatus.vote : VoteStatus.voted;
   }
 
   String _formatDateTime(DateTime dateTime) {
@@ -132,13 +131,12 @@ class PendingEventWidget extends ConsumerWidget {
     VoteStatus status,
     VoteStateNotifier notifier,
     VoteState voteState,
+    String? currentUserId,
   ) {
     switch (status) {
       case VoteStatus.vote:
-        // Initial state - show stacked avatars if there are existing voters, otherwise simple vote button
-        final yesVoters = event.voters
-            .where((v) => v.response == 'yes')
-            .toList();
+        final yesVoters = _replaceCurrentUserName(event.goingUsers, currentUserId);
+        
         if (yesVoters.isNotEmpty) {
           return StackedAvatars(
             voters: yesVoters,
@@ -148,51 +146,33 @@ class PendingEventWidget extends ConsumerWidget {
         return SimpleVoteButton(onTap: () => notifier.startVoting());
 
       case VoteStatus.voting:
-        // Voting state - show yes/no buttons
         return VotingButton(
           onYes: () => notifier.vote(true),
           onNo: () => notifier.vote(false),
         );
 
       case VoteStatus.voted:
-        // Voted state - show appropriate button based on vote
         if (voteState.userVote == true) {
-          // User voted yes - show stacked avatars with all yes voters
-          final votersWithUser = _getVotersIncludingUser(voteState);
-          final yesVoters = votersWithUser
-              .where((v) => v.response == 'yes')
-              .toList();
+          final yesVoters = _replaceCurrentUserName(event.goingUsers, currentUserId);
           return StackedAvatars(
             voters: yesVoters,
             onTap: () => notifier.toggleExpansion(),
           );
         } else if (voteState.userVote == false) {
-          // User voted no - only show expand button if there are no yes voters
-          final votersWithUser = _getVotersIncludingUser(voteState);
-          final yesVoters = votersWithUser
-              .where((v) => v.response == 'yes')
-              .toList();
-
+          final yesVoters = _replaceCurrentUserName(event.goingUsers, currentUserId);
           if (yesVoters.isEmpty) {
-            // No yes voters - show expand button to see results
             return VotedNoButton(onTap: () => notifier.toggleExpansion());
           } else {
-            // There are yes voters - show their stacked avatars
             return StackedAvatars(
               voters: yesVoters,
               onTap: () => notifier.toggleExpansion(),
             );
           }
         }
-        // If user hasn't voted yet, show simple vote button
         return SimpleVoteButton(onTap: () => notifier.startVoting());
 
       case VoteStatus.votersExpanded:
-        // This shouldn't happen in regular card, but fallback to stacked avatars
-        final votersWithUser = _getVotersIncludingUser(voteState);
-        final yesVoters = votersWithUser
-            .where((v) => v.response == 'yes')
-            .toList();
+        final yesVoters = _replaceCurrentUserName(event.goingUsers, currentUserId);
         return StackedAvatars(
           voters: yesVoters,
           onTap: () => notifier.toggleExpansion(),

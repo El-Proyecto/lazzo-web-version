@@ -1,110 +1,148 @@
-// DTO pending event
-
 import '../../domain/entities/pending_event.dart';
 
-class PendingEventModel {
+class _VoterInfoDTO {
+  final String id;
+  final String name;
+  final String? avatarUrl;
+  final DateTime? votedAt;
+
+  const _VoterInfoDTO({
+    required this.id,
+    required this.name,
+    this.avatarUrl,
+    this.votedAt,
+  });
+
+  factory _VoterInfoDTO.fromMap(Map<String, dynamic> map) {
+    return _VoterInfoDTO(
+      id: _asString(map['user_id']) ?? '',
+      name: _asString(map['display_name']) ??
+          _asString(map['name']) ??
+          _asString(map['user_name']) ??
+          _asString(map['user_id']) ??
+          'Unknown',
+      avatarUrl: _asString(map['avatar_url']) ?? _asString(map['avatar']),
+      votedAt: _parseDateTime(map['voted_at']),
+    );
+  }
+
+  VoterInfo toEntity() => VoterInfo(
+        id: id,
+        name: name,
+        avatarUrl: avatarUrl,
+        votedAt: votedAt,
+      );
+
+  static String? _asString(dynamic v) => v is String ? v : v?.toString();
+
+  static DateTime? _parseDateTime(dynamic v) {
+    if (v == null) return null;
+    if (v is DateTime) return v;
+    if (v is String) {
+      try {
+        return DateTime.parse(v);
+      } catch (_) {
+        return null;
+      }
+    }
+    return null;
+  }
+}
+
+class _PendingEventModel {
   final String eventId;
   final String title;
   final String emoji;
   final DateTime scheduledDate;
-  final String location; // continua a chamar-se 'location' no domínio
-  final VoteStatus voteStatus;
-  final int totalVoters;
-  final List<VoterInfo> voters;
-  final List<VoterInfo> noResponseVoters;
-  final int noResponseCount;
+  final String location;
+  final bool? userVote; // ✅ SIMPLIFICADO: null/true/false
 
-  const PendingEventModel({
+  final int goingTotal;
+  final int notGoingTotal;
+  final int noResponseTotal;
+
+  final List<_VoterInfoDTO> goingUsers;
+  final List<_VoterInfoDTO> notGoingUsers;
+  final List<_VoterInfoDTO> noResponseUsers;
+
+  const _PendingEventModel({
     required this.eventId,
     required this.title,
     required this.emoji,
     required this.scheduledDate,
     required this.location,
-    required this.voteStatus,
-    required this.totalVoters,
-    required this.voters,
-    required this.noResponseVoters,
-    required this.noResponseCount,
+    required this.userVote,
+    required this.goingTotal,
+    required this.notGoingTotal,
+    required this.noResponseTotal,
+    required this.goingUsers,
+    required this.notGoingUsers,
+    required this.noResponseUsers,
   });
 
-  factory PendingEventModel.fromMap(Map<String, dynamic> row) {
-    final List<dynamic> votersRaw = (row['voters'] as List<dynamic>?) ?? [];
-    final List<dynamic> noResponseRaw =
-        (row['no_response_voters'] as List<dynamic>?) ?? [];
+  factory _PendingEventModel.fromMap(Map<String, dynamic> row) {
+    final goingRaw = (row['going_users'] as List<dynamic>?) ?? const [];
+    final notGoingRaw = (row['not_going_users'] as List<dynamic>?) ?? const [];
+    final noRespRaw = (row['no_response_users'] as List<dynamic>?) ?? const [];
 
-    return PendingEventModel(
+    return _PendingEventModel(
       eventId: _asString(row['event_id']) ?? '',
       title: _asString(row['event_name']) ?? '',
       emoji: _normalizeEmoji(row['emoji']),
       scheduledDate: _parseDate(row['start_datetime']),
       location: _asString(row['location_name']) ?? '',
-      voteStatus: _mapRsvpToVoteStatus(_asString(row['vote_status'])),
-      totalVoters: _asInt(row['voters_total']),
-      voters: votersRaw.map(_parseVoterInfoDynamic).toList(),
-      noResponseVoters: noResponseRaw.map(_parseVoterInfoDynamic).toList(),
-      noResponseCount: _asInt(row['no_response_count']),
+      userVote: _parseUserVote(_asString(row['vote_status'])), // ✅ Conversão direta
+      goingTotal: _asInt(row['going_count']),
+      notGoingTotal: _asInt(row['not_going_count']),
+      noResponseTotal: _asInt(row['no_response_count']),
+      goingUsers: goingRaw.map(_miniUserDyn).toList(),
+      notGoingUsers: notGoingRaw.map(_miniUserDyn).toList(),
+      noResponseUsers: noRespRaw.map(_miniUserDyn).toList(),
     );
   }
 
-  static VoterInfo _parseVoterInfoDynamic(dynamic v) {
-    if (v is Map<String, dynamic>) return _parseVoterInfoFromMap(v);
-    if (v is String) {
-      return VoterInfo(
-        name: v, // aqui mostra o user_id; troca para 'Unknown' se preferires
-        avatarUrl: 'https://i.pravatar.cc/150?img=3',
-        response: 'pending',
-        votedAt: null,
-      );
-    }
-    return const VoterInfo(
-      name: 'Unknown',
-      avatarUrl: 'https://i.pravatar.cc/150?img=3',
-      response: 'pending',
-      votedAt: null,
+  PendingEvent toEntity() {
+    return PendingEvent(
+      eventId: eventId,
+      title: title,
+      emoji: emoji,
+      scheduledDate: scheduledDate,
+      location: location,
+      userVote: userVote, // ✅ Passa diretamente
+      goingTotal: goingTotal,
+      notGoingTotal: notGoingTotal,
+      noResponseTotal: noResponseTotal,
+      goingUsers: goingUsers.map((dto) => dto.toEntity()).toList(),
+      notGoingUsers: notGoingUsers.map((dto) => dto.toEntity()).toList(),
+      noResponseUsers: noResponseUsers.map((dto) => dto.toEntity()).toList(),
     );
   }
 
-  static VoterInfo _parseVoterInfoFromMap(Map<String, dynamic> data) {
-    final name =
-        _asString(data['name']) ??
-        _asString(data['user_name']) ??
-        _asString(data['display_name']) ??
-        _asString(data['user_id']) ??
-        'Unknown';
-
-    final avatarUrl =
-        _asString(data['avatar_url']) ??
-        _asString(data['avatar']) ??
-        'https://i.pravatar.cc/150?img=3';
-
-    final response =
-        (_asString(data['rsvp']) ?? _asString(data['response']) ?? 'pending')
-            .toLowerCase();
-
-    final votedAtRaw = data['votedAt'] ?? data['voted_at'];
-    final votedAt = _tryParseDate(votedAtRaw);
-
-    return VoterInfo(
-      name: name,
-      avatarUrl: avatarUrl,
-      response: response,
-      votedAt: votedAt,
-    );
-  }
-
-  static VoteStatus _mapRsvpToVoteStatus(String? rsvp) {
-    final s = (rsvp ?? 'pending').toLowerCase();
+  // ✅ NOVO: Converte string SQL → bool?
+  static bool? _parseUserVote(String? rsvp) {
+    if (rsvp == null) return null;
+    final s = rsvp.toLowerCase();
+    
     const yesSet = {'yes', 'going', 'attending', 'accepted'};
     const noSet = {'no', 'declined', 'not_going', 'rejected'};
-    if (s == 'pending' || s == 'invited' || s.isEmpty) return VoteStatus.vote;
-    if (yesSet.contains(s) || noSet.contains(s)) return VoteStatus.voted;
-    return VoteStatus.vote;
+    
+    if (yesSet.contains(s)) return true;  // Votou SIM
+    if (noSet.contains(s)) return false;  // Votou NÃO
+    return null; // 'pending', 'invited', etc → não votou
+  }
+
+  static _VoterInfoDTO _miniUserDyn(dynamic v) {
+    if (v is Map<String, dynamic>) return _VoterInfoDTO.fromMap(v);
+    if (v is String) {
+      return _VoterInfoDTO(id: v, name: v, avatarUrl: null);
+    }
+    return const _VoterInfoDTO(id: '', name: 'Unknown', avatarUrl: null);
   }
 
   static String _normalizeEmoji(dynamic v) {
     final s = _asString(v)?.trim() ?? '';
     return s.isNotEmpty ? s : '🗓️';
-    }
+  }
 
   static String? _asString(dynamic v) => v is String ? v : v?.toString();
 
@@ -120,26 +158,8 @@ class PendingEventModel {
     if (v is String) return DateTime.parse(v);
     throw FormatException('Data inválida: $v');
   }
+}
 
-  static DateTime? _tryParseDate(dynamic v) {
-    try {
-      if (v == null) return null;
-      return _parseDate(v);
-    } catch (_) {
-      return null;
-    }
-  }
-
-  PendingEvent toEntity() => PendingEvent(
-    eventId: eventId,
-    title: title,
-    emoji: emoji,
-    scheduledDate: scheduledDate,
-    location: location, // já é o nome
-    voteStatus: voteStatus,
-    totalVoters: totalVoters,
-    voters: voters,
-    noResponseVoters: noResponseVoters,
-    noResponseCount: noResponseCount,
-  );
+PendingEvent pendingEventFromMap(Map<String, dynamic> map) {
+  return _PendingEventModel.fromMap(map).toEntity();
 }

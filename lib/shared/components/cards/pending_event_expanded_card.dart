@@ -16,7 +16,7 @@ class PendingEventExpandedCard extends StatelessWidget {
   final List<VoterInfo> noVoters;
   final List<VoterInfo> noResponseVoters;
   final int noResponseCount;
-  final UserVoteStatus userVote; // User's current vote status
+  final UserVoteStatus userVote;
   final VoidCallback? onCollapse;
   final VoidCallback? onVoteAgain;
   final VoidCallback? onTap;
@@ -131,7 +131,7 @@ class PendingEventExpandedCard extends StatelessWidget {
                 if (yesVoters.isNotEmpty)
                   _buildVoteSection(
                     'Can',
-                    BrandColors.planning, // Green
+                    BrandColors.planning,
                     yesVoters.length,
                     yesVoters,
                   ),
@@ -144,7 +144,7 @@ class PendingEventExpandedCard extends StatelessWidget {
                 if (noVoters.isNotEmpty)
                   _buildVoteSection(
                     "Can't",
-                    BrandColors.cantVote, // Red
+                    BrandColors.cantVote,
                     noVoters.length,
                     noVoters,
                   ),
@@ -173,7 +173,6 @@ class PendingEventExpandedCard extends StatelessWidget {
         // Section header
         Row(
           children: [
-            // Icon at the left
             Container(
               width: 16,
               height: 16,
@@ -269,19 +268,36 @@ class PendingEventExpandedCard extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: Gaps.sm),
       child: Row(
         children: [
-          // Avatar
+          // ✅ Avatar com null safety
           Container(
             width: 32,
             height: 32,
             decoration: ShapeDecoration(
-              image: DecorationImage(
-                image: NetworkImage(voter.avatarUrl),
-                fit: BoxFit.fill,
-              ),
+              image: voter.avatarUrl != null
+                  ? DecorationImage(
+                      image: NetworkImage(voter.avatarUrl!),
+                      fit: BoxFit.fill,
+                    )
+                  : null,
+              color: voter.avatarUrl == null ? BrandColors.bg3 : null,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(60),
               ),
             ),
+            // ✅ Fallback: inicial do nome
+            child: voter.avatarUrl == null
+                ? Center(
+                    child: Text(
+                      voter.name.isNotEmpty
+                          ? voter.name[0].toUpperCase()
+                          : '?',
+                      style: AppText.bodyMedium.copyWith(
+                        color: BrandColors.text1,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  )
+                : null,
           ),
           const SizedBox(width: Gaps.xs),
 
@@ -295,11 +311,12 @@ class PendingEventExpandedCard extends StatelessWidget {
             ),
           ),
 
-          // Time ago
-          Text(
-            _formatTimeAgo(voter.votedAt),
-            style: AppText.bodyMedium.copyWith(color: BrandColors.text2),
-          ),
+          // ✅ Time ago (agora funciona com votedAt)
+          if (voter.votedAt != null)
+            Text(
+              _formatTimeAgo(voter.votedAt),
+              style: AppText.bodyMedium.copyWith(color: BrandColors.text2),
+            ),
         ],
       ),
     );
@@ -310,19 +327,36 @@ class PendingEventExpandedCard extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: Gaps.sm),
       child: Row(
         children: [
-          // Avatar
+          // ✅ Avatar com null safety
           Container(
             width: 32,
             height: 32,
             decoration: ShapeDecoration(
-              image: DecorationImage(
-                image: NetworkImage(voter.avatarUrl),
-                fit: BoxFit.fill,
-              ),
+              image: voter.avatarUrl != null
+                  ? DecorationImage(
+                      image: NetworkImage(voter.avatarUrl!),
+                      fit: BoxFit.fill,
+                    )
+                  : null,
+              color: voter.avatarUrl == null ? BrandColors.bg3 : null,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(60),
               ),
             ),
+            // ✅ Fallback: inicial do nome
+            child: voter.avatarUrl == null
+                ? Center(
+                    child: Text(
+                      voter.name.isNotEmpty
+                          ? voter.name[0].toUpperCase()
+                          : '?',
+                      style: AppText.bodyMedium.copyWith(
+                        color: BrandColors.text1,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  )
+                : null,
           ),
           const SizedBox(width: Gaps.xs),
 
@@ -366,18 +400,23 @@ class PendingEventExpandedCard extends StatelessWidget {
     );
   }
 
+  // ✅ Restaurado: formatar tempo desde voto
   String _formatTimeAgo(DateTime? dateTime) {
     if (dateTime == null) return '';
 
     final now = DateTime.now();
     final difference = now.difference(dateTime);
 
-    if (difference.inMinutes < 60) {
+    if (difference.inMinutes < 1) {
+      return 'Just now';
+    } else if (difference.inHours < 1) {
       return '${difference.inMinutes}m ago';
-    } else if (difference.inHours < 24) {
+    } else if (difference.inDays < 1) {
       return '${difference.inHours}h ago';
-    } else {
+    } else if (difference.inDays < 7) {
       return '${difference.inDays}d ago';
+    } else {
+      return '${(difference.inDays / 7).floor()}w ago';
     }
   }
 }
