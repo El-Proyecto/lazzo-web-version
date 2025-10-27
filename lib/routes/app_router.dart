@@ -21,6 +21,7 @@ import '../features/event/presentation/pages/event_page.dart';
 import '../features/event/presentation/pages/event_chat_page.dart';
 import '../features/group_hub/presentation/pages/group_hub_page.dart';
 import '../features/memory/presentation/pages/memory_page.dart';
+import '../features/memory/presentation/pages/memory_viewer_page.dart';
 
 class AppRouter {
   static const String home = '/home';
@@ -38,6 +39,7 @@ class AppRouter {
   static const String eventChat = '/event-chat';
   static const String groupHub = '/group-hub';
   static const String memory = '/memory';
+  static const String memoryViewer = '/memory-viewer';
   static const String loginPage = '/login';
   static const String otpVerification = '/otp';
   static const String loginVerification = '/otp-login';
@@ -100,6 +102,14 @@ class AppRouter {
       final args =
           ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
       return MemoryPage(memoryId: args?['memoryId'] ?? 'memory-1');
+    },
+    memoryViewer: (context) {
+      final args =
+          ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+      return MemoryViewerPage(
+        memoryId: args?['memoryId'] ?? 'memory-1',
+        initialPhotoId: args?['photoId'],
+      );
     },
     loginPage: (context) => const LoginPage(),
     loginVerification: (context) {

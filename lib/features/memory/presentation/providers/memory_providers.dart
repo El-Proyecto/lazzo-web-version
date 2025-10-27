@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../domain/entities/memory_entity.dart';
 import '../../domain/repositories/memory_repository.dart';
 import '../../domain/usecases/get_memory.dart';
+import '../../domain/usecases/get_memory_photos.dart';
 import '../../domain/usecases/share_memory.dart';
 import '../../data/fakes/fake_memory_repository.dart';
 
@@ -20,10 +21,22 @@ final shareMemoryUseCaseProvider = Provider<ShareMemory>((ref) {
   return ShareMemory(ref.watch(memoryRepositoryProvider));
 });
 
+/// Get memory photos use case provider
+final getMemoryPhotosUseCaseProvider = Provider<GetMemoryPhotos>((ref) {
+  return GetMemoryPhotos(ref.watch(memoryRepositoryProvider));
+});
+
 /// Memory detail provider
 final memoryDetailProvider =
     FutureProvider.family<MemoryEntity?, String>((ref, memoryId) async {
   final useCase = ref.watch(getMemoryUseCaseProvider);
+  return useCase(memoryId);
+});
+
+/// Memory photos provider (ordered for viewer: covers first, then grid)
+final memoryPhotosProvider =
+    FutureProvider.family<List<MemoryPhoto>, String>((ref, memoryId) async {
+  final useCase = ref.watch(getMemoryPhotosUseCaseProvider);
   return useCase(memoryId);
 });
 
