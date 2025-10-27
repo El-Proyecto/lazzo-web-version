@@ -882,7 +882,11 @@ class EventPage extends ConsumerWidget {
                         )
                         .toList(),
                     onOpenChat: () {
-                      // TODO: Navigate to full chat page
+                      Navigator.pushNamed(
+                        context,
+                        AppRouter.eventChat,
+                        arguments: {'eventId': eventId},
+                      );
                     },
                     onSendMessage: (content) async {
                       await ref

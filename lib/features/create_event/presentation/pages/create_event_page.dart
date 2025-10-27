@@ -55,17 +55,19 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
   /// Helper function to convert a single Group entity to GroupInfo with image URL
   Future<GroupInfo> _convertGroupToGroupInfo(Group group, WidgetRef ref) async {
     String? imageUrl;
-    
+
     // Get image URL if the group has a photo
     if (group.photoPath != null && group.photoPath!.isNotEmpty) {
       try {
-        imageUrl = await ref.read(groupCoverUrlProvider((group.photoPath, group.photoUpdatedAt)).future);
+        imageUrl = await ref.read(
+            groupCoverUrlProvider((group.photoPath, group.photoUpdatedAt))
+                .future);
       } catch (e) {
         print('Error loading image URL for group ${group.id}: $e');
         imageUrl = null;
       }
     }
-    
+
     return GroupInfo(
       id: group.id,
       name: group.name,
@@ -75,14 +77,15 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
   }
 
   /// Helper function to convert Group entities to GroupInfo with image URLs
-  Future<List<GroupInfo>> _loadGroupInfosWithImages(List<Group> groups, WidgetRef ref) async {
+  Future<List<GroupInfo>> _loadGroupInfosWithImages(
+      List<Group> groups, WidgetRef ref) async {
     final List<GroupInfo> groupInfos = [];
-    
+
     for (final group in groups) {
       final groupInfo = await _convertGroupToGroupInfo(group, ref);
       groupInfos.add(groupInfo);
     }
-    
+
     return groupInfos;
   }
 
@@ -106,11 +109,11 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
       final groupsAsync = ref.read(groupsProvider);
       groupsAsync.when(
         data: (groups) async {
-          final selectedGroup = groups
-              .where((group) => group.id == groupId)
-              .firstOrNull;
+          final selectedGroup =
+              groups.where((group) => group.id == groupId).firstOrNull;
           if (selectedGroup != null && mounted) {
-            final groupInfo = await _convertGroupToGroupInfo(selectedGroup, ref);
+            final groupInfo =
+                await _convertGroupToGroupInfo(selectedGroup, ref);
             if (mounted) {
               setState(() {
                 _selectedGroup = groupInfo;
@@ -613,38 +616,39 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
             data: (groups) {
               // Convert Group entities to GroupInfo with image URLs
               return FutureBuilder<List<GroupInfo>>(
-                future: _loadGroupInfosWithImages(groups, ref),
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return Container(
-                      height: 400,
-                      decoration: const BoxDecoration(
-                        color: BrandColors.bg1,
-                        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-                      ),
-                      child: const Center(
-                        child: CircularProgressIndicator(color: BrandColors.planning),
-                      ),
+                  future: _loadGroupInfosWithImages(groups, ref),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return Container(
+                        height: 400,
+                        decoration: const BoxDecoration(
+                          color: BrandColors.bg1,
+                          borderRadius:
+                              BorderRadius.vertical(top: Radius.circular(20)),
+                        ),
+                        child: const Center(
+                          child: CircularProgressIndicator(
+                              color: BrandColors.planning),
+                        ),
+                      );
+                    }
+
+                    final groupInfos = snapshot.data ?? [];
+
+                    return GroupSelectionBottomSheet(
+                      groups: groupInfos,
+                      onGroupSelected: (group) {
+                        setState(() {
+                          _selectedGroup = group;
+                          // Clear error if group is now selected
+                          if (_showValidationErrors) {
+                            _groupError = null;
+                          }
+                        });
+                      },
+                      onCreateGroup: _createNewGroup,
                     );
-                  }
-                  
-                  final groupInfos = snapshot.data ?? [];
-                  
-                  return GroupSelectionBottomSheet(
-                    groups: groupInfos,
-                    onGroupSelected: (group) {
-                      setState(() {
-                        _selectedGroup = group;
-                        // Clear error if group is now selected
-                        if (_showValidationErrors) {
-                          _groupError = null;
-                        }
-                      });
-                    },
-                    onCreateGroup: _createNewGroup,
-                  );
-                }
-              );
+                  });
             },
             loading: () => Container(
               height: 400,
@@ -740,25 +744,24 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
 
   void _createNewGroup() async {
     print('🎯 [CreateEvent] Navigating to create group page');
-    
     // Save current draft before navigating
     await _saveDraft();
-    
+    // Check mounted before using context after await
+    if (!mounted) return;
     // Navigate to create group page and wait for result
     final result = await Navigator.of(context).pushNamed(
       AppRouter.createGroup,
       arguments: {'fromCreateEvent': true},
     );
-    
+    // Check mounted again after await
+    if (!mounted) return;
     // Check if a group was created and returned
     if (result != null && result is Map<String, dynamic>) {
       final groupId = result['groupId'] as String?;
       final groupName = result['groupName'] as String?;
       final memberCount = result['memberCount'] as int?;
-      
-      if (groupId != null && groupName != null && mounted) {
+      if (groupId != null && groupName != null) {
         print('✅ [CreateEvent] Group created: $groupId');
-        
         setState(() {
           _selectedGroup = GroupInfo(
             id: groupId,
@@ -766,13 +769,11 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
             memberCount: memberCount ?? 1,
             imageUrl: result['imageUrl'] as String?,
           );
-          
           // Clear error if group is now selected
           if (_showValidationErrors) {
             _groupError = null;
           }
         });
-        
         // Show success message
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

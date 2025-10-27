@@ -42,9 +42,10 @@ class _CreateGroupPageState extends ConsumerState<CreateGroupPage> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    
+
     // Check if we came from create event page
-    final arguments = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+    final arguments =
+        ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
     if (arguments != null && arguments['fromCreateEvent'] == true) {
       _fromCreateEvent = true;
       print('🎯 [CreateGroup] Opened from CreateEvent page');
@@ -113,9 +114,7 @@ class _CreateGroupPageState extends ConsumerState<CreateGroupPage> {
 
     // Only proceed if form is valid
     if (_isFormValid) {
-      ref
-          .read(createGroupProvider.notifier)
-          .createGroup(
+      ref.read(createGroupProvider.notifier).createGroup(
             name: name,
             description: _descriptionController.text.trim().isNotEmpty
                 ? _descriptionController.text.trim()
@@ -155,9 +154,8 @@ class _CreateGroupPageState extends ConsumerState<CreateGroupPage> {
       width: double.infinity,
       height: TouchTargets.input,
       decoration: ShapeDecoration(
-        color: _isFormValid && !isLoading
-            ? BrandColors.planning
-            : BrandColors.bg3,
+        color:
+            _isFormValid && !isLoading ? BrandColors.planning : BrandColors.bg3,
         shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.all(Radius.circular(Radii.md)),
         ),
@@ -184,9 +182,8 @@ class _CreateGroupPageState extends ConsumerState<CreateGroupPage> {
                 : Text(
                     'Create',
                     style: AppText.labelLarge.copyWith(
-                      color: _isFormValid
-                          ? BrandColors.text1
-                          : BrandColors.text2,
+                      color:
+                          _isFormValid ? BrandColors.text1 : BrandColors.text2,
                     ),
                   ),
           ),
@@ -206,18 +203,23 @@ class _CreateGroupPageState extends ConsumerState<CreateGroupPage> {
           if (createdGroup != null) {
             // If coming from create event, return group data
             if (_fromCreateEvent) {
-              print('✅ [CreateGroup] Returning group to CreateEvent: ${createdGroup.id}');
-              
+              print(
+                  '✅ [CreateGroup] Returning group to CreateEvent: ${createdGroup.id}');
+
               // Get the group cover URL if available
               String? imageUrl;
-              if (createdGroup.photoUrl != null && createdGroup.photoUrl!.isNotEmpty) {
+              if (createdGroup.photoUrl != null &&
+                  createdGroup.photoUrl!.isNotEmpty) {
                 try {
-                  imageUrl = await ref.read(groupCoverUrlProvider((createdGroup.photoUrl, null)).future);
+                  imageUrl = await ref.read(
+                      groupCoverUrlProvider((createdGroup.photoUrl, null))
+                          .future);
                 } catch (e) {
                   print('⚠️ [CreateGroup] Failed to get cover URL: $e');
                 }
               }
-              
+              // Only check mounted after all awaits
+              if (!mounted) return;
               Navigator.of(context).pop({
                 'groupId': createdGroup.id,
                 'groupName': createdGroup.name,
@@ -226,6 +228,7 @@ class _CreateGroupPageState extends ConsumerState<CreateGroupPage> {
               });
             } else {
               // Navigate to Group Created page
+              if (!mounted) return;
               Navigator.of(context).pushNamed(
                 AppRouter.groupCreated,
                 arguments: {'group': createdGroup},
@@ -234,6 +237,7 @@ class _CreateGroupPageState extends ConsumerState<CreateGroupPage> {
           }
         },
         error: (error, stack) {
+          if (!mounted) return;
           ScaffoldMessenger.of(
             context,
           ).showSnackBar(SnackBar(content: Text('Error: $error')));
@@ -244,7 +248,10 @@ class _CreateGroupPageState extends ConsumerState<CreateGroupPage> {
     return Scaffold(
       appBar: CommonAppBar.createEvent(
         title: 'Create Group',
-        onBackPressed: () => Navigator.of(context).pop(),
+        onBackPressed: () {
+          if (!mounted) return;
+          Navigator.of(context).pop();
+        },
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(Insets.screenH),

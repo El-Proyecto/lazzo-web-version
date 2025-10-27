@@ -169,15 +169,12 @@ class RsvpWidget extends StatelessWidget {
   }
 
   void _showViewVotesBottomSheet(BuildContext context) {
-    final going = allVotes
-        .where((v) => v.status == RsvpVoteStatus.going)
-        .toList();
-    final notGoing = allVotes
-        .where((v) => v.status == RsvpVoteStatus.notGoing)
-        .toList();
-    final pending = allVotes
-        .where((v) => v.status == RsvpVoteStatus.pending)
-        .toList();
+    final going =
+        allVotes.where((v) => v.status == RsvpVoteStatus.going).toList();
+    final notGoing =
+        allVotes.where((v) => v.status == RsvpVoteStatus.notGoing).toList();
+    final pending =
+        allVotes.where((v) => v.status == RsvpVoteStatus.pending).toList();
 
     CommonBottomSheet.show(
       context: context,
@@ -300,8 +297,7 @@ class RsvpWidget extends StatelessWidget {
                 child: StatefulBuilder(
                   builder: (context, setState) {
                     // Check if any value has changed from original
-                    final bool hasChanges =
-                        startDate != originalStartDate ||
+                    final bool hasChanges = startDate != originalStartDate ||
                         startTime != originalStartTime ||
                         endDate != originalEndDate ||
                         endTime != originalEndTime;
@@ -450,8 +446,7 @@ class RsvpWidget extends StatelessWidget {
                               bottom: Pads.sectionV,
                             ),
                             child: FilledButton(
-                              onPressed:
-                                  hasChanges &&
+                              onPressed: hasChanges &&
                                       startDate != null &&
                                       startTime != null &&
                                       endDate != null &&
@@ -523,7 +518,6 @@ class RsvpWidget extends StatelessWidget {
             style: AppText.bodyMedium.copyWith(
               color: BrandColors.text2,
               fontWeight: FontWeight.w500,
-              fontSize: 12,
             ),
           ),
         ),
@@ -532,9 +526,8 @@ class RsvpWidget extends StatelessWidget {
 
         // Date Button
         _CreateEventDateTimeButton(
-          label: date != null
-              ? '${date.day}/${date.month}/${date.year}'
-              : 'Date',
+          label:
+              date != null ? '${date.day}/${date.month}/${date.year}' : 'Date',
           icon: Icons.calendar_today,
           isExpanded: isDatePickerExpanded,
           onTap: onDateTap,
@@ -658,7 +651,6 @@ class _VoteSection extends StatelessWidget {
           ],
         ),
         const SizedBox(height: Gaps.md),
-
         ...votes.map(
           (vote) => _VoteItem(vote: vote, showDate: title != 'No response'),
         ),
@@ -713,7 +705,6 @@ class _VoteItem extends StatelessWidget {
               _formatDate(vote.votedAt!),
               style: AppText.bodyMedium.copyWith(
                 color: BrandColors.text2,
-                fontSize: 12,
               ),
             ),
         ],
@@ -804,7 +795,6 @@ class _VoteButton extends StatelessWidget {
                     count.toString(),
                     style: AppText.bodyMedium.copyWith(
                       color: isSelected ? BrandColors.text1 : BrandColors.text2,
-                      fontSize: 12,
                       fontWeight: FontWeight.w600,
                     ),
                   ),

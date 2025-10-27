@@ -58,7 +58,7 @@ class AuthWrapper extends ConsumerWidget {
             Navigator.of(context).pushReplacementNamed(AppRouter.auth);
           });
         }
-        
+
         return const Scaffold(
           body: Center(
             child: CircularProgressIndicator(),

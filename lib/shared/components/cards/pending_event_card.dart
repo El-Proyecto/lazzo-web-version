@@ -9,6 +9,7 @@ class PendingEventCard extends StatelessWidget {
   final String dateTime;
   final String location;
   final Widget? voteButton; // Custom vote button for different states
+  final VoidCallback? onTap;
 
   const PendingEventCard({
     super.key,
@@ -16,61 +17,66 @@ class PendingEventCard extends StatelessWidget {
     required this.title,
     required this.dateTime,
     required this.location,
-    this.voteButton,
+    required this.voteButton,
+    this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: Pads.ctlH,
-        vertical: Pads.ctlV,
-      ),
-      decoration: ShapeDecoration(
-        color: BrandColors.bg2,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(Radii.md),
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(
+          horizontal: Pads.ctlH,
+          vertical: Pads.ctlV,
         ),
-      ),
-      child: Row(
-        children: [
-          // Event info section
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Title row with emoji
-                Row(
-                  children: [
-                    Text(emoji, style: const TextStyle(fontSize: 30)),
-                    const SizedBox(width: Gaps.xs),
-                    Expanded(
-                      child: Text(
-                        title,
-                        style: AppText.titleMediumEmph.copyWith(
-                          color: BrandColors.text1,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: Gaps.xxs),
-                // Date and location
-                Text(
-                  '$dateTime • $location',
-                  style: AppText.bodyMedium.copyWith(color: BrandColors.text2),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
+        decoration: ShapeDecoration(
+          color: BrandColors.bg2,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(Radii.md),
           ),
-          const SizedBox(width: Gaps.xs),
-          // Vote button section
-          if (voteButton != null) voteButton!,
-        ],
+        ),
+        child: Row(
+          children: [
+            // Event info section
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Title row with emoji
+                  Row(
+                    children: [
+                      Text(emoji, style: const TextStyle(fontSize: 30)),
+                      const SizedBox(width: Gaps.xs),
+                      Expanded(
+                        child: Text(
+                          title,
+                          style: AppText.titleMediumEmph.copyWith(
+                            color: BrandColors.text1,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: Gaps.xxs),
+                  // Date and location
+                  Text(
+                    '$dateTime • $location',
+                    style:
+                        AppText.bodyMedium.copyWith(color: BrandColors.text2),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: Gaps.xs),
+            // Vote button section
+            if (voteButton != null) voteButton!,
+          ],
+        ),
       ),
     );
   }

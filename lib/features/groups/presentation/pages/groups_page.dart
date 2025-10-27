@@ -10,6 +10,7 @@ import '../../../../shared/models/group_enums.dart';
 import '../../../../shared/components/chips/filter_chip.dart';
 import '../../domain/entities/group.dart';
 import '../providers/groups_provider.dart';
+import '../../../../routes/app_router.dart';
 
 class GroupsPage extends ConsumerStatefulWidget {
   const GroupsPage({super.key});
@@ -18,7 +19,8 @@ class GroupsPage extends ConsumerStatefulWidget {
   ConsumerState<GroupsPage> createState() => _GroupsPageState();
 }
 
-class _GroupsPageState extends ConsumerState<GroupsPage> with WidgetsBindingObserver {
+class _GroupsPageState extends ConsumerState<GroupsPage>
+    with WidgetsBindingObserver {
   String _searchQuery = '';
   GroupFilter _selectedFilter = GroupFilter.all;
 
@@ -129,8 +131,8 @@ class _GroupsPageState extends ConsumerState<GroupsPage> with WidgetsBindingObse
                   filteredGroups = filteredGroups
                       .where(
                         (group) => group.name.toLowerCase().contains(
-                          _searchQuery.toLowerCase(),
-                        ),
+                              _searchQuery.toLowerCase(),
+                            ),
                       )
                       .toList();
                 }
@@ -144,7 +146,8 @@ class _GroupsPageState extends ConsumerState<GroupsPage> with WidgetsBindingObse
 
                 return ListView.builder(
                   padding: EdgeInsets.zero,
-                  itemCount: filteredGroups.length, // Apenas grupos, filtros fora
+                  itemCount:
+                      filteredGroups.length, // Apenas grupos, filtros fora
                   itemBuilder: (context, index) {
                     final group = filteredGroups[index];
                     return GroupCard(
@@ -233,8 +236,32 @@ class _GroupsPageState extends ConsumerState<GroupsPage> with WidgetsBindingObse
   }
 
   void _handleGroupTap(String groupId) {
-    // TODO: Implementar navegação para o grupo
-    print('Group tapped: $groupId');
+    // Find the group in the current list to get its details
+    final groupsAsync = _selectedFilter == GroupFilter.archived
+        ? ref.read(archivedGroupsProvider)
+        : ref.read(groupsProvider);
+    final groups = groupsAsync.value ?? [];
+    final group = groups.firstWhere(
+      (g) => g.id == groupId,
+      orElse: () => const Group(
+        id: '',
+        name: '',
+        status: GroupStatus.active,
+        memberCount: 0,
+      ),
+    );
+
+    if (group.id.isNotEmpty) {
+      Navigator.of(context).pushNamed(
+        AppRouter.groupHub,
+        arguments: {
+          'groupId': group.id,
+          'groupName': group.name,
+          'groupPhotoUrl': group.photoPath,
+          'memberCount': group.memberCount,
+        },
+      );
+    }
   }
 
   void _handleGroupLongPress(
@@ -332,14 +359,14 @@ class _GroupsPageState extends ConsumerState<GroupsPage> with WidgetsBindingObse
   void _handleMute(String groupId) {
     print('Toggle mute for group: $groupId');
     final controller = ref.read(groupsControllerProvider);
-    
+
     // Busca o grupo na lista atual (baseado no filtro selecionado)
     final groupsAsync = _selectedFilter == GroupFilter.archived
         ? ref.read(archivedGroupsProvider)
         : ref.read(groupsProvider);
     final groups = groupsAsync.value ?? [];
     final group = groups.firstWhere((g) => g.id == groupId);
-    
+
     // Toggle: se está muted, vai unmute (false), se não está muted, vai mute (true)
     final newMutedState = !group.isMuted;
     controller.toggleMute(groupId, newMutedState);
@@ -370,14 +397,14 @@ class _GroupsPageState extends ConsumerState<GroupsPage> with WidgetsBindingObse
           title: Text(
             'Leave Group',
             style: Theme.of(context).textTheme.titleLarge?.copyWith(
-              color: BrandColors.text1,
-            ),
+                  color: BrandColors.text1,
+                ),
           ),
           content: Text(
             'Are you sure you want to leave "${group.name}"?\n\nThis action cannot be undone.',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: BrandColors.text2,
-            ),
+                  color: BrandColors.text2,
+                ),
           ),
           actions: [
             TextButton(
@@ -409,7 +436,7 @@ class _GroupsPageState extends ConsumerState<GroupsPage> with WidgetsBindingObse
     print('Toggle archive for group: $groupId');
     final controller = ref.read(groupsControllerProvider);
     controller.toggleArchive(groupId);
-    
+
     // Não redirecionar automaticamente - deixar user escolher quando ver
   }
 
@@ -446,23 +473,24 @@ class _GroupsPageState extends ConsumerState<GroupsPage> with WidgetsBindingObse
   /// Ordena grupos por prioridade baseado nos badges
   /// Prioridade: Afixados > Vermelhos > Amarelos > Verdes
   List<Group> _sortGroupsByPriority(List<Group> groups) {
-    return List.from(groups)..sort((a, b) {
-      // Primeiro critério: grupos afixados sempre primeiro em qualquer categoria
-      if (a.isPinned && !b.isPinned) return -1;
-      if (!a.isPinned && b.isPinned) return 1;
+    return List.from(groups)
+      ..sort((a, b) {
+        // Primeiro critério: grupos afixados sempre primeiro em qualquer categoria
+        if (a.isPinned && !b.isPinned) return -1;
+        if (!a.isPinned && b.isPinned) return 1;
 
-      // Segundo critério: ordenar por prioridade dos badges
-      final priorityA = _getGroupPriority(a);
-      final priorityB = _getGroupPriority(b);
+        // Segundo critério: ordenar por prioridade dos badges
+        final priorityA = _getGroupPriority(a);
+        final priorityB = _getGroupPriority(b);
 
-      // Ordenar por prioridade decrescente (3=vermelho, 2=amarelo, 1=verde, 0=sem badges)
-      if (priorityA != priorityB) {
-        return priorityB.compareTo(priorityA);
-      }
+        // Ordenar por prioridade decrescente (3=vermelho, 2=amarelo, 1=verde, 0=sem badges)
+        if (priorityA != priorityB) {
+          return priorityB.compareTo(priorityA);
+        }
 
-      // Terceiro critério: ordenar alfabeticamente pelo nome
-      return a.name.compareTo(b.name);
-    });
+        // Terceiro critério: ordenar alfabeticamente pelo nome
+        return a.name.compareTo(b.name);
+      });
   }
 
   /// Calcula a prioridade máxima de um grupo baseado nos seus badges

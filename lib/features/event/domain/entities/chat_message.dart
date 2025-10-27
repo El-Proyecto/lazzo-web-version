@@ -9,6 +9,9 @@ class ChatMessage {
   final String content;
   final DateTime createdAt;
   final bool read;
+  final bool isPinned;
+  final bool isDeleted;
+  final ChatMessage? replyTo;
 
   const ChatMessage({
     required this.id,
@@ -19,6 +22,9 @@ class ChatMessage {
     required this.content,
     required this.createdAt,
     this.read = false,
+    this.isPinned = false,
+    this.isDeleted = false,
+    this.replyTo,
   });
 
   ChatMessage copyWith({
@@ -30,6 +36,9 @@ class ChatMessage {
     String? content,
     DateTime? createdAt,
     bool? read,
+    bool? isPinned,
+    bool? isDeleted,
+    ChatMessage? replyTo,
   }) {
     return ChatMessage(
       id: id ?? this.id,
@@ -40,6 +49,9 @@ class ChatMessage {
       content: content ?? this.content,
       createdAt: createdAt ?? this.createdAt,
       read: read ?? this.read,
+      isPinned: isPinned ?? this.isPinned,
+      isDeleted: isDeleted ?? this.isDeleted,
+      replyTo: replyTo ?? this.replyTo,
     );
   }
 }
