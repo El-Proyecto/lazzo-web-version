@@ -6,6 +6,7 @@ import '../../domain/entities/pending_event.dart';
 import '../providers/pending_event_providers.dart';
 import '../../../../shared/components/cards/pending_event_card.dart';
 import '../../../../shared/components/cards/pending_event_expanded_card.dart';
+import '../../../../routes/app_router.dart';
 import 'simple_vote_button.dart';
 import 'voting_button.dart';
 import 'voted_no_button.dart';
@@ -57,6 +58,7 @@ class PendingEventWidget extends ConsumerWidget {
         userVote: userVote,
         onCollapse: () => voteNotifier.toggleExpansion(),
         onVoteAgain: () => voteNotifier.resetToVoting(),
+        onTap: () => _navigateToEventDetail(context),
       );
     }
 
@@ -67,6 +69,16 @@ class PendingEventWidget extends ConsumerWidget {
       dateTime: _formatDateTime(event.scheduledDate),
       location: event.location,
       voteButton: _buildVoteButton(effectiveStatus, voteNotifier, voteState),
+      onTap: () => _navigateToEventDetail(context),
+    );
+    
+  }
+
+  void _navigateToEventDetail(BuildContext context) {
+    Navigator.pushNamed(
+      context,
+      AppRouter.event,
+      arguments: {'eventId': event.eventId},
     );
   }
 

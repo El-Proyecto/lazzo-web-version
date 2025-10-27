@@ -7,7 +7,7 @@ class PendingEventModel {
   final String title;
   final String emoji;
   final DateTime scheduledDate;
-  final String location;
+  final String location; // continua a chamar-se 'location' no domínio
   final VoteStatus voteStatus;
   final int totalVoters;
   final List<VoterInfo> voters;
@@ -33,36 +33,29 @@ class PendingEventModel {
         (row['no_response_voters'] as List<dynamic>?) ?? [];
 
     return PendingEventModel(
-      eventId: row['event_id'],
-      title: row['title'],
-      emoji: _asString(row['emoji'])?.trim().isNotEmpty == true
-          ? row['emoji'] as String
-          : '🗓️',
-      scheduledDate: _parseDate(row['start_time']),
+      eventId: _asString(row['event_id']) ?? '',
+      title: _asString(row['event_name']) ?? '',
+      emoji: _normalizeEmoji(row['emoji']),
+      scheduledDate: _parseDate(row['start_datetime']),
       location: _asString(row['location_name']) ?? '',
-      voteStatus: _parseVoteStatus(_asString(row['vote_status'])),
-      totalVoters: (row['total_voters'] as int?) ?? 0,
+      voteStatus: _mapRsvpToVoteStatus(_asString(row['vote_status'])),
+      totalVoters: _asInt(row['voters_total']),
       voters: votersRaw.map(_parseVoterInfoDynamic).toList(),
       noResponseVoters: noResponseRaw.map(_parseVoterInfoDynamic).toList(),
-      noResponseCount: (row['no_response_count'] as int?) ?? 0,
+      noResponseCount: _asInt(row['no_response_count']),
     );
   }
 
-  // Aceita tanto Map<String,dynamic> (voters) como String (IDs em no_response_voters)
   static VoterInfo _parseVoterInfoDynamic(dynamic v) {
-    if (v is Map<String, dynamic>) {
-      return _parseVoterInfoFromMap(v);
-    }
+    if (v is Map<String, dynamic>) return _parseVoterInfoFromMap(v);
     if (v is String) {
-      // Quando vem só o user_id numa string (no_response_voters)
       return VoterInfo(
-        name: v, // podes trocar para 'Unknown' se preferires
+        name: v, // aqui mostra o user_id; troca para 'Unknown' se preferires
         avatarUrl: 'https://i.pravatar.cc/150?img=3',
         response: 'pending',
         votedAt: null,
       );
     }
-    // Qualquer outro formato inesperado
     return const VoterInfo(
       name: 'Unknown',
       avatarUrl: 'https://i.pravatar.cc/150?img=3',
@@ -72,12 +65,11 @@ class PendingEventModel {
   }
 
   static VoterInfo _parseVoterInfoFromMap(Map<String, dynamic> data) {
-    // Suporta chaves alternativas comuns vindas do SQL/JSON
     final name =
         _asString(data['name']) ??
         _asString(data['user_name']) ??
         _asString(data['display_name']) ??
-        _asString(data['user_id']) ?? // fallback: mostra o id como nome
+        _asString(data['user_id']) ??
         'Unknown';
 
     final avatarUrl =
@@ -100,22 +92,28 @@ class PendingEventModel {
     );
   }
 
-  static VoteStatus _parseVoteStatus(String? status) {
-    switch (status?.toLowerCase()) {
-      case 'vote':
-        return VoteStatus.vote;
-      case 'voting':
-        return VoteStatus.voting;
-      case 'voted':
-        return VoteStatus.voted;
-      case 'voters_expanded':
-        return VoteStatus.votersExpanded;
-      default:
-        return VoteStatus.vote;
-    }
+  static VoteStatus _mapRsvpToVoteStatus(String? rsvp) {
+    final s = (rsvp ?? 'pending').toLowerCase();
+    const yesSet = {'yes', 'going', 'attending', 'accepted'};
+    const noSet = {'no', 'declined', 'not_going', 'rejected'};
+    if (s == 'pending' || s == 'invited' || s.isEmpty) return VoteStatus.vote;
+    if (yesSet.contains(s) || noSet.contains(s)) return VoteStatus.voted;
+    return VoteStatus.vote;
   }
 
-  static String? _asString(dynamic v) => v is String ? v : (v?.toString());
+  static String _normalizeEmoji(dynamic v) {
+    final s = _asString(v)?.trim() ?? '';
+    return s.isNotEmpty ? s : '🗓️';
+    }
+
+  static String? _asString(dynamic v) => v is String ? v : v?.toString();
+
+  static int _asInt(dynamic v) {
+    if (v is int) return v;
+    if (v is double) return v.toInt();
+    if (v is String) return int.tryParse(v) ?? 0;
+    return 0;
+  }
 
   static DateTime _parseDate(dynamic v) {
     if (v is DateTime) return v;
@@ -137,7 +135,7 @@ class PendingEventModel {
     title: title,
     emoji: emoji,
     scheduledDate: scheduledDate,
-    location: location,
+    location: location, // já é o nome
     voteStatus: voteStatus,
     totalVoters: totalVoters,
     voters: voters,
