@@ -36,22 +36,18 @@ class MemoryViewerPage extends ConsumerWidget {
                 title: memory.title,
                 subtitle: _buildSubtitle(memory.location, memory.eventDate),
                 onBackPressed: () => Navigator.of(context).pop(),
-                onPlayPreviewPressed: () => _handlePlayPreview(context),
               )
             : MemoryViewerAppBar(
                 title: 'Memory',
                 onBackPressed: () => Navigator.of(context).pop(),
-                onPlayPreviewPressed: () => _handlePlayPreview(context),
               ),
         loading: () => MemoryViewerAppBar(
           title: 'Loading...',
           onBackPressed: () => Navigator.of(context).pop(),
-          onPlayPreviewPressed: () => _handlePlayPreview(context),
         ),
         error: (_, __) => MemoryViewerAppBar(
           title: 'Error',
           onBackPressed: () => Navigator.of(context).pop(),
-          onPlayPreviewPressed: () => _handlePlayPreview(context),
         ),
       ),
       body: photosAsync.when(
@@ -144,17 +140,5 @@ class MemoryViewerPage extends ConsumerWidget {
     }
 
     return false;
-  }
-
-  /// Handle play preview button press
-  void _handlePlayPreview(BuildContext context) {
-    // TODO P2: Implement auto-play slideshow
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Preview mode not implemented'),
-        duration: Duration(seconds: 1),
-        backgroundColor: BrandColors.planning,
-      ),
-    );
   }
 }

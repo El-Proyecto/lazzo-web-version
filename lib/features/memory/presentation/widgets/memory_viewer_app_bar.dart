@@ -10,14 +10,12 @@ class MemoryViewerAppBar extends StatelessWidget
   final String title;
   final String? subtitle;
   final VoidCallback onBackPressed;
-  final VoidCallback onPlayPreviewPressed;
 
   const MemoryViewerAppBar({
     super.key,
     required this.title,
     this.subtitle,
     required this.onBackPressed,
-    required this.onPlayPreviewPressed,
   });
 
   @override
@@ -73,20 +71,6 @@ class MemoryViewerAppBar extends StatelessWidget
 
                     const SizedBox(width: Gaps.sm),
 
-                    // Play preview button
-                    GestureDetector(
-                      onTap: onPlayPreviewPressed,
-                      child: Container(
-                        width: 32,
-                        height: 32,
-                        alignment: Alignment.center,
-                        child: const Icon(
-                          Icons.play_circle_outline,
-                          color: BrandColors.text1,
-                          size: 24,
-                        ),
-                      ),
-                    ),
                   ],
                 ),
               ),
