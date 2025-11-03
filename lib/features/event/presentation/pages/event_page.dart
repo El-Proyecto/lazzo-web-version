@@ -229,10 +229,9 @@ class EventPage extends ConsumerWidget {
                                             userRsvpProvider(eventId).notifier,
                                           )
                                           .submitVote(newStatus, ref: ref);
-                                      // Invalidate RSVP data to refresh counts AFTER vote is submitted
-                                      ref.invalidate(
-                                        eventRsvpsProvider(eventId),
-                                      );
+                                      // Force refresh of RSVP data to update counts immediately
+                                      ref.invalidate(eventRsvpsProvider(eventId));
+                                      ref.invalidate(userRsvpProvider(eventId));
                                     },
                                     onNotGoingPressed: () async {
                                       final currentStatus = userRsvp?.status ??
@@ -246,10 +245,9 @@ class EventPage extends ConsumerWidget {
                                             userRsvpProvider(eventId).notifier,
                                           )
                                           .submitVote(newStatus, ref: ref);
-                                      // Invalidate RSVP data to refresh counts AFTER vote is submitted
-                                      ref.invalidate(
-                                        eventRsvpsProvider(eventId),
-                                      );
+                                      // Force refresh of RSVP data to update counts immediately
+                                      ref.invalidate(eventRsvpsProvider(eventId));
+                                      ref.invalidate(userRsvpProvider(eventId));
                                     },
                                     allVotes: rsvps
                                         .map(

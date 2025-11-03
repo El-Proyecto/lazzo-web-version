@@ -27,9 +27,11 @@ class ChatRepositoryImpl implements ChatRepository {
   Future<ChatMessage> sendMessage(
     String eventId,
     String userId,
-    String content,
-  ) async {
+    String content, {
+    ChatMessage? replyTo,
+  }) async {
     print('🔍 DEBUG ChatRepository: Sending message to eventId=$eventId, userId=$userId, content="$content"');
+    // TODO: Implement replyTo functionality when needed
     final model = await _remoteDataSource.sendMessage(
       eventId,
       userId,
@@ -44,5 +46,17 @@ class ChatRepositoryImpl implements ChatRepository {
   Future<List<ChatMessage>> getAllMessages(String eventId) async {
     final models = await _remoteDataSource.getAllMessages(eventId);
     return models.map((model) => model.toEntity()).toList();
+  }
+
+  @override
+  Future<ChatMessage> pinMessage(String messageId, bool isPinned) async {
+    // TODO: Implement pin message functionality
+    throw UnimplementedError('Pin message not yet implemented');
+  }
+
+  @override
+  Future<ChatMessage> deleteMessage(String messageId) async {
+    // TODO: Implement delete message functionality
+    throw UnimplementedError('Delete message not yet implemented');
   }
 }

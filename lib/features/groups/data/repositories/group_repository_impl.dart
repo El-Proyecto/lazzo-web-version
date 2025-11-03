@@ -217,7 +217,7 @@ class GroupRepositoryImpl implements GroupRepository {
           status: GroupStatus.active,
           isMuted: data['is_muted'] as bool? ?? false, // Novo campo
           isPinned: data['is_pinned'] as bool? ?? false, // Novo campo
-          memberCount: 1, // Por agora, apenas o criador
+          memberCount: data['member_count'] as int? ?? 0, // From database query
         );
       }).toList();
     } catch (e) {
@@ -267,7 +267,7 @@ class GroupRepositoryImpl implements GroupRepository {
           status: GroupStatus.archived, // Status específico para arquivados
           isMuted: data['is_muted'] as bool? ?? false, // Novo campo
           isPinned: data['is_pinned'] as bool? ?? false, // Novo campo
-          memberCount: 1,
+          memberCount: data['member_count'] as int? ?? 0, // From database query
         );
       }).toList();
     } catch (e) {

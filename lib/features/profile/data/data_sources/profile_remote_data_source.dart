@@ -16,7 +16,7 @@ class ProfileRemoteDataSource {
   Future<ProfileModel?> fetchCurrentUserProfile() async {
     try {
       final user = client.auth.currentUser;
-      if (user == null) throw Exception('No authenticated user');
+      if (user == null) return null;
 
       final response = await client
           .from('users')
@@ -24,7 +24,14 @@ class ProfileRemoteDataSource {
           .eq('id', user.id)
           .maybeSingle();
 
-      return response == null ? null : ProfileModel.fromMap(response);
+      if (response == null) return null;
+      
+      // Convert storage path to public URL
+      if (response['avatar_url'] != null) {
+        response['avatar_url'] = getPublicUrl(response['avatar_url'] as String);
+      }
+      
+      return ProfileModel.fromMap(response);
     } catch (e) {
       rethrow;
     }
@@ -58,6 +65,11 @@ class ProfileRemoteDataSource {
           .select('id, name, email, avatar_url, city, birth_date')
           .single();
 
+      // Convert storage path to public URL
+      if (response['avatar_url'] != null) {
+        response['avatar_url'] = getPublicUrl(response['avatar_url'] as String);
+      }
+      
       return ProfileModel.fromMap(response);
     } catch (e) {
       rethrow;
@@ -197,6 +209,21 @@ class ProfileRemoteDataSource {
     }
 
     throw Exception('Unrecognized path: $input');
+  }
+
+  /// Convert storage path to public URL
+  String getPublicUrl(String? storagePath) {
+    if (storagePath == null || storagePath.isEmpty) {
+      return '';
+    }
+    
+    // Already a full URL
+    if (storagePath.startsWith('http://') || storagePath.startsWith('https://')) {
+      return storagePath;
+    }
+    
+    // Storage path - convert to public URL
+    return client.storage.from(_bucketName).getPublicUrl(storagePath);
   }
 
   /// Delete profile picture from storage (deletes entire user folder)

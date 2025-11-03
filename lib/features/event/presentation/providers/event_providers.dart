@@ -206,15 +206,12 @@ class MessagesNotifier extends StateNotifier<AsyncValue<List<ChatMessage>>> {
   }
 
   Future<void> _loadMessages() async {
-    print('🔍 DEBUG MessagesNotifier: Loading messages for eventId=$eventId');
     try {
       final messages = await repository.getRecentMessages(eventId);
-      print('✅ DEBUG MessagesNotifier: Loaded ${messages.length} messages');
       if (mounted) {
         state = AsyncValue.data(messages);
       }
     } catch (error, stackTrace) {
-      print('❌ DEBUG MessagesNotifier: Error loading messages: $error');
       if (mounted) {
         state = AsyncValue.error(error, stackTrace);
       }
@@ -222,13 +219,11 @@ class MessagesNotifier extends StateNotifier<AsyncValue<List<ChatMessage>>> {
   }
 
   Future<void> addMessage(ChatMessage message) async {
-    print('🔍 DEBUG MessagesNotifier: Adding message to local state');
     state.whenData((currentMessages) {
       final updatedMessages = [...currentMessages, message];
       // Sort by timestamp to maintain order
       updatedMessages.sort((a, b) => b.createdAt.compareTo(a.createdAt));
       state = AsyncValue.data(updatedMessages);
-      print('✅ DEBUG MessagesNotifier: Now have ${updatedMessages.length} messages');
     });
   }
 
@@ -310,12 +305,9 @@ class UserRsvpNotifier extends StateNotifier<AsyncValue<Rsvp?>> {
     state = const AsyncValue.loading();
     try {
       final currentUserId = ref.read(currentUserIdProvider);
-      print('🔍 DEBUG UserRsvpNotifier: Loading RSVP for eventId=$eventId, userId=$currentUserId');
       final userRsvp = await repository.getUserRsvp(eventId, currentUserId ?? '');
-      print('✅ DEBUG UserRsvpNotifier: Loaded RSVP status=${userRsvp?.status}');
       state = AsyncValue.data(userRsvp);
     } catch (error, stackTrace) {
-      print('❌ DEBUG UserRsvpNotifier: Error loading RSVP: $error');
       state = AsyncValue.error(error, stackTrace);
     }
   }
@@ -323,9 +315,9 @@ class UserRsvpNotifier extends StateNotifier<AsyncValue<Rsvp?>> {
   Future<void> submitVote(RsvpStatus status, {WidgetRef? ref}) async {
     try {
       final currentUserId = this.ref.read(currentUserIdProvider);
-      print('📝 DEBUG UserRsvpNotifier: Submitting vote status=$status for userId=$currentUserId');
       final rsvp = await repository.submitRsvp(eventId, currentUserId ?? '', status);
-      print('✅ DEBUG UserRsvpNotifier: Vote submitted, new status=${rsvp.status}');
+      
+      // Update local state FIRST to show immediate feedback
       state = AsyncValue.data(rsvp);
 
       // If changing to "Can" (going), auto-vote for current event suggestion
@@ -338,9 +330,16 @@ class UserRsvpNotifier extends StateNotifier<AsyncValue<Rsvp?>> {
           // print('Failed to sync RSVP with suggestion vote: $e');
         }
 
-        // Invalidate providers BEFORE checking auto-confirmation to get fresh data
+        // CRITICAL: Invalidate AND refresh providers to force re-fetch from Supabase
         ref.invalidate(eventRsvpsProvider(eventId));
         ref.invalidate(eventDetailProvider(eventId));
+        
+        // Force immediate refresh by reading the providers
+        // This ensures the UI updates with fresh data from Supabase
+        // ignore: unused_local_variable
+        final refreshedRsvps = await ref.refresh(eventRsvpsProvider(eventId).future);
+        // ignore: unused_local_variable
+        final refreshedEvent = await ref.refresh(eventDetailProvider(eventId).future);
 
         // Check auto-confirmation after RSVP submission with fresh data
         await _checkAutoConfirmation(ref);

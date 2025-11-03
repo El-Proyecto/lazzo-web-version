@@ -16,12 +16,8 @@ class RsvpRepositoryImpl implements RsvpRepository {
 
   @override
   Future<Rsvp?> getUserRsvp(String eventId, String userId) async {
-    print('🔍 DEBUG RsvpRepository: Getting user RSVP for eventId=$eventId, userId=$userId');
     final model = await _remoteDataSource.getUserRsvp(eventId, userId);
-    print('✅ DEBUG RsvpRepository: Got RSVP model with status=${model?.status}');
-    final entity = model?.toEntity();
-    print('✅ DEBUG RsvpRepository: Converted to entity with status=${entity?.status}');
-    return entity;
+    return model?.toEntity();
   }
 
   @override
@@ -30,7 +26,6 @@ class RsvpRepositoryImpl implements RsvpRepository {
     String userId,
     RsvpStatus status,
   ) async {
-    print('📝 DEBUG RsvpRepository: Submitting RSVP for eventId=$eventId, userId=$userId, status=$status');
     // Convert enum to string (rsvp_status: pending, yes, no, maybe)
     String statusString;
     switch (status) {
@@ -45,16 +40,12 @@ class RsvpRepositoryImpl implements RsvpRepository {
         break;
     }
 
-    print('📝 DEBUG RsvpRepository: Converted status to string: $statusString');
     final model = await _remoteDataSource.submitRsvp(
       eventId,
       userId,
       statusString,
     );
-    print('✅ DEBUG RsvpRepository: Got response model with status=${model.status}');
-    final entity = model.toEntity();
-    print('✅ DEBUG RsvpRepository: Converted to entity with status=${entity.status}');
-    return entity;
+    return model.toEntity();
   }
 
   @override

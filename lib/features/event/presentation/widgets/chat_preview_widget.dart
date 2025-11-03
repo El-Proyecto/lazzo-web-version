@@ -150,12 +150,14 @@ class _ChatPreviewWidgetState extends State<ChatPreviewWidget> {
 
           // Messages list with dynamic height
           if (messagesToShow.isNotEmpty)
-            SizedBox(
+            Container(
               height: chatHeight,
+              padding: const EdgeInsets.only(top: Gaps.xs, bottom: Gaps.xs),
               child: Stack(
                 children: [
                   ListView.builder(
                     reverse: true,
+                    padding: EdgeInsets.zero,
                     physics: needsScroll
                         ? const BouncingScrollPhysics()
                         : const NeverScrollableScrollPhysics(),
@@ -164,7 +166,9 @@ class _ChatPreviewWidgetState extends State<ChatPreviewWidget> {
                       final message =
                           messagesToShow[messagesToShow.length - 1 - index];
                       return Padding(
-                        padding: const EdgeInsets.only(top: Gaps.sm),
+                        padding: EdgeInsets.only(
+                          bottom: index == 0 ? 0 : Gaps.md,
+                        ),
                         child: _MessageBubble(
                           message: message,
                           isCurrentUser: message.userId == widget.currentUserId,
@@ -270,49 +274,62 @@ class _MessageBubble extends StatelessWidget {
 
   String _formatTimestamp(DateTime timestamp) {
     final now = DateTime.now();
-    final diff = now.difference(timestamp);
+    final isToday = now.year == timestamp.year &&
+        now.month == timestamp.month &&
+        now.day == timestamp.day;
 
-    if (diff.inMinutes < 1) {
-      return 'now';
-    } else if (diff.inMinutes < 60) {
-      return '${diff.inMinutes}m';
-    } else if (diff.inHours < 24) {
-      return '${diff.inHours}h';
+    if (isToday) {
+      // Show time in HH:mm format for messages today
+      final hour = timestamp.hour.toString().padLeft(2, '0');
+      final minute = timestamp.minute.toString().padLeft(2, '0');
+      return '$hour:$minute';
     } else {
-      return '${diff.inDays}d';
+      // Show date for older messages
+      final diff = now.difference(timestamp);
+      if (diff.inDays == 1) {
+        return 'Yesterday';
+      } else if (diff.inDays < 7) {
+        return '${diff.inDays}d ago';
+      } else {
+        return '${timestamp.day}/${timestamp.month}';
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Column(
-      crossAxisAlignment: isCurrentUser
-          ? CrossAxisAlignment.end
-          : CrossAxisAlignment.start,
+      crossAxisAlignment:
+          isCurrentUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
       children: [
         Row(
-          mainAxisAlignment: isCurrentUser
-              ? MainAxisAlignment.end
-              : MainAxisAlignment.start,
+          mainAxisAlignment:
+              isCurrentUser ? MainAxisAlignment.end : MainAxisAlignment.start,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Avatar always shown (both for current user and others)
             if (!isCurrentUser) ...[
               CircleAvatar(
-                radius: 20,
+                radius: 16,
                 backgroundColor: BrandColors.bg3,
-                backgroundImage: message.userAvatar != null
+                foregroundImage: message.userAvatar != null && message.userAvatar!.isNotEmpty
                     ? NetworkImage(message.userAvatar!)
                     : null,
-                child: message.userAvatar == null
-                    ? Text(
-                        message.userName[0].toUpperCase(),
-                        style: AppText.bodyMedium.copyWith(
-                          color: BrandColors.text2,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      )
-                    : null,
+                onForegroundImageError: (exception, stackTrace) {
+                  // Log error but don't crash
+                  debugPrint('❌ Failed to load avatar: ${message.userAvatar}');
+                  debugPrint('   Error: $exception');
+                },
+                child: Text(
+                  message.userName.isNotEmpty 
+                      ? message.userName[0].toUpperCase()
+                      : '?',
+                  style: AppText.bodyMedium.copyWith(
+                    color: BrandColors.text2,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
               ),
               const SizedBox(width: Gaps.xs),
             ],
@@ -323,40 +340,65 @@ class _MessageBubble extends StatelessWidget {
                   vertical: Gaps.sm,
                 ),
                 decoration: BoxDecoration(
-                  color: isCurrentUser ? BrandColors.planning : BrandColors.bg3,
+                  color:
+                      isCurrentUser ? BrandColors.planning : BrandColors.bg3,
                   borderRadius: BorderRadius.circular(Radii.md),
                 ),
                 child: Text(
                   message.content,
                   style: AppText.bodyMedium.copyWith(
-                    color: isCurrentUser
-                        ? BrandColors.text1
-                        : BrandColors.text1,
+                    color: BrandColors.text1,
                   ),
                 ),
               ),
             ),
+            if (isCurrentUser) ...[
+              const SizedBox(width: Gaps.xs),
+              CircleAvatar(
+                radius: 16,
+                backgroundColor: BrandColors.bg3,
+                foregroundImage: message.userAvatar != null && message.userAvatar!.isNotEmpty
+                    ? NetworkImage(message.userAvatar!)
+                    : null,
+                onForegroundImageError: (exception, stackTrace) {
+                  // Log error but don't crash
+                  debugPrint('❌ Failed to load avatar: ${message.userAvatar}');
+                  debugPrint('   Error: $exception');
+                },
+                child: Text(
+                  message.userName.isNotEmpty 
+                      ? message.userName[0].toUpperCase()
+                      : '?',
+                  style: AppText.bodyMedium.copyWith(
+                    color: BrandColors.text2,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
           ],
         ),
         const SizedBox(height: Gaps.xxs),
+        // Name and timestamp below bubble
         Padding(
-          padding: EdgeInsets.only(left: isCurrentUser ? 0 : 44),
+          padding: EdgeInsets.only(
+            left: isCurrentUser ? 0 : 40,
+            right: isCurrentUser ? 40 : 0,
+          ),
           child: Row(
-            mainAxisAlignment: isCurrentUser
-                ? MainAxisAlignment.end
-                : MainAxisAlignment.start,
+            mainAxisAlignment:
+                isCurrentUser ? MainAxisAlignment.end : MainAxisAlignment.start,
             children: [
-              if (!isCurrentUser) ...[
-                Text(
-                  message.userName,
-                  style: AppText.bodyMedium.copyWith(
-                    color: BrandColors.text2,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w500,
-                  ),
+              Text(
+                message.userName,
+                style: AppText.bodyMedium.copyWith(
+                  color: BrandColors.text2,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w500,
                 ),
-                const SizedBox(width: Gaps.xs),
-              ],
+              ),
+              const SizedBox(width: Gaps.xs),
               Text(
                 _formatTimestamp(message.timestamp),
                 style: AppText.bodyMedium.copyWith(

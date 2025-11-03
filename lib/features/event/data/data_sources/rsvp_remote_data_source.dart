@@ -5,8 +5,34 @@ import '../models/rsvp_model.dart';
 /// Handles all Supabase queries related to RSVPs
 class RsvpRemoteDataSource {
   final SupabaseClient _supabaseClient;
+  static const String _avatarBucketName = 'avatars';
 
   RsvpRemoteDataSource(this._supabaseClient);
+
+  /// Convert storage path to public URL
+  String _getPublicAvatarUrl(String? storagePath) {
+    if (storagePath == null || storagePath.isEmpty) {
+      return '';
+    }
+    
+    // Already a full URL
+    if (storagePath.startsWith('http://') || storagePath.startsWith('https://')) {
+      return storagePath;
+    }
+    
+    // Storage path - convert to public URL
+    return _supabaseClient.storage.from(_avatarBucketName).getPublicUrl(storagePath);
+  }
+
+  /// Helper to convert avatar_url in user data
+  void _convertAvatarUrl(Map<String, dynamic> json) {
+    if (json['user'] != null && json['user'] is Map) {
+      final user = json['user'] as Map<String, dynamic>;
+      if (user['avatar_url'] != null) {
+        user['avatar_url'] = _getPublicAvatarUrl(user['avatar_url'] as String);
+      }
+    }
+  }
 
   /// Get all RSVPs for an event
   /// Includes user data via join
@@ -24,6 +50,11 @@ class RsvpRemoteDataSource {
           ''')
           .eq('pevent_id', eventId)
           .order('confirmed_at', ascending: false);
+
+      // Convert avatar URLs from storage paths to public URLs
+      for (final json in response as List) {
+        _convertAvatarUrl(json as Map<String, dynamic>);
+      }
 
       return (response as List)
           .map((json) => RsvpModel.fromJson(json))
@@ -52,6 +83,9 @@ class RsvpRemoteDataSource {
           .maybeSingle();
 
       if (response == null) return null;
+
+      // Convert avatar URL from storage path to public URL
+      _convertAvatarUrl(response);
 
       return RsvpModel.fromJson(response);
     } on PostgrestException catch (e) {
@@ -85,6 +119,9 @@ class RsvpRemoteDataSource {
             user:user_id(id, name, avatar_url)
           ''')
           .single();
+
+      // Convert avatar URL from storage path to public URL
+      _convertAvatarUrl(response);
 
       return RsvpModel.fromJson(response);
     } on PostgrestException catch (e) {
