@@ -50,12 +50,26 @@ class _GroupHubPageState extends ConsumerState<GroupHubPage>
   // Prevent multiple rapid unsnap calls
   bool _isUnsnapping = false;
 
+  // FAB visibility state for expenses section
+  bool _showFab = true;
+  bool _hasEnoughExpensesToHideFab = false;
+
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
+    _tabController.addListener(_onTabChanged);
     _initializeExpenseParticipants();
     _initializeScrollControllers();
+  }
+
+  void _onTabChanged() {
+    if (_tabController.index == 1) {
+      // Switched to Expenses tab - reset FAB visibility
+      setState(() {
+        _showFab = true;
+      });
+    }
   }
 
   void _initializeScrollControllers() {
@@ -67,6 +81,28 @@ class _GroupHubPageState extends ConsumerState<GroupHubPage>
     _eventsScrollController.addListener(_onSectionScrollChanged);
     _expensesScrollController.addListener(_onSectionScrollChanged);
     _memoriesScrollController.addListener(_onSectionScrollChanged);
+
+    // Listen for expenses scroll to control FAB visibility
+    _expensesScrollController.addListener(_onExpensesScrollChanged);
+  }
+
+  void _onExpensesScrollChanged() {
+    if (!_expensesScrollController.hasClients || !_hasEnoughExpensesToHideFab) {
+      return;
+    }
+
+    final direction = _expensesScrollController.position.userScrollDirection;
+
+    // Show FAB when scrolling up, hide when scrolling down
+    if (direction == ScrollDirection.reverse && _showFab) {
+      setState(() {
+        _showFab = false;
+      });
+    } else if (direction == ScrollDirection.forward && !_showFab) {
+      setState(() {
+        _showFab = true;
+      });
+    }
   }
 
   void _onSectionScrollChanged() {
@@ -131,6 +167,12 @@ class _GroupHubPageState extends ConsumerState<GroupHubPage>
 
   @override
   Widget build(BuildContext context) {
+    final expensesAsync = ref.watch(groupExpensesProvider(widget.groupId));
+    final isExpensesTab = _tabController.index == 1;
+    final showExpensesFab = isExpensesTab &&
+        expensesAsync.hasValue &&
+        expensesAsync.value!.isNotEmpty;
+
     return Scaffold(
       backgroundColor: BrandColors.bg1,
       appBar: _buildAppBar(),
@@ -155,6 +197,24 @@ class _GroupHubPageState extends ConsumerState<GroupHubPage>
           ),
         ),
       ),
+      floatingActionButton: showExpensesFab
+          ? AnimatedSlide(
+              duration: const Duration(milliseconds: 200),
+              offset: _showFab ? Offset.zero : const Offset(0, 2),
+              child: AnimatedOpacity(
+                duration: const Duration(milliseconds: 200),
+                opacity: _showFab ? 1.0 : 0.0,
+                child: FloatingActionButton(
+                  onPressed: _handleAddExpense,
+                  backgroundColor: BrandColors.bg3,
+                  child: const Icon(
+                    Icons.receipt_long_outlined,
+                    color: BrandColors.text1,
+                  ),
+                ),
+              ),
+            )
+          : null,
     );
   }
 
@@ -517,12 +577,24 @@ class _GroupHubPageState extends ConsumerState<GroupHubPage>
       ),
       data: (expenses) {
         if (expenses.isEmpty) {
-          return _buildEmptyState(
-            icon: Icons.receipt_long_outlined,
-            title: 'No expenses yet',
-            subtitle: 'Group expenses will appear here',
-          );
+          return _buildEmptyExpensesState();
         }
+
+        // Check if there are enough expenses to enable FAB hiding
+        // Assume each card is ~100px tall, and we need at least 2-3 cards worth of scrolling
+        // to justify hiding the FAB (roughly screen height worth of content)
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          final shouldEnableHiding = expenses.length >= 5;
+          if (_hasEnoughExpensesToHideFab != shouldEnableHiding) {
+            setState(() {
+              _hasEnoughExpensesToHideFab = shouldEnableHiding;
+              // If not enough expenses, always show FAB
+              if (!shouldEnableHiding) {
+                _showFab = true;
+              }
+            });
+          }
+        });
 
         // Sort expenses by payment status and date
         // Order: Active -> Paid -> Settled (within each group: most recent first)
@@ -564,7 +636,7 @@ class _GroupHubPageState extends ConsumerState<GroupHubPage>
             left: Insets.screenH,
             right: Insets.screenH,
             top: _isSnapped ? Gaps.md : 0,
-            bottom: Gaps.md,
+            bottom: Gaps.md + 80, // Extra padding for FAB
           ),
           itemCount: sortedExpenses.length + 1,
           separatorBuilder: (context, index) {
@@ -594,6 +666,71 @@ class _GroupHubPageState extends ConsumerState<GroupHubPage>
           },
         );
       },
+    );
+  }
+
+  Widget _buildEmptyExpensesState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(Pads.sectionH),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(
+              Icons.receipt_long_outlined,
+              size: 64,
+              color: BrandColors.text2,
+            ),
+            const SizedBox(height: Gaps.lg),
+            Text(
+              'No expenses yet',
+              style: AppText.titleMediumEmph.copyWith(
+                color: BrandColors.text1,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: Gaps.sm),
+            Text(
+              'Group expenses will appear here',
+              style: AppText.bodyMedium.copyWith(
+                color: BrandColors.text2,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: Gaps.xl),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: _handleAddExpense,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: BrandColors.bg3,
+                  foregroundColor: BrandColors.text1,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: Pads.sectionH,
+                    vertical: Gaps.md,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(Radii.md),
+                  ),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.receipt_long_outlined),
+                    const SizedBox(width: Gaps.sm),
+                    Text(
+                      'Add your first expense',
+                      style: AppText.labelLarge.copyWith(
+                        color: BrandColors.text1,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -777,6 +914,11 @@ class _GroupHubPageState extends ConsumerState<GroupHubPage>
 
   void _handleNotifyParticipant(String expenseId, String participantId) {
     print('Notify participant: $participantId for expense: $expenseId');
+  }
+
+  void _handleAddExpense() {
+    // TODO: Navigate to add expense screen
+    print('Add new expense');
   }
 
   List<ExpenseParticipant> _createMockParticipants(String expenseId) {
