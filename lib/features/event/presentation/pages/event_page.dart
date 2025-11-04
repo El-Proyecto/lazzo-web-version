@@ -186,6 +186,15 @@ class EventPage extends ConsumerWidget {
                     data: (userRsvp) {
                       return suggestionsAsync.when(
                         data: (suggestions) {
+                          // Filter suggestions that are DIFFERENT from current event date
+                          // (for "Add Suggestion" button visibility)
+                          final alternateDateSuggestions = suggestions.where((s) {
+                            if (event.startDateTime == null || event.endDateTime == null) return true;
+                            final isDifferent = !s.startDateTime.isAtSameMomentAs(event.startDateTime!) ||
+                                               !(s.endDateTime?.isAtSameMomentAs(event.endDateTime!) ?? false);
+                            return isDifferent;
+                          }).toList();
+                          
                           // Also check location suggestions for hasSuggestions flag
                           return Consumer(
                             builder: (context, consumerRef, child) {
@@ -302,7 +311,7 @@ class EventPage extends ConsumerWidget {
                                     eventStartDateTime: event.startDateTime,
                                     eventEndDateTime: event.endDateTime,
                                     isHost: event.hostId == currentUserId,
-                                    hasSuggestions: suggestions.isNotEmpty ||
+                                    hasSuggestions: alternateDateSuggestions.isNotEmpty ||
                                         locationSuggestions.isNotEmpty,
                                   );
                                 },
