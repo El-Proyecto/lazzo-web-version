@@ -11,3 +11,27 @@ class GetGroupExpenses {
     return await _repository.getGroupExpenses(groupId);
   }
 }
+
+class CreateExpense {
+  final GroupExpenseRepository _repository;
+
+  CreateExpense(this._repository);
+
+  Future<GroupExpenseEntity> call({
+    required String groupId,
+    required String description,
+    required double amount,
+    required String paidBy,
+    required List<String> participantsOwe,
+    required List<String> participantsPaid,
+  }) async {
+    return await _repository.createExpense(
+      groupId: groupId,
+      description: description,
+      amount: amount,
+      paidBy: paidBy,
+      participantsOwe: participantsOwe,
+      participantsPaid: participantsPaid,
+    );
+  }
+}

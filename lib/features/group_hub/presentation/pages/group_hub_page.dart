@@ -170,9 +170,7 @@ class _GroupHubPageState extends ConsumerState<GroupHubPage>
   Widget build(BuildContext context) {
     final expensesAsync = ref.watch(groupExpensesProvider(widget.groupId));
     final isExpensesTab = _tabController.index == 1;
-    final showExpensesFab = isExpensesTab &&
-        expensesAsync.hasValue &&
-        expensesAsync.value!.isNotEmpty;
+    final showExpensesFab = isExpensesTab;
 
     return Scaffold(
       backgroundColor: BrandColors.bg1,
@@ -921,36 +919,25 @@ class _GroupHubPageState extends ConsumerState<GroupHubPage>
   }
 
   void _handleAddExpense() {
-    // Mock participants for the group
     final participants = [
-      const ExpenseParticipantOption(
-        id: 'current_user',
-        name: 'You',
-      ),
-      const ExpenseParticipantOption(
-        id: 'marco',
-        name: 'Marco',
-      ),
-      const ExpenseParticipantOption(
-        id: 'ana',
-        name: 'Ana',
-      ),
-      const ExpenseParticipantOption(
-        id: 'joao',
-        name: 'João',
-      ),
+      const ExpenseParticipantOption(id: 'current_user', name: 'You'),
+      const ExpenseParticipantOption(id: 'marco', name: 'Marco'),
+      const ExpenseParticipantOption(id: 'ana', name: 'Ana'),
+      const ExpenseParticipantOption(id: 'joao', name: 'João'),
     ];
 
     AddExpenseBottomSheet.show(
       context: context,
       participants: participants,
-      onAddExpense: (title, paidByIds, payerIds, totalAmount) {
-        // TODO: Implement add expense logic with repository
-        print('Add Expense:');
-        print('  Title: $title');
-        print('  Paid by: $paidByIds');
-        print('  Payers: $payerIds');
-        print('  Total: $totalAmount');
+      onAddExpense: (title, paidById, participantsOwe, totalAmount) {
+        // ✅ Agora paidById é String (não lista)
+        ref.read(groupExpensesProvider(widget.groupId).notifier).addExpense(
+          description: title,
+          amount: totalAmount,
+          paidBy: paidById, // ✅ Diretamente String
+          participantsOwe: participantsOwe,
+          participantsPaid: [],
+        );
       },
     );
   }

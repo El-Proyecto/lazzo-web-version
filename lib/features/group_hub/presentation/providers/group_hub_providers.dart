@@ -33,6 +33,10 @@ final getGroupEventsUseCaseProvider = Provider<GetGroupEvents>((ref) {
 final getGroupExpensesUseCaseProvider = Provider<GetGroupExpenses>((ref) {
   return GetGroupExpenses(ref.watch(groupExpenseRepositoryProvider));
 });
+final createExpenseUseCaseProvider = Provider<CreateExpense>((ref) {
+  return CreateExpense(ref.watch(groupExpenseRepositoryProvider));
+});
+
 
 final getGroupMemoriesUseCaseProvider = Provider<GetGroupMemories>((ref) {
   return GetGroupMemories(ref.watch(groupMemoryRepositoryProvider));
@@ -57,6 +61,7 @@ final groupExpensesProvider = StateNotifierProvider.family<
 ) {
   return GroupExpensesController(
     ref.watch(getGroupExpensesUseCaseProvider),
+    ref.watch(createExpenseUseCaseProvider),
     groupId,
   );
 });
@@ -101,10 +106,14 @@ class GroupEventsController
 class GroupExpensesController
     extends StateNotifier<AsyncValue<List<GroupExpenseEntity>>> {
   final GetGroupExpenses _getGroupExpenses;
+  final CreateExpense _createExpense;
   final String _groupId;
 
-  GroupExpensesController(this._getGroupExpenses, this._groupId)
-      : super(const AsyncValue.loading()) {
+  GroupExpensesController(
+    this._getGroupExpenses,
+    this._createExpense,
+    this._groupId,
+  ) : super(const AsyncValue.loading()) {
     loadExpenses();
   }
 
@@ -118,8 +127,32 @@ class GroupExpensesController
     }
   }
 
+  // ✅ ADICIONAR este método
   Future<void> refresh() async {
     await loadExpenses();
+  }
+
+  Future<void> addExpense({
+    required String description,
+    required double amount,
+    required String paidBy,
+    required List<String> participantsOwe,
+    required List<String> participantsPaid,
+  }) async {
+    try {
+      await _createExpense(
+        groupId: _groupId,
+        description: description,
+        amount: amount,
+        paidBy: paidBy,
+        participantsOwe: participantsOwe,
+        participantsPaid: participantsPaid,
+      );
+      // Reload expenses after creation
+      await loadExpenses();
+    } catch (error, stackTrace) {
+      state = AsyncValue.error(error, stackTrace);
+    }
   }
 }
 

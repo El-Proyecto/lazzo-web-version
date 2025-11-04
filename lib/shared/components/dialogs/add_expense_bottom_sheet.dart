@@ -24,8 +24,8 @@ class AddExpenseBottomSheet extends StatefulWidget {
   final List<ExpenseParticipantOption> participants;
   final Function(
     String title,
-    List<String> paidByIds,
-    List<String> payerIds,
+    String paidBy,
+    List<String> participantsOwe,
     double totalAmount,
   ) onAddExpense;
 
@@ -41,8 +41,8 @@ class AddExpenseBottomSheet extends StatefulWidget {
     required List<ExpenseParticipantOption> participants,
     required Function(
       String title,
-      List<String> paidByIds,
-      List<String> payerIds,
+      String paidBy,
+      List<String> participantsOwe,
       double totalAmount,
     ) onAddExpense,
   }) {
@@ -69,8 +69,8 @@ class _AddExpenseBottomSheetState extends State<AddExpenseBottomSheet> {
   final FocusNode _titleFocusNode = FocusNode();
   final FocusNode _amountFocusNode = FocusNode();
 
-  late List<String> _selectedPaidBy;
-  late List<String> _selectedPayers;
+  String? _selectedPaidBy;
+  late List<String> _selectedParticipants;
 
   bool _showPaidByDropdown = false;
   bool _showSplitWithDropdown = false;
@@ -84,11 +84,11 @@ class _AddExpenseBottomSheetState extends State<AddExpenseBottomSheet> {
   @override
   void initState() {
     super.initState();
-    // Default: current user (first in list) paid
-    _selectedPaidBy =
-        widget.participants.isNotEmpty ? [widget.participants.first.id] : [];
-    // Default: no payers selected
-    _selectedPayers = [];
+    // ✅ Default: primeiro participante como host
+    _selectedPaidBy = widget.participants.isNotEmpty 
+        ? widget.participants.first.id 
+        : null;
+    _selectedParticipants = []; // Vazio inicialmente
   }
 
   @override
@@ -106,14 +106,14 @@ class _AddExpenseBottomSheetState extends State<AddExpenseBottomSheet> {
   }
 
   double get _amountPerPerson {
-    if (_selectedPayers.isEmpty || _totalAmount == 0) return 0.0;
-    return _totalAmount / _selectedPayers.length;
+    if (_selectedParticipants.isEmpty || _totalAmount == 0) return 0.0;
+    return _totalAmount / _selectedParticipants.length;
   }
 
   bool get _isValid {
     return _titleController.text.trim().isNotEmpty &&
-        _selectedPaidBy.isNotEmpty &&
-        _selectedPayers.isNotEmpty &&
+        _selectedPaidBy != null &&
+        _selectedParticipants.isNotEmpty &&
         _totalAmount > 0;
   }
 
@@ -123,9 +123,9 @@ class _AddExpenseBottomSheetState extends State<AddExpenseBottomSheet> {
           ? 'Please enter an expense title'
           : null;
       _amountError = _totalAmount <= 0 ? 'Please enter a valid amount' : null;
-      _paidByError = _selectedPaidBy.isEmpty ? 'Please select who paid' : null;
+      _paidByError = _selectedPaidBy == null ? 'Please select who paid' : null;
       _splitWithError =
-          _selectedPayers.isEmpty ? 'Please select participants' : null;
+          _selectedParticipants.isEmpty ? 'Please select participants' : null;
     });
   }
 
@@ -140,21 +140,18 @@ class _AddExpenseBottomSheetState extends State<AddExpenseBottomSheet> {
 
     widget.onAddExpense(
       _titleController.text.trim(),
-      _selectedPaidBy,
-      _selectedPayers,
+      _selectedPaidBy!,
+      _selectedParticipants,
       _totalAmount,
     );
 
     Navigator.of(context).pop();
   }
 
-  void _togglePaidBy(String participantId) {
+  void _selectPaidBy(String participantId) {
     setState(() {
-      if (_selectedPaidBy.contains(participantId)) {
-        _selectedPaidBy.remove(participantId);
-      } else {
-        _selectedPaidBy.add(participantId);
-      }
+      _selectedPaidBy = participantId;
+      if (_showErrors) _validateFields();
     });
   }
 
@@ -265,13 +262,13 @@ class _AddExpenseBottomSheetState extends State<AddExpenseBottomSheet> {
                         if (_showErrors) _validateFields();
                       },
                     ), // Amount per person (inline display)
-                    if (_totalAmount > 0 && _selectedPayers.isNotEmpty) ...[
+                    if (_totalAmount > 0 && _selectedParticipants.isNotEmpty) ...[
                       const SizedBox(height: Gaps.xs),
                       Padding(
                         padding:
                             const EdgeInsets.symmetric(horizontal: Gaps.xxs),
                         child: Text(
-                          '${_amountPerPerson.toStringAsFixed(2)}€ per person • ${_selectedPayers.length} ${_selectedPayers.length == 1 ? 'person' : 'people'}',
+                          '${_amountPerPerson.toStringAsFixed(2)}€ per person • ${_selectedParticipants.length} ${_selectedParticipants.length == 1 ? 'person' : 'people'}',
                           style: AppText.bodyMedium.copyWith(
                             color: BrandColors.text2,
                             fontSize: 14,
@@ -283,9 +280,9 @@ class _AddExpenseBottomSheetState extends State<AddExpenseBottomSheet> {
                     const SizedBox(height: Gaps.lg),
 
                     // Paid by (dropdown trigger)
-                    _buildDropdownTrigger(
+                    _buildSingleSelectDropdownTrigger(
                       label: 'Paid by',
-                      selectedIds: _selectedPaidBy,
+                      selectedId: _selectedPaidBy,
                       showDropdown: _showPaidByDropdown,
                       errorText: _showErrors ? _paidByError : null,
                       onToggle: () {
@@ -300,9 +297,9 @@ class _AddExpenseBottomSheetState extends State<AddExpenseBottomSheet> {
                     const SizedBox(height: Gaps.lg),
 
                     // Split with (dropdown trigger)
-                    _buildDropdownTrigger(
+                    _buildMultiSelectDropdownTrigger(
                       label: 'Split with',
-                      selectedIds: _selectedPayers,
+                      selectedIds: _selectedParticipants,
                       showDropdown: _showSplitWithDropdown,
                       errorText: _showErrors ? _splitWithError : null,
                       onToggle: () {
@@ -495,17 +492,17 @@ class _AddExpenseBottomSheetState extends State<AddExpenseBottomSheet> {
     );
   }
 
-  Widget _buildDropdownTrigger({
+  Widget _buildSingleSelectDropdownTrigger({
     required String label,
-    required List<String> selectedIds,
+    required String? selectedId,
     required bool showDropdown,
     required VoidCallback onToggle,
     required Widget Function() dropdownBuilder,
     String? errorText,
   }) {
-    final selectedNames = selectedIds
-        .map((id) => widget.participants.firstWhere((p) => p.id == id).name)
-        .join(', ');
+    final selectedName = selectedId != null
+        ? widget.participants.firstWhere((p) => p.id == selectedId).name
+        : null;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -539,15 +536,96 @@ class _AddExpenseBottomSheetState extends State<AddExpenseBottomSheet> {
               children: [
                 Expanded(
                   child: Text(
-                    selectedNames.isEmpty
-                        ? 'Select ${label.toLowerCase()}'
-                        : selectedNames,
+                    selectedName ?? 'Select ${label.toLowerCase()}',
                     style: AppText.bodyMedium.copyWith(
-                      color: selectedNames.isEmpty
+                      color: selectedName == null
                           ? BrandColors.text2
                           : BrandColors.text1,
                       fontSize: 14,
                     ),
+                  ),
+                ),
+                Icon(
+                  showDropdown ? Icons.arrow_drop_up : Icons.arrow_drop_down,
+                  color: BrandColors.text2,
+                ),
+              ],
+            ),
+          ),
+        ),
+        if (errorText != null) ...[
+          const SizedBox(height: Gaps.xxs),
+          Padding(
+            padding: const EdgeInsets.only(left: Gaps.xxs),
+            child: Text(
+              errorText,
+              style: AppText.bodyMedium.copyWith(
+                color: Colors.red,
+                fontSize: 12,
+              ),
+            ),
+          ),
+        ],
+        if (showDropdown) dropdownBuilder(),
+      ],
+    );
+  }
+
+  Widget _buildMultiSelectDropdownTrigger({
+    required String label,
+    required List<String> selectedIds,
+    required bool showDropdown,
+    required VoidCallback onToggle,
+    required Widget Function() dropdownBuilder,
+    String? errorText,
+  }) {
+    final selectedNames = selectedIds.isNotEmpty
+        ? selectedIds
+            .map((id) => widget.participants.firstWhere((p) => p.id == id).name)
+            .join(', ')
+        : null;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: AppText.labelLarge.copyWith(color: BrandColors.text1),
+        ),
+        const SizedBox(height: Gaps.xs),
+        GestureDetector(
+          onTap: onToggle,
+          child: Container(
+            width: double.infinity,
+            constraints: const BoxConstraints(minHeight: TouchTargets.input),
+            padding: const EdgeInsets.symmetric(
+              horizontal: Pads.ctlH,
+              vertical: Pads.ctlV,
+            ),
+            decoration: BoxDecoration(
+              color: BrandColors.bg3,
+              borderRadius: BorderRadius.circular(Radii.md),
+              border: Border.all(
+                color: errorText != null
+                    ? Colors.red
+                    : (showDropdown
+                        ? BrandColors.planning
+                        : BrandColors.border),
+              ),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    selectedNames ?? 'Select ${label.toLowerCase()}',
+                    style: AppText.bodyMedium.copyWith(
+                      color: selectedNames == null
+                          ? BrandColors.text2
+                          : BrandColors.text1,
+                      fontSize: 14,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 1,
                   ),
                 ),
                 Icon(
@@ -596,7 +674,7 @@ class _AddExpenseBottomSheetState extends State<AddExpenseBottomSheet> {
         children: widget.participants.asMap().entries.map((entry) {
           final index = entry.key;
           final participant = entry.value;
-          final isSelected = _selectedPaidBy.contains(participant.id);
+          final isSelected = _selectedPaidBy == participant.id;
           final isFirst = index == 0;
           final isLast = index == widget.participants.length - 1;
 
@@ -604,9 +682,16 @@ class _AddExpenseBottomSheetState extends State<AddExpenseBottomSheet> {
             name: participant.name,
             avatarUrl: participant.avatarUrl,
             isSelected: isSelected,
-            onTap: () => _togglePaidBy(participant.id),
+            onTap: () {
+              _selectPaidBy(participant.id);
+              // Auto-close dropdown após seleção
+              setState(() {
+                _showPaidByDropdown = false;
+              });
+            },
             isFirst: isFirst,
             isLast: isLast,
+            isRadio: true, // ✅ Usar radio button
           );
         }).toList(),
       ),
@@ -634,8 +719,8 @@ class _AddExpenseBottomSheetState extends State<AddExpenseBottomSheet> {
           // Select All option
           _buildParticipantOption(
             name: 'Select All',
-            isSelected: _selectedPayers.length == widget.participants.length,
-            onTap: _toggleAllPayers,
+            isSelected: _selectedParticipants.length == widget.participants.length,
+            onTap: _toggleAllParticipants,
             isSelectAll: true,
             isFirst: true,
             isLast: false,
@@ -644,14 +729,14 @@ class _AddExpenseBottomSheetState extends State<AddExpenseBottomSheet> {
           ...widget.participants.asMap().entries.map((entry) {
             final index = entry.key;
             final participant = entry.value;
-            final isSelected = _selectedPayers.contains(participant.id);
+            final isSelected = _selectedParticipants.contains(participant.id);
             final isLast = index == widget.participants.length - 1;
 
             return _buildParticipantOption(
               name: participant.name,
               avatarUrl: participant.avatarUrl,
               isSelected: isSelected,
-              onTap: () => _togglePayer(participant.id),
+              onTap: () => _toggleParticipant(participant.id),
               isFirst: false,
               isLast: isLast,
             );
@@ -661,23 +746,23 @@ class _AddExpenseBottomSheetState extends State<AddExpenseBottomSheet> {
     );
   }
 
-  void _togglePayer(String participantId) {
+  void _toggleParticipant(String participantId) {
     setState(() {
-      if (_selectedPayers.contains(participantId)) {
-        _selectedPayers.remove(participantId);
+      if (_selectedParticipants.contains(participantId)) {
+        _selectedParticipants.remove(participantId);
       } else {
-        _selectedPayers.add(participantId);
+        _selectedParticipants.add(participantId);
       }
       if (_showErrors) _validateFields();
     });
   }
 
-  void _toggleAllPayers() {
+  void _toggleAllParticipants() {
     setState(() {
-      if (_selectedPayers.length == widget.participants.length) {
-        _selectedPayers.clear();
+      if (_selectedParticipants.length == widget.participants.length) {
+        _selectedParticipants.clear();
       } else {
-        _selectedPayers = widget.participants.map((p) => p.id).toList();
+        _selectedParticipants = widget.participants.map((p) => p.id).toList();
       }
       if (_showErrors) _validateFields();
     });
@@ -691,6 +776,7 @@ class _AddExpenseBottomSheetState extends State<AddExpenseBottomSheet> {
     bool isSelectAll = false,
     bool isFirst = false,
     bool isLast = false,
+    bool isRadio = false,
   }) {
     return Material(
       color: Colors.transparent,
@@ -747,16 +833,16 @@ class _AddExpenseBottomSheetState extends State<AddExpenseBottomSheet> {
                   ),
                 ),
               ),
-              if (isSelected)
-                const Icon(
-                  Icons.check_circle,
-                  color: BrandColors.planning,
+              if (isRadio)
+                Icon(
+                  isSelected ? Icons.radio_button_checked : Icons.radio_button_unchecked,
+                  color: isSelected ? BrandColors.planning : BrandColors.text2.withValues(alpha: 0.3),
                   size: IconSizes.smAlt,
                 )
               else
                 Icon(
-                  Icons.circle_outlined,
-                  color: BrandColors.text2.withValues(alpha: 0.3),
+                  isSelected ? Icons.check_circle : Icons.circle_outlined,
+                  color: isSelected ? BrandColors.planning : BrandColors.text2.withValues(alpha: 0.3),
                   size: IconSizes.smAlt,
                 ),
             ],
