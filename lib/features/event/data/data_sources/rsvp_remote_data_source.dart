@@ -39,6 +39,9 @@ class RsvpRemoteDataSource {
   /// Uses existing event_participants table
   Future<List<RsvpModel>> getEventRsvps(String eventId) async {
     try {
+      // 🔍 DEBUG: Print query
+      print('🔍 DEBUG getEventRsvps: Querying Supabase for eventId=$eventId');
+      
       final response = await _supabaseClient
           .from('event_participants')
           .select('''
@@ -51,14 +54,25 @@ class RsvpRemoteDataSource {
           .eq('pevent_id', eventId)
           .order('confirmed_at', ascending: false);
 
+      // 🔍 DEBUG: Print raw response
+      print('🔍 DEBUG getEventRsvps: Supabase returned ${(response as List).length} RSVPs');
+      for (final json in response) {
+        print('🔍 DEBUG getEventRsvps: RSVP - user_id=${json['user_id']}, rsvp=${json['rsvp']}');
+      }
+
       // Convert avatar URLs from storage paths to public URLs
       for (final json in response as List) {
         _convertAvatarUrl(json as Map<String, dynamic>);
       }
 
-      return (response as List)
+      final models = (response as List)
           .map((json) => RsvpModel.fromJson(json))
           .toList();
+      
+      // 🔍 DEBUG: Print converted models
+      print('🔍 DEBUG getEventRsvps: Converted to ${models.length} RsvpModels');
+      
+      return models;
     } on PostgrestException catch (e) {
       throw Exception('Failed to get event RSVPs: ${e.message}');
     } catch (e) {
@@ -103,6 +117,9 @@ class RsvpRemoteDataSource {
     String status,
   ) async {
     try {
+      // 🔍 DEBUG: Print submission
+      print('🔍 DEBUG submitRsvp: Upserting to Supabase - eventId=$eventId, userId=$userId, status=$status');
+      
       final response = await _supabaseClient
           .from('event_participants')
           .upsert({
@@ -119,6 +136,9 @@ class RsvpRemoteDataSource {
             user:user_id(id, name, avatar_url)
           ''')
           .single();
+
+      // 🔍 DEBUG: Print response
+      print('🔍 DEBUG submitRsvp: Supabase upsert successful - rsvp=${response['rsvp']}');
 
       // Convert avatar URL from storage path to public URL
       _convertAvatarUrl(response);

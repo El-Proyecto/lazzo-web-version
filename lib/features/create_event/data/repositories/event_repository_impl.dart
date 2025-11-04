@@ -100,30 +100,37 @@ class EventRepositoryImpl implements EventRepository {
 			
 		// Create initial RSVP for event creator (automatically "yes")
 		try {
-			print('👤 DEBUG: Creating initial RSVP for event creator...');
 			await _client.from('event_participants').insert({
 				'pevent_id': eventId,
 				'user_id': userId,
 				'rsvp': 'yes', // rsvp_status enum: pending, yes, no, maybe
 				'confirmed_at': DateTime.now().toIso8601String(),
 			});
-			print('👤 SUCCESS: Initial RSVP created for creator with status=yes');
 		} catch (e) {
-			print('⚠️ WARNING: Failed to create initial RSVP: $e');
 			// Don't fail event creation if RSVP fails
 		}			// If event has initial date/time, create it as a suggestion
 			if (event.startDateTime != null) {
 				try {
-					print('📅 DEBUG: Creating initial date suggestion...');
-					await _client.from('event_date_options').insert({
+					final suggestionResponse = await _client.from('event_date_options').insert({
 						'event_id': eventId,
 						'created_by': userId,
 						'starts_at': event.startDateTime!.toIso8601String(),
 						'ends_at': event.endDateTime?.toIso8601String(),
-					});
-					print('📅 SUCCESS: Initial date suggestion created');
+					}).select('id').single();
+					
+					final optionId = suggestionResponse['id'] as String;
+					
+					// Auto-vote for the event creator on the initial date suggestion
+					try {
+						await _client.from('event_date_votes').insert({
+							'option_id': optionId,
+							'user_id': userId,
+							'event_id': eventId,
+						});
+					} catch (e) {
+						// Don't fail event creation if vote fails
+					}
 				} catch (e) {
-					print('⚠️ WARNING: Failed to create initial date suggestion: $e');
 					// Don't fail event creation if suggestion fails
 				}
 			}
@@ -131,7 +138,6 @@ class EventRepositoryImpl implements EventRepository {
 			// If event has initial location, create it as a suggestion
 			if (event.location != null && locationId != null) {
 				try {
-					print('📍 DEBUG: Creating initial location suggestion...');
 					await _client.from('location_suggestions').insert({
 						'event_id': eventId,
 						'user_id': userId,
@@ -140,17 +146,13 @@ class EventRepositoryImpl implements EventRepository {
 						'latitude': event.location!.latitude,
 						'longitude': event.location!.longitude,
 					});
-					print('📍 SUCCESS: Initial location suggestion created');
 				} catch (e) {
-					print('⚠️ WARNING: Failed to create initial location suggestion: $e');
 					// Don't fail event creation if suggestion fails
 				}
 			}
 			
 			return EventModel.fromJson(response).toEntity();
-		} catch (e, stackTrace) {
-			print('❌ ERROR creating event: $e');
-			print('❌ Stack trace: $stackTrace');
+		} catch (e) {
 			rethrow;
 		}
 	}

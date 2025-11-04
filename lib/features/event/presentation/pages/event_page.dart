@@ -165,7 +165,7 @@ class EventPage extends ConsumerWidget {
 
               // Event status chip
               Consumer(
-                builder: (context, ref, child) {
+                builder: (context, consumerRef, child) {
                   return EventStatusChip(
                     status: event.status,
                     onTap: () => _showStatusChangeDialog(
@@ -188,8 +188,8 @@ class EventPage extends ConsumerWidget {
                         data: (suggestions) {
                           // Also check location suggestions for hasSuggestions flag
                           return Consumer(
-                            builder: (context, ref, child) {
-                              final locationSuggestionsAsync = ref.watch(
+                            builder: (context, consumerRef, child) {
+                              final locationSuggestionsAsync = consumerRef.watch(
                                 eventLocationSuggestionsProvider(eventId),
                               );
 
@@ -212,6 +212,12 @@ class EventPage extends ConsumerWidget {
                                       )
                                       .length;
 
+                                  // 🔍 DEBUG: Print RSVP counts calculation
+                                  print('🔍 DEBUG EventPage: Total RSVPs=${rsvps.length}');
+                                  print('🔍 DEBUG EventPage: goingCount=$goingCount, notGoingCount=$notGoingCount, pendingCount=$pendingCount');
+                                  print('🔍 DEBUG EventPage: userVote=${_getUserVoteStatus(userRsvp)}');
+                                  print('🔍 DEBUG EventPage: RSVP statuses: ${rsvps.map((r) => '${r.userName}:${r.status}').join(', ')}');
+
                                   return rsvp_widget.RsvpWidget(
                                     goingCount: goingCount,
                                     notGoingCount: notGoingCount,
@@ -225,13 +231,8 @@ class EventPage extends ConsumerWidget {
                                               ? RsvpStatus.pending
                                               : RsvpStatus.going;
                                       await ref
-                                          .read(
-                                            userRsvpProvider(eventId).notifier,
-                                          )
-                                          .submitVote(newStatus, ref: ref);
-                                      // Force refresh of RSVP data to update counts immediately
-                                      ref.invalidate(eventRsvpsProvider(eventId));
-                                      ref.invalidate(userRsvpProvider(eventId));
+                                          .read(userRsvpProvider(eventId).notifier)
+                                          .submitVote(newStatus);
                                     },
                                     onNotGoingPressed: () async {
                                       final currentStatus = userRsvp?.status ??
@@ -241,13 +242,8 @@ class EventPage extends ConsumerWidget {
                                               ? RsvpStatus.pending
                                               : RsvpStatus.notGoing;
                                       await ref
-                                          .read(
-                                            userRsvpProvider(eventId).notifier,
-                                          )
-                                          .submitVote(newStatus, ref: ref);
-                                      // Force refresh of RSVP data to update counts immediately
-                                      ref.invalidate(eventRsvpsProvider(eventId));
-                                      ref.invalidate(userRsvpProvider(eventId));
+                                          .read(userRsvpProvider(eventId).notifier)
+                                          .submitVote(newStatus);
                                     },
                                     allVotes: rsvps
                                         .map(
@@ -768,14 +764,14 @@ class EventPage extends ConsumerWidget {
 
               // Location suggestions widget (independent of datetime suggestions)
               Consumer(
-                builder: (context, ref, child) {
-                  final locationSuggestionsAsync = ref.watch(
+                builder: (context, consumerRef, child) {
+                  final locationSuggestionsAsync = consumerRef.watch(
                     eventLocationSuggestionsProvider(eventId),
                   );
-                  final locationVotesAsync = ref.watch(
+                  final locationVotesAsync = consumerRef.watch(
                     locationSuggestionVotesProvider(eventId),
                   );
-                  final userLocationVotesAsync = ref.watch(
+                  final userLocationVotesAsync = consumerRef.watch(
                     userLocationSuggestionVotesProvider(eventId),
                   );
 

@@ -83,7 +83,7 @@ class SuggestionRemoteDataSource {
             starts_at,
             ends_at,
             created_at,
-            user:created_by(id, name, profile_picture_url)
+            user:created_by(id, name, avatar_url)
           ''')
           .single();
 
@@ -107,7 +107,7 @@ class SuggestionRemoteDataSource {
             user_id,
             voted_at,
             event_id,
-            user:user_id(id, name, profile_picture_url)
+            user:user_id(id, name, avatar_url)
           ''')
           .eq('event_id', eventId);
 
@@ -140,7 +140,7 @@ class SuggestionRemoteDataSource {
             user_id,
             voted_at,
             event_id,
-            user:user_id(id, name, profile_picture_url)
+            user:user_id(id, name, avatar_url)
           ''')
           .single();
 
@@ -184,7 +184,7 @@ class SuggestionRemoteDataSource {
             user_id,
             voted_at,
             event_id,
-            user:user_id(id, name, profile_picture_url)
+            user:user_id(id, name, avatar_url)
           ''')
           .eq('event_id', eventId)
           .eq('user_id', userId);
@@ -301,7 +301,7 @@ class SuggestionRemoteDataSource {
             latitude,
             longitude,
             created_at,
-            user:user_id(id, name, profile_picture_url)
+            user:user_id(id, name, avatar_url)
           ''')
           .single();
 

@@ -312,46 +312,42 @@ class UserRsvpNotifier extends StateNotifier<AsyncValue<Rsvp?>> {
     }
   }
 
-  Future<void> submitVote(RsvpStatus status, {WidgetRef? ref}) async {
+  Future<void> submitVote(RsvpStatus status) async {
     try {
-      final currentUserId = this.ref.read(currentUserIdProvider);
+      final currentUserId = ref.read(currentUserIdProvider);
+      
+      print('🔍 DEBUG submitVote: eventId=$eventId, userId=$currentUserId, newStatus=$status');
+      
       final rsvp = await repository.submitRsvp(eventId, currentUserId ?? '', status);
       
-      // Update local state FIRST to show immediate feedback
-      state = AsyncValue.data(rsvp);
+      print('🔍 DEBUG submitVote: RSVP submitted successfully - ${rsvp.status}');
 
-      // If changing to "Can" (going), auto-vote for current event suggestion
-      // If changing from "Can" to something else, remove vote from current event suggestion
-      if (ref != null) {
-        try {
-          await _syncWithCurrentEventSuggestion(status, ref);
-        } catch (e) {
-          // Log error but don't fail the RSVP submission
-          // print('Failed to sync RSVP with suggestion vote: $e');
-        }
-
-        // CRITICAL: Invalidate AND refresh providers to force re-fetch from Supabase
-        ref.invalidate(eventRsvpsProvider(eventId));
-        ref.invalidate(eventDetailProvider(eventId));
-        
-        // Force immediate refresh by reading the providers
-        // This ensures the UI updates with fresh data from Supabase
-        // ignore: unused_local_variable
-        final refreshedRsvps = await ref.refresh(eventRsvpsProvider(eventId).future);
-        // ignore: unused_local_variable
-        final refreshedEvent = await ref.refresh(eventDetailProvider(eventId).future);
-
-        // Check auto-confirmation after RSVP submission with fresh data
-        await _checkAutoConfirmation(ref);
+      // Sync with current event suggestion
+      try {
+        await _syncWithCurrentEventSuggestion(status);
+      } catch (e) {
+        // Log error but don't fail the RSVP submission
       }
+
+      // Invalidate providers using StateNotifier's ref
+      ref.invalidate(eventRsvpsProvider(eventId));
+      ref.invalidate(eventDetailProvider(eventId));
+      
+      print('🔍 DEBUG submitVote: Providers invalidated, UI will refresh automatically');
+      
+      // Update local state - this triggers UI rebuild
+      state = AsyncValue.data(rsvp);
+      
+      // Check auto-confirmation after RSVP submission
+      await _checkAutoConfirmation();
     } catch (error, stackTrace) {
+      print('🔴 DEBUG submitVote: ERROR - $error');
       state = AsyncValue.error(error, stackTrace);
-      // Reload on error to get consistent state
       _loadUserRsvp();
     }
   }
 
-  Future<void> _checkAutoConfirmation(WidgetRef ref) async {
+  Future<void> _checkAutoConfirmation() async {
     try {
       // Get fresh data directly from repositories to avoid cache issues
       final eventRepository = ref.read(eventRepositoryProvider);
@@ -385,10 +381,7 @@ class UserRsvpNotifier extends StateNotifier<AsyncValue<Rsvp?>> {
     }
   }
 
-  Future<void> _syncWithCurrentEventSuggestion(
-    RsvpStatus status,
-    WidgetRef ref,
-  ) async {
+  Future<void> _syncWithCurrentEventSuggestion(RsvpStatus status) async {
     try {
       // NOTE: Manual sync is disabled because the FakeRsvpRepository.submitRsvp()
       // already calls FakeSuggestionRepository.syncCurrentSuggestionWithRsvp()
@@ -610,11 +603,11 @@ class ToggleSuggestionVoteNotifier extends StateNotifier<AsyncValue<void>> {
         }
       }
 
-      // Invalidate providers to refresh data
+      // Invalidate and force immediate refresh to update vote counts in UI
       ref.invalidate(eventSuggestionsProvider(eventId));
       ref.invalidate(suggestionVotesProvider(eventId));
       ref.invalidate(userSuggestionVotesProvider(eventId));
-
+      
       state = const AsyncValue.data(null);
     } catch (error, stackTrace) {
       state = AsyncValue.error(error, stackTrace);
@@ -739,11 +732,11 @@ class ToggleLocationSuggestionVoteNotifier
         );
       }
 
-      // Invalidate providers to refresh data
+      // Invalidate and force immediate refresh to update vote counts in UI
       ref.invalidate(eventLocationSuggestionsProvider(eventId));
       ref.invalidate(locationSuggestionVotesProvider(eventId));
       ref.invalidate(userLocationSuggestionVotesProvider(eventId));
-
+      
       state = const AsyncValue.data(null);
     } catch (error, stackTrace) {
       state = AsyncValue.error(error, stackTrace);
