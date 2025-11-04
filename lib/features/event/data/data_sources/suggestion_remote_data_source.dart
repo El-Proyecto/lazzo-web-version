@@ -15,6 +15,8 @@ class SuggestionRemoteDataSource {
   /// Get all datetime suggestions for an event
   Future<List<SuggestionModel>> getEventSuggestions(String eventId) async {
     try {
+      print('🔍 [SuggestionDataSource.getEventSuggestions] Fetching suggestions for event: $eventId');
+      
       final response = await _supabaseClient
           .from('event_date_options') // Table: event_date_options
           .select('''
@@ -24,17 +26,26 @@ class SuggestionRemoteDataSource {
             starts_at,
             ends_at,
             created_at,
-            user:created_by(id, name, profile_picture_url)
+            user:created_by(id, name, avatar_url)
           ''')
           .eq('event_id', eventId)
           .order('created_at', ascending: false);
 
-      return (response as List)
-          .map((json) => SuggestionModel.fromJson(json))
+      print('📊 [SuggestionDataSource.getEventSuggestions] Found ${(response as List).length} suggestions');
+      
+      final suggestions = (response as List)
+          .map((json) {
+            print('   📅 Suggestion: ${json['id']} - ${json['starts_at']} to ${json['ends_at']}');
+            return SuggestionModel.fromJson(json);
+          })
           .toList();
+      
+      return suggestions;
     } on PostgrestException catch (e) {
+      print('❌ [SuggestionDataSource.getEventSuggestions] Postgrest error: ${e.message}');
       throw Exception('Failed to get event suggestions: ${e.message}');
     } catch (e) {
+      print('❌ [SuggestionDataSource.getEventSuggestions] Error: $e');
       throw Exception('Failed to get event suggestions: $e');
     }
   }
@@ -234,7 +245,7 @@ class SuggestionRemoteDataSource {
             latitude,
             longitude,
             created_at,
-            user:user_id(id, name, profile_picture_url)
+            user:user_id(id, name, avatar_url)
           ''')
           .eq('event_id', eventId)
           .order('created_at', ascending: false);
@@ -325,7 +336,7 @@ class SuggestionRemoteDataSource {
             suggestion_id,
             user_id,
             created_at,
-            user:user_id(id, name, profile_picture_url)
+            user:user_id(id, name, avatar_url)
           ''')
           .eq('event_id', eventId);
 
@@ -356,7 +367,7 @@ class SuggestionRemoteDataSource {
             suggestion_id,
             user_id,
             created_at,
-            user:user_id(id, name, profile_picture_url)
+            user:user_id(id, name, avatar_url)
           ''')
           .single();
 
@@ -411,7 +422,7 @@ class SuggestionRemoteDataSource {
             suggestion_id,
             user_id,
             created_at,
-            user:user_id(id, name, profile_picture_url)
+            user:user_id(id, name, avatar_url)
           ''')
           .inFilter('suggestion_id', suggestionIds)
           .eq('user_id', userId);

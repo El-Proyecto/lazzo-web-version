@@ -657,19 +657,54 @@ class EventPage extends ConsumerWidget {
               ),
               const SizedBox(height: Gaps.lg),
 
-              // Date & Time Suggestions Widget (appears when suggestions exist)
+              // Date & Time Suggestions Widget
+              // ONLY SHOWS when there are alternative date suggestions (not just event's current date)
               suggestionsAsync.when(
                 data: (suggestions) {
-                  if (suggestions.isEmpty) {
+                  print('🔍 [EventPage] DateTime suggestions - count: ${suggestions.length}');
+                  print('🔍 [EventPage] Event dates - start: ${event.startDateTime}, end: ${event.endDateTime}');
+                  
+                  // Filter suggestions that are DIFFERENT from current event date
+                  final alternateSuggestions = suggestions.where((s) {
+                    if (event.startDateTime == null || event.endDateTime == null) return true;
+                    
+                    // Keep only suggestions with DIFFERENT dates
+                    final isDifferent = !s.startDateTime.isAtSameMomentAs(event.startDateTime!) ||
+                                       !(s.endDateTime?.isAtSameMomentAs(event.endDateTime!) ?? false);
+                    return isDifferent;
+                  }).toList();
+                  
+                  print('� [EventPage] Alternate suggestions (different from event date): ${alternateSuggestions.length}');
+                  
+                  // ONLY show widget if there are ALTERNATIVE suggestions (different from current date)
+                  if (alternateSuggestions.isEmpty) {
+                    print('⚠️ [EventPage] Hiding DateTime widget - no alternative date suggestions');
                     return const SizedBox.shrink();
                   }
+
+                  print('✅ [EventPage] Showing DateTime widget with ${alternateSuggestions.length} alternatives');
 
                   return suggestionVotesAsync.when(
                     data: (allVotes) {
                       return userSuggestionVotesAsync.when(
                         data: (userVotes) {
-                          // Convert suggestions to DateTimeSuggestion format
-                          final dateTimeSuggestions = suggestions.map((
+                          final List<DateTimeSuggestion> dateTimeSuggestions = [];
+                          
+                          // Always add current event date as FIRST option (for comparison)
+                          if (event.startDateTime != null && event.endDateTime != null) {
+                            print('➕ [EventPage] Adding current event date as first option for voting');
+                            dateTimeSuggestions.add(DateTimeSuggestion(
+                              id: 'current_event_date',
+                              startDateTime: event.startDateTime!,
+                              endDateTime: event.endDateTime!,
+                              voteCount: 0, // Current date has no votes (it's the default)
+                              hasUserVoted: false,
+                              votes: [],
+                            ));
+                          }
+                          
+                          // Add all ALTERNATIVE suggestions (different from current date)
+                          dateTimeSuggestions.addAll(alternateSuggestions.map((
                             suggestion,
                           ) {
                             final suggestionVotes = allVotes
@@ -697,7 +732,12 @@ class EventPage extends ConsumerWidget {
                               ),
                               votes: suggestionVotes,
                             );
-                          }).toList();
+                          }));
+
+                          print('📋 [EventPage] Final dateTimeSuggestions list:');
+                          for (var s in dateTimeSuggestions) {
+                            print('   📅 ${s.id}: ${s.startDateTime} - ${s.endDateTime} (${s.voteCount} votes)');
+                          }
 
                           final userVoteIds = userVotes
                               .map((vote) => vote.suggestionId)

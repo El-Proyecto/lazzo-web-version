@@ -26,9 +26,9 @@ class ProfileRemoteDataSource {
 
       if (response == null) return null;
       
-      // Convert storage path to public URL
+      // Convert storage path to signed URL (private bucket)
       if (response['avatar_url'] != null) {
-        response['avatar_url'] = getPublicUrl(response['avatar_url'] as String);
+        response['avatar_url'] = await getProfilePictureSignedUrl(response['avatar_url'] as String);
       }
       
       return ProfileModel.fromMap(response);
@@ -58,16 +58,22 @@ class ProfileRemoteDataSource {
       final user = client.auth.currentUser;
       if (user == null) throw Exception('No authenticated user');
 
+      final profileData = profile.toMap();
+      print('🔄 [ProfileDataSource.updateProfile] Updating with data: ${profileData['avatar_url']}');
+
       final response = await client
           .from('users')
-          .update(profile.toMap())
+          .update(profileData)
           .eq('id', user.id)
           .select('id, name, email, avatar_url, city, birth_date')
           .single();
 
-      // Convert storage path to public URL
+      print('✅ [ProfileDataSource.updateProfile] Database returned: ${response['avatar_url']}');
+
+      // Convert storage path to signed URL (private bucket)
       if (response['avatar_url'] != null) {
-        response['avatar_url'] = getPublicUrl(response['avatar_url'] as String);
+        response['avatar_url'] = await getProfilePictureSignedUrl(response['avatar_url'] as String);
+        print('🔗 [ProfileDataSource.updateProfile] Converted to signed URL: ${response['avatar_url']}');
       }
       
       return ProfileModel.fromMap(response);
@@ -121,7 +127,7 @@ class ProfileRemoteDataSource {
     }
   }
 
-  /// Get signed URL for profile picture
+  /// Get signed URL for profile picture (private bucket - requires authentication)
   Future<String?> getProfilePictureSignedUrl(String? avatarUrl) async {
     if (avatarUrl == null || avatarUrl.isEmpty) {
       return null;
@@ -132,14 +138,20 @@ class ProfileRemoteDataSource {
       
       // If it's a local path, we can't generate a signed URL
       if (avatarUrl.startsWith('/') || avatarUrl.contains('cache') || avatarUrl.contains('data/user')) {
-        print('   ⚠️ Local path detected, cannot generate signed URL');
-        return null;
+        print('   ❌ Invalid path detected (local path instead of storage path): $avatarUrl');
+        throw Exception('Invalid photo path - local paths are not supported');
       }
       
-      // Generate signed URL for storage path (expires in 1 hour)
+      // If it's already a full URL (signed URL from previous call), just return it
+      if (avatarUrl.startsWith('http://') || avatarUrl.startsWith('https://')) {
+        print('   ℹ️ Already a full URL, returning as is');
+        return avatarUrl;
+      }
+      
+      // Generate signed URL for storage path (private bucket - 1 hour validity)
       final signedUrl = await client.storage
           .from(_bucketName)
-          .createSignedUrl(avatarUrl, 3600); // 1 hour expiry
+          .createSignedUrl(avatarUrl, 3600); // 1 hour validity
       
       print('   ✅ Signed URL created successfully');
       return signedUrl;
@@ -209,21 +221,6 @@ class ProfileRemoteDataSource {
     }
 
     throw Exception('Unrecognized path: $input');
-  }
-
-  /// Convert storage path to public URL
-  String getPublicUrl(String? storagePath) {
-    if (storagePath == null || storagePath.isEmpty) {
-      return '';
-    }
-    
-    // Already a full URL
-    if (storagePath.startsWith('http://') || storagePath.startsWith('https://')) {
-      return storagePath;
-    }
-    
-    // Storage path - convert to public URL
-    return client.storage.from(_bucketName).getPublicUrl(storagePath);
   }
 
   /// Delete profile picture from storage (deletes entire user folder)
