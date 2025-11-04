@@ -5,6 +5,7 @@ import '../../../../shared/components/nav/common_app_bar.dart';
 import '../../../../shared/components/common/page_segmented_control.dart';
 import '../../../../shared/components/cards/group_event_card.dart';
 import '../../../../shared/components/cards/memory_card.dart';
+import '../../../../shared/components/dialogs/add_expense_bottom_sheet.dart';
 import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/constants/text_styles.dart';
 import '../../../../shared/themes/colors.dart';
@@ -207,6 +208,9 @@ class _GroupHubPageState extends ConsumerState<GroupHubPage>
                 child: FloatingActionButton(
                   onPressed: _handleAddExpense,
                   backgroundColor: BrandColors.bg3,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(Radii.md),
+                  ),
                   child: const Icon(
                     Icons.receipt_long_outlined,
                     color: BrandColors.text1,
@@ -636,7 +640,7 @@ class _GroupHubPageState extends ConsumerState<GroupHubPage>
             left: Insets.screenH,
             right: Insets.screenH,
             top: _isSnapped ? Gaps.md : 0,
-            bottom: Gaps.md + 80, // Extra padding for FAB
+            bottom: Gaps.md,
           ),
           itemCount: sortedExpenses.length + 1,
           separatorBuilder: (context, index) {
@@ -917,8 +921,38 @@ class _GroupHubPageState extends ConsumerState<GroupHubPage>
   }
 
   void _handleAddExpense() {
-    // TODO: Navigate to add expense screen
-    print('Add new expense');
+    // Mock participants for the group
+    final participants = [
+      const ExpenseParticipantOption(
+        id: 'current_user',
+        name: 'You',
+      ),
+      const ExpenseParticipantOption(
+        id: 'marco',
+        name: 'Marco',
+      ),
+      const ExpenseParticipantOption(
+        id: 'ana',
+        name: 'Ana',
+      ),
+      const ExpenseParticipantOption(
+        id: 'joao',
+        name: 'João',
+      ),
+    ];
+
+    AddExpenseBottomSheet.show(
+      context: context,
+      participants: participants,
+      onAddExpense: (title, paidByIds, payerIds, totalAmount) {
+        // TODO: Implement add expense logic with repository
+        print('Add Expense:');
+        print('  Title: $title');
+        print('  Paid by: $paidByIds');
+        print('  Payers: $payerIds');
+        print('  Total: $totalAmount');
+      },
+    );
   }
 
   List<ExpenseParticipant> _createMockParticipants(String expenseId) {

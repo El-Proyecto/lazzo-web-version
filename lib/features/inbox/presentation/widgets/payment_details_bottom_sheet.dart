@@ -32,7 +32,7 @@ class PaymentDetailsBottomSheet extends StatelessWidget {
           maxHeight: MediaQuery.of(context).size.height * 0.7,
         ),
         decoration: const BoxDecoration(
-          color: BrandColors.bg1,
+          color: BrandColors.bg2,
           borderRadius: BorderRadius.only(
             topLeft: Radius.circular(Radii.md),
             topRight: Radius.circular(Radii.md),
@@ -113,9 +113,9 @@ class PaymentDetailsBottomSheet extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(Pads.ctlH),
         decoration: BoxDecoration(
-          color: BrandColors.bg2,
+          color: BrandColors.bg3,
           borderRadius: BorderRadius.circular(Radii.md),
-          border: Border.all(color: BrandColors.bg3, width: 1),
+          border: Border.all(color: BrandColors.border, width: 1),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,

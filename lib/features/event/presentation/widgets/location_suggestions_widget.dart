@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/constants/text_styles.dart';
 import '../../../../shared/themes/colors.dart';
-import '../../../../shared/components/dialogs/common_bottom_sheet.dart';
+import '../../../../shared/components/common/common_bottom_sheet.dart';
 import '../../domain/entities/suggestion.dart';
 
 /// Widget that displays location suggestions as votable polls

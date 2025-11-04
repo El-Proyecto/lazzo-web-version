@@ -1,0 +1,768 @@
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import '../../constants/spacing.dart';
+import '../../constants/text_styles.dart';
+import '../../themes/colors.dart';
+import '../widgets/grabber_bar.dart';
+
+/// Model for a participant that can be selected for an expense
+class ExpenseParticipantOption {
+  final String id;
+  final String name;
+  final String? avatarUrl;
+
+  const ExpenseParticipantOption({
+    required this.id,
+    required this.name,
+    this.avatarUrl,
+  });
+}
+
+/// Bottom sheet for adding a new expense
+/// Allows user to input expense details including title, payer(s), participants, and amount
+class AddExpenseBottomSheet extends StatefulWidget {
+  final List<ExpenseParticipantOption> participants;
+  final Function(
+    String title,
+    List<String> paidByIds,
+    List<String> payerIds,
+    double totalAmount,
+  ) onAddExpense;
+
+  const AddExpenseBottomSheet({
+    super.key,
+    required this.participants,
+    required this.onAddExpense,
+  });
+
+  /// Show the add expense bottom sheet
+  static Future<T?> show<T>({
+    required BuildContext context,
+    required List<ExpenseParticipantOption> participants,
+    required Function(
+      String title,
+      List<String> paidByIds,
+      List<String> payerIds,
+      double totalAmount,
+    ) onAddExpense,
+  }) {
+    return showModalBottomSheet<T>(
+      context: context,
+      isDismissible: true,
+      enableDrag: true,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) => AddExpenseBottomSheet(
+        participants: participants,
+        onAddExpense: onAddExpense,
+      ),
+    );
+  }
+
+  @override
+  State<AddExpenseBottomSheet> createState() => _AddExpenseBottomSheetState();
+}
+
+class _AddExpenseBottomSheetState extends State<AddExpenseBottomSheet> {
+  final TextEditingController _titleController = TextEditingController();
+  final TextEditingController _amountController = TextEditingController();
+  final FocusNode _titleFocusNode = FocusNode();
+  final FocusNode _amountFocusNode = FocusNode();
+
+  late List<String> _selectedPaidBy;
+  late List<String> _selectedPayers;
+
+  bool _showPaidByDropdown = false;
+  bool _showSplitWithDropdown = false;
+
+  bool _showErrors = false;
+  String? _titleError;
+  String? _amountError;
+  String? _paidByError;
+  String? _splitWithError;
+
+  @override
+  void initState() {
+    super.initState();
+    // Default: current user (first in list) paid
+    _selectedPaidBy =
+        widget.participants.isNotEmpty ? [widget.participants.first.id] : [];
+    // Default: no payers selected
+    _selectedPayers = [];
+  }
+
+  @override
+  void dispose() {
+    _titleController.dispose();
+    _amountController.dispose();
+    _titleFocusNode.dispose();
+    _amountFocusNode.dispose();
+    super.dispose();
+  }
+
+  double get _totalAmount {
+    final text = _amountController.text.trim();
+    return double.tryParse(text) ?? 0.0;
+  }
+
+  double get _amountPerPerson {
+    if (_selectedPayers.isEmpty || _totalAmount == 0) return 0.0;
+    return _totalAmount / _selectedPayers.length;
+  }
+
+  bool get _isValid {
+    return _titleController.text.trim().isNotEmpty &&
+        _selectedPaidBy.isNotEmpty &&
+        _selectedPayers.isNotEmpty &&
+        _totalAmount > 0;
+  }
+
+  void _validateFields() {
+    setState(() {
+      _titleError = _titleController.text.trim().isEmpty
+          ? 'Please enter an expense title'
+          : null;
+      _amountError = _totalAmount <= 0 ? 'Please enter a valid amount' : null;
+      _paidByError = _selectedPaidBy.isEmpty ? 'Please select who paid' : null;
+      _splitWithError =
+          _selectedPayers.isEmpty ? 'Please select participants' : null;
+    });
+  }
+
+  void _handleAddExpense() {
+    if (!_isValid) {
+      _validateFields();
+      setState(() {
+        _showErrors = true;
+      });
+      return;
+    }
+
+    widget.onAddExpense(
+      _titleController.text.trim(),
+      _selectedPaidBy,
+      _selectedPayers,
+      _totalAmount,
+    );
+
+    Navigator.of(context).pop();
+  }
+
+  void _togglePaidBy(String participantId) {
+    setState(() {
+      if (_selectedPaidBy.contains(participantId)) {
+        _selectedPaidBy.remove(participantId);
+      } else {
+        _selectedPaidBy.add(participantId);
+      }
+    });
+  }
+
+  void _closePaidByDropdown() {
+    if (_showPaidByDropdown) {
+      setState(() {
+        _showPaidByDropdown = false;
+      });
+    }
+  }
+
+  void _closeSplitWithDropdown() {
+    if (_showSplitWithDropdown) {
+      setState(() {
+        _showSplitWithDropdown = false;
+      });
+    }
+  }
+
+  void _closeAllDropdowns() {
+    _closePaidByDropdown();
+    _closeSplitWithDropdown();
+    _titleFocusNode.unfocus();
+    _amountFocusNode.unfocus();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: _closeAllDropdowns,
+      child: Container(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(context).size.height * 0.9,
+        ),
+        decoration: const BoxDecoration(
+          color: BrandColors.bg2,
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(Radii.md),
+            topRight: Radius.circular(Radii.md),
+          ),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Grabber
+            const GrabberBar(),
+
+            // Header
+            Padding(
+              padding: const EdgeInsets.only(
+                  right: Pads.sectionH,
+                  left: Pads.sectionH,
+                  bottom: Pads.sectionH),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'New Expense',
+                    style: AppText.titleMediumEmph.copyWith(
+                      color: BrandColors.text1,
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    icon: const Icon(Icons.close),
+                    color: BrandColors.text2,
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                  ),
+                ],
+              ),
+            ),
+
+            // Content
+            Flexible(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.only(
+                  left: Pads.sectionH,
+                  right: Pads.sectionH,
+                  bottom: Pads.sectionH,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Expense Title
+                    _buildInputField(
+                      label: 'Expense Title',
+                      controller: _titleController,
+                      focusNode: _titleFocusNode,
+                      hintText: 'e.g., Dinner at Restaurant',
+                      errorText: _showErrors ? _titleError : null,
+                      onChanged: (_) {
+                        if (_showErrors) _validateFields();
+                      },
+                    ),
+
+                    const SizedBox(height: Gaps.lg),
+
+                    // Total Amount
+                    _buildAmountField(
+                      label: 'Total Amount',
+                      controller: _amountController,
+                      focusNode: _amountFocusNode,
+                      hintText: '0.00',
+                      errorText: _showErrors ? _amountError : null,
+                      onChanged: (_) {
+                        setState(() {});
+                        if (_showErrors) _validateFields();
+                      },
+                    ), // Amount per person (inline display)
+                    if (_totalAmount > 0 && _selectedPayers.isNotEmpty) ...[
+                      const SizedBox(height: Gaps.xs),
+                      Padding(
+                        padding:
+                            const EdgeInsets.symmetric(horizontal: Gaps.xxs),
+                        child: Text(
+                          '${_amountPerPerson.toStringAsFixed(2)}€ per person • ${_selectedPayers.length} ${_selectedPayers.length == 1 ? 'person' : 'people'}',
+                          style: AppText.bodyMedium.copyWith(
+                            color: BrandColors.text2,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
+                    ],
+
+                    const SizedBox(height: Gaps.lg),
+
+                    // Paid by (dropdown trigger)
+                    _buildDropdownTrigger(
+                      label: 'Paid by',
+                      selectedIds: _selectedPaidBy,
+                      showDropdown: _showPaidByDropdown,
+                      errorText: _showErrors ? _paidByError : null,
+                      onToggle: () {
+                        setState(() {
+                          _showPaidByDropdown = !_showPaidByDropdown;
+                          _showSplitWithDropdown = false;
+                        });
+                      },
+                      dropdownBuilder: _buildPaidByDropdown,
+                    ),
+
+                    const SizedBox(height: Gaps.lg),
+
+                    // Split with (dropdown trigger)
+                    _buildDropdownTrigger(
+                      label: 'Split with',
+                      selectedIds: _selectedPayers,
+                      showDropdown: _showSplitWithDropdown,
+                      errorText: _showErrors ? _splitWithError : null,
+                      onToggle: () {
+                        setState(() {
+                          _showSplitWithDropdown = !_showSplitWithDropdown;
+                          _showPaidByDropdown = false;
+                        });
+                      },
+                      dropdownBuilder: _buildSplitWithDropdown,
+                    ),
+                    const SizedBox(height: Gaps.xl),
+
+                    // Add Expense Button
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: _handleAddExpense,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor:
+                              _isValid ? BrandColors.planning : BrandColors.bg3,
+                          foregroundColor: BrandColors.text1,
+                          padding: const EdgeInsets.symmetric(
+                            vertical: Gaps.md,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(Radii.md),
+                          ),
+                        ),
+                        child: Text(
+                          'Add Expense',
+                          style: AppText.labelLarge.copyWith(
+                            color: _isValid
+                                ? BrandColors.text1
+                                : BrandColors.text2,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            // Bottom safe area
+            SizedBox(height: MediaQuery.of(context).padding.bottom),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInputField({
+    required String label,
+    required TextEditingController controller,
+    required FocusNode focusNode,
+    required String hintText,
+    String? errorText,
+    void Function(String)? onChanged,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: AppText.labelLarge.copyWith(color: BrandColors.text1),
+        ),
+        const SizedBox(height: Gaps.xs),
+        Container(
+          width: double.infinity,
+          constraints: const BoxConstraints(minHeight: TouchTargets.input),
+          decoration: BoxDecoration(
+            color: BrandColors.bg3,
+            borderRadius: BorderRadius.circular(Radii.md),
+            border: Border.all(
+              color: errorText != null ? Colors.red : BrandColors.border,
+            ),
+          ),
+          child: TextField(
+            controller: controller,
+            focusNode: focusNode,
+            style: AppText.bodyMedium.copyWith(color: BrandColors.text1),
+            onChanged: onChanged,
+            decoration: InputDecoration(
+              hintText: hintText,
+              hintStyle: AppText.bodyMedium.copyWith(color: BrandColors.text2),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: Pads.ctlH,
+                vertical: Pads.ctlV,
+              ),
+              border: InputBorder.none,
+            ),
+          ),
+        ),
+        if (errorText != null) ...[
+          const SizedBox(height: Gaps.xxs),
+          Padding(
+            padding: const EdgeInsets.only(left: Gaps.xxs),
+            child: Text(
+              errorText,
+              style: AppText.bodyMedium.copyWith(
+                color: Colors.red,
+                fontSize: 12,
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildAmountField({
+    required String label,
+    required TextEditingController controller,
+    required FocusNode focusNode,
+    required String hintText,
+    String? errorText,
+    void Function(String)? onChanged,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: AppText.labelLarge.copyWith(color: BrandColors.text1),
+        ),
+        const SizedBox(height: Gaps.xs),
+        Container(
+          width: double.infinity,
+          constraints: const BoxConstraints(minHeight: TouchTargets.input),
+          decoration: BoxDecoration(
+            color: BrandColors.bg3,
+            borderRadius: BorderRadius.circular(Radii.md),
+            border: Border.all(
+              color: errorText != null ? Colors.red : BrandColors.border,
+            ),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: controller,
+                  focusNode: focusNode,
+                  keyboardType:
+                      const TextInputType.numberWithOptions(decimal: true),
+                  style: AppText.bodyMedium.copyWith(color: BrandColors.text1),
+                  inputFormatters: [
+                    FilteringTextInputFormatter.allow(
+                        RegExp(r'^\d+\.?\d{0,2}')),
+                  ],
+                  onChanged: onChanged,
+                  decoration: InputDecoration(
+                    hintText: hintText,
+                    hintStyle:
+                        AppText.bodyMedium.copyWith(color: BrandColors.text2),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: Pads.ctlH,
+                      vertical: Pads.ctlV,
+                    ),
+                    border: InputBorder.none,
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.only(right: Pads.ctlH),
+                child: Text(
+                  '€',
+                  style: AppText.bodyMedium.copyWith(
+                    color: BrandColors.text2,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        if (errorText != null) ...[
+          const SizedBox(height: Gaps.xxs),
+          Padding(
+            padding: const EdgeInsets.only(left: Gaps.xxs),
+            child: Text(
+              errorText,
+              style: AppText.bodyMedium.copyWith(
+                color: Colors.red,
+                fontSize: 12,
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildDropdownTrigger({
+    required String label,
+    required List<String> selectedIds,
+    required bool showDropdown,
+    required VoidCallback onToggle,
+    required Widget Function() dropdownBuilder,
+    String? errorText,
+  }) {
+    final selectedNames = selectedIds
+        .map((id) => widget.participants.firstWhere((p) => p.id == id).name)
+        .join(', ');
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: AppText.labelLarge.copyWith(color: BrandColors.text1),
+        ),
+        const SizedBox(height: Gaps.xs),
+        GestureDetector(
+          onTap: onToggle,
+          child: Container(
+            width: double.infinity,
+            constraints: const BoxConstraints(minHeight: TouchTargets.input),
+            padding: const EdgeInsets.symmetric(
+              horizontal: Pads.ctlH,
+              vertical: Pads.ctlV,
+            ),
+            decoration: BoxDecoration(
+              color: BrandColors.bg3,
+              borderRadius: BorderRadius.circular(Radii.md),
+              border: Border.all(
+                color: errorText != null
+                    ? Colors.red
+                    : (showDropdown
+                        ? BrandColors.planning
+                        : BrandColors.border),
+              ),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    selectedNames.isEmpty
+                        ? 'Select ${label.toLowerCase()}'
+                        : selectedNames,
+                    style: AppText.bodyMedium.copyWith(
+                      color: selectedNames.isEmpty
+                          ? BrandColors.text2
+                          : BrandColors.text1,
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
+                Icon(
+                  showDropdown ? Icons.arrow_drop_up : Icons.arrow_drop_down,
+                  color: BrandColors.text2,
+                ),
+              ],
+            ),
+          ),
+        ),
+        if (errorText != null) ...[
+          const SizedBox(height: Gaps.xxs),
+          Padding(
+            padding: const EdgeInsets.only(left: Gaps.xxs),
+            child: Text(
+              errorText,
+              style: AppText.bodyMedium.copyWith(
+                color: Colors.red,
+                fontSize: 12,
+              ),
+            ),
+          ),
+        ],
+        if (showDropdown) dropdownBuilder(),
+      ],
+    );
+  }
+
+  Widget _buildPaidByDropdown() {
+    return Container(
+      margin: const EdgeInsets.only(top: Gaps.xs),
+      decoration: BoxDecoration(
+        color: BrandColors.bg3,
+        borderRadius: BorderRadius.circular(Radii.md),
+        border: Border.all(color: BrandColors.border),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.2),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: widget.participants.asMap().entries.map((entry) {
+          final index = entry.key;
+          final participant = entry.value;
+          final isSelected = _selectedPaidBy.contains(participant.id);
+          final isFirst = index == 0;
+          final isLast = index == widget.participants.length - 1;
+
+          return _buildParticipantOption(
+            name: participant.name,
+            avatarUrl: participant.avatarUrl,
+            isSelected: isSelected,
+            onTap: () => _togglePaidBy(participant.id),
+            isFirst: isFirst,
+            isLast: isLast,
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  Widget _buildSplitWithDropdown() {
+    return Container(
+      margin: const EdgeInsets.only(top: Gaps.xs),
+      decoration: BoxDecoration(
+        color: BrandColors.bg3,
+        borderRadius: BorderRadius.circular(Radii.md),
+        border: Border.all(color: BrandColors.border),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.2),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Select All option
+          _buildParticipantOption(
+            name: 'Select All',
+            isSelected: _selectedPayers.length == widget.participants.length,
+            onTap: _toggleAllPayers,
+            isSelectAll: true,
+            isFirst: true,
+            isLast: false,
+          ),
+          // Participants
+          ...widget.participants.asMap().entries.map((entry) {
+            final index = entry.key;
+            final participant = entry.value;
+            final isSelected = _selectedPayers.contains(participant.id);
+            final isLast = index == widget.participants.length - 1;
+
+            return _buildParticipantOption(
+              name: participant.name,
+              avatarUrl: participant.avatarUrl,
+              isSelected: isSelected,
+              onTap: () => _togglePayer(participant.id),
+              isFirst: false,
+              isLast: isLast,
+            );
+          }),
+        ],
+      ),
+    );
+  }
+
+  void _togglePayer(String participantId) {
+    setState(() {
+      if (_selectedPayers.contains(participantId)) {
+        _selectedPayers.remove(participantId);
+      } else {
+        _selectedPayers.add(participantId);
+      }
+      if (_showErrors) _validateFields();
+    });
+  }
+
+  void _toggleAllPayers() {
+    setState(() {
+      if (_selectedPayers.length == widget.participants.length) {
+        _selectedPayers.clear();
+      } else {
+        _selectedPayers = widget.participants.map((p) => p.id).toList();
+      }
+      if (_showErrors) _validateFields();
+    });
+  }
+
+  Widget _buildParticipantOption({
+    required String name,
+    String? avatarUrl,
+    required bool isSelected,
+    required VoidCallback onTap,
+    bool isSelectAll = false,
+    bool isFirst = false,
+    bool isLast = false,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.vertical(
+          top: isFirst ? const Radius.circular(Radii.md) : Radius.zero,
+          bottom: isLast ? const Radius.circular(Radii.md) : Radius.zero,
+        ),
+        child: Container(
+          padding: const EdgeInsets.symmetric(
+            horizontal: Pads.ctlH,
+            vertical: Pads.ctlV,
+          ),
+          decoration: BoxDecoration(
+            border: !isLast
+                ? const Border(
+                    bottom: BorderSide(
+                      color: BrandColors.border,
+                      width: 1,
+                    ),
+                  )
+                : null,
+          ),
+          child: Row(
+            children: [
+              if (!isSelectAll) ...[
+                CircleAvatar(
+                  radius: 16,
+                  backgroundColor: BrandColors.bg1,
+                  backgroundImage:
+                      avatarUrl != null ? NetworkImage(avatarUrl) : null,
+                  child: avatarUrl == null
+                      ? Text(
+                          name[0].toUpperCase(),
+                          style: AppText.bodyMedium.copyWith(
+                            color: BrandColors.text2,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        )
+                      : null,
+                ),
+                const SizedBox(width: Gaps.sm),
+              ],
+              Expanded(
+                child: Text(
+                  name,
+                  style: AppText.bodyMedium.copyWith(
+                    color: BrandColors.text1,
+                    fontSize: 14,
+                    fontWeight:
+                        isSelectAll ? FontWeight.w600 : FontWeight.normal,
+                  ),
+                ),
+              ),
+              if (isSelected)
+                const Icon(
+                  Icons.check_circle,
+                  color: BrandColors.planning,
+                  size: IconSizes.smAlt,
+                )
+              else
+                Icon(
+                  Icons.circle_outlined,
+                  color: BrandColors.text2.withValues(alpha: 0.3),
+                  size: IconSizes.smAlt,
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}

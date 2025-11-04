@@ -454,7 +454,7 @@ class _ExpenseDetailBottomSheetState extends State<ExpenseDetailBottomSheet> {
             foregroundColor: BrandColors.text1,
             padding: const EdgeInsets.symmetric(vertical: Pads.ctlV),
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(Radii.sm),
+              borderRadius: BorderRadius.circular(Radii.smAlt),
             ),
           ),
           child: Text(
