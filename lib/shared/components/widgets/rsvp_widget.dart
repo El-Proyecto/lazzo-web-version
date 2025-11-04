@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../../constants/spacing.dart';
 import '../../constants/text_styles.dart';
 import '../../themes/colors.dart';
-import '../dialogs/common_bottom_sheet.dart';
+import '../common/common_bottom_sheet.dart';
 import '../../../features/create_event/presentation/widgets/inline_date_picker.dart';
 import '../../../features/create_event/presentation/widgets/inline_time_picker.dart';
 

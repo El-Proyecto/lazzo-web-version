@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../../routes/app_router.dart';
+import '../../../../shared/components/dialogs/add_expense_bottom_sheet.dart';
 import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/constants/text_styles.dart';
 import '../../../../shared/themes/colors.dart';
@@ -457,10 +457,9 @@ class _ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
             if (subtitle != null)
               Padding(
                 padding: const EdgeInsets.only(
-                  left: Insets.screenH,
-                  right: Insets.screenH,
-                  bottom: Gaps.xs
-                ),
+                    left: Insets.screenH,
+                    right: Insets.screenH,
+                    bottom: Gaps.xs),
                 child: Text(
                   subtitle!,
                   style: AppText.bodyMedium.copyWith(
@@ -1003,6 +1002,41 @@ class _ChatInput extends StatelessWidget {
     this.onCancelReply,
   });
 
+  void _showAddExpenseBottomSheet(BuildContext context) {
+    // Mock participants for the event
+    final participants = [
+      const ExpenseParticipantOption(
+        id: 'current_user',
+        name: 'You',
+      ),
+      const ExpenseParticipantOption(
+        id: 'marco',
+        name: 'Marco',
+      ),
+      const ExpenseParticipantOption(
+        id: 'ana',
+        name: 'Ana',
+      ),
+      const ExpenseParticipantOption(
+        id: 'joao',
+        name: 'João',
+      ),
+    ];
+
+    AddExpenseBottomSheet.show(
+      context: context,
+      participants: participants,
+      onAddExpense: (title, paidByIds, payerIds, totalAmount) {
+        // TODO: Implement add expense logic with repository
+        print('Add Expense:');
+        print('  Title: $title');
+        print('  Paid by: $paidByIds');
+        print('  Payers: $payerIds');
+        print('  Total: $totalAmount');
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -1113,7 +1147,7 @@ class _ChatInput extends StatelessWidget {
                     ),
                   ),
 
-                  // Dynamic action button: "+" when empty, "send" when text exists
+                  // Dynamic action button: expense icon when empty, "send" when text exists
                   ValueListenableBuilder<TextEditingValue>(
                     valueListenable: controller,
                     builder: (context, value, child) {
@@ -1127,7 +1161,9 @@ class _ChatInput extends StatelessWidget {
                           bottom: Gaps.xxs,
                         ),
                         decoration: BoxDecoration(
-                          color: BrandColors.planning,
+                          color: hasText
+                              ? BrandColors.planning
+                              : Colors.transparent,
                           borderRadius: BorderRadius.circular(Radii.pill),
                         ),
                         child: Material(
@@ -1137,16 +1173,20 @@ class _ChatInput extends StatelessWidget {
                               if (hasText) {
                                 onSend();
                               } else {
-                                Navigator.pushNamed(
-                                    context, AppRouter.createEvent);
+                                // Show add expense bottom sheet
+                                _showAddExpenseBottomSheet(context);
                               }
                               HapticFeedback.lightImpact();
                             },
                             borderRadius: BorderRadius.circular(Radii.pill),
                             child: Icon(
-                              hasText ? Icons.send : Icons.add,
-                              size: hasText ? IconSizes.sm : IconSizes.smAlt,
-                              color: BrandColors.text1,
+                              hasText
+                                  ? Icons.send
+                                  : Icons.receipt_long_outlined,
+                              size: IconSizes.smAlt,
+                              color: hasText
+                                  ? BrandColors.text1
+                                  : BrandColors.text2,
                             ),
                           ),
                         ),

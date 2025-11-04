@@ -597,6 +597,186 @@ All UI uses tokens from `shared/constants/` and `shared/themes/`:
 
 ---
 
+## 🆕 **Add Expense Integration (November 2025)**
+
+### **Receipt Icon in Message Input**
+
+Added expense creation capability directly from event chat interface:
+
+**Location:** `lib/features/event/presentation/pages/event_chat_page.dart`
+
+**Features:**
+- Receipt icon (`Icons.receipt_long_outlined`) in message input area
+- Replaces send button when input is empty
+- Transparent background when no text (unlike send button with green background)
+- Opens shared Add Expense Bottom Sheet on tap
+
+**Implementation:**
+```dart
+// Dynamic action button in _ChatInput widget
+IconButton(
+  onPressed: hasText 
+      ? () => onSend() 
+      : () => _showAddExpenseBottomSheet(context),
+  style: IconButton.styleFrom(
+    backgroundColor: hasText 
+        ? BrandColors.planning 
+        : Colors.transparent,
+    foregroundColor: BrandColors.text1,
+    padding: EdgeInsets.zero,
+    minimumSize: const Size(TouchTargets.ctaH, TouchTargets.ctaH),
+  ),
+  icon: Icon(
+    hasText 
+        ? Icons.arrow_upward_rounded 
+        : Icons.receipt_long_outlined,
+  ),
+)
+```
+
+**Add Expense Bottom Sheet Integration:**
+```dart
+void _showAddExpenseBottomSheet(BuildContext context) {
+  // Mock participants for the event
+  final participants = [
+    const ExpenseParticipantOption(
+      id: 'current_user',
+      name: 'You',
+    ),
+    const ExpenseParticipantOption(
+      id: 'marco',
+      name: 'Marco',
+    ),
+    const ExpenseParticipantOption(
+      id: 'ana',
+      name: 'Ana',
+    ),
+    const ExpenseParticipantOption(
+      id: 'joao',
+      name: 'João',
+    ),
+  ];
+
+  AddExpenseBottomSheet.show(
+    context: context,
+    participants: participants,
+    onAddExpense: (title, paidByIds, payerIds, totalAmount) {
+      // TODO: P2 implement expense creation via repository
+      print('Creating expense: $title');
+      print('Total: €$totalAmount');
+      print('Paid by: $paidByIds');
+      print('Split with: $payerIds');
+    },
+  );
+}
+```
+
+**Add Expense Bottom Sheet** (Shared Component):
+- **Location:** `lib/shared/components/dialogs/add_expense_bottom_sheet.dart`
+- **Design:** Follows CommonBottomSheet pattern with tokenized design
+- **Validation:** Complete error handling with field-specific messages
+- **Fields:**
+  1. Expense Title (text input with validation)
+  2. Total Amount (numeric input with euro symbol)
+  3. Amount Per Person (inline calculated display)
+  4. Paid by (dropdown overlay with participant checkboxes)
+  5. Split with (dropdown overlay with "Select All" + participant checkboxes)
+  6. Add Expense Button (disabled until valid)
+
+**Dropdown Behavior:**
+- Triggers open dropdown overlay below field
+- Shows participant list with avatars and checkboxes
+- Tap outside closes dropdown (also closes keyboard)
+- Tap participant toggles selection without closing
+- Border highlights in planning color when open
+- Arrow icon animates (down ↔ up)
+
+**Validation System:**
+- Error messages appear when clicking disabled button
+- Red borders on invalid fields
+- Error text below each field (12px, red)
+- Real-time validation after first submit attempt
+- Specific error messages:
+  - Title: "Please enter an expense title"
+  - Amount: "Please enter a valid amount"
+  - Paid by: "Please select who paid"
+  - Split with: "Please select participants"
+
+**P2 Integration Requirements:**
+
+1. **Create Expense Repository Method:**
+```dart
+abstract class ExpenseRepository {
+  Future<ExpenseEntity> createExpense({
+    required String eventId,
+    required String title,
+    required List<String> paidByUserIds,
+    required List<String> splitWithUserIds,
+    required double totalAmount,
+  });
+}
+```
+
+2. **Database Schema:**
+```sql
+-- Table for event expenses
+CREATE TABLE event_expenses (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  event_id UUID NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+  title TEXT NOT NULL,
+  total_amount DECIMAL(10,2) NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  created_by UUID REFERENCES profiles(id)
+);
+
+-- Table for expense participants (who paid)
+CREATE TABLE expense_payers (
+  expense_id UUID REFERENCES event_expenses(id) ON DELETE CASCADE,
+  user_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
+  PRIMARY KEY (expense_id, user_id)
+);
+
+-- Table for expense splits (who owes)
+CREATE TABLE expense_splits (
+  expense_id UUID REFERENCES event_expenses(id) ON DELETE CASCADE,
+  user_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
+  amount DECIMAL(10,2) NOT NULL,
+  has_paid BOOLEAN DEFAULT FALSE,
+  PRIMARY KEY (expense_id, user_id)
+);
+```
+
+3. **UI Updates After Creation:**
+- Close bottom sheet
+- Show success snackbar
+- Refresh expenses section if visible in Group Hub
+- Optionally send automated chat message: `"💰 ${userName} added expense '${title}' (€${amount})"`
+
+**User Flow:**
+1. User in event chat with empty message input
+2. Sees receipt icon instead of send arrow
+3. Taps receipt icon → Add Expense Bottom Sheet opens
+4. Fills in expense details with validation
+5. Taps "Add Expense" → Creates expense in database
+6. Bottom sheet closes, success feedback shown
+7. Optional: Automated message posted to chat
+
+**Design Specifications:**
+- Receipt icon: `Icons.receipt_long_outlined`
+- Icon color: `BrandColors.text1`
+- Background: Transparent (empty) vs Planning Green (with text)
+- Minimum font size: 14px throughout bottom sheet
+- Touch targets: `TouchTargets.input` minimum height
+- Spacing: Design tokens from `shared/constants/spacing.dart`
+
+**Export:**
+Bottom sheet exported in `lib/shared/components/components.dart`:
+```dart
+export 'dialogs/add_expense_bottom_sheet.dart';
+```
+
+---
+
 ## Questions for P2
 
 1. **Real-time subscriptions:** Should messages auto-update with Supabase Realtime, or manual refresh?
