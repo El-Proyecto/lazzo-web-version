@@ -24,7 +24,7 @@ class PhotoCluster {
 /// 4) L (full) alone [end of cluster only, except special 3L case]
 class HybridPhotoGrid extends StatelessWidget {
   final List<PhotoCluster> clusters;
-  final VoidCallback? onPhotoTap;
+  final Function(String photoId)? onPhotoTap;
 
   const HybridPhotoGrid({
     super.key,
@@ -361,7 +361,7 @@ class HybridPhotoGrid extends StatelessWidget {
     final targetHeight = rowHeight ?? height;
 
     return GestureDetector(
-      onTap: onPhotoTap,
+      onTap: onPhotoTap != null ? () => onPhotoTap!(photo.id) : null,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
         width: width,

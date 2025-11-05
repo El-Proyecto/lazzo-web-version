@@ -27,7 +27,7 @@ class CoverMosaic extends StatelessWidget {
   final double gap;
 
   /// Tap handler for any tile.
-  final VoidCallback? onPhotoTap;
+  final Function(String photoId)? onPhotoTap;
 
   const CoverMosaic({
     super.key,
@@ -157,7 +157,8 @@ class CoverMosaic extends StatelessWidget {
                   width: width,
                   height: height,
                   child: GestureDetector(
-                    onTap: onPhotoTap,
+                    onTap:
+                        onPhotoTap != null ? () => onPhotoTap!(cover.id) : null,
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(Radii.sm),
                       child: Image.network(

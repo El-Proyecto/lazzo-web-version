@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import '../../../../routes/app_router.dart';
 import '../../../../shared/components/nav/common_app_bar.dart';
 import '../../../../shared/components/sections/cover_mosaic.dart';
 import '../../../../shared/components/sections/hybrid_photo_grid.dart';
@@ -77,6 +78,7 @@ class MemoryPage extends ConsumerWidget {
                         ),
                       )
                       .toList(),
+                  onPhotoTap: (photoId) => _navigateToViewer(context, photoId),
                 ),
 
                 const SizedBox(height: Gaps.lg),
@@ -116,6 +118,7 @@ class MemoryPage extends ConsumerWidget {
                 // Hybrid Photo Grid with Clustering
                 HybridPhotoGrid(
                   clusters: _buildClusters(gridPhotos),
+                  onPhotoTap: (photoId) => _navigateToViewer(context, photoId),
                 ),
 
                 const SizedBox(height: Gaps.md),
@@ -254,6 +257,17 @@ class MemoryPage extends ConsumerWidget {
             );
           },
         );
+      },
+    );
+  }
+
+  /// Navigate to memory viewer page
+  void _navigateToViewer(BuildContext context, String photoId) {
+    Navigator.of(context).pushNamed(
+      AppRouter.memoryViewer,
+      arguments: {
+        'memoryId': memoryId,
+        'photoId': photoId,
       },
     );
   }

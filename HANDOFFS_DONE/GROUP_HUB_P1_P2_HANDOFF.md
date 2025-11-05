@@ -892,6 +892,227 @@ After P2 implementation, verify:
 
 ---
 
+## 🆕 **RECENT UI ENHANCEMENTS (November 2025)**
+
+### **1. Floating Action Button (FAB) for Expenses**
+
+Added smart FAB to expenses section with scroll-aware visibility:
+
+**Location:** `lib/features/group_hub/presentation/pages/group_hub_page.dart`
+
+**Features:**
+- Positioned at bottom-right of expenses section
+- **Smart hide/show logic**: Only hides on scroll if 5+ expenses exist
+- Shows on scroll up, hides on scroll down
+- Receipt icon (`Icons.receipt_long_outlined`)
+- Planning color theme (green)
+- Opens Add Expense Bottom Sheet on tap
+
+**Implementation:**
+```dart
+// State management
+bool _showFab = true;
+ScrollController? _expensesScrollController;
+
+// Threshold check
+bool _hasEnoughExpensesToHideFab(List<GroupExpenseEntity> expenses) {
+  return expenses.length >= 5; // Only hide if 5+ expenses
+}
+
+// Scroll listener
+void _onExpensesScrollChanged(List<GroupExpenseEntity> expenses) {
+  if (!_hasEnoughExpensesToHideFab(expenses)) {
+    setState(() => _showFab = true);
+    return;
+  }
+  
+  final controller = _expensesScrollController;
+  if (controller == null) return;
+  
+  if (controller.position.userScrollDirection == ScrollDirection.forward) {
+    setState(() => _showFab = true);
+  } else if (controller.position.userScrollDirection == ScrollDirection.reverse) {
+    setState(() => _showFab = false);
+  }
+}
+
+// FAB widget
+floatingActionButton: _currentIndex == 1 && _showFab
+    ? FloatingActionButton(
+        onPressed: _handleAddExpense,
+        backgroundColor: BrandColors.planning,
+        foregroundColor: BrandColors.text1,
+        child: const Icon(Icons.receipt_long_outlined),
+      )
+    : null,
+```
+
+**Empty State Integration:**
+- Added full-width button to empty expenses state
+- Same receipt icon and styling
+- Opens same Add Expense Bottom Sheet
+
+### **2. Add Expense Bottom Sheet**
+
+Created shared, reusable component for adding expenses with complete validation:
+
+**Location:** `lib/shared/components/dialogs/add_expense_bottom_sheet.dart`
+
+**Design Pattern:**
+- Follows `CommonBottomSheet` structure
+- Tokenized design (all spacing/colors from design system)
+- Stateful widget with form validation
+- Static `show()` method for easy invocation
+
+**Features:**
+
+#### **Field Structure (Top to Bottom):**
+1. **Expense Title** - Text input with error validation
+2. **Total Amount** - Numeric input with euro symbol, 2 decimal places
+3. **Amount Per Person** - Inline calculated display: `"0.00€ per person • 4 people"`
+4. **Paid by** - Dropdown overlay with participant checkboxes
+5. **Split with** - Dropdown overlay with "Select All" + participant checkboxes
+6. **Add Expense Button** - Disabled state with error messages
+
+#### **Dropdown Overlay Behavior:**
+- Triggers show dropdown on tap with selected names display
+- Dropdown appears below trigger with shadow and border
+- Shows checkboxes for each participant with avatars
+- Tap outside dropdown (anywhere on sheet) closes it
+- Tap on participant toggles selection without closing
+- Border changes to planning color when open
+- Arrow icon changes (down ↔ up) based on state
+
+#### **Validation System:**
+```dart
+// Error state tracking
+bool _showErrors = false;
+String? _titleError;
+String? _amountError;
+String? _paidByError;
+String? _splitWithError;
+
+// Validation on submit
+void _handleAddExpense() {
+  if (!_isValid) {
+    _validateFields();
+    setState(() => _showErrors = true);
+    return;
+  }
+  // ... proceed with callback
+}
+
+// Field-specific errors
+void _validateFields() {
+  _titleError = _titleController.text.trim().isEmpty
+      ? 'Please enter an expense title'
+      : null;
+  _amountError = _totalAmount <= 0 
+      ? 'Please enter a valid amount' 
+      : null;
+  _paidByError = _selectedPaidBy.isEmpty 
+      ? 'Please select who paid' 
+      : null;
+  _splitWithError = _selectedPayers.isEmpty 
+      ? 'Please select participants' 
+      : null;
+}
+```
+
+#### **Error Display:**
+- Red border on invalid fields when errors shown
+- Error text below each field (12px font, red color)
+- Errors appear after clicking disabled button
+- Errors update in real-time as user fixes issues
+- Button enabled once all validations pass
+
+#### **Keyboard Management:**
+```dart
+// Focus nodes for input dismissal
+final FocusNode _titleFocusNode = FocusNode();
+final FocusNode _amountFocusNode = FocusNode();
+
+// Tap outside gesture
+GestureDetector(
+  onTap: _closeAllDropdowns, // Closes dropdowns + keyboard
+  child: Container(...),
+)
+
+void _closeAllDropdowns() {
+  _closePaidByDropdown();
+  _closeSplitWithDropdown();
+  _titleFocusNode.unfocus(); // Dismisses keyboard
+  _amountFocusNode.unfocus();
+}
+```
+
+#### **Model for Participants:**
+```dart
+class ExpenseParticipantOption {
+  final String id;
+  final String name;
+  final String? avatarUrl;
+}
+```
+
+#### **Callback Signature:**
+```dart
+Function(
+  String title,
+  List<String> paidByIds,
+  List<String> payerIds,
+  double totalAmount,
+) onAddExpense;
+```
+
+**Integration Points:**
+
+1. **Group Hub (Expenses Section):**
+```dart
+void _handleAddExpense() {
+  AddExpenseBottomSheet.show(
+    context: context,
+    participants: [ /* Mock participants */ ],
+    onAddExpense: (title, paidByIds, payerIds, totalAmount) {
+      // TODO: P2 implement expense creation via repository
+      print('Creating expense: $title for €$totalAmount');
+    },
+  );
+}
+```
+
+2. **Event Chat (Message Input):**
+```dart
+// Receipt icon button in empty state
+IconButton(
+  onPressed: _showAddExpenseBottomSheet,
+  icon: const Icon(Icons.receipt_long_outlined),
+  // ... transparent background when empty
+)
+```
+
+**Design Specifications:**
+- Header: `Pads.sectionH` padding, GrabberBar above
+- Inputs: `TouchTargets.input` minimum height, tokenized borders
+- Dropdowns: Shadow (`alpha: 0.2`, blur: 8, offset: (0,2)`)
+- Participant options: Avatar (32px diameter) + name + checkbox icon
+- Font sizes: Minimum 14px on all text
+- Spacing: `Gaps.lg` between sections, `Gaps.xs` for labels
+
+**Accessibility:**
+- Minimum touch target heights respected
+- Clear visual feedback for selections
+- Error messages announce validation state
+- Keyboard dismiss on outside tap
+
+**Export:**
+Added to `lib/shared/components/components.dart`:
+```dart
+export 'dialogs/add_expense_bottom_sheet.dart';
+```
+
+---
+
 **Ready for handoff! 🚀** 
 
 The Group Hub feature has a complete P1 implementation with all domain contracts, shared components, and UI functionality. P2 can proceed with Supabase integration using the detailed specifications above.

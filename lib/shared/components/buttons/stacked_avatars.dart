@@ -52,15 +52,33 @@ class StackedAvatars extends StatelessWidget {
             width: avatarSize,
             height: avatarSize,
             decoration: ShapeDecoration(
-              image: DecorationImage(
-                image: NetworkImage(voters[i].avatarUrl),
-                fit: BoxFit.cover,
-              ),
+              // ✅ Null safety: fallback para cor se avatarUrl == null
+              image: voters[i].avatarUrl != null
+                  ? DecorationImage(
+                      image: NetworkImage(voters[i].avatarUrl!),
+                      fit: BoxFit.cover,
+                    )
+                  : null,
+              color: voters[i].avatarUrl == null ? BrandColors.bg3 : null,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(60),
                 side: const BorderSide(color: BrandColors.bg2, width: 2),
               ),
             ),
+            // ✅ Fallback: mostrar inicial do nome se sem avatar
+            child: voters[i].avatarUrl == null
+                ? Center(
+                    child: Text(
+                      voters[i].name.isNotEmpty
+                          ? voters[i].name[0].toUpperCase()
+                          : '?',
+                      style: AppText.bodyMedium.copyWith(
+                        color: BrandColors.text1,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  )
+                : null,
           ),
         ),
       );

@@ -1,18 +1,16 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../domain/entities/pending_event.dart';
 import '../../domain/repositories/pending_event_repository.dart';
 import '../../domain/usecases/get_pending_events.dart';
 import '../../domain/usecases/vote_on_event.dart';
 import '../../data/fakes/fake_pending_event_repository.dart';
+import '../../../auth/presentation/providers/auth_provider.dart';
 
-// Repository provider (default: Fake)
 final pendingEventRepositoryProvider = Provider<PendingEventRepository>(
   (_) => FakePendingEventRepository(),
 );
 
-// Use cases
 final getPendingEventsProvider = Provider.autoDispose<GetPendingEvents>(
   (ref) => GetPendingEvents(ref.watch(pendingEventRepositoryProvider)),
 );
@@ -21,25 +19,24 @@ final voteOnEventProvider = Provider.autoDispose<VoteOnEvent>(
   (ref) => VoteOnEvent(ref.watch(pendingEventRepositoryProvider)),
 );
 
-// Current user ID
 final currentUserIdProvider = Provider.autoDispose<String?>(
-  (_) => Supabase.instance.client.auth.currentUser?.id,
+  (ref) {
+    final authState = ref.watch(authProvider);
+    return authState.valueOrNull?.id;
+  },
 );
 
-// Stacked events state provider
 final stackedEventsStateProvider =
     StateNotifierProvider.autoDispose<StackedEventsNotifier, bool>(
-      (ref) => StackedEventsNotifier(ref),
-    );
+  (ref) => StackedEventsNotifier(ref),
+);
 
-// Stacked events notifier
 class StackedEventsNotifier extends StateNotifier<bool> {
   final Ref _ref;
 
-  StackedEventsNotifier(this._ref) : super(true); // Always start stacked
+  StackedEventsNotifier(this._ref) : super(true);
 
   void toggleStacking() {
-    // Only allow stacking if there are multiple events
     final eventsAsync = _ref.read(pendingEventsControllerProvider);
     eventsAsync.whenData((events) {
       if (events.length > 1) {
@@ -54,12 +51,11 @@ class StackedEventsNotifier extends StateNotifier<bool> {
       if (events.length > 1) {
         state = isStacked;
       } else {
-        state = false; // Single event should never be stacked
+        state = false;
       }
     });
   }
 
-  // Reset to stacked state (called when entering the page)
   void resetToStacked() {
     final eventsAsync = _ref.read(pendingEventsControllerProvider);
     eventsAsync.whenData((events) {
@@ -70,61 +66,53 @@ class StackedEventsNotifier extends StateNotifier<bool> {
   }
 }
 
-// Pending events list controller
 final pendingEventsControllerProvider =
     FutureProvider.autoDispose<List<PendingEvent>>((ref) async {
-      final uid =
-          ref.watch(currentUserIdProvider) ??
-          '1d473830-e62a-4aaf-a744-9b22343bfd1d';
-      final getPendingEvents = ref.watch(getPendingEventsProvider);
-      final events = await getPendingEvents(uid);
+  final uid = ref.watch(currentUserIdProvider);
+  
+  if (uid == null) {
+    return [];
+  }
 
-      // Sort events by scheduled date (closest first)
-      final sortedEvents = events
-        ..sort((a, b) => a.scheduledDate.compareTo(b.scheduledDate));
+  final getPendingEvents = ref.watch(getPendingEventsProvider);
+  final events = await getPendingEvents(uid);
 
-      // If multiple events and user has voted, start collapsed
-      if (sortedEvents.length > 1) {
-        return sortedEvents.map((event) {
-          if (event.voteStatus == VoteStatus.votersExpanded) {
-            return PendingEvent(
-              eventId: event.eventId,
-              title: event.title,
-              emoji: event.emoji,
-              scheduledDate: event.scheduledDate,
-              location: event.location,
-              voteStatus: VoteStatus.voted, // Start collapsed
-              totalVoters: event.totalVoters,
-              voters: event.voters,
-              noResponseVoters: event.noResponseVoters,
-              noResponseCount: event.noResponseCount,
-            );
-          }
-          return event;
-        }).toList();
-      }
+  final sortedEvents = List<PendingEvent>.from(events)
+    ..sort((a, b) => a.scheduledDate.compareTo(b.scheduledDate));
 
-      return sortedEvents;
-    });
+  return sortedEvents;
+});
 
-// Individual vote state controller
+// ✅ SIMPLIFICADO: Provider usa eventId, lê userVote do evento
 final voteStateProvider =
     StateNotifierProvider.family<VoteStateNotifier, VoteState, String>(
-      (ref, eventId) => VoteStateNotifier(
-        eventId: eventId,
-        voteOnEvent: ref.watch(voteOnEventProvider),
-        currentUserId:
-            ref.watch(currentUserIdProvider) ??
-            '1d473830-e62a-4aaf-a744-9b22343bfd1d',
-      ),
-    );
+  (ref, eventId) {
+    final currentUserId = ref.watch(currentUserIdProvider);
+    
+    // Buscar evento da lista
+    final eventsAsync = ref.watch(pendingEventsControllerProvider);
+    final event = eventsAsync.whenData((events) {
+      return events.firstWhere(
+        (e) => e.eventId == eventId,
+        orElse: () => throw StateError('Event $eventId not found'),
+      );
+    }).value;
 
-// Vote state for individual events
+    return VoteStateNotifier(
+      ref: ref,
+      eventId: eventId,
+      initialUserVote: event?.userVote, // ✅ Direto da entity
+      voteOnEvent: ref.watch(voteOnEventProvider),
+      currentUserId: currentUserId ?? '',
+    );
+  },
+);
+
 class VoteState {
-  final VoteStatus status;
+  final VoteStatus status; // UI state (vote/voting/voted/votersExpanded)
   final bool isLoading;
   final String? error;
-  final bool? userVote; // true=yes, false=no, null=no vote
+  final bool? userVote; // null/true/false
 
   const VoteState({
     required this.status,
@@ -148,17 +136,26 @@ class VoteState {
   }
 }
 
-// Vote state notifier
 class VoteStateNotifier extends StateNotifier<VoteState> {
+  final Ref ref;
   final String eventId;
   final VoteOnEvent voteOnEvent;
   final String currentUserId;
 
   VoteStateNotifier({
+    required this.ref,
     required this.eventId,
+    required bool? initialUserVote, // ✅ SIMPLIFICADO: bool? diretamente
     required this.voteOnEvent,
     required this.currentUserId,
-  }) : super(const VoteState(status: VoteStatus.vote));
+  }) : super(
+         VoteState(
+           status: initialUserVote == null 
+               ? VoteStatus.vote      // Não votou
+               : VoteStatus.voted,    // Já votou (yes ou no)
+           userVote: initialUserVote,
+         ),
+       );
 
   void toggleExpansion() {
     if (state.status == VoteStatus.voted || state.status == VoteStatus.vote) {
@@ -175,7 +172,6 @@ class VoteStateNotifier extends StateNotifier<VoteState> {
   }
 
   void resetToVoting() {
-    // Allow user to vote again, going back to voting state
     state = state.copyWith(
       status: VoteStatus.voting,
       isLoading: false,
@@ -186,18 +182,39 @@ class VoteStateNotifier extends StateNotifier<VoteState> {
   Future<void> vote(bool isYes) async {
     if (state.isLoading) return;
 
+    if (currentUserId.isEmpty) {
+      print('❌ Cannot vote: user not authenticated');
+      state = state.copyWith(
+        status: VoteStatus.vote,
+        isLoading: false,
+        error: 'User not authenticated',
+      );
+      return;
+    }
+
+    print('🗳️ Starting vote: eventId=$eventId, userId=$currentUserId, isYes=$isYes');
     state = state.copyWith(status: VoteStatus.voting, isLoading: true);
 
     try {
       final success = await voteOnEvent(eventId, currentUserId, isYes);
+      
       if (success) {
+        print('✅ Vote success - updating UI state');
+        
         state = state.copyWith(
           status: VoteStatus.voted,
           isLoading: false,
           error: null,
           userVote: isYes,
         );
+
+        await Future.delayed(const Duration(milliseconds: 50));
+
+        print('🔄 Invalidating events cache...');
+        ref.invalidate(pendingEventsControllerProvider);
+        
       } else {
+        print('❌ Vote failed - returned false');
         state = state.copyWith(
           status: VoteStatus.vote,
           isLoading: false,
@@ -205,6 +222,7 @@ class VoteStateNotifier extends StateNotifier<VoteState> {
         );
       }
     } catch (e) {
+      print('❌ Vote exception: $e');
       state = state.copyWith(
         status: VoteStatus.vote,
         isLoading: false,
