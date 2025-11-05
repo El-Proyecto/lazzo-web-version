@@ -204,6 +204,14 @@ class EventPage extends ConsumerWidget {
 
                               return locationSuggestionsAsync.when(
                                 data: (locationSuggestions) {
+                                  // Filter location suggestions DIFFERENT from current event location
+                                  final alternateLocationSuggestions = locationSuggestions.where((s) {
+                                    if (event.location == null) return true;
+                                    final isDifferent = s.locationName != event.location!.displayName ||
+                                                       (s.address ?? '') != event.location!.formattedAddress;
+                                    return isDifferent;
+                                  }).toList();
+                                  
                                   // Calculate dynamic counts from actual RSVP data
                                   final goingCount = rsvps
                                       .where(
@@ -312,7 +320,7 @@ class EventPage extends ConsumerWidget {
                                     eventEndDateTime: event.endDateTime,
                                     isHost: event.hostId == currentUserId,
                                     hasSuggestions: alternateDateSuggestions.isNotEmpty ||
-                                        locationSuggestions.isNotEmpty,
+                                        alternateLocationSuggestions.isNotEmpty,
                                   );
                                 },
                                 loading: () => rsvp_widget.RsvpWidget(
@@ -826,15 +834,54 @@ class EventPage extends ConsumerWidget {
 
                   return locationSuggestionsAsync.when(
                     data: (locationSuggestions) {
-                      // Only show widget when there are location suggestions
+                      print('🔍 [EventPage] Location suggestions count: ${locationSuggestions.length}');
+                      print('🔍 [EventPage] Event has location: ${event.location != null}');
+                      
+                      // Hide if no suggestions
                       if (locationSuggestions.isEmpty) {
+                        print('⚠️ [EventPage] Hiding location widget - no suggestions');
                         return const SizedBox.shrink();
+                      }
+                      
+                      // Filter suggestions DIFFERENT from current event location (if exists)
+                      final alternateLocationSuggestions = locationSuggestions.where((s) {
+                        if (event.location == null) return true;
+                        
+                        // Check if suggestion is different from current location
+                        final isDifferent = s.locationName != event.location!.displayName ||
+                                           (s.address ?? '') != event.location!.formattedAddress;
+                        return isDifferent;
+                      }).toList();
+                      
+                      print('📊 [EventPage] Alternate location suggestions: ${alternateLocationSuggestions.length}');
+                      
+                      // Hide if no suggestions at all (should never happen, but safety check)
+                      if (locationSuggestions.isEmpty) {
+                        print('⚠️ [EventPage] No location suggestions at all');
+                        return const SizedBox.shrink();
+                      }
+                      
+                      // Hide if event has location but no alternative suggestions
+                      if (event.location != null && alternateLocationSuggestions.isEmpty) {
+                        print('⚠️ [EventPage] Hiding location widget - no alternative suggestions (suggestion matches current location)');
+                        return const SizedBox.shrink();
+                      }
+                      
+                      // Show widget for:
+                      // CASE 1: Event has location + alternative suggestions = POLL widget
+                      // CASE 2: Event has NO location + suggestions = Display first suggestion (could be poll if multiple)
+                      if (event.location != null && alternateLocationSuggestions.isNotEmpty) {
+                        print('✅ [EventPage] Showing location POLL widget (event has location + alternatives)');
+                      } else if (event.location == null && locationSuggestions.isNotEmpty) {
+                        print('✅ [EventPage] Showing simple location display (Decide Later + suggestion)');
                       }
 
                       return locationVotesAsync.when(
                         data: (locationVotes) {
+                          print('✅ [EventPage] Location votes loaded: ${locationVotes.length}');
                           return userLocationVotesAsync.when(
                             data: (userLocationVotes) {
+                              print('✅ [EventPage] User location votes loaded: ${userLocationVotes.length}');
                               final userLocationVoteIds = userLocationVotes
                                   .map((vote) => vote.suggestionId)
                                   .toSet();
@@ -889,12 +936,24 @@ class EventPage extends ConsumerWidget {
                                 ),
                               );
                             },
-                            loading: () => const SizedBox.shrink(),
-                            error: (error, stack) => const SizedBox.shrink(),
+                            loading: () {
+                              print('⏳ [EventPage] Loading user location votes...');
+                              return const SizedBox.shrink();
+                            },
+                            error: (error, stack) {
+                              print('❌ [EventPage] Error loading user location votes: $error');
+                              return const SizedBox.shrink();
+                            },
                           );
                         },
-                        loading: () => const SizedBox.shrink(),
-                        error: (error, stack) => const SizedBox.shrink(),
+                        loading: () {
+                          print('⏳ [EventPage] Loading location votes...');
+                          return const SizedBox.shrink();
+                        },
+                        error: (error, stack) {
+                          print('❌ [EventPage] Error loading location votes: $error');
+                          return const SizedBox.shrink();
+                        },
                       );
                     },
                     loading: () => const SizedBox.shrink(),

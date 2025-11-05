@@ -329,8 +329,24 @@ class SuggestionRemoteDataSource {
     String eventId,
   ) async {
     try {
+      // First, get all location suggestion IDs for this event
+      final suggestionsResponse = await _supabaseClient
+          .from('location_suggestions')
+          .select('id')
+          .eq('event_id', eventId);
+      
+      final suggestionIds = (suggestionsResponse as List)
+          .map((s) => s['id'] as String)
+          .toList();
+      
+      // If no suggestions, return empty list
+      if (suggestionIds.isEmpty) {
+        return [];
+      }
+      
+      // Then get votes for those suggestions
       final response = await _supabaseClient
-          .from('location_suggestion_votes') // Table: location_suggestion_votes
+          .from('location_suggestion_votes')
           .select('''
             id,
             suggestion_id,
@@ -338,11 +354,19 @@ class SuggestionRemoteDataSource {
             created_at,
             user:user_id(id, name, avatar_url)
           ''')
-          .eq('event_id', eventId);
+          .inFilter('suggestion_id', suggestionIds);
 
-      return (response as List)
-          .map((json) => SuggestionVoteModel.fromJson(json))
-          .toList();
+      // Map location vote fields to match SuggestionVoteModel expectations
+      return (response as List).map((json) {
+        final mappedJson = {
+          'option_id': json['suggestion_id'], // suggestion_id → option_id
+          'user_id': json['user_id'],
+          'voted_at': json['created_at'], // created_at → voted_at
+          'event_id': eventId, // Use the eventId parameter directly
+          'user': json['user'],
+        };
+        return SuggestionVoteModel.fromJson(mappedJson);
+      }).toList();
     } on PostgrestException catch (e) {
       throw Exception('Failed to get location suggestion votes: ${e.message}');
     } catch (e) {
@@ -356,6 +380,16 @@ class SuggestionRemoteDataSource {
     required String userId,
   }) async {
     try {
+      // First get the event_id from the suggestion
+      final suggestionResponse = await _supabaseClient
+          .from('location_suggestions')
+          .select('event_id')
+          .eq('id', suggestionId)
+          .single();
+      
+      final eventId = suggestionResponse['event_id'] as String;
+      
+      // Then create the vote
       final response = await _supabaseClient
           .from('location_suggestion_votes')
           .insert({
@@ -371,7 +405,16 @@ class SuggestionRemoteDataSource {
           ''')
           .single();
 
-      return SuggestionVoteModel.fromJson(response);
+      // Map location vote fields to match SuggestionVoteModel expectations
+      final mappedResponse = {
+        'option_id': response['suggestion_id'], // suggestion_id → option_id
+        'user_id': response['user_id'],
+        'voted_at': response['created_at'], // created_at → voted_at
+        'event_id': eventId, // Use event_id from suggestion
+        'user': response['user'],
+      };
+
+      return SuggestionVoteModel.fromJson(mappedResponse);
     } on PostgrestException catch (e) {
       throw Exception('Failed to vote on location suggestion: ${e.message}');
     } catch (e) {
@@ -427,9 +470,17 @@ class SuggestionRemoteDataSource {
           .inFilter('suggestion_id', suggestionIds)
           .eq('user_id', userId);
 
-      return (response as List)
-          .map((json) => SuggestionVoteModel.fromJson(json))
-          .toList();
+      // Map location vote fields to match SuggestionVoteModel expectations
+      return (response as List).map((json) {
+        final mappedJson = {
+          'option_id': json['suggestion_id'], // suggestion_id → option_id
+          'user_id': json['user_id'],
+          'voted_at': json['created_at'], // created_at → voted_at
+          'event_id': eventId, // Use eventId parameter directly
+          'user': json['user'],
+        };
+        return SuggestionVoteModel.fromJson(mappedJson);
+      }).toList();
     } on PostgrestException catch (e) {
       throw Exception(
           'Failed to get user location suggestion votes: ${e.message}');
