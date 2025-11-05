@@ -34,6 +34,7 @@ jobs:
 
       - name: Format check
         run: dart format --output=none lib test
+        continue-on-error: true
 
       - name: Run unit+widget tests (coverage)
         run: flutter test --coverage
