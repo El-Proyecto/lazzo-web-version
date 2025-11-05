@@ -48,41 +48,46 @@ class EventDataSource {
 
   /// Update an existing event
   /// Respects RLS - user can only update events they created
+  /// CRITICAL: Always includes fields in update to allow clearing nullable fields
+  /// This prevents PGRST116 errors when switching from "Set Now" to "Decide Later"
   Future<Map<String, dynamic>> updateEvent({
     required String id,
-    String? name,
-    String? emoji,
-    String? groupId,
-    DateTime? startDateTime,
-    DateTime? endDateTime,
-    String? locationId,
-    String? status,
+    required String name,
+    required String emoji,
+    required String groupId,
+    required DateTime? startDateTime,
+    required DateTime? endDateTime,
+    required String? locationId,
+    required String status,
   }) async {
-    final updateData = <String, dynamic>{};
-    if (name != null) updateData['name'] = name;
-    if (emoji != null) updateData['emoji'] = emoji;
-    if (groupId != null) updateData['group_id'] = groupId;
-    if (startDateTime != null) {
-      updateData['start_datetime'] = startDateTime.toIso8601String();
-    }
-    if (endDateTime != null) {
-      updateData['end_datetime'] = endDateTime.toIso8601String();
-    }
-    if (locationId != null) updateData['location_id'] = locationId;
-    if (status != null) updateData['status'] = status;
+    // Build update data - include ALL fields to allow clearing nullable ones
+    final updateData = <String, dynamic>{
+      'name': name,
+      'emoji': emoji,
+      'group_id': groupId,
+      'start_datetime': startDateTime?.toIso8601String(),
+      'end_datetime': endDateTime?.toIso8601String(),
+      'location_id': locationId,
+      'status': status,
+      'updated_at': DateTime.now().toIso8601String(),
+    };
 
-    final response = await _client
-        .from('events')
-        .update(updateData)
-        .eq('id', id)
-        .select('id, name, emoji, group_id, start_datetime, end_datetime, location_id, status, created_by, created_at, updated_at')
-        .maybeSingle();
+    try {
+      final response = await _client
+          .from('events')
+          .update(updateData)
+          .eq('id', id)
+          .select('id, name, emoji, group_id, start_datetime, end_datetime, location_id, status, created_by, created_at, updated_at')
+          .single(); // Use .single() instead of .maybeSingle() to get proper error
 
-    if (response == null) {
-      throw Exception('Event not found or user does not have permission to update it');
+      return response;
+    } on PostgrestException catch (e) {
+      // PGRST116 = no rows returned (either doesn't exist or RLS blocked)
+      if (e.code == 'PGRST116') {
+        throw Exception('Event not found or you do not have permission to update it. Make sure you are the creator of this event.');
+      }
+      rethrow;
     }
-
-    return response;
   }
 
   /// Delete an event

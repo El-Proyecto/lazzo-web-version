@@ -180,18 +180,34 @@ class EventRepositoryImpl implements EventRepository {
 			throw Exception('User not authenticated');
 		}
 		
-		final model = EventModel.fromEntity(event, createdBy: userId);
-		final response = await _dataSource.updateEvent(
-			id: model.id,
-			name: model.name,
-			emoji: model.emoji,
-			groupId: model.groupId,
-			startDateTime: model.startDateTime,
-			endDateTime: model.endDateTime,
-			locationId: model.locationId,
-			status: model.status,
-		);
-		return EventModel.fromJson(response).toEntity();
+		try {
+			final model = EventModel.fromEntity(event, createdBy: userId);
+			final response = await _dataSource.updateEvent(
+				id: model.id,
+				name: model.name,
+				emoji: model.emoji,
+				groupId: model.groupId,
+				startDateTime: model.startDateTime,
+				endDateTime: model.endDateTime,
+				locationId: model.locationId,
+				status: model.status,
+			);
+			
+			// Fetch location if present in updated event
+			String? locationId = response['location_id'] as String?;
+			EventLocation? location;
+			if (locationId != null) {
+				final loc = await _dataSource.getLocationById(locationId);
+				if (loc != null) {
+					location = LocationModel.fromJson(loc).toEntity();
+				}
+			}
+			
+			return EventModel.fromJson(response).toEntity(location: location);
+		} on Exception catch (e) {
+			// Re-throw with better context
+			throw Exception('Failed to update event: ${e.toString()}');
+		}
 	}
 
 	@override
