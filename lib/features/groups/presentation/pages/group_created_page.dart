@@ -8,6 +8,7 @@ import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/constants/text_styles.dart';
 import '../../../../shared/themes/colors.dart';
 import '../../../../shared/components/nav/common_app_bar.dart';
+import '../../../../shared/components/common/top_banner.dart';
 import '../../../../routes/app_router.dart';
 import '../../domain/entities/group_entity.dart';
 import '../providers/groups_provider.dart';
@@ -29,12 +30,12 @@ class _GroupCreatedPageState extends ConsumerState<GroupCreatedPage> {
   void initState() {
     super.initState();
     qrCodeData = 'https://lazzo.app/groups/${widget.group.id}';
-    
+
     print('🎯 [GroupCreatedPage] Initialized with group: ${widget.group.id}');
     print('   📱 Generated QR code: $qrCodeData');
     print('   🔍 Group has qrCode field: ${widget.group.qrCode}');
     print('   🔍 Group has groupUrl field: ${widget.group.groupUrl}');
-    
+
     // Salvar QR code no Supabase (funciona como backup se não foi salvo na criação)
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _saveQrCode();
@@ -43,32 +44,33 @@ class _GroupCreatedPageState extends ConsumerState<GroupCreatedPage> {
 
   Future<void> _saveQrCode() async {
     try {
-      print('🔄 Iniciando salvamento do QR code para o grupo ${widget.group.id}');
+      print(
+          '🔄 Iniciando salvamento do QR code para o grupo ${widget.group.id}');
       print('   📱 QR Code Data: $qrCodeData');
-      
+
       // Validar se o grupo tem ID
       if (widget.group.id == null || widget.group.id!.isEmpty) {
         print('❌ Erro: Grupo não tem ID válido!');
         print('   🔍 Group: ${widget.group.toString()}');
         return;
       }
-      
+
       // Se o grupo já tem QR code, não precisamos salvar novamente
       if (widget.group.qrCode != null && widget.group.qrCode!.isNotEmpty) {
         print('✅ Grupo já tem QR code salvo: ${widget.group.qrCode}');
         return;
       }
-      
+
       final saveQrCode = ref.read(saveGroupQrCodeProvider);
-      
+
       print('   💾 Chamando saveGroupQrCode...');
       await saveQrCode(widget.group.id!, qrCodeData);
-      
+
       print('✅ QR code salvo com sucesso para o grupo ${widget.group.id}');
     } catch (e) {
       print('❌ Erro ao salvar QR code: $e');
       print('   Stack trace: ${StackTrace.current}');
-      
+
       // Não mostrar erro ao usuário, pois o QR code visual ainda funciona
       // O importante é que a funcionalidade visual esteja ok
     }
@@ -95,8 +97,10 @@ class _GroupCreatedPageState extends ConsumerState<GroupCreatedPage> {
 
             // Group photo with rounded corners (not circle)
             GroupPhotoImage(
-              photoPath: widget.group.photoUrl, // GroupEntity.photoUrl maps to photoPath in widget
-              photoUpdatedAt: null, // GroupEntity doesn't have photoUpdatedAt field
+              photoPath: widget.group
+                  .photoUrl, // GroupEntity.photoUrl maps to photoPath in widget
+              photoUpdatedAt:
+                  null, // GroupEntity doesn't have photoUpdatedAt field
               width: 120,
               height: 120,
             ),
@@ -138,16 +142,15 @@ class _GroupCreatedPageState extends ConsumerState<GroupCreatedPage> {
                 Clipboard.setData(
                   ClipboardData(text: qrCodeData),
                 );
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: const Text('Link copied to clipboard'),
-                    backgroundColor: Theme.of(context).colorScheme.primary,
-                  ),
+                TopBanner.showInfo(
+                  context,
+                  message: 'Link copied to clipboard',
                 );
               },
               onShareLink: () async {
-                final shareText = 'Join my group "${widget.group.name}" on Lazzo!\n\n$qrCodeData';
-                
+                final shareText =
+                    'Join my group "${widget.group.name}" on Lazzo!\n\n$qrCodeData';
+
                 try {
                   await Share.share(
                     shareText,
@@ -156,10 +159,10 @@ class _GroupCreatedPageState extends ConsumerState<GroupCreatedPage> {
                 } catch (e) {
                   // Fallback if share fails
                   if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Unable to share. Link copied to clipboard instead.'),
-                      ),
+                    TopBanner.showInfo(
+                      context,
+                      message:
+                          'Unable to share. Link copied to clipboard instead.',
                     );
                     Clipboard.setData(ClipboardData(text: qrCodeData));
                   }

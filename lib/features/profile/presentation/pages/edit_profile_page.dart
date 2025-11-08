@@ -8,6 +8,7 @@ import '../widgets/photo_change_bottom_sheet.dart';
 import '../../../auth/presentation/widgets/email_info_card.dart';
 import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/themes/colors.dart';
+import '../../../../shared/components/common/top_banner.dart';
 import '../../domain/entities/profile_entity.dart';
 import '../providers/profile_providers.dart';
 
@@ -52,8 +53,8 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
         title: Text(
           'Edit Profile',
           style: Theme.of(context).textTheme.titleLarge?.copyWith(
-            color: BrandColors.text1,
-          ),
+                color: BrandColors.text1,
+              ),
         ),
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -75,8 +76,8 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
         title: Text(
           'Edit Profile',
           style: Theme.of(context).textTheme.titleLarge?.copyWith(
-            color: BrandColors.text1,
-          ),
+                color: BrandColors.text1,
+              ),
         ),
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -98,15 +99,15 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
             Text(
               'Failed to load profile',
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                color: BrandColors.text1,
-              ),
+                    color: BrandColors.text1,
+                  ),
             ),
             const SizedBox(height: Gaps.sm),
             Text(
               error,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: BrandColors.text2,
-              ),
+                    color: BrandColors.text2,
+                  ),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: Gaps.md),
@@ -127,8 +128,8 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
         title: Text(
           'Edit Profile',
           style: Theme.of(context).textTheme.titleLarge?.copyWith(
-            color: BrandColors.text1,
-          ),
+                color: BrandColors.text1,
+              ),
         ),
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -233,7 +234,7 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
 
   Future<void> _removeField(String field, ProfileEntity profile) async {
     print('🗑️ [EditProfilePage] Removing field: $field');
-    
+
     try {
       ProfileEntity updatedProfile;
       switch (field) {
@@ -258,7 +259,7 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
           // Exit edit mode after successful removal
           _editingStates[field] = false;
         });
-        
+
         print('✅ [EditProfilePage] Field removed successfully');
       }
     } catch (e) {
@@ -278,7 +279,7 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
     ProfileEntity profile,
   ) async {
     print('💾 [EditProfilePage] Saving field: $field = "$value"');
-    
+
     if (field == 'name' && value.trim().isEmpty) {
       setState(() {
         _nameError = 'Name is required';
@@ -304,7 +305,7 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
       // 🎯 SIMPLE: Use controller to update and sync UI
       final controller = ref.read(editProfileControllerProvider);
       await controller.updateProfile(updatedProfile);
-      
+
       if (mounted) {
         setState(() {
           _editingStates[field] = false;
@@ -312,7 +313,7 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
           if (field == 'name') _nameError = null;
           if (field == 'location') _locationError = null;
         });
-        
+
         print('✅ [EditProfilePage] Field saved successfully');
       }
     } catch (e) {
@@ -328,20 +329,20 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
 
   Future<void> _saveBirthday(DateTime? date, ProfileEntity profile) async {
     print('📅 [EditProfilePage] Saving birthday: $date');
-    
+
     final updatedProfile = profile.copyWith(birthday: date);
 
     try {
       // 🎯 SIMPLE: Use controller to update and sync UI
       final controller = ref.read(editProfileControllerProvider);
       await controller.updateProfile(updatedProfile);
-      
+
       if (mounted) {
         setState(() {
           _editingStates['birthday'] = false;
           _birthdayError = null;
         });
-        
+
         print('✅ [EditProfilePage] Birthday saved successfully');
       }
     } catch (e) {
@@ -357,8 +358,7 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
   void _showPhotoChangeSheet(ProfileEntity profile) {
     PhotoChangeBottomSheet.show(
       context: context,
-      hasCurrentPhoto:
-          profile.profileImageUrl != null &&
+      hasCurrentPhoto: profile.profileImageUrl != null &&
           profile.profileImageUrl!.isNotEmpty,
       onAction: (action) => _handlePhotoAction(action, profile),
     );
@@ -369,7 +369,7 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
     ProfileEntity profile,
   ) async {
     print('📸 [EditProfilePage] Photo action: $action');
-    
+
     switch (action) {
       case PhotoSourceAction.gallery:
         await _pickImageFromGallery(profile);
@@ -398,7 +398,10 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
       }
     } catch (e) {
       print('❌ [EditProfilePage] Gallery picker failed: $e');
-      _showSnackBar('Failed to pick image from gallery');
+      if (mounted) {
+        TopBanner.showError(context,
+            message: 'Failed to pick image from gallery');
+      }
     }
   }
 
@@ -417,69 +420,70 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
       }
     } catch (e) {
       print('❌ [EditProfilePage] Camera picker failed: $e');
-      _showSnackBar('Failed to take photo');
+      if (mounted) {
+        TopBanner.showError(context, message: 'Failed to take photo');
+      }
     }
   }
 
   Future<void> _uploadProfilePicture(XFile image, ProfileEntity profile) async {
     try {
       print('📤 [EditProfilePage] Uploading profile picture...');
-      
-      // Show loading
-      _showSnackBar('Uploading photo...');
-      
+
+      // Show info banner
+      if (mounted) {
+        TopBanner.showInfo(context, message: 'Uploading photo...');
+      }
+
       final controller = ref.read(editProfileControllerProvider);
-      
+
       // Upload the image and get the storage path
-      final imagePath = await ref.read(profileRepositoryProvider).uploadProfilePicture(image);
-      
+      final imagePath =
+          await ref.read(profileRepositoryProvider).uploadProfilePicture(image);
+
       print('✅ [EditProfilePage] Image uploaded to: $imagePath');
-      
+
       // Update profile with new image path
       final updatedProfile = profile.copyWith(profileImageUrl: imagePath);
       await controller.updateProfile(updatedProfile);
-      
+
       print('✅ [EditProfilePage] Profile updated with new photo');
-      _showSnackBar('Photo updated successfully');
+      if (mounted) {
+        TopBanner.showSuccess(context, message: 'Photo updated successfully');
+      }
     } catch (e) {
       print('❌ [EditProfilePage] Photo upload failed: $e');
-      _showSnackBar('Failed to upload photo');
+      if (mounted) {
+        TopBanner.showError(context, message: 'Failed to upload photo');
+      }
     }
   }
 
   Future<void> _removePhoto(ProfileEntity profile) async {
     try {
       print('🗑️ [EditProfilePage] Removing profile photo...');
-      
+
       final controller = ref.read(editProfileControllerProvider);
-      
+
       // Delete the image from storage if it exists
-      if (profile.profileImageUrl != null && profile.profileImageUrl!.isNotEmpty) {
+      if (profile.profileImageUrl != null &&
+          profile.profileImageUrl!.isNotEmpty) {
         await ref.read(profileRepositoryProvider).deleteProfilePicture();
       }
-      
+
       // Update profile to remove image reference
       final updatedProfile = profile.copyWith(profileImageUrl: null);
       await controller.updateProfile(updatedProfile);
-      
+
       print('✅ [EditProfilePage] Photo removed successfully');
-      _showSnackBar('Photo removed successfully');
+      if (mounted) {
+        TopBanner.showSuccess(context, message: 'Photo removed successfully');
+      }
     } catch (e) {
       print('❌ [EditProfilePage] Photo removal failed: $e');
-      _showSnackBar('Failed to remove photo');
+      if (mounted) {
+        TopBanner.showError(context, message: 'Failed to remove photo');
+      }
     }
-  }
-
-  void _showSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          message,
-          style: const TextStyle(color: BrandColors.text1),
-        ),
-        backgroundColor: BrandColors.bg2,
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
   }
 }

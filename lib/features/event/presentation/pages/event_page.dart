@@ -4,6 +4,7 @@ import '../../../../routes/app_router.dart';
 import '../../../create_event/domain/entities/event.dart' as create_event;
 import '../../../../shared/components/nav/common_app_bar.dart';
 import '../../../../shared/components/sections/event_header.dart';
+import '../../../../shared/components/common/top_banner.dart';
 import '../../../../shared/components/chips/event_status_chip.dart';
 import '../../../../shared/components/dialogs/confirmation_dialog.dart';
 import '../../../../shared/components/widgets/rsvp_widget.dart' as rsvp_widget;
@@ -73,17 +74,11 @@ class EventPage extends ConsumerWidget {
         ? 'Event confirmed successfully!'
         : 'Event unmarked successfully!';
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: isConfirmed ? BrandColors.planning : BrandColors.text2,
-        behavior: SnackBarBehavior.floating,
-        margin: const EdgeInsets.all(Gaps.md),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(Radii.sm),
-        ),
-      ),
-    );
+    if (isConfirmed) {
+      TopBanner.showSuccess(context, message: message);
+    } else {
+      TopBanner.showInfo(context, message: message);
+    }
   }
 
   @override
@@ -1005,21 +1000,17 @@ class EventPage extends ConsumerWidget {
 
       // Step 5: Show success feedback
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Event date has been set successfully!'),
-            backgroundColor: Colors.green,
-          ),
+        TopBanner.showSuccess(
+          context,
+          message: 'Event date has been set successfully!',
         );
       }
     } catch (error) {
       // Show error feedback
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to set event date: $error'),
-            backgroundColor: Colors.red,
-          ),
+        TopBanner.showError(
+          context,
+          message: 'Failed to set event date: $error',
         );
       }
     }
@@ -1076,21 +1067,17 @@ class EventPage extends ConsumerWidget {
 
       // Step 5: Show success feedback
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Event location has been set successfully!'),
-            backgroundColor: Colors.green,
-          ),
+        TopBanner.showSuccess(
+          context,
+          message: 'Event location has been set successfully!',
         );
       }
     } catch (error) {
       // Show error feedback
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to set event location: $error'),
-            backgroundColor: Colors.red,
-          ),
+        TopBanner.showError(
+          context,
+          message: 'Failed to set event location: $error',
         );
       }
     }
