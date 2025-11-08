@@ -226,30 +226,71 @@ Mensagens persistentes no topo da página (não SnackBar)
 ### Métodos Estáticos
 
 ```dart
-// Neutro (atual)
-TopBanner.show(context, message: 'Message', duration: Duration(seconds: 2));
+## 🎨 TopBanner API Implementada ✅
 
-// Sucesso (verde)
+### Métodos Estáticos Disponíveis
+
+```dart
+// Neutro (sem ícone, fundo cinza bg2)
+TopBanner.show(context, message: 'Message');
+
+// Sucesso (verde planning #169C3E, ícone check_circle) - 2.2s
 TopBanner.showSuccess(context, message: 'Action completed!');
 
-// Erro (vermelho)
+// Erro (vermelho cantVote #FF3B30, ícone error) - 3.0s
 TopBanner.showError(context, message: 'Failed to perform action');
 
-// Informativo (azul)
+// Warning (amarelo #FFB800, ícone warning) - 3.0s
+TopBanner.showWarning(context, message: 'Warning message');
+
+// Informativo (cinza bg2 #1F1F1F, ícone info) - 2.2s
 TopBanner.showInfo(context, message: 'Information message');
+```
 
-// Loading (azul com spinner)
-TopBanner.showLoading(context, message: 'Uploading...'); // auto-dismiss: false
+### Características Implementadas
 
-// Customizado (para casos especiais)
-TopBanner.showCustom(
-  context,
-  message: 'Custom message',
-  backgroundColor: BrandColors.planning,
-  textColor: Colors.white,
-  icon: Icons.check,
-  duration: Duration(seconds: 3),
+✅ **Apenas 1 banner visível** - novos banners substituem o atual automaticamente  
+✅ **Durações por tipo:**
+  - Success/Info: 2.2s
+  - Warning: 3.0s
+  - Error: 3.0s
+  - Neutro: customizável (padrão: sem auto-dismiss)
+
+✅ **Ícones e cores por tipo:**
+  - Success: `Icons.check_circle` (verde `BrandColors.planning` #169C3E)
+  - Error: `Icons.error` (vermelho `BrandColors.cantVote` #FF3B30)
+  - Warning: `Icons.warning` (amarelo `BrandColors.warning` #FFB800)
+  - Info: `Icons.info` (cinza `BrandColors.bg2` #1F1F1F - mesmo que neutro)
+  - Neutro: sem ícone (cinza `BrandColors.bg2` #1F1F1F)
+
+✅ **Posicionamento:** Topo, centrado, abaixo safe area + AppBar + 8px offset  
+✅ **Alinhamento:** Texto alinhado à esquerda  
+✅ **Drag-to-dismiss:** Arrastar para cima >50px para fechar  
+✅ **Animação:** Slide-down suave (300ms)
+
+### Exemplos de Uso
+
+```dart
+// Sucesso após ação
+TopBanner.showSuccess(context, message: 'Profile updated successfully');
+
+// Erro com duração customizada
+TopBanner.showError(
+  context, 
+  message: 'Failed to upload photo',
+  duration: Duration(seconds: 5),
 );
+
+// Info sem auto-dismiss
+TopBanner.showInfo(
+  context,
+  message: 'Tap to continue',
+  duration: null, // Permanece até drag-to-dismiss
+);
+
+// Neutro (comportamento legacy)
+TopBanner.show(context, message: 'Group notifications muted');
+```
 ```
 
 ### Parâmetros Adicionais

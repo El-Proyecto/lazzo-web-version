@@ -6,45 +6,136 @@ import '../../themes/colors.dart';
 /// Reusable top banner component that appears below the AppBar
 /// with slide-down animation and can be dismissed by dragging up
 class TopBanner {
-  /// Shows a banner at the top of the screen with animation
-  ///
-  /// [context] - BuildContext for overlay access
-  /// [message] - Text to display in the banner
-  /// [duration] - How long to show the banner (default 3 seconds)
+  // Global reference to current banner to ensure only one is visible
+  static OverlayEntry? _currentBanner;
+
+  /// Banner type enum
+  static const String typeSuccess = 'success';
+  static const String typeError = 'error';
+  static const String typeWarning = 'warning';
+  static const String typeInfo = 'info';
+  static const String typeNeutral = 'neutral';
+
+  /// Shows a neutral banner (no icon, bg2 background)
   static void show(
     BuildContext context, {
     required String message,
-    Duration duration = const Duration(seconds: 3),
+    Duration? duration,
   }) {
+    _showBanner(
+      context,
+      message: message,
+      type: typeNeutral,
+      duration: duration,
+    );
+  }
+
+  /// Shows a success banner (green background, check icon)
+  static void showSuccess(
+    BuildContext context, {
+    required String message,
+    Duration? duration,
+  }) {
+    _showBanner(
+      context,
+      message: message,
+      type: typeSuccess,
+      duration: duration ?? const Duration(milliseconds: 2200),
+    );
+  }
+
+  /// Shows an error banner (red background, error icon)
+  static void showError(
+    BuildContext context, {
+    required String message,
+    Duration? duration,
+  }) {
+    _showBanner(
+      context,
+      message: message,
+      type: typeError,
+      duration: duration ?? const Duration(milliseconds: 3000),
+    );
+  }
+
+  /// Shows a warning banner (yellow background, warning icon)
+  static void showWarning(
+    BuildContext context, {
+    required String message,
+    Duration? duration,
+  }) {
+    _showBanner(
+      context,
+      message: message,
+      type: typeWarning,
+      duration: duration ?? const Duration(milliseconds: 3000),
+    );
+  }
+
+  /// Shows an info banner (blue background, info icon)
+  static void showInfo(
+    BuildContext context, {
+    required String message,
+    Duration? duration,
+  }) {
+    _showBanner(
+      context,
+      message: message,
+      type: typeInfo,
+      duration: duration ?? const Duration(milliseconds: 2200),
+    );
+  }
+
+  /// Internal method to show banner with specific type
+  static void _showBanner(
+    BuildContext context, {
+    required String message,
+    required String type,
+    Duration? duration,
+  }) {
+    // Remove current banner if exists
+    _currentBanner?.remove();
+    _currentBanner = null;
+
     final overlay = Overlay.of(context);
     late OverlayEntry overlayEntry;
 
     overlayEntry = OverlayEntry(
       builder: (context) => _TopBannerWidget(
         message: message,
+        type: type,
         onDismiss: () {
           overlayEntry.remove();
+          if (_currentBanner == overlayEntry) {
+            _currentBanner = null;
+          }
         },
       ),
     );
 
     overlay.insert(overlayEntry);
+    _currentBanner = overlayEntry;
 
-    // Auto-dismiss after duration
-    Future.delayed(duration, () {
-      if (overlayEntry.mounted) {
-        overlayEntry.remove();
-      }
-    });
+    // Auto-dismiss after duration if specified
+    if (duration != null) {
+      Future.delayed(duration, () {
+        if (overlayEntry.mounted && _currentBanner == overlayEntry) {
+          overlayEntry.remove();
+          _currentBanner = null;
+        }
+      });
+    }
   }
 }
 
 class _TopBannerWidget extends StatefulWidget {
   final String message;
+  final String type;
   final VoidCallback onDismiss;
 
   const _TopBannerWidget({
     required this.message,
+    required this.type,
     required this.onDismiss,
   });
 
@@ -105,9 +196,49 @@ class _TopBannerWidgetState extends State<_TopBannerWidget>
     }
   }
 
+  // Get banner configuration based on type
+  _BannerConfig _getConfig() {
+    switch (widget.type) {
+      case TopBanner.typeSuccess:
+        return const _BannerConfig(
+          backgroundColor: BrandColors.notificationSuccess, // Green (planning)
+          icon: Icons.check_circle,
+          iconColor: Colors.white,
+        );
+      case TopBanner.typeError:
+        return const _BannerConfig(
+          backgroundColor: BrandColors.notificationError, // Red (cantVote)
+          icon: Icons.error,
+          iconColor: Colors.white,
+        );
+      case TopBanner.typeWarning:
+        return const _BannerConfig(
+          backgroundColor: BrandColors.notificationWarning, // Yellow (warning)
+          icon: Icons.warning,
+          iconColor: Colors.white,
+        );
+      case TopBanner.typeInfo:
+        return _BannerConfig(
+          backgroundColor: BrandColors.notificationInfo
+              .withValues(alpha: 0.95), // Neutral bg2
+          icon: Icons.info,
+          iconColor: BrandColors.text1,
+        );
+      case TopBanner.typeNeutral:
+      default:
+        return _BannerConfig(
+          backgroundColor:
+              BrandColors.notificationNeutral.withValues(alpha: 0.95),
+          icon: null,
+          iconColor: null,
+        );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final topPadding = MediaQuery.of(context).padding.top;
+    final config = _getConfig();
 
     return Positioned(
       top: 0,
@@ -122,7 +253,7 @@ class _TopBannerWidgetState extends State<_TopBannerWidget>
             offset: Offset(0, _dragDistance),
             child: Container(
               margin: EdgeInsets.only(
-                top: topPadding + kToolbarHeight,
+                top: topPadding + kToolbarHeight + 8, // 8px offset below AppBar
                 left: Insets.screenH,
                 right: Insets.screenH,
               ),
@@ -131,7 +262,7 @@ class _TopBannerWidgetState extends State<_TopBannerWidget>
                 vertical: Gaps.md,
               ),
               decoration: BoxDecoration(
-                color: BrandColors.bg2.withValues(alpha: 0.95),
+                color: config.backgroundColor,
                 borderRadius: BorderRadius.circular(Radii.md),
                 boxShadow: [
                   BoxShadow(
@@ -143,15 +274,28 @@ class _TopBannerWidgetState extends State<_TopBannerWidget>
               ),
               child: DefaultTextStyle(
                 style: AppText.bodyMedium.copyWith(
-                  color: BrandColors.text1,
+                  color: (widget.type == TopBanner.typeNeutral ||
+                          widget.type == TopBanner.typeInfo)
+                      ? BrandColors.text1
+                      : Colors.white,
                   decoration: TextDecoration.none,
                 ),
                 child: Row(
                   children: [
+                    // Icon (only for typed banners)
+                    if (config.icon != null) ...[
+                      Icon(
+                        config.icon,
+                        color: config.iconColor,
+                        size: 20,
+                      ),
+                      const SizedBox(width: Gaps.sm),
+                    ],
+                    // Message text (left aligned)
                     Expanded(
                       child: Text(
                         widget.message,
-                        textAlign: TextAlign.center,
+                        textAlign: TextAlign.left,
                       ),
                     ),
                   ],
@@ -163,4 +307,17 @@ class _TopBannerWidgetState extends State<_TopBannerWidget>
       ),
     );
   }
+}
+
+/// Banner configuration helper class
+class _BannerConfig {
+  final Color backgroundColor;
+  final IconData? icon;
+  final Color? iconColor;
+
+  const _BannerConfig({
+    required this.backgroundColor,
+    this.icon,
+    this.iconColor,
+  });
 }
