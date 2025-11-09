@@ -93,7 +93,7 @@ class _GroupPhotosPageState extends ConsumerState<GroupPhotosPage> {
       ),
       body: photosAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, stack) => Center(
+        error: (error, stack) => const Center(
           child: Text(
             'Error loading photos',
             style: TextStyle(color: BrandColors.text2),
@@ -101,7 +101,7 @@ class _GroupPhotosPageState extends ConsumerState<GroupPhotosPage> {
         ),
         data: (photos) {
           if (photos.isEmpty) {
-            return Center(
+            return const Center(
               child: Text(
                 'No photos yet',
                 style: TextStyle(color: BrandColors.text2),
@@ -169,7 +169,7 @@ class _GroupPhotosPageState extends ConsumerState<GroupPhotosPage> {
                               errorBuilder: (context, error, stackTrace) {
                                 return Container(
                                   color: BrandColors.bg2,
-                                  child: Icon(
+                                  child: const Icon(
                                     Icons.broken_image,
                                     color: BrandColors.text2,
                                   ),
