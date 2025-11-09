@@ -7,6 +7,9 @@ import '../../../../shared/components/common/invite_bottom_sheet.dart';
 import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/constants/text_styles.dart';
 import '../../../../shared/themes/colors.dart';
+import '../../../groups/domain/entities/group_entity.dart';
+import '../../../groups/domain/entities/group_permissions.dart';
+import '../../../groups/presentation/pages/edit_group_page.dart';
 import '../providers/group_hub_providers.dart';
 import '../widgets/group_shortcut_action.dart';
 import '../widgets/group_member_list_item.dart';
@@ -95,9 +98,31 @@ class GroupDetailsPage extends ConsumerWidget {
       trailing: isAdmin
           ? IconButton(
               icon: const Icon(Icons.edit_outlined, color: BrandColors.text1),
-              onPressed: () {
-                // TODO: Navigate to edit group page
-                print('Navigate to edit group');
+              onPressed: () async {
+                // Convert GroupDetailsEntity to GroupEntity for edit page
+                // Note: Using default permissions since GroupDetailsEntity doesn't include them
+                // This will be properly loaded from Supabase in P2
+                final groupEntity = GroupEntity(
+                  id: groupId,
+                  name: details!.name,
+                  photoUrl: details.photoUrl,
+                  permissions: const GroupPermissions(
+                    membersCanInvite: true,
+                    membersCanAddMembers: true,
+                    membersCanCreateEvents: true,
+                  ),
+                );
+
+                final result = await Navigator.of(context).push<GroupEntity>(
+                  MaterialPageRoute(
+                    builder: (context) => EditGroupPage(group: groupEntity),
+                  ),
+                );
+
+                // Refresh group details if group was updated
+                if (result != null && context.mounted) {
+                  ref.invalidate(groupDetailsProvider(groupId));
+                }
               },
             )
           : const SizedBox(width: 28, height: 28),
