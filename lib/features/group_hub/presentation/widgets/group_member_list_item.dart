@@ -92,7 +92,6 @@ class GroupMemberListItem extends StatelessWidget {
 
             // Three-dot menu (only for admins, not on current user)
             if (isCurrentUserAdmin && !member.isCurrentUser) ...[
-              const SizedBox(width: Gaps.sm),
               PopupMenuButton<String>(
                 icon: const Icon(
                   Icons.more_vert,

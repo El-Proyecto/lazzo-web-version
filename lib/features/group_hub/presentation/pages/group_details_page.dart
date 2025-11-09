@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../shared/components/nav/common_app_bar.dart';
 import '../../../../shared/components/dialogs/confirmation_dialog.dart';
 import '../../../../shared/components/common/top_banner.dart';
+import '../../../../shared/components/common/invite_bottom_sheet.dart';
 import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/constants/text_styles.dart';
 import '../../../../shared/themes/colors.dart';
@@ -47,7 +48,7 @@ class GroupDetailsPage extends ConsumerWidget {
                 // Shortcuts section
                 _buildShortcuts(context, ref, details.isMuted),
 
-                const SizedBox(height: Gaps.xl),
+                const SizedBox(height: Gaps.lg),
 
                 // Members list
                 membersAsync.when(
@@ -173,7 +174,7 @@ class GroupDetailsPage extends ConsumerWidget {
               icon: Icons.person_add_outlined,
               label: 'Invite',
               onTap: () {
-                // TODO: Show add member flow
+                _showInviteBottomSheet(context);
               },
             ),
           ),
@@ -233,23 +234,16 @@ class GroupDetailsPage extends ConsumerWidget {
         children: [
           // Section header
           Padding(
-            padding: const EdgeInsets.all(Pads.sectionH),
-            child: Row(
-              children: [
-                Text(
-                  'Members',
-                  style: AppText.titleMediumEmph.copyWith(
-                    color: BrandColors.text1,
-                  ),
-                ),
-                const SizedBox(width: Gaps.xs),
-                Text(
-                  '${members.length}',
-                  style: AppText.titleMediumEmph.copyWith(
-                    color: BrandColors.text2,
-                  ),
-                ),
-              ],
+            padding: const EdgeInsets.only(
+                top: Pads.sectionH,
+                left: Pads.sectionH,
+                right: Pads.sectionH,
+                bottom: Pads.ctlVXs),
+            child: Text(
+              'Members',
+              style: AppText.titleMediumEmph.copyWith(
+                color: BrandColors.text1,
+              ),
             ),
           ),
 
@@ -258,11 +252,12 @@ class GroupDetailsPage extends ConsumerWidget {
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             itemCount: sortedMembers.length,
-            separatorBuilder: (context, index) => const Divider(
-              color: BrandColors.bg3,
-              height: 1,
-              indent: Pads.sectionH + 40 + Gaps.md,
-              endIndent: Pads.sectionH,
+            separatorBuilder: (context, index) => const Padding(
+              padding: EdgeInsets.symmetric(horizontal: Pads.sectionH),
+              child: Divider(
+                color: BrandColors.bg3,
+                height: 1,
+              ),
             ),
             itemBuilder: (context, index) {
               final member = sortedMembers[index];
@@ -364,6 +359,20 @@ class GroupDetailsPage extends ConsumerWidget {
       message:
           isMuted ? 'Group notifications muted' : 'Group notifications unmuted',
       duration: const Duration(seconds: 2),
+    );
+  }
+
+  void _showInviteBottomSheet(BuildContext context) {
+    // For P1, using fake data
+    final fakeInviteUrl = 'https://lazzo.app/groups/$groupId';
+    final fakeGroupName =
+        'Group Name'; // This will be replaced with real data in P2
+
+    InviteBottomSheet.show(
+      context: context,
+      inviteUrl: fakeInviteUrl,
+      entityName: fakeGroupName,
+      entityType: 'group',
     );
   }
 

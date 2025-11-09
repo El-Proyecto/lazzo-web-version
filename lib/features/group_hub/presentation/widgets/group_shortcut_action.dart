@@ -46,7 +46,7 @@ class GroupShortcutAction extends StatelessWidget {
                   label,
                   style: AppText.bodyMedium.copyWith(
                     color: BrandColors.text2,
-                    fontSize: 11,
+                    fontSize: 12,
                   ),
                   textAlign: TextAlign.center,
                   maxLines: 1,
