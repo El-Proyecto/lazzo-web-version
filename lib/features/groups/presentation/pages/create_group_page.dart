@@ -5,6 +5,7 @@ import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/constants/text_styles.dart';
 import '../../../../shared/themes/colors.dart';
 import '../../../../shared/components/nav/common_app_bar.dart';
+import '../../../../shared/components/common/top_banner.dart';
 import '../../../../routes/app_router.dart';
 import '../../domain/entities/group_entity.dart';
 import '../widgets/group_permissions_section.dart';
@@ -91,11 +92,9 @@ class _CreateGroupPageState extends ConsumerState<CreateGroupPage> {
       print('   ❌ Photo selection failed: $e');
       // Show error to user
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to select photo: $e'),
-            backgroundColor: Colors.red,
-          ),
+        TopBanner.showError(
+          context,
+          message: 'Failed to select photo: $e',
         );
       }
     }
@@ -237,10 +236,12 @@ class _CreateGroupPageState extends ConsumerState<CreateGroupPage> {
           }
         },
         error: (error, stack) {
-          if (!mounted) return;
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text('Error: $error')));
+          if (mounted) {
+            TopBanner.showError(
+              context,
+              message: 'Error: $error',
+            );
+          }
         },
       );
     });

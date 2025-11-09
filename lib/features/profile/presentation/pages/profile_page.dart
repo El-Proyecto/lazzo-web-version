@@ -5,6 +5,7 @@ import '../widgets/user_info_card.dart';
 import '../widgets/memories_section.dart';
 import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/themes/colors.dart';
+import '../../../../shared/components/common/top_banner.dart';
 import '../../domain/entities/profile_entity.dart';
 import '../providers/profile_providers.dart';
 
@@ -44,8 +45,8 @@ class ProfilePage extends ConsumerWidget {
               Text(
                 error.toString(),
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: BrandColors.text2,
-                ),
+                      color: BrandColors.text2,
+                    ),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: Gaps.md),
@@ -89,14 +90,9 @@ class ProfilePage extends ConsumerWidget {
 
   void _onMemoryTap(BuildContext context, MemoryEntity memory) {
     // TODO: Navigate to memory detail page
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text(
-          'Memory detail - Coming soon!',
-          style: TextStyle(color: Colors.black),
-        ),
-        backgroundColor: Colors.white,
-      ),
+    TopBanner.showInfo(
+      context,
+      message: 'Memory detail - Coming soon!',
     );
   }
 }

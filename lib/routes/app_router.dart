@@ -20,6 +20,7 @@ import '../features/profile/presentation/pages/edit_profile_page.dart';
 import '../features/event/presentation/pages/event_page.dart';
 import '../features/event/presentation/pages/event_chat_page.dart';
 import '../features/group_hub/presentation/pages/group_hub_page.dart';
+import '../features/group_hub/presentation/pages/group_details_page.dart';
 import '../features/memory/presentation/pages/memory_page.dart';
 import '../features/memory/presentation/pages/memory_viewer_page.dart';
 
@@ -38,6 +39,7 @@ class AppRouter {
   static const String event = '/event';
   static const String eventChat = '/event-chat';
   static const String groupHub = '/group-hub';
+  static const String groupDetails = '/group-details';
   static const String memory = '/memory';
   static const String memoryViewer = '/memory-viewer';
   static const String loginPage = '/login';
@@ -96,6 +98,13 @@ class AppRouter {
         groupName: args?['groupName'] ?? 'Group Name',
         groupPhotoUrl: args?['groupPhotoUrl'],
         memberCount: args?['memberCount'] ?? 3,
+      );
+    },
+    groupDetails: (context) {
+      final args =
+          ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+      return GroupDetailsPage(
+        groupId: args?['groupId'] ?? 'group-1',
       );
     },
     memory: (context) {

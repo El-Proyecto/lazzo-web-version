@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/constants/text_styles.dart';
 import '../../../../shared/themes/colors.dart';
 
@@ -22,45 +21,42 @@ class GroupsAppBar extends StatelessWidget implements PreferredSizeWidget {
       shadowColor: Colors.transparent,
       elevation: 0,
       automaticallyImplyLeading: false,
-      title: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: Insets.screenH),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            // Espaço vazio para centralizar o título
-            const SizedBox(width: 28, height: 28),
+      title: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          // Espaço vazio para centralizar o título
+          const SizedBox(width: 28, height: 28),
 
-            // Título
-            Expanded(
-              child: Center(
-                child: Text(
-                  title,
-                  style: AppText.dropdownTitle.copyWith(
-                    color: BrandColors.text1,
-                    fontSize: 22,
-                    fontWeight: FontWeight.w500,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              ),
-            ),
-
-            // Ícone de criar grupo
-            GestureDetector(
-              onTap: onCreateGroupPressed,
-              child: Container(
-                width: 28,
-                height: 28,
-                alignment: Alignment.center,
-                child: const Icon(
-                  Icons.group_add,
+          // Título
+          Expanded(
+            child: Center(
+              child: Text(
+                title,
+                style: AppText.dropdownTitle.copyWith(
                   color: BrandColors.text1,
-                  size: 20,
+                  fontSize: 22,
+                  fontWeight: FontWeight.w500,
                 ),
+                textAlign: TextAlign.center,
               ),
             ),
-          ],
-        ),
+          ),
+
+          // Ícone de criar grupo
+          GestureDetector(
+            onTap: onCreateGroupPressed,
+            child: Container(
+              width: 28,
+              height: 28,
+              alignment: Alignment.center,
+              child: const Icon(
+                Icons.group_add,
+                color: BrandColors.text1,
+                size: 20,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
