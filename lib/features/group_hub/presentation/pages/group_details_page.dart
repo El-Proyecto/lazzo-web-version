@@ -11,6 +11,7 @@ import '../providers/group_hub_providers.dart';
 import '../widgets/group_shortcut_action.dart';
 import '../widgets/group_member_list_item.dart';
 import '../../domain/entities/group_member_entity.dart';
+import 'group_photos_page.dart';
 
 class GroupDetailsPage extends ConsumerWidget {
   final String groupId;
@@ -46,7 +47,7 @@ class GroupDetailsPage extends ConsumerWidget {
                 const SizedBox(height: Gaps.xl),
 
                 // Shortcuts section
-                _buildShortcuts(context, ref, details.isMuted),
+                _buildShortcuts(context, ref, details.isMuted, details.name),
 
                 const SizedBox(height: Gaps.lg),
 
@@ -154,7 +155,8 @@ class GroupDetailsPage extends ConsumerWidget {
     );
   }
 
-  Widget _buildShortcuts(BuildContext context, WidgetRef ref, bool isMuted) {
+  Widget _buildShortcuts(
+      BuildContext context, WidgetRef ref, bool isMuted, String groupName) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: Insets.screenH),
       child: Row(
@@ -164,7 +166,16 @@ class GroupDetailsPage extends ConsumerWidget {
               icon: Icons.photo_library_outlined,
               label: 'Photos',
               onTap: () {
-                // TODO: Navigate to group photos
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => GroupPhotosPage(
+                      memoryId: groupId, // Using groupId as memoryId for now
+                      eventName: groupName,
+                      locationAndDate:
+                          'Porto • Mar 8, 2024', // TODO: Get from event details
+                    ),
+                  ),
+                );
               },
             ),
           ),

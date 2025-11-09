@@ -4,10 +4,12 @@ import '../../domain/entities/group_expense_entity.dart';
 import '../../domain/entities/group_memory_entity.dart';
 import '../../domain/entities/group_details_entity.dart';
 import '../../domain/entities/group_member_entity.dart';
+import '../../domain/entities/group_photo_entity.dart';
 import '../../domain/repositories/group_event_repository.dart';
 import '../../domain/repositories/group_expense_repository.dart';
 import '../../domain/repositories/group_memory_repository.dart';
 import '../../domain/repositories/group_details_repository.dart';
+import '../../domain/repositories/group_photos_repository.dart';
 import '../../domain/usecases/get_group_events.dart';
 import '../../domain/usecases/get_group_expenses.dart';
 import '../../domain/usecases/get_group_memories.dart';
@@ -18,6 +20,7 @@ import '../../data/fakes/fake_group_event_repository.dart';
 import '../../data/fakes/fake_group_expense_repository.dart';
 import '../../data/fakes/fake_group_memory_repository.dart';
 import '../../data/fakes/fake_group_details_repository.dart';
+import '../../data/fakes/fake_group_photos_repository.dart';
 
 // Repository providers - defaults to fake
 final groupEventRepositoryProvider = Provider<GroupEventRepository>((ref) {
@@ -34,6 +37,10 @@ final groupMemoryRepositoryProvider = Provider<GroupMemoryRepository>((ref) {
 
 final groupDetailsRepositoryProvider = Provider<GroupDetailsRepository>((ref) {
   return FakeGroupDetailsRepository();
+});
+
+final groupPhotosRepositoryProvider = Provider<GroupPhotosRepository>((ref) {
+  return FakeGroupPhotosRepository();
 });
 
 // Use case providers
@@ -114,6 +121,17 @@ final groupMembersProvider = StateNotifierProvider.family<
   return GroupMembersController(
     ref.watch(getGroupMembersUseCaseProvider),
     groupId,
+  );
+});
+
+final groupPhotosProvider = StateNotifierProvider.family<GroupPhotosController,
+    AsyncValue<List<GroupPhotoEntity>>, String>((
+  ref,
+  memoryId,
+) {
+  return GroupPhotosController(
+    ref.watch(groupPhotosRepositoryProvider),
+    memoryId,
   );
 });
 
@@ -248,5 +266,30 @@ class GroupMembersController
 
   Future<void> refresh() async {
     await loadMembers();
+  }
+}
+
+class GroupPhotosController
+    extends StateNotifier<AsyncValue<List<GroupPhotoEntity>>> {
+  final GroupPhotosRepository _repository;
+  final String _memoryId;
+
+  GroupPhotosController(this._repository, this._memoryId)
+      : super(const AsyncValue.loading()) {
+    loadPhotos();
+  }
+
+  Future<void> loadPhotos() async {
+    state = const AsyncValue.loading();
+    try {
+      final photos = await _repository.getMemoryPhotos(_memoryId);
+      state = AsyncValue.data(photos);
+    } catch (error, stackTrace) {
+      state = AsyncValue.error(error, stackTrace);
+    }
+  }
+
+  Future<void> refresh() async {
+    await loadPhotos();
   }
 }
