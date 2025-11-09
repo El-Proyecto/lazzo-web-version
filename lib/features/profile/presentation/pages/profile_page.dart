@@ -68,14 +68,14 @@ class ProfilePage extends ConsumerWidget {
             padding: const EdgeInsets.symmetric(horizontal: Insets.screenH),
             child: Column(
               children: [
-                const SizedBox(height: Gaps.lg),
+                const SizedBox(height: Gaps.md),
                 UserInfoCard(profile: profile),
-                const SizedBox(height: Gaps.lg),
+                const SizedBox(height: Gaps.xl),
                 MemoriesSection(
                   memories: profile.memories,
                   onMemoryTap: (memory) => _onMemoryTap(context, memory),
                 ),
-                const SizedBox(height: Gaps.lg),
+                const SizedBox(height: Gaps.md),
               ],
             ),
           ),
