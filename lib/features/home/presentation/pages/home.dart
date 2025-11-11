@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../shared/components/nav/common_app_bar.dart';
+import '../../../../shared/components/inputs/search_bar.dart' as custom;
 import '../../../../shared/components/sections/section_block.dart';
+import '../../../../shared/components/cards/home_event_card.dart';
+import '../../../../shared/components/cards/event_small_card.dart';
+import '../../../../shared/constants/spacing.dart';
 import '../../../create_event/presentation/widgets/event_created_banner.dart';
-import '../widgets/memory_summary_card.dart';
-import '../widgets/pending_events_section.dart';
-import '../providers/memory_providers.dart';
 import '../providers/banner_provider.dart';
-import '../providers/pending_event_providers.dart';
+import '../providers/home_event_providers.dart';
+import '../../domain/entities/home_event.dart';
 
 class HomePage extends ConsumerStatefulWidget {
   const HomePage({super.key});
@@ -16,24 +19,77 @@ class HomePage extends ConsumerStatefulWidget {
 }
 
 class _HomePageState extends ConsumerState<HomePage> {
+  String _formatEventDate(DateTime? date) {
+    if (date == null) return 'To be decided';
+
+    final months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec'
+    ];
+
+    final weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+    final weekday = weekdays[date.weekday - 1];
+    final day = date.day;
+    final month = months[date.month - 1];
+
+    return '$weekday, $day $month';
+  }
+
+  HomeEventCardState _mapStatusToHomeCardState(HomeEventStatus status) {
+    switch (status) {
+      case HomeEventStatus.pending:
+        return HomeEventCardState.pending;
+      case HomeEventStatus.confirmed:
+        return HomeEventCardState.confirmed;
+      case HomeEventStatus.living:
+        return HomeEventCardState.living;
+      case HomeEventStatus.recap:
+        return HomeEventCardState.recap;
+    }
+  }
+
+  EventSmallCardState _mapStatusToSmallCardState(HomeEventStatus status) {
+    switch (status) {
+      case HomeEventStatus.pending:
+        return EventSmallCardState.pending;
+      case HomeEventStatus.confirmed:
+        return EventSmallCardState.confirmed;
+      default:
+        return EventSmallCardState.confirmed;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final lastMemoryAsync = ref.watch(lastMemoryControllerProvider);
-
-    // Reset stacked state when entering the home page
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(stackedEventsStateProvider.notifier).resetToStacked();
-    });
+    final nextEventAsync = ref.watch(nextEventControllerProvider);
+    final confirmedEventsAsync = ref.watch(confirmedEventsControllerProvider);
+    final pendingEventsAsync = ref.watch(homePendingEventsControllerProvider);
 
     return Scaffold(
+      appBar: const CommonAppBar(
+        title: 'LAZZO',
+        centerTitle: true,
+      ),
       body: SafeArea(
         child: ListView(
           padding: EdgeInsets.zero,
           children: [
+            const SizedBox(height: Gaps.xs),
+
             // Success banner if needed
             Consumer(
               builder: (context, ref, child) {
-                // Use select to only rebuild when visibility changes
                 final isVisible = ref.watch(
                   bannerProvider.select((state) => state.isVisible),
                 );
@@ -43,67 +99,179 @@ class _HomePageState extends ConsumerState<HomePage> {
 
                 final bannerState = ref.watch(bannerProvider);
 
+                return Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: Insets.screenH),
+                  child: Column(
+                    children: [
+                      EventCreatedBanner(
+                        eventName: bannerState.eventName,
+                        groupName: bannerState.groupName,
+                        onClose: () {
+                          ref.read(bannerProvider.notifier).hideBanner();
+                        },
+                      ),
+                      const SizedBox(height: Gaps.md),
+                    ],
+                  ),
+                );
+              },
+            ),
+
+            // Search Bar
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: Insets.screenH),
+              child: custom.SearchBar(
+                placeholder: 'Search groups, events, memories...',
+                enabled: false,
+                onTap: () {
+                  // TODO: Navigate to search page
+                },
+              ),
+            ),
+            const SizedBox(height: Gaps.md),
+
+            // Next Event Section
+            nextEventAsync.when(
+              data: (event) {
+                if (event == null) {
+                  return const SizedBox.shrink();
+                }
                 return Column(
                   children: [
-                    const SizedBox(height: 16),
-                    EventCreatedBanner(
-                      eventName: bannerState.eventName,
-                      groupName: bannerState.groupName,
-                      onClose: () {
-                        ref.read(bannerProvider.notifier).hideBanner();
-                      },
+                    SectionBlock(
+                      title: 'Next Event',
+                      child: HomeEventCard(
+                        emoji: event.emoji,
+                        title: event.name,
+                        dateTime: _formatEventDate(event.date),
+                        location: event.location ?? 'Location TBD',
+                        state: _mapStatusToHomeCardState(event.status),
+                        goingCount: event.goingCount,
+                        attendeeAvatars: event.attendeeAvatars,
+                        attendeeNames: event.attendeeNames,
+                        onTap: () {
+                          // TODO: Navigate to event details
+                        },
+                        onChatPressed: () {
+                          // TODO: Navigate to event chat
+                        },
+                        onAddExpensePressed: () {
+                          // TODO: Navigate to add expense
+                        },
+                      ),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: Gaps.lg),
                   ],
                 );
               },
+              loading: () => SectionBlock(
+                title: 'Next Event',
+                child: Container(
+                  height: 200,
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.surface,
+                    borderRadius: BorderRadius.circular(Radii.md),
+                  ),
+                  child: const Center(
+                    child: CircularProgressIndicator(),
+                  ),
+                ),
+              ),
+              error: (error, stackTrace) => const SizedBox.shrink(),
             ),
 
-            // Pending Events Section
-            const PendingEventsSection(),
-
-            // Recent Memory Section
-            lastMemoryAsync.when(
-              data: (memory) {
-                if (memory == null) {
-                  print('memory is null');
+            // Confirmed Events Section
+            confirmedEventsAsync.when(
+              data: (events) {
+                if (events.isEmpty) {
                   return const SizedBox.shrink();
                 }
-                return SectionBlock(
-                  title: 'Recent Memory',
-                  child: MemorySummaryCard(
-                    emoji: memory.emoji,
-                    title: memory.title,
-                    onTap: () {
-                      // TODO: Navigate to memory details
-                    },
-                  ),
+                return Column(
+                  children: [
+                    SectionBlock(
+                      title: 'Confirmed Events',
+                      child: Column(
+                        children: events.asMap().entries.map((entry) {
+                          final index = entry.key;
+                          final event = entry.value;
+                          return Column(
+                            children: [
+                              EventSmallCard(
+                                emoji: event.emoji,
+                                title: event.name,
+                                dateTime: _formatEventDate(event.date),
+                                location: event.location ?? 'Location TBD',
+                                state: _mapStatusToSmallCardState(event.status),
+                                onTap: () {
+                                  // TODO: Navigate to event details
+                                },
+                              ),
+                              if (index < events.length - 1)
+                                const SizedBox(height: Gaps.sm),
+                            ],
+                          );
+                        }).toList(),
+                      ),
+                    ),
+                    const SizedBox(height: Gaps.lg),
+                  ],
                 );
               },
               loading: () => const SectionBlock(
-                title: 'Recent Memory',
-                child: Padding(
-                  padding: EdgeInsets.all(16),
-                  child: SizedBox(
-                    height: 94,
-                    child: Center(child: CircularProgressIndicator()),
-                  ),
+                title: 'Confirmed Events',
+                child: Center(
+                  child: CircularProgressIndicator(),
                 ),
               ),
-              error: (error, stackTrace) => SectionBlock(
-                title: 'Recent Memory',
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Text(
-                    'Failed to load memory: $error',
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.error,
-                    ),
-                  ),
-                ),
-              ),
+              error: (error, stackTrace) => const SizedBox.shrink(),
             ),
-            // More sections can be added here
+
+            // Pending Events Section
+            pendingEventsAsync.when(
+              data: (events) {
+                if (events.isEmpty) {
+                  return const SizedBox.shrink();
+                }
+                return Column(
+                  children: [
+                    SectionBlock(
+                      title: 'Pending Events',
+                      child: Column(
+                        children: events.asMap().entries.map((entry) {
+                          final index = entry.key;
+                          final event = entry.value;
+                          return Column(
+                            children: [
+                              EventSmallCard(
+                                emoji: event.emoji,
+                                title: event.name,
+                                dateTime: _formatEventDate(event.date),
+                                location: event.location ?? 'Location TBD',
+                                state: _mapStatusToSmallCardState(event.status),
+                                onTap: () {
+                                  // TODO: Navigate to event details
+                                },
+                              ),
+                              if (index < events.length - 1)
+                                const SizedBox(height: Gaps.sm),
+                            ],
+                          );
+                        }).toList(),
+                      ),
+                    ),
+                    const SizedBox(height: Gaps.lg),
+                  ],
+                );
+              },
+              loading: () => const SectionBlock(
+                title: 'Pending Events',
+                child: Center(
+                  child: CircularProgressIndicator(),
+                ),
+              ),
+              error: (error, stackTrace) => const SizedBox.shrink(),
+            ),
           ],
         ),
       ),

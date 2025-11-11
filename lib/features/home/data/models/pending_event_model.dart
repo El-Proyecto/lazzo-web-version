@@ -1,3 +1,4 @@
+// TODO P2: Remove this file - old pending event model replaced by new home event structure
 import '../../domain/entities/pending_event.dart';
 
 class _VoterInfoDTO {
@@ -91,7 +92,8 @@ class _PendingEventModel {
       emoji: _normalizeEmoji(row['emoji']),
       scheduledDate: _parseDate(row['start_datetime']),
       location: _asString(row['location_name']) ?? '',
-      userVote: _parseUserVote(_asString(row['vote_status'])), // ✅ Conversão direta
+      userVote:
+          _parseUserVote(_asString(row['vote_status'])), // ✅ Conversão direta
       goingTotal: _asInt(row['going_count']),
       notGoingTotal: _asInt(row['not_going_count']),
       noResponseTotal: _asInt(row['no_response_count']),
@@ -122,12 +124,12 @@ class _PendingEventModel {
   static bool? _parseUserVote(String? rsvp) {
     if (rsvp == null) return null;
     final s = rsvp.toLowerCase();
-    
+
     const yesSet = {'yes', 'going', 'attending', 'accepted'};
     const noSet = {'no', 'declined', 'not_going', 'rejected'};
-    
-    if (yesSet.contains(s)) return true;  // Votou SIM
-    if (noSet.contains(s)) return false;  // Votou NÃO
+
+    if (yesSet.contains(s)) return true; // Votou SIM
+    if (noSet.contains(s)) return false; // Votou NÃO
     return null; // 'pending', 'invited', etc → não votou
   }
 
