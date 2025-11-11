@@ -23,17 +23,18 @@ class UserInfoCard extends StatelessWidget {
       children: [
         // Profile Picture (now using signed URL from repository)
         Container(
-          width: 152,
-          height: 152,
+          width: 120,
+          height: 120,
           decoration: ShapeDecoration(
             color: BrandColors.bg3,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(76),
+              borderRadius: BorderRadius.circular(90),
             ),
           ),
           child: ClipRRect(
-            borderRadius: BorderRadius.circular(76),
-            child: profile.profileImageUrl != null && profile.profileImageUrl!.isNotEmpty
+            borderRadius: BorderRadius.circular(90),
+            child: profile.profileImageUrl != null &&
+                    profile.profileImageUrl!.isNotEmpty
                 ? Image.network(
                     profile.profileImageUrl!,
                     fit: BoxFit.cover,
@@ -50,19 +51,21 @@ class UserInfoCard extends StatelessWidget {
                         ),
                       );
                     },
-                    errorBuilder: (context, error, stackTrace) =>
-                        const Icon(Icons.person, size: 64, color: BrandColors.text2),
+                    errorBuilder: (context, error, stackTrace) => const Icon(
+                        Icons.person,
+                        size: 48,
+                        color: BrandColors.text2),
                   )
-                : const Icon(Icons.person, size: 64, color: BrandColors.text2),
+                : const Icon(Icons.person, size: 48, color: BrandColors.text2),
           ),
         ),
 
-        const SizedBox(height: Gaps.xs),
+        const SizedBox(height: Gaps.sm),
 
         // Name
         Text(
           profile.name,
-          style: AppText.headlineMedium.copyWith(color: BrandColors.text1),
+          style: AppText.subtitleMuted.copyWith(color: BrandColors.text1),
         ),
 
         // Location (if provided)

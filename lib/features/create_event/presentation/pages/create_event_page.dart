@@ -14,6 +14,7 @@ import '../widgets/exit_confirmation_dialog.dart';
 import '../../../../shared/models/event_draft.dart';
 import '../../../../services/draft_service.dart';
 import '../../../../shared/themes/colors.dart';
+import '../../../../shared/components/common/top_banner.dart';
 import '../../../groups/presentation/providers/groups_provider.dart';
 import '../../../groups/domain/entities/group.dart';
 
@@ -775,11 +776,9 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
           }
         });
         // Show success message
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Group "$groupName" created!'),
-            backgroundColor: BrandColors.planning,
-          ),
+        TopBanner.showSuccess(
+          context,
+          message: 'Group "$groupName" created!',
         );
       }
     }

@@ -6,7 +6,7 @@ import '../widgets/auth_form_widgets.dart';
 import '../../../../shared/components/sections/lazzo_header.dart';
 import '../widgets/welcome_section.dart';
 import '../providers/auth_provider.dart';
-import '../../../../shared/themes/colors.dart';
+import '../../../../shared/components/common/top_banner.dart';
 import 'verify_otp.dart';
 import './login/login_page.dart';
 
@@ -67,13 +67,12 @@ class _AuthPageState extends ConsumerState<AuthPage> {
       _nameController.clear();
       _emailController.clear();
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Verification code sent to $email'),
-          backgroundColor: Colors.green,
-          duration: const Duration(seconds: 3),
-        ),
-      );
+      if (mounted) {
+        TopBanner.showSuccess(
+          context,
+          message: 'Verification code sent to $email',
+        );
+      }
 
       print('🔄 Navegando para OTP com email: $email, name: $name'); // Debug
 
@@ -87,10 +86,12 @@ class _AuthPageState extends ConsumerState<AuthPage> {
         ),
       );
     } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
-      );
+      if (mounted) {
+        TopBanner.showError(
+          context,
+          message: 'Error: $e',
+        );
+      }
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -107,13 +108,12 @@ class _AuthPageState extends ConsumerState<AuthPage> {
       // Navegação acontece no listener no build
     } catch (e) {
       _pendingOAuth = false;
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Google Sign In failed: $e'),
-          backgroundColor: BrandColors.cantVote,
-        ),
-      );
+      if (mounted) {
+        TopBanner.showError(
+          context,
+          message: 'Google Sign In failed: $e',
+        );
+      }
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }

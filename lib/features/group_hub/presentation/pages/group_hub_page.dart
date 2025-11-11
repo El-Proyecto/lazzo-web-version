@@ -15,6 +15,7 @@ import '../../domain/entities/group_expense_entity.dart';
 import '../../domain/entities/group_memory_entity.dart';
 import '../widgets/expense_detail_bottom_sheet.dart';
 import '../../domain/entities/expense_participant_entity.dart';
+import 'group_details_page.dart';
 
 class GroupHubPage extends ConsumerStatefulWidget {
   final String groupId;
@@ -232,7 +233,11 @@ class _GroupHubPageState extends ConsumerState<GroupHubPage>
       trailing: IconButton(
         icon: const Icon(Icons.settings, color: BrandColors.text1),
         onPressed: () {
-          // TODO: Navigate to group settings
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (context) => GroupDetailsPage(groupId: widget.groupId),
+            ),
+          );
         },
       ),
     );

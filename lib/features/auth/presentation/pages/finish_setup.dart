@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../shared/themes/colors.dart';
+import '../../../../shared/components/common/top_banner.dart';
 
 // Form principal
 import '../widgets/finish_auth/body.dart';
@@ -109,24 +110,19 @@ class _CreateProfilePageState extends ConsumerState<CreateProfilePage> {
     bool showSuccess = false,
     String successMsg = 'Saved',
   }) async {
-    final scaffoldMessenger = ScaffoldMessenger.of(context);
     try {
       await _repo.upsertPatch(patch);
       if (showSuccess && mounted) {
-        scaffoldMessenger.showSnackBar(
-          SnackBar(
-            content: Text(successMsg),
-            behavior: SnackBarBehavior.floating,
-          ),
+        TopBanner.showSuccess(
+          context,
+          message: successMsg,
         );
       }
     } catch (e) {
       if (mounted) {
-        scaffoldMessenger.showSnackBar(
-          SnackBar(
-            content: Text('Could not save: $e'),
-            behavior: SnackBarBehavior.floating,
-          ),
+        TopBanner.showError(
+          context,
+          message: 'Could not save: $e',
         );
       }
     }

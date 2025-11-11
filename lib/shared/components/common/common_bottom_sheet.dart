@@ -74,10 +74,8 @@ class CommonBottomSheet extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           if (showGrabber) ...[
-            const Padding(
-              padding: EdgeInsets.only(top: Gaps.sm),
-              child: Center(child: GrabberBar()),
-            ),
+            const Center(child: GrabberBar()),
+            const SizedBox(height: Gaps.sm),
           ],
 
           // Header
@@ -107,8 +105,7 @@ class CommonBottomSheet extends StatelessWidget {
           // Content
           Flexible(
             child: SingleChildScrollView(
-              padding:
-                  contentPadding ??
+              padding: contentPadding ??
                   const EdgeInsets.only(
                     left: Gaps.lg,
                     right: Gaps.lg,
@@ -207,9 +204,7 @@ class CommonConfirmDialog extends StatelessWidget {
           style: AppText.bodyMedium.copyWith(color: BrandColors.text2),
           textAlign: TextAlign.center,
         ),
-
         const SizedBox(height: Gaps.lg),
-
         Row(
           children: [
             Expanded(
@@ -227,9 +222,7 @@ class CommonConfirmDialog extends StatelessWidget {
                 ),
               ),
             ),
-
             const SizedBox(width: Gaps.md),
-
             Expanded(
               child: ElevatedButton(
                 onPressed: () {

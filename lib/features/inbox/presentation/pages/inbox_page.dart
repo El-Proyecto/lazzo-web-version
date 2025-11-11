@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../shared/components/common/page_segmented_control.dart';
+import '../../../../shared/components/nav/common_app_bar.dart';
 import '../../../../shared/themes/colors.dart';
 import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/constants/text_styles.dart';
@@ -39,39 +40,19 @@ class _InboxPageState extends ConsumerState<InboxPage>
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: BrandColors.bg1,
-      body: SafeArea(
-        child: Column(
-          children: [
-            _buildHeader(),
-            _buildTabBar(),
-            Expanded(
-              child: TabBarView(
-                controller: _tabController,
-                children: [
-                  _buildNotificationsTab(),
-                  _buildActionsTab(),
-                  _buildPaymentsTab(),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildHeader() {
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: Insets.screenH,
-        vertical: Gaps.lg,
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
+      appBar: const CommonAppBar(title: 'Inbox'),
+      body: Column(
         children: [
-          Text(
-            'Inbox',
-            style: AppText.headlineMedium.copyWith(color: BrandColors.text1),
+          _buildTabBar(),
+          Expanded(
+            child: TabBarView(
+              controller: _tabController,
+              children: [
+                _buildNotificationsTab(),
+                _buildActionsTab(),
+                _buildPaymentsTab(),
+              ],
+            ),
           ),
         ],
       ),

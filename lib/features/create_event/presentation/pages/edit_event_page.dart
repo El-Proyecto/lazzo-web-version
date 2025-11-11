@@ -9,6 +9,7 @@ import '../widgets/create_event_app_bar.dart'; // Import CreateEventAppBar
 // import '../../../../shared/models/event_draft.dart'; // Commented for P1 - conflicts with Google Maps
 // import '../../../../services/draft_service.dart'; // Commented for P1
 import '../../../../shared/themes/colors.dart';
+import '../../../../shared/components/common/top_banner.dart';
 import '../../domain/entities/event.dart';
 import '../../../../shared/components/dialogs/confirmation_dialog.dart';
 import '../providers/event_providers.dart';
@@ -76,9 +77,8 @@ class _EditEventPageState extends ConsumerState<EditEventPage> {
 
     // Load group from groupId - using mock data for now
     final mockGroups = _getMockGroups();
-    _selectedGroup = mockGroups
-        .where((group) => group.id == event.groupId)
-        .firstOrNull;
+    _selectedGroup =
+        mockGroups.where((group) => group.id == event.groupId).firstOrNull;
 
     // Se não encontrar o grupo nos mocks, criar um temporário com o ID do evento
     if (_selectedGroup == null && event.groupId.isNotEmpty) {
@@ -216,13 +216,11 @@ class _EditEventPageState extends ConsumerState<EditEventPage> {
     bool groupValid = _selectedGroup != null || widget.event.groupId.isNotEmpty;
 
     // Data/hora é válida se for "decide later" ou se tiver ambos data e hora definidos
-    bool dateTimeValid =
-        (_dateTimeState == DateTimeState.decideLater ||
+    bool dateTimeValid = (_dateTimeState == DateTimeState.decideLater ||
         (_selectedDate != null && _selectedTime != null));
 
     // Localização é válida se for "decide later" ou se tiver localização definida
-    bool locationValid =
-        (_locationState == LocationState.decideLater ||
+    bool locationValid = (_locationState == LocationState.decideLater ||
         _selectedLocation != null);
 
     return nameValid && groupValid && dateTimeValid && locationValid;
@@ -407,11 +405,9 @@ class _EditEventPageState extends ConsumerState<EditEventPage> {
     // Listen to edit state for loading/error handling
     ref.listen<EditEventState>(editEventControllerProvider, (previous, next) {
       if (next.error != null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: ${next.error}'),
-            backgroundColor: Colors.red,
-          ),
+        TopBanner.showError(
+          context,
+          message: 'Error: ${next.error}',
         );
       }
     });
@@ -560,8 +556,8 @@ class _EditEventPageState extends ConsumerState<EditEventPage> {
                 child: ElevatedButton(
                   onPressed:
                       (_isFormValid() && _hasChanges() && !editState.isLoading)
-                      ? _handleSaveEvent
-                      : null,
+                          ? _handleSaveEvent
+                          : null,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: (_isFormValid() && _hasChanges())
                         ? BrandColors.planning
