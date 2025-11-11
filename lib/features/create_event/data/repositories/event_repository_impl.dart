@@ -181,23 +181,119 @@ class EventRepositoryImpl implements EventRepository {
 		}
 		
 		try {
-			final model = EventModel.fromEntity(event, createdBy: userId);
+			// CRITICAL: Create location first if it's a new location (no ID yet)
+			String? locationId;
+			if (event.location != null) {
+				// Check if location already exists in DB (has valid UUID)
+				final existingId = event.location!.id;
+				final uuidRegex = RegExp(r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$', caseSensitive: false);
+				
+				if (uuidRegex.hasMatch(existingId)) {
+					// Location already exists, just use its ID
+					locationId = existingId;
+					print('📍 Using existing location: $locationId');
+				} else {
+					// New location - create it first
+					print('📍 Creating new location for update...');
+					try {
+						final locationData = await _dataSource.createLocation(
+							displayName: event.location!.displayName,
+							formattedAddress: event.location!.formattedAddress,
+							latitude: event.location!.latitude,
+							longitude: event.location!.longitude,
+							createdBy: userId,
+						);
+						locationId = locationData['id'] as String;
+						print('📍 Location created with ID: $locationId');
+					} catch (e) {
+						print('❌ Failed to create location: $e');
+						// Don't fail the entire update, just log it
+						locationId = null;
+					}
+				}
+			}
+			
+			// Now update the event with the location ID
 			final response = await _dataSource.updateEvent(
-				id: model.id,
-				name: model.name,
-				emoji: model.emoji,
-				groupId: model.groupId,
-				startDateTime: model.startDateTime,
-				endDateTime: model.endDateTime,
-				locationId: model.locationId,
-				status: model.status,
+				id: event.id,
+				name: event.name,
+				emoji: event.emoji,
+				groupId: event.groupId,
+				startDateTime: event.startDateTime,
+				endDateTime: event.endDateTime,
+				locationId: locationId,
+				status: event.status.toString().split('.').last,
 			);
 			
+			// CRITICAL: Sync the initial date suggestion created by host/admin
+			// When an event is created with a date, we auto-create a suggestion
+			// When editing, we must also UPDATE that suggestion to avoid showing it as "alternate"
+			try {
+				// Find the initial suggestion created by the event creator (host)
+				final initialSuggestions = await _client
+					.from('event_date_options')
+					.select('id')
+					.eq('event_id', event.id)
+					.eq('created_by', userId)
+					.order('created_at', ascending: true)
+					.limit(1);
+				
+				if (initialSuggestions.isNotEmpty && event.startDateTime != null) {
+					// Update the initial suggestion to match the new event date
+					final suggestionId = initialSuggestions[0]['id'];
+					await _client.from('event_date_options').update({
+						'starts_at': event.startDateTime!.toIso8601String(),
+						'ends_at': event.endDateTime?.toIso8601String(),
+					}).eq('id', suggestionId);
+					print('✅ Updated initial date suggestion to match edited event');
+				} else if (initialSuggestions.isNotEmpty && event.startDateTime == null) {
+					// Event changed to "Decide Later" - delete the suggestion
+					final suggestionId = initialSuggestions[0]['id'];
+					await _client.from('event_date_options').delete().eq('id', suggestionId);
+					print('✅ Deleted date suggestion (event changed to Decide Later)');
+				}
+			} catch (e) {
+				// Don't fail the update if suggestion sync fails
+				print('⚠️ Failed to sync date suggestion: $e');
+			}
+			
+			// CRITICAL: Sync the initial location suggestion created by host/admin
+			try {
+				// Find the initial location suggestion created by the event creator
+				final initialLocationSuggestions = await _client
+					.from('location_suggestions')
+					.select('id')
+					.eq('event_id', event.id)
+					.eq('user_id', userId)
+					.order('created_at', ascending: true)
+					.limit(1);
+				
+				if (initialLocationSuggestions.isNotEmpty && event.location != null && locationId != null) {
+					// Update the initial suggestion to match the new event location
+					final suggestionId = initialLocationSuggestions[0]['id'];
+					await _client.from('location_suggestions').update({
+						'location_name': event.location!.displayName,
+						'address': event.location!.formattedAddress,
+						'latitude': event.location!.latitude,
+						'longitude': event.location!.longitude,
+					}).eq('id', suggestionId);
+					print('✅ Updated initial location suggestion to match edited event');
+				} else if (initialLocationSuggestions.isNotEmpty && event.location == null) {
+					// Event changed to "Decide Later" for location - delete the suggestion
+					final suggestionId = initialLocationSuggestions[0]['id'];
+					await _client.from('location_suggestions').delete().eq('id', suggestionId);
+					print('✅ Deleted location suggestion (event changed to Decide Later)');
+				}
+			} catch (e) {
+				// Don't fail the update if location suggestion sync fails
+				print('⚠️ Failed to sync location suggestion: $e');
+			}
+			
 			// Fetch location if present in updated event
-			String? locationId = response['location_id'] as String?;
+			String? finalLocationId = response['location_id'] as String?;
 			EventLocation? location;
-			if (locationId != null) {
-				final loc = await _dataSource.getLocationById(locationId);
+			if (finalLocationId != null) {
+				final loc = await _dataSource.getLocationById(finalLocationId);
 				if (loc != null) {
 					location = LocationModel.fromJson(loc).toEntity();
 				}
@@ -206,6 +302,7 @@ class EventRepositoryImpl implements EventRepository {
 			return EventModel.fromJson(response).toEntity(location: location);
 		} on Exception catch (e) {
 			// Re-throw with better context
+			print('❌ Update event error: $e');
 			throw Exception('Failed to update event: ${e.toString()}');
 		}
 	}
