@@ -1,3 +1,4 @@
+// TODO P2: Remove this file - replaced by new home structure with EventSmallCard
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -23,11 +24,12 @@ class PendingEventWidget extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final voteState = ref.watch(voteStateProvider(event.eventId));
     final voteNotifier = ref.read(voteStateProvider(event.eventId).notifier);
-    
+
     final authState = ref.watch(authProvider);
     final currentUser = authState.valueOrNull;
 
-    print('🔍 Event ${event.eventId}: userVote=${event.userVote}, state=${voteState.status}');
+    print(
+        '🔍 Event ${event.eventId}: userVote=${event.userVote}, state=${voteState.status}');
 
     final effectiveStatus = _getEffectiveStatus(
       voteState.status,
@@ -35,15 +37,18 @@ class PendingEventWidget extends ConsumerWidget {
     );
 
     if (effectiveStatus == VoteStatus.votersExpanded) {
-      final yesVoters = _replaceCurrentUserName(event.goingUsers, currentUser?.id);
-      final noVoters = _replaceCurrentUserName(event.notGoingUsers, currentUser?.id);
-      final noResponseVoters = _replaceCurrentUserName(event.noResponseUsers, currentUser?.id);
+      final yesVoters =
+          _replaceCurrentUserName(event.goingUsers, currentUser?.id);
+      final noVoters =
+          _replaceCurrentUserName(event.notGoingUsers, currentUser?.id);
+      final noResponseVoters =
+          _replaceCurrentUserName(event.noResponseUsers, currentUser?.id);
 
       UserVoteStatus userVote = voteState.userVote == true
           ? UserVoteStatus.yes
           : voteState.userVote == false
-          ? UserVoteStatus.no
-          : UserVoteStatus.notVoted;
+              ? UserVoteStatus.no
+              : UserVoteStatus.notVoted;
 
       return PendingEventExpandedCard(
         emoji: event.emoji,
@@ -118,7 +123,7 @@ class PendingEventWidget extends ConsumerWidget {
     if (voteStateStatus == VoteStatus.voted) {
       return VoteStatus.voted;
     }
-    
+
     // Fallback: usa dados do backend
     return eventUserVote == null ? VoteStatus.vote : VoteStatus.voted;
   }
@@ -135,8 +140,9 @@ class PendingEventWidget extends ConsumerWidget {
   ) {
     switch (status) {
       case VoteStatus.vote:
-        final yesVoters = _replaceCurrentUserName(event.goingUsers, currentUserId);
-        
+        final yesVoters =
+            _replaceCurrentUserName(event.goingUsers, currentUserId);
+
         if (yesVoters.isNotEmpty) {
           return StackedAvatars(
             voters: yesVoters,
@@ -153,13 +159,15 @@ class PendingEventWidget extends ConsumerWidget {
 
       case VoteStatus.voted:
         if (voteState.userVote == true) {
-          final yesVoters = _replaceCurrentUserName(event.goingUsers, currentUserId);
+          final yesVoters =
+              _replaceCurrentUserName(event.goingUsers, currentUserId);
           return StackedAvatars(
             voters: yesVoters,
             onTap: () => notifier.toggleExpansion(),
           );
         } else if (voteState.userVote == false) {
-          final yesVoters = _replaceCurrentUserName(event.goingUsers, currentUserId);
+          final yesVoters =
+              _replaceCurrentUserName(event.goingUsers, currentUserId);
           if (yesVoters.isEmpty) {
             return VotedNoButton(onTap: () => notifier.toggleExpansion());
           } else {
@@ -172,7 +180,8 @@ class PendingEventWidget extends ConsumerWidget {
         return SimpleVoteButton(onTap: () => notifier.startVoting());
 
       case VoteStatus.votersExpanded:
-        final yesVoters = _replaceCurrentUserName(event.goingUsers, currentUserId);
+        final yesVoters =
+            _replaceCurrentUserName(event.goingUsers, currentUserId);
         return StackedAvatars(
           voters: yesVoters,
           onTap: () => notifier.toggleExpansion(),

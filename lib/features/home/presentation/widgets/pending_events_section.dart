@@ -1,3 +1,4 @@
+// TODO P2: Remove this file - replaced by new home structure with EventSmallCard
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -20,7 +21,6 @@ class PendingEventsSection extends ConsumerWidget {
     return pendingEventsAsync.when(
       data: (events) {
         if (events.isEmpty) {
-          
           return SectionBlock(
             title: 'Pending Events',
             child: Padding(

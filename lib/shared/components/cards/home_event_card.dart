@@ -370,7 +370,7 @@ class HomeEventCard extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     const Icon(
-                      Icons.send,
+                      Icons.chat_bubble_outline,
                       color: BrandColors.text1,
                       size: 18,
                     ),
