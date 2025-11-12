@@ -264,9 +264,11 @@ class _EventChatPageState extends ConsumerState<EventChatPage> {
       onTap: () {
         FocusScope.of(context).unfocus();
       },
-      child: Scaffold(
-        backgroundColor: BrandColors.bg1,
-        appBar: eventAsync.when(
+      child: Hero(
+        tag: 'chat-widget',
+        child: Scaffold(
+          backgroundColor: BrandColors.bg1,
+          appBar: eventAsync.when(
           data: (event) => _ChatAppBar(
             title: event.name,
             subtitle: _formatSubtitle(
@@ -350,6 +352,7 @@ class _EventChatPageState extends ConsumerState<EventChatPage> {
               },
             ),
           ],
+        ),
         ),
       ),
     );

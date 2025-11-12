@@ -61,23 +61,11 @@ class SuggestionRemoteDataSource {
     DateTime? currentEventEndDateTime,
   }) async {
     try {
-      // Check if this is the first suggestion
-      final existingCount = await _supabaseClient
-          .from('event_date_options') // Table: event_date_options
-          .select('id')
-          .eq('event_id', eventId)
-          .count(CountOption.exact);
-
-      // If first suggestion AND current event datetime provided, create "current" first
-      if (existingCount.count == 0 && currentEventStartDateTime != null) {
-        await _supabaseClient.from('event_date_options').insert({
-          'event_id': eventId,
-          'created_by': userId, // Field: created_by
-          'starts_at': currentEventStartDateTime.toIso8601String(), // Field: starts_at
-          'ends_at': currentEventEndDateTime?.toIso8601String(), // Field: ends_at
-        });
-      }
-
+      // REMOVED: Auto-creating event's current date as suggestion
+      // This caused issues where editing event date would appear to create a "new suggestion"
+      // The event's initial date suggestion should ONLY be created during event creation,
+      // not when users add additional suggestions
+      
       // Create the new suggestion
       final response = await _supabaseClient
           .from('event_date_options') // Table: event_date_options
@@ -273,25 +261,11 @@ class SuggestionRemoteDataSource {
     String? currentEventAddress,
   }) async {
     try {
-      // Check if this is the first location suggestion
-      final existingCount = await _supabaseClient
-          .from('location_suggestions')
-          .select('id')
-          .eq('event_id', eventId)
-          .count(CountOption.exact);
-
-      // If first suggestion AND current event location provided, create "current" first
-      if (existingCount.count == 0 && currentEventLocationName != null) {
-        await _supabaseClient.from('location_suggestions').insert({
-          'event_id': eventId,
-          'user_id': userId,
-          'location_name': currentEventLocationName,
-          'address': currentEventAddress,
-          'latitude': null,
-          'longitude': null,
-        });
-      }
-
+      // REMOVED: Auto-creating event's current location as suggestion
+      // This caused issues where editing event location would appear to create a "new suggestion"
+      // The event's initial location suggestion should ONLY be created during event creation,
+      // not when users add additional suggestions
+      
       // Create the new location suggestion
       final response = await _supabaseClient
           .from('location_suggestions')

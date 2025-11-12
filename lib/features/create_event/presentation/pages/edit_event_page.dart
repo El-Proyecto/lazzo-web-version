@@ -322,6 +322,13 @@ class _EditEventPageState extends ConsumerState<EditEventPage> {
     ref.invalidate(event_providers.eventDetailProvider(widget.event.id));
     // 2. Pending events list (home page - shows updated scheduled date)
     ref.invalidate(home_providers.pendingEventsControllerProvider);
+    // 3. Date/time suggestions (ensures synced suggestion shows correctly)
+    ref.invalidate(event_providers.eventSuggestionsProvider(widget.event.id));
+    // 4. Location suggestions (ensures synced suggestion shows correctly)
+    ref.invalidate(event_providers.eventLocationSuggestionsProvider(widget.event.id));
+    // 5. Suggestion votes (refresh vote counts)
+    ref.invalidate(event_providers.suggestionVotesProvider(widget.event.id));
+    ref.invalidate(event_providers.userSuggestionVotesProvider(widget.event.id));
 
     // Reset initial values after successful update
     setState(() {

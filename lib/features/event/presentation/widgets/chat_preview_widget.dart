@@ -105,21 +105,35 @@ class _ChatPreviewWidgetState extends State<ChatPreviewWidget> {
     final double neededHeight = messagesToShow.length * messageBubbleHeight;
     final bool needsScroll = neededHeight > maxChatHeight;
     final double chatHeight = needsScroll ? maxChatHeight : neededHeight;
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(Pads.sectionH),
-      decoration: BoxDecoration(
-        color: BrandColors.bg2,
-        borderRadius: BorderRadius.circular(Radii.md),
-      ),
-      child: Column(
+    return Hero(
+      tag: 'chat-widget',
+      child: Material(
+        color: Colors.transparent,
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(Pads.sectionH),
+          decoration: BoxDecoration(
+            color: BrandColors.bg2,
+            borderRadius: BorderRadius.circular(Radii.md),
+          ),
+          child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Header
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('Chat', style: AppText.labelLarge),
+              InkWell(
+                onTap: widget.onOpenChat,
+                borderRadius: BorderRadius.circular(Radii.sm),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: Gaps.xs,
+                    vertical: Gaps.xxs,
+                  ),
+                  child: Text('Chat', style: AppText.labelLarge),
+                ),
+              ),
               if (widget.newMessagesCount > 0)
                 InkWell(
                   onTap: widget.onOpenChat,
@@ -260,6 +274,8 @@ class _ChatPreviewWidgetState extends State<ChatPreviewWidget> {
             ),
           ),
         ],
+      ),
+        ),
       ),
     );
   }
