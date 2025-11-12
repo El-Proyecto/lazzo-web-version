@@ -11,7 +11,7 @@ class FakeHomeEventRepository implements HomeEventRepository {
   // 'no-events' = return empty lists (simulates user with groups but no events)
   // Note: 'no-groups' state is controlled by FakeGroupRepository
   // IMPORTANT: After changing this, you MUST do Hot Restart (not Hot Reload)
-  static String mockEmptyState = 'no-events';
+  static String mockEmptyState = 'normal';
 
   // Control variable to change the next event state for testing
   // Change this to test different card states:
