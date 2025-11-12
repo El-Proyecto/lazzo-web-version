@@ -379,9 +379,8 @@ class _HomePageState extends ConsumerState<HomePage> {
                               payment: payment,
                               onTap: () {
                                 // Navigate to Inbox tab (index 2)
-                                ref
-                                    .read(mainLayoutTabProvider.notifier)
-                                    .state = 2;
+                                ref.read(mainLayoutTabProvider.notifier).state =
+                                    2;
                               },
                             ),
                           );

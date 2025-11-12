@@ -77,7 +77,7 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
     setState(() {
       _currentIndex = pageIndex;
     });
-    
+
     // Update provider as well
     ref.read(mainLayoutTabProvider.notifier).state = pageIndex;
   }
