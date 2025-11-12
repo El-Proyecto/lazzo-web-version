@@ -142,22 +142,22 @@ class _HomePageState extends ConsumerState<HomePage> {
                     SectionBlock(
                       title: 'Next Event',
                       child: HomeEventCard(
-                        emoji: event.emoji,
-                        title: event.name,
-                        dateTime: _formatEventDate(event.date),
-                        location: event.location ?? 'Location TBD',
+                        event: event,
                         state: _mapStatusToHomeCardState(event.status),
-                        goingCount: event.goingCount,
-                        attendeeAvatars: event.attendeeAvatars,
-                        attendeeNames: event.attendeeNames,
                         onTap: () {
                           // TODO: Navigate to event details
                         },
                         onChatPressed: () {
                           // TODO: Navigate to event chat
                         },
-                        onAddExpensePressed: () {
-                          // TODO: Navigate to add expense
+                        onExpensePressed: () {
+                          // TODO: Open add expense bottom sheet
+                        },
+                        onVoteChanged: (eventId, vote) {
+                          // TODO: Update vote in backend
+                          debugPrint(
+                            'Vote changed for event $eventId: $vote',
+                          );
                         },
                       ),
                     ),

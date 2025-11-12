@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
+import '../../../features/home/domain/entities/home_event.dart';
 import '../../constants/spacing.dart';
 import '../../constants/text_styles.dart';
 import '../../themes/colors.dart';
+import '../widgets/votes_bottom_sheet.dart';
+import '../widgets/rsvp_widget.dart';
+import '../dialogs/add_expense_bottom_sheet.dart';
 
 /// Home event card state
 /// Planning phase: pending (border color) or confirmed (green)
@@ -11,39 +15,91 @@ enum HomeEventCardState { pending, confirmed, living, recap }
 
 /// Large event card for Home page "Next Event" section
 /// Shows event details with state-specific border/chip colors
-/// Includes Chat and Add Expense action buttons at bottom
-class HomeEventCard extends StatelessWidget {
-  final String emoji;
-  final String title;
-  final String dateTime;
-  final String location;
+/// Includes Chat and Expense action buttons at bottom
+class HomeEventCard extends StatefulWidget {
+  final HomeEventEntity event;
   final HomeEventCardState state;
-  final int goingCount;
-  final List<String> attendeeAvatars;
-  final List<String> attendeeNames;
   final VoidCallback? onTap;
   final VoidCallback? onChatPressed;
-  final VoidCallback? onAddExpensePressed;
+  final VoidCallback? onExpensePressed;
+  final Function(String eventId, bool? vote)? onVoteChanged;
 
   const HomeEventCard({
     super.key,
-    required this.emoji,
-    required this.title,
-    required this.dateTime,
-    required this.location,
+    required this.event,
     required this.state,
-    required this.goingCount,
-    required this.attendeeAvatars,
-    required this.attendeeNames,
     this.onTap,
     this.onChatPressed,
-    this.onAddExpensePressed,
+    this.onExpensePressed,
+    this.onVoteChanged,
   });
+
+  @override
+  State<HomeEventCard> createState() => _HomeEventCardState();
+}
+
+class _HomeEventCardState extends State<HomeEventCard> {
+  late HomeEventEntity _currentEvent;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentEvent = widget.event;
+  }
+
+  void _updateVote(bool? vote) {
+    setState(() {
+      // Update the vote and recalculate going count and attendee data
+      final updatedVotes = List<RsvpVote>.from(_currentEvent.allVotes);
+
+      // Remove existing user vote if any
+      updatedVotes.removeWhere((v) => v.userId == 'current_user');
+
+      // Add new vote if not null
+      if (vote != null) {
+        final newVote = RsvpVote(
+          id: 'vote_current_user_${DateTime.now().millisecondsSinceEpoch}',
+          userId: 'current_user',
+          userName: 'You',
+          userAvatar: null,
+          status: vote ? RsvpVoteStatus.going : RsvpVoteStatus.notGoing,
+          votedAt: DateTime.now(),
+        );
+        updatedVotes.add(newVote);
+      }
+
+      // Recalculate going count and attendee lists
+      final goingVotes =
+          updatedVotes.where((v) => v.status == RsvpVoteStatus.going).toList();
+      final newGoingCount = goingVotes.length;
+
+      // Sort votes to prioritize user first if they voted "Can"
+      goingVotes.sort((a, b) {
+        if (a.userId == 'current_user') return -1;
+        if (b.userId == 'current_user') return 1;
+        return 0;
+      });
+
+      final newAttendeeNames = goingVotes.map((v) => v.userName).toList();
+      final newAttendeeAvatars =
+          goingVotes.map((v) => v.userAvatar ?? '').toList();
+
+      _currentEvent = _currentEvent.copyWith(
+        userVote: vote,
+        allVotes: updatedVotes,
+        goingCount: newGoingCount,
+        attendeeNames: newAttendeeNames,
+        attendeeAvatars: newAttendeeAvatars,
+        updateUserVote: true, // Allow explicit null setting
+      );
+    });
+    widget.onVoteChanged?.call(_currentEvent.id, vote);
+  }
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: onTap,
+      onTap: widget.onTap,
       child: Container(
         padding: const EdgeInsets.all(Pads.sectionH),
         decoration: BoxDecoration(
@@ -66,10 +122,10 @@ class HomeEventCard extends StatelessWidget {
             const SizedBox(height: Gaps.sm),
 
             // Attendees info
-            _buildAttendeeInfo(),
+            _buildAttendeeInfo(context),
             const SizedBox(height: Gaps.md),
 
-            // Action buttons: Chat and Add Expense
+            // Action buttons: Chat and Expense
             _buildActionButtons(),
           ],
         ),
@@ -78,7 +134,7 @@ class HomeEventCard extends StatelessWidget {
   }
 
   Color _getBorderColor() {
-    switch (state) {
+    switch (widget.state) {
       case HomeEventCardState.pending:
         return BrandColors.border;
       case HomeEventCardState.confirmed:
@@ -91,7 +147,7 @@ class HomeEventCard extends StatelessWidget {
   }
 
   Color _getChipBackgroundColor() {
-    switch (state) {
+    switch (widget.state) {
       case HomeEventCardState.pending:
         return BrandColors.bg3;
       case HomeEventCardState.confirmed:
@@ -104,21 +160,21 @@ class HomeEventCard extends StatelessWidget {
   }
 
   Color _getChipBorderColor() {
-    if (state == HomeEventCardState.pending) {
+    if (widget.state == HomeEventCardState.pending) {
       return BrandColors.border;
     }
     return Colors.transparent;
   }
 
   Color _getChipTextColor() {
-    if (state == HomeEventCardState.pending) {
+    if (widget.state == HomeEventCardState.pending) {
       return BrandColors.text1;
     }
     return Colors.white;
   }
 
   String _getStatusLabel() {
-    switch (state) {
+    switch (widget.state) {
       case HomeEventCardState.pending:
         return 'Pending';
       case HomeEventCardState.confirmed:
@@ -136,7 +192,9 @@ class HomeEventCard extends StatelessWidget {
       children: [
         // Date
         Text(
-          dateTime,
+          _currentEvent.date != null
+              ? _formatEventDate(_currentEvent.date!)
+              : 'To be decided',
           style: AppText.bodyMedium.copyWith(
             color: BrandColors.text2,
             fontWeight: FontWeight.w500,
@@ -174,7 +232,7 @@ class HomeEventCard extends StatelessWidget {
       children: [
         // Event emoji
         Text(
-          emoji,
+          _currentEvent.emoji,
           style: const TextStyle(fontSize: 42),
         ),
         const SizedBox(width: Gaps.md),
@@ -185,7 +243,7 @@ class HomeEventCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                title,
+                _currentEvent.name,
                 style: AppText.titleMediumEmph.copyWith(
                   color: BrandColors.text1,
                 ),
@@ -194,7 +252,7 @@ class HomeEventCard extends StatelessWidget {
               ),
               const SizedBox(height: 2),
               Text(
-                location,
+                _currentEvent.location ?? 'To be decided',
                 style: AppText.bodyMedium.copyWith(
                   color: BrandColors.text2,
                 ),
@@ -208,64 +266,92 @@ class HomeEventCard extends StatelessWidget {
     );
   }
 
-  Widget _buildAttendeeInfo() {
-    return Row(
-      children: [
-        // Profile pictures
-        _buildAttendeeAvatars(),
-        const SizedBox(width: Gaps.xs),
+  Widget _buildAttendeeInfo(BuildContext context) {
+    return InkWell(
+      onTap: () => _showVotesBottomSheet(context),
+      borderRadius: BorderRadius.circular(Radii.sm),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: Gaps.xxs),
+        child: Row(
+          children: [
+            // Profile pictures
+            _buildAttendeeAvatars(),
+            const SizedBox(width: Gaps.xs),
 
-        // Going count text with names
-        Expanded(
-          child: Text(
-            _buildAttendeeText(),
-            style: AppText.bodyMedium.copyWith(
-              color: BrandColors.text2,
-              fontWeight: FontWeight.w500,
+            // Going count text with names
+            Expanded(
+              child: Text(
+                _buildAttendeeText(),
+                style: AppText.bodyMedium.copyWith(
+                  color: BrandColors.text2,
+                  fontWeight: FontWeight.w500,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
+          ],
         ),
-      ],
+      ),
+    );
+  }
+
+  void _showVotesBottomSheet(BuildContext context) {
+    VotesBottomSheet.show(
+      context: context,
+      allVotes: _currentEvent.allVotes,
+      eventName: _currentEvent.name,
+      eventEmoji: _currentEvent.emoji,
+      eventDate: _currentEvent.date != null
+          ? _formatEventDate(_currentEvent.date!)
+          : null,
+      eventLocation: _currentEvent.location,
+      userVote: _currentEvent.userVote,
+      onVoteChanged: (vote) => _updateVote(vote),
     );
   }
 
   String _buildAttendeeText() {
-    if (attendeeNames.isEmpty) {
-      return '$goingCount going';
+    // If user hasn't voted yet, show "Tap to vote!" message
+    if (_currentEvent.userVote == null) {
+      return '${_currentEvent.goingCount} going • Tap to vote!';
     }
 
-    if (attendeeNames.length == 1) {
-      return '$goingCount going • ${attendeeNames.first}';
+    if (_currentEvent.attendeeNames.isEmpty) {
+      return '${_currentEvent.goingCount} going';
     }
 
-    if (attendeeNames.length == 2) {
-      return '$goingCount going • ${attendeeNames[0]} and ${attendeeNames[1]}';
+    if (_currentEvent.attendeeNames.length == 1) {
+      return '${_currentEvent.goingCount} going • ${_currentEvent.attendeeNames.first}';
     }
 
-    if (attendeeNames.length >= 3) {
-      final othersCount = attendeeNames.length - 2;
-      return '$goingCount going • ${attendeeNames[0]}, ${attendeeNames[1]} and $othersCount other${othersCount > 1 ? 's' : ''}';
+    if (_currentEvent.attendeeNames.length == 2) {
+      return '${_currentEvent.goingCount} going • ${_currentEvent.attendeeNames[0]} and ${_currentEvent.attendeeNames[1]}';
     }
 
-    return '$goingCount going';
+    if (_currentEvent.attendeeNames.length >= 3) {
+      final othersCount = _currentEvent.attendeeNames.length - 2;
+      return '${_currentEvent.goingCount} going • ${_currentEvent.attendeeNames[0]}, ${_currentEvent.attendeeNames[1]} and $othersCount other${othersCount > 1 ? 's' : ''}';
+    }
+
+    return '${_currentEvent.goingCount} going';
   }
 
   Widget _buildAttendeeAvatars() {
     const avatarSize = 24.0;
     const overlap = 8.0;
 
-    if (attendeeAvatars.isEmpty) {
+    if (_currentEvent.attendeeAvatars.isEmpty) {
       return const SizedBox.shrink();
     }
 
     // Always show max 2 avatars + overflow indicator if there are more than 2
-    final hasOverflow = attendeeAvatars.length > 2;
+    final hasOverflow = _currentEvent.attendeeAvatars.length > 2;
     final visibleAvatars = hasOverflow
-        ? attendeeAvatars.take(2).toList()
-        : attendeeAvatars.take(3).toList();
-    final remainingCount = hasOverflow ? attendeeAvatars.length - 2 : 0;
+        ? _currentEvent.attendeeAvatars.take(2).toList()
+        : _currentEvent.attendeeAvatars.take(3).toList();
+    final remainingCount =
+        hasOverflow ? _currentEvent.attendeeAvatars.length - 2 : 0;
 
     final totalWidth = hasOverflow
         ? avatarSize +
@@ -358,7 +444,7 @@ class HomeEventCard extends StatelessWidget {
         // Chat button
         Expanded(
           child: GestureDetector(
-            onTap: onChatPressed,
+            onTap: widget.onChatPressed,
             child: Container(
               height: 44,
               decoration: BoxDecoration(
@@ -390,10 +476,25 @@ class HomeEventCard extends StatelessWidget {
         ),
         const SizedBox(width: Gaps.sm),
 
-        // Add Expense button
+        // Expense button
         Expanded(
           child: GestureDetector(
-            onTap: onAddExpensePressed,
+            onTap: () {
+              // Open add expense bottom sheet
+              AddExpenseBottomSheet.show(
+                context: context,
+                participants: const [], // TODO P2: Load real participants
+                onAddExpense: (title, paidByIds, payerIds, totalAmount) {
+                  // TODO P2: Save expense to backend
+                  debugPrint(
+                    'Expense added: $title, \$${totalAmount.toStringAsFixed(2)}',
+                  );
+                  Navigator.of(context).pop();
+                },
+              );
+              // Also call the callback if provided
+              widget.onExpensePressed?.call();
+            },
             child: Container(
               height: 44,
               decoration: BoxDecoration(
@@ -405,13 +506,13 @@ class HomeEventCard extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     const Icon(
-                      Icons.receipt_long_outlined,
+                      Icons.add,
                       color: BrandColors.text1,
                       size: 18,
                     ),
                     const SizedBox(width: Gaps.xs),
                     Text(
-                      'Add Expense',
+                      'Expense',
                       style: AppText.bodyMediumEmph.copyWith(
                         color: BrandColors.text1,
                         fontWeight: FontWeight.w600,
@@ -425,5 +526,35 @@ class HomeEventCard extends StatelessWidget {
         ),
       ],
     );
+  }
+
+  String _formatEventDate(DateTime date) {
+    final months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec'
+    ];
+
+    final weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+    // For demo purposes, create a range with start and end times
+    const startTime = '15:00';
+    const endTime = '18:00';
+
+    // Format: "Mon, 26 Feb • 15:00–18:00" for same day
+    final weekday = weekdays[date.weekday - 1];
+    final day = date.day;
+    final month = months[date.month - 1];
+
+    return '$weekday, $day $month • $startTime–$endTime';
   }
 }
