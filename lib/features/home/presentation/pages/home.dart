@@ -7,6 +7,7 @@ import '../../../../shared/components/cards/home_event_card.dart';
 import '../../../../shared/components/cards/event_small_card.dart';
 import '../../../../shared/components/cards/todo_card.dart';
 import '../../../../shared/components/cards/payment_summary_card.dart';
+import '../../../../shared/components/cards/recent_memory_card.dart';
 import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/constants/text_styles.dart';
 import '../../../../shared/themes/colors.dart';
@@ -83,6 +84,7 @@ class _HomePageState extends ConsumerState<HomePage> {
     final todosAsync = ref.watch(todosControllerProvider);
     final paymentsAsync = ref.watch(paymentSummariesControllerProvider);
     final totalBalanceAsync = ref.watch(totalBalanceControllerProvider);
+    final recentMemoriesAsync = ref.watch(recentMemoriesControllerProvider);
 
     return Scaffold(
       appBar: const CommonAppBar(
@@ -378,6 +380,9 @@ class _HomePageState extends ConsumerState<HomePage> {
                             child: PaymentSummaryCard(
                               payment: payment,
                               onTap: () {
+                                // Set inbox tab to Payments (index 2)
+                                ref.read(inboxTabIndexProvider.notifier).state =
+                                    2;
                                 // Navigate to Inbox tab (index 2)
                                 ref.read(mainLayoutTabProvider.notifier).state =
                                     2;
@@ -385,6 +390,71 @@ class _HomePageState extends ConsumerState<HomePage> {
                             ),
                           );
                         }).toList(),
+                      ),
+                    ),
+                    const SizedBox(height: Gaps.lg),
+                  ],
+                );
+              },
+              loading: () => const SizedBox.shrink(),
+              error: (error, stackTrace) => const SizedBox.shrink(),
+            ),
+
+            // Recent Memories Section
+            recentMemoriesAsync.when(
+              data: (memories) {
+                if (memories.isEmpty) {
+                  return const SizedBox.shrink();
+                }
+
+                // Calculate card width: (screen width - screen padding * 2 - gap between cards) / 2
+                final cardWidth = (MediaQuery.of(context).size.width -
+                        (Insets.screenH * 2) -
+                        Gaps.sm) /
+                    2;
+
+                return Column(
+                  children: [
+                    // Section title
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: Insets.screenH,
+                      ),
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          'Recent Memories',
+                          style: AppText.titleMediumEmph.copyWith(
+                            color: BrandColors.text1,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: Gaps.md),
+
+                    // Horizontal scroll with memory cards
+                    SizedBox(
+                      height: 200,
+                      child: ListView.separated(
+                        scrollDirection: Axis.horizontal,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: Insets.screenH,
+                        ),
+                        itemCount: memories.length,
+                        separatorBuilder: (context, index) =>
+                            const SizedBox(width: Gaps.sm),
+                        itemBuilder: (context, index) {
+                          final memory = memories[index];
+                          return SizedBox(
+                            width: cardWidth,
+                            child: RecentMemoryCard(
+                              memory: memory,
+                              onTap: () {
+                                // TODO P2: Navigate to memory detail
+                              },
+                            ),
+                          );
+                        },
                       ),
                     ),
                     const SizedBox(height: Gaps.lg),
