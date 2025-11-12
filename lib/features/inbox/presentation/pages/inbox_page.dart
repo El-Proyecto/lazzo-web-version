@@ -5,6 +5,7 @@ import '../../../../shared/components/nav/common_app_bar.dart';
 import '../../../../shared/themes/colors.dart';
 import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/constants/text_styles.dart';
+import '../../../../shared/layouts/main_layout_providers.dart';
 import '../../domain/entities/payment_entity.dart';
 import '../providers/notifications_provider.dart';
 import '../providers/actions_provider.dart';
@@ -38,6 +39,17 @@ class _InboxPageState extends ConsumerState<InboxPage>
 
   @override
   Widget build(BuildContext context) {
+    // Listen to inbox tab index changes from provider
+    ref.listen<int?>(inboxTabIndexProvider, (previous, next) {
+      if (next != null && _tabController.index != next) {
+        _tabController.animateTo(next);
+        // Reset the provider after using it
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          ref.read(inboxTabIndexProvider.notifier).state = null;
+        });
+      }
+    });
+
     return Scaffold(
       backgroundColor: BrandColors.bg1,
       appBar: const CommonAppBar(title: 'Inbox'),
