@@ -5,6 +5,7 @@ import '../../../../shared/components/inputs/search_bar.dart' as custom;
 import '../../../../shared/components/sections/section_block.dart';
 import '../../../../shared/components/cards/home_event_card.dart';
 import '../../../../shared/components/cards/event_small_card.dart';
+import '../../../../shared/components/cards/todo_card.dart';
 import '../../../../shared/constants/spacing.dart';
 import '../../../create_event/presentation/widgets/event_created_banner.dart';
 import '../providers/banner_provider.dart';
@@ -75,6 +76,7 @@ class _HomePageState extends ConsumerState<HomePage> {
     final nextEventAsync = ref.watch(nextEventControllerProvider);
     final confirmedEventsAsync = ref.watch(confirmedEventsControllerProvider);
     final pendingEventsAsync = ref.watch(homePendingEventsControllerProvider);
+    final todosAsync = ref.watch(todosControllerProvider);
 
     return Scaffold(
       appBar: const CommonAppBar(
@@ -266,6 +268,48 @@ class _HomePageState extends ConsumerState<HomePage> {
               },
               loading: () => const SectionBlock(
                 title: 'Pending Events',
+                child: Center(
+                  child: CircularProgressIndicator(),
+                ),
+              ),
+              error: (error, stackTrace) => const SizedBox.shrink(),
+            ),
+
+            // To Dos Section
+            todosAsync.when(
+              data: (todos) {
+                if (todos.isEmpty) {
+                  return const SizedBox.shrink();
+                }
+                return Column(
+                  children: [
+                    SectionBlock(
+                      title: 'To Dos',
+                      child: Column(
+                        children: todos.asMap().entries.map((entry) {
+                          final index = entry.key;
+                          final todo = entry.value;
+                          return Column(
+                            children: [
+                              TodoCard(
+                                todo: todo,
+                                onTap: () {
+                                  // TODO P2: Navigate to event details
+                                },
+                              ),
+                              if (index < todos.length - 1)
+                                const SizedBox(height: Gaps.sm),
+                            ],
+                          );
+                        }).toList(),
+                      ),
+                    ),
+                    const SizedBox(height: Gaps.lg),
+                  ],
+                );
+              },
+              loading: () => const SectionBlock(
+                title: 'To Dos',
                 child: Center(
                   child: CircularProgressIndicator(),
                 ),
