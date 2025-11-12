@@ -13,9 +13,34 @@ import '../../../../shared/constants/text_styles.dart';
 import '../../../../shared/themes/colors.dart';
 import '../../../../shared/layouts/main_layout_providers.dart';
 import '../../../create_event/presentation/widgets/event_created_banner.dart';
+import '../../../groups/presentation/providers/groups_provider.dart';
+import '../widgets/no_groups_yet_card.dart';
+import '../widgets/no_upcoming_events_card.dart';
 import '../providers/banner_provider.dart';
 import '../providers/home_event_providers.dart';
 import '../../domain/entities/home_event.dart';
+import '../../../../routes/app_router.dart';
+
+/// Home page - main screen showing next event, confirmed/pending events, todos, payments, and memories
+///
+/// TESTING EMPTY STATES (for P1 development):
+/// To test different empty state scenarios, modify the static variables in fake repositories:
+///
+/// 1. Test "No groups yet" card:
+///    - Set: FakeGroupRepository.mockNoGroups = true
+///    - Result: Shows NoGroupsYetCard with CTA to create first group
+///
+/// 2. Test "No upcoming events" card:
+///    - Set: FakeGroupRepository.mockNoGroups = false (has groups)
+///    - Set: FakeHomeEventRepository.mockEmptyState = 'no-events'
+///    - Result: Shows NoUpcomingEventsCard with group chips and create event CTA
+///
+/// 3. Test normal home (default):
+///    - Set: FakeGroupRepository.mockNoGroups = false
+///    - Set: FakeHomeEventRepository.mockEmptyState = 'normal'
+///    - Result: Shows regular home with events, todos, payments, memories
+///
+/// This page purely consumes provider data - no mock logic here (Clean Architecture).
 
 class HomePage extends ConsumerStatefulWidget {
   const HomePage({super.key});
@@ -25,6 +50,8 @@ class HomePage extends ConsumerStatefulWidget {
 }
 
 class _HomePageState extends ConsumerState<HomePage> {
+  bool _isNoEventsCardDismissed = false;
+
   String _formatEventDate(DateTime? date) {
     if (date == null) return 'To be decided';
 
@@ -85,6 +112,35 @@ class _HomePageState extends ConsumerState<HomePage> {
     final paymentsAsync = ref.watch(paymentSummariesControllerProvider);
     final totalBalanceAsync = ref.watch(totalBalanceControllerProvider);
     final recentMemoriesAsync = ref.watch(recentMemoriesControllerProvider);
+    final groupsAsync = ref.watch(groupsProvider);
+
+    // Calculate empty states based on provider data
+    // IMPORTANT: Only show empty states when data is LOADED, not during loading
+    // Empty state logic:
+    // - Show "No groups yet" if user has no groups (data loaded)
+    // - Show "No upcoming events" if user has groups but no events (data loaded)
+    // - Show normal home if user has groups and events
+
+    // Check if groups data is loaded
+    final groupsLoaded = groupsAsync.hasValue;
+    final groups = groupsAsync.asData?.value ?? [];
+    final hasGroups = groups.isNotEmpty;
+
+    // Check if events data is loaded
+    final eventsLoaded = nextEventAsync.hasValue &&
+        confirmedEventsAsync.hasValue &&
+        pendingEventsAsync.hasValue;
+    final hasEvents = (nextEventAsync.asData?.value != null ||
+        (confirmedEventsAsync.asData?.value.isNotEmpty ?? false) ||
+        (pendingEventsAsync.asData?.value.isNotEmpty ?? false));
+
+    // Determine which empty state to show (only when data is loaded)
+    final showNoGroupsCard = groupsLoaded && !hasGroups;
+    final showNoEventsCard = groupsLoaded &&
+        eventsLoaded &&
+        hasGroups &&
+        !hasEvents &&
+        !_isNoEventsCardDismissed; // Don't show if dismissed
 
     return Scaffold(
       appBar: const CommonAppBar(
@@ -128,199 +184,269 @@ class _HomePageState extends ConsumerState<HomePage> {
               },
             ),
 
-            // Search Bar
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: Insets.screenH),
-              child: custom.SearchBar(
-                placeholder: 'Search groups, events, memories...',
-                enabled: false,
-                onTap: () {
-                  // TODO: Navigate to search page
-                },
+            // Search Bar - only show if user has groups
+            if (!showNoGroupsCard)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: Insets.screenH),
+                child: custom.SearchBar(
+                  placeholder: 'Search groups, events, memories...',
+                  enabled: false,
+                  onTap: () {
+                    // TODO: Navigate to search page
+                  },
+                ),
               ),
-            ),
-            const SizedBox(height: Gaps.md),
+            if (!showNoGroupsCard) const SizedBox(height: Gaps.md),
 
-            // Next Event Section
-            nextEventAsync.when(
-              data: (event) {
-                if (event == null) {
-                  return const SizedBox.shrink();
-                }
-                return Column(
+            // Empty States - purely based on provider data
+            // IMPORTANT: Only show when data is loaded to avoid flickering
+            // Show "No groups yet" if user has no groups (when data loaded)
+            if (showNoGroupsCard)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: Insets.screenH),
+                child: Column(
                   children: [
-                    SectionBlock(
-                      title: 'Next Event',
-                      child: HomeEventCard(
-                        event: event,
-                        state: _mapStatusToHomeCardState(event.status),
-                        onTap: () {
-                          // TODO: Navigate to event details
-                        },
-                        onChatPressed: () {
-                          // TODO: Navigate to event chat
-                        },
-                        onExpensePressed: () {
-                          // TODO: Open add expense bottom sheet
-                        },
-                        onVoteChanged: (eventId, vote) {
-                          // TODO: Update vote in backend
-                          debugPrint(
-                            'Vote changed for event $eventId: $vote',
-                          );
-                        },
-                      ),
+                    NoGroupsYetCard(
+                      onCreateGroup: () {
+                        Navigator.pushNamed(context, AppRouter.createGroup);
+                        // TODO P2: After group created, auto-open create event
+                      },
                     ),
                     const SizedBox(height: Gaps.lg),
                   ],
-                );
-              },
-              loading: () => SectionBlock(
-                title: 'Next Event',
-                child: Container(
-                  height: 200,
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.surface,
-                    borderRadius: BorderRadius.circular(Radii.md),
+                ),
+              )
+            // Show "No upcoming events" if user has groups but no events (when data loaded)
+            else if (showNoEventsCard)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: Insets.screenH),
+                child: Column(
+                  children: [
+                    groupsAsync.when(
+                      data: (groups) {
+                        // Convert groups to GroupChipData
+                        final groupChips = groups
+                            .take(5) // Max 5 most active groups
+                            .map(
+                              (g) => GroupChipData(
+                                id: g.id,
+                                name: g.name,
+                                photoUrl:
+                                    g.photoPath, // Using photoPath for now
+                              ),
+                            )
+                            .toList();
+
+                        return NoUpcomingEventsCard(
+                          groups: groupChips,
+                          onCreateEvent: (groupId) {
+                            // TODO P2: Navigate to create event with group prefilled
+                            Navigator.pushNamed(
+                              context,
+                              AppRouter.createEvent,
+                              arguments: {'groupId': groupId},
+                            );
+                          },
+                          onDismiss: () {
+                            setState(() {
+                              _isNoEventsCardDismissed = true;
+                            });
+                          },
+                        );
+                      },
+                      loading: () => const SizedBox.shrink(),
+                      error: (_, __) => const SizedBox.shrink(),
+                    ),
+                    const SizedBox(height: Gaps.lg),
+                  ],
+                ),
+              ),
+
+            // EVENT SECTIONS - Only show if NOT in empty state
+            if (!showNoGroupsCard && !showNoEventsCard) ...[
+              // Next Event Section
+              nextEventAsync.when(
+                data: (event) {
+                  if (event == null) {
+                    return const SizedBox.shrink();
+                  }
+                  return Column(
+                    children: [
+                      SectionBlock(
+                        title: 'Next Event',
+                        child: HomeEventCard(
+                          event: event,
+                          state: _mapStatusToHomeCardState(event.status),
+                          onTap: () {
+                            // TODO: Navigate to event details
+                          },
+                          onChatPressed: () {
+                            // TODO: Navigate to event chat
+                          },
+                          onExpensePressed: () {
+                            // TODO: Open add expense bottom sheet
+                          },
+                          onVoteChanged: (eventId, vote) {
+                            // TODO: Update vote in backend
+                            debugPrint(
+                              'Vote changed for event $eventId: $vote',
+                            );
+                          },
+                        ),
+                      ),
+                      const SizedBox(height: Gaps.lg),
+                    ],
+                  );
+                },
+                loading: () => SectionBlock(
+                  title: 'Next Event',
+                  child: Container(
+                    height: 200,
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.surface,
+                      borderRadius: BorderRadius.circular(Radii.md),
+                    ),
+                    child: const Center(
+                      child: CircularProgressIndicator(),
+                    ),
                   ),
-                  child: const Center(
+                ),
+                error: (error, stackTrace) => const SizedBox.shrink(),
+              ),
+
+              // Confirmed Events Section
+              confirmedEventsAsync.when(
+                data: (events) {
+                  if (events.isEmpty) {
+                    return const SizedBox.shrink();
+                  }
+                  return Column(
+                    children: [
+                      SectionBlock(
+                        title: 'Confirmed Events',
+                        child: Column(
+                          children: events.asMap().entries.map((entry) {
+                            final index = entry.key;
+                            final event = entry.value;
+                            return Column(
+                              children: [
+                                EventSmallCard(
+                                  emoji: event.emoji,
+                                  title: event.name,
+                                  dateTime: _formatEventDate(event.date),
+                                  location: event.location ?? 'Location TBD',
+                                  state:
+                                      _mapStatusToSmallCardState(event.status),
+                                  onTap: () {
+                                    // TODO: Navigate to event details
+                                  },
+                                ),
+                                if (index < events.length - 1)
+                                  const SizedBox(height: Gaps.sm),
+                              ],
+                            );
+                          }).toList(),
+                        ),
+                      ),
+                      const SizedBox(height: Gaps.lg),
+                    ],
+                  );
+                },
+                loading: () => const SectionBlock(
+                  title: 'Confirmed Events',
+                  child: Center(
                     child: CircularProgressIndicator(),
                   ),
                 ),
+                error: (error, stackTrace) => const SizedBox.shrink(),
               ),
-              error: (error, stackTrace) => const SizedBox.shrink(),
-            ),
 
-            // Confirmed Events Section
-            confirmedEventsAsync.when(
-              data: (events) {
-                if (events.isEmpty) {
-                  return const SizedBox.shrink();
-                }
-                return Column(
-                  children: [
-                    SectionBlock(
-                      title: 'Confirmed Events',
-                      child: Column(
-                        children: events.asMap().entries.map((entry) {
-                          final index = entry.key;
-                          final event = entry.value;
-                          return Column(
-                            children: [
-                              EventSmallCard(
-                                emoji: event.emoji,
-                                title: event.name,
-                                dateTime: _formatEventDate(event.date),
-                                location: event.location ?? 'Location TBD',
-                                state: _mapStatusToSmallCardState(event.status),
-                                onTap: () {
-                                  // TODO: Navigate to event details
-                                },
-                              ),
-                              if (index < events.length - 1)
-                                const SizedBox(height: Gaps.sm),
-                            ],
-                          );
-                        }).toList(),
+              // Pending Events Section
+              pendingEventsAsync.when(
+                data: (events) {
+                  if (events.isEmpty) {
+                    return const SizedBox.shrink();
+                  }
+                  return Column(
+                    children: [
+                      SectionBlock(
+                        title: 'Pending Events',
+                        child: Column(
+                          children: events.asMap().entries.map((entry) {
+                            final index = entry.key;
+                            final event = entry.value;
+                            return Column(
+                              children: [
+                                EventSmallCard(
+                                  emoji: event.emoji,
+                                  title: event.name,
+                                  dateTime: _formatEventDate(event.date),
+                                  location: event.location ?? 'Location TBD',
+                                  state:
+                                      _mapStatusToSmallCardState(event.status),
+                                  onTap: () {
+                                    // TODO: Navigate to event details
+                                  },
+                                ),
+                                if (index < events.length - 1)
+                                  const SizedBox(height: Gaps.sm),
+                              ],
+                            );
+                          }).toList(),
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: Gaps.lg),
-                  ],
-                );
-              },
-              loading: () => const SectionBlock(
-                title: 'Confirmed Events',
-                child: Center(
-                  child: CircularProgressIndicator(),
+                      const SizedBox(height: Gaps.lg),
+                    ],
+                  );
+                },
+                loading: () => const SectionBlock(
+                  title: 'Pending Events',
+                  child: Center(
+                    child: CircularProgressIndicator(),
+                  ),
                 ),
+                error: (error, stackTrace) => const SizedBox.shrink(),
               ),
-              error: (error, stackTrace) => const SizedBox.shrink(),
-            ),
 
-            // Pending Events Section
-            pendingEventsAsync.when(
-              data: (events) {
-                if (events.isEmpty) {
-                  return const SizedBox.shrink();
-                }
-                return Column(
-                  children: [
-                    SectionBlock(
-                      title: 'Pending Events',
-                      child: Column(
-                        children: events.asMap().entries.map((entry) {
-                          final index = entry.key;
-                          final event = entry.value;
-                          return Column(
-                            children: [
-                              EventSmallCard(
-                                emoji: event.emoji,
-                                title: event.name,
-                                dateTime: _formatEventDate(event.date),
-                                location: event.location ?? 'Location TBD',
-                                state: _mapStatusToSmallCardState(event.status),
-                                onTap: () {
-                                  // TODO: Navigate to event details
-                                },
-                              ),
-                              if (index < events.length - 1)
-                                const SizedBox(height: Gaps.sm),
-                            ],
-                          );
-                        }).toList(),
+              // To Dos Section (only show if there are events)
+              todosAsync.when(
+                data: (todos) {
+                  if (todos.isEmpty) {
+                    return const SizedBox.shrink();
+                  }
+                  return Column(
+                    children: [
+                      SectionBlock(
+                        title: 'To Dos',
+                        child: Column(
+                          children: todos.asMap().entries.map((entry) {
+                            final index = entry.key;
+                            final todo = entry.value;
+                            return Column(
+                              children: [
+                                TodoCard(
+                                  todo: todo,
+                                  onTap: () {
+                                    // TODO P2: Navigate to event details
+                                  },
+                                ),
+                                if (index < todos.length - 1)
+                                  const SizedBox(height: Gaps.sm),
+                              ],
+                            );
+                          }).toList(),
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: Gaps.lg),
-                  ],
-                );
-              },
-              loading: () => const SectionBlock(
-                title: 'Pending Events',
-                child: Center(
-                  child: CircularProgressIndicator(),
-                ),
+                      const SizedBox(height: Gaps.lg),
+                    ],
+                  );
+                },
+                loading: () => const SizedBox.shrink(),
+                error: (error, stackTrace) => const SizedBox.shrink(),
               ),
-              error: (error, stackTrace) => const SizedBox.shrink(),
-            ),
+            ], // End of EVENT SECTIONS
 
-            // To Dos Section
-            todosAsync.when(
-              data: (todos) {
-                if (todos.isEmpty) {
-                  return const SizedBox.shrink();
-                }
-                return Column(
-                  children: [
-                    SectionBlock(
-                      title: 'To Dos',
-                      child: Column(
-                        children: todos.asMap().entries.map((entry) {
-                          final index = entry.key;
-                          final todo = entry.value;
-                          return Column(
-                            children: [
-                              TodoCard(
-                                todo: todo,
-                                onTap: () {
-                                  // TODO P2: Navigate to event details
-                                },
-                              ),
-                              if (index < todos.length - 1)
-                                const SizedBox(height: Gaps.sm),
-                            ],
-                          );
-                        }).toList(),
-                      ),
-                    ),
-                    const SizedBox(height: Gaps.lg),
-                  ],
-                );
-              },
-              loading: () => const SizedBox.shrink(),
-              error: (error, stackTrace) => const SizedBox.shrink(),
-            ),
-
-            // Payments Section
+            // Payments Section (shows even without events)
             paymentsAsync.when(
               data: (payments) {
                 if (payments.isEmpty) {

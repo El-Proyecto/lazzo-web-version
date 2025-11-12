@@ -1,5 +1,6 @@
 import '../../domain/entities/todo_entity.dart';
 import '../../domain/repositories/todo_repository.dart';
+import 'fake_home_event_repository.dart';
 
 /// Fake repository for to-dos - used for UI development
 /// Returns mock data without backend calls
@@ -8,6 +9,11 @@ class FakeTodoRepository implements TodoRepository {
   Future<List<TodoEntity>> getTodos() async {
     // Simulate network delay
     await Future.delayed(const Duration(milliseconds: 500));
+
+    // Check if we're in no-events state (todos are related to events)
+    if (FakeHomeEventRepository.mockEmptyState == 'no-events') {
+      return []; // Return empty list when there are no events
+    }
 
     final now = DateTime.now();
 

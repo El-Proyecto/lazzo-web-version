@@ -5,6 +5,14 @@ import '../../domain/repositories/home_event_repository.dart';
 /// Fake repository for home events - used for UI development
 /// Returns mock data without backend calls
 class FakeHomeEventRepository implements HomeEventRepository {
+  // MOCK CONTROL VARIABLES for testing different empty states
+  // Change these to test different scenarios:
+  // 'normal' = show regular home with events
+  // 'no-events' = return empty lists (simulates user with groups but no events)
+  // Note: 'no-groups' state is controlled by FakeGroupRepository
+  // IMPORTANT: After changing this, you MUST do Hot Restart (not Hot Reload)
+  static String mockEmptyState = 'no-events';
+
   // Control variable to change the next event state for testing
   // Change this to test different card states:
   // - HomeEventStatus.pending
@@ -17,6 +25,11 @@ class FakeHomeEventRepository implements HomeEventRepository {
   Future<HomeEventEntity?> getNextEvent() async {
     // Simulate network delay
     await Future.delayed(const Duration(milliseconds: 500));
+
+    // Check mock empty state
+    if (mockEmptyState == 'no-events') {
+      return null; // Return null to simulate no upcoming events
+    }
 
     // Create sample votes
     final allVotes = [
@@ -94,7 +107,7 @@ class FakeHomeEventRepository implements HomeEventRepository {
         status: RsvpVoteStatus.notGoing,
         votedAt: DateTime.now().subtract(const Duration(hours: 3)),
       ),
-      RsvpVote(
+      const RsvpVote(
         id: 'vote_9',
         userId: 'user_9',
         userName: 'Tiago',
@@ -135,6 +148,11 @@ class FakeHomeEventRepository implements HomeEventRepository {
   Future<List<HomeEventEntity>> getConfirmedEvents() async {
     // Simulate network delay
     await Future.delayed(const Duration(milliseconds: 500));
+
+    // Check mock empty state
+    if (mockEmptyState == 'no-events') {
+      return []; // Return empty list to simulate no confirmed events
+    }
 
     final event2Votes = [
       RsvpVote(
@@ -279,6 +297,11 @@ class FakeHomeEventRepository implements HomeEventRepository {
     // Simulate network delay
     await Future.delayed(const Duration(milliseconds: 500));
 
+    // Check mock empty state
+    if (mockEmptyState == 'no-events') {
+      return []; // Return empty list to simulate no pending events
+    }
+
     final event4Votes = [
       RsvpVote(
         id: 'vote_e4_1',
@@ -411,7 +434,7 @@ class FakeHomeEventRepository implements HomeEventRepository {
         status: RsvpVoteStatus.notGoing,
         votedAt: DateTime.now().subtract(const Duration(hours: 9)),
       ),
-      RsvpVote(
+      const RsvpVote(
         id: 'vote_e5_current',
         userId: 'current_user',
         userName: 'You',
