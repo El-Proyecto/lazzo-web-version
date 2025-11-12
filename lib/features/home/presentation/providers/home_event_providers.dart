@@ -1,14 +1,19 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../domain/entities/home_event.dart';
 import '../../domain/entities/todo_entity.dart';
+import '../../domain/entities/payment_summary_entity.dart';
 import '../../domain/repositories/home_event_repository.dart';
 import '../../domain/repositories/todo_repository.dart';
+import '../../domain/repositories/payment_summary_repository.dart';
 import '../../domain/usecases/get_next_event.dart';
 import '../../domain/usecases/get_confirmed_events.dart';
 import '../../domain/usecases/get_home_pending_events.dart';
 import '../../domain/usecases/get_todos.dart';
+import '../../domain/usecases/get_payment_summaries.dart';
+import '../../domain/usecases/get_total_balance.dart';
 import '../../data/fakes/fake_home_event_repository.dart';
 import '../../data/fakes/fake_todo_repository.dart';
+import '../../data/fakes/fake_payment_summary_repository.dart';
 
 // Repository providers - default to fake implementations
 final homeEventRepositoryProvider = Provider<HomeEventRepository>((ref) {
@@ -17,6 +22,11 @@ final homeEventRepositoryProvider = Provider<HomeEventRepository>((ref) {
 
 final todoRepositoryProvider = Provider<TodoRepository>((ref) {
   return FakeTodoRepository();
+});
+
+final paymentSummaryRepositoryProvider =
+    Provider<PaymentSummaryRepository>((ref) {
+  return FakePaymentSummaryRepository();
 });
 
 // Use case providers
@@ -34,6 +44,14 @@ final getHomePendingEventsProvider = Provider<GetHomePendingEvents>((ref) {
 
 final getTodosProvider = Provider<GetTodos>((ref) {
   return GetTodos(ref.watch(todoRepositoryProvider));
+});
+
+final getPaymentSummariesProvider = Provider<GetPaymentSummaries>((ref) {
+  return GetPaymentSummaries(ref.watch(paymentSummaryRepositoryProvider));
+});
+
+final getTotalBalanceProvider = Provider<GetTotalBalance>((ref) {
+  return GetTotalBalance(ref.watch(paymentSummaryRepositoryProvider));
 });
 
 // Controller providers that expose AsyncValue for UI
@@ -57,5 +75,16 @@ final homePendingEventsControllerProvider =
 
 final todosControllerProvider = FutureProvider<List<TodoEntity>>((ref) async {
   final useCase = ref.watch(getTodosProvider);
+  return await useCase();
+});
+
+final paymentSummariesControllerProvider =
+    FutureProvider<List<PaymentSummaryEntity>>((ref) async {
+  final useCase = ref.watch(getPaymentSummariesProvider);
+  return await useCase();
+});
+
+final totalBalanceControllerProvider = FutureProvider<double>((ref) async {
+  final useCase = ref.watch(getTotalBalanceProvider);
   return await useCase();
 });

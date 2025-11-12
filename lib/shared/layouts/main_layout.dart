@@ -7,6 +7,7 @@ import '../../features/profile/presentation/pages/profile_page.dart';
 import '../../features/home/presentation/pages/home.dart';
 import '../../features/home/presentation/providers/banner_provider.dart';
 import '../../routes/app_router.dart';
+import 'main_layout_providers.dart';
 
 class MainLayout extends ConsumerStatefulWidget {
   const MainLayout({super.key});
@@ -76,10 +77,22 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
     setState(() {
       _currentIndex = pageIndex;
     });
+    
+    // Update provider as well
+    ref.read(mainLayoutTabProvider.notifier).state = pageIndex;
   }
 
   @override
   Widget build(BuildContext context) {
+    // Listen to tab changes from provider
+    ref.listen<int>(mainLayoutTabProvider, (previous, next) {
+      if (next != _currentIndex && mounted) {
+        setState(() {
+          _currentIndex = next;
+        });
+      }
+    });
+
     // Map page index back to navigation bar index
     int navBarIndex;
     switch (_currentIndex) {

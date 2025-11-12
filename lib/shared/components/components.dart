@@ -11,6 +11,7 @@ export 'cards/event_small_card.dart';
 export 'cards/home_event_card.dart';
 export 'cards/confirmed_event_card.dart'; // TODO: Update imports to use event_small_card.dart instead
 export 'cards/todo_card.dart';
+export 'cards/payment_summary_card.dart';
 
 // Badge Components
 export 'badges/group_badge.dart';

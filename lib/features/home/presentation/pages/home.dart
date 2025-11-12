@@ -6,7 +6,11 @@ import '../../../../shared/components/sections/section_block.dart';
 import '../../../../shared/components/cards/home_event_card.dart';
 import '../../../../shared/components/cards/event_small_card.dart';
 import '../../../../shared/components/cards/todo_card.dart';
+import '../../../../shared/components/cards/payment_summary_card.dart';
 import '../../../../shared/constants/spacing.dart';
+import '../../../../shared/constants/text_styles.dart';
+import '../../../../shared/themes/colors.dart';
+import '../../../../shared/layouts/main_layout_providers.dart';
 import '../../../create_event/presentation/widgets/event_created_banner.dart';
 import '../providers/banner_provider.dart';
 import '../providers/home_event_providers.dart';
@@ -77,6 +81,8 @@ class _HomePageState extends ConsumerState<HomePage> {
     final confirmedEventsAsync = ref.watch(confirmedEventsControllerProvider);
     final pendingEventsAsync = ref.watch(homePendingEventsControllerProvider);
     final todosAsync = ref.watch(todosControllerProvider);
+    final paymentsAsync = ref.watch(paymentSummariesControllerProvider);
+    final totalBalanceAsync = ref.watch(totalBalanceControllerProvider);
 
     return Scaffold(
       appBar: const CommonAppBar(
@@ -308,12 +314,85 @@ class _HomePageState extends ConsumerState<HomePage> {
                   ],
                 );
               },
-              loading: () => const SectionBlock(
-                title: 'To Dos',
-                child: Center(
-                  child: CircularProgressIndicator(),
-                ),
-              ),
+              loading: () => const SizedBox.shrink(),
+              error: (error, stackTrace) => const SizedBox.shrink(),
+            ),
+
+            // Payments Section
+            paymentsAsync.when(
+              data: (payments) {
+                if (payments.isEmpty) {
+                  return const SizedBox.shrink();
+                }
+                return Column(
+                  children: [
+                    // Section title with total balance
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: Insets.screenH,
+                      ),
+                      child: Row(
+                        children: [
+                          Text(
+                            'Payments',
+                            style: AppText.titleMediumEmph.copyWith(
+                              color: BrandColors.text1,
+                            ),
+                          ),
+                          const Spacer(),
+                          totalBalanceAsync.when(
+                            data: (balance) {
+                              return Text(
+                                balance >= 0
+                                    ? '+€${balance.toStringAsFixed(0)}'
+                                    : '-€${balance.abs().toStringAsFixed(0)}',
+                                style: AppText.titleMediumEmph.copyWith(
+                                  color: balance >= 0
+                                      ? BrandColors.planning // Green
+                                      : BrandColors.cantVote, // Red
+                                ),
+                              );
+                            },
+                            loading: () => const SizedBox.shrink(),
+                            error: (_, __) => const SizedBox.shrink(),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: Gaps.md),
+
+                    // Payment cards - 2 per row
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: Insets.screenH,
+                      ),
+                      child: Wrap(
+                        spacing: Gaps.sm,
+                        runSpacing: Gaps.sm,
+                        children: payments.take(4).map((payment) {
+                          return SizedBox(
+                            width: (MediaQuery.of(context).size.width -
+                                    (Insets.screenH * 2) -
+                                    Gaps.sm) /
+                                2,
+                            child: PaymentSummaryCard(
+                              payment: payment,
+                              onTap: () {
+                                // Navigate to Inbox tab (index 2)
+                                ref
+                                    .read(mainLayoutTabProvider.notifier)
+                                    .state = 2;
+                              },
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                    ),
+                    const SizedBox(height: Gaps.lg),
+                  ],
+                );
+              },
+              loading: () => const SizedBox.shrink(),
               error: (error, stackTrace) => const SizedBox.shrink(),
             ),
           ],
