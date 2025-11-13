@@ -342,9 +342,10 @@ class _EditGroupPageState extends ConsumerState<EditGroupPage> {
               );
 
               // Navigate back after brief delay
+              final navigator = Navigator.of(context);
               Future.delayed(const Duration(milliseconds: 500), () {
                 if (mounted) {
-                  Navigator.of(context).pop(updatedGroup);
+                  navigator.pop(updatedGroup);
                 }
               });
             }

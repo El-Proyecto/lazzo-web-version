@@ -179,14 +179,14 @@ class _TimeManagementBottomSheetState
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: BoxDecoration(
+      decoration: const BoxDecoration(
         color: BrandColors.bg2,
         borderRadius: BorderRadius.only(
           topLeft: Radius.circular(Radii.md),
           topRight: Radius.circular(Radii.md),
         ),
       ),
-      padding: EdgeInsets.fromLTRB(
+      padding: const EdgeInsets.fromLTRB(
         Insets.screenH,
         Insets.screenH,
         Insets.screenH,

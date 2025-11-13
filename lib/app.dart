@@ -51,7 +51,7 @@ class AuthWrapper extends ConsumerWidget {
         // Se não está logado, vai para a página de auth
         if (user != null) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
-            Navigator.of(context).pushReplacementNamed(AppRouter.event);
+            Navigator.of(context).pushReplacementNamed(AppRouter.eventLiving);
           });
         } else {
           WidgetsBinding.instance.addPostFrameCallback((_) {

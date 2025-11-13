@@ -117,9 +117,7 @@ class EventExpensesWidget extends ConsumerWidget {
                       vertical: Pads.ctlV,
                     ),
                     decoration: BoxDecoration(
-                      color: mode == ChatMode.living
-                          ? BrandColors.living
-                          : BrandColors.planning,
+                      color: BrandColors.bg3,
                       borderRadius: BorderRadius.circular(Radii.md),
                     ),
                     child: Center(
