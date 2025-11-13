@@ -7,6 +7,7 @@ class GroupExpenseEntity {
   final String paidBy;
   final DateTime date;
   final bool isSettled;
+  final List<String>? participantIds; // IDs of participants who owe money
 
   const GroupExpenseEntity({
     required this.id,
@@ -15,6 +16,7 @@ class GroupExpenseEntity {
     required this.paidBy,
     required this.date,
     required this.isSettled,
+    this.participantIds,
   });
 
   GroupExpenseEntity copyWith({
@@ -24,6 +26,7 @@ class GroupExpenseEntity {
     String? paidBy,
     DateTime? date,
     bool? isSettled,
+    List<String>? participantIds,
   }) {
     return GroupExpenseEntity(
       id: id ?? this.id,
@@ -32,6 +35,7 @@ class GroupExpenseEntity {
       paidBy: paidBy ?? this.paidBy,
       date: date ?? this.date,
       isSettled: isSettled ?? this.isSettled,
+      participantIds: participantIds ?? this.participantIds,
     );
   }
 
@@ -44,11 +48,30 @@ class GroupExpenseEntity {
         other.amount == amount &&
         other.paidBy == paidBy &&
         other.date == date &&
-        other.isSettled == isSettled;
+        other.isSettled == isSettled &&
+        _listEquals(other.participantIds, participantIds);
+  }
+
+  bool _listEquals(List<String>? a, List<String>? b) {
+    if (a == null && b == null) return true;
+    if (a == null || b == null) return false;
+    if (a.length != b.length) return false;
+    for (int i = 0; i < a.length; i++) {
+      if (a[i] != b[i]) return false;
+    }
+    return true;
   }
 
   @override
   int get hashCode {
-    return Object.hash(id, description, amount, paidBy, date, isSettled);
+    return Object.hash(
+      id,
+      description,
+      amount,
+      paidBy,
+      date,
+      isSettled,
+      participantIds,
+    );
   }
 }

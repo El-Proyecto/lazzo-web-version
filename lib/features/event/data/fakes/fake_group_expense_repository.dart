@@ -11,22 +11,7 @@ class FakeGroupExpenseRepository implements GroupExpenseRepository {
       paidBy: 'Marco',
       date: DateTime.now().subtract(const Duration(days: 1)),
       isSettled: false,
-    ),
-    GroupExpenseEntity(
-      id: '2',
-      description: 'Concert Tickets',
-      amount: 45.00,
-      paidBy: 'Ana',
-      date: DateTime.now().subtract(const Duration(days: 3)),
-      isSettled: true,
-    ),
-    GroupExpenseEntity(
-      id: '3',
-      description: 'Gas for Trip',
-      amount: 35.75,
-      paidBy: 'João',
-      date: DateTime.now().subtract(const Duration(days: 7)),
-      isSettled: false,
+      participantIds: ['current_user', 'Ana', 'João'],
     ),
     GroupExpenseEntity(
       id: '4',
@@ -35,6 +20,35 @@ class FakeGroupExpenseRepository implements GroupExpenseRepository {
       paidBy: 'current_user', // User paid this one and others owe
       date: DateTime.now().subtract(const Duration(days: 2)),
       isSettled: false,
+      participantIds: ['Marco', 'Ana', 'João'],
+    ),
+    GroupExpenseEntity(
+      id: '3',
+      description: 'Gas for Trip',
+      amount: 35.75,
+      paidBy: 'João',
+      date: DateTime.now().subtract(const Duration(days: 7)),
+      isSettled: false,
+      participantIds: ['current_user', 'Marco'],
+    ),
+    GroupExpenseEntity(
+      id: '5',
+      description: 'Beach Parking',
+      amount: 15.00,
+      paidBy: 'Ana',
+      date: DateTime.now().subtract(const Duration(days: 5)),
+      isSettled: false,
+      participantIds: ['current_user', 'Marco', 'João'],
+    ),
+    // Settled expenses go last
+    GroupExpenseEntity(
+      id: '2',
+      description: 'Concert Tickets',
+      amount: 45.00,
+      paidBy: 'Ana',
+      date: DateTime.now().subtract(const Duration(days: 3)),
+      isSettled: true,
+      participantIds: ['current_user', 'Marco'],
     ),
   ];
 

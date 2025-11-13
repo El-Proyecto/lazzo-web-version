@@ -18,6 +18,7 @@ import '../../domain/entities/suggestion.dart';
 import '../../domain/entities/event_detail.dart';
 import '../providers/event_providers.dart';
 import '../widgets/chat_preview_widget.dart';
+import '../widgets/living_expenses_widget.dart';
 import '../widgets/date_time_suggestions_widget.dart'
     show DateTimeSuggestionsWidget, DateTimeSuggestion;
 import '../widgets/date_time_suggestions_widget.dart' as datetime_widget;
@@ -162,6 +163,8 @@ class EventPage extends ConsumerWidget {
                 builder: (context, ref, child) {
                   return EventStatusChip(
                     status: event.status,
+                    isHost:
+                        event.hostId == 'current-user', // TODO: Get from auth
                     onTap: () => _showStatusChangeDialog(
                       context,
                       ref,
@@ -867,6 +870,17 @@ class EventPage extends ConsumerWidget {
                 },
                 loading: () => const Center(child: CircularProgressIndicator()),
                 error: (error, stack) => const SizedBox.shrink(),
+              ),
+              const SizedBox(height: Gaps.lg),
+
+              // Expenses widget
+              EventExpensesWidget(
+                eventId: eventId,
+                mode: ChatMode.planning,
+                participants: const [], // TODO: Get event participants
+                onAddExpense: (title, paidByIds, payerIds, amount) {
+                  // TODO: Implement add expense
+                },
               ),
               const SizedBox(height: Gaps.lg),
 

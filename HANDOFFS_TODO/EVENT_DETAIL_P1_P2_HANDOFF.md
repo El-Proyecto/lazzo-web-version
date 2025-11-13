@@ -20,10 +20,11 @@ All components are properly tokenized and reusable across features:
 - ✅ `PollWidget` - Poll interactions and voting
 
 #### **Feature-Specific Widgets** (`lib/features/event/presentation/widgets/`)
-- ✅ `ChatPreviewWidget` - Preview of recent event messages
+- ✅ `ChatPreviewWidget` - Preview of recent event messages (with mode parameter)
 - ✅ `DateTimeSuggestionsWidget` - Complete datetime suggestions with voting
 - ✅ `LocationSuggestionsWidget` - Complete location suggestions with voting
 - ✅ `AddSuggestionBottomSheet` - Modal for adding new suggestions
+- ✅ `EventExpensesWidget` - Expenses display with mode parameter (green accent for planning)
 
 **Key Features Implemented:**
 - ✅ **RSVP Integration**: Going/Not Going votes sync with suggestion votes
@@ -32,6 +33,9 @@ All components are properly tokenized and reusable across features:
 - ✅ **Current Event Cards**: Auto-generated cards showing current event details
 - ✅ **Suggestion Voting**: Yes/No voting on all suggestions with proper state management
 - ✅ **Address Display**: Location widgets show "Name • Address" format
+- ✅ **Expenses Integration**: Total display, sorted list, add button (green for planning mode)
+- ✅ **Host-Only Visual Feedback**: Status pill (Pending/Confirmed) shows elevation only for hosts
+- ✅ **Mode-Based Styling**: Chat and expenses use ChatMode.planning (green accent)
 
 ---
 
@@ -40,12 +44,17 @@ All components are properly tokenized and reusable across features:
 ### ✅ **Domain Layer** (`lib/features/event/domain/`)
 
 #### **Entities** - Complete business models
-- ✅ `EventDetail` - Extended event information
+- ✅ `EventDetail` - Extended event information (includes hostId)
 - ✅ `Rsvp` - User responses with status enum
 - ✅ `Suggestion` - Date/time suggestions
 - ✅ `LocationSuggestion` - Location suggestions with coordinates
 - ✅ `Poll` - Event polls with options
 - ✅ `ChatMessage` - Event chat messages
+- ✅ `GroupExpenseEntity` (`group_hub` feature) - Expense information with participantIds
+
+**Cross-Feature Entities Used:**
+- ✅ `EventStatus` enum (pending/confirmed) - Event confirmation state with host-only visual feedback
+- ✅ `ChatMode` enum (planning/living) - Mode-based UI switching throughout the app
 
 #### **Repository Interfaces** - Complete contracts
 - ✅ `EventRepository` - Event CRUD and updates
@@ -53,6 +62,7 @@ All components are properly tokenized and reusable across features:
 - ✅ `SuggestionRepository` - Both datetime and location suggestions
 - ✅ `PollRepository` - Poll management
 - ✅ `ChatRepository` - Message operations
+- ✅ `GroupExpenseRepository` (`group_hub`) - Expense management
 
 #### **Use Cases** - Complete business logic
 - ✅ `GetEventDetail` - Event information retrieval
@@ -148,6 +158,23 @@ final toggleLocationSuggestionVoteNotifierProvider = StateNotifierProvider<Toggl
 - Updates automatically when event details change
 - Follows exact same patterns as datetime suggestions
 
+### **Expenses Integration** ✅
+1. Fetches expenses for event's groupId
+2. Calculates total (excludes settled expenses)
+3. Shows red if owing, green if receiving
+4. Sorted: active by date desc, settled always last
+5. Tap card → opens ExpenseDetailBottomSheet with participants
+6. "Mark as paid" button color: green for planning mode
+7. Add button → opens AddExpenseBottomSheet with ChatMode.planning
+8. Widget reusability: same EventExpensesWidget used in living mode with purple accent
+
+### **Host-Only Visual Feedback** ✅
+1. EventStatusChip includes `isHost` parameter
+2. When `isHost=true`, pill shows elevation/shadow
+3. Shadow color adapts to status: green for confirmed, gray for pending
+4. Event page passes `isHost: event.hostId == 'current-user'` (TODO: replace with auth)
+5. Non-host users see flat pill without elevation
+
 ---
 
 ## 🔄 **WORKING UI FLOWS**
@@ -160,13 +187,16 @@ final toggleLocationSuggestionVoteNotifierProvider = StateNotifierProvider<Toggl
 5. ✅ **Vote on suggestions** (yes/no with RSVP sync)
 6. ✅ **Set event date** (from datetime suggestion)
 7. ✅ **Set event location** (from location suggestion)
-8. ✅ **View chat preview** (recent messages display)
+8. ✅ **View chat preview** (recent messages display with green accent)
 9. ✅ **View polls** (poll display and voting)
+10. ✅ **View expenses** (total, sorted list, detail modal with green accent)
+11. ✅ **Add expense** (bottom sheet with green "Add" button for planning mode)
+12. ✅ **Toggle event status** (Pending ↔ Confirmed with host-only elevation)
 
 ### **Error Handling** ✅
 - Loading states with spinners for all async operations
 - Error states with user-friendly messages
-- Empty states when no data available
+- Empty states when no data available (suggestions, expenses, messages)
 - Proper navigation and feedback
 
 ---

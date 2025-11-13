@@ -9,11 +9,13 @@ import '../../../features/event/domain/entities/event_detail.dart';
 class EventStatusChip extends StatelessWidget {
   final EventStatus status;
   final VoidCallback onTap;
+  final bool isHost; // Shows elevation/shadow if true
 
   const EventStatusChip({
     super.key,
     required this.status,
     required this.onTap,
+    this.isHost = false,
   });
 
   @override
@@ -34,6 +36,18 @@ class EventStatusChip extends StatelessWidget {
             color: isConfirmed ? BrandColors.planning : BrandColors.bg3,
             width: 1,
           ),
+          // Add shadow for hosts to indicate clickability
+          boxShadow: isHost
+              ? [
+                  BoxShadow(
+                    color:
+                        (isConfirmed ? BrandColors.planning : BrandColors.bg3)
+                            .withValues(alpha: 0.3),
+                    blurRadius: 8,
+                    offset: const Offset(0, 3),
+                  ),
+                ]
+              : null,
         ),
         child: Text(
           isConfirmed ? 'Confirmed' : 'Pending',

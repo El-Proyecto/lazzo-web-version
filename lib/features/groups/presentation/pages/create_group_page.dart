@@ -217,9 +217,12 @@ class _CreateGroupPageState extends ConsumerState<CreateGroupPage> {
                   print('⚠️ [CreateGroup] Failed to get cover URL: $e');
                 }
               }
+              // Store navigator before async gap
+              // ignore: use_build_context_synchronously
+              final navigator = Navigator.of(context);
               // Only check mounted after all awaits
               if (!mounted) return;
-              Navigator.of(context).pop({
+              navigator.pop({
                 'groupId': createdGroup.id,
                 'groupName': createdGroup.name,
                 'memberCount': 1,
@@ -227,8 +230,10 @@ class _CreateGroupPageState extends ConsumerState<CreateGroupPage> {
               });
             } else {
               // Navigate to Group Created page
+              // Store navigator before any potential async work
+              final navigator = Navigator.of(context);
               if (!mounted) return;
-              Navigator.of(context).pushNamed(
+              navigator.pushNamed(
                 AppRouter.groupCreated,
                 arguments: {'group': createdGroup},
               );
