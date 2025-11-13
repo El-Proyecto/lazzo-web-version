@@ -1,15 +1,17 @@
 # Group Hub Feature - P1 to P2 Handoff Document
 
-**Date:** October 21, 2025  
+**Date:** October 21, 2025 (Updated: November 13, 2025)  
 **From:** Role P1 (UI + State + Contracts)  
 **To:** Role P2 (Data + Supabase)  
-**Feature:** Group Hub (Events, Expenses, Memories)  
+**Feature:** Group Hub (Events, Memories)  
+
+> **⚠️ UPDATE (Nov 13, 2025):** Expenses section has been **migrated to Event feature** where it's actually used. This handoff now covers only Events and Memories sections. For expenses functionality, refer to `EVENT_DETAIL_P1_P2_HANDOFF.md`.
 
 ---
 
 ## ✅ **P1 DELIVERABLES COMPLETED**
 
-All Role P1 responsibilities have been successfully implemented according to the Lazzo architecture guidelines. The group hub feature is fully functional with fake data including **Events**, **Expenses**, and **Memories** sections with proper sorting, shared components, and tokenized design. Ready for P2 to implement Supabase integration.
+All Role P1 responsibilities have been successfully implemented according to the Lazzo architecture guidelines. The group hub feature is fully functional with fake data including **Events** and **Memories** sections with proper sorting, shared components, and tokenized design. Ready for P2 to implement Supabase integration.
 
 ---
 
@@ -39,21 +41,6 @@ enum GroupEventStatus {
 }
 ```
 
-### **Group Expense Entity** - `lib/features/group_hub/domain/entities/group_expense_entity.dart`
-
-Domain model for group expense tracking:
-
-```dart
-class GroupExpenseEntity {
-  final String id;
-  final String description;
-  final double amount;
-  final String paidBy;
-  final DateTime date;
-  final bool isSettled;
-}
-```
-
 ### **Group Memory Entity** - `lib/features/group_hub/domain/entities/group_memory_entity.dart`
 
 Domain model for group memories implementing MemoryData interface for shared components:
@@ -76,23 +63,9 @@ class GroupMemoryEntity implements MemoryData {
 }
 ```
 
-### **Expense Participant Entity** - `lib/features/group_hub/domain/entities/expense_participant_entity.dart`
-
-Supporting entity for expense details:
-
-```dart
-class ExpenseParticipant {
-  final String id;
-  final String name;
-  final double amount;
-  final bool hasPaid;
-}
-```
-
 **Key Features:**
 - Immutable data classes with `copyWith()` methods
 - RSVP vote tracking for events
-- Payment status tracking for expenses
 - Photo count and cover images for memories
 - Interface compatibility with shared components
 
@@ -109,18 +82,6 @@ abstract class GroupEventRepository {
 
   /// Get a single event by ID
   Future<GroupEventEntity?> getEventById(String eventId);
-}
-```
-
-### **Group Expense Repository** - `lib/features/group_hub/domain/repositories/group_expense_repository.dart`
-
-```dart
-abstract class GroupExpenseRepository {
-  /// Get all expenses for a specific group
-  Future<List<GroupExpenseEntity>> getGroupExpenses(String groupId);
-
-  /// Get a single expense by ID
-  Future<GroupExpenseEntity?> getExpenseById(String expenseId);
 }
 ```
 
@@ -156,20 +117,6 @@ class GetGroupEvents {
 
   Future<List<GroupEventEntity>> call(String groupId) async {
     return await _repository.getGroupEvents(groupId);
-  }
-}
-```
-
-### **Get Group Expenses** - `lib/features/group_hub/domain/usecases/get_group_expenses.dart`
-
-```dart
-class GetGroupExpenses {
-  final GroupExpenseRepository _repository;
-
-  GetGroupExpenses(this._repository);
-
-  Future<List<GroupExpenseEntity>> call(String groupId) async {
-    return await _repository.getGroupExpenses(groupId);
   }
 }
 ```
@@ -226,29 +173,7 @@ abstract class MemoryData {
 }
 ```
 
-### **Group Expense Card** - `lib/features/group_hub/presentation/widgets/group_expense_card.dart`
-
-Feature-specific widget for expense display:
-
-```dart
-class GroupExpenseCard extends StatelessWidget {
-  final GroupExpenseEntity expense;
-  final String eventName;
-  final double userAmount;
-  final double totalAmount;
-  final bool isOwedToUser;
-  final String paymentStatus;
-  final VoidCallback? onTap;
-
-  // Features:
-  // - Payment status indicators (Paid, Settled, Active)
-  // - Amount formatting and currency display
-  // - Debt/credit visual indicators
-  // - Tokenized colors and spacing
-}
-```
-
-**Component Features:**
+**Component Features:
 - All components use design tokens (no hardcoded values)
 - Shared components exported in `components.dart`
 - Responsive design with proper touch targets
@@ -261,7 +186,7 @@ class GroupExpenseCard extends StatelessWidget {
 
 ### **Group Hub Page** - `lib/features/group_hub/presentation/pages/group_hub_page.dart`
 
-Main page with three-tab interface:
+Main page with two-tab interface:
 
 ```dart
 class GroupHubPage extends ConsumerStatefulWidget {
@@ -271,11 +196,10 @@ class GroupHubPage extends ConsumerStatefulWidget {
   final int memberCount;
 
   // Features:
-  // - Three tabs: Events, Expenses, Memories
+  // - Two tabs: Events, Memories
   // - Group info header with photo and member count
   // - Segmented control navigation
   // - AsyncValue state handling for all sections
-  // - Smart expense sorting (Active → Paid → Settled)
   // - Scrollable memories with shared component
 }
 ```
@@ -288,10 +212,6 @@ Complete Riverpod provider setup:
 // Repository providers (default to fake implementations)
 final groupEventRepositoryProvider = Provider<GroupEventRepository>((ref) {
   return FakeGroupEventRepository();
-});
-
-final groupExpenseRepositoryProvider = Provider<GroupExpenseRepository>((ref) {
-  return FakeGroupExpenseRepository();
 });
 
 final groupMemoryRepositoryProvider = Provider<GroupMemoryRepository>((ref) {
@@ -346,24 +266,6 @@ final List<GroupEventEntity> _events = [
 ];
 ```
 
-### **Expenses Fake Data** - `lib/features/group_hub/data/fakes/fake_group_expense_repository.dart`
-
-6 mock expenses with different payment statuses:
-
-```dart
-final List<GroupExpenseEntity> _expenses = [
-  GroupExpenseEntity(
-    id: '1',
-    description: 'Dinner at Restaurant',
-    amount: 120.50,
-    paidBy: 'Marco',
-    date: DateTime.now().subtract(const Duration(days: 1)),
-    isSettled: false,
-  ),
-  // ... 5 more expenses with varied settlement status
-];
-```
-
 ### **Memories Fake Data** - `lib/features/group_hub/data/fakes/fake_group_memory_repository.dart`
 
 7 mock memories with realistic data:
@@ -386,62 +288,11 @@ final List<GroupMemoryEntity> _memories = [
 - Realistic mock data with varied statuses
 - Network delay simulation (500ms)
 - Proper interface implementation
-- Different user payment states for expenses
 - Comprehensive RSVP scenarios for events
 
 ---
 
-## 🎯 **7. BUSINESS LOGIC IMPLEMENTED**
-
-### **Smart Expense Sorting**
-
-Expenses are sorted with priority logic:
-1. **Active expenses** (neither Paid nor Settled) - shown first
-2. **Paid expenses** - shown in middle
-3. **Settled expenses** - shown last
-4. Within each group: **most recent first**
-
-```dart
-final sortedExpenses = List<GroupExpenseEntity>.from(expenses)
-  ..sort((a, b) {
-    final statusA = _getPaymentStatus(a);
-    final statusB = _getPaymentStatus(b);
-    
-    int getPriority(String status) {
-      switch (status) {
-        case 'Settled': return 2;
-        case 'Paid': return 1;
-        default: return 0; // Active
-      }
-    }
-    
-    final priorityA = getPriority(statusA);
-    final priorityB = getPriority(statusB);
-    
-    if (priorityA != priorityB) {
-      return priorityA.compareTo(priorityB);
-    }
-    
-    return b.date.compareTo(a.date); // Most recent first
-  });
-```
-
-### **Payment Status Logic**
-
-```dart
-String _getPaymentStatus(GroupExpenseEntity expense) {
-  if (expense.isSettled) return 'Settled';
-  
-  final currentUserParticipant = _expenseParticipants[expense.id]
-    ?.firstWhere((p) => p.id == 'current_user');
-  
-  if (currentUserParticipant?.hasPaid == true) return 'Paid';
-  
-  return ''; // Active - show amount instead
-}
-```
-
-### **UI State Handling**
+## 🎯 **7. UI STATE HANDLING**
 
 Each section handles AsyncValue states:
 - **Loading**: Circular progress indicator
@@ -458,49 +309,51 @@ lib/features/group_hub/
 ├── domain/
 │   ├── entities/
 │   │   ├── group_event_entity.dart ✅
-│   │   ├── group_expense_entity.dart ✅
 │   │   ├── group_memory_entity.dart ✅
-│   │   └── expense_participant_entity.dart ✅
+│   │   ├── group_details_entity.dart ✅
+│   │   ├── group_member_entity.dart ✅
+│   │   └── group_photo_entity.dart ✅
 │   ├── repositories/
 │   │   ├── group_event_repository.dart ✅
-│   │   ├── group_expense_repository.dart ✅
-│   │   └── group_memory_repository.dart ✅
+│   │   ├── group_memory_repository.dart ✅
+│   │   ├── group_details_repository.dart ✅
+│   │   └── group_photos_repository.dart ✅
 │   └── usecases/
 │       ├── get_group_events.dart ✅
-│       ├── get_group_expenses.dart ✅
-│       └── get_group_memories.dart ✅
+│       ├── get_group_memories.dart ✅
+│       ├── get_group_details.dart ✅
+│       ├── get_group_members.dart ✅
+│       └── toggle_group_mute.dart ✅
 ├── data/
 │   ├── data_sources/
 │   │   ├── group_event_data_source.dart ❌ (P2)
-│   │   ├── group_expense_data_source.dart ❌ (P2)
 │   │   └── group_memory_data_source.dart ❌ (P2)
 │   ├── models/
 │   │   ├── group_event_model.dart ❌ (P2)
-│   │   ├── group_expense_model.dart ❌ (P2)
 │   │   └── group_memory_model.dart ❌ (P2)
 │   ├── repositories/
 │   │   ├── group_event_repository_impl.dart ❌ (P2)
-│   │   ├── group_expense_repository_impl.dart ❌ (P2)
 │   │   └── group_memory_repository_impl.dart ❌ (P2)
 │   └── fakes/
 │       ├── fake_group_event_repository.dart ✅
-│       ├── fake_group_expense_repository.dart ✅
-│       └── fake_group_memory_repository.dart ✅
+│       ├── fake_group_memory_repository.dart ✅
+│       ├── fake_group_details_repository.dart ✅
+│       └── fake_group_photos_repository.dart ✅
 └── presentation/
     ├── pages/
     │   └── group_hub_page.dart ✅
     ├── providers/
     │   └── group_hub_providers.dart ✅
     └── widgets/
-        ├── group_expense_card.dart ✅
-        ├── expense_detail_bottom_sheet.dart ✅
-        └── group_expenses_section.dart ✅
+        └── (no expense widgets - migrated to event feature)
 
 lib/shared/components/
 ├── sections/
 │   └── memories_section.dart ✅ (Generic MemoryData interface)
 └── components.dart ✅ (Updated exports)
 ```
+
+> **Note:** Expense-related files have been migrated to `lib/features/event/` feature where they're actually used.
 
 **Delivery Status:**
 - ✅ **P1 Complete**: All domain contracts, fake implementations, UI, and state management
@@ -543,38 +396,6 @@ CREATE TABLE event_rsvps (
   updated_at TIMESTAMPTZ DEFAULT NOW(),
   
   UNIQUE(event_id, user_id)
-);
-```
-
-#### **Expenses Table** - `group_expenses`
-```sql
-CREATE TABLE group_expenses (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  group_id UUID REFERENCES groups(id) ON DELETE CASCADE,
-  description TEXT NOT NULL,
-  amount DECIMAL(10,2) NOT NULL,
-  paid_by UUID REFERENCES profiles(id),
-  date TIMESTAMPTZ DEFAULT NOW(),
-  is_settled BOOLEAN DEFAULT FALSE,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  
-  -- RLS policies needed for group members only
-);
-
--- Index for performance
-CREATE INDEX idx_group_expenses_group_id_date ON group_expenses(group_id, date DESC);
-```
-
-#### **Expense Participants Table** - `expense_participants`
-```sql
-CREATE TABLE expense_participants (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  expense_id UUID REFERENCES group_expenses(id) ON DELETE CASCADE,
-  user_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
-  amount DECIMAL(10,2) NOT NULL,
-  has_paid BOOLEAN DEFAULT FALSE,
-  
-  UNIQUE(expense_id, user_id)
 );
 ```
 
@@ -621,35 +442,6 @@ class SupabaseGroupEventDataSource implements GroupEventDataSource {
         .select('''
           id, name, emoji, date, location, status, created_at,
           event_rsvps(user_id, vote)
-        ''')
-        .eq('group_id', groupId)
-        .order('date', ascending: false);
-    
-    return List<Map<String, dynamic>>.from(response);
-  }
-}
-```
-
-#### **Group Expense Data Source** - `lib/features/group_hub/data/data_sources/group_expense_data_source.dart`
-
-```dart
-abstract class GroupExpenseDataSource {
-  Future<List<Map<String, dynamic>>> getGroupExpenses(String groupId);
-  Future<Map<String, dynamic>?> getExpenseById(String expenseId);
-  Future<List<Map<String, dynamic>>> getExpenseParticipants(String expenseId);
-}
-
-class SupabaseGroupExpenseDataSource implements GroupExpenseDataSource {
-  final SupabaseClient _client;
-  
-  @override
-  Future<List<Map<String, dynamic>>> getGroupExpenses(String groupId) async {
-    final response = await _client
-        .from('group_expenses')
-        .select('''
-          id, description, amount, paid_by, date, is_settled,
-          expense_participants(user_id, amount, has_paid),
-          paid_by_profile:profiles!paid_by(name)
         ''')
         .eq('group_id', groupId)
         .order('date', ascending: false);
@@ -728,25 +520,6 @@ class GroupEventModel {
 }
 ```
 
-#### **Group Expense Model** - `lib/features/group_hub/data/models/group_expense_model.dart`
-
-```dart
-class GroupExpenseModel {
-  static GroupExpenseEntity fromJson(Map<String, dynamic> json) {
-    return GroupExpenseEntity(
-      id: json['id'],
-      description: json['description'] ?? '',
-      amount: (json['amount'] as num?)?.toDouble() ?? 0.0,
-      paidBy: json['paid_by_profile']?['name'] ?? 'Unknown',
-      date: json['date'] != null 
-          ? DateTime.parse(json['date'])
-          : DateTime.now(),
-      isSettled: json['is_settled'] ?? false,
-    );
-  }
-}
-```
-
 #### **Group Memory Model** - `lib/features/group_hub/data/models/group_memory_model.dart`
 
 ```dart
@@ -810,12 +583,6 @@ groupEventRepositoryProvider.overrideWith((ref) {
   return GroupEventRepositoryImpl(dataSource);
 }),
 
-groupExpenseRepositoryProvider.overrideWith((ref) {
-  final client = Supabase.instance.client;
-  final dataSource = SupabaseGroupExpenseDataSource(client);
-  return GroupExpenseRepositoryImpl(dataSource);
-}),
-
 groupMemoryRepositoryProvider.overrideWith((ref) {
   final client = Supabase.instance.client;
   final dataSource = SupabaseGroupMemoryDataSource(client);
@@ -843,7 +610,6 @@ groupMemoryRepositoryProvider.overrideWith((ref) {
 - Handle network failures and timeouts gracefully
 
 ### **4. Data Consistency**
-- Ensure expense participants sum matches expense amount
 - Validate RSVP uniqueness per user per event
 - Handle concurrent modifications appropriately
 
@@ -870,249 +636,29 @@ After P2 implementation, verify:
 ## 📝 **SUMMARY**
 
 ### **P1 Deliverables Complete:**
-- ✅ 4 Domain entities with proper relationships
-- ✅ 3 Repository interfaces with clear contracts  
-- ✅ 3 Use cases with single responsibilities
-- ✅ Complete UI with tokenized design system
+- ✅ 2 Core domain entities (Events, Memories)
+- ✅ 5 Supporting entities (Details, Members, Photos)
+- ✅ 2 Repository interfaces with clear contracts  
+- ✅ 5 Use cases with single responsibilities
+- ✅ Complete UI with tokenized design system (2-tab interface)
 - ✅ Generic shared components (MemoriesSection)
-- ✅ Comprehensive fake data (21 total mock items)
-- ✅ Smart sorting algorithms (expense priority)
+- ✅ Comprehensive fake data (Events and Memories)
 - ✅ Full state management with AsyncValue
-- ✅ Feature-specific widgets and bottom sheets
 - ✅ Error, loading, and empty state handling
 
 ### **P2 Implementation Required:**
-- ❌ Supabase schema creation (5 tables with RLS)
-- ❌ Data sources for all three domains
+- ❌ Supabase schema creation (2 main tables + supporting tables)
+- ❌ Data sources for Events and Memories
 - ❌ DTO models with proper JSON parsing
 - ❌ Repository implementations
 - ❌ Provider overrides in main.dart
 
-**Estimated P2 Effort:** 3-4 days for complete Supabase integration
-
----
-
-## 🆕 **RECENT UI ENHANCEMENTS (November 2025)**
-
-### **1. Floating Action Button (FAB) for Expenses**
-
-Added smart FAB to expenses section with scroll-aware visibility:
-
-**Location:** `lib/features/group_hub/presentation/pages/group_hub_page.dart`
-
-**Features:**
-- Positioned at bottom-right of expenses section
-- **Smart hide/show logic**: Only hides on scroll if 5+ expenses exist
-- Shows on scroll up, hides on scroll down
-- Receipt icon (`Icons.receipt_long_outlined`)
-- Planning color theme (green)
-- Opens Add Expense Bottom Sheet on tap
-
-**Implementation:**
-```dart
-// State management
-bool _showFab = true;
-ScrollController? _expensesScrollController;
-
-// Threshold check
-bool _hasEnoughExpensesToHideFab(List<GroupExpenseEntity> expenses) {
-  return expenses.length >= 5; // Only hide if 5+ expenses
-}
-
-// Scroll listener
-void _onExpensesScrollChanged(List<GroupExpenseEntity> expenses) {
-  if (!_hasEnoughExpensesToHideFab(expenses)) {
-    setState(() => _showFab = true);
-    return;
-  }
-  
-  final controller = _expensesScrollController;
-  if (controller == null) return;
-  
-  if (controller.position.userScrollDirection == ScrollDirection.forward) {
-    setState(() => _showFab = true);
-  } else if (controller.position.userScrollDirection == ScrollDirection.reverse) {
-    setState(() => _showFab = false);
-  }
-}
-
-// FAB widget
-floatingActionButton: _currentIndex == 1 && _showFab
-    ? FloatingActionButton(
-        onPressed: _handleAddExpense,
-        backgroundColor: BrandColors.planning,
-        foregroundColor: BrandColors.text1,
-        child: const Icon(Icons.receipt_long_outlined),
-      )
-    : null,
-```
-
-**Empty State Integration:**
-- Added full-width button to empty expenses state
-- Same receipt icon and styling
-- Opens same Add Expense Bottom Sheet
-
-### **2. Add Expense Bottom Sheet**
-
-Created shared, reusable component for adding expenses with complete validation:
-
-**Location:** `lib/shared/components/dialogs/add_expense_bottom_sheet.dart`
-
-**Design Pattern:**
-- Follows `CommonBottomSheet` structure
-- Tokenized design (all spacing/colors from design system)
-- Stateful widget with form validation
-- Static `show()` method for easy invocation
-
-**Features:**
-
-#### **Field Structure (Top to Bottom):**
-1. **Expense Title** - Text input with error validation
-2. **Total Amount** - Numeric input with euro symbol, 2 decimal places
-3. **Amount Per Person** - Inline calculated display: `"0.00€ per person • 4 people"`
-4. **Paid by** - Dropdown overlay with participant checkboxes
-5. **Split with** - Dropdown overlay with "Select All" + participant checkboxes
-6. **Add Expense Button** - Disabled state with error messages
-
-#### **Dropdown Overlay Behavior:**
-- Triggers show dropdown on tap with selected names display
-- Dropdown appears below trigger with shadow and border
-- Shows checkboxes for each participant with avatars
-- Tap outside dropdown (anywhere on sheet) closes it
-- Tap on participant toggles selection without closing
-- Border changes to planning color when open
-- Arrow icon changes (down ↔ up) based on state
-
-#### **Validation System:**
-```dart
-// Error state tracking
-bool _showErrors = false;
-String? _titleError;
-String? _amountError;
-String? _paidByError;
-String? _splitWithError;
-
-// Validation on submit
-void _handleAddExpense() {
-  if (!_isValid) {
-    _validateFields();
-    setState(() => _showErrors = true);
-    return;
-  }
-  // ... proceed with callback
-}
-
-// Field-specific errors
-void _validateFields() {
-  _titleError = _titleController.text.trim().isEmpty
-      ? 'Please enter an expense title'
-      : null;
-  _amountError = _totalAmount <= 0 
-      ? 'Please enter a valid amount' 
-      : null;
-  _paidByError = _selectedPaidBy.isEmpty 
-      ? 'Please select who paid' 
-      : null;
-  _splitWithError = _selectedPayers.isEmpty 
-      ? 'Please select participants' 
-      : null;
-}
-```
-
-#### **Error Display:**
-- Red border on invalid fields when errors shown
-- Error text below each field (12px font, red color)
-- Errors appear after clicking disabled button
-- Errors update in real-time as user fixes issues
-- Button enabled once all validations pass
-
-#### **Keyboard Management:**
-```dart
-// Focus nodes for input dismissal
-final FocusNode _titleFocusNode = FocusNode();
-final FocusNode _amountFocusNode = FocusNode();
-
-// Tap outside gesture
-GestureDetector(
-  onTap: _closeAllDropdowns, // Closes dropdowns + keyboard
-  child: Container(...),
-)
-
-void _closeAllDropdowns() {
-  _closePaidByDropdown();
-  _closeSplitWithDropdown();
-  _titleFocusNode.unfocus(); // Dismisses keyboard
-  _amountFocusNode.unfocus();
-}
-```
-
-#### **Model for Participants:**
-```dart
-class ExpenseParticipantOption {
-  final String id;
-  final String name;
-  final String? avatarUrl;
-}
-```
-
-#### **Callback Signature:**
-```dart
-Function(
-  String title,
-  List<String> paidByIds,
-  List<String> payerIds,
-  double totalAmount,
-) onAddExpense;
-```
-
-**Integration Points:**
-
-1. **Group Hub (Expenses Section):**
-```dart
-void _handleAddExpense() {
-  AddExpenseBottomSheet.show(
-    context: context,
-    participants: [ /* Mock participants */ ],
-    onAddExpense: (title, paidByIds, payerIds, totalAmount) {
-      // TODO: P2 implement expense creation via repository
-      print('Creating expense: $title for €$totalAmount');
-    },
-  );
-}
-```
-
-2. **Event Chat (Message Input):**
-```dart
-// Receipt icon button in empty state
-IconButton(
-  onPressed: _showAddExpenseBottomSheet,
-  icon: const Icon(Icons.receipt_long_outlined),
-  // ... transparent background when empty
-)
-```
-
-**Design Specifications:**
-- Header: `Pads.sectionH` padding, GrabberBar above
-- Inputs: `TouchTargets.input` minimum height, tokenized borders
-- Dropdowns: Shadow (`alpha: 0.2`, blur: 8, offset: (0,2)`)
-- Participant options: Avatar (32px diameter) + name + checkbox icon
-- Font sizes: Minimum 14px on all text
-- Spacing: `Gaps.lg` between sections, `Gaps.xs` for labels
-
-**Accessibility:**
-- Minimum touch target heights respected
-- Clear visual feedback for selections
-- Error messages announce validation state
-- Keyboard dismiss on outside tap
-
-**Export:**
-Added to `lib/shared/components/components.dart`:
-```dart
-export 'dialogs/add_expense_bottom_sheet.dart';
-```
+**Estimated P2 Effort:** 2-3 days for complete Supabase integration
 
 ---
 
 **Ready for handoff! 🚀** 
 
-The Group Hub feature has a complete P1 implementation with all domain contracts, shared components, and UI functionality. P2 can proceed with Supabase integration using the detailed specifications above.
+The Group Hub feature (Events and Memories) has a complete P1 implementation with all domain contracts, shared components, and simplified 2-tab UI. P2 can proceed with Supabase integration using the detailed specifications above.
+
+> **Note:** Expense functionality has been migrated to the Event feature. See `EVENT_DETAIL_P1_P2_HANDOFF.md` for expenses implementation details.

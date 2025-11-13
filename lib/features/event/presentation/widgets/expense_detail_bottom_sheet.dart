@@ -4,7 +4,7 @@ import '../../domain/entities/expense_participant_entity.dart';
 import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/constants/text_styles.dart';
 import '../../../../shared/themes/colors.dart';
-import '../../../event/presentation/widgets/chat_preview_widget.dart'; // For ChatMode
+import 'chat_preview_widget.dart'; // For ChatMode
 
 class ExpenseDetailBottomSheet extends StatefulWidget {
   final GroupExpenseEntity expense;

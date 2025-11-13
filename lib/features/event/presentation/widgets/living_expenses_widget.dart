@@ -4,11 +4,11 @@ import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/constants/text_styles.dart';
 import '../../../../shared/themes/colors.dart';
 import '../../../../shared/components/dialogs/add_expense_bottom_sheet.dart';
-import '../../../group_hub/presentation/widgets/group_expense_card.dart';
-import '../../../group_hub/presentation/widgets/expense_detail_bottom_sheet.dart';
-import '../../../group_hub/domain/entities/group_expense_entity.dart';
-import '../../../group_hub/domain/entities/expense_participant_entity.dart';
-import '../../../group_hub/presentation/providers/group_hub_providers.dart';
+import 'group_expense_card.dart';
+import 'expense_detail_bottom_sheet.dart';
+import '../../domain/entities/group_expense_entity.dart';
+import '../../domain/entities/expense_participant_entity.dart';
+import '../providers/event_providers.dart';
 import 'chat_preview_widget.dart'; // For ChatMode enum
 
 /// Widget showing event expenses in both planning and living modes
