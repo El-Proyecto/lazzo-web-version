@@ -7,7 +7,7 @@ class PinMessage {
 
   const PinMessage(this._repository);
 
-  Future<ChatMessage> call(String messageId, bool isPinned) {
-    return _repository.pinMessage(messageId, isPinned);
+  Future<ChatMessage> call(String eventId, String messageId, bool isPinned) {
+    return _repository.pinMessage(eventId, messageId, isPinned);
   }
 }

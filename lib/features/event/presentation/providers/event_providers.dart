@@ -467,18 +467,18 @@ class SendMessageNotifier extends StateNotifier<AsyncValue<void>> {
       print('🔍 DEBUG SendMessageNotifier: Current userId=$currentUserId');
       
       // Send the message
-      final message = await repository.sendMessage(
+      await repository.sendMessage(
         eventId,
         currentUserId ?? '',
         content,
       );
 
-      print('✅ DEBUG SendMessageNotifier: Message sent, adding to local state');
-      // Add the message to the local state without losing other messages
-      ref.read(recentMessagesProvider(eventId).notifier).addMessage(message);
+      print('✅ DEBUG SendMessageNotifier: Message sent, refreshing messages with 2-pass lookup');
+      // Refresh messages to ensure replyTo references are populated via 2-pass lookup
+      await ref.read(recentMessagesProvider(eventId).notifier).refreshMessages();
 
       state = const AsyncValue.data(null);
-      print('✅ DEBUG SendMessageNotifier: Message successfully sent');
+      print('✅ DEBUG SendMessageNotifier: Message successfully sent and preview refreshed');
     } catch (error, stackTrace) {
       print('❌ DEBUG SendMessageNotifier: Error sending message: $error');
       state = AsyncValue.error(error, stackTrace);

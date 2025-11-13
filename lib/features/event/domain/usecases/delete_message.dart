@@ -7,7 +7,7 @@ class DeleteMessage {
 
   const DeleteMessage(this._repository);
 
-  Future<ChatMessage> call(String messageId) {
-    return _repository.deleteMessage(messageId);
+  Future<ChatMessage> call(String eventId, String messageId) {
+    return _repository.deleteMessage(eventId, messageId);
   }
 }

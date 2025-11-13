@@ -86,7 +86,7 @@ class FakeChatRepository implements ChatRepository {
         userId: 'user-6',
         userName: 'Pedro Costa',
         userAvatar: null,
-        content: 'Esta mensagem foi eliminada',
+        content: 'Message Deleted',
         createdAt: DateTime.now().subtract(const Duration(minutes: 3)),
         read: false,
         isDeleted: true, // This message was deleted
@@ -224,7 +224,7 @@ class FakeChatRepository implements ChatRepository {
   }
 
   @override
-  Future<ChatMessage> pinMessage(String messageId, bool isPinned) async {
+  Future<ChatMessage> pinMessage(String eventId, String messageId, bool isPinned) async {
     await Future.delayed(const Duration(milliseconds: 300));
 
     final index = _messages.indexWhere((m) => m.id == messageId);
@@ -232,10 +232,10 @@ class FakeChatRepository implements ChatRepository {
       throw Exception('Message not found');
     }
 
-    // If pinning a new message, unpin all others (only one pinned at a time)
+    // If pinning a new message, unpin all others in the same event (only one pinned at a time)
     if (isPinned) {
       for (var i = 0; i < _messages.length; i++) {
-        if (_messages[i].isPinned) {
+        if (_messages[i].eventId == eventId && _messages[i].isPinned) {
           _messages[i] = _messages[i].copyWith(isPinned: false);
         }
       }
@@ -247,7 +247,7 @@ class FakeChatRepository implements ChatRepository {
   }
 
   @override
-  Future<ChatMessage> deleteMessage(String messageId) async {
+  Future<ChatMessage> deleteMessage(String eventId, String messageId) async {
     await Future.delayed(const Duration(milliseconds: 300));
 
     final index = _messages.indexWhere((m) => m.id == messageId);
@@ -257,7 +257,7 @@ class FakeChatRepository implements ChatRepository {
 
     final updatedMessage = _messages[index].copyWith(
       isDeleted: true,
-      content: 'Esta mensagem foi eliminada',
+      content: 'Message Deleted',
     );
     _messages[index] = updatedMessage;
     return updatedMessage;

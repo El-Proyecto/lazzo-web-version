@@ -12,6 +12,9 @@ class ChatMessageModel {
   final String content;
   final DateTime createdAt;
   final bool read;
+  final bool isPinned;
+  final bool isDeleted;
+  final String? replyToId;
 
   const ChatMessageModel({
     required this.id,
@@ -22,6 +25,9 @@ class ChatMessageModel {
     required this.content,
     required this.createdAt,
     this.read = false,
+    this.isPinned = false,
+    this.isDeleted = false,
+    this.replyToId,
   });
 
   /// Create model from Supabase JSON (with user join)
@@ -38,6 +44,9 @@ class ChatMessageModel {
       content: json['content'] as String,
       createdAt: DateTime.parse(json['created_at'] as String),
       read: json['read'] as bool? ?? false,
+      isPinned: json['is_pinned'] as bool? ?? false,
+      isDeleted: json['is_deleted'] as bool? ?? false,
+      replyToId: json['reply_to_id'] as String?,
     );
   }
 
@@ -50,6 +59,9 @@ class ChatMessageModel {
       'content': content,
       'created_at': createdAt.toIso8601String(),
       'read': read,
+      'is_pinned': isPinned,
+      'is_deleted': isDeleted,
+      if (replyToId != null) 'reply_to_id': replyToId,
     };
   }
 
@@ -64,6 +76,9 @@ class ChatMessageModel {
       content: content,
       createdAt: createdAt,
       read: read,
+      isPinned: isPinned,
+      isDeleted: isDeleted,
+      replyTo: null, // Will be populated by repository if needed
     );
   }
 
@@ -78,6 +93,9 @@ class ChatMessageModel {
       content: entity.content,
       createdAt: entity.createdAt,
       read: entity.read,
+      isPinned: entity.isPinned,
+      isDeleted: entity.isDeleted,
+      replyToId: entity.replyTo?.id,
     );
   }
 }

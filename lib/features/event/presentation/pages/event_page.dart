@@ -17,6 +17,7 @@ import '../../domain/entities/rsvp.dart';
 import '../../domain/entities/suggestion.dart';
 import '../../domain/entities/event_detail.dart';
 import '../providers/event_providers.dart';
+import '../providers/chat_providers.dart';
 import '../widgets/chat_preview_widget.dart';
 import '../widgets/date_time_suggestions_widget.dart'
     show DateTimeSuggestionsWidget, DateTimeSuggestion;
@@ -94,6 +95,34 @@ class EventPage extends ConsumerWidget {
     final userSuggestionVotesAsync = ref.watch(
       userSuggestionVotesProvider(eventId),
     );
+
+    // Debug chat preview state
+    print('💬 [EventPage] messagesAsync state: ${messagesAsync.runtimeType}');
+    messagesAsync.when(
+      data: (messages) => print('💬 [EventPage] Messages loaded: ${messages.length} messages'),
+      loading: () => print('💬 [EventPage] Messages loading...'),
+      error: (error, stack) => print('❌ [EventPage] Messages error: $error'),
+    );
+
+    // Load messages when entering page - only trigger if in loading state
+    messagesAsync.whenOrNull(
+      loading: () {
+        print('🔄 [EventPage] Triggering refreshMessages in postFrameCallback');
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          ref.read(recentMessagesProvider(eventId).notifier).refreshMessages();
+        });
+      },
+    );
+
+    // Listen for message sends to sync both providers
+    ref.listen(sendMessageProvider, (previous, next) {
+      next.whenData((_) {
+        print('📤 [EventPage] Message sent, syncing providers...');
+        // Refresh both providers when message is sent
+        ref.read(recentMessagesProvider(eventId).notifier).refreshMessages();
+        ref.invalidate(chatMessagesProvider(eventId));
+      });
+    });
 
     return Scaffold(
       backgroundColor: BrandColors.bg1,
@@ -223,12 +252,6 @@ class EventPage extends ConsumerWidget {
                                         (r) => r.status == RsvpStatus.pending,
                                       )
                                       .length;
-
-                                  // 🔍 DEBUG: Print RSVP counts calculation
-                                  print('🔍 DEBUG EventPage: Total RSVPs=${rsvps.length}');
-                                  print('🔍 DEBUG EventPage: goingCount=$goingCount, notGoingCount=$notGoingCount, pendingCount=$pendingCount');
-                                  print('🔍 DEBUG EventPage: userVote=${_getUserVoteStatus(userRsvp)}');
-                                  print('🔍 DEBUG EventPage: RSVP statuses: ${rsvps.map((r) => '${r.userName}:${r.status}').join(', ')}');
 
                                   return rsvp_widget.RsvpWidget(
                                     goingCount: goingCount,
@@ -673,9 +696,6 @@ class EventPage extends ConsumerWidget {
               // ONLY SHOWS when there are alternative date suggestions (not just event's current date)
               suggestionsAsync.when(
                 data: (suggestions) {
-                  print('🔍 [EventPage] DateTime suggestions - count: ${suggestions.length}');
-                  print('🔍 [EventPage] Event dates - start: ${event.startDateTime}, end: ${event.endDateTime}');
-                  
                   // Filter suggestions that are DIFFERENT from current event date
                   final alternateSuggestions = suggestions.where((s) {
                     if (event.startDateTime == null || event.endDateTime == null) return true;
@@ -686,15 +706,10 @@ class EventPage extends ConsumerWidget {
                     return isDifferent;
                   }).toList();
                   
-                  print('� [EventPage] Alternate suggestions (different from event date): ${alternateSuggestions.length}');
-                  
                   // ONLY show widget if there are ALTERNATIVE suggestions (different from current date)
                   if (alternateSuggestions.isEmpty) {
-                    print('⚠️ [EventPage] Hiding DateTime widget - no alternative date suggestions');
                     return const SizedBox.shrink();
                   }
-
-                  print('✅ [EventPage] Showing DateTime widget with ${alternateSuggestions.length} alternatives');
 
                   return suggestionVotesAsync.when(
                     data: (allVotes) {
@@ -704,7 +719,6 @@ class EventPage extends ConsumerWidget {
                           
                           // Always add current event date as FIRST option (for comparison)
                           if (event.startDateTime != null && event.endDateTime != null) {
-                            print('➕ [EventPage] Adding current event date as first option for voting');
                             dateTimeSuggestions.add(DateTimeSuggestion(
                               id: 'current_event_date',
                               startDateTime: event.startDateTime!,
@@ -746,10 +760,7 @@ class EventPage extends ConsumerWidget {
                             );
                           }));
 
-                          print('📋 [EventPage] Final dateTimeSuggestions list:');
-                          for (var s in dateTimeSuggestions) {
-                            print('   📅 ${s.id}: ${s.startDateTime} - ${s.endDateTime} (${s.voteCount} votes)');
-                          }
+
 
                           final userVoteIds = userVotes
                               .map((vote) => vote.suggestionId)
@@ -829,12 +840,8 @@ class EventPage extends ConsumerWidget {
 
                   return locationSuggestionsAsync.when(
                     data: (locationSuggestions) {
-                      print('🔍 [EventPage] Location suggestions count: ${locationSuggestions.length}');
-                      print('🔍 [EventPage] Event has location: ${event.location != null}');
-                      
                       // Hide if no suggestions
                       if (locationSuggestions.isEmpty) {
-                        print('⚠️ [EventPage] Hiding location widget - no suggestions');
                         return const SizedBox.shrink();
                       }
                       
@@ -848,35 +855,20 @@ class EventPage extends ConsumerWidget {
                         return isDifferent;
                       }).toList();
                       
-                      print('📊 [EventPage] Alternate location suggestions: ${alternateLocationSuggestions.length}');
-                      
                       // Hide if no suggestions at all (should never happen, but safety check)
                       if (locationSuggestions.isEmpty) {
-                        print('⚠️ [EventPage] No location suggestions at all');
                         return const SizedBox.shrink();
                       }
                       
                       // Hide if event has location but no alternative suggestions
                       if (event.location != null && alternateLocationSuggestions.isEmpty) {
-                        print('⚠️ [EventPage] Hiding location widget - no alternative suggestions (suggestion matches current location)');
                         return const SizedBox.shrink();
-                      }
-                      
-                      // Show widget for:
-                      // CASE 1: Event has location + alternative suggestions = POLL widget
-                      // CASE 2: Event has NO location + suggestions = Display first suggestion (could be poll if multiple)
-                      if (event.location != null && alternateLocationSuggestions.isNotEmpty) {
-                        print('✅ [EventPage] Showing location POLL widget (event has location + alternatives)');
-                      } else if (event.location == null && locationSuggestions.isNotEmpty) {
-                        print('✅ [EventPage] Showing simple location display (Decide Later + suggestion)');
                       }
 
                       return locationVotesAsync.when(
                         data: (locationVotes) {
-                          print('✅ [EventPage] Location votes loaded: ${locationVotes.length}');
                           return userLocationVotesAsync.when(
                             data: (userLocationVotes) {
-                              print('✅ [EventPage] User location votes loaded: ${userLocationVotes.length}');
                               final userLocationVoteIds = userLocationVotes
                                   .map((vote) => vote.suggestionId)
                                   .toSet();
@@ -960,24 +952,36 @@ class EventPage extends ConsumerWidget {
               // Chat Preview
               messagesAsync.when(
                 data: (messages) {
+                  print('💬 [EventPage] ChatPreview receiving ${messages.length} messages');
+                  if (messages.isNotEmpty) {
+                    print('💬 [EventPage] First message: ${messages.first.content.substring(0, messages.first.content.length > 30 ? 30 : messages.first.content.length)}...');
+                    print('💬 [EventPage] First message read: ${messages.first.read}, userId: ${messages.first.userId}');
+                  }
+                  
                   final unreadCount = ref.watch(
                     unreadMessagesCountProvider(eventId),
                   );
+                  
+                  final previewMessages = messages
+                      .map(
+                        (m) => ChatMessagePreview(
+                          userId: m.userId,
+                          userName: m.userName,
+                          userAvatar: m.userAvatar,
+                          content: m.content,
+                          timestamp: m.createdAt,
+                          read: m.read,
+                        ),
+                      )
+                      .toList();
+                  
+                  print('💬 [EventPage] Passing ${previewMessages.length} messages to ChatPreviewWidget');
+                  print('💬 [EventPage] Unread count: $unreadCount, currentUserId: $currentUserId');
+                  
                   return ChatPreviewWidget(
                     newMessagesCount: unreadCount,
                     currentUserId: currentUserId ?? '',
-                    recentMessages: messages
-                        .map(
-                          (m) => ChatMessagePreview(
-                            userId: m.userId,
-                            userName: m.userName,
-                            userAvatar: m.userAvatar,
-                            content: m.content,
-                            timestamp: m.createdAt,
-                            read: m.read,
-                          ),
-                        )
-                        .toList(),
+                    recentMessages: previewMessages,
                     onOpenChat: () {
                       Navigator.pushNamed(
                         context,
@@ -1230,3 +1234,4 @@ class EventPage extends ConsumerWidget {
     }
   }
 }
+

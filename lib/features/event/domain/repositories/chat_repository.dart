@@ -18,8 +18,8 @@ abstract class ChatRepository {
   Future<List<ChatMessage>> getAllMessages(String eventId);
 
   /// Pin or unpin a message
-  Future<ChatMessage> pinMessage(String messageId, bool isPinned);
+  Future<ChatMessage> pinMessage(String eventId, String messageId, bool isPinned);
 
   /// Delete a message (marks as deleted, doesn't remove)
-  Future<ChatMessage> deleteMessage(String messageId);
+  Future<ChatMessage> deleteMessage(String eventId, String messageId);
 }

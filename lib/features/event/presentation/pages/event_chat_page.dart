@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../shared/components/dialogs/add_expense_bottom_sheet.dart';
 import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/constants/text_styles.dart';
@@ -31,11 +32,19 @@ class _EventChatPageState extends ConsumerState<EventChatPage> {
   bool _shouldAutoScroll = true;
   ChatMessage? _replyingTo;
 
+  /// Get current user ID from Supabase auth
+  String? get _currentUserId => Supabase.instance.client.auth.currentUser?.id;
+
   @override
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
     _messageController.addListener(_onTextChanged);
+    
+    // Load messages when entering the chat page
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(chatMessagesProvider(widget.eventId).notifier).refresh();
+    });
   }
 
   @override
@@ -95,7 +104,10 @@ class _EventChatPageState extends ConsumerState<EventChatPage> {
       ref.read(chatMessagesProvider(widget.eventId).notifier).sendMessage(
             content,
             replyTo: _replyingTo,
-          );
+          ).then((_) {
+        // Refresh preview widget after send to keep it in sync
+        ref.read(recentMessagesProvider(widget.eventId).notifier).refreshMessages();
+      });
       _messageController.clear();
       setState(() {
         _replyingTo = null;
@@ -105,11 +117,7 @@ class _EventChatPageState extends ConsumerState<EventChatPage> {
       if (_shouldAutoScroll) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (_scrollController.hasClients) {
-            _scrollController.animateTo(
-              0,
-              duration: const Duration(milliseconds: 0),
-              curve: Curves.easeOut,
-            );
+            _scrollController.jumpTo(0); // Use jumpTo instead of animateTo with zero duration
           }
         });
       }
@@ -122,7 +130,7 @@ class _EventChatPageState extends ConsumerState<EventChatPage> {
   }
 
   void _showMessageMenu(ChatMessage message) {
-    final isCurrentUser = message.userId == 'current-user';
+    final isCurrentUser = message.userId == _currentUserId;
 
     // Store initial focus state
     final hadFocus = _focusNode.hasFocus;
@@ -158,9 +166,17 @@ class _EventChatPageState extends ConsumerState<EventChatPage> {
     Navigator.pop(context);
     FocusScope.of(context).unfocus();
 
+    print('📌 DEBUG: Toggling pin for message ${message.id}, current isPinned=${message.isPinned}');
     ref
         .read(chatMessagesProvider(widget.eventId).notifier)
-        .togglePin(message.id, !message.isPinned);
+        .togglePin(message.id, !message.isPinned)
+        .then((_) {
+      print('✅ DEBUG: Pin toggled successfully');
+      // Refresh preview widget after pin
+      ref.invalidate(recentMessagesProvider(widget.eventId));
+    }).catchError((error) {
+      print('❌ DEBUG: Pin failed: $error');
+    });
     HapticFeedback.lightImpact();
   }
 
@@ -188,7 +204,11 @@ class _EventChatPageState extends ConsumerState<EventChatPage> {
 
     ref
         .read(chatMessagesProvider(widget.eventId).notifier)
-        .deleteMessage(message.id);
+        .deleteMessage(message.id)
+        .then((_) {
+      // Refresh preview widget after delete
+      ref.invalidate(recentMessagesProvider(widget.eventId));
+    });
     HapticFeedback.mediumImpact();
   }
 
@@ -254,11 +274,22 @@ class _EventChatPageState extends ConsumerState<EventChatPage> {
 
     // Use firstWhereOrNull from collection package for nullable result
     final pinnedMessage = messagesAsync.maybeWhen(
-      data: (messages) => messages.where((m) => m.isPinned).isNotEmpty
-          ? messages.firstWhere((m) => m.isPinned)
-          : null,
-      orElse: () => null,
+      data: (messages) {
+        print('🔍 DEBUG: Total messages: ${messages.length}');
+        final pinned = messages.where((m) => m.isPinned).toList();
+        print('🔍 DEBUG: Pinned messages: ${pinned.length}');
+        if (pinned.isNotEmpty) {
+          print('✅ DEBUG: Found pinned message: ${pinned.first.id} - ${pinned.first.content}');
+        }
+        return pinned.isNotEmpty ? pinned.first : null;
+      },
+      orElse: () {
+        print('⚠️ DEBUG: messagesAsync not in data state');
+        return null;
+      },
     );
+    
+    print('🎯 DEBUG: pinnedMessage = ${pinnedMessage?.id ?? "null"}');
 
     return GestureDetector(
       onTap: () {
@@ -323,6 +354,7 @@ class _EventChatPageState extends ConsumerState<EventChatPage> {
                     onMessageTap: _scrollToMessage,
                     onSwipeReply: _replyToMessage,
                     messageKeys: _messageKeys,
+                    currentUserId: _currentUserId,
                   );
                 },
                 loading: () => const Center(
@@ -563,6 +595,7 @@ class _MessagesList extends StatelessWidget {
   final Function(ChatMessage) onMessageTap;
   final Function(ChatMessage) onSwipeReply;
   final Map<String, GlobalKey> messageKeys;
+  final String? currentUserId;
 
   const _MessagesList({
     required this.messages,
@@ -571,6 +604,7 @@ class _MessagesList extends StatelessWidget {
     required this.onMessageTap,
     required this.onSwipeReply,
     required this.messageKeys,
+    required this.currentUserId,
   });
 
   String _formatDateSeparator(DateTime date) {
@@ -621,7 +655,7 @@ class _MessagesList extends StatelessWidget {
 
   int? _findUnreadIndex(List<ChatMessage> messages) {
     for (int i = 0; i < messages.length; i++) {
-      if (!messages[i].read && messages[i].userId != 'current-user') {
+      if (!messages[i].read && messages[i].userId != currentUserId) {
         return i;
       }
     }
@@ -641,7 +675,7 @@ class _MessagesList extends StatelessWidget {
       itemCount: messages.length,
       itemBuilder: (context, index) {
         final message = messages[index];
-        final isCurrentUser = message.userId == 'current-user';
+        final isCurrentUser = message.userId == currentUserId;
         final previousMessage =
             index < messages.length - 1 ? messages[index + 1] : null;
         final nextMessage = index > 0 ? messages[index - 1] : null;
@@ -795,22 +829,9 @@ class _MessageBubble extends StatelessWidget {
   });
 
   String _formatTimestamp(DateTime timestamp) {
-    final now = DateTime.now();
-    final diff = now.difference(timestamp);
-
-    if (diff.inMinutes < 1) {
-      return 'now';
-    } else if (diff.inMinutes < 60) {
-      return '${diff.inMinutes}m';
-    } else if (diff.inHours < 24) {
-      return '${diff.inHours}h';
-    } else if (diff.inDays == 1) {
-      return 'Yesterday';
-    } else if (diff.inDays < 7) {
-      return '${diff.inDays}d';
-    } else {
-      return '${timestamp.day}/${timestamp.month}';
-    }
+    final hour = timestamp.hour.toString().padLeft(2, '0');
+    final minute = timestamp.minute.toString().padLeft(2, '0');
+    return '$hour:$minute';
   }
 
   BorderRadius _getBubbleRadius() {
@@ -839,6 +860,13 @@ class _MessageBubble extends StatelessWidget {
             ? userBubbleColor.withValues(alpha: 0.3)
             : BrandColors.bg3.withValues(alpha: 0.5))
         : (isCurrentUser ? userBubbleColor : BrandColors.bg3);
+
+    // Debug: Log reply status
+    if (message.replyTo != null) {
+      print('💬 DEBUG _MessageBubble: Message ${message.id.substring(0, 8)} has replyTo: "${message.replyTo!.content.substring(0, message.replyTo!.content.length > 20 ? 20 : message.replyTo!.content.length)}..."');
+    } else {
+      print('❌ DEBUG _MessageBubble: Message ${message.id.substring(0, 8)} has NO replyTo');
+    }
 
     // The actual bubble content (without avatar)
     final bubbleContent = GestureDetector(
@@ -885,16 +913,31 @@ class _MessageBubble extends StatelessWidget {
               color: bubbleColor,
               borderRadius: _getBubbleRadius(),
             ),
-            child: Text(
-              message.content,
-              style: AppText.bodyMedium.copyWith(
-                color: message.isDeleted
-                    ? BrandColors.text2.withValues(alpha: 0.6)
-                    : BrandColors.text1,
-                fontStyle:
-                    message.isDeleted ? FontStyle.italic : FontStyle.normal,
-              ),
-            ),
+            child: message.isDeleted
+                ? Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.delete_outline,
+                        size: 16,
+                        color: BrandColors.text2.withValues(alpha: 0.6),
+                      ),
+                      const SizedBox(width: Gaps.xs),
+                      Text(
+                        'Message Deleted',
+                        style: AppText.bodyMedium.copyWith(
+                          color: BrandColors.text2.withValues(alpha: 0.6),
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
+                    ],
+                  )
+                : Text(
+                    message.content,
+                    style: AppText.bodyMedium.copyWith(
+                      color: BrandColors.text1,
+                    ),
+                  ),
           ),
 
           // Metadata (only on last message in group)
@@ -928,28 +971,26 @@ class _MessageBubble extends StatelessWidget {
       ),
     );
 
-    // Wrap ONLY the bubble content with Dismissible
-    final swipeableBubble = Dismissible(
-      key: ValueKey('${message.id}-swipe'),
-      direction: isCurrentUser
-          ? DismissDirection.endToStart
-          : DismissDirection.startToEnd,
-      confirmDismiss: (direction) async {
-        onSwipeReply();
-        return false;
+    // Wrap bubble content with GestureDetector for swipe-to-reply
+    final swipeableBubble = GestureDetector(
+      onHorizontalDragEnd: (details) {
+        // Detect swipe direction based on velocity
+        if (details.primaryVelocity != null) {
+          final velocity = details.primaryVelocity!;
+          
+          // Current user: swipe left (negative velocity)
+          // Other user: swipe right (positive velocity)
+          final isValidSwipe = isCurrentUser 
+              ? velocity < -300  // Swipe left with significant velocity
+              : velocity > 300;  // Swipe right with significant velocity
+          
+          if (isValidSwipe) {
+            print('🔄 DEBUG: Swipe detected on message ${message.id.substring(0, 8)}, velocity=$velocity');
+            onSwipeReply();
+            HapticFeedback.lightImpact();
+          }
+        }
       },
-      background: Container(
-        alignment: isCurrentUser ? Alignment.centerRight : Alignment.centerLeft,
-        padding: EdgeInsets.only(
-          left: isCurrentUser ? 0 : Pads.sectionH,
-          right: isCurrentUser ? Pads.sectionH : 0,
-        ),
-        child: const Icon(
-          Icons.reply,
-          color: BrandColors.text2,
-          size: IconSizes.md,
-        ),
-      ),
       child: bubbleContent,
     );
 
@@ -1249,7 +1290,7 @@ class _MessageActionMenu extends StatelessWidget {
               const Divider(color: BrandColors.border, height: 1),
               _MenuOption(
                 icon: Icons.delete_outline,
-                label: 'Eliminar',
+                label: 'Delete Message',
                 onTap: onDelete!,
                 isDestructive: true,
               ),

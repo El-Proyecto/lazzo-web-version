@@ -73,6 +73,10 @@ class _ChatPreviewWidgetState extends State<ChatPreviewWidget> {
 
   @override
   Widget build(BuildContext context) {
+    print('💬 [ChatPreviewWidget] build() called with ${widget.recentMessages.length} messages');
+    print('💬 [ChatPreviewWidget] Widget init time: $_widgetInitTime');
+    print('💬 [ChatPreviewWidget] Current user ID: ${widget.currentUserId}');
+    
     // Sort messages by timestamp ascending (oldest first)
     final sortedMessages = [...widget.recentMessages]
       ..sort((a, b) => a.timestamp.compareTo(b.timestamp));
@@ -81,6 +85,8 @@ class _ChatPreviewWidgetState extends State<ChatPreviewWidget> {
     final unreadMessages = sortedMessages
         .where((m) => !m.read && m.userId != widget.currentUserId)
         .toList();
+    
+    print('💬 [ChatPreviewWidget] Unread messages from others: ${unreadMessages.length}');
 
     // Get current user's messages ONLY if they were sent after widget initialization
     // This ensures we only show messages sent through the current chat input
@@ -91,10 +97,14 @@ class _ChatPreviewWidgetState extends State<ChatPreviewWidget> {
               m.timestamp.isAfter(_widgetInitTime),
         )
         .toList();
+    
+    print('💬 [ChatPreviewWidget] Current user messages after init: ${currentUserMessages.length}');
 
     // Combine unread messages + current user messages, sorted by timestamp
     final messagesToShow = [...unreadMessages, ...currentUserMessages]
       ..sort((a, b) => a.timestamp.compareTo(b.timestamp));
+    
+    print('💬 [ChatPreviewWidget] Total messages to show: ${messagesToShow.length}');
 
     // Calculate height constraints
     final screenHeight = MediaQuery.of(context).size.height;
@@ -117,6 +127,7 @@ class _ChatPreviewWidgetState extends State<ChatPreviewWidget> {
             borderRadius: BorderRadius.circular(Radii.md),
           ),
           child: Column(
+        mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Header
@@ -323,7 +334,7 @@ class _MessageBubble extends StatelessWidget {
               isCurrentUser ? MainAxisAlignment.end : MainAxisAlignment.start,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Avatar always shown (both for current user and others)
+            // Avatar only shown for other users (not current user)
             if (!isCurrentUser) ...[
               CircleAvatar(
                 radius: 16,
@@ -368,53 +379,32 @@ class _MessageBubble extends StatelessWidget {
                 ),
               ),
             ),
-            if (isCurrentUser) ...[
-              const SizedBox(width: Gaps.xs),
-              CircleAvatar(
-                radius: 16,
-                backgroundColor: BrandColors.bg3,
-                foregroundImage: message.userAvatar != null && message.userAvatar!.isNotEmpty
-                    ? NetworkImage(message.userAvatar!)
-                    : null,
-                onForegroundImageError: (exception, stackTrace) {
-                  // Log error but don't crash
-                  debugPrint('❌ Failed to load avatar: ${message.userAvatar}');
-                  debugPrint('   Error: $exception');
-                },
-                child: Text(
-                  message.userName.isNotEmpty 
-                      ? message.userName[0].toUpperCase()
-                      : '?',
-                  style: AppText.bodyMedium.copyWith(
-                    color: BrandColors.text2,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-            ],
+            // No avatar for current user messages - keeps it clean like WhatsApp
           ],
         ),
         const SizedBox(height: Gaps.xxs),
-        // Name and timestamp below bubble
+        // Name and timestamp below bubble (only timestamp for current user)
         Padding(
           padding: EdgeInsets.only(
             left: isCurrentUser ? 0 : 40,
-            right: isCurrentUser ? 40 : 0,
+            right: isCurrentUser ? 0 : 0,
           ),
           child: Row(
             mainAxisAlignment:
                 isCurrentUser ? MainAxisAlignment.end : MainAxisAlignment.start,
             children: [
-              Text(
-                message.userName,
-                style: AppText.bodyMedium.copyWith(
-                  color: BrandColors.text2,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w500,
+              // Show name only for other users, not for current user
+              if (!isCurrentUser) ...[
+                Text(
+                  message.userName,
+                  style: AppText.bodyMedium.copyWith(
+                    color: BrandColors.text2,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
-              ),
-              const SizedBox(width: Gaps.xs),
+                const SizedBox(width: Gaps.xs),
+              ],
               Text(
                 _formatTimestamp(message.timestamp),
                 style: AppText.bodyMedium.copyWith(

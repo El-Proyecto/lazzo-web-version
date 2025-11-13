@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../domain/entities/chat_message.dart';
 import '../../domain/repositories/chat_repository.dart';
 import '../../domain/usecases/get_chat_messages.dart';
@@ -56,17 +57,23 @@ class ChatMessagesNotifier
   /// Send a new message
   Future<void> sendMessage(String content, {ChatMessage? replyTo}) async {
     try {
-      final newMessage = await repository.sendMessage(
+      // Get current user ID from Supabase auth
+      final userId = Supabase.instance.client.auth.currentUser?.id;
+      
+      if (userId == null) {
+        throw Exception('User not authenticated');
+      }
+
+      await repository.sendMessage(
         eventId,
-        'current-user',
+        userId,
         content,
         replyTo: replyTo,
       );
 
-      state.whenData((messages) {
-        final updatedMessages = [newMessage, ...messages];
-        state = AsyncValue.data(updatedMessages);
-      });
+      // Reload all messages from repository to populate replyTo references
+      // This ensures the 2-pass lookup is executed and reply previews appear
+      await _loadMessages();
     } catch (error, stackTrace) {
       state = AsyncValue.error(error, stackTrace);
     }
@@ -75,7 +82,7 @@ class ChatMessagesNotifier
   /// Pin or unpin a message
   Future<void> togglePin(String messageId, bool isPinned) async {
     try {
-      await repository.pinMessage(messageId, isPinned);
+      await repository.pinMessage(eventId, messageId, isPinned);
 
       // Update state locally without showing loading
       // Repository unpins others automatically
@@ -91,7 +98,7 @@ class ChatMessagesNotifier
   /// Delete a message
   Future<void> deleteMessage(String messageId) async {
     try {
-      final updatedMessage = await repository.deleteMessage(messageId);
+      final updatedMessage = await repository.deleteMessage(eventId, messageId);
 
       state.whenData((messages) {
         final updatedMessages = messages.map((msg) {
