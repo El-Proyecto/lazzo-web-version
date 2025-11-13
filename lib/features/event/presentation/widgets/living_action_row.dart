@@ -83,7 +83,7 @@ class _ActionButton extends StatelessWidget {
       borderRadius: BorderRadius.circular(Radii.md),
       child: Container(
         padding: const EdgeInsets.symmetric(
-          vertical: Pads.sectionV,
+          vertical: Pads.sectionH,
         ),
         decoration: BoxDecoration(
           color: backgroundColor,
@@ -97,7 +97,7 @@ class _ActionButton extends StatelessWidget {
               size: 32,
               color: iconColor,
             ),
-            const SizedBox(height: Gaps.xs),
+            const SizedBox(height: Gaps.xxs),
             Text(
               label,
               style: AppText.labelLarge.copyWith(

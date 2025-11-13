@@ -7,13 +7,16 @@ import '../../../../shared/components/dialogs/add_expense_bottom_sheet.dart';
 import '../../../group_hub/presentation/widgets/group_expense_card.dart';
 import '../../../group_hub/presentation/widgets/expense_detail_bottom_sheet.dart';
 import '../../../group_hub/domain/entities/group_expense_entity.dart';
+import '../../../group_hub/domain/entities/expense_participant_entity.dart';
 import '../../../group_hub/presentation/providers/group_hub_providers.dart';
+import 'chat_preview_widget.dart'; // For ChatMode enum
 
-/// Widget showing event expenses in living mode
+/// Widget showing event expenses in both planning and living modes
 /// Uses same cards as group hub expenses section
-class LivingExpensesWidget extends ConsumerWidget {
+class EventExpensesWidget extends ConsumerWidget {
   final String eventId;
   final List<ExpenseParticipantOption> participants;
+  final ChatMode mode;
   final Function(
     String title,
     List<String> paidByIds,
@@ -21,10 +24,11 @@ class LivingExpensesWidget extends ConsumerWidget {
     double totalAmount,
   ) onAddExpense;
 
-  const LivingExpensesWidget({
+  const EventExpensesWidget({
     super.key,
     required this.eventId,
     required this.participants,
+    required this.mode,
     required this.onAddExpense,
   });
 
@@ -91,7 +95,7 @@ class LivingExpensesWidget extends ConsumerWidget {
 
                   return GroupExpenseCard(
                     expense: expense,
-                    eventName: 'Event Name', // TODO: Get from event entity
+                    eventName: '', // Empty for living mode - all same event
                     userAmount: userAmount,
                     totalAmount: expense.amount,
                     isOwedToUser: userOwed,
@@ -102,7 +106,7 @@ class LivingExpensesWidget extends ConsumerWidget {
               ),
               const SizedBox(height: Gaps.md),
 
-              // Add Expense button (full width, purple for living mode)
+              // Add Expense button (full width, color based on mode)
               SizedBox(
                 width: double.infinity,
                 child: GestureDetector(
@@ -113,7 +117,9 @@ class LivingExpensesWidget extends ConsumerWidget {
                       vertical: Pads.ctlV,
                     ),
                     decoration: BoxDecoration(
-                      color: BrandColors.living,
+                      color: mode == ChatMode.living
+                          ? BrandColors.living
+                          : BrandColors.planning,
                       borderRadius: BorderRadius.circular(Radii.md),
                     ),
                     child: Center(
@@ -146,11 +152,26 @@ class LivingExpensesWidget extends ConsumerWidget {
   }
 
   void _showExpenseDetail(BuildContext context, GroupExpenseEntity expense) {
+    // Generate mock participants based on expense participant IDs
+    final participants = (expense.participantIds ?? [])
+        .map((id) => ExpenseParticipant(
+              id: id,
+              name: id == 'current_user' ? 'You' : id,
+              avatarUrl: null,
+              amount: _calculateUserAmount(expense),
+              hasPaid: expense.isSettled || id == expense.paidBy,
+              paidAt: (expense.isSettled || id == expense.paidBy)
+                  ? expense.date
+                  : null,
+            ))
+        .toList();
+
     ExpenseDetailBottomSheet.show(
       context: context,
       expense: expense,
-      participants: [], // TODO: Get actual participants
-      isCurrentUserPayer: false, // TODO: Check if current user is payer
+      participants: participants,
+      isCurrentUserPayer: expense.paidBy == 'current_user',
+      mode: mode,
       onMarkAsPaid: () {
         // TODO: Implement mark as paid
       },
@@ -164,6 +185,9 @@ class LivingExpensesWidget extends ConsumerWidget {
   double _calculateUserTotal(List<GroupExpenseEntity> expenses) {
     double total = 0;
     for (final expense in expenses) {
+      // Skip settled expenses in total calculation
+      if (expense.isSettled) continue;
+
       final amount = _calculateUserAmount(expense);
       final isOwed = _isOwedToUser(expense);
       total += isOwed ? amount : -amount;

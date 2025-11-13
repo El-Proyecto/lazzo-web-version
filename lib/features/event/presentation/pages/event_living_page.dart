@@ -134,9 +134,10 @@ class EventLivingPage extends ConsumerWidget {
                 const SizedBox(height: Gaps.lg),
 
                 // Expenses widget
-                LivingExpensesWidget(
+                EventExpensesWidget(
                   eventId: eventId,
-                  participants: [], // TODO: Get event participants
+                  mode: ChatMode.living,
+                  participants: const [], // TODO: Get event participants
                   onAddExpense: (title, paidByIds, payerIds, amount) {
                     // TODO: Implement add expense
                   },

@@ -4,11 +4,13 @@ import '../../domain/entities/expense_participant_entity.dart';
 import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/constants/text_styles.dart';
 import '../../../../shared/themes/colors.dart';
+import '../../../event/presentation/widgets/chat_preview_widget.dart'; // For ChatMode
 
 class ExpenseDetailBottomSheet extends StatefulWidget {
   final GroupExpenseEntity expense;
   final List<ExpenseParticipant> participants;
   final bool isCurrentUserPayer;
+  final ChatMode? mode; // null defaults to planning (green)
   final VoidCallback? onMarkAsPaid;
   final Function(String participantId)? onNotifyParticipant;
 
@@ -17,6 +19,7 @@ class ExpenseDetailBottomSheet extends StatefulWidget {
     required this.expense,
     required this.participants,
     required this.isCurrentUserPayer,
+    this.mode,
     this.onMarkAsPaid,
     this.onNotifyParticipant,
   });
@@ -30,6 +33,7 @@ class ExpenseDetailBottomSheet extends StatefulWidget {
     required GroupExpenseEntity expense,
     required List<ExpenseParticipant> participants,
     required bool isCurrentUserPayer,
+    ChatMode? mode,
     VoidCallback? onMarkAsPaid,
     Function(String participantId)? onNotifyParticipant,
   }) {
@@ -43,6 +47,7 @@ class ExpenseDetailBottomSheet extends StatefulWidget {
         expense: expense,
         participants: participants,
         isCurrentUserPayer: isCurrentUserPayer,
+        mode: mode,
         onMarkAsPaid: onMarkAsPaid,
         onNotifyParticipant: onNotifyParticipant,
       ),
@@ -450,7 +455,9 @@ class _ExpenseDetailBottomSheetState extends State<ExpenseDetailBottomSheet> {
         child: ElevatedButton(
           onPressed: () => _handleMarkAsPaid(),
           style: ElevatedButton.styleFrom(
-            backgroundColor: BrandColors.planning,
+            backgroundColor: widget.mode == ChatMode.living
+                ? BrandColors.living
+                : BrandColors.planning,
             foregroundColor: BrandColors.text1,
             padding: const EdgeInsets.symmetric(vertical: Pads.ctlV),
             shape: RoundedRectangleBorder(
