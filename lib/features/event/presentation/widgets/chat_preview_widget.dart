@@ -4,6 +4,12 @@ import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/constants/text_styles.dart';
 import '../../../../shared/themes/colors.dart';
 
+/// Mode for chat preview widget
+enum ChatMode {
+  planning,
+  living,
+}
+
 /// Model for chat message preview in the widget
 class ChatMessagePreview {
   final String userId;
@@ -30,6 +36,7 @@ class ChatPreviewWidget extends StatefulWidget {
   final List<ChatMessagePreview> recentMessages;
   final VoidCallback onOpenChat;
   final Function(String content) onSendMessage;
+  final ChatMode mode;
 
   const ChatPreviewWidget({
     super.key,
@@ -38,6 +45,7 @@ class ChatPreviewWidget extends StatefulWidget {
     required this.recentMessages,
     required this.onOpenChat,
     required this.onSendMessage,
+    this.mode = ChatMode.planning,
   });
 
   @override
@@ -130,7 +138,9 @@ class _ChatPreviewWidgetState extends State<ChatPreviewWidget> {
                       vertical: Gaps.xs,
                     ),
                     decoration: BoxDecoration(
-                      color: BrandColors.planning,
+                      color: widget.mode == ChatMode.living
+                          ? BrandColors.living
+                          : BrandColors.planning,
                       borderRadius: BorderRadius.circular(Radii.pill),
                     ),
                     child: Text(
@@ -168,6 +178,7 @@ class _ChatPreviewWidgetState extends State<ChatPreviewWidget> {
                         child: _MessageBubble(
                           message: message,
                           isCurrentUser: message.userId == widget.currentUserId,
+                          mode: widget.mode,
                         ),
                       );
                     },
@@ -230,7 +241,9 @@ class _ChatPreviewWidgetState extends State<ChatPreviewWidget> {
                 Container(
                   margin: const EdgeInsets.only(right: Gaps.xs),
                   decoration: BoxDecoration(
-                    color: BrandColors.planning,
+                    color: widget.mode == ChatMode.living
+                        ? BrandColors.living
+                        : BrandColors.planning,
                     borderRadius: BorderRadius.circular(Radii.pill),
                   ),
                   child: Material(
@@ -265,8 +278,13 @@ class _ChatPreviewWidgetState extends State<ChatPreviewWidget> {
 class _MessageBubble extends StatelessWidget {
   final ChatMessagePreview message;
   final bool isCurrentUser;
+  final ChatMode mode;
 
-  const _MessageBubble({required this.message, required this.isCurrentUser});
+  const _MessageBubble({
+    required this.message,
+    required this.isCurrentUser,
+    required this.mode,
+  });
 
   String _formatTimestamp(DateTime timestamp) {
     final now = DateTime.now();
@@ -286,14 +304,12 @@ class _MessageBubble extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Column(
-      crossAxisAlignment: isCurrentUser
-          ? CrossAxisAlignment.end
-          : CrossAxisAlignment.start,
+      crossAxisAlignment:
+          isCurrentUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
       children: [
         Row(
-          mainAxisAlignment: isCurrentUser
-              ? MainAxisAlignment.end
-              : MainAxisAlignment.start,
+          mainAxisAlignment:
+              isCurrentUser ? MainAxisAlignment.end : MainAxisAlignment.start,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             if (!isCurrentUser) ...[
@@ -323,15 +339,18 @@ class _MessageBubble extends StatelessWidget {
                   vertical: Gaps.sm,
                 ),
                 decoration: BoxDecoration(
-                  color: isCurrentUser ? BrandColors.planning : BrandColors.bg3,
+                  color: isCurrentUser
+                      ? (mode == ChatMode.living
+                          ? BrandColors.living
+                          : BrandColors.planning)
+                      : BrandColors.bg3,
                   borderRadius: BorderRadius.circular(Radii.md),
                 ),
                 child: Text(
                   message.content,
                   style: AppText.bodyMedium.copyWith(
-                    color: isCurrentUser
-                        ? BrandColors.text1
-                        : BrandColors.text1,
+                    color:
+                        isCurrentUser ? BrandColors.text1 : BrandColors.text1,
                   ),
                 ),
               ),
@@ -342,9 +361,8 @@ class _MessageBubble extends StatelessWidget {
         Padding(
           padding: EdgeInsets.only(left: isCurrentUser ? 0 : 44),
           child: Row(
-            mainAxisAlignment: isCurrentUser
-                ? MainAxisAlignment.end
-                : MainAxisAlignment.start,
+            mainAxisAlignment:
+                isCurrentUser ? MainAxisAlignment.end : MainAxisAlignment.start,
             children: [
               if (!isCurrentUser) ...[
                 Text(
