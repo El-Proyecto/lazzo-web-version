@@ -17,9 +17,12 @@ import '../features/create_event/presentation/pages/edit_event_page.dart';
 import '../features/inbox/presentation/pages/inbox_page.dart';
 import '../features/profile/presentation/pages/profile_page.dart';
 import '../features/profile/presentation/pages/edit_profile_page.dart';
+import '../features/profile/presentation/pages/other_profile_page.dart';
 import '../features/event/presentation/pages/event_page.dart';
+import '../features/event/presentation/pages/event_living_page.dart';
 import '../features/event/presentation/pages/event_chat_page.dart';
 import '../features/group_hub/presentation/pages/group_hub_page.dart';
+import '../features/group_hub/presentation/pages/group_details_page.dart';
 import '../features/memory/presentation/pages/memory_page.dart';
 import '../features/memory/presentation/pages/memory_viewer_page.dart';
 
@@ -35,9 +38,12 @@ class AppRouter {
   static const String inbox = '/inbox';
   static const String profile = '/profile';
   static const String editProfile = '/edit-profile';
+  static const String otherProfile = '/other-profile';
   static const String event = '/event';
+  static const String eventLiving = '/event-living';
   static const String eventChat = '/event-chat';
   static const String groupHub = '/group-hub';
+  static const String groupDetails = '/group-details';
   static const String memory = '/memory';
   static const String memoryViewer = '/memory-viewer';
   static const String loginPage = '/login';
@@ -78,10 +84,20 @@ class AppRouter {
     inbox: (context) => const InboxPage(),
     profile: (context) => const ProfilePage(),
     editProfile: (context) => const EditProfilePage(),
+    otherProfile: (context) {
+      final args =
+          ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+      return OtherProfilePage(userId: args?['userId'] ?? 'user-1');
+    },
     event: (context) {
       final args =
           ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
       return EventPage(eventId: args?['eventId'] ?? 'event-1');
+    },
+    eventLiving: (context) {
+      final args =
+          ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+      return EventLivingPage(eventId: args?['eventId'] ?? 'event-1');
     },
     eventChat: (context) {
       final args =
@@ -96,6 +112,13 @@ class AppRouter {
         groupName: args?['groupName'] ?? 'Group Name',
         groupPhotoUrl: args?['groupPhotoUrl'],
         memberCount: args?['memberCount'] ?? 3,
+      );
+    },
+    groupDetails: (context) {
+      final args =
+          ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+      return GroupDetailsPage(
+        groupId: args?['groupId'] ?? 'group-1',
       );
     },
     memory: (context) {

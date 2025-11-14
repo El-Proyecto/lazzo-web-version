@@ -14,6 +14,7 @@ class FakeGroupExpenseRepository implements GroupExpenseRepository {
       participantsPaid: [], // Ninguém pagou ainda
       date: DateTime.now().subtract(const Duration(days: 1)),
       isSettled: false,
+<<<<<<< HEAD:lib/features/group_hub/data/fakes/fake_group_expense_repository.dart
     ),
     GroupExpenseEntity(
       id: '2',
@@ -36,6 +37,9 @@ class FakeGroupExpenseRepository implements GroupExpenseRepository {
       participantsPaid: ['user-2'],
       date: DateTime.now().subtract(const Duration(days: 7)),
       isSettled: false,
+=======
+      participantIds: ['current_user', 'Ana', 'João'],
+>>>>>>> origin/main:lib/features/event/data/fakes/fake_group_expense_repository.dart
     ),
     GroupExpenseEntity(
       id: '4',
@@ -47,6 +51,35 @@ class FakeGroupExpenseRepository implements GroupExpenseRepository {
       participantsPaid: [],
       date: DateTime.now().subtract(const Duration(days: 2)),
       isSettled: false,
+      participantIds: ['Marco', 'Ana', 'João'],
+    ),
+    GroupExpenseEntity(
+      id: '3',
+      description: 'Gas for Trip',
+      amount: 35.75,
+      paidBy: 'João',
+      date: DateTime.now().subtract(const Duration(days: 7)),
+      isSettled: false,
+      participantIds: ['current_user', 'Marco'],
+    ),
+    GroupExpenseEntity(
+      id: '5',
+      description: 'Beach Parking',
+      amount: 15.00,
+      paidBy: 'Ana',
+      date: DateTime.now().subtract(const Duration(days: 5)),
+      isSettled: false,
+      participantIds: ['current_user', 'Marco', 'João'],
+    ),
+    // Settled expenses go last
+    GroupExpenseEntity(
+      id: '2',
+      description: 'Concert Tickets',
+      amount: 45.00,
+      paidBy: 'Ana',
+      date: DateTime.now().subtract(const Duration(days: 3)),
+      isSettled: true,
+      participantIds: ['current_user', 'Marco'],
     ),
   ];
 

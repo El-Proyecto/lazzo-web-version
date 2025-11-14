@@ -7,6 +7,13 @@ import '../../domain/entities/group_member_entity.dart';
 
 /// Implementação fake do repositório de grupos para desenvolvimento
 class FakeGroupRepository implements GroupRepository {
+  // MOCK CONTROL VARIABLE for testing no-groups empty state
+  // Change this to test different scenarios:
+  // true = return empty groups list (simulates user with no groups)
+  // false = return normal mock groups (default)
+  // IMPORTANT: After changing this, you MUST do Hot Restart (not Hot Reload)
+  static bool mockNoGroups = false;
+
   final List<GroupEntity> _createdGroups = [];
   final List<Group> _mockGroups = [
     Group(
@@ -162,8 +169,16 @@ class FakeGroupRepository implements GroupRepository {
   Future<List<Group>> getUserGroups() async {
     // Simular delay da rede
     await Future.delayed(const Duration(milliseconds: 500));
+
+    // Check mock control variable
+    if (mockNoGroups) {
+      return []; // Return empty list to simulate user with no groups
+    }
+
     // Retorna apenas grupos não arquivados
-    return _mockGroups.where((group) => group.status != GroupStatus.archived).toList();
+    return _mockGroups
+        .where((group) => group.status != GroupStatus.archived)
+        .toList();
   }
 
   @override
@@ -171,7 +186,9 @@ class FakeGroupRepository implements GroupRepository {
     // Simular delay da rede
     await Future.delayed(const Duration(milliseconds: 500));
     // Retorna apenas grupos arquivados
-    return _mockGroups.where((group) => group.status == GroupStatus.archived).toList();
+    return _mockGroups
+        .where((group) => group.status == GroupStatus.archived)
+        .toList();
   }
 
   @override
@@ -198,7 +215,7 @@ class FakeGroupRepository implements GroupRepository {
   @override
   Future<Group> createGroup({
     required String name,
-    String? photoPath,  // atualizado de avatarUrl para photoPath
+    String? photoPath, // atualizado de avatarUrl para photoPath
     List<String>? memberIds,
   }) async {
     await Future.delayed(const Duration(milliseconds: 800));
@@ -206,7 +223,7 @@ class FakeGroupRepository implements GroupRepository {
     final newGroup = Group(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       name: name,
-      photoPath: photoPath,  // usando photoPath
+      photoPath: photoPath, // usando photoPath
       lastActivity: 'No events — create one',
       addPhotosTimeLeft: null,
       status: GroupStatus.active,
@@ -240,13 +257,15 @@ class FakeGroupRepository implements GroupRepository {
   @override
   Future<void> leaveGroup(String groupId) async {
     await Future.delayed(const Duration(milliseconds: 400));
-    
+
     // Simula remoção do grupo da lista do usuário
     // (no fake, assumimos que o usuário sempre deixa o grupo, e o grupo é removido da sua lista)
-    final removedCount = _mockGroups.where((group) => group.id == groupId).length;
+    final removedCount =
+        _mockGroups.where((group) => group.id == groupId).length;
     _mockGroups.removeWhere((group) => group.id == groupId);
-    
-    print('🎭 [Fake] User left group $groupId - removed from user\'s list ($removedCount groups removed)');
+
+    print(
+        '🎭 [Fake] User left group $groupId - removed from user\'s list ($removedCount groups removed)');
   }
 
   @override
@@ -382,16 +401,18 @@ class FakeGroupRepository implements GroupRepository {
   }
 
   @override
-  Future<String?> getGroupCoverUrl(String? photoPath, DateTime? photoUpdatedAt) async {
+  Future<String?> getGroupCoverUrl(
+      String? photoPath, DateTime? photoUpdatedAt) async {
     if (photoPath == null || photoPath.isEmpty) {
       return null;
     }
-    
+
     // Simulate signed URL generation
     await Future.delayed(const Duration(milliseconds: 200));
-    
+
     // Mock signed URL with cache busting
-    final timestamp = photoUpdatedAt?.millisecondsSinceEpoch ?? DateTime.now().millisecondsSinceEpoch;
+    final timestamp = photoUpdatedAt?.millisecondsSinceEpoch ??
+        DateTime.now().millisecondsSinceEpoch;
     return 'https://mock-storage.example.com/$photoPath?signed=true&t=$timestamp';
   }
 

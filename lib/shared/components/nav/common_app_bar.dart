@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../../constants/spacing.dart';
 import '../../constants/text_styles.dart';
 import '../../themes/colors.dart';
 
@@ -122,33 +121,30 @@ class CommonAppBar extends StatelessWidget implements PreferredSizeWidget {
       shadowColor: Colors.transparent,
       elevation: elevation,
       automaticallyImplyLeading: automaticallyImplyLeading,
-      title: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: Insets.screenH),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            // Leading widget or spacer
-            leading ?? const SizedBox(width: 28, height: 28),
+      title: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          // Leading widget or spacer
+          leading ?? const SizedBox(width: 28, height: 28),
 
-            // Title
-            Expanded(
-              child: Center(
-                child: Text(
-                  title,
-                  style: AppText.dropdownTitle.copyWith(
-                    color: BrandColors.text1,
-                    fontSize: 22,
-                    fontWeight: FontWeight.w500,
-                  ),
-                  textAlign: TextAlign.center,
+          // Title
+          Expanded(
+            child: Center(
+              child: Text(
+                title,
+                style: AppText.dropdownTitle.copyWith(
+                  color: BrandColors.text1,
+                  fontSize: 22,
+                  fontWeight: FontWeight.w500,
                 ),
+                textAlign: TextAlign.center,
               ),
             ),
+          ),
 
-            // Trailing widget or spacer
-            trailing ?? const SizedBox(width: 28, height: 28),
-          ],
-        ),
+          // Trailing widget or spacer
+          trailing ?? const SizedBox(width: 28, height: 28),
+        ],
       ),
     );
   }

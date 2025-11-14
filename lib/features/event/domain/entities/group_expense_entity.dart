@@ -10,6 +10,7 @@ class GroupExpenseEntity {
   final List<String> participantsPaid; // ✅ IDs de quem JÁ pagou
   final DateTime date;
   final bool isSettled;
+  final List<String>? participantIds; // IDs of participants who owe money
 
   const GroupExpenseEntity({
     required this.id,
@@ -21,6 +22,7 @@ class GroupExpenseEntity {
     required this.participantsPaid,
     required this.date,
     required this.isSettled,
+    this.participantIds,
   });
 
   GroupExpenseEntity copyWith({
@@ -33,6 +35,7 @@ class GroupExpenseEntity {
     List<String>? participantsPaid,
     DateTime? date,
     bool? isSettled,
+    List<String>? participantIds,
   }) {
     return GroupExpenseEntity(
       id: id ?? this.id,
@@ -44,6 +47,7 @@ class GroupExpenseEntity {
       participantsPaid: participantsPaid ?? this.participantsPaid,
       date: date ?? this.date,
       isSettled: isSettled ?? this.isSettled,
+      participantIds: participantIds ?? this.participantIds,
     );
   }
 
@@ -57,11 +61,34 @@ class GroupExpenseEntity {
         other.amount == amount &&
         other.paidBy == paidBy &&
         other.date == date &&
-        other.isSettled == isSettled;
+        other.isSettled == isSettled &&
+        _listEquals(other.participantIds, participantIds);
+  }
+
+  bool _listEquals(List<String>? a, List<String>? b) {
+    if (a == null && b == null) return true;
+    if (a == null || b == null) return false;
+    if (a.length != b.length) return false;
+    for (int i = 0; i < a.length; i++) {
+      if (a[i] != b[i]) return false;
+    }
+    return true;
   }
 
   @override
   int get hashCode {
+<<<<<<< HEAD:lib/features/group_hub/domain/entities/group_expense_entity.dart
     return Object.hash(id, groupId, description, amount, paidBy, date, isSettled);
+=======
+    return Object.hash(
+      id,
+      description,
+      amount,
+      paidBy,
+      date,
+      isSettled,
+      participantIds,
+    );
+>>>>>>> origin/main:lib/features/event/domain/entities/group_expense_entity.dart
   }
 }

@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../../../routes/app_router.dart';
 import '../../../../shared/components/nav/common_app_bar.dart';
+import '../../../../shared/components/common/top_banner.dart';
 import '../../../../shared/components/sections/cover_mosaic.dart';
 import '../../../../shared/components/sections/hybrid_photo_grid.dart';
 import '../../../../shared/constants/spacing.dart';
@@ -239,21 +240,17 @@ class MemoryPage extends ConsumerWidget {
           data: (shareUrl) {
             if (shareUrl != null) {
               // TODO: Trigger native share with shareUrl
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('Share URL: $shareUrl'),
-                  backgroundColor: BrandColors.planning,
-                ),
+              TopBanner.showSuccess(
+                context,
+                message: 'Share URL: $shareUrl',
               );
             }
           },
           loading: () {},
           error: (error, stackTrace) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('Failed to share: $error'),
-                backgroundColor: BrandColors.cantVote,
-              ),
+            TopBanner.showError(
+              context,
+              message: 'Failed to share: $error',
             );
           },
         );
