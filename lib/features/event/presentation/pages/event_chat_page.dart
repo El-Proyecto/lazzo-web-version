@@ -40,11 +40,6 @@ class _EventChatPageState extends ConsumerState<EventChatPage> {
     super.initState();
     _scrollController.addListener(_onScroll);
     _messageController.addListener(_onTextChanged);
-    
-    // Load messages when entering the chat page
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(chatMessagesProvider(widget.eventId).notifier).refresh();
-    });
   }
 
   @override
@@ -101,23 +96,19 @@ class _EventChatPageState extends ConsumerState<EventChatPage> {
   void _sendMessage() {
     final content = _messageController.text.trim();
     if (content.isNotEmpty) {
-      ref.read(chatMessagesProvider(widget.eventId).notifier).sendMessage(
+      ref.read(chatActionsProvider(widget.eventId)).sendMessage(
             content,
             replyTo: _replyingTo,
-          ).then((_) {
-        // Refresh preview widget after send to keep it in sync
-        ref.read(recentMessagesProvider(widget.eventId).notifier).refreshMessages();
-      });
+          );
       _messageController.clear();
       setState(() {
         _replyingTo = null;
       });
-      // Do NOT request focus after sending - let keyboard stay if user is typing
 
       if (_shouldAutoScroll) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (_scrollController.hasClients) {
-            _scrollController.jumpTo(0); // Use jumpTo instead of animateTo with zero duration
+            _scrollController.jumpTo(0);
           }
         });
       }
@@ -166,17 +157,10 @@ class _EventChatPageState extends ConsumerState<EventChatPage> {
     Navigator.pop(context);
     FocusScope.of(context).unfocus();
 
-    print('📌 DEBUG: Toggling pin for message ${message.id}, current isPinned=${message.isPinned}');
-    ref
-        .read(chatMessagesProvider(widget.eventId).notifier)
-        .togglePin(message.id, !message.isPinned)
-        .then((_) {
-      print('✅ DEBUG: Pin toggled successfully');
-      // Refresh preview widget after pin
-      ref.invalidate(recentMessagesProvider(widget.eventId));
-    }).catchError((error) {
-      print('❌ DEBUG: Pin failed: $error');
-    });
+    ref.read(chatActionsProvider(widget.eventId)).togglePin(
+          message.id,
+          !message.isPinned,
+        );
     HapticFeedback.lightImpact();
   }
 
@@ -202,13 +186,7 @@ class _EventChatPageState extends ConsumerState<EventChatPage> {
     Navigator.pop(context);
     FocusScope.of(context).unfocus();
 
-    ref
-        .read(chatMessagesProvider(widget.eventId).notifier)
-        .deleteMessage(message.id)
-        .then((_) {
-      // Refresh preview widget after delete
-      ref.invalidate(recentMessagesProvider(widget.eventId));
-    });
+    ref.read(chatActionsProvider(widget.eventId)).deleteMessage(message.id);
     HapticFeedback.mediumImpact();
   }
 
@@ -334,6 +312,16 @@ class _EventChatPageState extends ConsumerState<EventChatPage> {
             Expanded(
               child: messagesAsync.when(
                 data: (messages) {
+                  print('\n═══════════════════════════════════════');
+                  print('💬 [EventChatPage] CHAT PAGE - New data received!');
+                  print('   - Event ID: ${widget.eventId}');
+                  print('   - Total messages: ${messages.length}');
+                  if (messages.isNotEmpty) {
+                    print('   - First: "${messages.first.content.substring(0, messages.first.content.length > 30 ? 30 : messages.first.content.length)}..."');
+                    print('   - Last: "${messages.last.content.substring(0, messages.last.content.length > 30 ? 30 : messages.last.content.length)}..."');
+                  }
+                  print('═══════════════════════════════════════\n');
+                  
                   if (messages.isEmpty) {
                     return Center(
                       child: Text(

@@ -1,3 +1,4 @@
+import 'dart:async';
 import '../../domain/entities/chat_message.dart';
 import '../../domain/repositories/chat_repository.dart';
 import '../data_sources/chat_remote_data_source.dart';
@@ -7,8 +8,41 @@ class ChatRepositoryImpl implements ChatRepository {
   final ChatRemoteDataSource _remoteDataSource;
 
   ChatRepositoryImpl(this._remoteDataSource);
-
+  
   @override
+  Stream<List<ChatMessage>> watchMessages(String eventId) async* {
+    print('🔄 [ChatRepository] watchMessages stream started for event: $eventId');
+    
+    await for (final models in _remoteDataSource.watchMessages(eventId)) {
+      print('📨 [ChatRepository] Received ${models.length} models from data source');
+      
+      // Build a map of all messages by ID for fast lookup (for replyTo)
+      final messagesById = <String, ChatMessage>{};
+      
+      // First pass: convert all models to entities (without replyTo)
+      for (final model in models) {
+        messagesById[model.id] = model.toEntity();
+      }
+      
+      // Second pass: populate replyTo references
+      final messagesWithReplies = <ChatMessage>[];
+      for (final model in models) {
+        final baseMessage = messagesById[model.id]!;
+        
+        // If this message has a reply_to_id, find the referenced message
+        final replyTo = model.replyToId != null 
+            ? messagesById[model.replyToId]
+            : null;
+        
+        messagesWithReplies.add(baseMessage.copyWith(replyTo: replyTo));
+      }
+      
+      print('✅ [ChatRepository] Yielding ${messagesWithReplies.length} entities to provider');
+      yield messagesWithReplies;
+    }
+  }
+
+  /// DEPRECATED: Use watchMessages instead
   Future<List<ChatMessage>> getRecentMessages(
     String eventId, {
     int limit = 2,
@@ -70,7 +104,7 @@ class ChatRepositoryImpl implements ChatRepository {
     return message;
   }
 
-  @override
+  /// DEPRECATED: Use watchMessages instead
   Future<List<ChatMessage>> getAllMessages(String eventId) async {
     print('🔍 DEBUG ChatRepository: Getting ALL messages for eventId=$eventId');
     final models = await _remoteDataSource.getAllMessages(eventId);

@@ -8,7 +8,6 @@ import '../../data/fakes/fake_suggestion_repository.dart';
 import '../../domain/entities/event_detail.dart';
 import '../../domain/entities/rsvp.dart';
 import '../../domain/entities/poll.dart';
-import '../../domain/entities/chat_message.dart';
 import '../../domain/entities/suggestion.dart';
 import '../../domain/repositories/event_repository.dart';
 import '../../domain/repositories/rsvp_repository.dart';
@@ -19,7 +18,6 @@ import '../../domain/usecases/get_event_detail.dart';
 import '../../domain/usecases/get_event_rsvps.dart';
 import '../../domain/usecases/submit_rsvp.dart';
 import '../../domain/usecases/get_event_polls.dart';
-import '../../domain/usecases/get_recent_messages.dart';
 import '../../domain/usecases/get_event_suggestions.dart';
 import '../../domain/usecases/create_suggestion.dart';
 import '../../domain/usecases/create_location_suggestion.dart';
@@ -69,9 +67,7 @@ final getEventPollsProvider = Provider<GetEventPolls>((ref) {
   return GetEventPolls(ref.watch(pollRepositoryProvider));
 });
 
-final getRecentMessagesProvider = Provider<GetRecentMessages>((ref) {
-  return GetRecentMessages(ref.watch(chatRepositoryProvider));
-});
+// REMOVED: getRecentMessagesProvider - use chatMessagesProvider (stream) instead
 
 final getEventSuggestionsProvider = Provider<GetEventSuggestions>((ref) {
   return GetEventSuggestions(ref.watch(suggestionRepositoryProvider));
@@ -166,71 +162,8 @@ final eventPollsProvider = FutureProvider.family<List<Poll>, String>((
   return await useCase(eventId);
 });
 
-// Recent messages state provider
-final recentMessagesProvider = StateNotifierProvider.family<MessagesNotifier,
-    AsyncValue<List<ChatMessage>>, String>((ref, eventId) {
-  return MessagesNotifier(
-    repository: ref.watch(chatRepositoryProvider),
-    eventId: eventId,
-  );
-});
-
-// Unread messages count provider
-final unreadMessagesCountProvider = Provider.family<int, String>((
-  ref,
-  eventId,
-) {
-  final messagesAsync = ref.watch(recentMessagesProvider(eventId));
-  final currentUserId = ref.watch(currentUserIdProvider);
-
-  return messagesAsync.when(
-    data: (messages) {
-      // Count unread messages from other users only
-      return messages
-          .where((m) => !m.read && m.userId != currentUserId)
-          .length;
-    },
-    loading: () => 0,
-    error: (_, stackTrace) => 0,
-  );
-});
-
-// Messages notifier to manage state without losing messages
-class MessagesNotifier extends StateNotifier<AsyncValue<List<ChatMessage>>> {
-  final ChatRepository repository;
-  final String eventId;
-
-  MessagesNotifier({required this.repository, required this.eventId})
-      : super(const AsyncValue.loading()) {
-    _loadMessages();
-  }
-
-  Future<void> _loadMessages() async {
-    try {
-      final messages = await repository.getRecentMessages(eventId);
-      if (mounted) {
-        state = AsyncValue.data(messages);
-      }
-    } catch (error, stackTrace) {
-      if (mounted) {
-        state = AsyncValue.error(error, stackTrace);
-      }
-    }
-  }
-
-  Future<void> addMessage(ChatMessage message) async {
-    state.whenData((currentMessages) {
-      final updatedMessages = [...currentMessages, message];
-      // Sort by timestamp to maintain order
-      updatedMessages.sort((a, b) => b.createdAt.compareTo(a.createdAt));
-      state = AsyncValue.data(updatedMessages);
-    });
-  }
-
-  Future<void> refreshMessages() async {
-    await _loadMessages();
-  }
-}
+// REMOVED: recentMessagesProvider, MessagesNotifier, unreadMessagesCountProvider
+// These are now handled by chatMessagesProvider (stream-based) in chat_providers.dart
 
 // Event suggestions state provider
 final eventSuggestionsProvider =
@@ -403,14 +336,8 @@ class UserRsvpNotifier extends StateNotifier<AsyncValue<Rsvp?>> {
   }
 }
 
-// Send message notifier
-final sendMessageProvider =
-    StateNotifierProvider<SendMessageNotifier, AsyncValue<void>>((ref) {
-  return SendMessageNotifier(
-    repository: ref.watch(chatRepositoryProvider),
-    ref: ref,
-  );
-});
+// REMOVED: sendMessageProvider and SendMessageNotifier
+// Now using chatActionsProvider in chat_providers.dart
 
 // Create suggestion notifier
 final createSuggestionNotifierProvider =
@@ -451,40 +378,6 @@ final toggleLocationSuggestionVoteNotifierProvider = StateNotifierProvider<
     ref: ref,
   );
 });
-
-class SendMessageNotifier extends StateNotifier<AsyncValue<void>> {
-  final ChatRepository repository;
-  final Ref ref;
-
-  SendMessageNotifier({required this.repository, required this.ref})
-      : super(const AsyncValue.data(null));
-
-  Future<void> sendMessage(String eventId, String content) async {
-    print('🔍 DEBUG SendMessageNotifier: Sending message to eventId=$eventId');
-    state = const AsyncValue.loading();
-    try {
-      final currentUserId = ref.read(currentUserIdProvider);
-      print('🔍 DEBUG SendMessageNotifier: Current userId=$currentUserId');
-      
-      // Send the message
-      await repository.sendMessage(
-        eventId,
-        currentUserId ?? '',
-        content,
-      );
-
-      print('✅ DEBUG SendMessageNotifier: Message sent, refreshing messages with 2-pass lookup');
-      // Refresh messages to ensure replyTo references are populated via 2-pass lookup
-      await ref.read(recentMessagesProvider(eventId).notifier).refreshMessages();
-
-      state = const AsyncValue.data(null);
-      print('✅ DEBUG SendMessageNotifier: Message successfully sent and preview refreshed');
-    } catch (error, stackTrace) {
-      print('❌ DEBUG SendMessageNotifier: Error sending message: $error');
-      state = AsyncValue.error(error, stackTrace);
-    }
-  }
-}
 
 class CreateSuggestionNotifier extends StateNotifier<AsyncValue<void>> {
   final CreateSuggestion createSuggestion;

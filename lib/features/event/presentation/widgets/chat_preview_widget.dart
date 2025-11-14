@@ -47,13 +47,10 @@ class ChatPreviewWidget extends StatefulWidget {
 class _ChatPreviewWidgetState extends State<ChatPreviewWidget> {
   final TextEditingController _controller = TextEditingController();
   final FocusNode _focusNode = FocusNode();
-  late final DateTime _widgetInitTime;
 
   @override
   void initState() {
     super.initState();
-    // Track when the widget was initialized to filter out old user messages
-    _widgetInitTime = DateTime.now();
   }
 
   @override
@@ -73,38 +70,19 @@ class _ChatPreviewWidgetState extends State<ChatPreviewWidget> {
 
   @override
   Widget build(BuildContext context) {
-    print('💬 [ChatPreviewWidget] build() called with ${widget.recentMessages.length} messages');
-    print('💬 [ChatPreviewWidget] Widget init time: $_widgetInitTime');
-    print('💬 [ChatPreviewWidget] Current user ID: ${widget.currentUserId}');
-    
     // Sort messages by timestamp ascending (oldest first)
     final sortedMessages = [...widget.recentMessages]
       ..sort((a, b) => a.timestamp.compareTo(b.timestamp));
 
-    // Get only unread messages from other users
+    // Get unread messages from other users
     final unreadMessages = sortedMessages
         .where((m) => !m.read && m.userId != widget.currentUserId)
         .toList();
-    
-    print('💬 [ChatPreviewWidget] Unread messages from others: ${unreadMessages.length}');
 
-    // Get current user's messages ONLY if they were sent after widget initialization
-    // This ensures we only show messages sent through the current chat input
-    final currentUserMessages = sortedMessages
-        .where(
-          (m) =>
-              m.userId == widget.currentUserId &&
-              m.timestamp.isAfter(_widgetInitTime),
-        )
-        .toList();
-    
-    print('💬 [ChatPreviewWidget] Current user messages after init: ${currentUserMessages.length}');
-
-    // Combine unread messages + current user messages, sorted by timestamp
-    final messagesToShow = [...unreadMessages, ...currentUserMessages]
-      ..sort((a, b) => a.timestamp.compareTo(b.timestamp));
-    
-    print('💬 [ChatPreviewWidget] Total messages to show: ${messagesToShow.length}');
+    // Show unread messages OR last 3 messages for context
+    final messagesToShow = unreadMessages.isNotEmpty
+        ? unreadMessages
+        : sortedMessages.take(3).toList();
 
     // Calculate height constraints
     final screenHeight = MediaQuery.of(context).size.height;

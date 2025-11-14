@@ -1,9 +1,18 @@
+import 'dart:async';
 import '../../domain/entities/chat_message.dart';
 import '../../domain/repositories/chat_repository.dart';
 
 /// Fake chat repository for development
 class FakeChatRepository implements ChatRepository {
   final List<ChatMessage> _messages = [];
+  final StreamController<List<ChatMessage>> _messagesController = StreamController<List<ChatMessage>>.broadcast();
+  
+  @override
+  Stream<List<ChatMessage>> watchMessages(String eventId) {
+    // Return stream with current messages
+    Future.microtask(() => _messagesController.add(_messages));
+    return _messagesController.stream;
+  }
 
   FakeChatRepository() {
     _initializeMessages();
@@ -176,7 +185,6 @@ class FakeChatRepository implements ChatRepository {
     ]);
   }
 
-  @override
   Future<List<ChatMessage>> getRecentMessages(
     String eventId, {
     int limit = 50,
@@ -187,6 +195,16 @@ class FakeChatRepository implements ChatRepository {
     eventMessages.sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
     return eventMessages.take(limit).toList();
+  }
+
+  // DEPRECATED: Use watchMessages instead
+  Future<List<ChatMessage>> getAllMessages(String eventId) async {
+    await Future.delayed(const Duration(milliseconds: 300));
+    return _messages
+        .where((m) => m.eventId == eventId)
+        .toList()
+        .reversed
+        .toList();
   }
 
   @override
@@ -211,16 +229,6 @@ class FakeChatRepository implements ChatRepository {
 
     _messages.add(message);
     return message;
-  }
-
-  @override
-  Future<List<ChatMessage>> getAllMessages(String eventId) async {
-    await Future.delayed(const Duration(milliseconds: 300));
-    return _messages
-        .where((m) => m.eventId == eventId)
-        .toList()
-        .reversed
-        .toList();
   }
 
   @override

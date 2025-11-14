@@ -89,40 +89,12 @@ class EventPage extends ConsumerWidget {
     final rsvpsAsync = ref.watch(eventRsvpsProvider(eventId));
     final userRsvpAsync = ref.watch(userRsvpProvider(eventId));
     final pollsAsync = ref.watch(eventPollsProvider(eventId));
-    final messagesAsync = ref.watch(recentMessagesProvider(eventId));
+    final messagesAsync = ref.watch(chatMessagesProvider(eventId));
     final suggestionsAsync = ref.watch(eventSuggestionsProvider(eventId));
     final suggestionVotesAsync = ref.watch(suggestionVotesProvider(eventId));
     final userSuggestionVotesAsync = ref.watch(
       userSuggestionVotesProvider(eventId),
     );
-
-    // Debug chat preview state
-    print('💬 [EventPage] messagesAsync state: ${messagesAsync.runtimeType}');
-    messagesAsync.when(
-      data: (messages) => print('💬 [EventPage] Messages loaded: ${messages.length} messages'),
-      loading: () => print('💬 [EventPage] Messages loading...'),
-      error: (error, stack) => print('❌ [EventPage] Messages error: $error'),
-    );
-
-    // Load messages when entering page - only trigger if in loading state
-    messagesAsync.whenOrNull(
-      loading: () {
-        print('🔄 [EventPage] Triggering refreshMessages in postFrameCallback');
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          ref.read(recentMessagesProvider(eventId).notifier).refreshMessages();
-        });
-      },
-    );
-
-    // Listen for message sends to sync both providers
-    ref.listen(sendMessageProvider, (previous, next) {
-      next.whenData((_) {
-        print('📤 [EventPage] Message sent, syncing providers...');
-        // Refresh both providers when message is sent
-        ref.read(recentMessagesProvider(eventId).notifier).refreshMessages();
-        ref.invalidate(chatMessagesProvider(eventId));
-      });
-    });
 
     return Scaffold(
       backgroundColor: BrandColors.bg1,
@@ -952,11 +924,15 @@ class EventPage extends ConsumerWidget {
               // Chat Preview
               messagesAsync.when(
                 data: (messages) {
-                  print('💬 [EventPage] ChatPreview receiving ${messages.length} messages');
+                  print('\n═══════════════════════════════════════');
+                  print('💬 [EventPage] PREVIEW - New data received!');
+                  print('   - Event ID: $eventId');
+                  print('   - Total messages: ${messages.length}');
                   if (messages.isNotEmpty) {
-                    print('💬 [EventPage] First message: ${messages.first.content.substring(0, messages.first.content.length > 30 ? 30 : messages.first.content.length)}...');
-                    print('💬 [EventPage] First message read: ${messages.first.read}, userId: ${messages.first.userId}');
+                    print('   - First: "${messages.first.content.substring(0, messages.first.content.length > 30 ? 30 : messages.first.content.length)}..." (read=${messages.first.read})');
+                    print('   - Last: "${messages.last.content.substring(0, messages.last.content.length > 30 ? 30 : messages.last.content.length)}..."');
                   }
+                  print('═══════════════════════════════════════\n');
                   
                   final unreadCount = ref.watch(
                     unreadMessagesCountProvider(eventId),
@@ -990,10 +966,7 @@ class EventPage extends ConsumerWidget {
                       );
                     },
                     onSendMessage: (content) async {
-                      await ref
-                          .read(sendMessageProvider.notifier)
-                          .sendMessage(eventId, content);
-                      // No need to invalidate - the provider handles state automatically
+                      await ref.read(chatActionsProvider(eventId)).sendMessage(content);
                     },
                   );
                 },
@@ -1012,9 +985,7 @@ class EventPage extends ConsumerWidget {
                     recentMessages: const [],
                     onOpenChat: () {},
                     onSendMessage: (content) async {
-                      await ref
-                          .read(sendMessageProvider.notifier)
-                          .sendMessage(eventId, content);
+                      await ref.read(chatActionsProvider(eventId)).sendMessage(content);
                     },
                   );
                 },
