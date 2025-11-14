@@ -953,6 +953,12 @@ class EventPage extends ConsumerWidget {
                   
                   print('💬 [EventPage] Passing ${previewMessages.length} messages to ChatPreviewWidget');
                   print('💬 [EventPage] Unread count: $unreadCount, currentUserId: $currentUserId');
+                  if (previewMessages.isNotEmpty) {
+                    print('💬 [EventPage] Preview messages details:');
+                    for (var i = 0; i < previewMessages.length && i < 3; i++) {
+                      print('   $i: "${previewMessages[i].content}" (user: ${previewMessages[i].userName}, read: ${previewMessages[i].read})');
+                    }
+                  }
                   
                   return ChatPreviewWidget(
                     newMessagesCount: unreadCount,
@@ -966,7 +972,11 @@ class EventPage extends ConsumerWidget {
                       );
                     },
                     onSendMessage: (content) async {
+                      print('\n🚀 [EventPage] PREVIEW sending message (DATA state):');
+                      print('   - Content: "$content"');
+                      print('   - Event ID: $eventId');
                       await ref.read(chatActionsProvider(eventId)).sendMessage(content);
+                      print('✅ [EventPage] PREVIEW sendMessage completed');
                     },
                   );
                 },
@@ -985,7 +995,10 @@ class EventPage extends ConsumerWidget {
                     recentMessages: const [],
                     onOpenChat: () {},
                     onSendMessage: (content) async {
+                      print('\n🚀 [EventPage] PREVIEW sending message (ERROR state):');
+                      print('   - Content: "$content"');
                       await ref.read(chatActionsProvider(eventId)).sendMessage(content);
+                      print('✅ [EventPage] PREVIEW sendMessage completed');
                     },
                   );
                 },

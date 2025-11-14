@@ -62,27 +62,47 @@ class _ChatPreviewWidgetState extends State<ChatPreviewWidget> {
 
   void _sendMessage() {
     final content = _controller.text.trim();
+    print('\n📤 [ChatPreviewWidget] _sendMessage called');
+    print('   - Content: "$content"');
+    print('   - isEmpty: ${content.isEmpty}');
     if (content.isNotEmpty) {
+      print('   - Calling widget.onSendMessage...');
       widget.onSendMessage(content);
       _controller.clear();
+      print('   ✅ Message sent, controller cleared');
+    } else {
+      print('   ⚠️ Content is empty, not sending');
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    // Sort messages by timestamp ascending (oldest first)
+    print('\n🔄 [ChatPreviewWidget] Building with ${widget.recentMessages.length} messages');
+    print('   - New messages count: ${widget.newMessagesCount}');
+    
+    // Sort messages by timestamp DESCENDING (newest first)
     final sortedMessages = [...widget.recentMessages]
-      ..sort((a, b) => a.timestamp.compareTo(b.timestamp));
+      ..sort((a, b) => b.timestamp.compareTo(a.timestamp));
+
+    print('📊 [ChatPreviewWidget] After sorting (newest first):');
+    for (var i = 0; i < sortedMessages.length && i < 5; i++) {
+      print('   $i: "${sortedMessages[i].content}" at ${sortedMessages[i].timestamp}');
+    }
 
     // Get unread messages from other users
     final unreadMessages = sortedMessages
         .where((m) => !m.read && m.userId != widget.currentUserId)
         .toList();
 
-    // Show unread messages OR last 3 messages for context
+    // Show unread messages OR last 3 messages (newest)
     final messagesToShow = unreadMessages.isNotEmpty
         ? unreadMessages
         : sortedMessages.take(3).toList();
+    
+    print('✅ [ChatPreviewWidget] Showing ${messagesToShow.length} messages:');
+    for (var i = 0; i < messagesToShow.length; i++) {
+      print('   $i: "${messagesToShow[i].content}" (${messagesToShow[i].userName})');
+    }
 
     // Calculate height constraints
     final screenHeight = MediaQuery.of(context).size.height;
