@@ -3,6 +3,7 @@ import '../../domain/entities/group_entity.dart';
 import '../../domain/repositories/group_repository.dart';
 import '../../../../shared/models/group_enums.dart';
 import 'package:image_picker/image_picker.dart';
+import '../../domain/entities/group_member_entity.dart';
 
 /// Implementação fake do repositório de grupos para desenvolvimento
 class FakeGroupRepository implements GroupRepository {
@@ -336,9 +337,41 @@ class FakeGroupRepository implements GroupRepository {
 
   @override
   Future<List<String>> getGroupMembers(String groupId) async {
-    await Future.delayed(const Duration(milliseconds: 400));
-    // Retornar lista mock de IDs de membros
-    return ['user1', 'user2', 'user3'];
+    await Future.delayed(const Duration(milliseconds: 300));
+    return ['current_user', 'marco', 'ana', 'joao'];
+  }
+
+  @override
+  Future<List<GroupMemberEntity>> getGroupMembersEntities(String groupId) async {
+    await Future.delayed(const Duration(milliseconds: 300));
+    
+    // Mock members para teste
+    return [
+      const GroupMemberEntity(
+        id: 'current_user',
+        name: 'You',
+        avatarUrl: null,
+        role: 'admin',
+      ),
+      const GroupMemberEntity(
+        id: 'marco',
+        name: 'Marco',
+        avatarUrl: 'https://i.pravatar.cc/150?u=marco',
+        role: 'member',
+      ),
+      const GroupMemberEntity(
+        id: 'ana',
+        name: 'Ana',
+        avatarUrl: 'https://i.pravatar.cc/150?u=ana',
+        role: 'member',
+      ),
+      const GroupMemberEntity(
+        id: 'joao',
+        name: 'João',
+        avatarUrl: 'https://i.pravatar.cc/150?u=joao',
+        role: 'member',
+      ),
+    ];
   }
 
   @override

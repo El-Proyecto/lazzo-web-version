@@ -15,6 +15,7 @@ import '../../domain/entities/group_expense_entity.dart';
 import '../../domain/entities/group_memory_entity.dart';
 import '../widgets/expense_detail_bottom_sheet.dart';
 import '../../domain/entities/expense_participant_entity.dart';
+import '../../../groups/presentation/providers/groups_provider.dart';
 
 class GroupHubPage extends ConsumerStatefulWidget {
   final String groupId;
@@ -62,6 +63,9 @@ class _GroupHubPageState extends ConsumerState<GroupHubPage>
     _tabController.addListener(_onTabChanged);
     _initializeExpenseParticipants();
     _initializeScrollControllers();
+    Future.microtask(() {
+      ref.read(groupMembersProvider(widget.groupId));
+    });
   }
 
   void _onTabChanged() {
@@ -919,27 +923,50 @@ class _GroupHubPageState extends ConsumerState<GroupHubPage>
   }
 
   void _handleAddExpense() {
-    final participants = [
-      const ExpenseParticipantOption(id: 'current_user', name: 'You'),
-      const ExpenseParticipantOption(id: 'marco', name: 'Marco'),
-      const ExpenseParticipantOption(id: 'ana', name: 'Ana'),
-      const ExpenseParticipantOption(id: 'joao', name: 'João'),
-    ];
+    final membersAsync = ref.read(groupMembersProvider(widget.groupId));
 
-    AddExpenseBottomSheet.show(
-      context: context,
-      participants: participants,
-      onAddExpense: (title, paidById, participantsOwe, totalAmount) {
-        // ✅ Agora paidById é String (não lista)
-        ref.read(groupExpensesProvider(widget.groupId).notifier).addExpense(
-          description: title,
-          amount: totalAmount,
-          paidBy: paidById, // ✅ Diretamente String
-          participantsOwe: participantsOwe,
-          participantsPaid: [],
+    membersAsync.whenOrNull(
+      data: (members) {
+        final participants = members
+            .map((member) => ExpenseParticipantOption(
+                  id: member.id,
+                  name: member.name,
+                  avatarUrl: member.avatarUrl,
+                ))
+            .toList();
+
+        AddExpenseBottomSheet.show(
+          context: context,
+          participants: participants, // ✅ Membros reais do grupo
+          onAddExpense: (title, paidById, participantsOwe, totalAmount) {
+            ref.read(groupExpensesProvider(widget.groupId).notifier).addExpense(
+                  description: title,
+                  amount: totalAmount,
+                  paidBy: paidById,
+                  participantsOwe: participantsOwe,
+                  participantsPaid: [],
+                );
+          },
         );
       },
     );
+
+    // ⚠️ Se membros não carregaram, mostrar feedback
+    if (membersAsync is AsyncLoading) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Loading group members...'),
+          duration: Duration(seconds: 1),
+        ),
+      );
+    } else if (membersAsync is AsyncError) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error loading members: ${membersAsync.error}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   List<ExpenseParticipant> _createMockParticipants(String expenseId) {

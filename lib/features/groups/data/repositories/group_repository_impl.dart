@@ -2,10 +2,12 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../domain/entities/group.dart';
 import '../../domain/entities/group_entity.dart';
+import '../../domain/entities/group_member_entity.dart';
 import '../../domain/entities/group_permissions.dart';
 import '../../domain/repositories/group_repository.dart';
 import '../data_sources/groups_data_source.dart';
 import '../models/group_entity_model.dart';
+import '../models/group_member_entity_model.dart';
 import '../../../../shared/models/group_enums.dart';
 
 class GroupRepositoryImpl implements GroupRepository {
@@ -430,7 +432,7 @@ class GroupRepositoryImpl implements GroupRepository {
       throw Exception('Failed to toggle archive: $e');
     }
   }
-
+  
   @override
   Future<List<String>> getGroupMembers(String groupId) async {
     try {
@@ -444,6 +446,22 @@ class GroupRepositoryImpl implements GroupRepository {
       throw Exception('Failed to get group members: $e');
     }
   }
+
+  @override
+  Future<List<GroupMemberEntity>> getGroupMembersEntities(String groupId) async {
+    try {
+      // Usa data source existente
+      final data = await _dataSource.getGroupMembers(groupId);
+      
+      // Converte JSON → DTO → Entity
+      return data
+          .map((json) => GroupMemberDto.fromJson(json).toEntity())
+          .toList();
+    } catch (e) {
+      throw Exception('Failed to get group members: $e');
+    }
+  }
+
 
   /// Helper method to detect if a path is a local device path
   bool _isLocalPath(String path) {

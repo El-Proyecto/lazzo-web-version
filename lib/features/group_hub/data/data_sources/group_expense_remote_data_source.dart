@@ -44,4 +44,24 @@ class GroupExpenseRemoteDataSource {
         .map((json) => GroupExpenseDto.fromJson(json))
         .toList();
   }
+
+  Future<List<Map<String, dynamic>>> getGroupMembers(String groupId) async {
+    final response = await _client
+        .from('group_members')
+        .select('''
+          user_id,
+          role,
+          users:user_id (
+            id,
+            display_name,
+            avatar_url
+          )
+        ''')
+        .eq('group_id', groupId)
+        .order('role', ascending: false); // Admins first
+
+    return List<Map<String, dynamic>>.from(response);
+  }
 }
+
+

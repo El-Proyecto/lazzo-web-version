@@ -19,6 +19,7 @@ abstract class GroupsDataSource {
   Future<void> togglePin(String groupId, String userId, bool isPinned);
   Future<void> toggleArchive(String groupId, String userId);
   Future<String> ensureStoragePath({required String input, required String groupId, String bucket});
+  Future<List<Map<String, dynamic>>> getGroupMembers(String groupId);
 }
 
 class SupabaseGroupsDataSource implements GroupsDataSource {
@@ -620,6 +621,34 @@ class SupabaseGroupsDataSource implements GroupsDataSource {
     } catch (e) {
       print('   ❌ Failed to toggle archive: $e');
       throw Exception('Failed to toggle archive: $e');
+    }
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> getGroupMembers(String groupId) async {
+    try {
+      print('👥 [DataSource] Fetching members for group: $groupId');
+      
+      final response = await _client
+          .from('group_members')
+          .select('''
+            user_id,
+            role,
+            joined_at,
+            users:user_id (
+              id,
+              name,
+              avatar_url
+            )
+          ''')
+          .eq('group_id', groupId)
+          .order('role', ascending: false); // Admins first
+
+      print('   ✅ Found ${response.length} members');
+      return List<Map<String, dynamic>>.from(response);
+    } catch (e) {
+      print('   ❌ Failed to fetch group members: $e');
+      throw Exception('Failed to get group members: $e');
     }
   }
 }
