@@ -80,28 +80,36 @@ class _ChatPreviewWidgetState extends State<ChatPreviewWidget> {
     print('\n🔄 [ChatPreviewWidget] Building with ${widget.recentMessages.length} messages');
     print('   - New messages count: ${widget.newMessagesCount}');
     
-    // Sort messages by timestamp DESCENDING (newest first)
+    // Sort messages by timestamp ASCENDING (oldest first)
     final sortedMessages = [...widget.recentMessages]
-      ..sort((a, b) => b.timestamp.compareTo(a.timestamp));
+      ..sort((a, b) => a.timestamp.compareTo(b.timestamp));
 
-    print('📊 [ChatPreviewWidget] After sorting (newest first):');
-    for (var i = 0; i < sortedMessages.length && i < 5; i++) {
+    print('📊 [ChatPreviewWidget] All sorted (oldest first):');
+    for (var i = 0; i < sortedMessages.length && i < 3; i++) {
       print('   $i: "${sortedMessages[i].content}" at ${sortedMessages[i].timestamp}');
     }
+    if (sortedMessages.length > 3) {
+      print('   ... (${sortedMessages.length - 3} more)');
+      for (var i = sortedMessages.length - 3; i < sortedMessages.length; i++) {
+        print('   $i: "${sortedMessages[i].content}" at ${sortedMessages[i].timestamp}');
+      }
+    }
 
-    // Get unread messages from other users
+    // Get unread messages from other users (keep chronological order)
     final unreadMessages = sortedMessages
         .where((m) => !m.read && m.userId != widget.currentUserId)
         .toList();
 
-    // Show unread messages OR last 3 messages (newest)
+    // Show unread messages OR last 3 messages (most recent context)
     final messagesToShow = unreadMessages.isNotEmpty
         ? unreadMessages
-        : sortedMessages.take(3).toList();
+        : (sortedMessages.length <= 3
+            ? sortedMessages
+            : sortedMessages.skip(sortedMessages.length - 3).toList());
     
     print('✅ [ChatPreviewWidget] Showing ${messagesToShow.length} messages:');
     for (var i = 0; i < messagesToShow.length; i++) {
-      print('   $i: "${messagesToShow[i].content}" (${messagesToShow[i].userName})');
+      print('   $i: "${messagesToShow[i].content}" (${messagesToShow[i].userName}) at ${messagesToShow[i].timestamp}');
     }
 
     // Calculate height constraints
@@ -179,15 +187,18 @@ class _ChatPreviewWidgetState extends State<ChatPreviewWidget> {
               child: Stack(
                 children: [
                   ListView.builder(
-                    reverse: true,
+                    reverse: true, // Scroll starts at bottom (most recent)
                     padding: EdgeInsets.zero,
                     physics: needsScroll
                         ? const BouncingScrollPhysics()
                         : const NeverScrollableScrollPhysics(),
                     itemCount: messagesToShow.length,
                     itemBuilder: (context, index) {
-                      final message =
-                          messagesToShow[messagesToShow.length - 1 - index];
+                      // reverse=true means: index 0 = bottom (newest), last index = top (oldest)
+                      // We want to show messagesToShow in natural order (oldest to newest)
+                      // So we reverse the array access
+                      final reversedIndex = messagesToShow.length - 1 - index;
+                      final message = messagesToShow[reversedIndex];
                       return Padding(
                         padding: EdgeInsets.only(
                           bottom: index == 0 ? 0 : Gaps.md,
