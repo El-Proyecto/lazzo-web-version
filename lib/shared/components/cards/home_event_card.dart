@@ -4,6 +4,7 @@ import '../../constants/spacing.dart';
 import '../../constants/text_styles.dart';
 import '../../themes/colors.dart';
 import '../widgets/votes_bottom_sheet.dart';
+import '../widgets/photos_bottom_sheet.dart';
 import '../widgets/rsvp_widget.dart';
 import '../dialogs/add_expense_bottom_sheet.dart';
 
@@ -265,8 +266,15 @@ class _HomeEventCardState extends State<HomeEventCard> {
   }
 
   Widget _buildAttendeeInfo(BuildContext context) {
+    // For Living and Recap states, show photos bottom sheet
+    // For other states, show votes bottom sheet
+    final isPhotoState = widget.state == HomeEventCardState.living ||
+        widget.state == HomeEventCardState.recap;
+
     return InkWell(
-      onTap: () => _showVotesBottomSheet(context),
+      onTap: () => isPhotoState
+          ? _showPhotosBottomSheet(context)
+          : _showVotesBottomSheet(context),
       borderRadius: BorderRadius.circular(Radii.sm),
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: Gaps.xxs),
@@ -276,7 +284,7 @@ class _HomeEventCardState extends State<HomeEventCard> {
             _buildAttendeeAvatars(),
             const SizedBox(width: Gaps.xs),
 
-            // Going count text with names
+            // Going count text with names OR photo count
             Expanded(
               child: Text(
                 _buildAttendeeText(),
@@ -309,7 +317,31 @@ class _HomeEventCardState extends State<HomeEventCard> {
     );
   }
 
+  void _showPhotosBottomSheet(BuildContext context) {
+    PhotosBottomSheet.show(
+      context: context,
+      participants: _currentEvent.participantPhotos,
+      totalPhotos: _currentEvent.photoCount,
+      maxPhotos: _currentEvent.maxPhotos,
+    );
+  }
+
   String _buildAttendeeText() {
+    // For Living and Recap states, show photo count instead of names
+    if (widget.state == HomeEventCardState.living ||
+        widget.state == HomeEventCardState.recap) {
+      final participantText =
+          _currentEvent.goingCount == 1 ? 'participant' : 'participants';
+
+      // Show "No photos yet" if no photos added
+      final photoInfo = _currentEvent.photoCount == 0
+          ? 'No photos yet'
+          : '${_currentEvent.photoCount}/${_currentEvent.maxPhotos} ${_currentEvent.photoCount == 1 ? 'photo' : 'photos'}';
+
+      return '${_currentEvent.goingCount} $participantText • $photoInfo';
+    }
+
+    // For other states (Pending/Confirmed), show names as before
     // If user hasn't voted yet, show "Tap to vote!" message
     if (_currentEvent.userVote == null) {
       return '${_currentEvent.goingCount} going • Tap to vote!';

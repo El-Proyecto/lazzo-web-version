@@ -1,5 +1,6 @@
 import '../../../../shared/components/widgets/rsvp_widget.dart';
 import '../../domain/entities/home_event.dart';
+import '../../domain/entities/participant_photo.dart';
 import '../../domain/repositories/home_event_repository.dart';
 
 /// Fake repository for home events - used for UI development
@@ -19,7 +20,7 @@ class FakeHomeEventRepository implements HomeEventRepository {
   // - HomeEventStatus.confirmed
   // - HomeEventStatus.living
   // - HomeEventStatus.recap
-  static HomeEventStatus nextEventStatusOverride = HomeEventStatus.recap;
+  static HomeEventStatus nextEventStatusOverride = HomeEventStatus.living;
 
   @override
   Future<HomeEventEntity?> getNextEvent() async {
@@ -152,6 +153,68 @@ class FakeHomeEventRepository implements HomeEventRepository {
         break;
     }
 
+    // Create participant photos for Living/Recap states
+    // Max photos = max(20, 5 * N participants)
+    final participantCount = goingVotes.length;
+    final maxPhotos = participantCount * 5 > 20 ? participantCount * 5 : 20;
+
+    // Mock photo data - vary based on status
+    final participantPhotos = <ParticipantPhoto>[
+      const ParticipantPhoto(
+        userId: 'current_user',
+        userName: 'You',
+        userAvatar: 'https://i.pravatar.cc/150?img=1',
+        photoCount: 3,
+      ),
+      const ParticipantPhoto(
+        userId: 'user_1',
+        userName: 'João',
+        userAvatar: 'https://i.pravatar.cc/150?img=2',
+        photoCount: 8,
+      ),
+      const ParticipantPhoto(
+        userId: 'user_2',
+        userName: 'Maria',
+        userAvatar: 'https://i.pravatar.cc/150?img=3',
+        photoCount: 4,
+      ),
+      const ParticipantPhoto(
+        userId: 'user_3',
+        userName: 'Pedro',
+        userAvatar: 'https://i.pravatar.cc/150?img=4',
+        photoCount: 2,
+      ),
+      const ParticipantPhoto(
+        userId: 'user_4',
+        userName: 'Ana',
+        userAvatar: 'https://i.pravatar.cc/150?img=5',
+        photoCount: 0, // No photos yet
+      ),
+      const ParticipantPhoto(
+        userId: 'user_5',
+        userName: 'Carlos',
+        userAvatar: 'https://i.pravatar.cc/150?img=6',
+        photoCount: 3,
+      ),
+      const ParticipantPhoto(
+        userId: 'user_6',
+        userName: 'Rita',
+        userAvatar: 'https://i.pravatar.cc/150?img=7',
+        photoCount: 6,
+      ),
+      const ParticipantPhoto(
+        userId: 'user_7',
+        userName: 'Miguel',
+        userAvatar: 'https://i.pravatar.cc/150?img=8',
+        photoCount: 0, // No photos yet
+      ),
+    ];
+
+    final totalPhotos = participantPhotos.fold<int>(
+      0,
+      (sum, p) => sum + p.photoCount,
+    );
+
     return HomeEventEntity(
       id: 'event_1',
       name: 'Beach Day with the Squad',
@@ -165,6 +228,9 @@ class FakeHomeEventRepository implements HomeEventRepository {
       attendeeNames: goingVotes.map((v) => v.userName).toList(),
       userVote: userVote,
       allVotes: allVotes,
+      photoCount: totalPhotos,
+      maxPhotos: maxPhotos,
+      participantPhotos: participantPhotos,
     );
   }
 

@@ -3,13 +3,14 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../shared/components/nav/common_app_bar.dart';
 import '../../../../shared/components/common/page_segmented_control.dart';
-import '../../../../shared/components/cards/group_event_card.dart';
+import '../../../../shared/components/cards/event_full_card.dart';
 import '../../../../shared/components/cards/memory_card.dart';
 import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/constants/text_styles.dart';
 import '../../../../shared/themes/colors.dart';
 import '../providers/group_hub_providers.dart';
 import '../../domain/entities/group_memory_entity.dart';
+import '../../domain/entities/group_event_entity.dart';
 import 'group_details_page.dart';
 
 class GroupHubPage extends ConsumerStatefulWidget {
@@ -420,6 +421,34 @@ class _GroupHubPageState extends ConsumerState<GroupHubPage>
           );
         }
 
+        // Sort events: Living (max 1) > Recap (multiple) > Confirmed > Pending
+        final sortedEvents = List<GroupEventEntity>.from(events)
+          ..sort((a, b) {
+            // Living has highest priority
+            if (a.status == GroupEventStatus.living &&
+                b.status != GroupEventStatus.living) return -1;
+            if (b.status == GroupEventStatus.living &&
+                a.status != GroupEventStatus.living) return 1;
+
+            // Recap has second priority
+            if (a.status == GroupEventStatus.recap &&
+                b.status != GroupEventStatus.recap) return -1;
+            if (b.status == GroupEventStatus.recap &&
+                a.status != GroupEventStatus.recap) return 1;
+
+            // Confirmed has third priority
+            if (a.status == GroupEventStatus.confirmed &&
+                b.status != GroupEventStatus.confirmed) return -1;
+            if (b.status == GroupEventStatus.confirmed &&
+                a.status != GroupEventStatus.confirmed) return 1;
+
+            // Within same status, sort by date (earlier dates first)
+            if (a.date != null && b.date != null) {
+              return a.date!.compareTo(b.date!);
+            }
+            return 0;
+          });
+
         return ListView.separated(
           controller: _eventsScrollController,
           physics: _isSnapped
@@ -431,19 +460,20 @@ class _GroupHubPageState extends ConsumerState<GroupHubPage>
             top: _isSnapped ? Gaps.md : 0,
             bottom: Gaps.md,
           ),
-          itemCount: events.length + 1,
+          itemCount: sortedEvents.length + 1,
           separatorBuilder: (context, index) {
-            if (index == events.length - 1) {
+            if (index == sortedEvents.length - 1) {
               // After last event, no separator (bottom padding handled below)
               return const SizedBox.shrink();
             }
             return const SizedBox(height: Gaps.md);
           },
           itemBuilder: (context, index) {
-            if (index < events.length) {
-              final event = events[index];
-              return GroupEventCard(
+            if (index < sortedEvents.length) {
+              final event = sortedEvents[index];
+              return EventFullCard(
                 event: event,
+                state: _mapEventStatusToState(event.status),
                 onTap: () {
                   // TODO: Navigate to event detail
                   print('Navigate to event: ${event.id}');
@@ -550,5 +580,18 @@ class _GroupHubPageState extends ConsumerState<GroupHubPage>
         ),
       ),
     );
+  }
+
+  EventFullCardState _mapEventStatusToState(GroupEventStatus status) {
+    switch (status) {
+      case GroupEventStatus.pending:
+        return EventFullCardState.pending;
+      case GroupEventStatus.confirmed:
+        return EventFullCardState.confirmed;
+      case GroupEventStatus.living:
+        return EventFullCardState.living;
+      case GroupEventStatus.recap:
+        return EventFullCardState.recap;
+    }
   }
 }

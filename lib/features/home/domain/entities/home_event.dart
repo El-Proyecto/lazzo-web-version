@@ -1,4 +1,5 @@
 import '../../../../shared/components/widgets/rsvp_widget.dart';
+import 'participant_photo.dart';
 
 /// Home event entity for display in home page sections
 /// Contains essential info needed for event cards
@@ -16,6 +17,10 @@ class HomeEventEntity {
   final bool?
       userVote; // true = going, false = not going, null = pending/not voted
   final List<RsvpVote> allVotes; // All votes for the bottom sheet
+  final int photoCount; // Total photos added (for Living/Recap)
+  final int maxPhotos; // Maximum photos allowed (for Living/Recap)
+  final List<ParticipantPhoto>
+      participantPhotos; // Photo contributions by participant
 
   const HomeEventEntity({
     required this.id,
@@ -30,6 +35,9 @@ class HomeEventEntity {
     required this.attendeeNames,
     this.userVote,
     this.allVotes = const [],
+    this.photoCount = 0,
+    this.maxPhotos = 0,
+    this.participantPhotos = const [],
   });
 
   HomeEventEntity copyWith({
@@ -45,6 +53,9 @@ class HomeEventEntity {
     List<String>? attendeeNames,
     bool? userVote,
     List<RsvpVote>? allVotes,
+    int? photoCount,
+    int? maxPhotos,
+    List<ParticipantPhoto>? participantPhotos,
     bool updateUserVote = false, // Flag to allow explicit null setting
   }) {
     return HomeEventEntity(
@@ -60,6 +71,9 @@ class HomeEventEntity {
       attendeeNames: attendeeNames ?? this.attendeeNames,
       userVote: updateUserVote ? userVote : (userVote ?? this.userVote),
       allVotes: allVotes ?? this.allVotes,
+      photoCount: photoCount ?? this.photoCount,
+      maxPhotos: maxPhotos ?? this.maxPhotos,
+      participantPhotos: participantPhotos ?? this.participantPhotos,
     );
   }
 }
