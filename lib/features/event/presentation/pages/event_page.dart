@@ -1057,6 +1057,17 @@ class EventPage extends ConsumerWidget {
                         originalMessage.id,
                         !originalMessage.isPinned,
                       );
+                      // Navigate to chat and scroll to pinned message
+                      if (context.mounted) {
+                        Navigator.pushNamed(
+                          context,
+                          AppRouter.eventChat,
+                          arguments: {
+                            'eventId': eventId,
+                            'scrollToMessageId': originalMessage.id,
+                          },
+                        );
+                      }
                     },
                     onDeleteMessage: (message) async {
                       final originalMessage = messages.firstWhere(
@@ -1102,6 +1113,14 @@ class EventPage extends ConsumerWidget {
                     onPinMessage: (message) async {
                       // Try to send action even in error state
                       await ref.read(chatActionsProvider(eventId)).togglePin('', false);
+                      // Navigate to chat
+                      if (context.mounted) {
+                        Navigator.pushNamed(
+                          context,
+                          AppRouter.eventChat,
+                          arguments: {'eventId': eventId},
+                        );
+                      }
                     },
                     onDeleteMessage: (message) async {
                       await ref.read(chatActionsProvider(eventId)).deleteMessage('');
