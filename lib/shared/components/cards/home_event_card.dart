@@ -190,13 +190,11 @@ class _HomeEventCardState extends State<HomeEventCard> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        // Date
+        // Date or Time Left
         Text(
-          _currentEvent.date != null
-              ? _formatEventDate(_currentEvent.date!)
-              : 'To be decided',
+          _getDateOrTimeLeftText(),
           style: AppText.bodyMedium.copyWith(
-            color: BrandColors.text2,
+            color: BrandColors.text1,
             fontWeight: FontWeight.w500,
           ),
         ),
@@ -526,6 +524,53 @@ class _HomeEventCardState extends State<HomeEventCard> {
         ),
       ],
     );
+  }
+
+  String _getDateOrTimeLeftText() {
+    // Show time left for Living and Recap states
+    if (widget.state == HomeEventCardState.living) {
+      // Living: time until end date
+      if (_currentEvent.endDate != null) {
+        return _formatTimeLeft(_currentEvent.endDate!);
+      }
+      return 'Happening now';
+    } else if (widget.state == HomeEventCardState.recap) {
+      // Recap: 24h countdown from end date for photo uploads
+      if (_currentEvent.endDate != null) {
+        final recapDeadline =
+            _currentEvent.endDate!.add(const Duration(hours: 24));
+        return _formatTimeLeft(recapDeadline);
+      }
+      return 'Upload photos';
+    }
+
+    // For Pending and Confirmed, show normal date
+    return _currentEvent.date != null
+        ? _formatEventDate(_currentEvent.date!)
+        : 'To be decided';
+  }
+
+  String _formatTimeLeft(DateTime targetDate) {
+    final now = DateTime.now();
+    final difference = targetDate.difference(now);
+
+    if (difference.isNegative) {
+      return 'Ended';
+    }
+
+    final hours = difference.inHours;
+    final minutes = difference.inMinutes.remainder(60);
+
+    if (hours > 24) {
+      final days = difference.inDays;
+      return '$days day${days != 1 ? 's' : ''} left';
+    } else if (hours > 0) {
+      return '${hours}h ${minutes}m left';
+    } else if (minutes > 0) {
+      return '${minutes}m left';
+    } else {
+      return 'Less than 1m left';
+    }
   }
 
   String _formatEventDate(DateTime date) {

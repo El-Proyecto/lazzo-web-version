@@ -7,6 +7,7 @@ class HomeEventEntity {
   final String name;
   final String emoji;
   final DateTime? date;
+  final DateTime? endDate;
   final String? location;
   final HomeEventStatus status;
   final int goingCount;
@@ -21,6 +22,7 @@ class HomeEventEntity {
     required this.name,
     required this.emoji,
     this.date,
+    this.endDate,
     this.location,
     required this.status,
     required this.goingCount,
@@ -35,6 +37,7 @@ class HomeEventEntity {
     String? name,
     String? emoji,
     DateTime? date,
+    DateTime? endDate,
     String? location,
     HomeEventStatus? status,
     int? goingCount,
@@ -49,6 +52,7 @@ class HomeEventEntity {
       name: name ?? this.name,
       emoji: emoji ?? this.emoji,
       date: date ?? this.date,
+      endDate: endDate ?? this.endDate,
       location: location ?? this.location,
       status: status ?? this.status,
       goingCount: goingCount ?? this.goingCount,

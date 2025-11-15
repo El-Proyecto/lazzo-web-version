@@ -19,7 +19,7 @@ class FakeHomeEventRepository implements HomeEventRepository {
   // - HomeEventStatus.confirmed
   // - HomeEventStatus.living
   // - HomeEventStatus.recap
-  static HomeEventStatus nextEventStatusOverride = HomeEventStatus.confirmed;
+  static HomeEventStatus nextEventStatusOverride = HomeEventStatus.recap;
 
   @override
   Future<HomeEventEntity?> getNextEvent() async {
@@ -129,11 +129,35 @@ class FakeHomeEventRepository implements HomeEventRepository {
       return null; // No next event if user hasn't voted or voted "Can't"
     }
 
+    // Calculate dates based on status for time-left testing
+    DateTime eventDate;
+    DateTime? eventEndDate;
+
+    switch (nextEventStatusOverride) {
+      case HomeEventStatus.pending:
+      case HomeEventStatus.confirmed:
+        // Future events - show normal date
+        eventDate = DateTime.now().add(const Duration(days: 3));
+        eventEndDate = eventDate.add(const Duration(hours: 4)); // 4h event
+        break;
+      case HomeEventStatus.living:
+        // Event happening now - started 1h ago, ends in 3h
+        eventDate = DateTime.now().subtract(const Duration(hours: 1));
+        eventEndDate = DateTime.now().add(const Duration(hours: 3));
+        break;
+      case HomeEventStatus.recap:
+        // Event ended 2h ago - 22h left for photo uploads
+        eventDate = DateTime.now().subtract(const Duration(hours: 6));
+        eventEndDate = DateTime.now().subtract(const Duration(hours: 2));
+        break;
+    }
+
     return HomeEventEntity(
       id: 'event_1',
       name: 'Beach Day with the Squad',
       emoji: '🏖️',
-      date: DateTime.now().add(const Duration(days: 3)),
+      date: eventDate,
+      endDate: eventEndDate,
       location: 'Praia da Rocha',
       status: nextEventStatusOverride, // Use override for testing
       goingCount: goingVotes.length,
@@ -254,6 +278,8 @@ class FakeHomeEventRepository implements HomeEventRepository {
         name: 'Dinner at New Restaurant',
         emoji: '🍽️',
         date: DateTime.now().add(const Duration(days: 7)),
+        endDate:
+            DateTime.now().add(const Duration(days: 7, hours: 3)), // 3h dinner
         location: 'Downtown Lisbon',
         status: HomeEventStatus.confirmed,
         goingCount:
@@ -274,6 +300,8 @@ class FakeHomeEventRepository implements HomeEventRepository {
         name: 'Weekend Hiking Trip',
         emoji: '⛰️',
         date: DateTime.now().add(const Duration(days: 14)),
+        endDate:
+            DateTime.now().add(const Duration(days: 14, hours: 6)), // 6h hike
         location: 'Sintra Mountains',
         status: HomeEventStatus.confirmed,
         goingCount:
@@ -450,6 +478,7 @@ class FakeHomeEventRepository implements HomeEventRepository {
         name: 'Movie Night',
         emoji: '🎬',
         date: null,
+        endDate: null, // Pending events have no dates yet
         location: 'To be decided',
         status: HomeEventStatus.pending,
         goingCount:
@@ -470,6 +499,7 @@ class FakeHomeEventRepository implements HomeEventRepository {
         name: 'Birthday Party',
         emoji: '🎂',
         date: null,
+        endDate: null, // Pending events have no dates yet
         location: 'Someone\'s House',
         status: HomeEventStatus.pending,
         goingCount:

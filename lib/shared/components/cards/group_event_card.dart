@@ -121,7 +121,7 @@ class _GroupEventCardState extends State<GroupEventCard> {
               ? _formatEventDate(_currentEvent.date!)
               : 'To be decided',
           style: AppText.bodyMedium.copyWith(
-            color: BrandColors.text2,
+            color: BrandColors.text1,
             fontWeight: FontWeight.w500,
           ),
         ),

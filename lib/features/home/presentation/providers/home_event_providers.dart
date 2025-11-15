@@ -106,3 +106,17 @@ final recentMemoriesControllerProvider =
   final useCase = ref.watch(getRecentMemoriesProvider);
   return await useCase();
 });
+
+// NavBar state provider - calculates state based on next event status
+// Planning: default state or when next event is pending/confirmed
+// Living: when next event is living
+// Recap: when next event is recap
+final navBarStateProvider = Provider<HomeEventStatus?>((ref) {
+  final nextEventAsync = ref.watch(nextEventControllerProvider);
+  
+  return nextEventAsync.when(
+    data: (event) => event?.status,
+    loading: () => null,
+    error: (_, __) => null,
+  );
+});
