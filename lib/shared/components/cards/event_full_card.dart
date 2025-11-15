@@ -155,7 +155,7 @@ class _EventFullCardState extends State<EventFullCard> {
       case EventFullCardState.confirmed:
         return 'Confirmed';
       case EventFullCardState.living:
-        return 'Living';
+        return 'Live';
       case EventFullCardState.recap:
         return 'Recap';
     }

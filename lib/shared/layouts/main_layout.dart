@@ -50,8 +50,22 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
 
   void _onNavTap(int index) {
     if (index == 2) {
-      // Center button - navigate to Create Event page
-      Navigator.pushNamed(context, AppRouter.createEvent);
+      // Center button - action depends on NavBar state
+      final nextEventStatus = ref.read(navBarStateProvider);
+
+      if (nextEventStatus == HomeEventStatus.living ||
+          nextEventStatus == HomeEventStatus.recap) {
+        // Navigate to Manage Memory page
+        // TODO: Get actual memory ID from current event
+        Navigator.pushNamed(
+          context,
+          AppRouter.manageMemory,
+          arguments: {'memoryId': 'memory-1'},
+        );
+      } else {
+        // Planning state: navigate to Create Event page
+        Navigator.pushNamed(context, AppRouter.createEvent);
+      }
       return;
     }
 

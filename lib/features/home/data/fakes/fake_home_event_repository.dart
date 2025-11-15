@@ -20,7 +20,7 @@ class FakeHomeEventRepository implements HomeEventRepository {
   // - HomeEventStatus.confirmed
   // - HomeEventStatus.living
   // - HomeEventStatus.recap
-  static HomeEventStatus nextEventStatusOverride = HomeEventStatus.living;
+  static HomeEventStatus nextEventStatusOverride = HomeEventStatus.recap;
 
   @override
   Future<HomeEventEntity?> getNextEvent() async {

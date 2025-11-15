@@ -6,16 +6,16 @@ import '../../domain/repositories/memory_repository.dart';
 /// Modify these values to test different layouts
 class FakeMemoryConfig {
   /// Number of portrait photos in covers (0-3)
-  static int coverPortraitCount = 1;
+  static int coverPortraitCount = 3;
 
   /// Number of landscape photos in covers (0-3)
-  static int coverLandscapeCount = 1;
+  static int coverLandscapeCount = 0;
 
   /// Number of portrait photos in grid (non-covers)
-  static int gridPortraitCount = 2;
+  static int gridPortraitCount = 3;
 
   /// Number of landscape photos in grid (non-covers)
-  static int gridLandscapeCount = 4;
+  static int gridLandscapeCount = 3;
 
   /// Max covers is 3
   static int get totalCovers => coverPortraitCount + coverLandscapeCount;
@@ -38,6 +38,20 @@ class FakeMemoryRepository implements MemoryRepository {
   Future<String> shareMemory(String memoryId) async {
     await Future.delayed(const Duration(milliseconds: 300));
     return 'https://lazzo.app/memory/$memoryId';
+  }
+
+  @override
+  Future<bool> updateCover(String memoryId, String? photoId) async {
+    await Future.delayed(const Duration(milliseconds: 300));
+    // Fake implementation: always succeeds
+    return true;
+  }
+
+  @override
+  Future<bool> removePhoto(String memoryId, String photoId) async {
+    await Future.delayed(const Duration(milliseconds: 300));
+    // Fake implementation: always succeeds
+    return true;
   }
 }
 
