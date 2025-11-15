@@ -426,21 +426,33 @@ class _GroupHubPageState extends ConsumerState<GroupHubPage>
           ..sort((a, b) {
             // Living has highest priority
             if (a.status == GroupEventStatus.living &&
-                b.status != GroupEventStatus.living) return -1;
+                b.status != GroupEventStatus.living) {
+              return -1;
+            }
             if (b.status == GroupEventStatus.living &&
-                a.status != GroupEventStatus.living) return 1;
+                a.status != GroupEventStatus.living) {
+              return 1;
+            }
 
             // Recap has second priority
             if (a.status == GroupEventStatus.recap &&
-                b.status != GroupEventStatus.recap) return -1;
+                b.status != GroupEventStatus.recap) {
+              return -1;
+            }
             if (b.status == GroupEventStatus.recap &&
-                a.status != GroupEventStatus.recap) return 1;
+                a.status != GroupEventStatus.recap) {
+              return 1;
+            }
 
             // Confirmed has third priority
             if (a.status == GroupEventStatus.confirmed &&
-                b.status != GroupEventStatus.confirmed) return -1;
+                b.status != GroupEventStatus.confirmed) {
+              return -1;
+            }
             if (b.status == GroupEventStatus.confirmed &&
-                a.status != GroupEventStatus.confirmed) return 1;
+                a.status != GroupEventStatus.confirmed) {
+              return 1;
+            }
 
             // Within same status, sort by date (earlier dates first)
             if (a.date != null && b.date != null) {
