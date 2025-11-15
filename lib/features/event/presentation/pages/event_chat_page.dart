@@ -31,6 +31,7 @@ class _EventChatPageState extends ConsumerState<EventChatPage> {
   bool _isUserScrolling = false;
   bool _shouldAutoScroll = true;
   ChatMessage? _replyingTo;
+  String? _scrollToMessageId;
 
   /// Get current user ID from Supabase auth
   String? get _currentUserId => Supabase.instance.client.auth.currentUser?.id;
@@ -40,6 +41,16 @@ class _EventChatPageState extends ConsumerState<EventChatPage> {
     super.initState();
     _scrollController.addListener(_onScroll);
     _messageController.addListener(_onTextChanged);
+    
+    // Extract scrollToMessageId from navigation arguments after first frame
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+      if (args != null && args.containsKey('scrollToMessageId')) {
+        setState(() {
+          _scrollToMessageId = args['scrollToMessageId'] as String?;
+        });
+      }
+    });
   }
 
   @override
@@ -194,16 +205,16 @@ class _EventChatPageState extends ConsumerState<EventChatPage> {
     final messageKey = _messageKeys[message.id];
     if (messageKey?.currentContext != null) {
       // Delay to ensure widget is rendered and list is settled
-      Future.delayed(const Duration(milliseconds: 0), () {
+      Future.delayed(const Duration(milliseconds: 300), () {
         if (!mounted) return;
 
         final context = messageKey?.currentContext;
         if (context != null && context.mounted) {
           Scrollable.ensureVisible(
             context,
-            duration: const Duration(milliseconds: 0),
+            duration: const Duration(milliseconds: 500),
             curve: Curves.easeInOutCubic,
-            alignment: 0.5,
+            alignment: 0.3,
           );
           HapticFeedback.lightImpact();
         }
@@ -249,6 +260,34 @@ class _EventChatPageState extends ConsumerState<EventChatPage> {
   Widget build(BuildContext context) {
     final messagesAsync = ref.watch(chatMessagesProvider(widget.eventId));
     final eventAsync = ref.watch(eventDetailProvider(widget.eventId));
+    
+    // Auto-scroll to message if scrollToMessageId is set
+    messagesAsync.whenData((messages) {
+      if (_scrollToMessageId != null) {
+        // Find message by generated ID (userId_timestamp)
+        final targetMessage = messages.cast<ChatMessage?>().firstWhere(
+          (m) {
+            if (m == null) return false;
+            final messageId = '${m.userId}_${m.createdAt.millisecondsSinceEpoch}';
+            return messageId == _scrollToMessageId;
+          },
+          orElse: () => null,
+        );
+        
+        if (targetMessage != null) {
+          // Scroll after messages are rendered
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) {
+              _scrollToMessage(targetMessage);
+              // Clear after scrolling
+              setState(() {
+                _scrollToMessageId = null;
+              });
+            }
+          });
+        }
+      }
+    });
 
     // Use firstWhereOrNull from collection package for nullable result
     final pinnedMessage = messagesAsync.maybeWhen(

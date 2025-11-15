@@ -12,6 +12,8 @@ class ChatMessagePreview {
   final String content;
   final DateTime timestamp;
   final bool read;
+  final bool isPinned;
+  final ChatMessagePreview? replyTo;
 
   const ChatMessagePreview({
     required this.userId,
@@ -20,6 +22,8 @@ class ChatMessagePreview {
     required this.content,
     required this.timestamp,
     required this.read,
+    this.isPinned = false,
+    this.replyTo,
   });
 }
 
@@ -28,16 +32,24 @@ class ChatPreviewWidget extends StatefulWidget {
   final int newMessagesCount;
   final String currentUserId;
   final List<ChatMessagePreview> recentMessages;
-  final VoidCallback onOpenChat;
-  final Function(String content) onSendMessage;
+  final VoidCallback? onOpenChat;
+  final Function(String messageId)? onOpenChatWithMessage;
+  final Function(String content, {ChatMessagePreview? replyTo})? onSendMessage;
+  final Function(ChatMessagePreview message)? onPinMessage;
+  final Function(ChatMessagePreview message)? onDeleteMessage;
+  final Function(ChatMessagePreview message)? onReplyMessage;
 
   const ChatPreviewWidget({
     super.key,
     required this.newMessagesCount,
     required this.currentUserId,
     required this.recentMessages,
-    required this.onOpenChat,
-    required this.onSendMessage,
+    this.onOpenChat,
+    this.onOpenChatWithMessage,
+    this.onSendMessage,
+    this.onPinMessage,
+    this.onDeleteMessage,
+    this.onReplyMessage,
   });
 
   @override
@@ -47,6 +59,7 @@ class ChatPreviewWidget extends StatefulWidget {
 class _ChatPreviewWidgetState extends State<ChatPreviewWidget> {
   final TextEditingController _controller = TextEditingController();
   final FocusNode _focusNode = FocusNode();
+  ChatMessagePreview? _replyingTo;
 
   @override
   void initState() {
@@ -60,16 +73,102 @@ class _ChatPreviewWidgetState extends State<ChatPreviewWidget> {
     super.dispose();
   }
 
+  void _showMessageActions(ChatMessagePreview message) {
+    final isCurrentUser = message.userId == widget.currentUserId;
+    
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: BrandColors.bg2,
+      isDismissible: true,
+      enableDrag: true,
+      builder: (context) => Container(
+        padding: const EdgeInsets.symmetric(
+          horizontal: Insets.screenH,
+          vertical: Gaps.lg,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Pin/Unpin
+            if (widget.onPinMessage != null)
+              _ActionButton(
+                icon: message.isPinned ? Icons.push_pin : Icons.push_pin_outlined,
+                label: message.isPinned ? 'Unpin message' : 'Pin message',
+                onTap: () {
+                  Navigator.pop(context);
+                  widget.onPinMessage!(message);
+                },
+              ),
+            
+            // Reply
+            if (widget.onReplyMessage != null)
+              _ActionButton(
+                icon: Icons.reply,
+                label: 'Reply',
+                onTap: () {
+                  Navigator.pop(context);
+                  setState(() {
+                    _replyingTo = message;
+                    _focusNode.requestFocus();
+                  });
+                },
+              ),
+            
+            // Delete (only for current user)
+            if (isCurrentUser && widget.onDeleteMessage != null)
+              _ActionButton(
+                icon: Icons.delete_outline,
+                label: 'Delete message',
+                onTap: () {
+                  Navigator.pop(context);
+                  widget.onDeleteMessage!(message);
+                },
+                isDestructive: true,
+              ),
+            
+            const SizedBox(height: Gaps.sm),
+            
+            // Cancel
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              style: TextButton.styleFrom(
+                backgroundColor: BrandColors.bg3,
+                padding: const EdgeInsets.symmetric(vertical: Pads.ctlV),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(Radii.md),
+                ),
+              ),
+              child: Text(
+                'Cancel',
+                style: AppText.bodyMedium.copyWith(
+                  color: BrandColors.text1,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   void _sendMessage() {
     final content = _controller.text.trim();
     print('\n📤 [ChatPreviewWidget] _sendMessage called');
     print('   - Content: "$content"');
     print('   - isEmpty: ${content.isEmpty}');
-    if (content.isNotEmpty) {
-      print('   - Calling widget.onSendMessage...');
-      widget.onSendMessage(content);
+    print('   - Replying to: ${_replyingTo?.content}');
+    if (content.isNotEmpty && widget.onSendMessage != null) {
+      print('   - Calling widget.onSendMessage with replyTo...');
+      widget.onSendMessage!(content, replyTo: _replyingTo);
       _controller.clear();
-      print('   ✅ Message sent, controller cleared');
+      setState(() {
+        _replyingTo = null;
+      });
+      print('   ✅ Message sent, controller cleared, reply context cleared');
+    } else if (widget.onSendMessage == null) {
+      print('   ⚠️ onSendMessage is null, cannot send');
     } else {
       print('   ⚠️ Content is empty, not sending');
     }
@@ -179,6 +278,53 @@ class _ChatPreviewWidgetState extends State<ChatPreviewWidget> {
 
           const SizedBox(height: Gaps.xxs),
 
+          // Pinned messages section (same style as chat_page)
+          ...sortedMessages.where((m) => m.isPinned).map((pinnedMsg) {
+            // Generate messageId similar to event_chat_page (userId + timestamp)
+            final messageId = '${pinnedMsg.userId}_${pinnedMsg.timestamp.millisecondsSinceEpoch}';
+            return GestureDetector(
+              onTap: () {
+                if (widget.onOpenChatWithMessage != null) {
+                  widget.onOpenChatWithMessage!(messageId);
+                } else if (widget.onOpenChat != null) {
+                  widget.onOpenChat!();
+                }
+              },
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: Pads.ctlH,
+                  vertical: Gaps.sm,
+                ),
+                margin: const EdgeInsets.only(bottom: Gaps.xs),
+                decoration: BoxDecoration(
+                  color: BrandColors.bg3,
+                  borderRadius: BorderRadius.circular(Radii.sm),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.push_pin,
+                      size: IconSizes.sm,
+                      color: BrandColors.text2,
+                    ),
+                    const SizedBox(width: Gaps.sm),
+                    Expanded(
+                      child: Text(
+                        pinnedMsg.content,
+                        style: AppText.bodyMedium.copyWith(
+                          color: BrandColors.text1,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }),
+
           // Messages list with dynamic height
           if (messagesToShow.isNotEmpty)
             Container(
@@ -203,9 +349,23 @@ class _ChatPreviewWidgetState extends State<ChatPreviewWidget> {
                         padding: EdgeInsets.only(
                           bottom: index == 0 ? 0 : Gaps.md,
                         ),
-                        child: _MessageBubble(
-                          message: message,
-                          isCurrentUser: message.userId == widget.currentUserId,
+                        child: GestureDetector(
+                          onLongPress: () => _showMessageActions(message),
+                          child: _MessageBubble(
+                            message: message,
+                            isCurrentUser: message.userId == widget.currentUserId,
+                            onReplyTap: message.replyTo != null
+                                ? () {
+                                    // Navigate to chat and scroll to replied message
+                                    if (widget.onOpenChatWithMessage != null) {
+                                      final replyMessageId = '${message.replyTo!.userId}_${message.replyTo!.timestamp.millisecondsSinceEpoch}';
+                                      widget.onOpenChatWithMessage!(replyMessageId);
+                                    } else if (widget.onOpenChat != null) {
+                                      widget.onOpenChat!();
+                                    }
+                                  }
+                                : null,
+                          ),
                         ),
                       );
                     },
@@ -235,6 +395,73 @@ class _ChatPreviewWidgetState extends State<ChatPreviewWidget> {
             ),
 
           const SizedBox(height: Gaps.md),
+
+          // Reply indicator (when replying to a message - same style as chat_page)
+          if (_replyingTo != null)
+            Container(
+              margin: const EdgeInsets.only(bottom: Gaps.xs),
+              padding: const EdgeInsets.symmetric(
+                horizontal: Pads.ctlH,
+                vertical: Gaps.sm,
+              ),
+              decoration: BoxDecoration(
+                color: BrandColors.bg3,
+                borderRadius: BorderRadius.circular(Radii.sm),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 3,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: BrandColors.text2,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  const SizedBox(width: Gaps.sm),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          _replyingTo!.userName,
+                          style: AppText.bodyMedium.copyWith(
+                            color: BrandColors.text2,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          _replyingTo!.content,
+                          style: AppText.bodyMedium.copyWith(
+                            color: BrandColors.text1,
+                            fontSize: 13,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(
+                      Icons.close,
+                      size: IconSizes.sm,
+                      color: BrandColors.text2,
+                    ),
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                    onPressed: () {
+                      setState(() {
+                        _replyingTo = null;
+                      });
+                    },
+                  ),
+                ],
+              ),
+            ),
 
           // Message input
           Container(
@@ -274,10 +501,10 @@ class _ChatPreviewWidgetState extends State<ChatPreviewWidget> {
                   child: Material(
                     color: Colors.transparent,
                     child: InkWell(
-                      onTap: () {
+                      onTap: widget.onSendMessage != null ? () {
                         _sendMessage();
                         HapticFeedback.lightImpact();
-                      },
+                      } : null,
                       borderRadius: BorderRadius.circular(Radii.pill),
                       child: Container(
                         padding: const EdgeInsets.all(8),
@@ -305,8 +532,13 @@ class _ChatPreviewWidgetState extends State<ChatPreviewWidget> {
 class _MessageBubble extends StatelessWidget {
   final ChatMessagePreview message;
   final bool isCurrentUser;
+  final VoidCallback? onReplyTap;
 
-  const _MessageBubble({required this.message, required this.isCurrentUser});
+  const _MessageBubble({
+    required this.message,
+    required this.isCurrentUser,
+    this.onReplyTap,
+  });
 
   String _formatTimestamp(DateTime timestamp) {
     final now = DateTime.now();
@@ -334,10 +566,69 @@ class _MessageBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final bubbleColor = isCurrentUser ? BrandColors.planning : BrandColors.bg3;
+    
+    // Debug: Check if message has replyTo
+    if (message.replyTo != null) {
+      print('🔄 [_MessageBubble] Rendering reply indicator for "${message.content.substring(0, message.content.length > 15 ? 15 : message.content.length)}..." replying to "${message.replyTo!.content.substring(0, message.replyTo!.content.length > 15 ? 15 : message.replyTo!.content.length)}..."');
+    }
+    
     return Column(
       crossAxisAlignment:
           isCurrentUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
       children: [
+        // Reply preview bubble (if replying to a message)
+        if (message.replyTo != null) ...[
+          Padding(
+            padding: EdgeInsets.only(
+              left: isCurrentUser ? 0 : 40,
+              right: isCurrentUser ? 0 : 0,
+              bottom: Gaps.xxs,
+            ),
+            child: GestureDetector(
+              onTap: onReplyTap,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: Pads.ctlH,
+                  vertical: Gaps.xs,
+                ),
+                decoration: BoxDecoration(
+                  color: bubbleColor.withValues(alpha: 0.3),
+                  borderRadius: BorderRadius.circular(Radii.md),
+                  border: const Border(
+                    left: BorderSide(
+                      color: BrandColors.text2,
+                      width: 3,
+                    ),
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.reply,
+                      size: 14,
+                      color: BrandColors.text2,
+                    ),
+                    const SizedBox(width: Gaps.xs),
+                    Flexible(
+                      child: Text(
+                        message.replyTo!.content,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppText.bodyMedium.copyWith(
+                          color: BrandColors.text2,
+                          fontSize: 12,
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
         Row(
           mainAxisAlignment:
               isCurrentUser ? MainAxisAlignment.end : MainAxisAlignment.start,
@@ -425,6 +716,63 @@ class _MessageBubble extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// Action button for message actions bottom sheet
+class _ActionButton extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+  final bool isDestructive;
+
+  const _ActionButton({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+    this.isDestructive = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(Radii.md),
+        child: Container(
+          padding: const EdgeInsets.symmetric(
+            horizontal: Pads.ctlH,
+            vertical: Pads.ctlV + 4,
+          ),
+          decoration: const BoxDecoration(
+            border: Border(
+              bottom: BorderSide(
+                color: BrandColors.border,
+                width: 1,
+              ),
+            ),
+          ),
+          child: Row(
+            children: [
+              Icon(
+                icon,
+                color: isDestructive ? BrandColors.cantVote : BrandColors.text1,
+                size: IconSizes.md,
+              ),
+              const SizedBox(width: Gaps.md),
+              Text(
+                label,
+                style: AppText.bodyMedium.copyWith(
+                  color: isDestructive ? BrandColors.cantVote : BrandColors.text1,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

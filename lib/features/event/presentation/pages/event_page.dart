@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../routes/app_router.dart';
@@ -16,6 +17,7 @@ import '../../../../shared/themes/colors.dart';
 import '../../domain/entities/rsvp.dart';
 import '../../domain/entities/suggestion.dart';
 import '../../domain/entities/event_detail.dart';
+import '../../domain/entities/chat_message.dart';
 import '../providers/event_providers.dart';
 import '../providers/chat_providers.dart';
 import '../widgets/chat_preview_widget.dart';
@@ -896,21 +898,29 @@ class EventPage extends ConsumerWidget {
                               );
                             },
                             loading: () {
-                              print('⏳ [EventPage] Loading user location votes...');
+                              if (kDebugMode) {
+                                print('⏳ [EventPage] Loading user location votes...');
+                              }
                               return const SizedBox.shrink();
                             },
                             error: (error, stack) {
-                              print('❌ [EventPage] Error loading user location votes: $error');
+                              if (kDebugMode) {
+                                print('❌ [EventPage] Error loading user location votes: $error');
+                              }
                               return const SizedBox.shrink();
                             },
                           );
                         },
                         loading: () {
-                          print('⏳ [EventPage] Loading location votes...');
+                          if (kDebugMode) {
+                            print('⏳ [EventPage] Loading location votes...');
+                          }
                           return const SizedBox.shrink();
                         },
                         error: (error, stack) {
-                          print('❌ [EventPage] Error loading location votes: $error');
+                          if (kDebugMode) {
+                            print('❌ [EventPage] Error loading location votes: $error');
+                          }
                           return const SizedBox.shrink();
                         },
                       );
@@ -924,15 +934,17 @@ class EventPage extends ConsumerWidget {
               // Chat Preview
               messagesAsync.when(
                 data: (messages) {
-                  print('\n═══════════════════════════════════════');
-                  print('💬 [EventPage] PREVIEW - New data received!');
-                  print('   - Event ID: $eventId');
-                  print('   - Total messages: ${messages.length}');
-                  if (messages.isNotEmpty) {
-                    print('   - First: "${messages.first.content.substring(0, messages.first.content.length > 30 ? 30 : messages.first.content.length)}..." (read=${messages.first.read})');
-                    print('   - Last: "${messages.last.content.substring(0, messages.last.content.length > 30 ? 30 : messages.last.content.length)}..."');
+                  if (kDebugMode) {
+                    print('\n═══════════════════════════════════════');
+                    print('💬 [EventPage] PREVIEW - New data received!');
+                    print('   - Event ID: $eventId');
+                    print('   - Total messages: ${messages.length}');
+                    if (messages.isNotEmpty) {
+                      print('   - First: "${messages.first.content.substring(0, messages.first.content.length > 30 ? 30 : messages.first.content.length)}..." (read=${messages.first.read})');
+                      print('   - Last: "${messages.last.content.substring(0, messages.last.content.length > 30 ? 30 : messages.last.content.length)}..."');
+                    }
+                    print('═══════════════════════════════════════\n');
                   }
-                  print('═══════════════════════════════════════\n');
                   
                   final unreadCount = ref.watch(
                     unreadMessagesCountProvider(eventId),
@@ -947,16 +959,36 @@ class EventPage extends ConsumerWidget {
                           content: m.content,
                           timestamp: m.createdAt,
                           read: m.read,
+                          isPinned: m.isPinned,
+                          replyTo: m.replyTo != null
+                              ? ChatMessagePreview(
+                                  userId: m.replyTo!.userId,
+                                  userName: m.replyTo!.userName,
+                                  userAvatar: m.replyTo!.userAvatar,
+                                  content: m.replyTo!.content,
+                                  timestamp: m.replyTo!.createdAt,
+                                  read: m.replyTo!.read,
+                                  isPinned: m.replyTo!.isPinned,
+                                )
+                              : null,
                         ),
                       )
                       .toList();
                   
-                  print('💬 [EventPage] Passing ${previewMessages.length} messages to ChatPreviewWidget');
-                  print('💬 [EventPage] Unread count: $unreadCount, currentUserId: $currentUserId');
-                  if (previewMessages.isNotEmpty) {
-                    print('💬 [EventPage] Preview messages details:');
-                    for (var i = 0; i < previewMessages.length && i < 3; i++) {
-                      print('   $i: "${previewMessages[i].content}" (user: ${previewMessages[i].userName}, read: ${previewMessages[i].read})');
+                  if (kDebugMode) {
+                    print('💬 [EventPage] Passing ${previewMessages.length} messages to ChatPreviewWidget');
+                    print('💬 [EventPage] Unread count: $unreadCount, currentUserId: $currentUserId');
+                    
+                    // Check for messages with replyTo
+                    final messagesWithReply = previewMessages.where((m) => m.replyTo != null).length;
+                    print('📨 [EventPage] Messages with replyTo: $messagesWithReply/${previewMessages.length}');
+                    
+                    if (previewMessages.isNotEmpty) {
+                      print('💬 [EventPage] Preview messages details:');
+                      for (var i = 0; i < previewMessages.length && i < 3; i++) {
+                        final hasReply = previewMessages[i].replyTo != null ? ' (replying to: "${previewMessages[i].replyTo!.content.substring(0, previewMessages[i].replyTo!.content.length > 15 ? 15 : previewMessages[i].replyTo!.content.length)}...")' : '';
+                        print('   $i: "${previewMessages[i].content}" (user: ${previewMessages[i].userName}, read: ${previewMessages[i].read})$hasReply');
+                      }
                     }
                   }
                   
@@ -971,21 +1003,83 @@ class EventPage extends ConsumerWidget {
                         arguments: {'eventId': eventId},
                       );
                     },
-                    onSendMessage: (content) async {
-                      print('\n🚀 [EventPage] PREVIEW sending message (DATA state):');
-                      print('   - Content: "$content"');
-                      print('   - Event ID: $eventId');
-                      await ref.read(chatActionsProvider(eventId)).sendMessage(content);
-                      print('✅ [EventPage] PREVIEW sendMessage completed');
+                    onOpenChatWithMessage: (messageId) {
+                      Navigator.pushNamed(
+                        context,
+                        AppRouter.eventChat,
+                        arguments: {
+                          'eventId': eventId,
+                          'scrollToMessageId': messageId,
+                        },
+                      );
+                    },
+                    onSendMessage: (content, {ChatMessagePreview? replyTo}) async {
+                      if (kDebugMode) {
+                        print('\n🚀 [EventPage] PREVIEW sending message (DATA state):');
+                        print('   - Content: "$content"');
+                        print('   - Event ID: $eventId');
+                        print('   - ReplyTo: ${replyTo?.content}');
+                      }
+                      
+                      // Convert ChatMessagePreview to ChatMessage if replying
+                      ChatMessage? replyToMessage;
+                      if (replyTo != null) {
+                        // Find the original ChatMessage from messages list
+                        try {
+                          replyToMessage = messages.firstWhere(
+                            (m) => m.userId == replyTo.userId && 
+                                   m.content == replyTo.content &&
+                                   m.createdAt == replyTo.timestamp,
+                          );
+                          if (kDebugMode) {
+                            print('   ✅ Found original message to reply to: ${replyToMessage.id}');
+                          }
+                        } catch (e) {
+                          if (kDebugMode) {
+                            print('   ⚠️ Could not find original message for reply');
+                          }
+                        }
+                      }
+                      
+                      await ref.read(chatActionsProvider(eventId)).sendMessage(
+                        content,
+                        replyTo: replyToMessage,
+                      );
+                      if (kDebugMode) {
+                        print('✅ [EventPage] PREVIEW sendMessage completed');
+                      }
+                    },
+                    onPinMessage: (message) async {
+                      final originalMessage = messages.firstWhere(
+                        (m) => m.content == message.content && m.userId == message.userId,
+                      );
+                      await ref.read(chatActionsProvider(eventId)).togglePin(
+                        originalMessage.id,
+                        !originalMessage.isPinned,
+                      );
+                    },
+                    onDeleteMessage: (message) async {
+                      final originalMessage = messages.firstWhere(
+                        (m) => m.content == message.content && m.userId == message.userId,
+                      );
+                      await ref.read(chatActionsProvider(eventId)).deleteMessage(originalMessage.id);
+                    },
+                    onReplyMessage: (message) {
+                      // Navigate to chat page with reply context (future enhancement)
+                      Navigator.pushNamed(
+                        context,
+                        AppRouter.eventChat,
+                        arguments: {'eventId': eventId},
+                      );
                     },
                   );
                 },
-                loading: () => ChatPreviewWidget(
+                loading: () => const ChatPreviewWidget(
                   newMessagesCount: 0,
-                  currentUserId: currentUserId ?? '',
-                  recentMessages: const [],
-                  onOpenChat: () {},
-                  onSendMessage: (content) async {},
+                  currentUserId: '',
+                  recentMessages: [],
+                  onOpenChat: null,
+                  onSendMessage: null,
                 ),
                 error: (error, stack) {
                   // Show empty chat widget on error so users can still try to send messages
@@ -994,11 +1088,23 @@ class EventPage extends ConsumerWidget {
                     currentUserId: currentUserId ?? '',
                     recentMessages: const [],
                     onOpenChat: () {},
-                    onSendMessage: (content) async {
-                      print('\n🚀 [EventPage] PREVIEW sending message (ERROR state):');
-                      print('   - Content: "$content"');
+                    onSendMessage: (content, {ChatMessagePreview? replyTo}) async {
+                      if (kDebugMode) {
+                        print('\n🚀 [EventPage] PREVIEW sending message (ERROR state):');
+                        print('   - Content: "$content"');
+                        print('   - ReplyTo: ${replyTo?.content}');
+                      }
                       await ref.read(chatActionsProvider(eventId)).sendMessage(content);
-                      print('✅ [EventPage] PREVIEW sendMessage completed');
+                      if (kDebugMode) {
+                        print('✅ [EventPage] PREVIEW sendMessage completed');
+                      }
+                    },
+                    onPinMessage: (message) async {
+                      // Try to send action even in error state
+                      await ref.read(chatActionsProvider(eventId)).togglePin('', false);
+                    },
+                    onDeleteMessage: (message) async {
+                      await ref.read(chatActionsProvider(eventId)).deleteMessage('');
                     },
                   );
                 },
