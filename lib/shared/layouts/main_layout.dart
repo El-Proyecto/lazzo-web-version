@@ -116,7 +116,7 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
 
     // Get NavBar state from next event status
     final nextEventStatus = ref.watch(navBarStateProvider);
-    
+
     // Map event status to NavBar state
     // Pending events also show Planning (green button with +)
     nav.NavBarState navBarState;

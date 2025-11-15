@@ -113,7 +113,7 @@ final recentMemoriesControllerProvider =
 // Recap: when next event is recap
 final navBarStateProvider = Provider<HomeEventStatus?>((ref) {
   final nextEventAsync = ref.watch(nextEventControllerProvider);
-  
+
   return nextEventAsync.when(
     data: (event) => event?.status,
     loading: () => null,

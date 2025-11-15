@@ -72,7 +72,7 @@ class NavigationBar extends StatelessWidget {
     // Determine color and icon based on state
     Color buttonColor;
     IconData icon;
-    
+
     switch (state) {
       case NavBarState.planning:
         buttonColor = BrandColors.planning;
