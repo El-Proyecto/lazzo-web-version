@@ -37,10 +37,10 @@ import '../features/home/presentation/providers/pending_event_providers.dart';
 
 
 
-// PAYMENTS (GROUP HUB)
-import '../features/group_hub/presentation/providers/group_hub_providers.dart';
-import '../features/group_hub/data/data_sources/group_expense_remote_data_source.dart';
-import '../features/group_hub/data/repositories/group_expense_repository_impl.dart';
+// EXPENSES
+import 'features/expense/presentation/providers/event_expense_providers.dart';
+import 'features/expense/data/data_sources/event_expense_remote_data_source.dart';
+import 'features/expense/data/repositories/event_expense_repository_impl.dart';
 
 // PROFILE - Real implementation
 import '../features/profile/data/data_sources/profile_remote_data_source.dart';
@@ -148,10 +148,10 @@ void main() async {
           return UsersRepository(UsersRemoteDatasource(client));
         }),
 
-        groupExpenseRepositoryProvider.overrideWith((ref) {
+        eventExpenseRepositoryProvider.overrideWith((ref) {
           final client = Supabase.instance.client;
-          final dataSource = GroupExpenseRemoteDataSource(client);
-          return GroupExpenseRepositoryImpl(dataSource);
+          final dataSource = EventExpenseRemoteDataSource(client);
+          return EventExpenseRepositoryImpl(dataSource);
         }),
 
         // EVENT FEATURES -> fake-only (P1 implementation)

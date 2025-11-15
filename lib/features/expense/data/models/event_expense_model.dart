@@ -1,8 +1,8 @@
-import '../../domain/entities/group_expense_entity.dart';
+import '../../domain/entities/event_expense_entity.dart';
 
-class GroupExpenseDto {
+class EventExpenseDto {
   final String id;
-  final String groupId;
+  final String eventId; // ✅ Mudou
   final String description;
   final double amount;
   final String paidBy;
@@ -11,9 +11,9 @@ class GroupExpenseDto {
   final DateTime createdAt;
   final bool isSettled;
 
-  const GroupExpenseDto({
+  const EventExpenseDto({
     required this.id,
-    required this.groupId,
+    required this.eventId,
     required this.description,
     required this.amount,
     required this.paidBy,
@@ -23,11 +23,10 @@ class GroupExpenseDto {
     required this.isSettled,
   });
 
-  /// Parse Supabase row -> DTO
-  factory GroupExpenseDto.fromJson(Map<String, dynamic> json) {
-    return GroupExpenseDto(
+  factory EventExpenseDto.fromJson(Map<String, dynamic> json) {
+    return EventExpenseDto(
       id: json['id'] as String,
-      groupId: json['group_id'] as String,
+      eventId: json['event_id'] as String, // ✅ Mudou de group_id
       description: json['description'] as String,
       amount: (json['amount'] as num).toDouble(),
       paidBy: json['paid_by'] as String,
@@ -38,11 +37,10 @@ class GroupExpenseDto {
     );
   }
 
-  /// DTO -> Entity
-  GroupExpenseEntity toEntity() {
-    return GroupExpenseEntity(
+  EventExpenseEntity toEntity() {
+    return EventExpenseEntity(
       id: id,
-      groupId: groupId,
+      eventId: eventId,
       description: description,
       amount: amount,
       paidBy: paidBy,
@@ -53,12 +51,12 @@ class GroupExpenseDto {
     );
   }
 
-  /// Entity -> JSON (para INSERT)
-  static Map<String, dynamic> fromEntity(GroupExpenseEntity entity) {
+  static Map<String, dynamic> fromEntity(EventExpenseEntity entity) {
     return {
-      'group_id': entity.groupId,
+      'event_id': entity.eventId, // ✅ Mudou
       'description': entity.description,
       'amount': entity.amount,
+      'paid_by': entity.paidBy,
       'participants_owe': entity.participantsOwe,
       'participants_paid': entity.participantsPaid,
       'is_settled': entity.isSettled,

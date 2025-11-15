@@ -11,7 +11,6 @@ import '../../../../shared/themes/colors.dart';
 import '../providers/group_hub_providers.dart';
 import '../../domain/entities/group_memory_entity.dart';
 import 'group_details_page.dart';
-import '../../../groups/presentation/providers/groups_provider.dart';
 
 class GroupHubPage extends ConsumerStatefulWidget {
   final String groupId;
@@ -51,9 +50,6 @@ class _GroupHubPageState extends ConsumerState<GroupHubPage>
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
     _initializeScrollControllers();
-    Future.microtask(() {
-      ref.read(groupMembersProvider(widget.groupId));
-    });
   }
 
   void _initializeScrollControllers() {

@@ -1,4 +1,5 @@
 import '../entities/event_detail.dart';
+import '../entities/event_participant_entity.dart';
 
 /// Event repository interface
 /// Defines the contract for event data operations
@@ -30,4 +31,6 @@ abstract class EventRepository {
     String eventId,
     EventStatus status,
   );
+
+  Future<List<EventParticipantEntity>> getEventParticipants(String eventId);
 }

@@ -24,6 +24,10 @@ import '../widgets/date_time_suggestions_widget.dart'
 import '../widgets/date_time_suggestions_widget.dart' as datetime_widget;
 import '../widgets/location_suggestions_widget.dart';
 import '../widgets/add_suggestion_bottom_sheet.dart';
+import '../providers/event_participants_provider.dart';
+
+import '../../../../shared/components/dialogs/add_expense_bottom_sheet.dart';
+import '../../../expense/presentation/providers/event_expense_providers.dart';
 
 /// Event detail page
 /// Displays all event information and interactions
@@ -94,6 +98,7 @@ class EventPage extends ConsumerWidget {
     final userSuggestionVotesAsync = ref.watch(
       userSuggestionVotesProvider(eventId),
     );
+    final participantsAsync = ref.watch(eventParticipantsProvider(eventId));
 
     return Scaffold(
       backgroundColor: BrandColors.bg1,
@@ -874,15 +879,36 @@ class EventPage extends ConsumerWidget {
               const SizedBox(height: Gaps.lg),
 
               // Expenses widget
-              EventExpensesWidget(
-                eventId: eventId,
-                mode: ChatMode.planning,
-                participants: const [], // TODO: Get event participants
-                onAddExpense: (title, paidByIds, payerIds, amount) {
-                  // TODO: Implement add expense
+              participantsAsync.when(
+                data: (participants) {
+                  final participantOptions = participants
+                      .map((p) => ExpenseParticipantOption(
+                            id: p.userId,
+                            name: p.displayName,
+                            avatarUrl: p.avatarUrl,
+                          ))
+                      .toList();
+
+                  return EventExpensesWidget(
+                    eventId: eventId,
+                    mode: ChatMode.planning,
+                    participants: participantOptions, // ✅ Participantes reais
+                    onAddExpense: (title, paidById, participantsOwe, amount) {
+                      ref
+                          .read(eventExpensesProvider(eventId).notifier)
+                          .addExpense(
+                        description: title,
+                        amount: amount,
+                        paidBy: paidById,
+                        participantsOwe: participantsOwe,
+                        participantsPaid: [],
+                      );
+                    },
+                  );
                 },
+                loading: () => const SizedBox.shrink(),
+                error: (error, stack) => const SizedBox.shrink(),
               ),
-              const SizedBox(height: Gaps.lg),
 
               // Location Widget (if location is set)
               if (event.location != null) ...[

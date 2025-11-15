@@ -4,23 +4,23 @@ import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/constants/text_styles.dart';
 import '../../../../shared/themes/colors.dart';
 import '../../../../shared/components/dialogs/add_expense_bottom_sheet.dart';
-import 'group_expense_card.dart';
+import 'event_expense_card.dart';
 import 'expense_detail_bottom_sheet.dart';
-import '../../domain/entities/group_expense_entity.dart';
-import '../../domain/entities/expense_participant_entity.dart';
-import '../providers/event_providers.dart';
+// ✅ MUDAR: import de expense/ em vez de event/
+import '../../../expense/domain/entities/event_expense_entity.dart';
+// ✅ MUDAR: import provider de expense/
+import '../../../expense/presentation/providers/event_expense_providers.dart';
 import 'chat_preview_widget.dart'; // For ChatMode enum
 
 /// Widget showing event expenses in both planning and living modes
-/// Uses same cards as group hub expenses section
 class EventExpensesWidget extends ConsumerWidget {
   final String eventId;
   final List<ExpenseParticipantOption> participants;
   final ChatMode mode;
   final Function(
     String title,
-    List<String> paidByIds,
-    List<String> payerIds,
+    String paidById, // ✅ Mudou de List<String> para String
+    List<String> participantsOwe,
     double totalAmount,
   ) onAddExpense;
 
@@ -34,17 +34,15 @@ class EventExpensesWidget extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // TODO: Replace groupId with actual eventId when P2 implements event expenses
-    final expensesAsync = ref.watch(groupExpensesProvider('event-1'));
+    // ✅ MUDAR: usar eventExpensesProvider de expense/
+    final expensesAsync = ref.watch(eventExpensesProvider(eventId));
 
     return expensesAsync.when(
       data: (expenses) {
-        // Don't show widget if no expenses (user can use top action row button)
         if (expenses.isEmpty) {
           return const SizedBox.shrink();
         }
 
-        // Calculate total owed to/by user
         final userTotal = _calculateUserTotal(expenses);
         final isOwedToUser = userTotal > 0;
 
@@ -67,13 +65,12 @@ class EventExpensesWidget extends ConsumerWidget {
                       color: BrandColors.text1,
                     ),
                   ),
-                  // Total amount (green = owed to user, red = user owes)
                   Text(
                     '${isOwedToUser ? '+' : '-'}€${userTotal.abs().toStringAsFixed(2)}',
                     style: AppText.bodyMediumEmph.copyWith(
                       color: isOwedToUser
-                          ? const Color(0xFF10B981) // Green
-                          : const Color(0xFFEF4444), // Red
+                          ? const Color(0xFF10B981)
+                          : const Color(0xFFEF4444),
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -93,20 +90,18 @@ class EventExpensesWidget extends ConsumerWidget {
                   final userAmount = _calculateUserAmount(expense);
                   final userOwed = _isOwedToUser(expense);
 
-                  return GroupExpenseCard(
+                  // ✅ MUDAR: GroupExpenseCard → EventExpenseCard
+                  return EventExpenseCard(
                     expense: expense,
-                    eventName: '', // Empty for living mode - all same event
                     userAmount: userAmount,
-                    totalAmount: expense.amount,
                     isOwedToUser: userOwed,
-                    paymentStatus: _getPaymentStatus(expense),
                     onTap: () => _showExpenseDetail(context, expense),
                   );
                 },
               ),
               const SizedBox(height: Gaps.md),
 
-              // Add Expense button (full width, color based on mode)
+              // Add Expense button
               SizedBox(
                 width: double.infinity,
                 child: GestureDetector(
@@ -149,18 +144,17 @@ class EventExpensesWidget extends ConsumerWidget {
     );
   }
 
-  void _showExpenseDetail(BuildContext context, GroupExpenseEntity expense) {
-    // Generate mock participants based on expense participant IDs
-    final participants = (expense.participantIds ?? [])
-        .map((id) => ExpenseParticipant(
+  void _showExpenseDetail(BuildContext context, EventExpenseEntity expense) {
+    // ✅ CRIAR: Modelo local para participantes (em vez de entity separada)
+    final participants = (expense.participantsOwe + expense.participantsPaid)
+        .toSet() // Remove duplicados
+        .map((id) => ExpenseParticipantDisplay(
               id: id,
               name: id == 'current_user' ? 'You' : id,
               avatarUrl: null,
               amount: _calculateUserAmount(expense),
-              hasPaid: expense.isSettled || id == expense.paidBy,
-              paidAt: (expense.isSettled || id == expense.paidBy)
-                  ? expense.date
-                  : null,
+              hasPaid: expense.participantsPaid.contains(id),
+              paidAt: expense.participantsPaid.contains(id) ? expense.date : null,
             ))
         .toList();
 
@@ -171,21 +165,18 @@ class EventExpensesWidget extends ConsumerWidget {
       isCurrentUserPayer: expense.paidBy == 'current_user',
       mode: mode,
       onMarkAsPaid: () {
-        // TODO: Implement mark as paid
+        // TODO: Implementar mark as paid
       },
       onNotifyParticipant: (participantId) {
-        // TODO: Implement notify participant
+        // TODO: Implementar notificação
       },
     );
   }
 
-  // Calculate total amount owed to/by user across all expenses
-  double _calculateUserTotal(List<GroupExpenseEntity> expenses) {
+  double _calculateUserTotal(List<EventExpenseEntity> expenses) {
     double total = 0;
     for (final expense in expenses) {
-      // Skip settled expenses in total calculation
       if (expense.isSettled) continue;
-
       final amount = _calculateUserAmount(expense);
       final isOwed = _isOwedToUser(expense);
       total += isOwed ? amount : -amount;
@@ -193,19 +184,33 @@ class EventExpensesWidget extends ConsumerWidget {
     return total;
   }
 
-  // Helper methods - TODO: Replace with actual logic from P2
-  double _calculateUserAmount(GroupExpenseEntity expense) {
-    // Simplified calculation - will be replaced with actual logic
-    return expense.amount / 2;
+  double _calculateUserAmount(EventExpenseEntity expense) {
+    // TODO: Lógica real de cálculo (por agora split igualitário)
+    final totalParticipants = 
+        (expense.participantsOwe.length + expense.participantsPaid.length);
+    return totalParticipants > 0 ? expense.amount / totalParticipants : 0.0;
   }
 
-  bool _isOwedToUser(GroupExpenseEntity expense) {
-    // TODO: Check if current user is owed money
-    // For now, check if current user paid
+  bool _isOwedToUser(EventExpenseEntity expense) {
     return expense.paidBy == 'current_user';
   }
+}
 
-  String _getPaymentStatus(GroupExpenseEntity expense) {
-    return expense.isSettled ? 'Settled' : '';
-  }
+// ✅ CRIAR: Modelo local para display de participantes (não é entity de domínio)
+class ExpenseParticipantDisplay {
+  final String id;
+  final String name;
+  final String? avatarUrl;
+  final double amount;
+  final bool hasPaid;
+  final DateTime? paidAt;
+
+  const ExpenseParticipantDisplay({
+    required this.id,
+    required this.name,
+    this.avatarUrl,
+    required this.amount,
+    required this.hasPaid,
+    this.paidAt,
+  });
 }

@@ -40,13 +40,6 @@ final getGroupEventsUseCaseProvider = Provider<GetGroupEvents>((ref) {
   return GetGroupEvents(ref.watch(groupEventRepositoryProvider));
 });
 
-final getGroupExpensesUseCaseProvider = Provider<GetGroupExpenses>((ref) {
-  return GetGroupExpenses(ref.watch(groupExpenseRepositoryProvider));
-});
-final createExpenseUseCaseProvider = Provider<CreateExpense>((ref) {
-  return CreateExpense(ref.watch(groupExpenseRepositoryProvider));
-});
-
 
 final getGroupMemoriesUseCaseProvider = Provider<GetGroupMemories>((ref) {
   return GetGroupMemories(ref.watch(groupMemoryRepositoryProvider));
@@ -72,18 +65,6 @@ final groupEventsProvider = StateNotifierProvider.family<GroupEventsController,
 ) {
   return GroupEventsController(
     ref.watch(getGroupEventsUseCaseProvider),
-    groupId,
-  );
-});
-
-final groupExpensesProvider = StateNotifierProvider.family<
-    GroupExpensesController, AsyncValue<List<GroupExpenseEntity>>, String>((
-  ref,
-  groupId,
-) {
-  return GroupExpensesController(
-    ref.watch(getGroupExpensesUseCaseProvider),
-    ref.watch(createExpenseUseCaseProvider),
     groupId,
   );
 });
@@ -155,59 +136,6 @@ class GroupEventsController
 
   Future<void> refresh() async {
     await loadEvents();
-  }
-}
-
-class GroupExpensesController
-    extends StateNotifier<AsyncValue<List<GroupExpenseEntity>>> {
-  final GetGroupExpenses _getGroupExpenses;
-  final CreateExpense _createExpense;
-  final String _groupId;
-
-  GroupExpensesController(
-    this._getGroupExpenses,
-    this._createExpense,
-    this._groupId,
-  ) : super(const AsyncValue.loading()) {
-    loadExpenses();
-  }
-
-  Future<void> loadExpenses() async {
-    state = const AsyncValue.loading();
-    try {
-      final expenses = await _getGroupExpenses(_groupId);
-      state = AsyncValue.data(expenses);
-    } catch (error, stackTrace) {
-      state = AsyncValue.error(error, stackTrace);
-    }
-  }
-
-  // ✅ ADICIONAR este método
-  Future<void> refresh() async {
-    await loadExpenses();
-  }
-
-  Future<void> addExpense({
-    required String description,
-    required double amount,
-    required String paidBy,
-    required List<String> participantsOwe,
-    required List<String> participantsPaid,
-  }) async {
-    try {
-      await _createExpense(
-        groupId: _groupId,
-        description: description,
-        amount: amount,
-        paidBy: paidBy,
-        participantsOwe: participantsOwe,
-        participantsPaid: participantsPaid,
-      );
-      // Reload expenses after creation
-      await loadExpenses();
-    } catch (error, stackTrace) {
-      state = AsyncValue.error(error, stackTrace);
-    }
   }
 }
 
