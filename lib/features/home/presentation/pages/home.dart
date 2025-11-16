@@ -113,6 +113,7 @@ class _HomePageState extends ConsumerState<HomePage> {
     final totalBalanceAsync = ref.watch(totalBalanceControllerProvider);
     final recentMemoriesAsync = ref.watch(recentMemoriesControllerProvider);
     final groupsAsync = ref.watch(groupsProvider);
+    final nextEventStatus = ref.watch(navBarStateProvider);
 
     // Calculate empty states based on provider data
     // IMPORTANT: Only show empty states when data is LOADED, not during loading
@@ -143,9 +144,33 @@ class _HomePageState extends ConsumerState<HomePage> {
         !_isNoEventsCardDismissed; // Don't show if dismissed
 
     return Scaffold(
-      appBar: const CommonAppBar(
+      appBar: CommonAppBar(
         title: 'LAZZO',
         centerTitle: true,
+        trailing: (nextEventStatus == HomeEventStatus.living ||
+                nextEventStatus == HomeEventStatus.recap)
+            ? IconButton(
+                icon: Container(
+                  width: 24,
+                  height: 24,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: BrandColors.text1,
+                      width: 1.5,
+                    ),
+                  ),
+                  child: const Icon(
+                    Icons.add,
+                    color: BrandColors.text1,
+                    size: 20,
+                  ),
+                ),
+                onPressed: () {
+                  Navigator.pushNamed(context, AppRouter.createEvent);
+                },
+              )
+            : null,
       ),
       body: SafeArea(
         child: ListView(

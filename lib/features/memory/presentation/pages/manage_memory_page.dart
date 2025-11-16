@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../routes/app_router.dart';
 import '../../../../shared/components/nav/common_app_bar.dart';
 import '../../../../shared/components/common/top_banner.dart';
+import '../../../../shared/components/dialogs/confirmation_dialog.dart';
+import '../../../../shared/components/cards/add_photos_cta_card.dart';
 import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/constants/text_styles.dart';
 import '../../../../shared/themes/colors.dart';
@@ -10,7 +12,7 @@ import '../providers/manage_memory_providers.dart';
 import '../widgets/cover_selection_card.dart';
 import '../widgets/photo_grid_item.dart';
 import '../widgets/add_photo_card.dart';
-import 'memory_page.dart';
+import '../../data/fakes/fake_memory_repository.dart';
 
 /// Manage Memory page for editing photos and selecting covers
 /// Accessible by:
@@ -25,12 +27,10 @@ import 'memory_page.dart';
 /// - Add photo card at the end if space available
 class ManageMemoryPage extends ConsumerStatefulWidget {
   final String memoryId;
-  final MemoryEventState state;
 
   const ManageMemoryPage({
     super.key,
     required this.memoryId,
-    this.state = MemoryEventState.recap,
   });
 
   @override
@@ -38,8 +38,18 @@ class ManageMemoryPage extends ConsumerStatefulWidget {
 }
 
 class _ManageMemoryPageState extends ConsumerState<ManageMemoryPage> {
+  bool _isSelectionMode = false;
   final Set<String> _selectedPhotoIds = {};
-  bool get _isSelectionMode => _selectedPhotoIds.isNotEmpty;
+
+  void _toggleSelectionMode() {
+    setState(() {
+      _isSelectionMode = !_isSelectionMode;
+      if (!_isSelectionMode) {
+        _selectedPhotoIds.clear();
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final manageState = ref.watch(manageMemoryProvider(widget.memoryId));
@@ -52,67 +62,120 @@ class _ManageMemoryPageState extends ConsumerState<ManageMemoryPage> {
           icon: const Icon(Icons.arrow_back, color: BrandColors.text1),
           onPressed: () => Navigator.of(context).pop(),
         ),
-        trailing: _isSelectionMode
-            ? IconButton(
-                icon:
-                    const Icon(Icons.delete_outline, color: BrandColors.text1),
-                onPressed: () => _handleDeleteSelected(context),
-              )
-            : null,
+        trailing: IconButton(
+          icon: Icon(
+            _isSelectionMode ? Icons.close : Icons.delete_outline,
+            color: _isSelectionMode ? BrandColors.text1 : BrandColors.text1,
+          ),
+          onPressed: _toggleSelectionMode,
+        ),
       ),
       body: manageState.when(
-        data: (state) => SingleChildScrollView(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: Insets.screenH),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const SizedBox(height: Gaps.lg),
-
-                // Cover selection card (centered)
-                Center(
-                  child: CoverSelectionCard(
-                    selectedPhoto: state.selectedCover,
-                    onTap: () => _showPhotoSelector(context, state),
-                    onRemove: state.selectedCover != null
-                        ? () => ref
-                            .read(
-                                manageMemoryProvider(widget.memoryId).notifier)
-                            .removeCover()
-                        : null,
-                  ),
+        data: (state) => Stack(
+          children: [
+            // Main content with scroll
+            SingleChildScrollView(
+              child: Padding(
+                padding: EdgeInsets.only(
+                  left: Insets.screenH,
+                  right: Insets.screenH,
+                  bottom: _isSelectionMode ? 90 : 0, // Space for bottom button
                 ),
-
-                const SizedBox(height: Gaps.xl),
-
-                // Photos section header
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'Photos',
-                      style: AppText.titleMediumEmph.copyWith(
-                        color: BrandColors.text1,
+                    const SizedBox(height: Gaps.lg),
+
+                    // Show CTA banner if user has no photos, otherwise show cover selection
+                    if (!FakeMemoryConfig.userHasUploadedPhotos)
+                      FakeMemoryConfig.eventStatus == FakeEventStatus.living
+                          ? AddPhotosCtaCard.living(
+                              onPressed: () => _handleAddPhoto(),
+                            )
+                          : AddPhotosCtaCard.recap(
+                              onPressed: () => _handleAddPhoto(),
+                            )
+                    else
+                      Center(
+                        child: CoverSelectionCard(
+                          selectedPhoto: state.selectedCover,
+                          onTap: () => _showPhotoSelector(context, state),
+                          onRemove: state.selectedCover != null
+                              ? () => ref
+                                  .read(manageMemoryProvider(widget.memoryId)
+                                      .notifier)
+                                  .removeCover()
+                              : null,
+                        ),
                       ),
+
+                    const SizedBox(height: Gaps.xl),
+
+                    // Photos section header
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Photos',
+                          style: AppText.titleMediumEmph.copyWith(
+                            color: BrandColors.text1,
+                          ),
+                        ),
+                        Text(
+                          '${state.allPhotos.length}/${state.maxPhotos}',
+                          style: AppText.bodyMedium.copyWith(
+                            color: BrandColors.text2,
+                          ),
+                        ),
+                      ],
                     ),
-                    Text(
-                      '${state.allPhotos.length}/${state.maxPhotos}',
-                      style: AppText.bodyMedium.copyWith(
-                        color: BrandColors.text2,
-                      ),
-                    ),
+
+                    const SizedBox(height: Gaps.md),
+
+                    // Photos grid (3 columns) + Add card
+                    _buildPhotoGrid(context, state),
+
+                    const SizedBox(height: Gaps.xl),
                   ],
                 ),
-
-                const SizedBox(height: Gaps.md),
-
-                // Photos grid (3 columns) + Add card
-                _buildPhotoGrid(context, state),
-
-                const SizedBox(height: Gaps.xl),
-              ],
+              ),
             ),
-          ),
+
+            // Bottom delete button (only show in selection mode)
+            if (_isSelectionMode)
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 0,
+                child: Container(
+                  padding: const EdgeInsets.all(Insets.screenH),
+                  decoration: const BoxDecoration(
+                    color: BrandColors.bg2,
+                    border: Border(
+                      top: BorderSide(color: BrandColors.bg3, width: 1),
+                    ),
+                  ),
+                  child: ElevatedButton(
+                    onPressed: () => _handleDeleteSelected(context),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: BrandColors.cantVote,
+                      padding:
+                          const EdgeInsets.symmetric(vertical: Pads.ctlVSm),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(Radii.smAlt),
+                      ),
+                    ),
+                    child: Text(
+                      'Delete ${_selectedPhotoIds.length} photo(s)',
+                      style: AppText.labelLarge.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+          ],
         ),
         loading: () => const Center(
           child: CircularProgressIndicator(),
@@ -169,7 +232,7 @@ class _ManageMemoryPageState extends ConsumerState<ManageMemoryPage> {
         AddPhotoCard(
           width: itemWidth,
           height: itemHeight,
-          isLiving: widget.state == MemoryEventState.living,
+          isLiving: FakeMemoryConfig.eventStatus == FakeEventStatus.living,
           onTap: () => _handleAddPhoto(),
         ),
       );
@@ -202,7 +265,7 @@ class _ManageMemoryPageState extends ConsumerState<ManageMemoryPage> {
     bool canSelect,
     ManageMemoryState state,
   ) {
-    // If in selection mode, toggle selection
+    // If in selection mode, toggle selection or show error
     if (_isSelectionMode) {
       if (!canSelect) {
         TopBanner.showError(
@@ -215,14 +278,14 @@ class _ManageMemoryPageState extends ConsumerState<ManageMemoryPage> {
       return;
     }
 
-    // Normal mode: open memory viewer
-    _navigateToViewer(context, photo.id);
+    // Normal mode: open photo preview
+    _navigateToPhotoPreview(context, photo.id);
   }
 
-  /// Navigate to memory viewer page
-  void _navigateToViewer(BuildContext context, String photoId) {
+  /// Navigate to photo preview page
+  void _navigateToPhotoPreview(BuildContext context, String photoId) {
     Navigator.of(context).pushNamed(
-      AppRouter.memoryViewer,
+      AppRouter.photoPreview,
       arguments: {
         'memoryId': widget.memoryId,
         'photoId': photoId,
@@ -240,42 +303,24 @@ class _ManageMemoryPageState extends ConsumerState<ManageMemoryPage> {
     });
   }
 
+  /// Handle actual deletion when bottom button is pressed
   Future<void> _handleDeleteSelected(BuildContext context) async {
     if (_selectedPhotoIds.isEmpty) return;
 
-    // Show confirmation dialog
+    // Show confirmation dialog using common component
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: BrandColors.bg2,
-        title: Text(
-          'Delete Photos',
-          style: AppText.titleMediumEmph.copyWith(color: BrandColors.text1),
-        ),
-        content: Text(
-          'Delete ${_selectedPhotoIds.length} photo(s)?',
-          style: AppText.bodyMedium.copyWith(color: BrandColors.text2),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: Text(
-              'Cancel',
-              style: AppText.labelLarge.copyWith(color: BrandColors.text2),
-            ),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: Text(
-              'Delete',
-              style: AppText.labelLarge.copyWith(color: BrandColors.cantVote),
-            ),
-          ),
-        ],
+      builder: (context) => ConfirmationDialog(
+        title: 'Delete Photos',
+        message: 'Delete ${_selectedPhotoIds.length} photo(s)?',
+        confirmText: 'Delete',
+        cancelText: 'Cancel',
+        isDestructive: true,
+        onConfirm: () {},
       ),
     );
 
-    if (confirmed != true) return;
+    if (confirmed != true && confirmed != null) return;
 
     // Delete selected photos
     for (final photoId in _selectedPhotoIds) {
@@ -286,10 +331,11 @@ class _ManageMemoryPageState extends ConsumerState<ManageMemoryPage> {
 
     setState(() {
       _selectedPhotoIds.clear();
+      _isSelectionMode = false; // Exit selection mode after deletion
     });
 
     if (context.mounted) {
-      TopBanner.showSuccess(context, message: 'Photos deleted');
+      TopBanner.show(context, message: 'Photos deleted');
     }
   }
 
@@ -297,7 +343,7 @@ class _ManageMemoryPageState extends ConsumerState<ManageMemoryPage> {
     // TODO: Implement photo picker
     TopBanner.showSuccess(
       context,
-      message: widget.state == MemoryEventState.living
+      message: FakeMemoryConfig.eventStatus == FakeEventStatus.living
           ? 'Opening camera...'
           : 'Opening photo picker...',
     );

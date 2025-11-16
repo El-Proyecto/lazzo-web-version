@@ -4,7 +4,11 @@ import 'package:intl/intl.dart';
 import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/constants/text_styles.dart';
 import '../../../../shared/themes/colors.dart';
+import '../../../../routes/app_router.dart';
+import '../../../event/domain/entities/event_detail.dart';
+import '../../../event/presentation/providers/event_providers.dart';
 import '../../domain/entities/memory_entity.dart';
+import '../../data/fakes/fake_memory_repository.dart';
 import '../providers/memory_providers.dart';
 import '../widgets/memory_viewer_app_bar.dart';
 import '../widgets/photo_viewer_item.dart';
@@ -28,6 +32,14 @@ class MemoryViewerPage extends ConsumerWidget {
     final memoryAsync = ref.watch(memoryDetailProvider(memoryId));
     final photosAsync = ref.watch(memoryPhotosProvider(memoryId));
 
+    // Get event status to determine if edit button should be shown
+    final eventAsync = memoryAsync.maybeWhen(
+      data: (memory) => memory != null
+          ? ref.watch(eventDetailProvider(memory.eventId))
+          : null,
+      orElse: () => null,
+    );
+
     return Scaffold(
       backgroundColor: BrandColors.bg1,
       appBar: memoryAsync.when(
@@ -36,6 +48,7 @@ class MemoryViewerPage extends ConsumerWidget {
                 title: memory.title,
                 subtitle: _buildSubtitle(memory.location, memory.eventDate),
                 onBackPressed: () => Navigator.of(context).pop(),
+                trailing: _buildTrailingAction(context, eventAsync, memoryId),
               )
             : MemoryViewerAppBar(
                 title: 'Memory',
@@ -73,7 +86,7 @@ class MemoryViewerPage extends ConsumerWidget {
 
           return PageView.builder(
             controller: PageController(initialPage: startIndex),
-            scrollDirection: Axis.vertical,
+            scrollDirection: Axis.horizontal,
             itemCount: photos.length,
             itemBuilder: (context, index) {
               final photo = photos[index];
@@ -104,6 +117,55 @@ class MemoryViewerPage extends ConsumerWidget {
           ),
         ),
       ),
+    );
+  }
+
+  /// Build trailing action (edit button) only for living/recap events
+  Widget? _buildTrailingAction(
+    BuildContext context,
+    AsyncValue<EventDetail>? eventAsync,
+    String memoryId,
+  ) {
+    if (eventAsync == null) return null;
+
+    // Get event status from fake config (TODO: use real event status in P2)
+    final eventStatus = FakeMemoryConfig.eventStatus;
+    final isHost = FakeMemoryConfig.isHost;
+    final userHasUploadedPhotos = FakeMemoryConfig.userHasUploadedPhotos;
+
+    return eventAsync.when(
+      data: (event) {
+        // Show edit button only for living/recap if user is host or has uploaded photos
+        // No button for ended events (read-only)
+        if (eventStatus == FakeEventStatus.ended) {
+          return const SizedBox(width: 32); // Spacer for symmetry
+        }
+
+        // Living/Recap: show edit if host or has uploaded photos
+        if (isHost || userHasUploadedPhotos) {
+          return GestureDetector(
+            onTap: () {
+              Navigator.of(context).pushNamed(
+                AppRouter.manageMemory,
+                arguments: memoryId,
+              );
+            },
+            child: Container(
+              width: 32,
+              height: 32,
+              alignment: Alignment.center,
+              child: const Icon(
+                Icons.edit_outlined,
+                color: BrandColors.text1,
+                size: 20,
+              ),
+            ),
+          );
+        }
+        return const SizedBox(width: 32); // Spacer for symmetry
+      },
+      loading: () => const SizedBox(width: 32),
+      error: (_, __) => const SizedBox(width: 32),
     );
   }
 
