@@ -28,10 +28,6 @@ import '../features/memory/presentation/pages/memory_viewer_page.dart';
 import '../features/memory/presentation/pages/manage_memory_page.dart';
 import '../features/memory/presentation/pages/photo_preview_page.dart';
 
-// Export MemoryEventState for use in routes
-export '../features/memory/presentation/pages/memory_page.dart'
-    show MemoryEventState;
-
 class AppRouter {
   static const String home = '/home';
   static const String auth = '/auth';
@@ -155,7 +151,6 @@ class AppRouter {
           ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
       return ManageMemoryPage(
         memoryId: args?['memoryId'] ?? 'memory-1',
-        state: args?['state'] ?? MemoryEventState.recap,
       );
     },
     loginPage: (context) => const LoginPage(),

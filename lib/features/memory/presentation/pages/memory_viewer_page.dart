@@ -8,6 +8,7 @@ import '../../../../routes/app_router.dart';
 import '../../../event/domain/entities/event_detail.dart';
 import '../../../event/presentation/providers/event_providers.dart';
 import '../../domain/entities/memory_entity.dart';
+import '../../data/fakes/fake_memory_repository.dart';
 import '../providers/memory_providers.dart';
 import '../widgets/memory_viewer_app_bar.dart';
 import '../widgets/photo_viewer_item.dart';
@@ -127,13 +128,21 @@ class MemoryViewerPage extends ConsumerWidget {
   ) {
     if (eventAsync == null) return null;
 
+    // Get event status from fake config (TODO: use real event status in P2)
+    final eventStatus = FakeMemoryConfig.eventStatus;
+    final isHost = FakeMemoryConfig.isHost;
+    final userHasUploadedPhotos = FakeMemoryConfig.userHasUploadedPhotos;
+
     return eventAsync.when(
       data: (event) {
-        // Show edit button only for living or recap events
-        // Event status 'ended' can be living or recap based on time
-        // For simplicity, we show edit for all ended events in memory viewer
-        // since memories are only created for ended events
-        if (event.status == EventStatus.ended) {
+        // Show edit button only for living/recap if user is host or has uploaded photos
+        // No button for ended events (read-only)
+        if (eventStatus == FakeEventStatus.ended) {
+          return const SizedBox(width: 32); // Spacer for symmetry
+        }
+
+        // Living/Recap: show edit if host or has uploaded photos
+        if (isHost || userHasUploadedPhotos) {
           return GestureDetector(
             onTap: () {
               Navigator.of(context).pushNamed(

@@ -4,6 +4,7 @@ import '../../../../routes/app_router.dart';
 import '../../../../shared/components/nav/common_app_bar.dart';
 import '../../../../shared/components/common/top_banner.dart';
 import '../../../../shared/components/dialogs/confirmation_dialog.dart';
+import '../../../../shared/components/cards/add_photos_cta_card.dart';
 import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/constants/text_styles.dart';
 import '../../../../shared/themes/colors.dart';
@@ -11,6 +12,7 @@ import '../providers/manage_memory_providers.dart';
 import '../widgets/cover_selection_card.dart';
 import '../widgets/photo_grid_item.dart';
 import '../widgets/add_photo_card.dart';
+import '../../data/fakes/fake_memory_repository.dart';
 
 /// Manage Memory page for editing photos and selecting covers
 /// Accessible by:
@@ -25,12 +27,10 @@ import '../widgets/add_photo_card.dart';
 /// - Add photo card at the end if space available
 class ManageMemoryPage extends ConsumerStatefulWidget {
   final String memoryId;
-  final MemoryEventState state;
 
   const ManageMemoryPage({
     super.key,
     required this.memoryId,
-    this.state = MemoryEventState.recap,
   });
 
   @override
@@ -86,19 +86,28 @@ class _ManageMemoryPageState extends ConsumerState<ManageMemoryPage> {
                   children: [
                     const SizedBox(height: Gaps.lg),
 
-                    // Cover selection card (centered)
-                    Center(
-                      child: CoverSelectionCard(
-                        selectedPhoto: state.selectedCover,
-                        onTap: () => _showPhotoSelector(context, state),
-                        onRemove: state.selectedCover != null
-                            ? () => ref
-                                .read(manageMemoryProvider(widget.memoryId)
-                                    .notifier)
-                                .removeCover()
-                            : null,
+                    // Show CTA banner if user has no photos, otherwise show cover selection
+                    if (!FakeMemoryConfig.userHasUploadedPhotos)
+                      FakeMemoryConfig.eventStatus == FakeEventStatus.living
+                          ? AddPhotosCtaCard.living(
+                              onPressed: () => _handleAddPhoto(),
+                            )
+                          : AddPhotosCtaCard.recap(
+                              onPressed: () => _handleAddPhoto(),
+                            )
+                    else
+                      Center(
+                        child: CoverSelectionCard(
+                          selectedPhoto: state.selectedCover,
+                          onTap: () => _showPhotoSelector(context, state),
+                          onRemove: state.selectedCover != null
+                              ? () => ref
+                                  .read(manageMemoryProvider(widget.memoryId)
+                                      .notifier)
+                                  .removeCover()
+                              : null,
+                        ),
                       ),
-                    ),
 
                     const SizedBox(height: Gaps.xl),
 
@@ -223,7 +232,7 @@ class _ManageMemoryPageState extends ConsumerState<ManageMemoryPage> {
         AddPhotoCard(
           width: itemWidth,
           height: itemHeight,
-          isLiving: widget.state == MemoryEventState.living,
+          isLiving: FakeMemoryConfig.eventStatus == FakeEventStatus.living,
           onTap: () => _handleAddPhoto(),
         ),
       );
@@ -334,7 +343,7 @@ class _ManageMemoryPageState extends ConsumerState<ManageMemoryPage> {
     // TODO: Implement photo picker
     TopBanner.showSuccess(
       context,
-      message: widget.state == MemoryEventState.living
+      message: FakeMemoryConfig.eventStatus == FakeEventStatus.living
           ? 'Opening camera...'
           : 'Opening photo picker...',
     );

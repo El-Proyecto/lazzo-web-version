@@ -17,17 +17,44 @@ The Memory Management feature UI layer (P1) is complete with three distinct page
 
 ### 🎨 **Pages Implemented**
 
-#### **1. Memory Viewer Page** (`memory_viewer_page.dart`)
+#### **1. Memory Page** (`memory_page.dart`)
+- **Purpose:** Main memory display page with state-based UI
+- **Features:**
+  - 3-state system based on event status (living/recap/ended)
+  - CTA banner for adding photos (living=purple camera, recap=orange add_photo)
+  - Cover mosaic with 1-3 photos (adaptive layout)
+  - Event title and subtitle (location • date)
+  - Photo grid for non-cover photos
+  - Edit button (conditional on event status and permissions)
+  - Navigation to Memory Viewer, Manage Photos, and Photo Preview
+
+**Three Event States:**
+1. **Living (`FakeEventStatus.living`):**
+   - CTA banner shown if `!userHasUploadedPhotos` (purple camera button)
+   - Edit button visible if `isHost || userHasUploadedPhotos`
+   - Banner text: "Add your photos" / "You can then select a photo cover"
+   
+2. **Recap (`FakeEventStatus.recap`):**
+   - CTA banner shown if `!userHasUploadedPhotos` (orange add_photo button)
+   - Edit button visible if `isHost || userHasUploadedPhotos`
+   - Banner text: "Add your photos" / "You can then select a photo cover"
+   
+3. **Ended (`FakeEventStatus.ended`):**
+   - No CTA banner (read-only)
+   - No edit button
+   - Memory becomes a permanent record
+
+#### **2. Memory Viewer Page** (`memory_viewer_page.dart`)
 - **Purpose:** Full-screen photo viewer for browsing event memories
 - **Features:**
   - Horizontal scroll navigation between photos
   - Dynamic app bar with event title and subtitle (location • date)
-  - Edit button (only visible for living/recap events with EventStatus.ended)
+  - Edit button (only visible for living/recap events, not ended)
   - Multi-day event detection with day labels
   - Opens directly to specific photo via initialPhotoId
   - Photo ordering: covers first (by votes), then grid (by timestamp)
 
-#### **2. Photo Preview Page** (`photo_preview_page.dart`)
+#### **3. Photo Preview Page** (`photo_preview_page.dart`)
 - **Purpose:** Photo management preview with actions (accessed from Manage Photos)
 - **Features:**
   - Horizontal scroll through photos
@@ -38,10 +65,12 @@ The Memory Management feature UI layer (P1) is complete with three distinct page
   - Navigation back to Manage Photos with success banner
   - Photos respect layout sizing (4:5 portrait, 16:9 landscape)
 
-#### **3. Manage Photos Page** (`manage_memory_page.dart`)
+#### **4. Manage Photos Page** (`manage_memory_page.dart`)
 - **Purpose:** Photo management interface with selection mode and cover selection
 - **Features:**
-  - Cover selection card (centered, tap to select from grid)
+  - **State-based header:**
+    - If `!userHasUploadedPhotos`: CTA banner (living=purple camera, recap=orange add_photo)
+    - If `userHasUploadedPhotos`: Cover selection card (centered, tap to select)
   - Selection mode toggle (delete icon → close icon when active)
   - User photos sorted first, then others
   - Selection restrictions: only user's photos (or all if host)
@@ -52,12 +81,22 @@ The Memory Management feature UI layer (P1) is complete with three distinct page
 
 ### 🧩 **Widget Components**
 
+#### **Shared Components** (`shared/components/cards/`)
+- **AddPhotosCtaCard:** CTA banner prompting users to add photos
+  - Factory constructors: `AddPhotosCtaCard.living()` (purple camera), `.recap()` (orange add_photo)
+  - Layout: Title/subtitle left, icon button right (48x48)
+  - P1 Implementation: Navigates to Manage Photos for testing
+  - **P2 TODO:** Replace navigation with actual camera/gallery picker
+    - Living: open camera directly
+    - Recap: open photo gallery picker
+  - Styling: bg2 card, md radius, md padding, tokenized colors
+
 #### **Feature-Specific Widgets** (`features/memory/presentation/widgets/`)
 - **MemoryViewerAppBar:** Custom app bar with optional trailing action
 - **PhotoViewerItem:** Full-screen photo display with day labels for multi-day events
 - **PhotoGridItem:** Grid item with selection mode support, checkboxes, and borders
 - **CoverSelectionCard:** Card for selecting/displaying cover photo
-- **AddPhotoCard:** Placeholder card for adding new photos
+- **AddPhotoCard:** Placeholder card for adding new photos (grid item)
 
 ### 🏗️ **Domain Layer Contracts**
 
@@ -131,15 +170,30 @@ abstract class MemoryRepository {
 ### 🎭 **Fake Data Layer**
 
 **FakeMemoryRepository** (`features/memory/data/fakes/`)
-- **FakeMemoryConfig:** Test configuration for different layouts
-  - `coverPortraitCount`, `coverLandscapeCount`: Configure cover photos
-  - `gridPortraitCount`, `gridLandscapeCount`: Configure grid photos
-  - `isHost`: Toggle host permissions for testing
+- **FakeMemoryConfig:** Test configuration for different layouts and states
+  - Photo counts: `coverPortraitCount`, `coverLandscapeCount`, `gridPortraitCount`, `gridLandscapeCount`
+  - Event state: `eventStatus` (living/recap/ended) - controls UI behavior
+  - Permissions: `isHost` - toggle host permissions for testing
+  - Upload state: `userHasUploadedPhotos` - controls CTA banner visibility
 - Dynamic memory generation based on config
 - Realistic delays for network simulation
 - Vote distribution ensures correct cover ordering (portraits first)
 - First 2 portrait + first 2 landscape photos belong to current user
 - Mock implementations for all repository methods
+
+**Testing Different States:**
+```dart
+// Living state with CTA banner
+FakeMemoryConfig.eventStatus = FakeEventStatus.living;
+FakeMemoryConfig.userHasUploadedPhotos = false;
+
+// Recap state with photos uploaded
+FakeMemoryConfig.eventStatus = FakeEventStatus.recap;
+FakeMemoryConfig.userHasUploadedPhotos = true;
+
+// Ended state (read-only)
+FakeMemoryConfig.eventStatus = FakeEventStatus.ended;
+```
 
 ### 📱 **State Management**
 
@@ -232,9 +286,154 @@ final manageMemoryProvider = StateNotifierProvider.family<ManageMemoryNotifier, 
 - ✅ Smooth animations and transitions
 - ✅ Keyboard-safe layouts
 
+#### **3-State Event System**
+- ✅ FakeEventStatus enum (living/recap/ended) in FakeMemoryConfig
+- ✅ Memory Page shows CTA banner for living/recap when !userHasUploadedPhotos
+- ✅ Manage Photos Page shows CTA banner when !userHasUploadedPhotos
+- ✅ Edit button visibility based on event status and permissions
+- ✅ Ended events are read-only (no CTA, no edit button)
+- ✅ CTA banner navigates to Manage Photos (temporary P1 implementation)
+
 ---
 
 ## 🚀 P2 Implementation Requirements
+
+### 📸 **Photo Upload & CTA Banner (Critical P2 Task)**
+
+#### **Replace CTA Banner Navigation with Camera/Gallery Picker**
+
+**Current P1 Implementation:**
+- `AddPhotosCtaCard.living()` and `.recap()` navigate to Manage Photos for testing
+- `onPressed` callback passed from Memory Page and Manage Photos Page
+
+**P2 Required Changes:**
+
+1. **Living State - Open Camera:**
+```dart
+// In memory_page.dart and manage_memory_page.dart
+AddPhotosCtaCard.living(
+  onPressed: () async {
+    // P2: Replace with actual camera picker
+    final ImagePicker picker = ImagePicker();
+    final XFile? photo = await picker.pickImage(
+      source: ImageSource.camera,
+      imageQuality: 85, // Compression
+    );
+    
+    if (photo != null) {
+      await _uploadPhoto(File(photo.path));
+    }
+  },
+)
+```
+
+2. **Recap State - Open Gallery:**
+```dart
+// In memory_page.dart and manage_memory_page.dart
+AddPhotosCtaCard.recap(
+  onPressed: () async {
+    // P2: Replace with actual gallery picker
+    final ImagePicker picker = ImagePicker();
+    final List<XFile> photos = await picker.pickMultiImage(
+      imageQuality: 85, // Compression
+      limit: 10, // Max photos per selection
+    );
+    
+    if (photos.isNotEmpty) {
+      for (final photo in photos) {
+        await _uploadPhoto(File(photo.path));
+      }
+    }
+  },
+)
+```
+
+3. **Upload Photo Method (P2):**
+```dart
+Future<void> _uploadPhoto(File photo) async {
+  // Show loading indicator
+  setState(() => _isUploading = true);
+  
+  try {
+    // Get memory and event details
+    final memory = await ref.read(memoryDetailProvider(memoryId).future);
+    final event = await getEventDetail(memory.eventId);
+    
+    // Compress image
+    final compressed = await ImageCompressionService.compress(photo);
+    
+    // Generate storage path
+    final uuid = const Uuid().v4();
+    final path = '${event.groupId}/${memory.eventId}/$currentUserId/$uuid.jpg';
+    
+    // Upload to Supabase Storage
+    final storageService = ref.read(storageServiceProvider);
+    await storageService.uploadMemoryPhoto(
+      path: path,
+      file: compressed,
+      metadata: {
+        'uploader': currentUserId,
+        'type': 'memory_photo',
+        'captured_at': DateTime.now().toIso8601String(),
+      },
+    );
+    
+    // Create photo record in database
+    final photoRepository = ref.read(memoryRepositoryProvider);
+    await photoRepository.addPhoto(
+      memoryId: memoryId,
+      storagePath: path,
+      aspectRatio: await _calculateAspectRatio(photo),
+    );
+    
+    // Refresh memory data
+    ref.invalidate(memoryDetailProvider(memoryId));
+    
+    // Show success banner
+    TopBanner.showSuccess(context, message: 'Photo uploaded!');
+    
+    // Update userHasUploadedPhotos flag (P2: from real data)
+    FakeMemoryConfig.userHasUploadedPhotos = true;
+    
+  } catch (e) {
+    TopBanner.showError(context, message: 'Failed to upload photo: $e');
+  } finally {
+    setState(() => _isUploading = false);
+  }
+}
+```
+
+4. **Dependencies:**
+```yaml
+dependencies:
+  image_picker: ^1.1.2  # Camera and gallery access
+  uuid: ^4.5.1          # Generate unique photo IDs
+```
+
+5. **Permissions (iOS/Android):**
+```xml
+<!-- iOS: Info.plist -->
+<key>NSCameraUsageDescription</key>
+<string>We need camera access to capture memories</string>
+<key>NSPhotoLibraryUsageDescription</key>
+<string>We need photo library access to select photos</string>
+
+<!-- Android: AndroidManifest.xml -->
+<uses-permission android:name="android.permission.CAMERA" />
+<uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+```
+
+**P2 Testing Checklist:**
+- [ ] Camera opens in Living state
+- [ ] Gallery opens in Recap state with multi-select
+- [ ] Image compression works (target <1MB)
+- [ ] Storage upload succeeds with correct path
+- [ ] Database record created with correct metadata
+- [ ] CTA banner disappears after first upload
+- [ ] Edit button appears after first upload
+- [ ] Cover selection card appears in Manage Photos after first upload
+- [ ] Proper error handling for failed uploads
+- [ ] Loading states during upload
 
 ### 🗄️ **Data Layer Implementation**
 

@@ -2,6 +2,9 @@
 import '../../domain/entities/memory_entity.dart';
 import '../../domain/repositories/memory_repository.dart';
 
+/// Event status for memory page testing
+enum FakeEventStatus { living, recap, ended }
+
 /// Global test configuration for cover mosaic scenarios
 /// Modify these values to test different layouts
 class FakeMemoryConfig {
@@ -19,6 +22,16 @@ class FakeMemoryConfig {
 
   /// Whether current user is host (can select all photos)
   static bool isHost = false;
+
+  /// Current event status (living, recap, or ended)
+  /// - living: event is happening now
+  /// - recap: event ended, in recap phase
+  /// - ended: event fully ended, memory is read-only
+  static FakeEventStatus eventStatus = FakeEventStatus.living;
+
+  /// Whether current user has uploaded photos
+  /// Used to determine if edit button should show in living/recap
+  static bool userHasUploadedPhotos = false;
 
   /// Max covers is 3
   static int get totalCovers => coverPortraitCount + coverLandscapeCount;
