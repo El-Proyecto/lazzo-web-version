@@ -10,4 +10,12 @@ abstract class MemoryRepository {
 
   /// Share memory (returns share URL or triggers native share)
   Future<String> shareMemory(String memoryId);
+
+  /// Update cover photo for a memory
+  /// Pass null photoId to remove cover
+  Future<bool> updateCover(String memoryId, String? photoId);
+
+  /// Remove a photo from a memory
+  /// Only uploader or host can remove photos
+  Future<bool> removePhoto(String memoryId, String photoId);
 }

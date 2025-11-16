@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../../constants/spacing.dart';
 import '../../themes/colors.dart';
 
-enum NavBarState { normal, eventActive }
+enum NavBarState { planning, living, recap }
 
 class NavigationBar extends StatelessWidget {
   final NavBarState state;
@@ -11,7 +11,7 @@ class NavigationBar extends StatelessWidget {
 
   const NavigationBar({
     super.key,
-    this.state = NavBarState.normal,
+    this.state = NavBarState.planning,
     required this.currentIndex,
     required this.onTap,
   });
@@ -69,11 +69,24 @@ class NavigationBar extends StatelessWidget {
   }
 
   Widget _buildCenterButton() {
-    final isEventActive = state == NavBarState.eventActive;
-    final buttonColor = isEventActive
-        ? BrandColors.living
-        : BrandColors.planning;
-    final icon = isEventActive ? Icons.camera_alt : Icons.add;
+    // Determine color and icon based on state
+    Color buttonColor;
+    IconData icon;
+
+    switch (state) {
+      case NavBarState.planning:
+        buttonColor = BrandColors.planning;
+        icon = Icons.add;
+        break;
+      case NavBarState.living:
+        buttonColor = BrandColors.living;
+        icon = Icons.camera_alt;
+        break;
+      case NavBarState.recap:
+        buttonColor = BrandColors.recap;
+        icon = Icons.upload;
+        break;
+    }
 
     return GestureDetector(
       onTap: () => onTap(2),

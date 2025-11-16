@@ -1,4 +1,5 @@
 import '../../../../shared/components/widgets/rsvp_widget.dart';
+import 'participant_photo.dart';
 
 /// Home event entity for display in home page sections
 /// Contains essential info needed for event cards
@@ -7,6 +8,7 @@ class HomeEventEntity {
   final String name;
   final String emoji;
   final DateTime? date;
+  final DateTime? endDate;
   final String? location;
   final HomeEventStatus status;
   final int goingCount;
@@ -15,12 +17,17 @@ class HomeEventEntity {
   final bool?
       userVote; // true = going, false = not going, null = pending/not voted
   final List<RsvpVote> allVotes; // All votes for the bottom sheet
+  final int photoCount; // Total photos added (for Living/Recap)
+  final int maxPhotos; // Maximum photos allowed (for Living/Recap)
+  final List<ParticipantPhoto>
+      participantPhotos; // Photo contributions by participant
 
   const HomeEventEntity({
     required this.id,
     required this.name,
     required this.emoji,
     this.date,
+    this.endDate,
     this.location,
     required this.status,
     required this.goingCount,
@@ -28,6 +35,9 @@ class HomeEventEntity {
     required this.attendeeNames,
     this.userVote,
     this.allVotes = const [],
+    this.photoCount = 0,
+    this.maxPhotos = 0,
+    this.participantPhotos = const [],
   });
 
   HomeEventEntity copyWith({
@@ -35,6 +45,7 @@ class HomeEventEntity {
     String? name,
     String? emoji,
     DateTime? date,
+    DateTime? endDate,
     String? location,
     HomeEventStatus? status,
     int? goingCount,
@@ -42,6 +53,9 @@ class HomeEventEntity {
     List<String>? attendeeNames,
     bool? userVote,
     List<RsvpVote>? allVotes,
+    int? photoCount,
+    int? maxPhotos,
+    List<ParticipantPhoto>? participantPhotos,
     bool updateUserVote = false, // Flag to allow explicit null setting
   }) {
     return HomeEventEntity(
@@ -49,6 +63,7 @@ class HomeEventEntity {
       name: name ?? this.name,
       emoji: emoji ?? this.emoji,
       date: date ?? this.date,
+      endDate: endDate ?? this.endDate,
       location: location ?? this.location,
       status: status ?? this.status,
       goingCount: goingCount ?? this.goingCount,
@@ -56,6 +71,9 @@ class HomeEventEntity {
       attendeeNames: attendeeNames ?? this.attendeeNames,
       userVote: updateUserVote ? userVote : (userVote ?? this.userVote),
       allVotes: allVotes ?? this.allVotes,
+      photoCount: photoCount ?? this.photoCount,
+      maxPhotos: maxPhotos ?? this.maxPhotos,
+      participantPhotos: participantPhotos ?? this.participantPhotos,
     );
   }
 }

@@ -12,18 +12,32 @@ import '../../../../shared/themes/colors.dart';
 import '../providers/memory_providers.dart';
 import '../../domain/entities/memory_entity.dart';
 
+/// Event state for Memory page
+/// Determines which action icon appears in the header
+enum MemoryEventState { planning, living, recap }
+
 /// Memory page displaying a completed event's photos
 /// Structure (top to bottom):
-/// - Header: back button, "Memory" title, share button
+/// - Header: back button, "Memory" title, action button (share or edit)
 /// - Cover Mosaic: 1-3 cover photos with adaptive layout
 /// - Event title & subtitle (location • date)
 /// - Photo Grid: all non-cover photos
+///
+/// Action button rules:
+/// - Planning state: Share icon (always)
+/// - Living/Recap state: Edit icon if user is host OR has uploaded photos, else no icon
 class MemoryPage extends ConsumerWidget {
   final String memoryId;
+  final MemoryEventState state;
+
+  // TODO: Get from event/auth providers
+  static const _isHost = true; // Placeholder
+  static const _currentUserId = 'user-1'; // Placeholder
 
   const MemoryPage({
     super.key,
     required this.memoryId,
+    this.state = MemoryEventState.recap,
   });
 
   @override
@@ -39,12 +53,8 @@ class MemoryPage extends ConsumerWidget {
           onPressed: () => Navigator.of(context).pop(),
         ),
         trailing: memoryAsync.maybeWhen(
-          data: (memory) => memory != null
-              ? IconButton(
-                  icon: const Icon(Icons.share, color: BrandColors.text1),
-                  onPressed: () => _handleShare(context, ref),
-                )
-              : null,
+          data: (memory) =>
+              memory != null ? _buildTrailingIcon(context, ref, memory) : null,
           orElse: () => null,
         ),
       ),
@@ -226,6 +236,45 @@ class MemoryPage extends ConsumerWidget {
 
   String _formatClusterLabel(DateTime date) {
     return DateFormat('d MMMM yyyy').format(date);
+  }
+
+  /// Build trailing icon based on state and permissions
+  Widget? _buildTrailingIcon(
+    BuildContext context,
+    WidgetRef ref,
+    MemoryEntity memory,
+  ) {
+    // Planning state: always show share
+    if (state == MemoryEventState.planning) {
+      return IconButton(
+        icon: const Icon(Icons.share, color: BrandColors.text1),
+        onPressed: () => _handleShare(context, ref),
+      );
+    }
+
+    // Living/Recap state: show edit if user is host OR has uploaded photos
+    final userHasPhotos =
+        memory.photos.any((p) => p.uploaderId == _currentUserId);
+    if (_isHost || userHasPhotos) {
+      return IconButton(
+        icon: const Icon(Icons.edit, color: BrandColors.text1),
+        onPressed: () => _navigateToManageMemory(context),
+      );
+    }
+
+    // No icon for other users
+    return null;
+  }
+
+  /// Navigate to manage memory page
+  void _navigateToManageMemory(BuildContext context) {
+    Navigator.of(context).pushNamed(
+      AppRouter.manageMemory,
+      arguments: {
+        'memoryId': memoryId,
+        'state': state,
+      },
+    );
   }
 
   /// Handle share button press

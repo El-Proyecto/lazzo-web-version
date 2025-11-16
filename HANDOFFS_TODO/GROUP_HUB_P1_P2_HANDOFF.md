@@ -27,6 +27,7 @@ class GroupEventEntity {
   final String name;
   final String emoji;
   final DateTime? date;
+  final DateTime? endDate; // NEW: For Living/Recap time-left calculation
   final String? location;
   final GroupEventStatus status;
   final int goingCount;
@@ -34,10 +35,13 @@ class GroupEventEntity {
   final List<String> attendeeNames;
   final bool? userVote; // true = going, false = not going, null = pending
   final List<RsvpVote> allVotes;
+  final int photoCount; // NEW: Total photos uploaded (Living/Recap)
+  final int maxPhotos; // NEW: Max photos: max(20, 5 × participantCount)
+  final List<ParticipantPhoto> participantPhotos; // NEW: Photo contributions per user
 }
 
 enum GroupEventStatus { 
-  planning, confirmed, cancelled, completed 
+  pending, confirmed, living, recap // Updated with Living/Recap states
 }
 ```
 
@@ -66,6 +70,8 @@ class GroupMemoryEntity implements MemoryData {
 **Key Features:**
 - Immutable data classes with `copyWith()` methods
 - RSVP vote tracking for events
+- **NEW:** Photo system for Living/Recap event states
+- **NEW:** Time-left countdown display for active events
 - Photo count and cover images for memories
 - Interface compatibility with shared components
 
@@ -143,7 +149,26 @@ class GetGroupMemories {
 
 ---
 
-## 🎨 **4. SHARED COMPONENTS CREATED**
+## 🎨 **4. SHARED COMPONENTS CREATED & UPDATED**
+
+### **Event Full Card** - `lib/shared/components/cards/event_full_card.dart`
+
+Enhanced event card for group hub with Living/Recap support:
+
+```dart
+class EventFullCard extends StatefulWidget {
+  final GroupEventEntity event;
+  final EventFullCardState state; // pending, confirmed, living, recap
+  
+  // Features:
+  // - Time-left countdown for Living/Recap states
+  // - Photo count display: "X participants • Y/Z photos"
+  // - Tap to open PhotosBottomSheet (Living/Recap)
+  // - Tap to open VotesBottomSheet (Pending/Confirmed)
+  // - Status-based chip colors and labels
+  // - No action buttons (group hub specific)
+}
+```
 
 ### **Generic Memories Section** - `lib/shared/components/sections/memories_section.dart`
 
@@ -239,6 +264,7 @@ final groupEventsProvider = StateNotifierProvider.family<GroupEventsController,
 - State controllers for each section
 - Automatic refresh and invalidation
 - Repository dependency injection
+- **NEW:** Event sorting by priority: Living (max 1) > Recap > Confirmed > Pending
 
 ---
 
@@ -246,25 +272,46 @@ final groupEventsProvider = StateNotifierProvider.family<GroupEventsController,
 
 ### **Events Fake Data** - `lib/features/group_hub/data/fakes/fake_group_event_repository.dart`
 
-7 mock events with varied statuses and RSVP data:
+9 mock events including Living and Recap states:
 
 ```dart
 final List<GroupEventEntity> _events = [
+  // Living event - currently active
   GroupEventEntity(
-    id: '1',
-    name: 'Beach Day',
-    emoji: '🏖️',
-    date: DateTime.now().add(const Duration(days: 3)),
-    location: 'Cascais Beach',
-    status: GroupEventStatus.confirmed,
-    goingCount: 5,
-    attendeeAvatars: [...],
-    userVote: true,
-    allVotes: [...],
+    id: '0',
+    name: 'Beach Sunset',
+    emoji: '🌅',
+    date: DateTime.now().subtract(const Duration(hours: 1)),
+    endDate: DateTime.now().add(const Duration(hours: 3)), // Ends in 3h
+    status: GroupEventStatus.living,
+    goingCount: 6,
+    photoCount: 18,
+    maxPhotos: 30, // max(20, 6 × 5)
+    participantPhotos: [...], // 6 participants with varying photo counts
   ),
-  // ... 6 more events with different statuses
+  
+  // Recap event - ended 2h ago, 22h left to upload
+  GroupEventEntity(
+    id: '00',
+    name: 'Hiking Adventure',
+    emoji: '⛰️',
+    endDate: DateTime.now().subtract(const Duration(hours: 2)),
+    status: GroupEventStatus.recap,
+    goingCount: 7,
+    photoCount: 12,
+    maxPhotos: 35, // max(20, 7 × 5)
+    participantPhotos: [...],
+  ),
+  
+  // ... 7 more events (Confirmed and Pending)
 ];
 ```
+
+**Photo System Mock Data:**
+- Living: 18 photos, 30 max (6 participants)
+- Recap: 12 photos, 35 max (7 participants)
+- Photos distributed across participants (sorted by count)
+- Formula: maxPhotos = max(20, participantCount × 5)
 
 ### **Memories Fake Data** - `lib/features/group_hub/data/fakes/fake_group_memory_repository.dart`
 
@@ -299,6 +346,13 @@ Each section handles AsyncValue states:
 - **Error**: Error message with retry button
 - **Empty**: Custom empty state per section
 - **Success**: Data display with proper sorting
+
+**Event Sorting Logic (Priority-based):**
+1. Living events (maximum 1 event)
+2. Recap events (multiple allowed)
+3. Confirmed events
+4. Pending events
+5. Within same status: sorted by date (ascending)
 
 ---
 
@@ -373,8 +427,9 @@ CREATE TABLE group_events (
   name TEXT NOT NULL,
   emoji TEXT DEFAULT '📅',
   date TIMESTAMPTZ,
+  end_date TIMESTAMPTZ, -- NEW: For Living/Recap time-left calculation
   location TEXT,
-  status TEXT DEFAULT 'planning' CHECK (status IN ('planning', 'confirmed', 'cancelled', 'completed')),
+  status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'confirmed', 'living', 'recap')), -- Updated enum
   created_at TIMESTAMPTZ DEFAULT NOW(),
   created_by UUID REFERENCES profiles(id),
   
@@ -383,6 +438,7 @@ CREATE TABLE group_events (
 
 -- Index for performance
 CREATE INDEX idx_group_events_group_id_date ON group_events(group_id, date DESC);
+CREATE INDEX idx_group_events_status ON group_events(status); -- NEW: For priority sorting
 ```
 
 #### **Event RSVP Table** - `event_rsvps`
@@ -397,6 +453,26 @@ CREATE TABLE event_rsvps (
   
   UNIQUE(event_id, user_id)
 );
+
+-- Index for aggregation
+CREATE INDEX idx_event_rsvps_event_id ON event_rsvps(event_id);
+```
+
+#### **Event Photos Table** - `event_photos` (NEW)
+```sql
+CREATE TABLE event_photos (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  event_id UUID REFERENCES group_events(id) ON DELETE CASCADE,
+  user_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
+  photo_url TEXT NOT NULL,
+  uploaded_at TIMESTAMPTZ DEFAULT NOW(),
+  
+  -- RLS policies needed for event participants only
+);
+
+-- Indexes for performance
+CREATE INDEX idx_event_photos_event_id ON event_photos(event_id);
+CREATE INDEX idx_event_photos_user_id ON event_photos(user_id);
 ```
 
 #### **Memories Table** - `group_memories`
@@ -493,11 +569,34 @@ class GroupEventModel {
         .firstWhere((rsvp) => rsvp.userId == currentUserId, orElse: () => null)
         ?.vote;
     
+    // NEW: Parse event_photos for photo count and participant contributions
+    final photos = (json['event_photos'] as List<dynamic>?) ?? [];
+    final photosByUser = <String, int>{};
+    for (final photo in photos) {
+      final userId = photo['user_id'] as String;
+      photosByUser[userId] = (photosByUser[userId] ?? 0) + 1;
+    }
+    
+    final participantPhotos = photosByUser.entries.map((entry) {
+      // Fetch user info separately or from join
+      return ParticipantPhoto(
+        userId: entry.key,
+        userName: 'User', // TODO: Join with users table
+        userAvatar: null,
+        photoCount: entry.value,
+      );
+    }).toList()
+      ..sort((a, b) => b.photoCount.compareTo(a.photoCount));
+    
+    final photoCount = photos.length;
+    final maxPhotos = math.max(20, goingCount * 5);
+    
     return GroupEventEntity(
       id: json['id'],
       name: json['name'] ?? '',
       emoji: json['emoji'] ?? '📅',
       date: json['date'] != null ? DateTime.parse(json['date']) : null,
+      endDate: json['end_date'] != null ? DateTime.parse(json['end_date']) : null,
       location: json['location'],
       status: _parseStatus(json['status']),
       goingCount: goingCount,
@@ -505,16 +604,19 @@ class GroupEventModel {
       attendeeNames: [], // Fetch separately if needed
       userVote: userVote,
       allVotes: rsvps,
+      photoCount: photoCount,
+      maxPhotos: maxPhotos,
+      participantPhotos: participantPhotos,
     );
   }
   
   static GroupEventStatus _parseStatus(String? status) {
     switch (status) {
-      case 'planning': return GroupEventStatus.planning;
+      case 'pending': return GroupEventStatus.pending;
       case 'confirmed': return GroupEventStatus.confirmed;
-      case 'cancelled': return GroupEventStatus.cancelled;
-      case 'completed': return GroupEventStatus.completed;
-      default: return GroupEventStatus.planning;
+      case 'living': return GroupEventStatus.living;
+      case 'recap': return GroupEventStatus.recap;
+      default: return GroupEventStatus.pending;
     }
   }
 }
@@ -604,19 +706,29 @@ groupMemoryRepositoryProvider.overrideWith((ref) {
 - Implement pagination for large datasets (LIMIT/OFFSET)
 - Consider caching for frequently accessed data
 
-### **3. Error Handling**
+### **3. Photo System Requirements**
+- Calculate photoCount from event_photos table aggregation
+- Calculate maxPhotos: max(20, participantCount × 5)
+- Build participantPhotos list with user info joins
+- Sort participantPhotos by photoCount descending
+- Handle Living/Recap state transitions (24h upload window)
+
+### **4. Error Handling**
 - Implement proper exception handling in data sources
 - Use consistent error types across repository implementations
 - Handle network failures and timeouts gracefully
 
-### **4. Data Consistency**
+### **5. Data Consistency**
 - Validate RSVP uniqueness per user per event
+- Validate photo uploads only during Living/Recap states
 - Handle concurrent modifications appropriately
 
-### **5. Testing Requirements**
+### **6. Testing Requirements**
 - Unit tests for all DTOs and repository implementations
 - Integration tests for Supabase data sources
 - Test RLS policies with different user contexts
+- Test photo count aggregations and sorting
+- Test Living/Recap state filtering and time-left calculations
 
 ---
 
@@ -628,30 +740,35 @@ After P2 implementation, verify:
 2. **RLS Security**: Only group members can access group data
 3. **Performance**: Queries use indexes and return quickly
 4. **Error States**: Network errors are handled gracefully in UI
-5. **Sorting Logic**: Expenses maintain proper status-based ordering
-6. **Memory Interface**: Memories display correctly with shared component
+5. **Event Sorting**: Living > Recap > Confirmed > Pending (priority-based)
+6. **Photo Display**: Shows correct counts and opens PhotosBottomSheet for Living/Recap
+7. **Time-left Display**: Shows countdown for Living/Recap states
+8. **Memory Interface**: Memories display correctly with shared component
 
 ---
 
 ## 📝 **SUMMARY**
 
 ### **P1 Deliverables Complete:**
-- ✅ 2 Core domain entities (Events, Memories)
+- ✅ 2 Core domain entities (Events with photo fields, Memories)
 - ✅ 5 Supporting entities (Details, Members, Photos)
 - ✅ 2 Repository interfaces with clear contracts  
 - ✅ 5 Use cases with single responsibilities
 - ✅ Complete UI with tokenized design system (2-tab interface)
-- ✅ Generic shared components (MemoriesSection)
-- ✅ Comprehensive fake data (Events and Memories)
-- ✅ Full state management with AsyncValue
+- ✅ Generic shared components (MemoriesSection, EventFullCard with Living/Recap)
+- ✅ Comprehensive fake data (Events with Living/Recap + photos, Memories)
+- ✅ Full state management with AsyncValue and priority sorting
 - ✅ Error, loading, and empty state handling
+- ✅ Photo system integration (PhotosBottomSheet, time-left display)
+- ✅ EventFullCard replaces GroupEventCard with enhanced functionality
 
 ### **P2 Implementation Required:**
-- ❌ Supabase schema creation (2 main tables + supporting tables)
-- ❌ Data sources for Events and Memories
-- ❌ DTO models with proper JSON parsing
-- ❌ Repository implementations
+- ❌ Supabase schema creation (3 main tables: events with end_date, photos, memories)
+- ❌ Data sources for Events and Memories (with photo aggregation)
+- ❌ DTO models with proper JSON parsing (photo counts, participantPhotos)
+- ❌ Repository implementations (photo system integration)
 - ❌ Provider overrides in main.dart
+- ❌ Photo upload/storage integration for Living/Recap states
 
 **Estimated P2 Effort:** 2-3 days for complete Supabase integration
 
