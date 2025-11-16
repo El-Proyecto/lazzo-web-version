@@ -14,6 +14,7 @@ import '../../../../shared/components/widgets/date_time_widget.dart';
 import '../../../../shared/components/widgets/poll_widget.dart';
 import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/themes/colors.dart';
+import '../../../../services/calendar_service.dart';
 import '../../domain/entities/rsvp.dart';
 import '../../domain/entities/suggestion.dart';
 import '../../domain/entities/event_detail.dart';
@@ -30,10 +31,20 @@ import '../widgets/add_suggestion_bottom_sheet.dart';
 
 /// Event detail page
 /// Displays all event information and interactions
-class EventPage extends ConsumerWidget {
+class EventPage extends ConsumerStatefulWidget {
   final String eventId;
 
   const EventPage({super.key, required this.eventId});
+
+  @override
+  ConsumerState<EventPage> createState() => _EventPageState();
+}
+
+class _EventPageState extends ConsumerState<EventPage> {
+  // Track events that have been added to calendar
+  final Set<String> _addedToCalendar = {};
+
+  String get eventId => widget.eventId;
 
   /// Show dialog to change event status
   void _showStatusChangeDialog(
@@ -85,8 +96,48 @@ class EventPage extends ConsumerWidget {
     }
   }
 
+  /// Add event to device calendar
+  Future<void> _addToCalendar(
+    BuildContext context,
+    EventDetail event,
+  ) async {
+    // Only add if event has start date
+    if (event.startDateTime == null) {
+      TopBanner.showError(
+        context,
+        message: 'Event date not set. Cannot add to calendar.',
+      );
+      return;
+    }
+
+    final success = await CalendarService.addEventToCalendar(
+      title: '${event.emoji} ${event.name}',
+      startDate: event.startDateTime!,
+      endDate: event.endDateTime,
+      description: 'Lazzo event',
+      location: event.location?.displayName,
+    );
+
+    if (context.mounted) {
+      if (success) {
+        setState(() {
+          _addedToCalendar.add(event.id);
+        });
+        TopBanner.showSuccess(
+          context,
+          message: 'Event added to calendar!',
+        );
+      } else {
+        TopBanner.showError(
+          context,
+          message: 'Could not add event to calendar.',
+        );
+      }
+    }
+  }
+
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final currentUserId = ref.watch(currentUserIdProvider);
     final eventAsync = ref.watch(eventDetailProvider(eventId));
     final rsvpsAsync = ref.watch(eventRsvpsProvider(eventId));
@@ -130,8 +181,7 @@ class EventPage extends ConsumerWidget {
                         longitude: eventData.location!.longitude,
                       )
                     : null,
-                status: create_event.EventStatus
-                    .confirmed, // Default status for existing events
+                status: create_event.EventStatus.confirmed,
                 createdAt: eventData.createdAt,
               );
 
@@ -1162,6 +1212,8 @@ class EventPage extends ConsumerWidget {
                   startDateTime: event.startDateTime!,
                   endDateTime: event.endDateTime,
                   location: event.location?.formattedAddress,
+                  onAddToCalendar: () => _addToCalendar(context, event),
+                  isAddedToCalendar: _addedToCalendar.contains(event.id),
                 ),
                 const SizedBox(height: Gaps.lg),
               ],

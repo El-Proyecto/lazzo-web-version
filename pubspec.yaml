@@ -47,6 +47,8 @@ dependencies:
   google_maps_flutter: ^2.9.0
   # QR Code generation for group invitations
   qr_flutter: ^4.1.0
+  # Add events to device calendar (Android & iOS)
+  add_2_calendar: ^3.0.1
   # Native share functionality
   shared_preferences: ^2.2.2
   share_plus: ^10.0.3
