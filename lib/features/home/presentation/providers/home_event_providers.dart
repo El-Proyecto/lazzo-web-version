@@ -18,6 +18,7 @@ import '../../data/fakes/fake_home_event_repository.dart';
 import '../../data/fakes/fake_todo_repository.dart';
 import '../../data/fakes/fake_payment_summary_repository.dart';
 import '../../data/fakes/fake_recent_memory_repository.dart';
+import '../../../auth/presentation/providers/auth_provider.dart';
 
 // Repository providers - default to fake implementations
 final homeEventRepositoryProvider = Provider<HomeEventRepository>((ref) {
@@ -35,6 +36,12 @@ final paymentSummaryRepositoryProvider =
 
 final recentMemoryRepositoryProvider = Provider<RecentMemoryRepository>((ref) {
   return FakeRecentMemoryRepository();
+});
+
+// ✅ NEW: Current user ID provider
+final currentUserIdProvider = Provider<String?>((ref) {
+  final authState = ref.watch(authProvider);
+  return authState.valueOrNull?.id;
 });
 
 // Use case providers

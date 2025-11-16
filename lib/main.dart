@@ -10,10 +10,10 @@ import '../features/home/data/data_sources/memory_remote_data_source.dart';
 import '../features/home/data/repositories/memory_repository_impl.dart';
 import '../features/home/presentation/providers/memory_providers.dart';
 
-// PENDING EVENTS
-import '../features/home/data/data_sources/pending_event_remote_data_source.dart';
-import '../features/home/data/repositories/pending_event_repository_impl.dart';
-import '../features/home/presentation/providers/pending_event_providers.dart';
+// HOME EVENTS
+import 'features/home/data/data_sources/home_event_remote_data_source.dart';
+import 'features/home/data/repositories/home_event_repository_impl.dart';
+import 'features/home/presentation/providers/home_event_providers.dart'; 
 
 // INBOX PAYMENTS - TODO: Add real implementation imports when available
 // import '../features/inbox/data/data_sources/payment_remote_data_source.dart';
@@ -31,9 +31,9 @@ import '../features/home/presentation/providers/pending_event_providers.dart';
 // import '../features/inbox/presentation/providers/actions_provider.dart';
 
 // GROUPS - Real implementation (commented out for testing fake repository)
-// import '../features/groups/presentation/providers/groups_provider.dart';
-// import '../features/groups/data/data_sources/groups_data_source.dart';
-// import '../features/groups/data/repositories/group_repository_impl.dart';
+import '../features/groups/presentation/providers/groups_provider.dart';
+import '../features/groups/data/data_sources/groups_data_source.dart';
+import '../features/groups/data/repositories/group_repository_impl.dart';
 
 // PROFILE - Real implementation
 import '../features/profile/data/data_sources/profile_remote_data_source.dart';
@@ -79,10 +79,11 @@ void main() async {
           ),
         ),
 
-        // PendingEvent repo -> real (Supabase)
-        pendingEventRepositoryProvider.overrideWith(
-          (ref) => PendingEventRepositoryImpl(
-            PendingEventRemoteDataSource(Supabase.instance.client),
+        // ✅ HOME EVENTS repo -> real (Supabase) - NEW UNIFIED STRUCTURE
+        homeEventRepositoryProvider.overrideWith(
+          (ref) => HomeEventRepositoryImpl(
+            HomeEventRemoteDataSource(Supabase.instance.client),
+            ref, // Pass ref to access current user ID
           ),
         ),
 
@@ -115,11 +116,11 @@ void main() async {
         // ✅ GROUPS repo -> real (Supabase) via DI (P2 implementation)
         // COMMENTED OUT FOR TESTING FAKE REPOSITORY (MOCK CONTROL)
         // To use real Supabase data, uncomment the lines below
-        // groupRepositoryProvider.overrideWith((ref) {
-        //   final client = Supabase.instance.client;
-        //   final dataSource = SupabaseGroupsDataSource(client);
-        //   return GroupRepositoryImpl(dataSource, client);
-        // }),
+        groupRepositoryProvider.overrideWith((ref) {
+          final client = Supabase.instance.client;
+          final dataSource = SupabaseGroupsDataSource(client);
+          return GroupRepositoryImpl(dataSource, client);
+        }),
 
         // Profile repo -> real (Supabase)
         profileRepositoryProvider.overrideWith(

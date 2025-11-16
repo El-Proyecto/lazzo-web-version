@@ -278,7 +278,12 @@ class _HomePageState extends ConsumerState<HomePage> {
                           event: event,
                           state: _mapStatusToHomeCardState(event.status),
                           onTap: () {
-                            // TODO: Navigate to event details
+                            // ✅ Navigate to event details
+                            Navigator.pushNamed(
+                              context,
+                              AppRouter.event,
+                              arguments: {'eventId': event.id},
+                            );
                           },
                           onChatPressed: () {
                             // TODO: Navigate to event chat
@@ -338,7 +343,12 @@ class _HomePageState extends ConsumerState<HomePage> {
                                   state:
                                       _mapStatusToSmallCardState(event.status),
                                   onTap: () {
-                                    // TODO: Navigate to event details
+                                    // ✅ Navigate to event details
+                                    Navigator.pushNamed(
+                                      context,
+                                      AppRouter.event,
+                                      arguments: {'eventId': event.id},
+                                    );
                                   },
                                 ),
                                 if (index < events.length - 1)
@@ -385,7 +395,12 @@ class _HomePageState extends ConsumerState<HomePage> {
                                   state:
                                       _mapStatusToSmallCardState(event.status),
                                   onTap: () {
-                                    // TODO: Navigate to event details
+                                    // ✅ Navigate to event details
+                                    Navigator.pushNamed(
+                                      context,
+                                      AppRouter.event,
+                                      arguments: {'eventId': event.id},
+                                    );
                                   },
                                 ),
                                 if (index < events.length - 1)
