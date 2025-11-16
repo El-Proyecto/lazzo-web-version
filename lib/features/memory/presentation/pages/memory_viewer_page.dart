@@ -73,7 +73,7 @@ class MemoryViewerPage extends ConsumerWidget {
 
           return PageView.builder(
             controller: PageController(initialPage: startIndex),
-            scrollDirection: Axis.vertical,
+            scrollDirection: Axis.horizontal,
             itemCount: photos.length,
             itemBuilder: (context, index) {
               final photo = photos[index];

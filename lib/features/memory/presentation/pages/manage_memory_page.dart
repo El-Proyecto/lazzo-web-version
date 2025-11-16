@@ -10,7 +10,6 @@ import '../providers/manage_memory_providers.dart';
 import '../widgets/cover_selection_card.dart';
 import '../widgets/photo_grid_item.dart';
 import '../widgets/add_photo_card.dart';
-import 'memory_page.dart';
 
 /// Manage Memory page for editing photos and selecting covers
 /// Accessible by:
@@ -52,13 +51,11 @@ class _ManageMemoryPageState extends ConsumerState<ManageMemoryPage> {
           icon: const Icon(Icons.arrow_back, color: BrandColors.text1),
           onPressed: () => Navigator.of(context).pop(),
         ),
-        trailing: _isSelectionMode
-            ? IconButton(
-                icon:
-                    const Icon(Icons.delete_outline, color: BrandColors.text1),
-                onPressed: () => _handleDeleteSelected(context),
-              )
-            : null,
+        trailing: IconButton(
+          icon: const Icon(Icons.delete_outline, color: BrandColors.text1),
+          onPressed:
+              _isSelectionMode ? () => _handleDeleteSelected(context) : null,
+        ),
       ),
       body: manageState.when(
         data: (state) => SingleChildScrollView(
