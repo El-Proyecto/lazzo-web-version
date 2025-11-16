@@ -6,7 +6,9 @@ import '../../../../shared/components/widgets/location_widget.dart';
 import '../../../../shared/components/dialogs/add_expense_bottom_sheet.dart';
 import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/themes/colors.dart';
+import '../../domain/entities/chat_message.dart';
 import '../providers/event_providers.dart';
+import '../providers/chat_providers.dart';
 import '../widgets/living_time_left_pill.dart';
 import '../widgets/living_action_row.dart';
 import '../widgets/chat_preview_widget.dart';
@@ -23,7 +25,7 @@ class EventLivingPage extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final eventAsync = ref.watch(eventDetailProvider(eventId));
-    final messagesAsync = ref.watch(recentMessagesProvider(eventId));
+    final messagesAsync = ref.watch(chatMessagesProvider(eventId));
 
     return Scaffold(
       backgroundColor: BrandColors.bg1,
@@ -119,10 +121,25 @@ class EventLivingPage extends ConsumerWidget {
                       onOpenChat: () {
                         // TODO: Navigate to chat
                       },
-                      onSendMessage: (content) async {
+                      onSendMessage: (content, {ChatMessagePreview? replyTo}) async {
+                        // Convert ChatMessagePreview to ChatMessage if replying
+                        ChatMessage? replyToMessage;
+                        if (replyTo != null && messagesAsync.hasValue) {
+                          final messages = messagesAsync.value!;
+                          try {
+                            replyToMessage = messages.firstWhere(
+                              (m) => m.userId == replyTo.userId && 
+                                     m.content == replyTo.content &&
+                                     m.createdAt == replyTo.timestamp,
+                            );
+                          } catch (_) {
+                            // Message not found, ignore reply
+                          }
+                        }
+                        
                         await ref
-                            .read(sendMessageProvider.notifier)
-                            .sendMessage(eventId, content);
+                            .read(chatActionsProvider(eventId))
+                            .sendMessage(content, replyTo: replyToMessage);
                       },
                       mode: ChatMode.living,
                     );

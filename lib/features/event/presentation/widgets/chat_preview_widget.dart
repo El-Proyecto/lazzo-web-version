@@ -362,6 +362,7 @@ class _ChatPreviewWidgetState extends State<ChatPreviewWidget> {
                         child: GestureDetector(
                           onLongPress: () => _showMessageActions(message),
                           child: _MessageBubble(
+                            mode: widget.mode,
                             message: message,
                             isCurrentUser: message.userId == widget.currentUserId,
                             onReplyTap: message.replyTo != null
@@ -553,7 +554,6 @@ class _MessageBubble extends StatelessWidget {
    
     required this.isCurrentUser,
     this.onReplyTap,
-  ,
     required this.mode,
   });
 

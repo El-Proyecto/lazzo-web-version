@@ -173,6 +173,22 @@ final eventPollsProvider = FutureProvider.family<List<Poll>, String>((
 // REMOVED: recentMessagesProvider, MessagesNotifier, unreadMessagesCountProvider
 // These are now handled by chatMessagesProvider (stream-based) in chat_providers.dart
 
+// Group expenses provider (for event expenses)
+final getGroupExpensesUseCaseProvider = Provider<GetGroupExpenses>((ref) {
+    return GetGroupExpenses(ref.watch(groupExpenseRepositoryProvider));
+  });
+
+  final groupExpensesProvider = StateNotifierProvider.family<
+      GroupExpensesController, AsyncValue<List<GroupExpenseEntity>>, String>((
+    ref,
+    groupId,
+  ) {
+    return GroupExpensesController(
+      ref.watch(getGroupExpensesUseCaseProvider),
+      groupId,
+    );
+});
+
 // Event suggestions state provider
 final eventSuggestionsProvider =
     FutureProvider.family<List<Suggestion>, String>((ref, eventId) async {
