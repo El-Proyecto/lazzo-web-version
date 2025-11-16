@@ -6,16 +6,16 @@ import '../../domain/repositories/memory_repository.dart';
 /// Modify these values to test different layouts
 class FakeMemoryConfig {
   /// Number of portrait photos in covers (0-3)
-  static int coverPortraitCount = 3;
+  static int coverPortraitCount = 2;
 
   /// Number of landscape photos in covers (0-3)
-  static int coverLandscapeCount = 0;
+  static int coverLandscapeCount = 1;
 
   /// Number of portrait photos in grid (non-covers)
-  static int gridPortraitCount = 3;
+  static int gridPortraitCount = 4;
 
   /// Number of landscape photos in grid (non-covers)
-  static int gridLandscapeCount = 3;
+  static int gridLandscapeCount = 4;
 
   /// Whether current user is host (can select all photos)
   static bool isHost = false;

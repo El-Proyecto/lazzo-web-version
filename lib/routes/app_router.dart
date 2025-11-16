@@ -26,6 +26,7 @@ import '../features/group_hub/presentation/pages/group_details_page.dart';
 import '../features/memory/presentation/pages/memory_page.dart';
 import '../features/memory/presentation/pages/memory_viewer_page.dart';
 import '../features/memory/presentation/pages/manage_memory_page.dart';
+import '../features/memory/presentation/pages/photo_preview_page.dart';
 
 // Export MemoryEventState for use in routes
 export '../features/memory/presentation/pages/memory_page.dart'
@@ -51,6 +52,7 @@ class AppRouter {
   static const String groupDetails = '/group-details';
   static const String memory = '/memory';
   static const String memoryViewer = '/memory-viewer';
+  static const String photoPreview = '/photo-preview';
   static const String manageMemory = '/manage-memory';
   static const String loginPage = '/login';
   static const String otpVerification = '/otp';
@@ -136,6 +138,14 @@ class AppRouter {
       final args =
           ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
       return MemoryViewerPage(
+        memoryId: args?['memoryId'] ?? 'memory-1',
+        initialPhotoId: args?['photoId'],
+      );
+    },
+    photoPreview: (context) {
+      final args =
+          ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+      return PhotoPreviewPage(
         memoryId: args?['memoryId'] ?? 'memory-1',
         initialPhotoId: args?['photoId'],
       );

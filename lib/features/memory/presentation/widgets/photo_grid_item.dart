@@ -34,53 +34,77 @@ class PhotoGridItem extends StatelessWidget {
       onTap: onTap,
       child: Stack(
         children: [
-          // Photo image
+          // Photo image with border when selected
           Container(
             width: width,
             height: height,
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(Radii.sm),
               color: BrandColors.bg2,
-              image: DecorationImage(
-                image: NetworkImage(photo.thumbnailUrl ?? photo.url),
+              // Green border when selected in selection mode
+              border: isSelectionMode && isSelected
+                  ? Border.all(
+                      color: BrandColors.planning,
+                      width: 3,
+                    )
+                  : null,
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: ColorFiltered(
+              colorFilter: isSelectionMode && !canSelect
+                  ? const ColorFilter.mode(
+                      Color(0x99000000), // Darken non-selectable
+                      BlendMode.darken,
+                    )
+                  : const ColorFilter.mode(
+                      Colors.transparent,
+                      BlendMode.multiply,
+                    ),
+              child: Image.network(
+                photo.thumbnailUrl ?? photo.url,
                 fit: BoxFit.cover,
-                colorFilter: isSelectionMode && !canSelect
-                    ? const ColorFilter.mode(
-                        Color(
-                            0x99000000), // Darken non-selectable only in selection mode
-                        BlendMode.darken,
-                      )
-                    : null,
+                width: width,
+                height: height,
+                errorBuilder: (context, error, stackTrace) {
+                  return Container(
+                    color: BrandColors.bg2,
+                    child: const Center(
+                      child: Icon(
+                        Icons.broken_image,
+                        color: BrandColors.text2,
+                      ),
+                    ),
+                  );
+                },
               ),
             ),
           ),
 
-          // Selection checkbox (only show if can select)
-          if (canSelect && (isSelectionMode || isSelected))
+          // Selection checkbox overlay (only show in selection mode)
+          if (isSelectionMode && canSelect)
             Positioned(
-              top: 6,
-              right: 6,
-              child: GestureDetector(
-                onTap: () => onSelectionChanged?.call(!isSelected),
-                child: Container(
-                  width: 24,
-                  height: 24,
-                  decoration: BoxDecoration(
-                    color: isSelected ? BrandColors.planning : Colors.white,
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: isSelected ? BrandColors.planning : Colors.white,
-                      width: 2,
-                    ),
+              top: 4,
+              right: 4,
+              child: Container(
+                width: 24,
+                height: 24,
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? BrandColors.planning
+                      : BrandColors.bg2.withValues(alpha: 0.8),
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: BrandColors.text1,
+                    width: 2,
                   ),
-                  child: isSelected
-                      ? const Icon(
-                          Icons.check,
-                          color: Colors.white,
-                          size: 16,
-                        )
-                      : null,
                 ),
+                child: isSelected
+                    ? const Icon(
+                        Icons.check,
+                        color: BrandColors.text1,
+                        size: 16,
+                      )
+                    : null,
               ),
             ),
         ],
