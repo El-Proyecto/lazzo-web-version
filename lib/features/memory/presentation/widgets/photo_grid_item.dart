@@ -4,24 +4,28 @@ import '../../../../shared/themes/colors.dart';
 import '../providers/manage_memory_providers.dart';
 
 /// Grid item for displaying a photo in the manage memory grid
-/// Shows remove button for user's own photos
-/// All photos are displayed in portrait orientation (4:5 aspect ratio)
+/// Supports selection mode with checkboxes
+/// Non-selectable photos (other users' photos for non-hosts) are dimmed
 class PhotoGridItem extends StatelessWidget {
   final ManagePhotoItem photo;
   final double width;
   final double height;
-  final bool showRemoveButton;
-  final VoidCallback? onRemove;
+  final bool canSelect;
+  final bool isSelected;
+  final bool isSelectionMode;
   final VoidCallback? onTap;
+  final ValueChanged<bool>? onSelectionChanged;
 
   const PhotoGridItem({
     super.key,
     required this.photo,
     required this.width,
     required this.height,
-    this.showRemoveButton = false,
-    this.onRemove,
+    this.canSelect = true,
+    this.isSelected = false,
+    this.isSelectionMode = false,
     this.onTap,
+    this.onSelectionChanged,
   });
 
   @override
@@ -30,6 +34,7 @@ class PhotoGridItem extends StatelessWidget {
       onTap: onTap,
       child: Stack(
         children: [
+          // Photo image
           Container(
             width: width,
             height: height,
@@ -39,29 +44,42 @@ class PhotoGridItem extends StatelessWidget {
               image: DecorationImage(
                 image: NetworkImage(photo.thumbnailUrl ?? photo.url),
                 fit: BoxFit.cover,
+                colorFilter: isSelectionMode && !canSelect
+                    ? const ColorFilter.mode(
+                        Color(
+                            0x99000000), // Darken non-selectable only in selection mode
+                        BlendMode.darken,
+                      )
+                    : null,
               ),
             ),
           ),
 
-          // Remove button for user photos
-          if (showRemoveButton && onRemove != null)
+          // Selection checkbox (only show if can select)
+          if (canSelect && (isSelectionMode || isSelected))
             Positioned(
-              top: 4,
-              right: 4,
+              top: 6,
+              right: 6,
               child: GestureDetector(
-                onTap: onRemove,
+                onTap: () => onSelectionChanged?.call(!isSelected),
                 child: Container(
                   width: 24,
                   height: 24,
-                  decoration: const BoxDecoration(
-                    color: Color(0xCC000000), // 80% black
+                  decoration: BoxDecoration(
+                    color: isSelected ? BrandColors.planning : Colors.white,
                     shape: BoxShape.circle,
+                    border: Border.all(
+                      color: isSelected ? BrandColors.planning : Colors.white,
+                      width: 2,
+                    ),
                   ),
-                  child: const Icon(
-                    Icons.close,
-                    color: Colors.white,
-                    size: 16,
-                  ),
+                  child: isSelected
+                      ? const Icon(
+                          Icons.check,
+                          color: Colors.white,
+                          size: 16,
+                        )
+                      : null,
                 ),
               ),
             ),

@@ -57,10 +57,16 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
           nextEventStatus == HomeEventStatus.recap) {
         // Navigate to Manage Memory page
         // TODO: Get actual memory ID from current event
+        final memoryState = nextEventStatus == HomeEventStatus.living
+            ? MemoryEventState.living
+            : MemoryEventState.recap;
         Navigator.pushNamed(
           context,
           AppRouter.manageMemory,
-          arguments: {'memoryId': 'memory-1'},
+          arguments: {
+            'memoryId': 'memory-1',
+            'state': memoryState,
+          },
         );
       } else {
         // Planning state: navigate to Create Event page

@@ -48,7 +48,7 @@ class CoverSelectionCard extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(
-                Icons.image_outlined,
+                Icons.star_outline,
                 color: BrandColors.text2,
                 size: IconSizes.lg,
               ),

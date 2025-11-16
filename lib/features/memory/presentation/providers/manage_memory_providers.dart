@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../domain/entities/memory_entity.dart';
+import '../../data/fakes/fake_memory_repository.dart';
 import 'memory_providers.dart';
 
 /// State for managing memory photos
@@ -89,8 +90,8 @@ class ManageMemoryNotifier
       // TODO: Get current user ID from auth provider
       const currentUserId = 'user-1'; // Placeholder
 
-      // TODO: Get event to check if user is host
-      const isHost = true; // Placeholder
+      // Get isHost from fake config (toggle for testing)
+      final isHost = FakeMemoryConfig.isHost;
 
       // Sort photos: user photos first, then others
       final sortedPhotos = List<MemoryPhoto>.from(memoryAsync.photos)
@@ -113,13 +114,8 @@ class ManageMemoryNotifier
               ))
           .toList();
 
-      // Find current cover
-      final currentCover = memoryAsync.coverPhotos.isNotEmpty
-          ? photoItems.firstWhere(
-              (p) => p.id == memoryAsync.coverPhotos.first.id,
-              orElse: () => photoItems.first,
-            )
-          : null;
+      // No cover selected by default
+      final ManagePhotoItem? currentCover = null;
 
       // Calculate max photos: max(20, 5 * N people)
       // TODO: Get actual participant count from event

@@ -270,7 +270,10 @@ class MemoryPage extends ConsumerWidget {
   void _navigateToManageMemory(BuildContext context) {
     Navigator.of(context).pushNamed(
       AppRouter.manageMemory,
-      arguments: {'memoryId': memoryId},
+      arguments: {
+        'memoryId': memoryId,
+        'state': state,
+      },
     );
   }
 
