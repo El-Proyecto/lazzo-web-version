@@ -1,3 +1,4 @@
+// TODO P2: Remove this file - old pending events export file, replaced by new home structure
 // Export file for pending events components
 // Use this to import all related components easily
 

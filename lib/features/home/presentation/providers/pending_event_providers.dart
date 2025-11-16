@@ -1,3 +1,4 @@
+// TODO P2: Remove this file - replaced by new home structure
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../domain/entities/pending_event.dart';
@@ -69,7 +70,7 @@ class StackedEventsNotifier extends StateNotifier<bool> {
 final pendingEventsControllerProvider =
     FutureProvider.autoDispose<List<PendingEvent>>((ref) async {
   final uid = ref.watch(currentUserIdProvider);
-  
+
   if (uid == null) {
     return [];
   }
@@ -88,7 +89,7 @@ final voteStateProvider =
     StateNotifierProvider.family<VoteStateNotifier, VoteState, String>(
   (ref, eventId) {
     final currentUserId = ref.watch(currentUserIdProvider);
-    
+
     // Buscar evento da lista
     final eventsAsync = ref.watch(pendingEventsControllerProvider);
     final event = eventsAsync.whenData((events) {
@@ -149,13 +150,13 @@ class VoteStateNotifier extends StateNotifier<VoteState> {
     required this.voteOnEvent,
     required this.currentUserId,
   }) : super(
-         VoteState(
-           status: initialUserVote == null 
-               ? VoteStatus.vote      // Não votou
-               : VoteStatus.voted,    // Já votou (yes ou no)
-           userVote: initialUserVote,
-         ),
-       );
+          VoteState(
+            status: initialUserVote == null
+                ? VoteStatus.vote // Não votou
+                : VoteStatus.voted, // Já votou (yes ou no)
+            userVote: initialUserVote,
+          ),
+        );
 
   void toggleExpansion() {
     if (state.status == VoteStatus.voted || state.status == VoteStatus.vote) {
@@ -192,15 +193,16 @@ class VoteStateNotifier extends StateNotifier<VoteState> {
       return;
     }
 
-    print('🗳️ Starting vote: eventId=$eventId, userId=$currentUserId, isYes=$isYes');
+    print(
+        '🗳️ Starting vote: eventId=$eventId, userId=$currentUserId, isYes=$isYes');
     state = state.copyWith(status: VoteStatus.voting, isLoading: true);
 
     try {
       final success = await voteOnEvent(eventId, currentUserId, isYes);
-      
+
       if (success) {
         print('✅ Vote success - updating UI state');
-        
+
         state = state.copyWith(
           status: VoteStatus.voted,
           isLoading: false,
@@ -212,7 +214,6 @@ class VoteStateNotifier extends StateNotifier<VoteState> {
 
         print('🔄 Invalidating events cache...');
         ref.invalidate(pendingEventsControllerProvider);
-        
       } else {
         print('❌ Vote failed - returned false');
         state = state.copyWith(

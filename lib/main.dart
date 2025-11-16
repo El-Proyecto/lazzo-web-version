@@ -30,10 +30,10 @@ import '../features/home/presentation/providers/pending_event_providers.dart';
 // import '../features/inbox/data/repositories/action_repository_impl.dart';
 // import '../features/inbox/presentation/providers/actions_provider.dart';
 
-// GROUPS - Real implementation
-import '../features/groups/presentation/providers/groups_provider.dart';
-import '../features/groups/data/data_sources/groups_data_source.dart';
-import '../features/groups/data/repositories/group_repository_impl.dart';
+// GROUPS - Real implementation (commented out for testing fake repository)
+// import '../features/groups/presentation/providers/groups_provider.dart';
+// import '../features/groups/data/data_sources/groups_data_source.dart';
+// import '../features/groups/data/repositories/group_repository_impl.dart';
 
 // PROFILE - Real implementation
 import '../features/profile/data/data_sources/profile_remote_data_source.dart';
@@ -130,11 +130,13 @@ void main() async {
         // ),
 
         // ✅ GROUPS repo -> real (Supabase) via DI (P2 implementation)
-        groupRepositoryProvider.overrideWith((ref) {
-          final client = Supabase.instance.client;
-          final dataSource = SupabaseGroupsDataSource(client);
-          return GroupRepositoryImpl(dataSource, client);
-        }),
+        // COMMENTED OUT FOR TESTING FAKE REPOSITORY (MOCK CONTROL)
+        // To use real Supabase data, uncomment the lines below
+        // groupRepositoryProvider.overrideWith((ref) {
+        //   final client = Supabase.instance.client;
+        //   final dataSource = SupabaseGroupsDataSource(client);
+        //   return GroupRepositoryImpl(dataSource, client);
+        // }),
 
         // Profile repo -> real (Supabase)
         profileRepositoryProvider.overrideWith(

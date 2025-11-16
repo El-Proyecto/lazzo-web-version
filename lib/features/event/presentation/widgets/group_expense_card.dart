@@ -74,10 +74,12 @@ class GroupExpenseCard extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                // Date and Event
+                // Date and Event (hide event name if empty)
                 Expanded(
                   child: Text(
-                    '${_formatDate(expense.date)} • $eventName',
+                    eventName.isEmpty
+                        ? _formatDate(expense.date)
+                        : '${_formatDate(expense.date)} • $eventName',
                     style: AppText.bodyMedium.copyWith(
                       color: BrandColors.text2,
                     ),

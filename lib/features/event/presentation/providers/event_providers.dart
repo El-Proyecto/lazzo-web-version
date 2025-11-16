@@ -5,15 +5,18 @@ import '../../data/fakes/fake_rsvp_repository.dart';
 import '../../data/fakes/fake_poll_repository.dart';
 import '../../data/fakes/fake_chat_repository.dart';
 import '../../data/fakes/fake_suggestion_repository.dart';
+import '../../data/fakes/fake_group_expense_repository.dart';
 import '../../domain/entities/event_detail.dart';
 import '../../domain/entities/rsvp.dart';
 import '../../domain/entities/poll.dart';
 import '../../domain/entities/suggestion.dart';
+import '../../domain/entities/group_expense_entity.dart';
 import '../../domain/repositories/event_repository.dart';
 import '../../domain/repositories/rsvp_repository.dart';
 import '../../domain/repositories/poll_repository.dart';
 import '../../domain/repositories/chat_repository.dart';
 import '../../domain/repositories/suggestion_repository.dart';
+import '../../domain/repositories/group_expense_repository.dart';
 import '../../domain/usecases/get_event_detail.dart';
 import '../../domain/usecases/get_event_rsvps.dart';
 import '../../domain/usecases/submit_rsvp.dart';
@@ -23,6 +26,7 @@ import '../../domain/usecases/create_suggestion.dart';
 import '../../domain/usecases/create_location_suggestion.dart';
 import '../../domain/usecases/toggle_suggestion_vote.dart';
 import '../../domain/usecases/update_event_status.dart';
+import '../../domain/usecases/get_group_expenses.dart';
 
 // Current user ID provider
 final currentUserIdProvider = Provider<String?>((ref) {
@@ -48,6 +52,10 @@ final chatRepositoryProvider = Provider<ChatRepository>((ref) {
 
 final suggestionRepositoryProvider = Provider<SuggestionRepository>((ref) {
   return FakeSuggestionRepository();
+});
+
+final groupExpenseRepositoryProvider = Provider<GroupExpenseRepository>((ref) {
+  return FakeGroupExpenseRepository();
 });
 
 // Use case providers
@@ -294,13 +302,11 @@ class UserRsvpNotifier extends StateNotifier<AsyncValue<Rsvp?>> {
         final goingVotes =
             rsvps.where((r) => r.status == RsvpStatus.going).length;
 
-
         // Check conditions: >50% going AND minimum 3 going votes
         if (totalVotes > 0 && goingVotes >= 3) {
           final goingPercentage = (goingVotes / totalVotes) * 100;
 
           if (goingPercentage > 50) {
-
             // Auto-confirm the event
             await ref
                 .read(eventStatusNotifierProvider(eventId).notifier)
@@ -634,5 +640,31 @@ class ToggleLocationSuggestionVoteNotifier
     } catch (error, stackTrace) {
       state = AsyncValue.error(error, stackTrace);
     }
+  }
+}
+
+// Group expenses controller
+class GroupExpensesController
+    extends StateNotifier<AsyncValue<List<GroupExpenseEntity>>> {
+  final GetGroupExpenses _getGroupExpenses;
+  final String _groupId;
+
+  GroupExpensesController(this._getGroupExpenses, this._groupId)
+      : super(const AsyncValue.loading()) {
+    loadExpenses();
+  }
+
+  Future<void> loadExpenses() async {
+    state = const AsyncValue.loading();
+    try {
+      final expenses = await _getGroupExpenses(_groupId);
+      state = AsyncValue.data(expenses);
+    } catch (error, stackTrace) {
+      state = AsyncValue.error(error, stackTrace);
+    }
+  }
+
+  Future<void> refresh() async {
+    await loadExpenses();
   }
 }

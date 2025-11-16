@@ -1,3 +1,4 @@
+// TODO P2: Remove this file - replaced by new home structure
 import 'package:flutter/material.dart';
 import '../../domain/entities/pending_event.dart';
 import '../../../../shared/components/cards/pending_event_card.dart';

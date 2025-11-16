@@ -1,3 +1,4 @@
+// TODO P2: Remove this file - old memory summary model no longer used in new home structure
 // DTO memory summary
 
 import '../../domain/entities/memory_summary.dart';
@@ -22,9 +23,9 @@ class MemorySummaryModel {
       );
 
   MemorySummary toEntity() => MemorySummary(
-    eventId: eventId,
-    title: title,
-    emoji: emoji,
-    createdAt: createdAt,
-  );
+        eventId: eventId,
+        title: title,
+        emoji: emoji,
+        createdAt: createdAt,
+      );
 }

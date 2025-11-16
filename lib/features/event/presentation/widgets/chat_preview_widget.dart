@@ -4,6 +4,12 @@ import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/constants/text_styles.dart';
 import '../../../../shared/themes/colors.dart';
 
+/// Mode for chat preview widget
+enum ChatMode {
+  planning,
+  living,
+}
+
 /// Model for chat message preview in the widget
 class ChatMessagePreview {
   final String userId;
@@ -38,6 +44,7 @@ class ChatPreviewWidget extends StatefulWidget {
   final Function(ChatMessagePreview message)? onPinMessage;
   final Function(ChatMessagePreview message)? onDeleteMessage;
   final Function(ChatMessagePreview message)? onReplyMessage;
+  final ChatMode mode;
 
   const ChatPreviewWidget({
     super.key,
@@ -50,6 +57,7 @@ class ChatPreviewWidget extends StatefulWidget {
     this.onPinMessage,
     this.onDeleteMessage,
     this.onReplyMessage,
+    this.mode = ChatMode.planning,
   });
 
   @override
@@ -260,7 +268,9 @@ class _ChatPreviewWidgetState extends State<ChatPreviewWidget> {
                       vertical: Gaps.xs,
                     ),
                     decoration: BoxDecoration(
-                      color: BrandColors.planning,
+                      color: widget.mode == ChatMode.living
+                          ? BrandColors.living
+                          : BrandColors.planning,
                       borderRadius: BorderRadius.circular(Radii.pill),
                     ),
                     child: Text(
@@ -495,7 +505,9 @@ class _ChatPreviewWidgetState extends State<ChatPreviewWidget> {
                 Container(
                   margin: const EdgeInsets.only(right: Gaps.xs),
                   decoration: BoxDecoration(
-                    color: BrandColors.planning,
+                    color: widget.mode == ChatMode.living
+                        ? BrandColors.living
+                        : BrandColors.planning,
                     borderRadius: BorderRadius.circular(Radii.pill),
                   ),
                   child: Material(
@@ -533,11 +545,16 @@ class _MessageBubble extends StatelessWidget {
   final ChatMessagePreview message;
   final bool isCurrentUser;
   final VoidCallback? onReplyTap;
+  final ChatMode mode;
 
   const _MessageBubble({
+    
     required this.message,
+   
     required this.isCurrentUser,
     this.onReplyTap,
+  ,
+    required this.mode,
   });
 
   String _formatTimestamp(DateTime timestamp) {
@@ -667,14 +684,18 @@ class _MessageBubble extends StatelessWidget {
                   vertical: Gaps.sm,
                 ),
                 decoration: BoxDecoration(
-                  color:
-                      isCurrentUser ? BrandColors.planning : BrandColors.bg3,
+                  color: isCurrentUser
+                      ? (mode == ChatMode.living
+                          ? BrandColors.living
+                          : BrandColors.planning)
+                      : BrandColors.bg3,
                   borderRadius: BorderRadius.circular(Radii.md),
                 ),
                 child: Text(
                   message.content,
                   style: AppText.bodyMedium.copyWith(
-                    color: BrandColors.text1,
+                    color:
+                        isCurrentUser ? BrandColors.text1 : BrandColors.text1,
                   ),
                 ),
               ),

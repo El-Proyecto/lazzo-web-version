@@ -1,23 +1,19 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../domain/entities/group_event_entity.dart';
-import '../../domain/entities/group_expense_entity.dart';
 import '../../domain/entities/group_memory_entity.dart';
 import '../../domain/entities/group_details_entity.dart';
 import '../../domain/entities/group_member_entity.dart';
 import '../../domain/entities/group_photo_entity.dart';
 import '../../domain/repositories/group_event_repository.dart';
-import '../../domain/repositories/group_expense_repository.dart';
 import '../../domain/repositories/group_memory_repository.dart';
 import '../../domain/repositories/group_details_repository.dart';
 import '../../domain/repositories/group_photos_repository.dart';
 import '../../domain/usecases/get_group_events.dart';
-import '../../domain/usecases/get_group_expenses.dart';
 import '../../domain/usecases/get_group_memories.dart';
 import '../../domain/usecases/get_group_details.dart';
 import '../../domain/usecases/get_group_members.dart';
 import '../../domain/usecases/toggle_group_mute.dart';
 import '../../data/fakes/fake_group_event_repository.dart';
-import '../../data/fakes/fake_group_expense_repository.dart';
 import '../../data/fakes/fake_group_memory_repository.dart';
 import '../../data/fakes/fake_group_details_repository.dart';
 import '../../data/fakes/fake_group_photos_repository.dart';
@@ -25,10 +21,6 @@ import '../../data/fakes/fake_group_photos_repository.dart';
 // Repository providers - defaults to fake
 final groupEventRepositoryProvider = Provider<GroupEventRepository>((ref) {
   return FakeGroupEventRepository();
-});
-
-final groupExpenseRepositoryProvider = Provider<GroupExpenseRepository>((ref) {
-  return FakeGroupExpenseRepository();
 });
 
 final groupMemoryRepositoryProvider = Provider<GroupMemoryRepository>((ref) {
@@ -46,10 +38,6 @@ final groupPhotosRepositoryProvider = Provider<GroupPhotosRepository>((ref) {
 // Use case providers
 final getGroupEventsUseCaseProvider = Provider<GetGroupEvents>((ref) {
   return GetGroupEvents(ref.watch(groupEventRepositoryProvider));
-});
-
-final getGroupExpensesUseCaseProvider = Provider<GetGroupExpenses>((ref) {
-  return GetGroupExpenses(ref.watch(groupExpenseRepositoryProvider));
 });
 
 final getGroupMemoriesUseCaseProvider = Provider<GetGroupMemories>((ref) {
@@ -76,17 +64,6 @@ final groupEventsProvider = StateNotifierProvider.family<GroupEventsController,
 ) {
   return GroupEventsController(
     ref.watch(getGroupEventsUseCaseProvider),
-    groupId,
-  );
-});
-
-final groupExpensesProvider = StateNotifierProvider.family<
-    GroupExpensesController, AsyncValue<List<GroupExpenseEntity>>, String>((
-  ref,
-  groupId,
-) {
-  return GroupExpensesController(
-    ref.watch(getGroupExpensesUseCaseProvider),
     groupId,
   );
 });
@@ -158,31 +135,6 @@ class GroupEventsController
 
   Future<void> refresh() async {
     await loadEvents();
-  }
-}
-
-class GroupExpensesController
-    extends StateNotifier<AsyncValue<List<GroupExpenseEntity>>> {
-  final GetGroupExpenses _getGroupExpenses;
-  final String _groupId;
-
-  GroupExpensesController(this._getGroupExpenses, this._groupId)
-      : super(const AsyncValue.loading()) {
-    loadExpenses();
-  }
-
-  Future<void> loadExpenses() async {
-    state = const AsyncValue.loading();
-    try {
-      final expenses = await _getGroupExpenses(_groupId);
-      state = AsyncValue.data(expenses);
-    } catch (error, stackTrace) {
-      state = AsyncValue.error(error, stackTrace);
-    }
-  }
-
-  Future<void> refresh() async {
-    await loadExpenses();
   }
 }
 
