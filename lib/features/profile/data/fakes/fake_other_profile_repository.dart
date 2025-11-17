@@ -71,6 +71,8 @@ class FakeOtherProfileRepository implements OtherProfileRepository {
         location: 'Cascais Beach',
         status: GroupEventStatus.confirmed,
         goingCount: 8,
+        participantCount: 8,
+        photoCount: 0,
         attendeeNames: ['You', 'Ana', 'Marco', '5 others'],
         attendeeAvatars: [
           'https://i.pravatar.cc/300?img=1',
@@ -88,6 +90,8 @@ class FakeOtherProfileRepository implements OtherProfileRepository {
         location: 'Cinema City',
         status: GroupEventStatus.confirmed,
         goingCount: 6,
+        participantCount: 6,
+        photoCount: 0,
         attendeeNames: ['You', 'Ana', 'João', '3 others'],
         attendeeAvatars: [
           'https://i.pravatar.cc/300?img=1',
@@ -105,6 +109,8 @@ class FakeOtherProfileRepository implements OtherProfileRepository {
         location: "Marco's Place",
         status: GroupEventStatus.confirmed,
         goingCount: 12,
+        participantCount: 12,
+        photoCount: 0,
         attendeeNames: ['You', 'Ana', 'Marco', 'Sofia', '8 others'],
         attendeeAvatars: [
           'https://i.pravatar.cc/300?img=1',

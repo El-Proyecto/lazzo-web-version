@@ -1,11 +1,13 @@
 # Group Hub Feature - P1 to P2 Handoff Document
 
-**Date:** October 21, 2025 (Updated: November 13, 2025)  
+**Date:** October 21, 2025 (Updated: November 17, 2025)  
 **From:** Role P1 (UI + State + Contracts)  
 **To:** Role P2 (Data + Supabase)  
 **Feature:** Group Hub (Events, Memories)  
 
 > **⚠️ UPDATE (Nov 13, 2025):** Expenses section has been **migrated to Event feature** where it's actually used. This handoff now covers only Events and Memories sections. For expenses functionality, refer to `EVENT_DETAIL_P1_P2_HANDOFF.md`.
+
+> **🆕 UPDATE (Nov 17, 2025):** GroupEventEntity expanded with new fields for Live/Recap functionality: `participantCount`, `photoCount`, `maxPhotos`, `endsAt`. GroupEventStatus enum now includes `live` and `recap`. All data layer files scaffolded with detailed TODOs in `lib/features/group_hub/data/`.
 
 ---
 
@@ -27,9 +29,13 @@ class GroupEventEntity {
   final String name;
   final String emoji;
   final DateTime? date;
+  final DateTime? endsAt;            // 🆕 For Live/Recap - when event ends
   final String? location;
   final GroupEventStatus status;
   final int goingCount;
+  final int participantCount;        // 🆕 Total participants (for "X participants")
+  final int photoCount;              // 🆕 Current photos uploaded
+  final int? maxPhotos;              // 🆕 Maximum photos allowed (for "X/Y photos")
   final List<String> attendeeAvatars;
   final List<String> attendeeNames;
   final bool? userVote; // true = going, false = not going, null = pending
@@ -37,7 +43,10 @@ class GroupEventEntity {
 }
 
 enum GroupEventStatus { 
-  planning, confirmed, cancelled, completed 
+  pending,    // Event is being planned
+  confirmed,  // Event is confirmed (shows date + RSVP details)
+  live,       // 🆕 Event is happening now (shows "X hours left" + participant count)
+  recap       // 🆕 Event ended, recap available (shows "X hours left" + photos)
 }
 ```
 
@@ -68,6 +77,18 @@ class GroupMemoryEntity implements MemoryData {
 - RSVP vote tracking for events
 - Photo count and cover images for memories
 - Interface compatibility with shared components
+
+**🆕 New Fields (Nov 17, 2025):**
+- `participantCount` - Total number of participants (used for "6 participants" display)
+- `photoCount` - Current number of photos uploaded (used for "18/30 photos" display)
+- `maxPhotos` - Maximum photo limit (nullable, used for "X/Y photos" format)
+- `endsAt` - End time for Live/Recap events (used to calculate "X hours left")
+
+**Status Logic:**
+- **Live**: Event in progress, show purple badge with "X hours left" + participant/photo counts
+- **Recap**: Event ended, show orange badge with "X hours left" to view recap + photos
+- **Confirmed**: Future event, show green badge with date + RSVP details ("5 going • You, Sarah and 3 others")
+- **Pending**: Event being planned, show date only
 
 ---
 
@@ -373,16 +394,23 @@ CREATE TABLE group_events (
   name TEXT NOT NULL,
   emoji TEXT DEFAULT '📅',
   date TIMESTAMPTZ,
+  ends_at TIMESTAMPTZ,              -- 🆕 For Live/Recap status (when event ends)
   location TEXT,
-  status TEXT DEFAULT 'planning' CHECK (status IN ('planning', 'confirmed', 'cancelled', 'completed')),
+  status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'confirmed', 'live', 'recap')),
+  photo_count INT DEFAULT 0,        -- 🆕 Current number of photos uploaded
+  max_photos INT,                   -- 🆕 Maximum photo limit (nullable)
   created_at TIMESTAMPTZ DEFAULT NOW(),
   created_by UUID REFERENCES profiles(id),
+  deleted_at TIMESTAMPTZ,           -- For soft deletes
   
   -- RLS policies needed for group members only
 );
 
--- Index for performance
+-- Index for performance (sort by date DESC for recent events first)
 CREATE INDEX idx_group_events_group_id_date ON group_events(group_id, date DESC);
+
+-- Index for filtering by status
+CREATE INDEX idx_group_events_status ON group_events(status) WHERE deleted_at IS NULL;
 ```
 
 #### **Event RSVP Table** - `event_rsvps`
@@ -391,12 +419,15 @@ CREATE TABLE event_rsvps (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   event_id UUID REFERENCES group_events(id) ON DELETE CASCADE,
   user_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
-  vote BOOLEAN, -- true = going, false = not going, null = pending
+  status TEXT NOT NULL CHECK (status IN ('going', 'notGoing', 'pending')),
+  voted_at TIMESTAMPTZ DEFAULT NOW(),
   created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW(),
   
   UNIQUE(event_id, user_id)
 );
+
+CREATE INDEX idx_event_rsvps_event_id ON event_rsvps(event_id);
+CREATE INDEX idx_event_rsvps_user_id ON event_rsvps(user_id);
 ```
 
 #### **Memories Table** - `group_memories`

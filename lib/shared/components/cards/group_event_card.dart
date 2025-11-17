@@ -76,6 +76,9 @@ class _GroupEventCardState extends State<GroupEventCard> {
         goingCount: newGoingCount,
         attendeeNames: newAttendeeNames,
         attendeeAvatars: newAttendeeAvatars,
+        participantCount: _currentEvent.participantCount,
+        photoCount: _currentEvent.photoCount,
+        maxPhotos: _currentEvent.maxPhotos,
         updateUserVote: true, // Allow explicit null setting
       );
     });
@@ -95,68 +98,127 @@ class _GroupEventCardState extends State<GroupEventCard> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Date and Status row
-            _buildDateAndStatus(),
+            // Time remaining (for Live/Recap) or Date (for Confirmed) with Status badge
+            _buildTopRow(),
             const SizedBox(height: Gaps.sm),
 
-            // Event title and location
+            // Event emoji, title and location
             _buildEventInfo(),
             const SizedBox(height: Gaps.sm),
 
-            // Attendees and going count
-            _buildAttendeeInfo(context),
+            // Participants/photos count OR RSVP info (depending on status)
+            _buildBottomInfo(context),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildDateAndStatus() {
+  Widget _buildTopRow() {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Date
-        Text(
-          _currentEvent.date != null
-              ? _formatEventDate(_currentEvent.date!)
-              : 'To be decided',
-          style: AppText.bodyMedium.copyWith(
-            color: BrandColors.text2,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-
-        // Status chip (non-interactive for display only)
-        Container(
-          padding: const EdgeInsets.symmetric(
-            horizontal: Pads.sectionV,
-            vertical: Pads.ctlVXss,
-          ),
-          decoration: BoxDecoration(
-            color: _currentEvent.status == GroupEventStatus.confirmed
-                ? BrandColors.planning
-                : BrandColors.bg3,
-            borderRadius: BorderRadius.circular(Radii.pill),
-            border: Border.all(
-              color: _currentEvent.status == GroupEventStatus.confirmed
-                  ? BrandColors.planning
-                  : BrandColors.border,
-              width: 1,
-            ),
-          ),
+        // Time remaining (Live/Recap) or Date (Confirmed)
+        Expanded(
           child: Text(
-            _currentEvent.status == GroupEventStatus.confirmed
-                ? 'Confirmed'
-                : 'Pending',
-            style: AppText.labelLarge.copyWith(
-              color: _currentEvent.status == GroupEventStatus.confirmed
-                  ? Colors.white
-                  : BrandColors.text1,
+            _getTopRowText(),
+            style: AppText.bodyMedium.copyWith(
+              color: BrandColors.text2,
               fontWeight: FontWeight.w500,
             ),
           ),
         ),
+
+        const SizedBox(width: Gaps.sm),
+
+        // Status badge
+        _buildStatusBadge(),
       ],
+    );
+  }
+
+  String _getTopRowText() {
+    switch (_currentEvent.status) {
+      case GroupEventStatus.live:
+      case GroupEventStatus.recap:
+        if (_currentEvent.endsAt != null) {
+          return _formatTimeRemaining(_currentEvent.endsAt!);
+        }
+        return 'In progress';
+      case GroupEventStatus.confirmed:
+        if (_currentEvent.date != null) {
+          return _formatEventDate(_currentEvent.date!);
+        }
+        return 'Date to be confirmed';
+      case GroupEventStatus.pending:
+        return 'To be decided';
+    }
+  }
+
+  String _formatTimeRemaining(DateTime endsAt) {
+    final now = DateTime.now();
+    final difference = endsAt.difference(now);
+
+    if (difference.isNegative) {
+      return 'Ended';
+    }
+
+    if (difference.inHours > 0) {
+      return '${difference.inHours} hour${difference.inHours > 1 ? 's' : ''} left';
+    }
+
+    if (difference.inMinutes > 0) {
+      return '${difference.inMinutes} minute${difference.inMinutes > 1 ? 's' : ''} left';
+    }
+
+    return 'Less than a minute left';
+  }
+
+  Widget _buildStatusBadge() {
+    Color backgroundColor;
+    Color textColor;
+    String label;
+
+    switch (_currentEvent.status) {
+      case GroupEventStatus.live:
+        backgroundColor = const Color(0xFF7C3AED); // Purple for Live
+        textColor = Colors.white;
+        label = 'Live';
+        break;
+      case GroupEventStatus.recap:
+        backgroundColor = const Color(0xFFEA580C); // Orange for Recap
+        textColor = Colors.white;
+        label = 'Recap';
+        break;
+      case GroupEventStatus.confirmed:
+        backgroundColor = const Color(0xFF16A34A); // Green for Confirmed
+        textColor = Colors.white;
+        label = 'Confirmed';
+        break;
+      case GroupEventStatus.pending:
+        backgroundColor = BrandColors.bg3;
+        textColor = BrandColors.text2;
+        label = 'Pending';
+        break;
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: Pads.sectionV,
+        vertical: Pads.ctlVXss,
+      ),
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(Radii.pill),
+      ),
+      child: Text(
+        label,
+        style: AppText.labelLarge.copyWith(
+          color: textColor,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
     );
   }
 
@@ -201,7 +263,27 @@ class _GroupEventCardState extends State<GroupEventCard> {
     );
   }
 
-  Widget _buildAttendeeInfo(BuildContext context) {
+  Widget _buildBottomInfo(BuildContext context) {
+    // For Live/Recap events, show participants and photos count
+    if (_currentEvent.status == GroupEventStatus.live ||
+        _currentEvent.status == GroupEventStatus.recap) {
+      return _buildParticipantInfo(context);
+    }
+
+    // For Confirmed events, show RSVP info
+    if (_currentEvent.status == GroupEventStatus.confirmed) {
+      return _buildRsvpInfo(context);
+    }
+
+    // For Pending events, show participants count if any
+    if (_currentEvent.participantCount > 0) {
+      return _buildParticipantInfo(context);
+    }
+
+    return const SizedBox.shrink();
+  }
+
+  Widget _buildParticipantInfo(BuildContext context) {
     return InkWell(
       onTap: () => _showVotesBottomSheet(context),
       borderRadius: BorderRadius.circular(Radii.sm),
@@ -213,7 +295,37 @@ class _GroupEventCardState extends State<GroupEventCard> {
             _buildAttendeeAvatars(),
             const SizedBox(width: Gaps.xs),
 
-            // Going count text with names
+            // Participant and photos count
+            Expanded(
+              child: Text(
+                _buildParticipantText(),
+                style: AppText.bodyMedium.copyWith(
+                  color: BrandColors.text2,
+                  fontWeight: FontWeight.w500,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRsvpInfo(BuildContext context) {
+    return InkWell(
+      onTap: () => _showVotesBottomSheet(context),
+      borderRadius: BorderRadius.circular(Radii.sm),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: Gaps.xxs),
+        child: Row(
+          children: [
+            // Profile pictures
+            _buildAttendeeAvatars(),
+            const SizedBox(width: Gaps.xs),
+
+            // RSVP text ("5 going • You, Sarah and 3 others")
             Expanded(
               child: Text(
                 _buildAttendeeText(),
@@ -229,6 +341,22 @@ class _GroupEventCardState extends State<GroupEventCard> {
         ),
       ),
     );
+  }
+
+  String _buildParticipantText() {
+    final parts = <String>[];
+
+    // Participants count
+    parts.add('${ _currentEvent.participantCount} participant${_currentEvent.participantCount != 1 ? 's' : ''}');
+
+    // Photos count
+    if (_currentEvent.maxPhotos != null) {
+      parts.add('${_currentEvent.photoCount}/${_currentEvent.maxPhotos} photos');
+    } else if (_currentEvent.photoCount > 0) {
+      parts.add('${_currentEvent.photoCount} photo${_currentEvent.photoCount != 1 ? 's' : ''}');
+    }
+
+    return parts.join(' • ');
   }
 
   void _showVotesBottomSheet(BuildContext context) {

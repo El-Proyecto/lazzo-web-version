@@ -19,10 +19,20 @@ import '../../data/fakes/fake_group_details_repository.dart';
 import '../../data/fakes/fake_group_photos_repository.dart';
 
 // Repository providers - defaults to fake
+// 
+// P2 TODO: Override these providers in main.dart with real implementations:
+// ```dart
+// groupEventRepositoryProvider.overrideWith((ref) {
+//   final client = Supabase.instance.client;
+//   final dataSource = SupabaseGroupEventDataSource(client);
+//   return GroupEventRepositoryImpl(dataSource);
+// }),
+// ```
 final groupEventRepositoryProvider = Provider<GroupEventRepository>((ref) {
   return FakeGroupEventRepository();
 });
 
+// P2 TODO: Override in main.dart with SupabaseGroupMemoryDataSource + GroupMemoryRepositoryImpl
 final groupMemoryRepositoryProvider = Provider<GroupMemoryRepository>((ref) {
   return FakeGroupMemoryRepository();
 });
