@@ -2,15 +2,40 @@ import 'dart:async';
 import '../../domain/entities/chat_message.dart';
 import '../../domain/repositories/chat_repository.dart';
 
+/// Event status for chat state configuration
+enum FakeEventChatStatus { planning, living, recap }
+
+/// Global configuration for testing different event chat states
+class FakeEventChatConfig {
+  /// Current event status (determines UI colors and FAB icon)
+  /// - planning: green colors (current behavior)
+  /// - living: purple colors + camera FAB
+  /// - recap: orange colors + add_photo FAB
+  static FakeEventChatStatus eventStatus = FakeEventChatStatus.planning;
+
+  /// Helper to check if event is in living state
+  static bool get isLiving => eventStatus == FakeEventChatStatus.living;
+
+  /// Helper to check if event is in recap state
+  static bool get isRecap => eventStatus == FakeEventChatStatus.recap;
+
+  /// Helper to check if event is in planning state
+  static bool get isPlanning => eventStatus == FakeEventChatStatus.planning;
+}
+
 /// Fake chat repository for development
 class FakeChatRepository implements ChatRepository {
   final List<ChatMessage> _messages = [];
-  final StreamController<List<ChatMessage>> _messagesController = StreamController<List<ChatMessage>>.broadcast();
-  
+  final StreamController<List<ChatMessage>> _messagesController =
+      StreamController<List<ChatMessage>>.broadcast();
+
   @override
   Stream<List<ChatMessage>> watchMessages(String eventId) {
-    // Return stream with current messages
-    Future.microtask(() => _messagesController.add(_messages));
+    // Return stream with current messages sorted by created_at DESCENDING (newest first)
+    // This matches Supabase behavior: order('created_at', ascending: false)
+    final eventMessages = _messages.where((m) => m.eventId == eventId).toList();
+    eventMessages.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    Future.microtask(() => _messagesController.add(eventMessages));
     return _messagesController.stream;
   }
 
@@ -192,6 +217,7 @@ class FakeChatRepository implements ChatRepository {
     await Future.delayed(const Duration(milliseconds: 300));
     final eventMessages = _messages.where((m) => m.eventId == eventId).toList();
 
+    // Sort DESCENDING (newest first) to match Supabase: order('created_at', ascending: false)
     eventMessages.sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
     return eventMessages.take(limit).toList();
@@ -200,11 +226,10 @@ class FakeChatRepository implements ChatRepository {
   // DEPRECATED: Use watchMessages instead
   Future<List<ChatMessage>> getAllMessages(String eventId) async {
     await Future.delayed(const Duration(milliseconds: 300));
-    return _messages
-        .where((m) => m.eventId == eventId)
-        .toList()
-        .reversed
-        .toList();
+    final eventMessages = _messages.where((m) => m.eventId == eventId).toList();
+    // Sort DESCENDING (newest first) to match Supabase: order('created_at', ascending: false)
+    eventMessages.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    return eventMessages;
   }
 
   @override
@@ -228,11 +253,16 @@ class FakeChatRepository implements ChatRepository {
     );
 
     _messages.add(message);
+    // Emit updated list to stream (sorted DESCENDING like Supabase)
+    final eventMessages = _messages.where((m) => m.eventId == eventId).toList();
+    eventMessages.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    _messagesController.add(eventMessages);
     return message;
   }
 
   @override
-  Future<ChatMessage> pinMessage(String eventId, String messageId, bool isPinned) async {
+  Future<ChatMessage> pinMessage(
+      String eventId, String messageId, bool isPinned) async {
     await Future.delayed(const Duration(milliseconds: 300));
 
     final index = _messages.indexWhere((m) => m.id == messageId);
@@ -251,6 +281,10 @@ class FakeChatRepository implements ChatRepository {
 
     final updatedMessage = _messages[index].copyWith(isPinned: isPinned);
     _messages[index] = updatedMessage;
+    // Emit updated list to stream
+    final eventMessages = _messages.where((m) => m.eventId == eventId).toList();
+    eventMessages.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    _messagesController.add(eventMessages);
     return updatedMessage;
   }
 
@@ -268,6 +302,10 @@ class FakeChatRepository implements ChatRepository {
       content: 'Message Deleted',
     );
     _messages[index] = updatedMessage;
+    // Emit updated list to stream
+    final eventMessages = _messages.where((m) => m.eventId == eventId).toList();
+    eventMessages.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    _messagesController.add(eventMessages);
     return updatedMessage;
   }
 }

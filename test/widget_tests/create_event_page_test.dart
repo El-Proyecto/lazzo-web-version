@@ -13,9 +13,9 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   // Helper para criar grupos mock para os testes
-  List<Group> _getMockGroups() {
+  List<Group> getMockGroups() {
     return [
-      Group(
+      const Group(
         id: '1',
         name: 'Os Bros',
         memberCount: 5,
@@ -23,7 +23,7 @@ void main() {
         isPinned: false,
         isMuted: false,
       ),
-      Group(
+      const Group(
         id: '2',
         name: 'Família',
         memberCount: 4,
@@ -40,7 +40,7 @@ void main() {
       overrides: [
         // Mock do groupsProvider para retornar grupos fake
         groupsProvider.overrideWith((ref) async {
-          return _getMockGroups();
+          return getMockGroups();
         }),
       ],
       child: MaterialApp(home: child),
