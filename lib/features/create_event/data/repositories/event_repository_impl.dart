@@ -99,16 +99,55 @@ class EventRepositoryImpl implements EventRepository {
 			final eventId = response['id'] as String;
 			
 		// Create initial RSVP for event creator (automatically "yes")
+		print('👤 DEBUG: Creating initial RSVP for creator - eventId=$eventId, userId=$userId');
+		
+		// Prepare the data - Use UPSERT to handle any conflicts
+		final rsvpData = {
+			'pevent_id': eventId,
+			'user_id': userId,
+			'rsvp': 'yes', // CRITICAL: Must be 'yes', not 'pending'
+			'confirmed_at': DateTime.now().toIso8601String(),
+		};
+		
+		print('📤 DEBUG: Upserting RSVP data (to handle conflicts): $rsvpData');
+		
 		try {
-			await _client.from('event_participants').insert({
-				'pevent_id': eventId,
-				'user_id': userId,
-				'rsvp': 'yes', // rsvp_status enum: pending, yes, no, maybe
-				'confirmed_at': DateTime.now().toIso8601String(),
-			});
-		} catch (e) {
-			// Don't fail event creation if RSVP fails
-		}			// If event has initial date/time, create it as a suggestion
+			// Use UPSERT instead of INSERT to handle any conflicts
+			// This ensures 'yes' is always saved even if a row already exists
+			final rsvpResponse = await _client
+				.from('event_participants')
+				.upsert(
+					rsvpData,
+					onConflict: 'pevent_id,user_id', // Composite primary key
+				)
+				.select();
+			
+			print('✅ DEBUG: Initial RSVP upserted successfully');
+			print('📥 DEBUG: Supabase response: $rsvpResponse');
+			
+			// Verify what was actually saved
+			if (rsvpResponse.isNotEmpty) {
+				final savedRsvp = rsvpResponse.first['rsvp'];
+				print('🔍 DEBUG: Saved RSVP status in DB: $savedRsvp');
+				if (savedRsvp != 'yes') {
+					print('⚠️⚠️⚠️ CRITICAL WARNING ⚠️⚠️⚠️');
+					print('⚠️ RSVP was saved as "$savedRsvp" instead of "yes"!');
+					print('⚠️ Check Supabase:');
+					print('⚠️   1. event_participants table default values');
+					print('⚠️   2. Triggers on INSERT/UPDATE');
+					print('⚠️   3. RLS policies that modify data');
+					print('⚠️⚠️⚠️ END WARNING ⚠️⚠️⚠️');
+				}
+			}
+		} catch (e, stackTrace) {
+			print('❌ DEBUG: Failed to upsert initial RSVP');
+			print('❌ DEBUG: Error: $e');
+			print('❌ DEBUG: StackTrace: $stackTrace');
+			print('❌ DEBUG: This means the creator will not show as "Going" automatically');
+			// Don't fail event creation if RSVP fails, but log it for debugging
+		}
+		
+		// If event has initial date/time, create it as a suggestion
 			if (event.startDateTime != null) {
 				try {
 					final suggestionResponse = await _client.from('event_date_options').insert({
