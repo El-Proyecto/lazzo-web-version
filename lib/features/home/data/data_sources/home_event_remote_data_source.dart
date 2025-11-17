@@ -12,7 +12,7 @@ class HomeEventRemoteDataSource {
   HomeEventRemoteDataSource(this.client);
 
   /// Fetch next event (highest priority event user is attending)
-  /// Priority: living > recap > confirmed (nearest date) > pending (nearest date)
+  /// Priority: living (4) > recap (3) > confirmed (2) > pending (1)
   Future<HomeEventEntity?> fetchNextEvent(String userId) async {
     try {
       print('🔍 Fetching next event for userId: $userId');
@@ -26,9 +26,13 @@ class HomeEventRemoteDataSource {
             user_rsvp, voted_at,
             going_count, going_users,
             not_going_users, no_response_users,
-            participants_total, voters_total
+            participants_total, voters_total,
+            priority
           ''')
-          .eq('user_id', userId) // ✅ Filtrar por user_id
+          .eq('user_id', userId)
+          // ✅ FIX: Ordenar por prioridade primeiro (maior = mais importante)
+          .order('priority', ascending: false)
+          // ✅ Dentro da mesma prioridade, ordenar por data
           .order('start_datetime', ascending: true)
           .limit(1)
           .maybeSingle();
@@ -38,7 +42,7 @@ class HomeEventRemoteDataSource {
         return null;
       }
 
-      print('✅ Next event fetched: ${response['event_name']}');
+      print('✅ Next event fetched: ${response['event_name']} (status: ${response['event_status']}, priority: ${response['priority']})');
       return homeEventFromMap(response as Map<String, dynamic>);
     } catch (e) {
       print('❌ Error fetching next event: $e');
@@ -60,10 +64,12 @@ class HomeEventRemoteDataSource {
             user_rsvp, voted_at,
             going_count, going_users,
             not_going_users, no_response_users,
-            participants_total, voters_total
+            participants_total, voters_total,
+            priority
           ''')
           .eq('user_id', userId)
-          .eq('event_status', 'confirmed') // ✅ Apenas eventos confirmados
+          .eq('event_status', 'confirmed')
+          // ✅ Ordenar por data (mais próximos primeiro)
           .order('start_datetime', ascending: true)
           .limit(10);
 
@@ -94,10 +100,12 @@ class HomeEventRemoteDataSource {
             user_rsvp, voted_at,
             going_count, going_users,
             not_going_users, no_response_users,
-            participants_total, voters_total
+            participants_total, voters_total,
+            priority
           ''')
           .eq('user_id', userId)
-          .eq('event_status', 'pending') // ✅ Apenas eventos pendentes
+          .eq('event_status', 'pending')
+          // ✅ Ordenar por data (mais próximos primeiro)
           .order('start_datetime', ascending: true)
           .limit(10);
 
@@ -121,12 +129,12 @@ class HomeEventRemoteDataSource {
 
       await client.from('event_participants').upsert(
         {
-          'pevent_id': eventId, // ✅ Corrigido: pevent_id (não event_id)
+          'pevent_id': eventId,
           'user_id': userId,
-          'rsvp': isGoing ? 'going' : 'not_going', // ✅ Usar valores corretos da enum
+          'rsvp': isGoing ? 'going' : 'not_going',
           'confirmed_at': DateTime.now().toIso8601String(),
         },
-        onConflict: 'pevent_id,user_id', // ✅ Corrigido: pevent_id
+        onConflict: 'pevent_id,user_id',
       );
 
       print('✅ Vote successful');

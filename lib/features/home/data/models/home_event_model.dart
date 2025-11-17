@@ -1,6 +1,5 @@
 import '../../../../shared/components/widgets/rsvp_widget.dart';
 import '../../domain/entities/home_event.dart';
-import '../../domain/entities/participant_photo.dart';
 
 /// DTO for home event - converts Supabase rows to entities
 class _HomeEventModel {
