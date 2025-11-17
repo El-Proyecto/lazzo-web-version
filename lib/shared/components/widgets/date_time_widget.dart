@@ -10,6 +10,8 @@ class DateTimeWidget extends StatelessWidget {
   final DateTime startDateTime;
   final DateTime? endDateTime;
   final String? location;
+  final VoidCallback? onAddToCalendar;
+  final bool isAddedToCalendar;
 
   const DateTimeWidget({
     super.key,
@@ -17,6 +19,8 @@ class DateTimeWidget extends StatelessWidget {
     required this.startDateTime,
     this.endDateTime,
     this.location,
+    this.onAddToCalendar,
+    this.isAddedToCalendar = false,
   });
 
   @override
@@ -70,9 +74,15 @@ class DateTimeWidget extends StatelessWidget {
           SizedBox(
             width: double.infinity,
             child: OutlinedButton.icon(
-              onPressed: () => _addToCalendar(),
-              icon: const Icon(Icons.calendar_today, size: IconSizes.sm),
-              label: Text('Add to calendar', style: AppText.bodyMediumEmph),
+              onPressed: isAddedToCalendar ? null : onAddToCalendar,
+              icon: Icon(
+                isAddedToCalendar ? Icons.check_circle : Icons.calendar_today,
+                size: IconSizes.sm,
+              ),
+              label: Text(
+                isAddedToCalendar ? 'Added to Calendar' : 'Add to calendar',
+                style: AppText.bodyMediumEmph,
+              ),
               style: OutlinedButton.styleFrom(
                 foregroundColor: BrandColors.text1,
                 side: const BorderSide(color: BrandColors.border),
@@ -258,10 +268,5 @@ class DateTimeWidget extends StatelessWidget {
       return '$startTime - $endTime';
     }
     return startTime;
-  }
-
-  void _addToCalendar() {
-    // TODO: Implement calendar integration with add_2_calendar package
-    // For now, this is a placeholder
   }
 }

@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:geocoding/geocoding.dart';
+import 'package:geolocator/geolocator.dart';
 import '../../../../shared/components/inputs/segmented_control.dart';
 import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/constants/text_styles.dart';
@@ -316,7 +318,17 @@ class _AddSuggestionBottomSheetState
             selectedDate: startDate,
             onDateChanged: (date) {
               setState(() {
+                // Calculate the difference in days between old and new start date
+                final daysDifference = date.difference(startDate).inDays;
+                
+                // Update start date
                 startDate = date;
+                
+                // Adjust end date to maintain the same duration
+                if (daysDifference != 0) {
+                  endDate = endDate.add(Duration(days: daysDifference));
+                }
+                
                 isStartDatePickerExpanded = false;
               });
             },
@@ -973,36 +985,88 @@ class _AddSuggestionBottomSheetState
     });
 
     // Start new debounce timer
-    _searchTimer = Timer(const Duration(milliseconds: 500), () {
+    _searchTimer = Timer(const Duration(milliseconds: 500), () async {
       if (mounted) {
-        final fakeResults = _generateFakeLocationResults(query);
-        setState(() {
-          _searchResults = fakeResults;
-          _isSearching = false;
-        });
+        await _performGeocodingSearch(query);
       }
     });
   }
 
-  List<LocationSuggestion> _generateFakeLocationResults(String query) {
-    // Fake search results for P1 implementation
-    final fakeLocations = [
+  Future<void> _performGeocodingSearch(String query) async {
+    try {
+      // Use geocoding to search for locations
+      final locations = await locationFromAddress(query);
+      
+      if (locations.isEmpty) {
+        setState(() {
+          _searchResults = [];
+          _isSearching = false;
+        });
+        return;
+      }
+
+      // Reverse geocode each location to get full details
+      final results = <LocationSuggestion>[];
+      for (var i = 0; i < locations.length && i < 3; i++) {
+        final location = locations[i];
+        try {
+          final placemarks = await placemarkFromCoordinates(
+            location.latitude,
+            location.longitude,
+          );
+          
+          if (placemarks.isNotEmpty) {
+            final placemark = placemarks.first;
+            results.add(LocationSuggestion(
+              id: 'geocoded-$i-${DateTime.now().millisecondsSinceEpoch}',
+              name: placemark.name ?? query,
+              address: _formatAddress(placemark),
+              latitude: location.latitude,
+              longitude: location.longitude,
+            ));
+          }
+        } catch (e) {
+          // Skip this result if reverse geocoding fails
+          continue;
+        }
+      }
+
+      if (mounted) {
+        setState(() {
+          _searchResults = results;
+          _isSearching = false;
+        });
+      }
+    } catch (e) {
+      // Fallback to mock results if geocoding fails
+      if (mounted) {
+        setState(() {
+          _searchResults = _generateFallbackResults(query);
+          _isSearching = false;
+        });
+      }
+    }
+  }
+
+  List<LocationSuggestion> _generateFallbackResults(String query) {
+    // Fallback results if geocoding fails
+    final fallbackLocations = [
       const LocationSuggestion(
-        id: 'fake-1',
+        id: 'fallback-1',
         name: 'Café Central',
         address: 'Rua da Betesga, 1200-109 Lisboa',
         latitude: 38.7071,
         longitude: -9.1363,
       ),
       const LocationSuggestion(
-        id: 'fake-2',
+        id: 'fallback-2',
         name: 'Restaurante Ramiro',
         address: 'Av. Almirante Reis, 1A, 1150-007 Lisboa',
         latitude: 38.7242,
         longitude: -9.1342,
       ),
       const LocationSuggestion(
-        id: 'fake-3',
+        id: 'fallback-3',
         name: 'Miradouro da Senhora do Monte',
         address: 'Largo Monte, 1170-253 Lisboa',
         latitude: 38.7185,
@@ -1011,7 +1075,7 @@ class _AddSuggestionBottomSheetState
     ];
 
     // Filter results based on query
-    return fakeLocations
+    return fallbackLocations
         .where(
           (location) =>
               location.name.toLowerCase().contains(query.toLowerCase()) ||
@@ -1078,24 +1142,86 @@ class _AddSuggestionBottomSheetState
     });
   }
 
-  void _useCurrentLocation() {
-    // For P1, use fake current location
-    final currentLocation = LocationInfo(
-      id: 'current-location-${DateTime.now().millisecondsSinceEpoch}',
-      displayName: _locationNameController.text.isNotEmpty
-          ? _locationNameController.text
-          : 'Current Location',
-      formattedAddress: 'Rua do Porto, 456, Lisboa, Portugal',
-      latitude: 38.7223,
-      longitude: -9.1393,
-    );
+  Future<void> _useCurrentLocation() async {
+    try {
+      // Check location permissions
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          _showLocationError('Location permissions are denied');
+          return;
+        }
+      }
 
-    setState(() {
-      _selectedLocation = currentLocation;
-      _showSuggestions = false;
-      _searchResults.clear();
-      _showValidationError = false; // Reset validation error
-    });
+      if (permission == LocationPermission.deniedForever) {
+        _showLocationError('Location permissions are permanently denied');
+        return;
+      }
+
+      // Get current position
+      final position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      );
+
+      // Reverse geocode to get address
+      final placemarks = await placemarkFromCoordinates(
+        position.latitude,
+        position.longitude,
+      );
+
+      if (placemarks.isNotEmpty) {
+        final placemark = placemarks.first;
+        final address = _formatAddress(placemark);
+        
+        final currentLocation = LocationInfo(
+          id: 'current-location-${DateTime.now().millisecondsSinceEpoch}',
+          displayName: _locationNameController.text.isNotEmpty
+              ? _locationNameController.text
+              : placemark.name ?? 'Current Location',
+          formattedAddress: address,
+          latitude: position.latitude,
+          longitude: position.longitude,
+        );
+
+        setState(() {
+          _selectedLocation = currentLocation;
+          _showSuggestions = false;
+          _searchResults.clear();
+          _showValidationError = false;
+        });
+      }
+    } catch (e) {
+      _showLocationError('Failed to get current location: ${e.toString()}');
+    }
+  }
+
+  String _formatAddress(Placemark placemark) {
+    final parts = <String>[];
+    if (placemark.street != null && placemark.street!.isNotEmpty) {
+      parts.add(placemark.street!);
+    }
+    if (placemark.subLocality != null && placemark.subLocality!.isNotEmpty) {
+      parts.add(placemark.subLocality!);
+    }
+    if (placemark.locality != null && placemark.locality!.isNotEmpty) {
+      parts.add(placemark.locality!);
+    }
+    if (placemark.country != null && placemark.country!.isNotEmpty) {
+      parts.add(placemark.country!);
+    }
+    return parts.join(', ');
+  }
+
+  void _showLocationError(String message) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: BrandColors.cantVote,
+        ),
+      );
+    }
   }
 
   void _pickOnMap() {

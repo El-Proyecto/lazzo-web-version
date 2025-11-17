@@ -13,6 +13,8 @@ import '../../../../shared/components/common/top_banner.dart';
 import '../../domain/entities/event.dart';
 import '../../../../shared/components/dialogs/confirmation_dialog.dart';
 import '../providers/event_providers.dart';
+import '../../../event/presentation/providers/event_providers.dart' as event_providers;
+import '../../../home/presentation/providers/pending_event_providers.dart' as home_providers;
 
 /// Página para edição de eventos existentes
 /// Reutiliza todos os widgets tokenizados da criação de eventos
@@ -314,6 +316,19 @@ class _EditEventPageState extends ConsumerState<EditEventPage> {
       endDateTime: endDateTime,
       location: eventLocation,
     );
+
+    // CRITICAL: Invalidate providers to force UI refresh across the app
+    // 1. Event detail page (shows updated date/time/location)
+    ref.invalidate(event_providers.eventDetailProvider(widget.event.id));
+    // 2. Pending events list (home page - shows updated scheduled date)
+    ref.invalidate(home_providers.pendingEventsControllerProvider);
+    // 3. Date/time suggestions (ensures synced suggestion shows correctly)
+    ref.invalidate(event_providers.eventSuggestionsProvider(widget.event.id));
+    // 4. Location suggestions (ensures synced suggestion shows correctly)
+    ref.invalidate(event_providers.eventLocationSuggestionsProvider(widget.event.id));
+    // 5. Suggestion votes (refresh vote counts)
+    ref.invalidate(event_providers.suggestionVotesProvider(widget.event.id));
+    ref.invalidate(event_providers.userSuggestionVotesProvider(widget.event.id));
 
     // Reset initial values after successful update
     setState(() {

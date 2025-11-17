@@ -31,14 +31,31 @@ import '../features/home/presentation/providers/pending_event_providers.dart';
 // import '../features/inbox/presentation/providers/actions_provider.dart';
 
 // GROUPS - Real implementation (commented out for testing fake repository)
-// import '../features/groups/presentation/providers/groups_provider.dart';
-// import '../features/groups/data/data_sources/groups_data_source.dart';
-// import '../features/groups/data/repositories/group_repository_impl.dart';
+import '../features/groups/presentation/providers/groups_provider.dart';
+import '../features/groups/data/data_sources/groups_data_source.dart';
+import '../features/groups/data/repositories/group_repository_impl.dart';
 
 // PROFILE - Real implementation
 import '../features/profile/data/data_sources/profile_remote_data_source.dart';
 import '../features/profile/data/repositories/profile_repository_impl.dart';
 import '../features/profile/presentation/providers/profile_providers.dart';
+
+// CREATE EVENT - Real implementation
+import '../features/create_event/presentation/providers/event_providers.dart' as create_event;
+import '../features/create_event/data/repositories/event_repository_impl.dart' as create_event_impl;
+
+// EVENT FEATURES - Real implementation
+import '../features/event/presentation/providers/event_providers.dart';
+import '../features/event/data/data_sources/event_remote_data_source.dart';
+import '../features/event/data/data_sources/rsvp_remote_data_source.dart';
+import '../features/event/data/data_sources/suggestion_remote_data_source.dart';
+import '../features/event/data/data_sources/poll_remote_data_source.dart';
+import '../features/event/data/data_sources/chat_remote_data_source.dart';
+import '../features/event/data/repositories/event_repository_impl.dart';
+import '../features/event/data/repositories/rsvp_repository_impl.dart';
+import '../features/event/data/repositories/suggestion_repository_impl.dart';
+import '../features/event/data/repositories/poll_repository_impl.dart';
+import '../features/event/data/repositories/chat_repository_impl.dart';
 
 // AUTH (DI via providers)
 import '../features/auth/presentation/providers/auth_provider.dart';
@@ -107,19 +124,12 @@ void main() async {
         //   ),
         // ),
 
-        // Groups repo -> TODO: Add when GroupRepositoryImpl exists
-        // groupRepositoryProvider.overrideWith(
-        //   (ref) => GroupRepositoryImpl(GroupRemoteDataSource(Supabase.instance.client)),
-        // ),
-
         // ✅ GROUPS repo -> real (Supabase) via DI (P2 implementation)
-        // COMMENTED OUT FOR TESTING FAKE REPOSITORY (MOCK CONTROL)
-        // To use real Supabase data, uncomment the lines below
-        // groupRepositoryProvider.overrideWith((ref) {
-        //   final client = Supabase.instance.client;
-        //   final dataSource = SupabaseGroupsDataSource(client);
-        //   return GroupRepositoryImpl(dataSource, client);
-        // }),
+         groupRepositoryProvider.overrideWith((ref) {
+           final client = Supabase.instance.client;
+           final dataSource = SupabaseGroupsDataSource(client);
+           return GroupRepositoryImpl(dataSource, client);
+         }),
 
         // Profile repo -> real (Supabase)
         profileRepositoryProvider.overrideWith(
@@ -141,9 +151,38 @@ void main() async {
           return UsersRepository(UsersRemoteDatasource(client));
         }),
 
-        // EVENT FEATURES -> fake-only (P1 implementation)
-        // Both create_event and event features use fake repositories for P1
-        // No Supabase integration needed yet
+        // ✅ CREATE EVENT repo -> real (Supabase) via DI
+        create_event.eventRepositoryProvider.overrideWith((ref) {
+          final client = Supabase.instance.client;
+          return create_event_impl.EventRepositoryImpl(client);
+        }),
+
+        // ✅ EVENT DETAIL FEATURES -> real (Supabase) via DI (P2 implementation)
+        eventRepositoryProvider.overrideWith(
+           (ref) => EventRepositoryImpl(
+             EventRemoteDataSource(Supabase.instance.client),
+           ),
+         ),
+         rsvpRepositoryProvider.overrideWith(
+           (ref) => RsvpRepositoryImpl(
+             RsvpRemoteDataSource(Supabase.instance.client),
+           ),
+         ),
+         suggestionRepositoryProvider.overrideWith(
+           (ref) => SuggestionRepositoryImpl(
+             SuggestionRemoteDataSource(Supabase.instance.client),
+           ),
+         ),
+         pollRepositoryProvider.overrideWith(
+           (ref) => PollRepositoryImpl(
+             PollRemoteDataSource(Supabase.instance.client),
+           ),
+         ),
+         chatRepositoryProvider.overrideWith(
+           (ref) => ChatRepositoryImpl(
+             ChatRemoteDataSource(Supabase.instance.client),
+           ),
+         ),
       ],
       child: const LazzoApp(),
     ),

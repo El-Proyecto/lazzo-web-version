@@ -1,14 +1,51 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 // Ajusta estes imports para os teus paths reais:
 import 'package:app/features/create_event/presentation/pages/create_event_page.dart';
 import 'package:app/features/create_event/presentation/widgets/confirm_event_dialog.dart';
+import 'package:app/features/groups/presentation/providers/groups_provider.dart';
+import 'package:app/features/groups/domain/entities/group.dart';
+import 'package:app/shared/models/group_enums.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  Widget wrap(Widget child) => MaterialApp(home: child);
+  // Helper para criar grupos mock para os testes
+  List<Group> _getMockGroups() {
+    return [
+      Group(
+        id: '1',
+        name: 'Os Bros',
+        memberCount: 5,
+        status: GroupStatus.active,
+        isPinned: false,
+        isMuted: false,
+      ),
+      Group(
+        id: '2',
+        name: 'Família',
+        memberCount: 4,
+        status: GroupStatus.active,
+        isPinned: false,
+        isMuted: false,
+      ),
+    ];
+  }
+
+  // Widget wrapper com ProviderScope e mocks necessários
+  Widget wrap(Widget child) {
+    return ProviderScope(
+      overrides: [
+        // Mock do groupsProvider para retornar grupos fake
+        groupsProvider.overrideWith((ref) async {
+          return _getMockGroups();
+        }),
+      ],
+      child: MaterialApp(home: child),
+    );
+  }
 
   group('CreateEventPage – só prossegue com nome + grupo', () {
     testWidgets('Sem nome e grupo: mostra erros e NÃO abre confirmação', (
