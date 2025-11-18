@@ -20,6 +20,7 @@ import '../providers/banner_provider.dart';
 import '../providers/home_event_providers.dart';
 import '../../domain/entities/home_event.dart';
 import '../../../../routes/app_router.dart';
+import 'dart:async';
 
 /// Home page - main screen showing next event, confirmed/pending events, todos, payments, and memories
 ///
@@ -50,7 +51,36 @@ class HomePage extends ConsumerStatefulWidget {
 }
 
 class _HomePageState extends ConsumerState<HomePage> {
+  Timer? _autoRefreshTimer;
   bool _isNoEventsCardDismissed = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _startAutoRefresh(); // ✅ ADD
+  }
+
+  @override
+  void dispose() {
+    _autoRefreshTimer?.cancel(); // ✅ ADD cleanup
+    super.dispose();
+  }
+
+  void _startAutoRefresh() {
+    // ✅ Refresh a cada 1 minuto para capturar mudanças de estado
+    _autoRefreshTimer = Timer.periodic(
+      const Duration(minutes: 1),
+      (_) {
+        // Apenas invalidar se ainda estiver montado
+        if (mounted) {
+          print('🔄 Auto-refreshing home data...');
+          ref.invalidate(nextEventControllerProvider);
+          ref.invalidate(confirmedEventsControllerProvider);
+          ref.invalidate(homePendingEventsControllerProvider);
+        }
+      },
+    );
+  }
 
   String _formatEventDate(DateTime? date) {
     if (date == null) return 'To be decided';
