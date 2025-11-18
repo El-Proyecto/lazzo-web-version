@@ -44,6 +44,7 @@ class ManagePhotoItem {
   final String? thumbnailUrl;
   final bool isPortrait;
   final String uploaderId;
+  final String uploaderName;
   final bool isUploadedByCurrentUser;
 
   const ManagePhotoItem({
@@ -52,6 +53,7 @@ class ManagePhotoItem {
     this.thumbnailUrl,
     required this.isPortrait,
     required this.uploaderId,
+    required this.uploaderName,
     required this.isUploadedByCurrentUser,
   });
 }
@@ -110,6 +112,7 @@ class ManageMemoryNotifier
                 thumbnailUrl: p.thumbnailUrl,
                 isPortrait: p.isPortrait,
                 uploaderId: p.uploaderId,
+                uploaderName: p.uploaderName,
                 isUploadedByCurrentUser: p.uploaderId == currentUserId,
               ))
           .toList();

@@ -37,13 +37,15 @@ class UpdateEventUseCase {
     }
 
     // Create updated event entity
+    // CRITICAL: Use ValueWrapper for nullable fields to allow explicit clearing
+    // This enables "Decide Later" functionality (null dates/location)
     final updatedEvent = existingEvent.copyWith(
       name: name.trim(),
       emoji: emoji,
       groupId: groupId,
-      startDateTime: startDateTime,
-      endDateTime: endDateTime,
-      location: location,
+      startDateTime: ValueWrapper(startDateTime),
+      endDateTime: ValueWrapper(endDateTime),
+      location: ValueWrapper(location),
     );
 
     // Delegate to repository

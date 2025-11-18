@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:geocoding/geocoding.dart';
+import 'package:geolocator/geolocator.dart';
 import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/constants/text_styles.dart';
 import '../../../../shared/themes/colors.dart';
@@ -363,26 +365,69 @@ class _LocationSectionState extends State<LocationSection>
     );
   }
 
-  void _useCurrentLocation() {
-    // Mock current location
-    final currentLocation = LocationInfo(
-      id: 'current-location',
-      displayName: _locationNameController.text.isNotEmpty
-          ? _locationNameController.text
-          : null,
-      formattedAddress: 'Your current location',
-      latitude: -23.5505,
-      longitude: -46.6333,
-    );
+  Future<void> _useCurrentLocation() async {
+    try {
+      // Check location permissions
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          _showLocationError('Location permissions are denied');
+          return;
+        }
+      }
 
-    // Hide suggestions and go to state 2
-    setState(() {
-      _showSuggestions = false;
-      _suggestions.clear();
-    });
+      if (permission == LocationPermission.deniedForever) {
+        _showLocationError('Location permissions are permanently denied');
+        return;
+      }
 
-    widget.onLocationChanged?.call(currentLocation);
-    HapticFeedback.lightImpact();
+      // Get current position
+      final position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      );
+
+      // Reverse geocode to get address
+      final placemarks = await placemarkFromCoordinates(
+        position.latitude,
+        position.longitude,
+      );
+
+      if (placemarks.isNotEmpty) {
+        final placemark = placemarks.first;
+        final currentLocation = LocationInfo(
+          id: 'current-location-${DateTime.now().millisecondsSinceEpoch}',
+          displayName: _locationNameController.text.isNotEmpty
+              ? _locationNameController.text
+              : placemark.name ?? 'Current Location',
+          formattedAddress: _formatAddress(placemark),
+          latitude: position.latitude,
+          longitude: position.longitude,
+        );
+
+        // Hide suggestions
+        setState(() {
+          _showSuggestions = false;
+          _suggestions.clear();
+        });
+
+        widget.onLocationChanged?.call(currentLocation);
+        HapticFeedback.lightImpact();
+      }
+    } catch (e) {
+      _showLocationError('Failed to get current location: ${e.toString()}');
+    }
+  }
+
+  void _showLocationError(String message) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: BrandColors.cantVote,
+        ),
+      );
+    }
   }
 
   void _pickOnMap() {
@@ -471,58 +516,96 @@ class _LocationSectionState extends State<LocationSection>
     if (!mounted) return;
 
     try {
-      // Try native geocoding first, fallback to mock for now
-      List<LocationSuggestion> suggestions;
+      // Use real geocoding
+      final locations = await locationFromAddress(query);
+      
+      if (locations.isEmpty) {
+        setState(() {
+          _suggestions = [];
+          _isSearching = false;
+        });
+        return;
+      }
 
-      // TODO: Implement native geocoding
-      // suggestions = await _performNativeGeocode(query);
-
-      // For now, use mock suggestions
-      suggestions = _getMockSuggestions(query);
+      // Reverse geocode each location to get full details
+      final results = <LocationSuggestion>[];
+      for (var i = 0; i < locations.length && i < 3; i++) {
+        final location = locations[i];
+        try {
+          final placemarks = await placemarkFromCoordinates(
+            location.latitude,
+            location.longitude,
+          );
+          
+          if (placemarks.isNotEmpty) {
+            final placemark = placemarks.first;
+            results.add(LocationSuggestion(
+              id: 'geocoded-$i-${DateTime.now().millisecondsSinceEpoch}',
+              name: placemark.name ?? query,
+              address: _formatAddress(placemark),
+              latitude: location.latitude,
+              longitude: location.longitude,
+            ));
+          }
+        } catch (e) {
+          // Skip this result if reverse geocoding fails
+          continue;
+        }
+      }
 
       if (mounted) {
         setState(() {
-          _suggestions = suggestions.take(3).toList(); // Max 3 suggestions
+          _suggestions = results;
           _isSearching = false;
         });
       }
     } catch (e) {
+      // Fallback to mock suggestions if geocoding fails
       if (mounted) {
         setState(() {
-          _suggestions.clear();
+          _suggestions = _getFallbackSuggestions(query);
           _isSearching = false;
         });
       }
     }
   }
 
-  // Future<List<LocationSuggestion>> _performNativeGeocode(String query) async {
-  //   // TODO: Implement native geocoding
-  //   // iOS: Use MKLocalSearch and CLGeocoder
-  //   // Android: Use Geocoder
-  //   // This would be implemented using platform channels or a plugin like geocoding
-  //   throw UnimplementedError('Native geocoding not yet implemented');
-  // }
+  String _formatAddress(Placemark placemark) {
+    final parts = <String>[];
+    if (placemark.street != null && placemark.street!.isNotEmpty) {
+      parts.add(placemark.street!);
+    }
+    if (placemark.subLocality != null && placemark.subLocality!.isNotEmpty) {
+      parts.add(placemark.subLocality!);
+    }
+    if (placemark.locality != null && placemark.locality!.isNotEmpty) {
+      parts.add(placemark.locality!);
+    }
+    if (placemark.country != null && placemark.country!.isNotEmpty) {
+      parts.add(placemark.country!);
+    }
+    return parts.join(', ');
+  }
 
-  List<LocationSuggestion> _getMockSuggestions(String query) {
-    // Mock suggestions - will be replaced with native geocoding
+  List<LocationSuggestion> _getFallbackSuggestions(String query) {
+    // Fallback suggestions if geocoding fails
     return [
       LocationSuggestion(
-        id: 'mock-1',
+        id: 'fallback-1',
         name: '$query Restaurant',
         address: 'Rua Augusta, 123 - São Paulo, SP',
         latitude: -23.5505,
         longitude: -46.6333,
       ),
       LocationSuggestion(
-        id: 'mock-2',
+        id: 'fallback-2',
         name: '$query Shopping',
         address: 'Av. Paulista, 456 - São Paulo, SP',
         latitude: -23.5618,
         longitude: -46.6565,
       ),
       LocationSuggestion(
-        id: 'mock-3',
+        id: 'fallback-3',
         name: '$query Plaza',
         address: 'Praça da Sé, 789 - São Paulo, SP',
         latitude: -23.5505,
@@ -757,22 +840,68 @@ class _ExpandedLocationPickerState extends State<ExpandedLocationPicker> {
     _searchAddresses(query);
   }
 
-  void _searchAddresses(String query) {
-    // Mock de sugestões - em produção usar Google Places API ou similar
-    Future.delayed(const Duration(milliseconds: 500), () {
+  Future<void> _searchAddresses(String query) async {
+    try {
+      // Use real geocoding
+      final locations = await locationFromAddress(query);
+      
+      if (locations.isEmpty) {
+        if (mounted) {
+          setState(() {
+            _suggestions.clear();
+            _isSearching = false;
+          });
+        }
+        return;
+      }
+
+      // Reverse geocode each location to get full details
+      final results = <LocationSuggestion>[];
+      for (var i = 0; i < locations.length && i < 3; i++) {
+        final location = locations[i];
+        try {
+          final placemarks = await placemarkFromCoordinates(
+            location.latitude,
+            location.longitude,
+          );
+          
+          if (placemarks.isNotEmpty) {
+            final placemark = placemarks.first;
+            results.add(LocationSuggestion(
+              id: 'geocoded-$i-${DateTime.now().millisecondsSinceEpoch}',
+              name: placemark.name ?? query,
+              address: _formatAddressFromPlacemark(placemark),
+              latitude: location.latitude,
+              longitude: location.longitude,
+            ));
+          }
+        } catch (e) {
+          continue;
+        }
+      }
+
+      if (mounted && _searchController.text == query) {
+        setState(() {
+          _suggestions.clear();
+          _suggestions.addAll(results);
+          _isSearching = false;
+        });
+      }
+    } catch (e) {
+      // Fallback to mock suggestions
       if (mounted && _searchController.text == query) {
         setState(() {
           _suggestions.clear();
           _suggestions.addAll([
             LocationSuggestion(
-              id: '1',
+              id: 'fallback-1',
               name: '$query - Rua Principal',
               address: 'Rua Principal, 123, Lisboa',
               latitude: 38.7223,
               longitude: -9.1393,
             ),
             LocationSuggestion(
-              id: '2',
+              id: 'fallback-2',
               name: '$query - Centro',
               address: 'Centro de $query, Porto',
               latitude: 41.1579,
@@ -782,7 +911,24 @@ class _ExpandedLocationPickerState extends State<ExpandedLocationPicker> {
           _isSearching = false;
         });
       }
-    });
+    }
+  }
+
+  String _formatAddressFromPlacemark(Placemark placemark) {
+    final parts = <String>[];
+    if (placemark.street != null && placemark.street!.isNotEmpty) {
+      parts.add(placemark.street!);
+    }
+    if (placemark.subLocality != null && placemark.subLocality!.isNotEmpty) {
+      parts.add(placemark.subLocality!);
+    }
+    if (placemark.locality != null && placemark.locality!.isNotEmpty) {
+      parts.add(placemark.locality!);
+    }
+    if (placemark.country != null && placemark.country!.isNotEmpty) {
+      parts.add(placemark.country!);
+    }
+    return parts.join(', ');
   }
 
   @override
@@ -879,19 +1025,61 @@ class _ExpandedLocationPickerState extends State<ExpandedLocationPicker> {
     widget.onLocationChanged?.call(location);
   }
 
-  void _useCurrentLocation() {
-    // Implementar obtenção da localização atual
-    // Por enquanto, usar localização mock
-    final location = const LocationInfo(
-      id: 'current',
-      displayName: 'Current Location',
-      formattedAddress: 'Your current location',
-      latitude: 38.7223,
-      longitude: -9.1393,
-    );
+  Future<void> _useCurrentLocation() async {
+    try {
+      // Check location permissions
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          _showLocationError('Location permissions are denied');
+          return;
+        }
+      }
 
-    _searchController.text = location.displayName ?? '';
-    widget.onLocationChanged?.call(location);
+      if (permission == LocationPermission.deniedForever) {
+        _showLocationError('Location permissions are permanently denied');
+        return;
+      }
+
+      // Get current position
+      final position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      );
+
+      // Reverse geocode to get address
+      final placemarks = await placemarkFromCoordinates(
+        position.latitude,
+        position.longitude,
+      );
+
+      if (placemarks.isNotEmpty) {
+        final placemark = placemarks.first;
+        final location = LocationInfo(
+          id: 'current-${DateTime.now().millisecondsSinceEpoch}',
+          displayName: placemark.name ?? 'Current Location',
+          formattedAddress: _formatAddressFromPlacemark(placemark),
+          latitude: position.latitude,
+          longitude: position.longitude,
+        );
+
+        _searchController.text = location.displayName ?? '';
+        widget.onLocationChanged?.call(location);
+      }
+    } catch (e) {
+      _showLocationError('Failed to get current location: ${e.toString()}');
+    }
+  }
+
+  void _showLocationError(String message) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          backgroundColor: BrandColors.cantVote,
+        ),
+      );
+    }
   }
 }
 

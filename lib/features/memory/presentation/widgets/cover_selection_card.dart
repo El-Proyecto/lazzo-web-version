@@ -47,15 +47,15 @@ class CoverSelectionCard extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(
+              const Icon(
                 Icons.star_outline,
                 color: BrandColors.text2,
-                size: IconSizes.lg,
+                size: IconSizes.xl,
               ),
-              const SizedBox(height: Gaps.sm),
+              const SizedBox(height: Gaps.xs),
               Text(
-                'Tap to select a cover!',
-                style: AppText.bodyMedium.copyWith(
+                'Tap to select a cover',
+                style: AppText.bodyMediumEmph.copyWith(
                   color: BrandColors.text2,
                 ),
               ),

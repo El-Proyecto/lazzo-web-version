@@ -84,7 +84,7 @@ class NavigationBar extends StatelessWidget {
         break;
       case NavBarState.recap:
         buttonColor = BrandColors.recap;
-        icon = Icons.upload;
+        icon = Icons.add_photo_alternate;
         break;
     }
 

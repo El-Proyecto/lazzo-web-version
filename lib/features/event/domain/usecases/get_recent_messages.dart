@@ -1,13 +1,15 @@
 import '../entities/chat_message.dart';
 import '../repositories/chat_repository.dart';
 
-/// Use case to get recent chat messages
+/// DEPRECATED: Use chatMessagesProvider (stream-based) instead
+/// Use case to get recent chat messages for an event
+@Deprecated('Use chatMessagesProvider stream instead')
 class GetRecentMessages {
   final ChatRepository repository;
 
-  const GetRecentMessages(this.repository);
+  GetRecentMessages(this.repository);
 
   Future<List<ChatMessage>> call(String eventId, {int limit = 2}) async {
-    return await repository.getRecentMessages(eventId, limit: limit);
+    throw UnimplementedError('Use chatMessagesProvider stream instead');
   }
 }

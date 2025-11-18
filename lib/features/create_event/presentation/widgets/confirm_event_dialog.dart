@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/constants/text_styles.dart';
 import '../../../../shared/themes/colors.dart';
-import '../../../../shared/components/common/top_banner.dart';
 import 'event_group_selector.dart';
 import 'location_section.dart';
 import '../../../../shared/components/widgets/grabber_bar.dart';
@@ -21,7 +20,7 @@ class ConfirmEventBottomSheet extends ConsumerStatefulWidget {
   final DateTime? endDate;
   final TimeOfDay? endTime;
   final LocationInfo? selectedLocation;
-  final VoidCallback? onEventCreated; // Changed name for clarity
+  final Function(String eventId)? onEventCreated; // Changed to receive eventId
 
   const ConfirmEventBottomSheet({
     super.key,
@@ -99,25 +98,35 @@ class _ConfirmEventBottomSheetState
       // Enviar para o Supabase via provider
       await controller.createEvent(event);
 
+      // Obter o ID do evento criado do estado
+      final createdEvent = ref.read(createEventControllerProvider).createdEvent;
+      if (createdEvent == null || createdEvent.id.isEmpty) {
+        throw Exception('Failed to get created event ID');
+      }
+
       // Fechar dialog
       if (mounted) {
         Navigator.of(context).pop();
 
-        // Chamar callback se fornecido
-        widget.onEventCreated?.call();
+        // Chamar callback com o eventId
+        widget.onEventCreated?.call(createdEvent.id);
 
         // Mostrar mensagem de sucesso
-        TopBanner.showSuccess(
-          context,
-          message: 'Event created successfully!',
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Event created successfully!'),
+            backgroundColor: BrandColors.planning,
+          ),
         );
       }
     } catch (e) {
       // Mostrar erro
       if (mounted) {
-        TopBanner.showError(
-          context,
-          message: 'Error creating event: ${e.toString()}',
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error creating event: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
         );
       }
     }

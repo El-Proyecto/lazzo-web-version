@@ -2,23 +2,36 @@
 import '../../domain/entities/memory_entity.dart';
 import '../../domain/repositories/memory_repository.dart';
 
+/// Event status for memory page testing
+enum FakeEventStatus { living, recap, ended }
+
 /// Global test configuration for cover mosaic scenarios
 /// Modify these values to test different layouts
 class FakeMemoryConfig {
   /// Number of portrait photos in covers (0-3)
-  static int coverPortraitCount = 3;
+  static int coverPortraitCount = 2;
 
   /// Number of landscape photos in covers (0-3)
-  static int coverLandscapeCount = 0;
+  static int coverLandscapeCount = 1;
 
   /// Number of portrait photos in grid (non-covers)
-  static int gridPortraitCount = 3;
+  static int gridPortraitCount = 4;
 
   /// Number of landscape photos in grid (non-covers)
-  static int gridLandscapeCount = 3;
+  static int gridLandscapeCount = 4;
 
   /// Whether current user is host (can select all photos)
   static bool isHost = false;
+
+  /// Current event status (living, recap, or ended)
+  /// - living: event is happening now
+  /// - recap: event ended, in recap phase
+  /// - ended: event fully ended, memory is read-only
+  static FakeEventStatus eventStatus = FakeEventStatus.living;
+
+  /// Whether current user has uploaded photos
+  /// Used to determine if edit button should show in living/recap
+  static bool userHasUploadedPhotos = false;
 
   /// Max covers is 3
   static int get totalCovers => coverPortraitCount + coverLandscapeCount;

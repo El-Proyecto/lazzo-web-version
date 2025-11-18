@@ -30,14 +30,35 @@ class ProfileModel {
         : null,
   );
 
-  Map<String, dynamic> toMap() => {
-    'id': id,
-    'name': name,
-    'email': email,
-    'avatar_url': avatarUrl,
-    'city': city,
-    'birth_date': birthDate?.toIso8601String(),
-  };
+  Map<String, dynamic> toMap() {
+    // Extract storage path from URL if it's a public URL
+    String? storagePathOnly;
+    if (avatarUrl != null) {
+      final url = avatarUrl!;
+      if (url.startsWith('http://') || url.startsWith('https://')) {
+        // Extract path after '/object/public/users-profile-pic/'
+        final match = RegExp(r'/object/public/users-profile-pic/(.+)$').firstMatch(url);
+        if (match != null) {
+          storagePathOnly = match.group(1);
+          print('🔧 [ProfileModel.toMap] Extracted storage path: $storagePathOnly');
+        } else {
+          storagePathOnly = avatarUrl;
+          print('⚠️ [ProfileModel.toMap] Could not extract path from URL: $url');
+        }
+      } else {
+        storagePathOnly = avatarUrl;
+      }
+    }
+
+    return {
+      'id': id,
+      'name': name,
+      'email': email,
+      'avatar_url': storagePathOnly,
+      'city': city,
+      'birth_date': birthDate?.toIso8601String(),
+    };
+  }
 
   ProfileEntity toEntity({List<MemoryEntity> memories = const []}) =>
       ProfileEntity(
