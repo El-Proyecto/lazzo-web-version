@@ -27,14 +27,49 @@ class FakeMemoryConfig {
   /// - living: event is happening now
   /// - recap: event ended, in recap phase
   /// - ended: event fully ended, memory is read-only
-  static FakeEventStatus eventStatus = FakeEventStatus.living;
+  static FakeEventStatus eventStatus = FakeEventStatus.recap;
 
   /// Whether current user has uploaded photos
   /// Used to determine if edit button should show in living/recap
   static bool userHasUploadedPhotos = false;
 
+  /// When the recap phase closes (null for living/ended)
+  /// Used for countdown timer in AppBar
+  /// Example: DateTime.now().add(Duration(hours: 2, minutes: 30))
+  static DateTime? closeTime =
+      DateTime.now().add(const Duration(hours: 2, minutes: 30));
+
   /// Max covers is 3
   static int get totalCovers => coverPortraitCount + coverLandscapeCount;
+
+  /// Time remaining until recap closes
+  static Duration? get remainingTime {
+    if (closeTime == null) return null;
+    final now = DateTime.now();
+    final remaining = closeTime!.difference(now);
+    return remaining.isNegative ? Duration.zero : remaining;
+  }
+
+  /// Formatted time remaining (e.g., "2h 34m", "45m", "3m")
+  static String get formattedRemainingTime {
+    final remaining = remainingTime;
+    if (remaining == null) return '';
+
+    final hours = remaining.inHours;
+    final minutes = remaining.inMinutes.remainder(60);
+
+    if (hours > 0) {
+      return '${hours}h ${minutes}m';
+    }
+    return '${minutes}m';
+  }
+
+  /// Whether time remaining is less than 1 hour
+  static bool get isLessThanOneHour {
+    final remaining = remainingTime;
+    if (remaining == null) return false;
+    return remaining.inHours < 1;
+  }
 }
 
 class FakeMemoryRepository implements MemoryRepository {

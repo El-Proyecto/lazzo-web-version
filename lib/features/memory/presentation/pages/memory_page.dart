@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../../../routes/app_router.dart';
 import '../../../../shared/components/nav/common_app_bar.dart';
+import '../../../../shared/components/nav/app_bar_with_subtitle.dart';
 import '../../../../shared/components/cards/add_photos_cta_card.dart';
 import '../../../../shared/components/sections/cover_mosaic.dart';
 import '../../../../shared/components/sections/hybrid_photo_grid.dart';
@@ -42,28 +43,19 @@ class MemoryPage extends ConsumerWidget {
     final isHost = FakeMemoryConfig.isHost;
     final userHasUploadedPhotos = FakeMemoryConfig.userHasUploadedPhotos;
 
+    // Build AppBar based on event status
+    final appBar = _buildAppBar(
+      context,
+      ref,
+      memoryAsync,
+      eventStatus,
+      isHost,
+      userHasUploadedPhotos,
+    );
+
     return Scaffold(
       backgroundColor: BrandColors.bg1,
-      appBar: CommonAppBar(
-        title: 'Memory',
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: BrandColors.text1),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-        trailing: memoryAsync.maybeWhen(
-          data: (memory) => memory != null
-              ? _buildTrailingIcon(
-                  context,
-                  ref,
-                  memory,
-                  eventStatus,
-                  isHost,
-                  userHasUploadedPhotos,
-                )
-              : null,
-          orElse: () => null,
-        ),
-      ),
+      appBar: appBar,
       body: memoryAsync.when(
         data: (memory) {
           if (memory == null) {
@@ -82,7 +74,7 @@ class MemoryPage extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const SizedBox(height: Gaps.lg),
+                const SizedBox(height: Gaps.sm),
 
                 // CTA Banner: Show for living/recap if user hasn't uploaded photos
                 if (_shouldShowCtaBanner(eventStatus, userHasUploadedPhotos))
@@ -271,6 +263,61 @@ class MemoryPage extends ConsumerWidget {
 
   String _formatClusterLabel(DateTime date) {
     return DateFormat('d MMMM yyyy').format(date);
+  }
+
+  /// Build AppBar based on event status
+  /// - Recap: AppBarWithSubtitle showing countdown timer
+  /// - Living/Ended: CommonAppBar
+  PreferredSizeWidget _buildAppBar(
+    BuildContext context,
+    WidgetRef ref,
+    AsyncValue<MemoryEntity?> memoryAsync,
+    FakeEventStatus eventStatus,
+    bool isHost,
+    bool userHasUploadedPhotos,
+  ) {
+    final leading = IconButton(
+      icon: const Icon(Icons.arrow_back, color: BrandColors.text1),
+      onPressed: () => Navigator.of(context).pop(),
+    );
+
+    final trailing = memoryAsync.maybeWhen(
+      data: (memory) => memory != null
+          ? _buildTrailingIcon(
+              context,
+              ref,
+              memory,
+              eventStatus,
+              isHost,
+              userHasUploadedPhotos,
+            )
+          : null,
+      orElse: () => null,
+    );
+
+    // Recap state: show countdown timer
+    if (eventStatus == FakeEventStatus.recap) {
+      final subtitle =
+          'Closes in ${FakeMemoryConfig.formattedRemainingTime}';
+      final subtitleColor = FakeMemoryConfig.isLessThanOneHour
+          ? BrandColors.cantVote // Orange/red when <1hr
+          : BrandColors.text2;
+
+      return AppBarWithSubtitle(
+        title: 'Memory',
+        subtitle: subtitle,
+        subtitleColor: subtitleColor,
+        leading: leading,
+        trailing: trailing,
+      );
+    }
+
+    // Living/Ended: standard AppBar
+    return CommonAppBar(
+      title: 'Memory',
+      leading: leading,
+      trailing: trailing,
+    );
   }
 
   /// Build trailing icon based on event status and permissions
