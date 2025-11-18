@@ -1,115 +1,94 @@
 import '../../domain/entities/group_event_entity.dart';
 import '../../../../shared/components/widgets/rsvp_widget.dart';
 
-/// DTO for converting Supabase JSON to GroupEventEntity
-/// 
-/// P2 Implementation Requirements:
-/// - Parse all fields from Supabase JSON response
-/// - Handle nullable fields gracefully with defaults
-/// - Convert date strings to DateTime objects
-/// - Map status strings to enum values
-/// - Parse RSVP votes from joined data
+/// DTO for converting Supabase JSON (from group_hub_events_view) to GroupEventEntity
 class GroupEventModel {
-  /// Convert Supabase JSON to GroupEventEntity
-  /// 
-  /// Expected JSON structure:
-  /// ```json
-  /// {
-  ///   "id": "uuid",
-  ///   "name": "Beach Day",
-  ///   "emoji": "🏖️",
-  ///   "date": "2025-11-20T14:00:00Z",
-  ///   "ends_at": "2025-11-20T18:00:00Z",  // nullable
-  ///   "location": "Cascais Beach",         // nullable
-  ///   "status": "confirmed",               // "pending", "confirmed", "live", "recap"
-  ///   "going_count": 5,
-  ///   "participant_count": 7,
-  ///   "photo_count": 18,
-  ///   "max_photos": 30,                    // nullable
-  ///   "attendee_avatars": ["url1", "url2"],
-  ///   "attendee_names": ["Sarah", "Mike"],
-  ///   "user_vote": true,                   // nullable: true/false/null
-  ///   "rsvps": [                          // from getEventRsvps()
-  ///     {
-  ///       "id": "uuid",
-  ///       "user_id": "uuid",
-  ///       "user_name": "Sarah",
-  ///       "user_avatar": "url",
-  ///       "status": "going",               // "going", "notGoing", "pending"
-  ///       "voted_at": "2025-11-15T10:00:00Z"
-  ///     }
-  ///   ]
-  /// }
-  /// ```
-  static GroupEventEntity fromJson(Map<String, dynamic> json) {
-    // P2 TODO: Implement JSON parsing
-    // 
-    // Implementation steps:
-    // 1. Parse required fields (id, name, emoji, status, counts)
-    // 2. Parse optional fields with null checks (date, endsAt, location, maxPhotos)
-    // 3. Convert date strings to DateTime using DateTime.parse()
-    // 4. Map status string to GroupEventStatus enum
-    // 5. Parse attendee arrays (avatars, names)
-    // 6. Parse RSVP votes array if present
-    // 7. Return GroupEventEntity with all parsed data
-    //
-    // Example enum mapping:
-    // final status = json['status'] == 'confirmed' 
-    //     ? GroupEventStatus.confirmed
-    //     : json['status'] == 'live'
-    //     ? GroupEventStatus.live
-    //     : json['status'] == 'recap'
-    //     ? GroupEventStatus.recap
-    //     : GroupEventStatus.pending;
-    //
-    // Example RSVP parsing:
-    // final rsvps = (json['rsvps'] as List?)?.map((r) => RsvpVote(
-    //   id: r['id'],
-    //   userId: r['user_id'],
-    //   userName: r['user_name'],
-    //   userAvatar: r['user_avatar'],
-    //   status: _parseRsvpStatus(r['status']),
-    //   votedAt: r['voted_at'] != null ? DateTime.parse(r['voted_at']) : null,
-    // )).toList() ?? [];
+  /// Convert Supabase JSON from group_hub_events_view to GroupEventEntity
+  static GroupEventEntity fromJson(Map<String, dynamic> json, {List<Map<String, dynamic>>? rsvps}) {
+    // Parse dates
+    final startDate = json['start_datetime'] != null 
+        ? DateTime.parse(json['start_datetime']) 
+        : null;
+    final endDate = json['end_datetime'] != null 
+        ? DateTime.parse(json['end_datetime']) 
+        : null;
 
-    throw UnimplementedError('P2: Implement JSON to GroupEventEntity conversion');
+    // Parse status from event_state enum
+    final status = _statusFromString(json['event_status'] ?? 'pending');
+
+    // Parse going users for avatars and names
+    final goingUsers = (json['going_users'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+    final attendeeAvatars = goingUsers
+        .map((u) => u['avatar_url'] as String?)
+        .whereType<String>()
+        .toList();
+    final attendeeNames = goingUsers
+        .map((u) => u['display_name'] as String?)
+        .whereType<String>()
+        .toList();
+
+    // Parse current user's RSVP
+    final userRsvp = json['current_user_rsvp'] as String?;
+    final userVote = userRsvp == null || userRsvp == 'pending' || userRsvp == 'invited'
+        ? null
+        : (userRsvp == 'going' || userRsvp == 'yes' || userRsvp == 'attending' || userRsvp == 'accepted');
+
+    // Parse all votes if provided
+    final allVotes = rsvps?.map((r) => RsvpVote(
+      id: r['user_id'] ?? '',
+      userId: r['user_id'] ?? '',
+      userName: r['user_name'] ?? '',
+      userAvatar: r['user_avatar'],
+      status: _parseRsvpStatus(r['status'] ?? 'pending'),
+      votedAt: r['voted_at'] != null ? DateTime.parse(r['voted_at']) : null,
+    )).toList() ?? [];
+
+    return GroupEventEntity(
+      id: json['event_id'] ?? '',
+      name: json['event_name'] ?? '',
+      emoji: json['emoji'] ?? '📅',
+      date: startDate,
+      endsAt: endDate,
+      location: json['location_name'],
+      status: status,
+      goingCount: json['going_count'] ?? 0,
+      participantCount: json['participants_total'] ?? 0,
+      photoCount: json['photo_count'] ?? 0,
+      maxPhotos: json['max_photos'],
+      attendeeAvatars: attendeeAvatars,
+      attendeeNames: attendeeNames,
+      userVote: userVote,
+      allVotes: allVotes,
+    );
   }
 
   /// Helper to convert RSVP status string to enum
-  // ignore: unused_element
   static RsvpVoteStatus _parseRsvpStatus(String status) {
-    switch (status) {
+    switch (status.toLowerCase()) {
       case 'going':
+      case 'yes':
+      case 'attending':
+      case 'accepted':
         return RsvpVoteStatus.going;
-      case 'notGoing':
+      case 'notgoing':
       case 'not_going':
+      case 'declined':
+      case 'no':
+      case 'rejected':
         return RsvpVoteStatus.notGoing;
       case 'pending':
+      case 'invited':
       default:
         return RsvpVoteStatus.pending;
     }
   }
 
-  /// Helper to convert GroupEventStatus enum to string for Supabase
-  static String statusToString(GroupEventStatus status) {
-    switch (status) {
-      case GroupEventStatus.pending:
-        return 'pending';
-      case GroupEventStatus.confirmed:
-        return 'confirmed';
-      case GroupEventStatus.live:
-        return 'live';
-      case GroupEventStatus.recap:
-        return 'recap';
-    }
-  }
-
-  /// Helper to convert string to GroupEventStatus enum
-  static GroupEventStatus statusFromString(String status) {
-    switch (status) {
+  /// Helper to convert event_state string to GroupEventStatus enum
+  static GroupEventStatus _statusFromString(String status) {
+    switch (status.toLowerCase()) {
       case 'confirmed':
         return GroupEventStatus.confirmed;
-      case 'live':
+      case 'living':  // Supabase usa 'living' não 'live'
         return GroupEventStatus.live;
       case 'recap':
         return GroupEventStatus.recap;

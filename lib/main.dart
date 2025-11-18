@@ -35,6 +35,11 @@ import '../features/groups/presentation/providers/groups_provider.dart';
 import '../features/groups/data/data_sources/groups_data_source.dart';
 import '../features/groups/data/repositories/group_repository_impl.dart';
 
+// GROUP HUB - Real implementation
+import '../features/group_hub/presentation/providers/group_hub_providers.dart' as group_hub;
+import '../features/group_hub/data/data_sources/group_event_data_source.dart' as group_hub_ds;
+import '../features/group_hub/data/repositories/group_event_repository_impl.dart' as group_hub_repo;
+
 // PROFILE - Real implementation
 import '../features/profile/data/data_sources/profile_remote_data_source.dart';
 import '../features/profile/data/repositories/profile_repository_impl.dart';
@@ -130,6 +135,13 @@ void main() async {
            final dataSource = SupabaseGroupsDataSource(client);
            return GroupRepositoryImpl(dataSource, client);
          }),
+
+        // ✅ GROUP HUB EVENTS repo -> real (Supabase) via DI (Nov 18, 2025)
+        group_hub.groupEventRepositoryProvider.overrideWith((ref) {
+          final client = Supabase.instance.client;
+          final dataSource = group_hub_ds.SupabaseGroupEventDataSource(client);
+          return group_hub_repo.GroupEventRepositoryImpl(dataSource);
+        }),
 
         // Profile repo -> real (Supabase)
         profileRepositoryProvider.overrideWith(
