@@ -130,7 +130,8 @@ class FakeHomeEventRepository implements HomeEventRepository {
       return null; // No next event if user hasn't voted or voted "Can't"
     }
 
-    // Calculate dates based on status for time-left testing
+    // ✅ Calculate dates based on status for time-left testing
+    // Frontend will calculate living/recap from these dates
     DateTime eventDate;
     DateTime? eventEndDate;
 

@@ -38,14 +38,27 @@ class _HomeEventModel {
   });
 
   factory _HomeEventModel.fromMap(Map<String, dynamic> map) {
+    final startDate = _parseDateTime(map['start_datetime']);
+    final endDate = _parseDateTime(map['end_datetime']);
+    final backendStatus = _asString(map['event_status']) ?? 'pending';
+
+    print(
+        '📊 Event: ${map['event_name']} | DB status: $backendStatus | Start: $startDate');
+
+    // ✅ CALCULAR estado baseado em datas e status da DB
+    final calculatedStatus =
+        _calculateStatusFromDates(startDate, endDate, backendStatus);
+
+    print('   → Calculated status: $calculatedStatus');
+
     return _HomeEventModel(
       id: _asString(map['event_id']) ?? '',
       name: _asString(map['event_name']) ?? '',
       emoji: _normalizeEmoji(map['emoji']),
-      date: _parseDateTime(map['start_datetime']),
-      endDate: _parseDateTime(map['end_datetime']),
+      date: startDate,
+      endDate: endDate,
       location: _asString(map['location_name']),
-      status: _asString(map['event_status']) ?? 'pending',
+      status: calculatedStatus, // ✅ Calculado, não lido do DB
       userRsvp: _asString(map['user_rsvp']),
       votedAt: _parseDateTime(map['voted_at']),
       goingCount: _asInt(map['going_count']),
@@ -109,6 +122,32 @@ class _HomeEventModel {
         votedAt: null,
       );
     }).toList();
+  }
+
+  // ✅ NOVO: Calcular estado baseado em timestamps e status da DB
+  // Decide apenas: planning / living / recap
+  // Se planning → usa status da DB (pending ou confirmed)
+  static String _calculateStatusFromDates(
+    DateTime? start,
+    DateTime? end,
+    String backendStatus,
+  ) {
+    final now = DateTime.now();
+    const recapDuration = Duration(hours: 24);
+
+    // Sem data ou data futura = PLANNING → usa status da DB (pending/confirmed)
+    if (start == null || start.isAfter(now)) {
+      return backendStatus; // Mantém 'pending' ou 'confirmed' da DB
+    }
+
+    // Evento a decorrer = LIVING
+    if (end == null || end.isAfter(now)) return 'living';
+
+    // Evento terminou há menos de 24h = RECAP
+    if (now.difference(end) < recapDuration) return 'recap';
+
+    // Evento terminou há mais de 24h = ended (não deve aparecer na view)
+    return 'ended';
   }
 
   static HomeEventStatus _mapStatus(String status) {
