@@ -623,15 +623,20 @@ class _HomeEventCardState extends State<HomeEventCard> {
 
     final weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
-    // For demo purposes, create a range with start and end times
-    const startTime = '15:00';
-    const endTime = '18:00';
+    // ✅ Extract real start and end times from event dates
+    final startTime =
+        '${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
+    final endTime = _currentEvent.endDate != null
+        ? '${_currentEvent.endDate!.hour.toString().padLeft(2, '0')}:${_currentEvent.endDate!.minute.toString().padLeft(2, '0')}'
+        : null;
 
     // Format: "Mon, 26 Feb • 15:00–18:00" for same day
     final weekday = weekdays[date.weekday - 1];
     final day = date.day;
     final month = months[date.month - 1];
 
-    return '$weekday, $day $month • $startTime–$endTime';
+    // Show time range if endDate is available, otherwise just start time
+    final timeRange = endTime != null ? '$startTime–$endTime' : startTime;
+    return '$weekday, $day $month • $timeRange';
   }
 }

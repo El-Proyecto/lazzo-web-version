@@ -57,7 +57,20 @@ class _HomePageState extends ConsumerState<HomePage> {
   @override
   void initState() {
     super.initState();
-    _startAutoRefresh(); // ✅ ADD
+    _startAutoRefresh(); // ✅ Start auto-refresh timer
+  }
+
+  void _refreshAllData() {
+    // ✅ Invalidate all providers to fetch fresh data
+    print('🔄 Refreshing home data...');
+    ref.invalidate(nextEventControllerProvider);
+    ref.invalidate(confirmedEventsControllerProvider);
+    ref.invalidate(homePendingEventsControllerProvider);
+    ref.invalidate(todosControllerProvider);
+    ref.invalidate(paymentSummariesControllerProvider);
+    ref.invalidate(totalBalanceControllerProvider);
+    ref.invalidate(recentMemoriesControllerProvider);
+    ref.invalidate(groupsProvider);
   }
 
   @override
@@ -73,10 +86,7 @@ class _HomePageState extends ConsumerState<HomePage> {
       (_) {
         // Apenas invalidar se ainda estiver montado
         if (mounted) {
-          print('🔄 Auto-refreshing home data...');
-          ref.invalidate(nextEventControllerProvider);
-          ref.invalidate(confirmedEventsControllerProvider);
-          ref.invalidate(homePendingEventsControllerProvider);
+          _refreshAllData();
         }
       },
     );
@@ -325,20 +335,40 @@ class _HomePageState extends ConsumerState<HomePage> {
                   if (event == null) {
                     return const SizedBox.shrink();
                   }
+
+                  // Determine section title based on event status
+                  String sectionTitle;
+                  switch (event.status) {
+                    case HomeEventStatus.living:
+                      sectionTitle = 'Live Event';
+                      break;
+                    case HomeEventStatus.recap:
+                      sectionTitle = 'Recap Event';
+                      break;
+                    case HomeEventStatus.pending:
+                    case HomeEventStatus.confirmed:
+                      sectionTitle = 'Next Event';
+                      break;
+                  }
+
                   return Column(
                     children: [
                       SectionBlock(
-                        title: 'Next Event',
+                        title: sectionTitle,
                         child: HomeEventCard(
                           event: event,
                           state: _mapStatusToHomeCardState(event.status),
-                          onTap: () {
+                          onTap: () async {
                             // ✅ Navigate to event details
-                            Navigator.pushNamed(
+                            await Navigator.pushNamed(
                               context,
                               AppRouter.event,
                               arguments: {'eventId': event.id},
                             );
+                            // ✅ Refresh data when returning from event page
+                            if (mounted) {
+                              _refreshAllData();
+                            }
                           },
                           onChatPressed: () {
                             // TODO: Navigate to event chat
@@ -397,13 +427,17 @@ class _HomePageState extends ConsumerState<HomePage> {
                                   location: event.location ?? 'Location TBD',
                                   state:
                                       _mapStatusToSmallCardState(event.status),
-                                  onTap: () {
+                                  onTap: () async {
                                     // ✅ Navigate to event details
-                                    Navigator.pushNamed(
+                                    await Navigator.pushNamed(
                                       context,
                                       AppRouter.event,
                                       arguments: {'eventId': event.id},
                                     );
+                                    // ✅ Refresh data when returning
+                                    if (mounted) {
+                                      _refreshAllData();
+                                    }
                                   },
                                 ),
                                 if (index < events.length - 1)
@@ -449,13 +483,17 @@ class _HomePageState extends ConsumerState<HomePage> {
                                   location: event.location ?? 'Location TBD',
                                   state:
                                       _mapStatusToSmallCardState(event.status),
-                                  onTap: () {
+                                  onTap: () async {
                                     // ✅ Navigate to event details
-                                    Navigator.pushNamed(
+                                    await Navigator.pushNamed(
                                       context,
                                       AppRouter.event,
                                       arguments: {'eventId': event.id},
                                     );
+                                    // ✅ Refresh data when returning
+                                    if (mounted) {
+                                      _refreshAllData();
+                                    }
                                   },
                                 ),
                                 if (index < events.length - 1)

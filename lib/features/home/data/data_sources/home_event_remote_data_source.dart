@@ -17,6 +17,8 @@ class HomeEventRemoteDataSource {
     try {
       print('🔍 Fetching next event for userId: $userId');
 
+      // ✅ Fetch multiple events and choose highest priority on frontend
+      // This allows proper priority calculation: living > recap > confirmed
       final response = await client
           .from(_eventsView)
           .select('''
@@ -29,20 +31,37 @@ class HomeEventRemoteDataSource {
             participants_total, voters_total
           ''')
           .eq('user_id', userId)
-          // ✅ Ordenar por data (mais próximo primeiro)
-          // Priority será calculado no frontend baseado em datas
           .order('start_datetime', ascending: true)
-          .limit(1)
-          .maybeSingle();
+          .limit(10); // Fetch top 10 to find highest priority
 
-      if (response == null) {
-        print('ℹ️ No next event found for user $userId');
+      final data = response as List<dynamic>;
+      if (data.isEmpty) {
+        print('ℹ️ No events found for user $userId');
         return null;
       }
 
+      // ✅ Convert all events and find highest priority
+      final events =
+          data.map((e) => homeEventFromMap(e as Map<String, dynamic>)).toList();
+
+      // Priority order: living (4) > recap (3) > confirmed (2) > pending (1)
+      final priorityMap = {
+        HomeEventStatus.living: 4,
+        HomeEventStatus.recap: 3,
+        HomeEventStatus.confirmed: 2,
+        HomeEventStatus.pending: 1,
+      };
+
+      events.sort((a, b) {
+        final aPriority = priorityMap[a.status] ?? 0;
+        final bPriority = priorityMap[b.status] ?? 0;
+        return bPriority.compareTo(aPriority); // Descending (highest first)
+      });
+
+      final nextEvent = events.first;
       print(
-          '✅ Next event fetched: ${response['event_name']} (start: ${response['start_datetime']})');
-      return homeEventFromMap(response as Map<String, dynamic>);
+          '✅ Next event selected: ${nextEvent.name} (status: ${nextEvent.status})');
+      return nextEvent;
     } catch (e) {
       print('❌ Error fetching next event: $e');
       return null;
@@ -66,6 +85,7 @@ class HomeEventRemoteDataSource {
             participants_total, voters_total
           ''')
           .eq('user_id', userId)
+          .eq('event_status', 'confirmed') // ✅ Only confirmed events
           // ✅ Filtrar por start_datetime futura (confirmed = não começou ainda)
           .gte('start_datetime', DateTime.now().toIso8601String())
           .order('start_datetime', ascending: true)
