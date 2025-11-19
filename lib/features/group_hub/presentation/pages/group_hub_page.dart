@@ -445,8 +445,12 @@ class _GroupHubPageState extends ConsumerState<GroupHubPage>
               return GroupEventCard(
                 event: event,
                 onTap: () {
-                  // TODO: Navigate to event detail
-                  print('Navigate to event: ${event.id}');
+                  // Navigate to event detail page
+                  Navigator.pushNamed(
+                    context,
+                    '/event',
+                    arguments: {'eventId': event.id},
+                  );
                 },
                 onVoteChanged: (eventId, vote) {
                   // TODO: Implement vote persistence

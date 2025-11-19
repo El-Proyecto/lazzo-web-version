@@ -13,17 +13,21 @@ class GroupEventModel {
         ? DateTime.parse(json['end_datetime']) 
         : null;
 
-    // Parse status from event_state enum
-    final status = _statusFromString(json['event_status'] ?? 'pending');
+    // Parse status: use computed_status from view
+    final status = _statusFromString(json['computed_status'] ?? json['event_status'] ?? 'pending');
 
     // Parse going users for avatars and names
-    final goingUsers = (json['going_users'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+    final goingUsersJson = json['going_users'];
+    final goingUsers = goingUsersJson is List 
+        ? goingUsersJson.cast<Map<String, dynamic>>()
+        : <Map<String, dynamic>>[];
+    
     final attendeeAvatars = goingUsers
         .map((u) => u['avatar_url'] as String?)
         .whereType<String>()
         .toList();
     final attendeeNames = goingUsers
-        .map((u) => u['display_name'] as String?)
+        .map((u) => u['full_name'] as String?)
         .whereType<String>()
         .toList();
 
@@ -45,14 +49,14 @@ class GroupEventModel {
 
     return GroupEventEntity(
       id: json['event_id'] ?? '',
-      name: json['event_name'] ?? '',
+      name: json['title'] ?? '',
       emoji: json['emoji'] ?? '📅',
       date: startDate,
       endsAt: endDate,
       location: json['location_name'],
       status: status,
-      goingCount: json['going_count'] ?? 0,
-      participantCount: json['participants_total'] ?? 0,
+      goingCount: json['rsvp_going'] ?? json['participant_count'] ?? 0,
+      participantCount: json['participant_count'] ?? 0,
       photoCount: json['photo_count'] ?? 0,
       maxPhotos: json['max_photos'],
       attendeeAvatars: attendeeAvatars,

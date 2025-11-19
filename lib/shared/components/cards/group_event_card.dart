@@ -291,22 +291,23 @@ class _GroupEventCardState extends State<GroupEventCard> {
         padding: const EdgeInsets.symmetric(vertical: Gaps.xxs),
         child: Row(
           children: [
-            // Profile pictures
+            // Profile pictures (apenas avatares, sem texto)
             _buildAttendeeAvatars(),
             const SizedBox(width: Gaps.xs),
 
-            // Participant and photos count
-            Expanded(
-              child: Text(
-                _buildParticipantText(),
-                style: AppText.bodyMedium.copyWith(
-                  color: BrandColors.text2,
-                  fontWeight: FontWeight.w500,
+            // Photos count (se houver)
+            if (_currentEvent.photoCount > 0 || _currentEvent.maxPhotos != null)
+              Expanded(
+                child: Text(
+                  _buildPhotosOnlyText(),
+                  style: AppText.bodyMedium.copyWith(
+                    color: BrandColors.text2,
+                    fontWeight: FontWeight.w500,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
               ),
-            ),
           ],
         ),
       ),
@@ -359,6 +360,15 @@ class _GroupEventCardState extends State<GroupEventCard> {
     return parts.join(' • ');
   }
 
+  String _buildPhotosOnlyText() {
+    if (_currentEvent.maxPhotos != null) {
+      return '${_currentEvent.photoCount}/${_currentEvent.maxPhotos} photos';
+    } else if (_currentEvent.photoCount > 0) {
+      return '${_currentEvent.photoCount} photo${_currentEvent.photoCount != 1 ? 's' : ''}';
+    }
+    return '';
+  }
+
   void _showVotesBottomSheet(BuildContext context) {
     VotesBottomSheet.show(
       context: context,
@@ -408,17 +418,17 @@ class _GroupEventCardState extends State<GroupEventCard> {
       return const SizedBox.shrink();
     }
 
-    // Always show max 2 avatars + overflow indicator if there are more than 2
-    final hasOverflow = _currentEvent.attendeeAvatars.length > 2;
+    // Show max 3 avatars + overflow indicator if there are more than 3
+    final hasOverflow = _currentEvent.attendeeAvatars.length > 3;
     final visibleAvatars = hasOverflow
-        ? _currentEvent.attendeeAvatars.take(2).toList()
-        : _currentEvent.attendeeAvatars.take(3).toList();
+        ? _currentEvent.attendeeAvatars.take(3).toList()
+        : _currentEvent.attendeeAvatars;
     final remainingCount =
-        hasOverflow ? _currentEvent.attendeeAvatars.length - 2 : 0;
+        hasOverflow ? _currentEvent.attendeeAvatars.length - 3 : 0;
 
     final totalWidth = hasOverflow
         ? avatarSize +
-            2 * (avatarSize - overlap) // 2 avatars + overflow indicator
+            3 * (avatarSize - overlap) // 3 avatars + overflow indicator
         : avatarSize + (visibleAvatars.length - 1) * (avatarSize - overlap);
 
     return SizedBox(
@@ -467,12 +477,12 @@ class _GroupEventCardState extends State<GroupEventCard> {
             );
           }),
 
-          // Overflow indicator - replaces the third avatar position
+          // Overflow indicator - appears after the third avatar
           if (hasOverflow)
             Positioned(
-              left: 2 *
+              left: 3 *
                   (avatarSize -
-                      overlap), // Position where third avatar would be
+                      overlap), // Position where fourth avatar would be
               child: Container(
                 width: avatarSize,
                 height: avatarSize,
