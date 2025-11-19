@@ -27,6 +27,7 @@ import '../features/memory/presentation/pages/memory_page.dart';
 import '../features/memory/presentation/pages/memory_viewer_page.dart';
 import '../features/memory/presentation/pages/manage_memory_page.dart';
 import '../features/memory/presentation/pages/photo_preview_page.dart';
+import '../features/memory/presentation/pages/memory_ready_page.dart';
 
 class AppRouter {
   static const String home = '/home';
@@ -50,6 +51,7 @@ class AppRouter {
   static const String memoryViewer = '/memory-viewer';
   static const String photoPreview = '/photo-preview';
   static const String manageMemory = '/manage-memory';
+  static const String memoryReady = '/memory-ready';
   static const String loginPage = '/login';
   static const String otpVerification = '/otp';
   static const String loginVerification = '/otp-login';
@@ -150,6 +152,13 @@ class AppRouter {
       final args =
           ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
       return ManageMemoryPage(
+        memoryId: args?['memoryId'] ?? 'memory-1',
+      );
+    },
+    memoryReady: (context) {
+      final args =
+          ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+      return MemoryReadyPage(
         memoryId: args?['memoryId'] ?? 'memory-1',
       );
     },
