@@ -5,6 +5,7 @@ import '../../../../shared/components/nav/common_app_bar.dart';
 import '../../../../shared/components/common/top_banner.dart';
 import '../../../../shared/components/dialogs/confirmation_dialog.dart';
 import '../../../../shared/components/cards/add_photos_cta_card.dart';
+import '../../../../shared/components/cards/close_recap_card.dart';
 import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/constants/text_styles.dart';
 import '../../../../shared/themes/colors.dart';
@@ -85,6 +86,16 @@ class _ManageMemoryPageState extends ConsumerState<ManageMemoryPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const SizedBox(height: Gaps.lg),
+
+                    // Close recap card (only for hosts in recap phase)
+                    if (FakeMemoryConfig.eventStatus == FakeEventStatus.recap &&
+                        FakeMemoryConfig.isHost) ...[
+                      CloseRecapCard(
+                        timeRemaining: FakeMemoryConfig.formattedRemainingTime,
+                        onCloseConfirmed: () => _handleCloseRecap(),
+                      ),
+                      const SizedBox(height: Gaps.md),
+                    ],
 
                     // Show CTA banner if user has no photos, otherwise show cover selection
                     if (!FakeMemoryConfig.userHasUploadedPhotos)
@@ -347,6 +358,25 @@ class _ManageMemoryPageState extends ConsumerState<ManageMemoryPage> {
           ? 'Opening camera...'
           : 'Opening photo picker...',
     );
+  }
+
+  void _handleCloseRecap() {
+    // TODO P2: Implement actual recap close logic (call repository/use case)
+    // For now, just update fake config
+    setState(() {
+      FakeMemoryConfig.eventStatus = FakeEventStatus.ended;
+    });
+
+    // Show success message
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Recap closed. Memory is now shareable!'),
+        backgroundColor: BrandColors.planning,
+      ),
+    );
+
+    // Navigate back to memory page
+    Navigator.of(context).pop();
   }
 
   void _showPhotoSelector(

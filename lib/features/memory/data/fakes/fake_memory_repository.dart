@@ -21,7 +21,7 @@ class FakeMemoryConfig {
   static int gridLandscapeCount = 4;
 
   /// Whether current user is host (can select all photos)
-  static bool isHost = false;
+  static bool isHost = true;
 
   /// Current event status (living, recap, or ended)
   /// - living: event is happening now
@@ -31,7 +31,7 @@ class FakeMemoryConfig {
 
   /// Whether current user has uploaded photos
   /// Used to determine if edit button should show in living/recap
-  static bool userHasUploadedPhotos = false;
+  static bool userHasUploadedPhotos = true;
 
   /// When the recap phase closes (null for living/ended)
   /// Used for countdown timer in AppBar
