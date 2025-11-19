@@ -48,6 +48,17 @@ class _HomeEventCardState extends State<HomeEventCard> {
     _currentEvent = widget.event;
   }
 
+  @override
+  void didUpdateWidget(HomeEventCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Update local state when event changes from parent
+    if (oldWidget.event.id != widget.event.id ||
+        oldWidget.event.name != widget.event.name ||
+        oldWidget.event.date != widget.event.date) {
+      _currentEvent = widget.event;
+    }
+  }
+
   void _updateVote(bool? vote) {
     setState(() {
       // Update the vote and recalculate going count and attendee data

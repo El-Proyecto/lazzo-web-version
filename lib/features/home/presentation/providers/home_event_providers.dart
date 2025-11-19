@@ -74,42 +74,65 @@ final getRecentMemoriesProvider = Provider<GetRecentMemories>((ref) {
 });
 
 // Controller providers that expose AsyncValue for UI
+// ✅ Using autoDispose to ensure fresh data on every invalidation
 final nextEventControllerProvider =
-    FutureProvider<HomeEventEntity?>((ref) async {
+    FutureProvider.autoDispose<HomeEventEntity?>((ref) async {
   final useCase = ref.watch(getNextEventProvider);
   return await useCase();
 });
 
 final confirmedEventsControllerProvider =
-    FutureProvider<List<HomeEventEntity>>((ref) async {
-  final useCase = ref.watch(getConfirmedEventsProvider);
-  return await useCase();
+    FutureProvider.autoDispose<List<HomeEventEntity>>((ref) async {
+  // Fetch both confirmed events and next event in parallel
+  final results = await Future.wait([
+    ref.watch(getConfirmedEventsProvider)(),
+    ref.watch(nextEventControllerProvider.future),
+  ]);
+
+  final confirmedEvents = results[0] as List<HomeEventEntity>;
+  final nextEvent = results[1] as HomeEventEntity?;
+
+  // Filter out the next event to avoid duplication
+  if (nextEvent == null) return confirmedEvents;
+  return confirmedEvents.where((e) => e.id != nextEvent.id).toList();
 });
 
 final homePendingEventsControllerProvider =
-    FutureProvider<List<HomeEventEntity>>((ref) async {
-  final useCase = ref.watch(getHomePendingEventsProvider);
-  return await useCase();
+    FutureProvider.autoDispose<List<HomeEventEntity>>((ref) async {
+  // Fetch both pending events and next event in parallel
+  final results = await Future.wait([
+    ref.watch(getHomePendingEventsProvider)(),
+    ref.watch(nextEventControllerProvider.future),
+  ]);
+
+  final pendingEvents = results[0] as List<HomeEventEntity>;
+  final nextEvent = results[1] as HomeEventEntity?;
+
+  // Filter out the next event to avoid duplication
+  if (nextEvent == null) return pendingEvents;
+  return pendingEvents.where((e) => e.id != nextEvent.id).toList();
 });
 
-final todosControllerProvider = FutureProvider<List<TodoEntity>>((ref) async {
+final todosControllerProvider =
+    FutureProvider.autoDispose<List<TodoEntity>>((ref) async {
   final useCase = ref.watch(getTodosProvider);
   return await useCase();
 });
 
 final paymentSummariesControllerProvider =
-    FutureProvider<List<PaymentSummaryEntity>>((ref) async {
+    FutureProvider.autoDispose<List<PaymentSummaryEntity>>((ref) async {
   final useCase = ref.watch(getPaymentSummariesProvider);
   return await useCase();
 });
 
-final totalBalanceControllerProvider = FutureProvider<double>((ref) async {
+final totalBalanceControllerProvider =
+    FutureProvider.autoDispose<double>((ref) async {
   final useCase = ref.watch(getTotalBalanceProvider);
   return await useCase();
 });
 
 final recentMemoriesControllerProvider =
-    FutureProvider<List<RecentMemoryEntity>>((ref) async {
+    FutureProvider.autoDispose<List<RecentMemoryEntity>>((ref) async {
   final useCase = ref.watch(getRecentMemoriesProvider);
   return await useCase();
 });

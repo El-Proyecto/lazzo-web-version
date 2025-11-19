@@ -239,30 +239,39 @@ class _EventPageState extends ConsumerState<EventPage> {
                         data: (suggestions) {
                           // Filter suggestions that are DIFFERENT from current event date
                           // (for "Add Suggestion" button visibility)
-                          final alternateDateSuggestions = suggestions.where((s) {
-                            if (event.startDateTime == null || event.endDateTime == null) return true;
-                            final isDifferent = !s.startDateTime.isAtSameMomentAs(event.startDateTime!) ||
-                                               !(s.endDateTime?.isAtSameMomentAs(event.endDateTime!) ?? false);
+                          final alternateDateSuggestions =
+                              suggestions.where((s) {
+                            if (event.startDateTime == null ||
+                                event.endDateTime == null) return true;
+                            final isDifferent = !s.startDateTime
+                                    .isAtSameMomentAs(event.startDateTime!) ||
+                                !(s.endDateTime?.isAtSameMomentAs(
+                                        event.endDateTime!) ??
+                                    false);
                             return isDifferent;
                           }).toList();
-                          
+
                           // Also check location suggestions for hasSuggestions flag
                           return Consumer(
                             builder: (context, consumerRef, child) {
-                              final locationSuggestionsAsync = consumerRef.watch(
+                              final locationSuggestionsAsync =
+                                  consumerRef.watch(
                                 eventLocationSuggestionsProvider(eventId),
                               );
 
                               return locationSuggestionsAsync.when(
                                 data: (locationSuggestions) {
                                   // Filter location suggestions DIFFERENT from current event location
-                                  final alternateLocationSuggestions = locationSuggestions.where((s) {
+                                  final alternateLocationSuggestions =
+                                      locationSuggestions.where((s) {
                                     if (event.location == null) return true;
-                                    final isDifferent = s.locationName != event.location!.displayName ||
-                                                       (s.address ?? '') != event.location!.formattedAddress;
+                                    final isDifferent = s.locationName !=
+                                            event.location!.displayName ||
+                                        (s.address ?? '') !=
+                                            event.location!.formattedAddress;
                                     return isDifferent;
                                   }).toList();
-                                  
+
                                   // Calculate dynamic counts from actual RSVP data
                                   final goingCount = rsvps
                                       .where(
@@ -293,7 +302,8 @@ class _EventPageState extends ConsumerState<EventPage> {
                                               ? RsvpStatus.pending
                                               : RsvpStatus.going;
                                       await ref
-                                          .read(userRsvpProvider(eventId).notifier)
+                                          .read(userRsvpProvider(eventId)
+                                              .notifier)
                                           .submitVote(newStatus);
                                     },
                                     onNotGoingPressed: () async {
@@ -304,7 +314,8 @@ class _EventPageState extends ConsumerState<EventPage> {
                                               ? RsvpStatus.pending
                                               : RsvpStatus.notGoing;
                                       await ref
-                                          .read(userRsvpProvider(eventId).notifier)
+                                          .read(userRsvpProvider(eventId)
+                                              .notifier)
                                           .submitVote(newStatus);
                                     },
                                     allVotes: rsvps
@@ -364,7 +375,8 @@ class _EventPageState extends ConsumerState<EventPage> {
                                     eventStartDateTime: event.startDateTime,
                                     eventEndDateTime: event.endDateTime,
                                     isHost: event.hostId == currentUserId,
-                                    hasSuggestions: alternateDateSuggestions.isNotEmpty ||
+                                    hasSuggestions: alternateDateSuggestions
+                                            .isNotEmpty ||
                                         alternateLocationSuggestions.isNotEmpty,
                                   );
                                 },
@@ -725,14 +737,17 @@ class _EventPageState extends ConsumerState<EventPage> {
                 data: (suggestions) {
                   // Filter suggestions that are DIFFERENT from current event date
                   final alternateSuggestions = suggestions.where((s) {
-                    if (event.startDateTime == null || event.endDateTime == null) return true;
-                    
+                    if (event.startDateTime == null ||
+                        event.endDateTime == null) return true;
+
                     // Keep only suggestions with DIFFERENT dates
-                    final isDifferent = !s.startDateTime.isAtSameMomentAs(event.startDateTime!) ||
-                                       !(s.endDateTime?.isAtSameMomentAs(event.endDateTime!) ?? false);
+                    final isDifferent = !s.startDateTime
+                            .isAtSameMomentAs(event.startDateTime!) ||
+                        !(s.endDateTime?.isAtSameMomentAs(event.endDateTime!) ??
+                            false);
                     return isDifferent;
                   }).toList();
-                  
+
                   // ONLY show widget if there are ALTERNATIVE suggestions (different from current date)
                   if (alternateSuggestions.isEmpty) {
                     return const SizedBox.shrink();
@@ -742,20 +757,23 @@ class _EventPageState extends ConsumerState<EventPage> {
                     data: (allVotes) {
                       return userSuggestionVotesAsync.when(
                         data: (userVotes) {
-                          final List<DateTimeSuggestion> dateTimeSuggestions = [];
-                          
+                          final List<DateTimeSuggestion> dateTimeSuggestions =
+                              [];
+
                           // Always add current event date as FIRST option (for comparison)
-                          if (event.startDateTime != null && event.endDateTime != null) {
+                          if (event.startDateTime != null &&
+                              event.endDateTime != null) {
                             dateTimeSuggestions.add(DateTimeSuggestion(
                               id: 'current_event_date',
                               startDateTime: event.startDateTime!,
                               endDateTime: event.endDateTime!,
-                              voteCount: 0, // Current date has no votes (it's the default)
+                              voteCount:
+                                  0, // Current date has no votes (it's the default)
                               hasUserVoted: false,
                               votes: [],
                             ));
                           }
-                          
+
                           // Add all ALTERNATIVE suggestions (different from current date)
                           dateTimeSuggestions.addAll(alternateSuggestions.map((
                             suggestion,
@@ -786,8 +804,6 @@ class _EventPageState extends ConsumerState<EventPage> {
                               votes: suggestionVotes,
                             );
                           }));
-
-
 
                           final userVoteIds = userVotes
                               .map((vote) => vote.suggestionId)
@@ -871,24 +887,28 @@ class _EventPageState extends ConsumerState<EventPage> {
                       if (locationSuggestions.isEmpty) {
                         return const SizedBox.shrink();
                       }
-                      
+
                       // Filter suggestions DIFFERENT from current event location (if exists)
-                      final alternateLocationSuggestions = locationSuggestions.where((s) {
+                      final alternateLocationSuggestions =
+                          locationSuggestions.where((s) {
                         if (event.location == null) return true;
-                        
+
                         // Check if suggestion is different from current location
-                        final isDifferent = s.locationName != event.location!.displayName ||
-                                           (s.address ?? '') != event.location!.formattedAddress;
+                        final isDifferent =
+                            s.locationName != event.location!.displayName ||
+                                (s.address ?? '') !=
+                                    event.location!.formattedAddress;
                         return isDifferent;
                       }).toList();
-                      
+
                       // Hide if no suggestions at all (should never happen, but safety check)
                       if (locationSuggestions.isEmpty) {
                         return const SizedBox.shrink();
                       }
-                      
+
                       // Hide if event has location but no alternative suggestions
-                      if (event.location != null && alternateLocationSuggestions.isEmpty) {
+                      if (event.location != null &&
+                          alternateLocationSuggestions.isEmpty) {
                         return const SizedBox.shrink();
                       }
 
@@ -952,13 +972,15 @@ class _EventPageState extends ConsumerState<EventPage> {
                             },
                             loading: () {
                               if (kDebugMode) {
-                                print('⏳ [EventPage] Loading user location votes...');
+                                print(
+                                    '⏳ [EventPage] Loading user location votes...');
                               }
                               return const SizedBox.shrink();
                             },
                             error: (error, stack) {
                               if (kDebugMode) {
-                                print('❌ [EventPage] Error loading user location votes: $error');
+                                print(
+                                    '❌ [EventPage] Error loading user location votes: $error');
                               }
                               return const SizedBox.shrink();
                             },
@@ -972,7 +994,8 @@ class _EventPageState extends ConsumerState<EventPage> {
                         },
                         error: (error, stack) {
                           if (kDebugMode) {
-                            print('❌ [EventPage] Error loading location votes: $error');
+                            print(
+                                '❌ [EventPage] Error loading location votes: $error');
                           }
                           return const SizedBox.shrink();
                         },
@@ -993,16 +1016,18 @@ class _EventPageState extends ConsumerState<EventPage> {
                     print('   - Event ID: $eventId');
                     print('   - Total messages: ${messages.length}');
                     if (messages.isNotEmpty) {
-                      print('   - First: "${messages.first.content.substring(0, messages.first.content.length > 30 ? 30 : messages.first.content.length)}..." (read=${messages.first.read})');
-                      print('   - Last: "${messages.last.content.substring(0, messages.last.content.length > 30 ? 30 : messages.last.content.length)}..."');
+                      print(
+                          '   - First: "${messages.first.content.substring(0, messages.first.content.length > 30 ? 30 : messages.first.content.length)}..." (read=${messages.first.read})');
+                      print(
+                          '   - Last: "${messages.last.content.substring(0, messages.last.content.length > 30 ? 30 : messages.last.content.length)}..."');
                     }
                     print('═══════════════════════════════════════\n');
                   }
-                  
+
                   final unreadCount = ref.watch(
                     unreadMessagesCountProvider(eventId),
                   );
-                  
+
                   final previewMessages = messages
                       .map(
                         (m) => ChatMessagePreview(
@@ -1027,24 +1052,33 @@ class _EventPageState extends ConsumerState<EventPage> {
                         ),
                       )
                       .toList();
-                  
+
                   if (kDebugMode) {
-                    print('💬 [EventPage] Passing ${previewMessages.length} messages to ChatPreviewWidget');
-                    print('💬 [EventPage] Unread count: $unreadCount, currentUserId: $currentUserId');
-                    
+                    print(
+                        '💬 [EventPage] Passing ${previewMessages.length} messages to ChatPreviewWidget');
+                    print(
+                        '💬 [EventPage] Unread count: $unreadCount, currentUserId: $currentUserId');
+
                     // Check for messages with replyTo
-                    final messagesWithReply = previewMessages.where((m) => m.replyTo != null).length;
-                    print('📨 [EventPage] Messages with replyTo: $messagesWithReply/${previewMessages.length}');
-                    
+                    final messagesWithReply =
+                        previewMessages.where((m) => m.replyTo != null).length;
+                    print(
+                        '📨 [EventPage] Messages with replyTo: $messagesWithReply/${previewMessages.length}');
+
                     if (previewMessages.isNotEmpty) {
                       print('💬 [EventPage] Preview messages details:');
-                      for (var i = 0; i < previewMessages.length && i < 3; i++) {
-                        final hasReply = previewMessages[i].replyTo != null ? ' (replying to: "${previewMessages[i].replyTo!.content.substring(0, previewMessages[i].replyTo!.content.length > 15 ? 15 : previewMessages[i].replyTo!.content.length)}...")' : '';
-                        print('   $i: "${previewMessages[i].content}" (user: ${previewMessages[i].userName}, read: ${previewMessages[i].read})$hasReply');
+                      for (var i = 0;
+                          i < previewMessages.length && i < 3;
+                          i++) {
+                        final hasReply = previewMessages[i].replyTo != null
+                            ? ' (replying to: "${previewMessages[i].replyTo!.content.substring(0, previewMessages[i].replyTo!.content.length > 15 ? 15 : previewMessages[i].replyTo!.content.length)}...")'
+                            : '';
+                        print(
+                            '   $i: "${previewMessages[i].content}" (user: ${previewMessages[i].userName}, read: ${previewMessages[i].read})$hasReply');
                       }
                     }
                   }
-                  
+
                   return ChatPreviewWidget(
                     newMessagesCount: unreadCount,
                     currentUserId: currentUserId ?? '',
@@ -1066,50 +1100,57 @@ class _EventPageState extends ConsumerState<EventPage> {
                         },
                       );
                     },
-                    onSendMessage: (content, {ChatMessagePreview? replyTo}) async {
+                    onSendMessage: (content,
+                        {ChatMessagePreview? replyTo}) async {
                       if (kDebugMode) {
-                        print('\n🚀 [EventPage] PREVIEW sending message (DATA state):');
+                        print(
+                            '\n🚀 [EventPage] PREVIEW sending message (DATA state):');
                         print('   - Content: "$content"');
                         print('   - Event ID: $eventId');
                         print('   - ReplyTo: ${replyTo?.content}');
                       }
-                      
+
                       // Convert ChatMessagePreview to ChatMessage if replying
                       ChatMessage? replyToMessage;
                       if (replyTo != null) {
                         // Find the original ChatMessage from messages list
                         try {
                           replyToMessage = messages.firstWhere(
-                            (m) => m.userId == replyTo.userId && 
-                                   m.content == replyTo.content &&
-                                   m.createdAt == replyTo.timestamp,
+                            (m) =>
+                                m.userId == replyTo.userId &&
+                                m.content == replyTo.content &&
+                                m.createdAt == replyTo.timestamp,
                           );
                           if (kDebugMode) {
-                            print('   ✅ Found original message to reply to: ${replyToMessage.id}');
+                            print(
+                                '   ✅ Found original message to reply to: ${replyToMessage.id}');
                           }
                         } catch (e) {
                           if (kDebugMode) {
-                            print('   ⚠️ Could not find original message for reply');
+                            print(
+                                '   ⚠️ Could not find original message for reply');
                           }
                         }
                       }
-                      
+
                       await ref.read(chatActionsProvider(eventId)).sendMessage(
-                        content,
-                        replyTo: replyToMessage,
-                      );
+                            content,
+                            replyTo: replyToMessage,
+                          );
                       if (kDebugMode) {
                         print('✅ [EventPage] PREVIEW sendMessage completed');
                       }
                     },
                     onPinMessage: (message) async {
                       final originalMessage = messages.firstWhere(
-                        (m) => m.content == message.content && m.userId == message.userId,
+                        (m) =>
+                            m.content == message.content &&
+                            m.userId == message.userId,
                       );
                       await ref.read(chatActionsProvider(eventId)).togglePin(
-                        originalMessage.id,
-                        !originalMessage.isPinned,
-                      );
+                            originalMessage.id,
+                            !originalMessage.isPinned,
+                          );
                       // Navigate to chat and scroll to pinned message
                       if (context.mounted) {
                         Navigator.pushNamed(
@@ -1124,9 +1165,13 @@ class _EventPageState extends ConsumerState<EventPage> {
                     },
                     onDeleteMessage: (message) async {
                       final originalMessage = messages.firstWhere(
-                        (m) => m.content == message.content && m.userId == message.userId,
+                        (m) =>
+                            m.content == message.content &&
+                            m.userId == message.userId,
                       );
-                      await ref.read(chatActionsProvider(eventId)).deleteMessage(originalMessage.id);
+                      await ref
+                          .read(chatActionsProvider(eventId))
+                          .deleteMessage(originalMessage.id);
                     },
                     onReplyMessage: (message) {
                       // Navigate to chat page with reply context (future enhancement)
@@ -1152,20 +1197,26 @@ class _EventPageState extends ConsumerState<EventPage> {
                     currentUserId: currentUserId ?? '',
                     recentMessages: const [],
                     onOpenChat: () {},
-                    onSendMessage: (content, {ChatMessagePreview? replyTo}) async {
+                    onSendMessage: (content,
+                        {ChatMessagePreview? replyTo}) async {
                       if (kDebugMode) {
-                        print('\n🚀 [EventPage] PREVIEW sending message (ERROR state):');
+                        print(
+                            '\n🚀 [EventPage] PREVIEW sending message (ERROR state):');
                         print('   - Content: "$content"');
                         print('   - ReplyTo: ${replyTo?.content}');
                       }
-                      await ref.read(chatActionsProvider(eventId)).sendMessage(content);
+                      await ref
+                          .read(chatActionsProvider(eventId))
+                          .sendMessage(content);
                       if (kDebugMode) {
                         print('✅ [EventPage] PREVIEW sendMessage completed');
                       }
                     },
                     onPinMessage: (message) async {
                       // Try to send action even in error state
-                      await ref.read(chatActionsProvider(eventId)).togglePin('', false);
+                      await ref
+                          .read(chatActionsProvider(eventId))
+                          .togglePin('', false);
                       // Navigate to chat
                       if (context.mounted) {
                         Navigator.pushNamed(
@@ -1176,7 +1227,9 @@ class _EventPageState extends ConsumerState<EventPage> {
                       }
                     },
                     onDeleteMessage: (message) async {
-                      await ref.read(chatActionsProvider(eventId)).deleteMessage('');
+                      await ref
+                          .read(chatActionsProvider(eventId))
+                          .deleteMessage('');
                     },
                   );
                 },
@@ -1409,4 +1462,3 @@ class _EventPageState extends ConsumerState<EventPage> {
     }
   }
 }
-

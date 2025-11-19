@@ -789,10 +789,11 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
     await _draftService.clearDraft();
 
     // Navigate to event detail page with the created event ID
+    // Use pushReplacementNamed to replace CreateEvent with Event page
+    // This way, back button from Event goes to Home (which is still in the stack)
     if (mounted) {
-      Navigator.of(context).pushNamedAndRemoveUntil(
+      Navigator.of(context).pushReplacementNamed(
         '/event',
-        (Route<dynamic> route) => false,
         arguments: {
           'eventId': eventId,
           'showSuccessBanner': true,

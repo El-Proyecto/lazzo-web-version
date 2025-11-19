@@ -60,6 +60,22 @@ class _HomePageState extends ConsumerState<HomePage> {
     _startAutoRefresh(); // ✅ Start auto-refresh timer
   }
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+
+    // ✅ Listen to tab changes and refresh when coming back to home
+    final currentTab = ref.watch(mainLayoutTabProvider);
+    if (currentTab == 0 && mounted) {
+      // We're on home tab - refresh data
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          _refreshAllData();
+        }
+      });
+    }
+  }
+
   void _refreshAllData() {
     // ✅ Invalidate all providers to fetch fresh data
     print('🔄 Refreshing home data...');
@@ -71,6 +87,11 @@ class _HomePageState extends ConsumerState<HomePage> {
     ref.invalidate(totalBalanceControllerProvider);
     ref.invalidate(recentMemoriesControllerProvider);
     ref.invalidate(groupsProvider);
+
+    // Force rebuild to pick up new provider data
+    if (mounted) {
+      setState(() {});
+    }
   }
 
   @override
@@ -93,7 +114,7 @@ class _HomePageState extends ConsumerState<HomePage> {
   }
 
   String _formatEventDate(DateTime? date) {
-    if (date == null) return 'To be decided';
+    if (date == null) return 'Date to be decided';
 
     final months = [
       'Jan',
