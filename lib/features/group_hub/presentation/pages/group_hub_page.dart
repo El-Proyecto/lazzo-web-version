@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../shared/components/nav/common_app_bar.dart';
 import '../../../../shared/components/common/page_segmented_control.dart';
 import '../../../../shared/components/cards/group_event_card.dart';
@@ -10,6 +11,8 @@ import '../../../../shared/constants/text_styles.dart';
 import '../../../../shared/themes/colors.dart';
 import '../providers/group_hub_providers.dart';
 import '../../domain/entities/group_memory_entity.dart';
+import '../../../event/domain/entities/rsvp.dart';
+import '../../../event/presentation/providers/event_providers.dart';
 import 'group_details_page.dart';
 
 class GroupHubPage extends ConsumerStatefulWidget {
@@ -452,9 +455,35 @@ class _GroupHubPageState extends ConsumerState<GroupHubPage>
                     arguments: {'eventId': event.id},
                   );
                 },
-                onVoteChanged: (eventId, vote) {
-                  // TODO: Implement vote persistence
-                  print('Vote changed for event $eventId: $vote');
+                onVoteChanged: (eventId, vote) async {
+                  // Persist RSVP to Supabase
+                  try {
+                    final rsvpRepo = ref.read(rsvpRepositoryProvider);
+                    final userId = Supabase.instance.client.auth.currentUser?.id;
+                    
+                    if (userId == null) {
+                      print('❌ Error: User not authenticated');
+                      return;
+                    }
+
+                    // Convert vote to RsvpStatus
+                    final status = vote == null 
+                        ? RsvpStatus.pending 
+                        : (vote ? RsvpStatus.going : RsvpStatus.notGoing);
+
+                    print('📤 Submitting RSVP: eventId=$eventId, userId=$userId, status=$status');
+                    
+                    await rsvpRepo.submitRsvp(eventId, userId, status);
+                    
+                    print('✅ RSVP submitted successfully');
+                    
+                    // Invalidate providers to refresh data
+                    ref.invalidate(groupEventsProvider(widget.groupId));
+                    ref.invalidate(eventRsvpsProvider(eventId));
+                    ref.invalidate(userRsvpProvider(eventId));
+                  } catch (e) {
+                    print('❌ Error submitting RSVP: $e');
+                  }
                 },
               );
             } else {

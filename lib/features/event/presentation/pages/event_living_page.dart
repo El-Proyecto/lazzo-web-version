@@ -15,6 +15,11 @@ import '../widgets/chat_preview_widget.dart';
 import '../widgets/host_time_controls.dart';
 import '../widgets/living_expenses_widget.dart';
 
+/// Helper function to display "You" for current user, otherwise their name
+String _getUserDisplayName(String userId, String userName, String? currentUserId) {
+  return userId == currentUserId ? 'You' : userName;
+}
+
 /// Event page for Living mode
 /// Displays event in progress with photo upload, chat, and host controls
 class EventLivingPage extends ConsumerWidget {
@@ -24,6 +29,7 @@ class EventLivingPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final currentUserId = ref.watch(currentUserIdProvider);
     final eventAsync = ref.watch(eventDetailProvider(eventId));
     final messagesAsync = ref.watch(chatMessagesProvider(eventId));
 
@@ -104,13 +110,12 @@ class EventLivingPage extends ConsumerWidget {
                     );
                     return ChatPreviewWidget(
                       newMessagesCount: unreadCount,
-                      currentUserId:
-                          'current-user', // TODO: Get from auth provider
+                      currentUserId: currentUserId ?? 'current-user',
                       recentMessages: messages
                           .map(
                             (m) => ChatMessagePreview(
                               userId: m.userId,
-                              userName: m.userName,
+                              userName: _getUserDisplayName(m.userId, m.userName, currentUserId),
                               userAvatar: m.userAvatar,
                               content: m.content,
                               timestamp: m.createdAt,

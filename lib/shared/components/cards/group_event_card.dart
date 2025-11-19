@@ -164,6 +164,11 @@ class _GroupEventCardState extends State<GroupEventCard> {
       return 'Ended';
     }
 
+    // Se mais de 24 horas, mostrar data e hora específica
+    if (difference.inHours >= 24) {
+      return _formatEventDateTime(endsAt);
+    }
+
     if (difference.inHours > 0) {
       return '${difference.inHours} hour${difference.inHours > 1 ? 's' : ''} left';
     }
@@ -173,6 +178,39 @@ class _GroupEventCardState extends State<GroupEventCard> {
     }
 
     return 'Less than a minute left';
+  }
+
+  String _formatEventDateTime(DateTime dateTime) {
+    final now = DateTime.now();
+    final tomorrow = DateTime(now.year, now.month, now.day + 1);
+    final dateOnly = DateTime(dateTime.year, dateTime.month, dateTime.day);
+
+    // Formatar hora
+    final hour = dateTime.hour.toString().padLeft(2, '0');
+    final minute = dateTime.minute.toString().padLeft(2, '0');
+    final timeStr = '$hour:$minute';
+
+    // Se é amanhã
+    if (dateOnly.isAtSameMomentAs(tomorrow)) {
+      return 'Tomorrow • $timeStr';
+    }
+
+    // Formato: "Day, DD Mon • HH:MM"
+    final weekday = _getWeekdayShort(dateTime.weekday);
+    final day = dateTime.day;
+    final month = _getMonthShort(dateTime.month);
+
+    return '$weekday, $day $month • $timeStr';
+  }
+
+  String _getWeekdayShort(int weekday) {
+    const weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    return weekdays[weekday - 1];
+  }
+
+  String _getMonthShort(int month) {
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return months[month - 1];
   }
 
   Widget _buildStatusBadge() {
@@ -342,22 +380,6 @@ class _GroupEventCardState extends State<GroupEventCard> {
         ),
       ),
     );
-  }
-
-  String _buildParticipantText() {
-    final parts = <String>[];
-
-    // Participants count
-    parts.add('${ _currentEvent.participantCount} participant${_currentEvent.participantCount != 1 ? 's' : ''}');
-
-    // Photos count
-    if (_currentEvent.maxPhotos != null) {
-      parts.add('${_currentEvent.photoCount}/${_currentEvent.maxPhotos} photos');
-    } else if (_currentEvent.photoCount > 0) {
-      parts.add('${_currentEvent.photoCount} photo${_currentEvent.photoCount != 1 ? 's' : ''}');
-    }
-
-    return parts.join(' • ');
   }
 
   String _buildPhotosOnlyText() {
