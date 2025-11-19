@@ -59,7 +59,7 @@ class FakeMemoryConfig {
     final minutes = remaining.inMinutes.remainder(60);
 
     if (hours > 0) {
-      return '${hours}h ${minutes}m';
+      return '${hours}h${minutes}m';
     }
     return '${minutes}m';
   }

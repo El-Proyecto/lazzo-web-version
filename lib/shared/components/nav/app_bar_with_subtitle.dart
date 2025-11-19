@@ -5,14 +5,14 @@ import '../../../shared/constants/spacing.dart';
 
 /// AppBar with subtitle support
 /// Used for pages that need additional context below the title (e.g., countdown timers)
-class AppBarWithSubtitle extends StatelessWidget
-    implements PreferredSizeWidget {
+class AppBarWithSubtitle extends StatelessWidget implements PreferredSizeWidget {
   const AppBarWithSubtitle({
     required this.title,
     required this.subtitle,
     this.subtitleColor,
     this.leading,
     this.trailing,
+    this.trailing2,
     this.centerTitle = true,
     this.backgroundColor,
     super.key,
@@ -23,6 +23,7 @@ class AppBarWithSubtitle extends StatelessWidget
   final Color? subtitleColor;
   final Widget? leading;
   final Widget? trailing;
+  final Widget? trailing2;
   final bool centerTitle;
   final Color? backgroundColor;
 
@@ -37,29 +38,42 @@ class AppBarWithSubtitle extends StatelessWidget
       flexibleSpace: Column(
         mainAxisAlignment: MainAxisAlignment.end,
         children: [
-          // First row
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: Pads.ctlVXs),
+            padding: const EdgeInsets.symmetric(horizontal: Pads.sectionH),
             child: SizedBox(
               height: kToolbarHeight,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              child: Stack(
+                alignment: Alignment.center,
                 children: [
-                  leading ?? const SizedBox(width: 36, height: 36),
-                  Expanded(
-                    child: Center(
-                      child: Text(
-                        title,
-                        style: AppText.dropdownTitle.copyWith(
-                          color: BrandColors.text1,
-                          fontSize: 22,
-                          fontWeight: FontWeight.w500,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: SizedBox(
+                      width: 36,
+                      height: 36,
+                      child: leading ?? const SizedBox(width: 36, height: 36),
                     ),
                   ),
-                  trailing ?? const SizedBox(width: 36, height: 36),
+
+                  Align(
+                    alignment:
+                        centerTitle ? Alignment.center : Alignment.centerLeft,
+                    child: Text(
+                      title,
+                      style: AppText.dropdownTitle.copyWith(
+                        color: BrandColors.text1,
+                        fontSize: 22,
+                        fontWeight: FontWeight.w500,
+                      ),
+                      textAlign:
+                          centerTitle ? TextAlign.center : TextAlign.left,
+                    ),
+                  ),
+
+                  // Trailing(s) alinhados à direita
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: _buildTrailingIcons(),
+                  ),
                 ],
               ),
             ),
@@ -77,6 +91,48 @@ class AppBarWithSubtitle extends StatelessWidget
           ),
         ],
       ),
+    );
+  }
+
+  /// Build trailing icons with proper spacing
+  /// Supports 1 or 2 icons on the right side
+  Widget _buildTrailingIcons() {
+    // Nenhum ícone
+    if (trailing == null && trailing2 == null) {
+      return const SizedBox(width: 36, height: 36);
+    }
+
+    if (trailing == null && trailing2 != null) {
+      return SizedBox(
+        width: 36,
+        height: 36,
+        child: trailing2,
+      );
+    }
+
+    if (trailing != null && trailing2 == null) {
+      return SizedBox(
+        width: 36,
+        height: 36,
+        child: trailing,
+      );
+    }
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        SizedBox(
+          width: 36,
+          height: 36,
+          child: trailing!,
+        ),
+        const SizedBox(width: 4),
+        SizedBox(
+          width: 36,
+          height: 36,
+          child: trailing2!,
+        ),
+      ],
     );
   }
 

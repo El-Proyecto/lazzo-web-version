@@ -266,7 +266,7 @@ class MemoryPage extends ConsumerWidget {
   }
 
   /// Build AppBar based on event status
-  /// - Recap: AppBarWithSubtitle showing countdown timer
+  /// - Recap: AppBarWithSubtitle showing countdown timer with chat button
   /// - Living/Ended: CommonAppBar
   PreferredSizeWidget _buildAppBar(
     BuildContext context,
@@ -281,6 +281,38 @@ class MemoryPage extends ConsumerWidget {
       onPressed: () => Navigator.of(context).pop(),
     );
 
+    // Recap state: show countdown timer with chat button (and edit if applicable)
+    if (eventStatus == FakeEventStatus.recap) {
+      final subtitle = 'Closes in ${FakeMemoryConfig.formattedRemainingTime}';
+      final subtitleColor = FakeMemoryConfig.isLessThanOneHour
+          ? BrandColors.cantVote // Orange/red when <1hr
+          : BrandColors.text2;
+
+      // Chat button (always present in recap)
+      final chatButton = IconButton(
+        icon: const Icon(Icons.chat_bubble_outline, color: BrandColors.text1),
+        onPressed: () => _navigateToChat(context),
+      );
+
+      // Edit button (only if host or has uploaded photos)
+      final editButton = (isHost || userHasUploadedPhotos)
+          ? IconButton(
+              icon: const Icon(Icons.edit, color: BrandColors.text1),
+              onPressed: () => _navigateToManageMemory(context),
+            )
+          : null;
+
+      return AppBarWithSubtitle(
+        title: 'Memory',
+        subtitle: subtitle,
+        subtitleColor: subtitleColor,
+        leading: leading,
+        trailing: editButton,
+        trailing2: chatButton,
+      );
+    }
+
+    // Living/Ended: standard AppBar with edit button (if applicable)
     final trailing = memoryAsync.maybeWhen(
       data: (memory) => memory != null
           ? _buildTrailingIcon(
@@ -295,24 +327,6 @@ class MemoryPage extends ConsumerWidget {
       orElse: () => null,
     );
 
-    // Recap state: show countdown timer
-    if (eventStatus == FakeEventStatus.recap) {
-      final subtitle =
-          'Closes in ${FakeMemoryConfig.formattedRemainingTime}';
-      final subtitleColor = FakeMemoryConfig.isLessThanOneHour
-          ? BrandColors.cantVote // Orange/red when <1hr
-          : BrandColors.text2;
-
-      return AppBarWithSubtitle(
-        title: 'Memory',
-        subtitle: subtitle,
-        subtitleColor: subtitleColor,
-        leading: leading,
-        trailing: trailing,
-      );
-    }
-
-    // Living/Ended: standard AppBar
     return CommonAppBar(
       title: 'Memory',
       leading: leading,
@@ -354,6 +368,16 @@ class MemoryPage extends ConsumerWidget {
       AppRouter.manageMemory,
       arguments: {
         'memoryId': memoryId,
+      },
+    );
+  }
+
+  /// Navigate to event chat page
+  void _navigateToChat(BuildContext context) {
+    Navigator.of(context).pushNamed(
+      AppRouter.eventChat,
+      arguments: {
+        'eventId': memoryId, // Using memoryId as eventId
       },
     );
   }
