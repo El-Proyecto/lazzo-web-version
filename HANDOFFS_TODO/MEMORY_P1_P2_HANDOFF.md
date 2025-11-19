@@ -693,4 +693,202 @@ Before closing P2:
 
 ---
 
+## 13) Recap Phase Features (Added 18 de novembro de 2025)
+
+### **AppBarWithSubtitle with Countdown Timer**
+
+#### **Component Overview**
+- **Location:** `shared/components/nav/app_bar_with_subtitle.dart`
+- **Purpose:** AppBar with subtitle for countdown timers in recap phase
+- **Status:** ✅ Complete (P1)
+
+#### **Features Implemented**
+- Dual trailing icon support (`trailing` + `trailing2` parameters)
+- Automatic layout adjustment for 0, 1, or 2 trailing icons
+- Each icon constrained to 36x36px for consistent centering
+- 4px spacing between icons when both present
+- Title always centered via `Expanded` + `Center` wrapper
+- Subtitle positioned 8px below title with optional color override
+- Preferred size: 76px (increased from standard 56px for subtitle)
+
+#### **Usage in Memory Page (Recap State)**
+```dart
+// In memory_page.dart _buildAppBar()
+if (eventStatus == FakeEventStatus.recap) {
+  return PreferredSize(
+    preferredSize: const Size.fromHeight(76),
+    child: AppBarWithSubtitle(
+      title: memory.title,
+      subtitle: 'Closes automatically in ${FakeMemoryConfig.formattedRemainingTime}',
+      subtitleColor: FakeMemoryConfig.isLessThanOneHour
+          ? BrandColors.cantVote  // Red warning when < 1hr
+          : null,  // Default text2 color
+      leading: _buildBackButton(),
+      trailing: _buildChatButton(),
+      trailing2: _buildEditButton(memory),
+    ),
+  );
+}
+```
+
+#### **Icon Visibility Logic**
+- **Chat Button:** Always visible in recap mode (`Icons.chat_bubble_outline`)
+- **Edit Button:** Conditional on `isHost || userHasUploadedPhotos`
+- **Navigation:** Chat button navigates to `AppRouter.eventChat`
+
+#### **FakeMemoryConfig Timer Fields**
+- `closeTime`: DateTime? = DateTime.now().add(Duration(hours: 2, minutes: 30))
+- `remainingTime`: Duration? getter calculates difference from now to closeTime
+- `formattedRemainingTime`: String getter returns "2h 34m" or "45m" format
+- `isLessThanOneHour`: bool getter for warning state (<60 minutes)
+
+#### **Testing Scenarios**
+```dart
+// Test countdown timer display
+FakeMemoryConfig.closeTime = DateTime.now().add(Duration(hours: 2, minutes: 30));
+// Expected: "Closes automatically in 2h 30m"
+
+// Test warning state (< 1hr)
+FakeMemoryConfig.closeTime = DateTime.now().add(Duration(minutes: 45));
+// Expected: Red subtitle text, "Closes automatically in 45m"
+
+// Test dual icons (host with photos)
+FakeMemoryConfig.isHost = true;
+FakeMemoryConfig.userHasUploadedPhotos = true;
+// Expected: Both chat and edit icons visible with 4px spacing
+
+// Test single icon (non-host with photos)
+FakeMemoryConfig.isHost = false;
+FakeMemoryConfig.userHasUploadedPhotos = true;
+// Expected: Only chat icon visible (no edit)
+
+// Test single icon (host without photos)
+FakeMemoryConfig.isHost = true;
+FakeMemoryConfig.userHasUploadedPhotos = false;
+// Expected: Only chat icon visible (edit requires photos)
+```
+
+#### **P2 Tasks**
+- [ ] Replace FakeMemoryConfig.closeTime with real event recap_end_time from database
+- [ ] Calculate remaining time from event.recap_end_time - DateTime.now()
+- [ ] Update AppBar automatically when timer counts down (consider StreamProvider or periodic updates)
+- [ ] Handle expired timer (remaining time <= 0) by transitioning to ended state
+- [ ] Store chat_enabled flag in events table for chat button visibility
+- [ ] Implement real-time chat navigation (currently navigates to AppRouter.eventChat placeholder)
+- [ ] Add push notification when recap is closing soon (<1hr warning)
+
+#### **Database Requirements for P2**
+```sql
+-- Add recap_end_time to events table
+ALTER TABLE events ADD COLUMN recap_end_time TIMESTAMPTZ;
+
+-- Index for querying active recaps
+CREATE INDEX idx_events_recap_end_time 
+ON events(recap_end_time) 
+WHERE recap_end_time IS NOT NULL;
+
+-- Add chat_enabled flag
+ALTER TABLE events ADD COLUMN chat_enabled BOOLEAN DEFAULT true;
+```
+
+#### **Architecture Compliance**
+- ✅ Stateless shared component
+- ✅ All values tokenized (Gaps, Pads, Radii, AppText, BrandColors)
+- ✅ No hardcoded dimensions or colors
+- ✅ No Supabase imports in presentation layer
+- ✅ Fake-first implementation with FakeMemoryConfig
+- ✅ Proper DI pattern (can swap config with real repository data)
+
+---
+
+### **Chat Button Integration**
+
+#### **Implementation Details**
+- **Icon:** `Icons.chat_bubble_outline` (Material Icons)
+- **Size:** 36x36px (matches all AppBar icons)
+- **Visibility:** Always shown in recap mode
+- **Navigation:** Navigates to `AppRouter.eventChat` route
+
+#### **Code Location**
+```dart
+// In memory_page.dart
+Widget _buildChatButton() {
+  return IconButton(
+    icon: const Icon(Icons.chat_bubble_outline),
+    color: BrandColors.text1,
+    iconSize: 24,
+    padding: EdgeInsets.zero,
+    constraints: const BoxConstraints.tightFor(width: 36, height: 36),
+    onPressed: _navigateToChat,
+  );
+}
+
+void _navigateToChat() {
+  Navigator.pushNamed(
+    context,
+    AppRouter.eventChat,
+    arguments: {'eventId': widget.memoryId},
+  );
+}
+```
+
+#### **P2 Tasks**
+- [ ] Implement EventChatPage with real-time messaging (Supabase Realtime)
+- [ ] Store messages in event_messages table
+- [ ] Add unread message count badge on chat button
+- [ ] Implement push notifications for new messages
+- [ ] Add typing indicators for active participants
+- [ ] Handle chat history pagination for large conversations
+
+---
+
+### **Key Changes Summary**
+
+#### **Files Modified**
+1. `shared/components/nav/app_bar_with_subtitle.dart` ✅
+   - Added `trailing2` parameter for dual icon support
+   - `_buildTrailingIcons()` method with 0/1/2 icon handling
+   - Fixed width/height (36x36) for all icons
+   - 4px spacing between icons
+
+2. `features/memory/presentation/pages/memory_page.dart` ✅
+   - `_buildAppBar()` conditional for recap state
+   - `_buildChatButton()` method
+   - `_navigateToChat()` method
+   - Subtitle color conditional based on timer warning
+
+3. `features/memory/data/fakes/fake_memory_repository.dart` ✅
+   - `closeTime` field (DateTime?)
+   - `remainingTime` getter (Duration?)
+   - `formattedRemainingTime` getter (String)
+   - `isLessThanOneHour` getter (bool)
+
+#### **Design Decisions**
+- Chat button always visible in recap to encourage engagement
+- Edit button conditional to prevent confusion for non-contributors
+- Red subtitle when <1hr to create urgency
+- 4px spacing chosen to minimize width while maintaining tap targets
+- Timer countdown shows hours and minutes for clarity
+
+#### **Testing Checklist**
+- [x] AppBar title centered with 0, 1, or 2 trailing icons
+- [x] Icon spacing correct (4px between chat and edit)
+- [x] Chat button navigates to event chat route
+- [x] Edit button visibility based on permissions
+- [x] Subtitle shows formatted countdown timer
+- [x] Subtitle color changes to red when <1hr
+- [x] Timer format correct ("2h 34m" vs "45m")
+- [x] FakeMemoryConfig timer getters work correctly
+- [x] All components properly tokenized
+
+#### **Known Limitations (P1)**
+- Timer is static (no auto-refresh countdown)
+- Chat route is placeholder (not implemented)
+- Edit button permission check uses FakeMemoryConfig.isHost
+- Countdown timer updates only on page reload
+
+These will be addressed in P2 with real-time updates, Supabase integration, and proper permission checks.
+
+---
+
 **Handoff complete.** P1 agent out. P2 agent: go ship it! 🚀

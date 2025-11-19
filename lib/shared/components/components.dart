@@ -11,6 +11,7 @@ export 'cards/home_event_card.dart';
 export 'cards/confirmed_event_card.dart'; // TODO: Update imports to use event_small_card.dart instead
 export 'cards/todo_card.dart';
 export 'cards/payment_summary_card.dart';
+export 'cards/close_recap_card.dart';
 
 // Badge Components
 export 'badges/group_badge.dart';
@@ -44,3 +45,6 @@ export 'widgets/poll_widget.dart';
 
 // Dialog Components
 export 'dialogs/add_expense_bottom_sheet.dart';
+
+// Navigation Components
+export 'nav/app_bar_with_subtitle.dart';
