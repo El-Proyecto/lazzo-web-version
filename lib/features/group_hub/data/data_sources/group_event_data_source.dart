@@ -28,11 +28,77 @@ class SupabaseGroupEventDataSource implements GroupEventDataSource {
           .order('priority', ascending: false)
           .order('start_datetime', ascending: true);
 
-      return List<Map<String, dynamic>>.from(response as List);
+      final events = List<Map<String, dynamic>>.from(response as List);
+      
+      // Get current user ID to determine their vote status
+      final currentUserId = _client.auth.currentUser?.id;
+      
+      // Enrich each event with current_user_rsvp field
+      for (final event in events) {
+        if (currentUserId != null) {
+          event['current_user_rsvp'] = _getCurrentUserRsvp(event, currentUserId);
+          print('🔍 Event ${event['title']}: current_user_rsvp = ${event['current_user_rsvp']}');
+        }
+      }
+
+      return events;
     } catch (e) {
       print('❌ Error fetching group events: $e');
       return [];
     }
+  }
+  
+  /// Helper to determine current user's RSVP status from event arrays
+  String _getCurrentUserRsvp(Map<String, dynamic> event, String userId) {
+    // Check going_users
+    final goingUsers = event['going_users'] as List? ?? [];
+    for (final user in goingUsers) {
+      if (user['user_id'] == userId) {
+        return 'going';
+      }
+    }
+    
+    // Check not_going_users
+    final notGoingUsers = event['not_going_users'] as List? ?? [];
+    for (final user in notGoingUsers) {
+      if (user['user_id'] == userId) {
+        return 'not_going';
+      }
+    }
+    
+    // Check no_response_users
+    final noResponseUsers = event['no_response_users'] as List? ?? [];
+    for (final user in noResponseUsers) {
+      if (user['user_id'] == userId) {
+        return 'pending';
+      }
+    }
+    
+    // User not found in any array
+    return 'pending';
+  }
+  
+  /// Helper to get current user's avatar URL from event arrays
+  String? getCurrentUserAvatar(Map<String, dynamic> event, String userId) {
+    // Check all user arrays for current user's avatar
+    final allUserArrays = [
+      event['going_users'] as List? ?? [],
+      event['not_going_users'] as List? ?? [],
+      event['no_response_users'] as List? ?? [],
+    ];
+    
+    for (final users in allUserArrays) {
+      for (final user in users) {
+        if (user['user_id'] == userId) {
+          final avatar = user['avatar_url'];
+          print('🎨 Found avatar for user $userId: $avatar');
+          return avatar;
+        }
+      }
+    }
+    
+    print('⚠️ No avatar found for user $userId in event arrays');
+    return null;
   }
 
   @override
@@ -43,6 +109,14 @@ class SupabaseGroupEventDataSource implements GroupEventDataSource {
           .select()
           .eq('event_id', eventId)
           .maybeSingle();
+
+      if (response != null) {
+        // Get current user ID to determine their vote status
+        final currentUserId = _client.auth.currentUser?.id;
+        if (currentUserId != null) {
+          response['current_user_rsvp'] = _getCurrentUserRsvp(response, currentUserId);
+        }
+      }
 
       return response;
     } catch (e) {
@@ -66,10 +140,14 @@ class SupabaseGroupEventDataSource implements GroupEventDataSource {
 
       // Add going votes
       for (final user in goingUsers) {
+        final userId = user['user_id'];
+        final userName = user['name'] ?? user['full_name'] ?? user['display_name'] ?? 'User';
+        final userAvatar = user['avatar_url'];
+        print('🔍 Going user: $userId, name: $userName, avatar: $userAvatar');
         allVotes.add({
-          'user_id': user['user_id'],
-          'user_name': user['display_name'],
-          'user_avatar': user['avatar_url'],
+          'user_id': userId,
+          'user_name': userName,
+          'user_avatar': userAvatar,
           'status': 'going',
           'voted_at': user['voted_at'],
         });
@@ -77,9 +155,10 @@ class SupabaseGroupEventDataSource implements GroupEventDataSource {
 
       // Add not going votes
       for (final user in notGoingUsers) {
+        final userName = user['name'] ?? user['full_name'] ?? user['display_name'] ?? 'User';
         allVotes.add({
           'user_id': user['user_id'],
-          'user_name': user['display_name'],
+          'user_name': userName,
           'user_avatar': user['avatar_url'],
           'status': 'notGoing',
           'voted_at': user['voted_at'],
@@ -88,9 +167,10 @@ class SupabaseGroupEventDataSource implements GroupEventDataSource {
 
       // Add pending votes
       for (final user in noResponseUsers) {
+        final userName = user['name'] ?? user['full_name'] ?? user['display_name'] ?? 'User';
         allVotes.add({
           'user_id': user['user_id'],
-          'user_name': user['display_name'],
+          'user_name': userName,
           'user_avatar': user['avatar_url'],
           'status': 'pending',
           'voted_at': null,

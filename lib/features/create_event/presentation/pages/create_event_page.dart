@@ -806,7 +806,7 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
     // Navigate to event detail page with the created event ID
     if (mounted) {
       Navigator.of(context).pushNamedAndRemoveUntil(
-        '/event',
+        '/main',
         (Route<dynamic> route) => false,
         arguments: {
           'eventId': eventId,

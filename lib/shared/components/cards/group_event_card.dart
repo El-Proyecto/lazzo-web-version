@@ -12,12 +12,16 @@ class GroupEventCard extends StatefulWidget {
   final GroupEventEntity event;
   final VoidCallback? onTap;
   final Function(String eventId, bool? vote)? onVoteChanged;
+  final String? currentUserId;
+  final String? currentUserAvatar;
 
   const GroupEventCard({
     super.key,
     required this.event,
     this.onTap,
     this.onVoteChanged,
+    this.currentUserId,
+    this.currentUserAvatar,
   });
 
   @override
@@ -38,16 +42,19 @@ class _GroupEventCardState extends State<GroupEventCard> {
       // Update the vote and recalculate going count and attendee data
       final updatedVotes = List<RsvpVote>.from(_currentEvent.allVotes);
 
+      // Get real user ID
+      final userId = widget.currentUserId ?? 'current_user';
+
       // Remove existing user vote if any
-      updatedVotes.removeWhere((v) => v.userId == 'current_user');
+      updatedVotes.removeWhere((v) => v.userId == userId);
 
       // Add new vote if not null
       if (vote != null) {
         final newVote = RsvpVote(
-          id: 'vote_current_user_${DateTime.now().millisecondsSinceEpoch}',
-          userId: 'current_user',
+          id: 'vote_${userId}_${DateTime.now().millisecondsSinceEpoch}',
+          userId: userId,
           userName: 'You',
-          userAvatar: null,
+          userAvatar: widget.currentUserAvatar,
           status: vote ? RsvpVoteStatus.going : RsvpVoteStatus.notGoing,
           votedAt: DateTime.now(),
         );
@@ -61,8 +68,8 @@ class _GroupEventCardState extends State<GroupEventCard> {
 
       // Sort votes to prioritize user first if they voted "Can"
       goingVotes.sort((a, b) {
-        if (a.userId == 'current_user') return -1;
-        if (b.userId == 'current_user') return 1;
+        if (a.userId == userId) return -1;
+        if (b.userId == userId) return 1;
         return 0;
       });
 
@@ -329,23 +336,22 @@ class _GroupEventCardState extends State<GroupEventCard> {
         padding: const EdgeInsets.symmetric(vertical: Gaps.xxs),
         child: Row(
           children: [
-            // Profile pictures (apenas avatares, sem texto)
+            // Profile pictures
             _buildAttendeeAvatars(),
             const SizedBox(width: Gaps.xs),
 
-            // Photos count (se houver)
-            if (_currentEvent.photoCount > 0 || _currentEvent.maxPhotos != null)
-              Expanded(
-                child: Text(
-                  _buildPhotosOnlyText(),
-                  style: AppText.bodyMedium.copyWith(
-                    color: BrandColors.text2,
-                    fontWeight: FontWeight.w500,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+            // Participants and photos count
+            Expanded(
+              child: Text(
+                _buildParticipantAndPhotosText(),
+                style: AppText.bodyMedium.copyWith(
+                  color: BrandColors.text2,
+                  fontWeight: FontWeight.w500,
                 ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
+            ),
           ],
         ),
       ),
@@ -382,15 +388,6 @@ class _GroupEventCardState extends State<GroupEventCard> {
     );
   }
 
-  String _buildPhotosOnlyText() {
-    if (_currentEvent.maxPhotos != null) {
-      return '${_currentEvent.photoCount}/${_currentEvent.maxPhotos} photos';
-    } else if (_currentEvent.photoCount > 0) {
-      return '${_currentEvent.photoCount} photo${_currentEvent.photoCount != 1 ? 's' : ''}';
-    }
-    return '';
-  }
-
   void _showVotesBottomSheet(BuildContext context) {
     VotesBottomSheet.show(
       context: context,
@@ -403,33 +400,42 @@ class _GroupEventCardState extends State<GroupEventCard> {
       eventLocation: _currentEvent.location,
       userVote: _currentEvent.userVote,
       onVoteChanged: (vote) => _updateVote(vote),
+      currentUserId: widget.currentUserId,
+      currentUserAvatar: widget.currentUserAvatar,
     );
   }
 
   String _buildAttendeeText() {
+    final goingCount = _currentEvent.goingCount;
+    final membersText = goingCount == 1 ? 'member is going' : 'members are going';
+    
     // If user hasn't voted yet, show "Tap to vote!" message
     if (_currentEvent.userVote == null) {
-      return '${_currentEvent.goingCount} going • Tap to vote!';
+      return '$goingCount $membersText • Tap to vote!';
     }
 
-    if (_currentEvent.attendeeNames.isEmpty) {
-      return '${_currentEvent.goingCount} going';
-    }
+    // If user has voted, show "Tap to view votes"
+    return '$goingCount $membersText • Tap to view votes';
+  }
 
-    if (_currentEvent.attendeeNames.length == 1) {
-      return '${_currentEvent.goingCount} going • ${_currentEvent.attendeeNames.first}';
+  String _buildParticipantAndPhotosText() {
+    final participantCount = _currentEvent.participantCount;
+    final photoCount = _currentEvent.photoCount;
+    final maxPhotos = _currentEvent.maxPhotos;
+    
+    final parts = <String>[];
+    
+    // Add participants count
+    parts.add('$participantCount ${participantCount == 1 ? "participant" : "participants"}');
+    
+    // Add photos count if available
+    if (maxPhotos != null) {
+      parts.add('$photoCount/$maxPhotos photos');
+    } else if (photoCount > 0) {
+      parts.add('$photoCount ${photoCount == 1 ? "photo" : "photos"}');
     }
-
-    if (_currentEvent.attendeeNames.length == 2) {
-      return '${_currentEvent.goingCount} going • ${_currentEvent.attendeeNames[0]} and ${_currentEvent.attendeeNames[1]}';
-    }
-
-    if (_currentEvent.attendeeNames.length >= 3) {
-      final othersCount = _currentEvent.attendeeNames.length - 2;
-      return '${_currentEvent.goingCount} going • ${_currentEvent.attendeeNames[0]}, ${_currentEvent.attendeeNames[1]} and $othersCount other${othersCount > 1 ? 's' : ''}';
-    }
-
-    return '${_currentEvent.goingCount} going';
+    
+    return parts.join(' • ');
   }
 
   Widget _buildAttendeeAvatars() {

@@ -18,9 +18,19 @@ class GroupEventRepositoryImpl implements GroupEventRepository {
       
       print('✅ Fetched ${jsonList.length} events from Supabase');
       
-      return jsonList
-          .map((json) => GroupEventModel.fromJson(json))
-          .toList();
+      // Fetch RSVPs for each event to populate allVotes
+      final events = <GroupEventEntity>[];
+      for (final json in jsonList) {
+        final eventId = json['event_id'] as String?;
+        if (eventId != null) {
+          final rsvps = await _dataSource.getEventRsvps(eventId);
+          events.add(GroupEventModel.fromJson(json, rsvps: rsvps));
+        } else {
+          events.add(GroupEventModel.fromJson(json));
+        }
+      }
+      
+      return events;
     } catch (e, stackTrace) {
       print('❌ Error fetching group events: $e');
       print(stackTrace);

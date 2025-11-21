@@ -445,8 +445,28 @@ class _GroupHubPageState extends ConsumerState<GroupHubPage>
           itemBuilder: (context, index) {
             if (index < events.length) {
               final event = events[index];
+              final currentUser = Supabase.instance.client.auth.currentUser;
+              final currentUserId = currentUser?.id;
+              
+              // Try to get avatar from the event's vote list (more reliable than userMetadata)
+              String? currentUserAvatar;
+              if (currentUserId != null && event.allVotes.isNotEmpty) {
+                try {
+                  final userVote = event.allVotes.firstWhere(
+                    (vote) => vote.userId == currentUserId,
+                  );
+                  currentUserAvatar = userVote.userAvatar;
+                } catch (e) {
+                  // User not found in votes, use fallback
+                }
+              }
+              // Fallback to userMetadata if not found in votes
+              currentUserAvatar ??= currentUser?.userMetadata?['avatar_url'] as String?;
+              
               return GroupEventCard(
                 event: event,
+                currentUserId: currentUserId,
+                currentUserAvatar: currentUserAvatar,
                 onTap: () {
                   // Navigate to event detail page
                   Navigator.pushNamed(
