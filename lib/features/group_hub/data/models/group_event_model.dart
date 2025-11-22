@@ -38,14 +38,19 @@ class GroupEventModel {
         : (userRsvp == 'going' || userRsvp == 'yes' || userRsvp == 'attending' || userRsvp == 'accepted');
 
     // Parse all votes if provided
-    final allVotes = rsvps?.map((r) => RsvpVote(
-      id: r['user_id'] ?? '',
-      userId: r['user_id'] ?? '',
-      userName: r['user_name'] ?? '',
-      userAvatar: r['user_avatar'],
-      status: _parseRsvpStatus(r['status'] ?? 'pending'),
-      votedAt: r['voted_at'] != null ? DateTime.parse(r['voted_at']) : null,
-    )).toList() ?? [];
+    final allVotes = rsvps?.map((r) {
+      final vote = RsvpVote(
+        id: r['user_id'] ?? '',
+        userId: r['user_id'] ?? '',
+        userName: r['user_name'] ?? '',
+        userAvatar: r['user_avatar'],
+        status: _parseRsvpStatus(r['status'] ?? 'pending'),
+        votedAt: r['voted_at'] != null ? DateTime.parse(r['voted_at']) : null,
+      );
+      print('🔍 [MODEL] Parsed vote for ${vote.userName}:');
+      print('   🎨 Avatar after DTO: ${vote.userAvatar}');
+      return vote;
+    }).toList() ?? [];
 
     return GroupEventEntity(
       id: json['event_id'] ?? '',

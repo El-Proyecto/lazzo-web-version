@@ -456,12 +456,15 @@ class _GroupHubPageState extends ConsumerState<GroupHubPage>
                     (vote) => vote.userId == currentUserId,
                   );
                   currentUserAvatar = userVote.userAvatar;
+                  print('🔍 [PAGE] Found current user avatar in votes: $currentUserAvatar');
                 } catch (e) {
-                  // User not found in votes, use fallback
+                  print('⚠️ [PAGE] Current user not found in votes, using fallback');
                 }
               }
               // Fallback to userMetadata if not found in votes
-              currentUserAvatar ??= currentUser?.userMetadata?['avatar_url'] as String?;
+              final fallbackAvatar = currentUser?.userMetadata?['avatar_url'] as String?;
+              currentUserAvatar ??= fallbackAvatar;
+              print('🔍 [PAGE] Final currentUserAvatar for card: $currentUserAvatar');
               
               return GroupEventCard(
                 event: event,

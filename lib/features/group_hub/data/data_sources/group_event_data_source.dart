@@ -15,8 +15,38 @@ abstract class GroupEventDataSource {
 /// Supabase implementation using group_hub_events_view
 class SupabaseGroupEventDataSource implements GroupEventDataSource {
   final SupabaseClient _client;
+  static const String _avatarBucketName = 'users-profile-pic';
 
   SupabaseGroupEventDataSource(this._client);
+  
+  /// Convert storage path to authenticated URL for private bucket
+  /// Returns empty string if path is null/empty
+  /// Uses createSignedUrl for private bucket access with 1 hour expiry
+  Future<String> _getAuthenticatedAvatarUrl(String? storagePath) async {
+    if (storagePath == null || storagePath.isEmpty) {
+      print('   ⚠️ Avatar path is null or empty');
+      return '';
+    }
+    
+    // Already a full URL, return as is
+    if (storagePath.startsWith('http://') || storagePath.startsWith('https://')) {
+      print('   ✅ Already full URL: $storagePath');
+      return storagePath;
+    }
+    
+    try {
+      // Storage path - convert to signed URL for private bucket
+      // Valid for 1 hour (3600 seconds)
+      final url = await _client.storage
+          .from(_avatarBucketName)
+          .createSignedUrl(storagePath, 3600);
+      print('   🔐 Converted to signed URL: $url');
+      return url;
+    } catch (e) {
+      print('   ❌ Error converting avatar path: $e');
+      return '';
+    }
+  }
 
   @override
   Future<List<Map<String, dynamic>>> getGroupEvents(String groupId) async {
@@ -33,18 +63,37 @@ class SupabaseGroupEventDataSource implements GroupEventDataSource {
       // Get current user ID to determine their vote status
       final currentUserId = _client.auth.currentUser?.id;
       
-      // Enrich each event with current_user_rsvp field
+      // Enrich each event with current_user_rsvp field and convert avatar URLs
       for (final event in events) {
         if (currentUserId != null) {
           event['current_user_rsvp'] = _getCurrentUserRsvp(event, currentUserId);
           print('🔍 Event ${event['title']}: current_user_rsvp = ${event['current_user_rsvp']}');
         }
+        
+        // Convert avatar URLs in all user arrays
+        await _convertAvatarUrlsInUserArray(event, 'going_users');
+        await _convertAvatarUrlsInUserArray(event, 'not_going_users');
+        await _convertAvatarUrlsInUserArray(event, 'no_response_users');
       }
 
       return events;
     } catch (e) {
       print('❌ Error fetching group events: $e');
       return [];
+    }
+  }
+  
+  /// Helper to convert avatar URLs in a user array within an event
+  Future<void> _convertAvatarUrlsInUserArray(Map<String, dynamic> event, String arrayKey) async {
+    final users = event[arrayKey] as List?;
+    if (users == null) return;
+    
+    for (final user in users) {
+      if (user is Map<String, dynamic> && user['avatar_url'] != null) {
+        final rawAvatar = user['avatar_url'];
+        user['avatar_url'] = await _getAuthenticatedAvatarUrl(rawAvatar);
+        print('🔄 Converted avatar in $arrayKey: $rawAvatar → ${user['avatar_url']}');
+      }
     }
   }
   
@@ -142,8 +191,15 @@ class SupabaseGroupEventDataSource implements GroupEventDataSource {
       for (final user in goingUsers) {
         final userId = user['user_id'];
         final userName = user['name'] ?? user['full_name'] ?? user['display_name'] ?? 'User';
-        final userAvatar = user['avatar_url'];
-        print('🔍 Going user: $userId, name: $userName, avatar: $userAvatar');
+        final rawAvatar = user['avatar_url'];
+        print('🔍 [DATA SOURCE] Going user: $userId');
+        print('   📚 Name: $userName');
+        print('   🎨 Raw avatar from DB: $rawAvatar');
+        print('   🔗 Is full URL? ${rawAvatar?.toString().startsWith('http')}');
+        
+        // Convert storage path to authenticated URL
+        final userAvatar = await _getAuthenticatedAvatarUrl(rawAvatar);
+        
         allVotes.add({
           'user_id': userId,
           'user_name': userName,
@@ -156,10 +212,13 @@ class SupabaseGroupEventDataSource implements GroupEventDataSource {
       // Add not going votes
       for (final user in notGoingUsers) {
         final userName = user['name'] ?? user['full_name'] ?? user['display_name'] ?? 'User';
+        final rawAvatar = user['avatar_url'];
+        final userAvatar = await _getAuthenticatedAvatarUrl(rawAvatar);
+        
         allVotes.add({
           'user_id': user['user_id'],
           'user_name': userName,
-          'user_avatar': user['avatar_url'],
+          'user_avatar': userAvatar,
           'status': 'notGoing',
           'voted_at': user['voted_at'],
         });
@@ -168,10 +227,13 @@ class SupabaseGroupEventDataSource implements GroupEventDataSource {
       // Add pending votes
       for (final user in noResponseUsers) {
         final userName = user['name'] ?? user['full_name'] ?? user['display_name'] ?? 'User';
+        final rawAvatar = user['avatar_url'];
+        final userAvatar = await _getAuthenticatedAvatarUrl(rawAvatar);
+        
         allVotes.add({
           'user_id': user['user_id'],
           'user_name': userName,
-          'user_avatar': user['avatar_url'],
+          'user_avatar': userAvatar,
           'status': 'pending',
           'voted_at': null,
         });

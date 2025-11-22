@@ -561,6 +561,10 @@ class _VoteItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    print('🔍 [UI] Rendering vote for ${vote.userName}:');
+    print('   🎨 Avatar URL: ${vote.userAvatar}');
+    print('   ❓ Is null? ${vote.userAvatar == null}');
+    
     return Padding(
       padding: const EdgeInsets.only(bottom: Gaps.sm),
       child: Row(
@@ -576,8 +580,10 @@ class _VoteItem extends StatelessWidget {
                       width: 32,
                       height: 32,
                       fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) =>
-                          _buildDefaultAvatar(),
+                      errorBuilder: (context, error, stackTrace) {
+                        print('❌ [UI] Image.network error for ${vote.userName}: $error');
+                        return _buildDefaultAvatar();
+                      },
                     ),
                   )
                 : _buildDefaultAvatar(),

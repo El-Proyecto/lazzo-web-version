@@ -442,6 +442,12 @@ class _GroupEventCardState extends State<GroupEventCard> {
     const avatarSize = 24.0;
     const overlap = 8.0;
 
+    print('🔍 [CARD] Building attendee avatars for ${_currentEvent.name}:');
+    print('   📊 Total attendee avatars: ${_currentEvent.attendeeAvatars.length}');
+    for (var i = 0; i < _currentEvent.attendeeAvatars.length && i < 3; i++) {
+      print('   Avatar $i: ${_currentEvent.attendeeAvatars[i]}');
+    }
+
     if (_currentEvent.attendeeAvatars.isEmpty) {
       return const SizedBox.shrink();
     }
