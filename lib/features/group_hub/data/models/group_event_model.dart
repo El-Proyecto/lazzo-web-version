@@ -52,6 +52,24 @@ class GroupEventModel {
       return vote;
     }).toList() ?? [];
 
+    // Calculate participant count from GOING users only (not all votes)
+    // Participant count = users who voted "going", not total voters
+    final goingVotes = allVotes.where((v) => v.status == RsvpVoteStatus.going).length;
+    final goingCount = json['rsvp_going'] ?? 0;
+    
+    // Use going votes count if available, otherwise use DB going count
+    final calculatedParticipantCount = allVotes.isNotEmpty 
+        ? goingVotes
+        : goingCount;
+    
+    print('📊 [MODEL] Event ${json['event_id']}:');
+    print('   🎯 Going count from DB: $goingCount');
+    print('   ✅ Going votes parsed: $goingVotes');
+    print('   👥 Participant count from DB: ${json['participant_count']}');
+    print('   🧮 Calculated participant count: $calculatedParticipantCount');
+    print('   📋 Total votes (all statuses): ${allVotes.length}');
+    print('   👤 Attendee avatars from going_users: ${attendeeAvatars.length}');
+
     return GroupEventEntity(
       id: json['event_id'] ?? '',
       name: json['title'] ?? '',
@@ -60,8 +78,8 @@ class GroupEventModel {
       endsAt: endDate,
       location: json['location_name'],
       status: status,
-      goingCount: json['rsvp_going'] ?? json['participant_count'] ?? 0,
-      participantCount: json['participant_count'] ?? 0,
+      goingCount: goingCount,
+      participantCount: calculatedParticipantCount,
       photoCount: json['photo_count'] ?? 0,
       maxPhotos: json['max_photos'],
       attendeeAvatars: attendeeAvatars,

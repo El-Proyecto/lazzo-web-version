@@ -44,7 +44,9 @@ class _GroupEventCardState extends State<GroupEventCard> {
     if (oldWidget.event != widget.event) {
       print('🔄 [CARD] Updating event data: ${widget.event.id}');
       print('   📊 New going count: ${widget.event.goingCount}');
+      print('   👥 New participant count: ${widget.event.participantCount}');
       print('   🎯 New user vote: ${widget.event.userVote}');
+      print('   📸 Photo count: ${widget.event.photoCount}');
       _currentEvent = widget.event;
     }
   }

@@ -156,6 +156,11 @@ class SupabaseGroupEventDataSource implements GroupEventDataSource {
         if (currentUserId != null) {
           response['current_user_rsvp'] = _getCurrentUserRsvp(response, currentUserId);
         }
+        
+        // Convert avatar URLs in all user arrays (same as getGroupEvents)
+        await _convertAvatarUrlsInUserArray(response, 'going_users');
+        await _convertAvatarUrlsInUserArray(response, 'not_going_users');
+        await _convertAvatarUrlsInUserArray(response, 'no_response_users');
       }
 
       return response;
