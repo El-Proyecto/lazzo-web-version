@@ -37,6 +37,18 @@ class _GroupEventCardState extends State<GroupEventCard> {
     _currentEvent = widget.event;
   }
 
+  @override
+  void didUpdateWidget(GroupEventCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Update internal state when widget receives new data from provider
+    if (oldWidget.event != widget.event) {
+      print('🔄 [CARD] Updating event data: ${widget.event.id}');
+      print('   📊 New going count: ${widget.event.goingCount}');
+      print('   🎯 New user vote: ${widget.event.userVote}');
+      _currentEvent = widget.event;
+    }
+  }
+
   void _updateVote(bool? vote) {
     setState(() {
       // Update the vote and recalculate going count and attendee data
@@ -441,12 +453,6 @@ class _GroupEventCardState extends State<GroupEventCard> {
   Widget _buildAttendeeAvatars() {
     const avatarSize = 24.0;
     const overlap = 8.0;
-
-    print('🔍 [CARD] Building attendee avatars for ${_currentEvent.name}:');
-    print('   📊 Total attendee avatars: ${_currentEvent.attendeeAvatars.length}');
-    for (var i = 0; i < _currentEvent.attendeeAvatars.length && i < 3; i++) {
-      print('   Avatar $i: ${_currentEvent.attendeeAvatars[i]}');
-    }
 
     if (_currentEvent.attendeeAvatars.isEmpty) {
       return const SizedBox.shrink();

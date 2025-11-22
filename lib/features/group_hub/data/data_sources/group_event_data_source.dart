@@ -24,13 +24,11 @@ class SupabaseGroupEventDataSource implements GroupEventDataSource {
   /// Uses createSignedUrl for private bucket access with 1 hour expiry
   Future<String> _getAuthenticatedAvatarUrl(String? storagePath) async {
     if (storagePath == null || storagePath.isEmpty) {
-      print('   ⚠️ Avatar path is null or empty');
       return '';
     }
     
     // Already a full URL, return as is
     if (storagePath.startsWith('http://') || storagePath.startsWith('https://')) {
-      print('   ✅ Already full URL: $storagePath');
       return storagePath;
     }
     
@@ -40,10 +38,8 @@ class SupabaseGroupEventDataSource implements GroupEventDataSource {
       final url = await _client.storage
           .from(_avatarBucketName)
           .createSignedUrl(storagePath, 3600);
-      print('   🔐 Converted to signed URL: $url');
       return url;
     } catch (e) {
-      print('   ❌ Error converting avatar path: $e');
       return '';
     }
   }
@@ -90,9 +86,7 @@ class SupabaseGroupEventDataSource implements GroupEventDataSource {
     
     for (final user in users) {
       if (user is Map<String, dynamic> && user['avatar_url'] != null) {
-        final rawAvatar = user['avatar_url'];
-        user['avatar_url'] = await _getAuthenticatedAvatarUrl(rawAvatar);
-        print('🔄 Converted avatar in $arrayKey: $rawAvatar → ${user['avatar_url']}');
+        user['avatar_url'] = await _getAuthenticatedAvatarUrl(user['avatar_url']);
       }
     }
   }
@@ -139,14 +133,11 @@ class SupabaseGroupEventDataSource implements GroupEventDataSource {
     for (final users in allUserArrays) {
       for (final user in users) {
         if (user['user_id'] == userId) {
-          final avatar = user['avatar_url'];
-          print('🎨 Found avatar for user $userId: $avatar');
-          return avatar;
+          return user['avatar_url'];
         }
       }
     }
     
-    print('⚠️ No avatar found for user $userId in event arrays');
     return null;
   }
 
@@ -192,10 +183,6 @@ class SupabaseGroupEventDataSource implements GroupEventDataSource {
         final userId = user['user_id'];
         final userName = user['name'] ?? user['full_name'] ?? user['display_name'] ?? 'User';
         final rawAvatar = user['avatar_url'];
-        print('🔍 [DATA SOURCE] Going user: $userId');
-        print('   📚 Name: $userName');
-        print('   🎨 Raw avatar from DB: $rawAvatar');
-        print('   🔗 Is full URL? ${rawAvatar?.toString().startsWith('http')}');
         
         // Convert storage path to authenticated URL
         final userAvatar = await _getAuthenticatedAvatarUrl(rawAvatar);
