@@ -75,7 +75,7 @@ class GroupEventModel {
       name: json['title'] ?? '',
       emoji: json['emoji'] ?? '📅',
       date: startDate,
-      endsAt: endDate,
+      endDate: endDate,
       location: json['location_name'],
       status: status,
       goingCount: goingCount,
@@ -116,7 +116,7 @@ class GroupEventModel {
       case 'confirmed':
         return GroupEventStatus.confirmed;
       case 'living':  // Supabase usa 'living' não 'live'
-        return GroupEventStatus.live;
+        return GroupEventStatus.living;
       case 'recap':
         return GroupEventStatus.recap;
       case 'pending':

@@ -299,7 +299,9 @@ class _EventPageState extends ConsumerState<EventPage> {
                           final alternateDateSuggestions =
                               suggestions.where((s) {
                             if (event.startDateTime == null ||
-                                event.endDateTime == null) return true;
+                                event.endDateTime == null) {
+                              return true;
+                            }
                             final isDifferent = !s.startDateTime
                                     .isAtSameMomentAs(event.startDateTime!) ||
                                 !(s.endDateTime?.isAtSameMomentAs(
@@ -795,7 +797,9 @@ class _EventPageState extends ConsumerState<EventPage> {
                   // Filter suggestions that are DIFFERENT from current event date
                   final alternateSuggestions = suggestions.where((s) {
                     if (event.startDateTime == null ||
-                        event.endDateTime == null) return true;
+                        event.endDateTime == null) {
+                      return true;
+                    }
 
                     // Keep only suggestions with DIFFERENT dates
                     final isDifferent = !s.startDateTime
