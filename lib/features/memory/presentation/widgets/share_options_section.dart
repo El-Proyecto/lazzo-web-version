@@ -60,7 +60,7 @@ class ShareOptionsSection extends StatelessWidget {
                 onPressed: onSavePressed,
               ),
               _ShareOption(
-                icon: Icons.share,
+                icon: Icons.ios_share,
                 label: 'More',
                 onPressed: onMorePressed,
               ),

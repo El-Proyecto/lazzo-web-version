@@ -43,58 +43,53 @@ class ShareCard extends StatelessWidget {
           horizontal: 32.0,
           vertical: 48.0,
         ),
-        child: AspectRatio(
-          aspectRatio: 0.7,
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(32.0),
-            child: BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 30, sigmaY: 30),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.06),
-                  borderRadius: BorderRadius.circular(32.0),
-                  border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.18),
-                    width: 1,
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.2),
-                      blurRadius: 20,
-                      offset: const Offset(0, 10),
-                    ),
-                  ],
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(32.0),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 30, sigmaY: 30),
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.06),
+                borderRadius: BorderRadius.circular(32.0),
+                border: Border.all(
+                  color: Colors.white.withValues(alpha: 0.18),
+                  width: 1,
                 ),
-                padding: const EdgeInsets.only(
-                    left: Gaps.md,
-                    right: Gaps.md,
-                    top: Gaps.md,
-                    bottom: Gaps.sm),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // Hero photo (almost square - reduced height)
-                    Flexible(
-                      flex: 5,
-                      child: AspectRatio(
-                        aspectRatio: 1.1,
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(Radii.md),
-                          child: Image.network(
-                            heroPhotoUrl,
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) {
-                              return Container(
-                                color: BrandColors.bg3,
-                                child: const Icon(
-                                  Icons.image,
-                                  color: BrandColors.text2,
-                                  size: 48,
-                                ),
-                              );
-                            },
-                          ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.2),
+                    blurRadius: 20,
+                    offset: const Offset(0, 10),
+                  ),
+                ],
+              ),
+              padding: const EdgeInsets.only(
+                  left: Gaps.md,
+                  right: Gaps.md,
+                  top: Gaps.md,
+                  bottom: Gaps.sm),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                    // Hero photo (square)
+                    AspectRatio(
+                      aspectRatio: 1.0,
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(Radii.md),
+                        child: Image.network(
+                          heroPhotoUrl,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) {
+                            return Container(
+                              color: BrandColors.bg3,
+                              child: const Icon(
+                                Icons.image,
+                                color: BrandColors.text2,
+                                size: 48,
+                              ),
+                            );
+                          },
                         ),
                       ),
                     ),
@@ -105,45 +100,41 @@ class ShareCard extends StatelessWidget {
                     if (thumbnailUrls.isNotEmpty)
                       Row(
                         children: [
-                          for (int i = 0; i < 3; i++)
+                          for (int i = 0; i < 3; i++) ...[
+                            if (i > 0) const SizedBox(width: Gaps.xs),
                             Expanded(
-                              child: Padding(
-                                padding: EdgeInsets.only(
-                                  right: i < 2 ? Gaps.xs : 0,
-                                ),
-                                child: AspectRatio(
-                                  aspectRatio: 1,
-                                  child: ClipRRect(
-                                    borderRadius:
-                                        BorderRadius.circular(Radii.sm),
-                                    child: i < thumbnailUrls.length
-                                        ? Image.network(
-                                            thumbnailUrls[i],
-                                            fit: BoxFit.cover,
-                                            errorBuilder:
-                                                (context, error, stackTrace) {
-                                              return Container(
-                                                color: BrandColors.bg3,
-                                                child: const Icon(
-                                                  Icons.image,
-                                                  color: BrandColors.text2,
-                                                  size: 24,
-                                                ),
-                                              );
-                                            },
-                                          )
-                                        : Container(
-                                            color: BrandColors.bg3,
-                                            child: const Icon(
-                                              Icons.image,
-                                              color: BrandColors.text2,
-                                              size: 24,
-                                            ),
+                              child: AspectRatio(
+                                aspectRatio: 1,
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(Radii.sm),
+                                  child: i < thumbnailUrls.length
+                                      ? Image.network(
+                                          thumbnailUrls[i],
+                                          fit: BoxFit.cover,
+                                          errorBuilder:
+                                              (context, error, stackTrace) {
+                                            return Container(
+                                              color: BrandColors.bg3,
+                                              child: const Icon(
+                                                Icons.image,
+                                                color: BrandColors.text2,
+                                                size: 24,
+                                              ),
+                                            );
+                                          },
+                                        )
+                                      : Container(
+                                          color: BrandColors.bg3,
+                                          child: const Icon(
+                                            Icons.image,
+                                            color: BrandColors.text2,
+                                            size: 24,
                                           ),
-                                  ),
+                                        ),
                                 ),
                               ),
                             ),
+                          ],
                         ],
                       ),
 
@@ -154,7 +145,7 @@ class ShareCard extends StatelessWidget {
                       title,
                       style: AppText.titleMediumEmph.copyWith(
                         color: Colors.white,
-                        fontSize: 18,
+                        fontSize: 22,
                       ),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
@@ -191,7 +182,6 @@ class ShareCard extends StatelessWidget {
             ),
           ),
         ),
-      ),
     );
   }
 
@@ -203,7 +193,6 @@ class ShareCard extends StatelessWidget {
     }
 
     parts.add(DateFormat('d MMM yyyy').format(eventDate));
-    parts.add('$peopleCount ${peopleCount == 1 ? 'person' : 'people'}');
 
     return parts.join(' • ');
   }
