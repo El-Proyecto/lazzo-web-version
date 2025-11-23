@@ -804,6 +804,8 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
     ref.invalidate(eventDetailProvider(eventId));
 
     // Navigate to event detail page with the created event ID
+    // Use pushReplacementNamed to replace CreateEvent with Event page
+    // This way, back button from Event goes to Home (which is still in the stack)
     if (mounted) {
       Navigator.of(context).pushNamedAndRemoveUntil(
         '/main',

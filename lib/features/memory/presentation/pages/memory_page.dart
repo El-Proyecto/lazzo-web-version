@@ -3,7 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../../../routes/app_router.dart';
 import '../../../../shared/components/nav/common_app_bar.dart';
-import '../../../../shared/components/common/top_banner.dart';
+import '../../../../shared/components/nav/app_bar_with_subtitle.dart';
+import '../../../../shared/components/cards/add_photos_cta_card.dart';
 import '../../../../shared/components/sections/cover_mosaic.dart';
 import '../../../../shared/components/sections/hybrid_photo_grid.dart';
 import '../../../../shared/constants/spacing.dart';
@@ -11,13 +12,20 @@ import '../../../../shared/constants/text_styles.dart';
 import '../../../../shared/themes/colors.dart';
 import '../providers/memory_providers.dart';
 import '../../domain/entities/memory_entity.dart';
+import '../../data/fakes/fake_memory_repository.dart';
 
-/// Memory page displaying a completed event's photos
+/// Memory page displaying event photos with state-based UI
 /// Structure (top to bottom):
-/// - Header: back button, "Memory" title, share button
+/// - Header: back button, "Memory" title, edit button (conditional)
+/// - CTA banner: Add photos prompt (living/recap, conditional)
 /// - Cover Mosaic: 1-3 cover photos with adaptive layout
 /// - Event title & subtitle (location • date)
 /// - Photo Grid: all non-cover photos
+///
+/// Three states based on event status:
+/// 1. Living: CTA banner if no photos uploaded, edit button if has photos or is host
+/// 2. Recap: Same as living but with orange CTA button
+/// 3. Ended: No CTA, no edit button - read-only memory
 class MemoryPage extends ConsumerWidget {
   final String memoryId;
 
@@ -30,24 +38,24 @@ class MemoryPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final memoryAsync = ref.watch(memoryDetailProvider(memoryId));
 
+    // Get event status from fake config (TODO: get from event provider in P2)
+    final eventStatus = FakeMemoryConfig.eventStatus;
+    final isHost = FakeMemoryConfig.isHost;
+    final userHasUploadedPhotos = FakeMemoryConfig.userHasUploadedPhotos;
+
+    // Build AppBar based on event status
+    final appBar = _buildAppBar(
+      context,
+      ref,
+      memoryAsync,
+      eventStatus,
+      isHost,
+      userHasUploadedPhotos,
+    );
+
     return Scaffold(
       backgroundColor: BrandColors.bg1,
-      appBar: CommonAppBar(
-        title: 'Memory',
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: BrandColors.text1),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-        trailing: memoryAsync.maybeWhen(
-          data: (memory) => memory != null
-              ? IconButton(
-                  icon: const Icon(Icons.share, color: BrandColors.text1),
-                  onPressed: () => _handleShare(context, ref),
-                )
-              : null,
-          orElse: () => null,
-        ),
-      ),
+      appBar: appBar,
       body: memoryAsync.when(
         data: (memory) {
           if (memory == null) {
@@ -66,7 +74,25 @@ class MemoryPage extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const SizedBox(height: Gaps.lg),
+                const SizedBox(height: Gaps.sm),
+
+                // CTA Banner: Show for living/recap if user hasn't uploaded photos
+                if (_shouldShowCtaBanner(eventStatus, userHasUploadedPhotos))
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: Insets.screenH,
+                    ),
+                    child: eventStatus == FakeEventStatus.living
+                        ? AddPhotosCtaCard.living(
+                            onPressed: () => _navigateToManageMemory(context),
+                          )
+                        : AddPhotosCtaCard.recap(
+                            onPressed: () => _navigateToManageMemory(context),
+                          ),
+                  ),
+
+                if (_shouldShowCtaBanner(eventStatus, userHasUploadedPhotos))
+                  const SizedBox(height: Gaps.lg),
 
                 // Cover Mosaic (full width with horizontal padding)
                 CoverMosaic(
@@ -144,6 +170,17 @@ class MemoryPage extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  /// Check if CTA banner should be shown
+  /// Show for living/recap events when user hasn't uploaded photos yet
+  bool _shouldShowCtaBanner(
+    FakeEventStatus eventStatus,
+    bool userHasUploadedPhotos,
+  ) {
+    return (eventStatus == FakeEventStatus.living ||
+            eventStatus == FakeEventStatus.recap) &&
+        !userHasUploadedPhotos;
   }
 
   /// Build subtitle text: "Location • Date"
@@ -228,32 +265,119 @@ class MemoryPage extends ConsumerWidget {
     return DateFormat('d MMMM yyyy').format(date);
   }
 
-  /// Handle share button press
-  void _handleShare(BuildContext context, WidgetRef ref) {
-    ref.read(shareMemoryProvider.notifier).share(memoryId);
+  /// Build AppBar based on event status
+  /// - Recap: AppBarWithSubtitle showing countdown timer with chat button
+  /// - Living/Ended: CommonAppBar
+  PreferredSizeWidget _buildAppBar(
+    BuildContext context,
+    WidgetRef ref,
+    AsyncValue<MemoryEntity?> memoryAsync,
+    FakeEventStatus eventStatus,
+    bool isHost,
+    bool userHasUploadedPhotos,
+  ) {
+    final leading = IconButton(
+      icon: const Icon(Icons.arrow_back, color: BrandColors.text1),
+      onPressed: () => Navigator.of(context).pop(),
+    );
 
-    // Listen for share result
-    ref.listen<AsyncValue<String?>>(
-      shareMemoryProvider,
-      (previous, next) {
-        next.when(
-          data: (shareUrl) {
-            if (shareUrl != null) {
-              // TODO: Trigger native share with shareUrl
-              TopBanner.showSuccess(
-                context,
-                message: 'Share URL: $shareUrl',
-              );
-            }
-          },
-          loading: () {},
-          error: (error, stackTrace) {
-            TopBanner.showError(
+    // Recap state: show countdown timer with chat button (and edit if applicable)
+    if (eventStatus == FakeEventStatus.recap) {
+      final subtitle = 'Closes in ${FakeMemoryConfig.formattedRemainingTime}';
+      final subtitleColor = FakeMemoryConfig.isLessThanOneHour
+          ? BrandColors.cantVote // Orange/red when <1hr
+          : BrandColors.text2;
+
+      // Chat button (always present in recap)
+      final chatButton = IconButton(
+        icon: const Icon(Icons.chat_bubble_outline, color: BrandColors.text1),
+        onPressed: () => _navigateToChat(context),
+      );
+
+      // Edit button (only if host or has uploaded photos)
+      final editButton = (isHost || userHasUploadedPhotos)
+          ? IconButton(
+              icon: const Icon(Icons.edit, color: BrandColors.text1),
+              onPressed: () => _navigateToManageMemory(context),
+            )
+          : null;
+
+      return AppBarWithSubtitle(
+        title: 'Memory',
+        subtitle: subtitle,
+        subtitleColor: subtitleColor,
+        leading: leading,
+        trailing: editButton,
+        trailing2: chatButton,
+      );
+    }
+
+    // Living/Ended: standard AppBar with edit button (if applicable)
+    final trailing = memoryAsync.maybeWhen(
+      data: (memory) => memory != null
+          ? _buildTrailingIcon(
               context,
-              message: 'Failed to share: $error',
-            );
-          },
-        );
+              ref,
+              memory,
+              eventStatus,
+              isHost,
+              userHasUploadedPhotos,
+            )
+          : null,
+      orElse: () => null,
+    );
+
+    return CommonAppBar(
+      title: 'Memory',
+      leading: leading,
+      trailing: trailing,
+    );
+  }
+
+  /// Build trailing icon based on event status and permissions
+  /// - Living/Recap: Edit button if user is host OR has uploaded photos
+  /// - Ended: No button (read-only)
+  Widget? _buildTrailingIcon(
+    BuildContext context,
+    WidgetRef ref,
+    MemoryEntity memory,
+    FakeEventStatus eventStatus,
+    bool isHost,
+    bool userHasUploadedPhotos,
+  ) {
+    // Ended state: no edit button (read-only)
+    if (eventStatus == FakeEventStatus.ended) {
+      return null;
+    }
+
+    // Living/Recap state: show edit if user is host OR has uploaded photos
+    if (isHost || userHasUploadedPhotos) {
+      return IconButton(
+        icon: const Icon(Icons.edit, color: BrandColors.text1),
+        onPressed: () => _navigateToManageMemory(context),
+      );
+    }
+
+    // No icon for users who haven't uploaded
+    return null;
+  }
+
+  /// Navigate to manage memory page
+  void _navigateToManageMemory(BuildContext context) {
+    Navigator.of(context).pushNamed(
+      AppRouter.manageMemory,
+      arguments: {
+        'memoryId': memoryId,
+      },
+    );
+  }
+
+  /// Navigate to event chat page
+  void _navigateToChat(BuildContext context) {
+    Navigator.of(context).pushNamed(
+      AppRouter.eventChat,
+      arguments: {
+        'eventId': memoryId, // Using memoryId as eventId
       },
     );
   }

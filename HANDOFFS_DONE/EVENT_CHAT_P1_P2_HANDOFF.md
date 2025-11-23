@@ -19,8 +19,232 @@ Complete chat interface for event participants with rich message interactions:
 - Soft delete (marks deleted, preserves structure)
 - Auto-scroll to pinned/replied messages
 - Mute/unmute chat notifications
+- **NEW:** 3-state event system (Planning/Living/Recap) with dynamic colors
+- **NEW:** Floating action button with camera (Living) or add photo (Recap)
 
 **Architecture:** Clean Architecture with fake repository. DI ready for Supabase switch.
+
+---
+
+## 🎨 NEW: 3-State Event System (P1 Complete)
+
+### Overview
+Event chat now adapts its UI based on the event's current status, using different colors and showing contextual actions.
+
+### Event States
+
+**1. Planning (Green - Default)**
+- User message bubbles: `BrandColors.planning` (green `#0D7A2E`)
+- Send button: green when text entered
+- "New messages" indicator: green
+- No FAB (Floating Action Button)
+
+**2. Living (Purple)**
+- User message bubbles: `BrandColors.living` (purple)
+- Send button: purple when text entered
+- "New messages" indicator: purple
+- FAB: Camera icon - for capturing live moments
+- FAB background: purple
+
+**3. Recap (Orange)**
+- User message bubbles: `BrandColors.recap` (orange)
+- Send button: orange when text entered
+- "New messages" indicator: orange
+- FAB: Add photo icon - for adding photos after event
+- FAB background: orange
+
+### P1 Implementation
+
+**Fake Configuration:**
+```dart
+// Location: lib/features/event/data/fakes/fake_chat_repository.dart
+enum FakeEventChatStatus { planning, living, recap }
+
+class FakeEventChatConfig {
+  static FakeEventChatStatus eventStatus = FakeEventChatStatus.planning;
+  
+  static bool get isLiving => eventStatus == FakeEventChatStatus.living;
+  static bool get isRecap => eventStatus == FakeEventChatStatus.recap;
+  static bool get isPlanning => eventStatus == FakeEventChatStatus.planning;
+}
+```
+
+**Testing Different States:**
+```dart
+// In your test code or main.dart preview:
+FakeEventChatConfig.eventStatus = FakeEventChatStatus.living;  // Purple UI + camera FAB
+FakeEventChatConfig.eventStatus = FakeEventChatStatus.recap;   // Orange UI + add photo FAB
+FakeEventChatConfig.eventStatus = FakeEventChatStatus.planning; // Green UI, no FAB
+```
+
+**Dynamic Color Implementation:**
+```dart
+// In EventChatPage
+Color get _eventStateColor {
+  switch (FakeEventChatConfig.eventStatus) {
+    case FakeEventChatStatus.living:
+      return BrandColors.living;   // Purple
+    case FakeEventChatStatus.recap:
+      return BrandColors.recap;    // Orange
+    case FakeEventChatStatus.planning:
+      return BrandColors.planning; // Green
+  }
+}
+```
+
+**Components Updated:**
+- ✅ User message bubbles (current user's messages)
+- ✅ Send button background (when text is entered)
+- ✅ "New messages" unread indicator (divider + text)
+- ✅ Floating Action Button (Living/Recap only)
+  - Living: Camera icon (`Icons.camera_alt`)
+  - Recap: Add photo icon (`Icons.add_photo_alternate`)
+
+### P2 Requirements
+
+**1. Event Status Integration**
+```dart
+// P2 TODO: Replace FakeEventChatConfig with actual event status
+// Get event status from EventDetailProvider
+final event = ref.watch(eventDetailProvider(widget.eventId));
+final eventStatus = event.status; // EventStatus enum
+
+Color get _eventStateColor {
+  final event = ref.watch(eventDetailProvider(widget.eventId)).value;
+  if (event == null) return BrandColors.planning;
+  
+  switch (event.status) {
+    case EventStatus.living:
+      return BrandColors.living;
+    case EventStatus.recap:
+      return BrandColors.recap;
+    case EventStatus.planning:
+    case EventStatus.pending:
+    default:
+      return BrandColors.planning;
+  }
+}
+```
+
+**2. Camera/Gallery Integration**
+```dart
+// P2 TODO: Replace FAB onPressed with actual camera/gallery picker
+floatingActionButton: (event.status == EventStatus.living || event.status == EventStatus.recap)
+    ? FloatingActionButton(
+        onPressed: () async {
+          if (event.status == EventStatus.living) {
+            // Open camera directly
+            final ImagePicker picker = ImagePicker();
+            final XFile? photo = await picker.pickImage(
+              source: ImageSource.camera,
+              imageQuality: 85,
+            );
+            if (photo != null) {
+              await _uploadPhotoToMemory(File(photo.path));
+            }
+          } else if (event.status == EventStatus.recap) {
+            // Open gallery with multi-select
+            final ImagePicker picker = ImagePicker();
+            final List<XFile> photos = await picker.pickMultiImage(
+              imageQuality: 85,
+              limit: 10,
+            );
+            for (final photo in photos) {
+              await _uploadPhotoToMemory(File(photo.path));
+            }
+          }
+        },
+        backgroundColor: _eventStateColor,
+        child: Icon(
+          event.status == EventStatus.living 
+              ? Icons.camera_alt 
+              : Icons.add_photo_alternate,
+          color: BrandColors.text1,
+        ),
+      )
+    : null,
+```
+
+**3. Photo Upload Method**
+```dart
+// P2 TODO: Implement photo upload to memory
+Future<void> _uploadPhotoToMemory(File photo) async {
+  try {
+    // Get memory associated with event
+    final memory = await ref.read(memoryRepositoryProvider)
+        .getMemoryByEventId(widget.eventId);
+    
+    if (memory == null) {
+      throw Exception('Memory not found for event');
+    }
+    
+    // Upload photo (see MEMORY_MANAGEMENT_P1_P2_HANDOFF.md for details)
+    final compressed = await ImageCompressionService.compress(photo);
+    final uuid = const Uuid().v4();
+    final path = '${event.groupId}/${event.id}/$currentUserId/$uuid.jpg';
+    
+    await storageService.uploadMemoryPhoto(
+      path: path,
+      file: compressed,
+      metadata: {
+        'uploader': currentUserId,
+        'type': 'memory_photo',
+        'captured_at': DateTime.now().toIso8601String(),
+      },
+    );
+    
+    // Create photo record
+    await memoryRepository.addPhoto(
+      memoryId: memory.id,
+      storagePath: path,
+      aspectRatio: await _calculateAspectRatio(photo),
+    );
+    
+    // Show success
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Photo uploaded to memory!')),
+      );
+    }
+  } catch (e) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to upload photo: $e')),
+      );
+    }
+  }
+}
+```
+
+**Dependencies:**
+```yaml
+dependencies:
+  image_picker: ^1.1.2  # Camera and gallery access
+```
+
+**Permissions (iOS/Android):**
+```xml
+<!-- iOS: Info.plist -->
+<key>NSCameraUsageDescription</key>
+<string>We need camera access to capture live moments</string>
+<key>NSPhotoLibraryUsageDescription</key>
+<string>We need photo library access to select photos</string>
+
+<!-- Android: AndroidManifest.xml -->
+<uses-permission android:name="android.permission.CAMERA" />
+<uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+```
+
+**P2 Testing Checklist:**
+- [ ] Event status changes are reflected in real-time
+- [ ] Colors update based on event status from database
+- [ ] FAB appears only in Living/Recap states
+- [ ] Camera opens in Living state
+- [ ] Gallery opens with multi-select in Recap state
+- [ ] Photos upload successfully to event memory
+- [ ] Proper error handling for failed uploads
+- [ ] Loading states during upload
+- [ ] Success feedback after upload
 
 ---
 

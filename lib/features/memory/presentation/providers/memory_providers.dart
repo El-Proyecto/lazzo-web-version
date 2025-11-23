@@ -4,6 +4,8 @@ import '../../domain/repositories/memory_repository.dart';
 import '../../domain/usecases/get_memory.dart';
 import '../../domain/usecases/get_memory_photos.dart';
 import '../../domain/usecases/share_memory.dart';
+import '../../domain/usecases/update_memory_cover.dart';
+import '../../domain/usecases/remove_memory_photo.dart';
 import '../../data/fakes/fake_memory_repository.dart';
 
 /// Repository provider (fake by default)
@@ -24,6 +26,16 @@ final shareMemoryUseCaseProvider = Provider<ShareMemory>((ref) {
 /// Get memory photos use case provider
 final getMemoryPhotosUseCaseProvider = Provider<GetMemoryPhotos>((ref) {
   return GetMemoryPhotos(ref.watch(memoryRepositoryProvider));
+});
+
+/// Update memory cover use case provider
+final updateMemoryCoverUseCaseProvider = Provider<UpdateMemoryCover>((ref) {
+  return UpdateMemoryCover(ref.watch(memoryRepositoryProvider));
+});
+
+/// Remove memory photo use case provider
+final removeMemoryPhotoUseCaseProvider = Provider<RemoveMemoryPhoto>((ref) {
+  return RemoveMemoryPhoto(ref.watch(memoryRepositoryProvider));
 });
 
 /// Memory detail provider

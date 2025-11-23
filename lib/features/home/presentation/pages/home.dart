@@ -20,6 +20,7 @@ import '../providers/banner_provider.dart';
 import '../providers/home_event_providers.dart';
 import '../../domain/entities/home_event.dart';
 import '../../../../routes/app_router.dart';
+import 'dart:async';
 
 /// Home page - main screen showing next event, confirmed/pending events, todos, payments, and memories
 ///
@@ -50,10 +51,70 @@ class HomePage extends ConsumerStatefulWidget {
 }
 
 class _HomePageState extends ConsumerState<HomePage> {
+  Timer? _autoRefreshTimer;
   bool _isNoEventsCardDismissed = false;
 
+  @override
+  void initState() {
+    super.initState();
+    _startAutoRefresh(); // ✅ Start auto-refresh timer
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+
+    // ✅ Listen to tab changes and refresh when coming back to home
+    final currentTab = ref.watch(mainLayoutTabProvider);
+    if (currentTab == 0 && mounted) {
+      // We're on home tab - refresh data
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          _refreshAllData();
+        }
+      });
+    }
+  }
+
+  void _refreshAllData() {
+    // ✅ Invalidate all providers to fetch fresh data
+    print('🔄 Refreshing home data...');
+    ref.invalidate(nextEventControllerProvider);
+    ref.invalidate(confirmedEventsControllerProvider);
+    ref.invalidate(homePendingEventsControllerProvider);
+    ref.invalidate(todosControllerProvider);
+    ref.invalidate(paymentSummariesControllerProvider);
+    ref.invalidate(totalBalanceControllerProvider);
+    ref.invalidate(recentMemoriesControllerProvider);
+    ref.invalidate(groupsProvider);
+
+    // Force rebuild to pick up new provider data
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  @override
+  void dispose() {
+    _autoRefreshTimer?.cancel(); // ✅ ADD cleanup
+    super.dispose();
+  }
+
+  void _startAutoRefresh() {
+    // ✅ Refresh a cada 1 minuto para capturar mudanças de estado
+    _autoRefreshTimer = Timer.periodic(
+      const Duration(minutes: 1),
+      (_) {
+        // Apenas invalidar se ainda estiver montado
+        if (mounted) {
+          _refreshAllData();
+        }
+      },
+    );
+  }
+
   String _formatEventDate(DateTime? date) {
-    if (date == null) return 'To be decided';
+    if (date == null) return 'Date to be decided';
 
     final months = [
       'Jan',
@@ -113,6 +174,7 @@ class _HomePageState extends ConsumerState<HomePage> {
     final totalBalanceAsync = ref.watch(totalBalanceControllerProvider);
     final recentMemoriesAsync = ref.watch(recentMemoriesControllerProvider);
     final groupsAsync = ref.watch(groupsProvider);
+    final nextEventStatus = ref.watch(navBarStateProvider);
 
     // Calculate empty states based on provider data
     // IMPORTANT: Only show empty states when data is LOADED, not during loading
@@ -143,9 +205,33 @@ class _HomePageState extends ConsumerState<HomePage> {
         !_isNoEventsCardDismissed; // Don't show if dismissed
 
     return Scaffold(
-      appBar: const CommonAppBar(
+      appBar: CommonAppBar(
         title: 'LAZZO',
         centerTitle: true,
+        trailing: (nextEventStatus == HomeEventStatus.living ||
+                nextEventStatus == HomeEventStatus.recap)
+            ? IconButton(
+                icon: Container(
+                  width: 24,
+                  height: 24,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: BrandColors.text1,
+                      width: 1.5,
+                    ),
+                  ),
+                  child: const Icon(
+                    Icons.add,
+                    color: BrandColors.text1,
+                    size: 20,
+                  ),
+                ),
+                onPressed: () {
+                  Navigator.pushNamed(context, AppRouter.createEvent);
+                },
+              )
+            : null,
       ),
       body: SafeArea(
         child: ListView(
@@ -270,15 +356,40 @@ class _HomePageState extends ConsumerState<HomePage> {
                   if (event == null) {
                     return const SizedBox.shrink();
                   }
+
+                  // Determine section title based on event status
+                  String sectionTitle;
+                  switch (event.status) {
+                    case HomeEventStatus.living:
+                      sectionTitle = 'Live Event';
+                      break;
+                    case HomeEventStatus.recap:
+                      sectionTitle = 'Recap Event';
+                      break;
+                    case HomeEventStatus.pending:
+                    case HomeEventStatus.confirmed:
+                      sectionTitle = 'Next Event';
+                      break;
+                  }
+
                   return Column(
                     children: [
                       SectionBlock(
-                        title: 'Next Event',
+                        title: sectionTitle,
                         child: HomeEventCard(
                           event: event,
                           state: _mapStatusToHomeCardState(event.status),
-                          onTap: () {
-                            // TODO: Navigate to event details
+                          onTap: () async {
+                            // ✅ Navigate to event details
+                            await Navigator.pushNamed(
+                              context,
+                              AppRouter.event,
+                              arguments: {'eventId': event.id},
+                            );
+                            // ✅ Refresh data when returning from event page
+                            if (mounted) {
+                              _refreshAllData();
+                            }
                           },
                           onChatPressed: () {
                             // TODO: Navigate to event chat
@@ -337,8 +448,17 @@ class _HomePageState extends ConsumerState<HomePage> {
                                   location: event.location ?? 'Location TBD',
                                   state:
                                       _mapStatusToSmallCardState(event.status),
-                                  onTap: () {
-                                    // TODO: Navigate to event details
+                                  onTap: () async {
+                                    // ✅ Navigate to event details
+                                    await Navigator.pushNamed(
+                                      context,
+                                      AppRouter.event,
+                                      arguments: {'eventId': event.id},
+                                    );
+                                    // ✅ Refresh data when returning
+                                    if (mounted) {
+                                      _refreshAllData();
+                                    }
                                   },
                                 ),
                                 if (index < events.length - 1)
@@ -384,8 +504,17 @@ class _HomePageState extends ConsumerState<HomePage> {
                                   location: event.location ?? 'Location TBD',
                                   state:
                                       _mapStatusToSmallCardState(event.status),
-                                  onTap: () {
-                                    // TODO: Navigate to event details
+                                  onTap: () async {
+                                    // ✅ Navigate to event details
+                                    await Navigator.pushNamed(
+                                      context,
+                                      AppRouter.event,
+                                      arguments: {'eventId': event.id},
+                                    );
+                                    // ✅ Refresh data when returning
+                                    if (mounted) {
+                                      _refreshAllData();
+                                    }
                                   },
                                 ),
                                 if (index < events.length - 1)

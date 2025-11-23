@@ -10,10 +10,10 @@ import '../features/home/data/data_sources/memory_remote_data_source.dart';
 import '../features/home/data/repositories/memory_repository_impl.dart';
 import '../features/home/presentation/providers/memory_providers.dart';
 
-// PENDING EVENTS
-import '../features/home/data/data_sources/pending_event_remote_data_source.dart';
-import '../features/home/data/repositories/pending_event_repository_impl.dart';
-import '../features/home/presentation/providers/pending_event_providers.dart';
+// HOME EVENTS
+import 'features/home/data/data_sources/home_event_remote_data_source.dart';
+import 'features/home/data/repositories/home_event_repository_impl.dart';
+import 'features/home/presentation/providers/home_event_providers.dart'; 
 
 // INBOX PAYMENTS - TODO: Add real implementation imports when available
 // import '../features/inbox/data/data_sources/payment_remote_data_source.dart';
@@ -46,8 +46,10 @@ import '../features/profile/data/repositories/profile_repository_impl.dart';
 import '../features/profile/presentation/providers/profile_providers.dart';
 
 // CREATE EVENT - Real implementation
-import '../features/create_event/presentation/providers/event_providers.dart' as create_event;
-import '../features/create_event/data/repositories/event_repository_impl.dart' as create_event_impl;
+import '../features/create_event/presentation/providers/event_providers.dart'
+    as create_event;
+import '../features/create_event/data/repositories/event_repository_impl.dart'
+    as create_event_impl;
 
 // EVENT FEATURES - Real implementation
 import '../features/event/presentation/providers/event_providers.dart';
@@ -101,10 +103,11 @@ void main() async {
           ),
         ),
 
-        // PendingEvent repo -> real (Supabase)
-        pendingEventRepositoryProvider.overrideWith(
-          (ref) => PendingEventRepositoryImpl(
-            PendingEventRemoteDataSource(Supabase.instance.client),
+        // ✅ HOME EVENTS repo -> real (Supabase) - NEW UNIFIED STRUCTURE
+        homeEventRepositoryProvider.overrideWith(
+          (ref) => HomeEventRepositoryImpl(
+            HomeEventRemoteDataSource(Supabase.instance.client),
+            ref, // Pass ref to access current user ID
           ),
         ),
 
@@ -130,11 +133,11 @@ void main() async {
         // ),
 
         // ✅ GROUPS repo -> real (Supabase) via DI (P2 implementation)
-         groupRepositoryProvider.overrideWith((ref) {
-           final client = Supabase.instance.client;
-           final dataSource = SupabaseGroupsDataSource(client);
-           return GroupRepositoryImpl(dataSource, client);
-         }),
+        groupRepositoryProvider.overrideWith((ref) {
+          final client = Supabase.instance.client;
+          final dataSource = SupabaseGroupsDataSource(client);
+          return GroupRepositoryImpl(dataSource, client);
+        }),
 
         // ✅ GROUP HUB EVENTS repo -> real (Supabase) via DI (Nov 18, 2025)
         group_hub.groupEventRepositoryProvider.overrideWith((ref) {
@@ -171,30 +174,30 @@ void main() async {
 
         // ✅ EVENT DETAIL FEATURES -> real (Supabase) via DI (P2 implementation)
         eventRepositoryProvider.overrideWith(
-           (ref) => EventRepositoryImpl(
-             EventRemoteDataSource(Supabase.instance.client),
-           ),
-         ),
-         rsvpRepositoryProvider.overrideWith(
-           (ref) => RsvpRepositoryImpl(
-             RsvpRemoteDataSource(Supabase.instance.client),
-           ),
-         ),
-         suggestionRepositoryProvider.overrideWith(
-           (ref) => SuggestionRepositoryImpl(
-             SuggestionRemoteDataSource(Supabase.instance.client),
-           ),
-         ),
-         pollRepositoryProvider.overrideWith(
-           (ref) => PollRepositoryImpl(
-             PollRemoteDataSource(Supabase.instance.client),
-           ),
-         ),
-         chatRepositoryProvider.overrideWith(
-           (ref) => ChatRepositoryImpl(
-             ChatRemoteDataSource(Supabase.instance.client),
-           ),
-         ),
+          (ref) => EventRepositoryImpl(
+            EventRemoteDataSource(Supabase.instance.client),
+          ),
+        ),
+        rsvpRepositoryProvider.overrideWith(
+          (ref) => RsvpRepositoryImpl(
+            RsvpRemoteDataSource(Supabase.instance.client),
+          ),
+        ),
+        suggestionRepositoryProvider.overrideWith(
+          (ref) => SuggestionRepositoryImpl(
+            SuggestionRemoteDataSource(Supabase.instance.client),
+          ),
+        ),
+        pollRepositoryProvider.overrideWith(
+          (ref) => PollRepositoryImpl(
+            PollRemoteDataSource(Supabase.instance.client),
+          ),
+        ),
+        chatRepositoryProvider.overrideWith(
+          (ref) => ChatRepositoryImpl(
+           ChatRemoteDataSource(Supabase.instance.client),
+          ),
+        ),
       ],
       child: const LazzoApp(),
     ),

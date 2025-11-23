@@ -4,6 +4,7 @@ import '../../constants/spacing.dart';
 import '../../constants/text_styles.dart';
 import '../../themes/colors.dart';
 import '../widgets/votes_bottom_sheet.dart';
+import '../widgets/photos_bottom_sheet.dart';
 import '../widgets/rsvp_widget.dart';
 
 /// Event full card state for group hub
@@ -154,7 +155,7 @@ class _EventFullCardState extends State<EventFullCard> {
       case EventFullCardState.confirmed:
         return 'Confirmed';
       case EventFullCardState.living:
-        return 'Living';
+        return 'Live';
       case EventFullCardState.recap:
         return 'Recap';
     }
@@ -164,13 +165,11 @@ class _EventFullCardState extends State<EventFullCard> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        // Date
+        // Date or Time left
         Text(
-          _currentEvent.date != null
-              ? _formatEventDate(_currentEvent.date!)
-              : 'To be decided',
+          _getDateOrTimeLeftText(),
           style: AppText.bodyMedium.copyWith(
-            color: BrandColors.text2,
+            color: BrandColors.text1,
             fontWeight: FontWeight.w500,
           ),
         ),
@@ -199,6 +198,52 @@ class _EventFullCardState extends State<EventFullCard> {
         ),
       ],
     );
+  }
+
+  String _getDateOrTimeLeftText() {
+    // For Living state: show time left until end
+    if (widget.state == EventFullCardState.living &&
+        _currentEvent.endDate != null) {
+      return _formatTimeLeft(_currentEvent.endDate!);
+    }
+
+    // For Recap state: show time left in 24h upload window
+    if (widget.state == EventFullCardState.recap &&
+        _currentEvent.endDate != null) {
+      final uploadDeadline =
+          _currentEvent.endDate!.add(const Duration(hours: 24));
+      return _formatTimeLeft(uploadDeadline);
+    }
+
+    // For Pending/Confirmed: show formatted date
+    if (_currentEvent.date != null) {
+      return _formatEventDate(_currentEvent.date!);
+    }
+
+    return 'To be decided';
+  }
+
+  String _formatTimeLeft(DateTime targetDate) {
+    final now = DateTime.now();
+    final difference = targetDate.difference(now);
+
+    if (difference.isNegative) {
+      return 'Ended';
+    }
+
+    final days = difference.inDays;
+    final hours = difference.inHours % 24;
+    final minutes = difference.inMinutes % 60;
+
+    if (days > 0) {
+      return '$days day${days > 1 ? 's' : ''} left';
+    } else if (hours > 0) {
+      return '$hours hour${hours > 1 ? 's' : ''} left';
+    } else if (minutes > 0) {
+      return '$minutes minute${minutes > 1 ? 's' : ''} left';
+    } else {
+      return 'Less than a minute left';
+    }
   }
 
   Widget _buildEventInfo() {
@@ -243,8 +288,15 @@ class _EventFullCardState extends State<EventFullCard> {
   }
 
   Widget _buildAttendeeInfo(BuildContext context) {
+    // For Living/Recap: show photos bottom sheet
+    // For Pending/Confirmed: show votes bottom sheet
+    final onTap = (widget.state == EventFullCardState.living ||
+            widget.state == EventFullCardState.recap)
+        ? () => _showPhotosBottomSheet(context)
+        : () => _showVotesBottomSheet(context);
+
     return InkWell(
-      onTap: () => _showVotesBottomSheet(context),
+      onTap: onTap,
       borderRadius: BorderRadius.circular(Radii.sm),
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: Gaps.xxs),
@@ -254,7 +306,7 @@ class _EventFullCardState extends State<EventFullCard> {
             _buildAttendeeAvatars(),
             const SizedBox(width: Gaps.xs),
 
-            // Going count text with names
+            // Going count text with names or photo count
             Expanded(
               child: Text(
                 _buildAttendeeText(),
@@ -287,7 +339,26 @@ class _EventFullCardState extends State<EventFullCard> {
     );
   }
 
+  void _showPhotosBottomSheet(BuildContext context) {
+    PhotosBottomSheet.show(
+      context: context,
+      participants: _currentEvent.participantPhotos,
+      totalPhotos: _currentEvent.photoCount,
+      maxPhotos: _currentEvent.maxPhotos,
+    );
+  }
+
   String _buildAttendeeText() {
+    // For Living/Recap states: show photo count
+    if (widget.state == EventFullCardState.living ||
+        widget.state == EventFullCardState.recap) {
+      if (_currentEvent.photoCount == 0) {
+        return '${_currentEvent.goingCount} participants • No photos yet';
+      }
+      return '${_currentEvent.goingCount} participants • ${_currentEvent.photoCount}/${_currentEvent.maxPhotos} photos';
+    }
+
+    // For Pending/Confirmed states: show names
     // If user hasn't voted yet, show "Tap to vote!" message
     if (_currentEvent.userVote == null) {
       return '${_currentEvent.goingCount} going • Tap to vote!';

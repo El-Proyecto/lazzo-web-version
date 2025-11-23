@@ -13,6 +13,7 @@ import '../providers/group_hub_providers.dart';
 import '../../domain/entities/group_memory_entity.dart';
 import '../../../event/domain/entities/rsvp.dart';
 import '../../../event/presentation/providers/event_providers.dart';
+import '../../domain/entities/group_event_entity.dart';
 import 'group_details_page.dart';
 
 class GroupHubPage extends ConsumerStatefulWidget {
@@ -423,6 +424,46 @@ class _GroupHubPageState extends ConsumerState<GroupHubPage>
           );
         }
 
+        // Sort events: Living (max 1) > Recap (multiple) > Confirmed > Pending
+        final sortedEvents = List<GroupEventEntity>.from(events)
+          ..sort((a, b) {
+            // Living has highest priority
+            if (a.status == GroupEventStatus.living &&
+                b.status != GroupEventStatus.living) {
+              return -1;
+            }
+            if (b.status == GroupEventStatus.living &&
+                a.status != GroupEventStatus.living) {
+              return 1;
+            }
+
+            // Recap has second priority
+            if (a.status == GroupEventStatus.recap &&
+                b.status != GroupEventStatus.recap) {
+              return -1;
+            }
+            if (b.status == GroupEventStatus.recap &&
+                a.status != GroupEventStatus.recap) {
+              return 1;
+            }
+
+            // Confirmed has third priority
+            if (a.status == GroupEventStatus.confirmed &&
+                b.status != GroupEventStatus.confirmed) {
+              return -1;
+            }
+            if (b.status == GroupEventStatus.confirmed &&
+                a.status != GroupEventStatus.confirmed) {
+              return 1;
+            }
+
+            // Within same status, sort by date (earlier dates first)
+            if (a.date != null && b.date != null) {
+              return a.date!.compareTo(b.date!);
+            }
+            return 0;
+          });
+
         return ListView.separated(
           controller: _eventsScrollController,
           physics: _isSnapped
@@ -434,9 +475,9 @@ class _GroupHubPageState extends ConsumerState<GroupHubPage>
             top: _isSnapped ? Gaps.md : 0,
             bottom: Gaps.md,
           ),
-          itemCount: events.length + 1,
+          itemCount: sortedEvents.length + 1,
           separatorBuilder: (context, index) {
-            if (index == events.length - 1) {
+            if (index == sortedEvents.length - 1) {
               // After last event, no separator (bottom padding handled below)
               return const SizedBox.shrink();
             }

@@ -9,6 +9,7 @@ import '../../../../shared/themes/colors.dart';
 import '../../domain/entities/chat_message.dart';
 import '../providers/chat_providers.dart';
 import '../providers/event_providers.dart';
+import '../../data/fakes/fake_chat_repository.dart';
 
 /// Event chat page
 /// Full-screen chat interface for event communication
@@ -36,15 +37,29 @@ class _EventChatPageState extends ConsumerState<EventChatPage> {
   /// Get current user ID from Supabase auth
   String? get _currentUserId => Supabase.instance.client.auth.currentUser?.id;
 
+  /// Get current event state color based on FakeEventChatConfig
+  /// P2 TODO: Get from actual event status provider
+  Color get _eventStateColor {
+    switch (FakeEventChatConfig.eventStatus) {
+      case FakeEventChatStatus.living:
+        return BrandColors.living; // Purple
+      case FakeEventChatStatus.recap:
+        return BrandColors.recap; // Orange
+      case FakeEventChatStatus.planning:
+        return BrandColors.planning; // Green
+    }
+  }
+
   @override
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
     _messageController.addListener(_onTextChanged);
-    
+
     // Extract scrollToMessageId from navigation arguments after first frame
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+      final args =
+          ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
       if (args != null && args.containsKey('scrollToMessageId')) {
         setState(() {
           _scrollToMessageId = args['scrollToMessageId'] as String?;
@@ -260,7 +275,7 @@ class _EventChatPageState extends ConsumerState<EventChatPage> {
   Widget build(BuildContext context) {
     final messagesAsync = ref.watch(chatMessagesProvider(widget.eventId));
     final eventAsync = ref.watch(eventDetailProvider(widget.eventId));
-    
+
     // Auto-scroll to message if scrollToMessageId is set
     messagesAsync.whenData((messages) {
       if (_scrollToMessageId != null) {
@@ -268,12 +283,13 @@ class _EventChatPageState extends ConsumerState<EventChatPage> {
         final targetMessage = messages.cast<ChatMessage?>().firstWhere(
           (m) {
             if (m == null) return false;
-            final messageId = '${m.userId}_${m.createdAt.millisecondsSinceEpoch}';
+            final messageId =
+                '${m.userId}_${m.createdAt.millisecondsSinceEpoch}';
             return messageId == _scrollToMessageId;
           },
           orElse: () => null,
         );
-        
+
         if (targetMessage != null) {
           // Scroll after messages are rendered
           WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -296,7 +312,8 @@ class _EventChatPageState extends ConsumerState<EventChatPage> {
         final pinned = messages.where((m) => m.isPinned).toList();
         print('🔍 DEBUG: Pinned messages: ${pinned.length}');
         if (pinned.isNotEmpty) {
-          print('✅ DEBUG: Found pinned message: ${pinned.first.id} - ${pinned.first.content}');
+          print(
+              '✅ DEBUG: Found pinned message: ${pinned.first.id} - ${pinned.first.content}');
         }
         return pinned.isNotEmpty ? pinned.first : null;
       },
@@ -305,18 +322,16 @@ class _EventChatPageState extends ConsumerState<EventChatPage> {
         return null;
       },
     );
-    
+
     print('🎯 DEBUG: pinnedMessage = ${pinnedMessage?.id ?? "null"}');
 
     return GestureDetector(
       onTap: () {
         FocusScope.of(context).unfocus();
       },
-      child: Hero(
-        tag: 'chat-widget',
-        child: Scaffold(
-          backgroundColor: BrandColors.bg1,
-          appBar: eventAsync.when(
+      child: Scaffold(
+        backgroundColor: BrandColors.bg1,
+        appBar: eventAsync.when(
           data: (event) => _ChatAppBar(
             title: event.name,
             subtitle: _formatSubtitle(
@@ -356,11 +371,13 @@ class _EventChatPageState extends ConsumerState<EventChatPage> {
                   print('   - Event ID: ${widget.eventId}');
                   print('   - Total messages: ${messages.length}');
                   if (messages.isNotEmpty) {
-                    print('   - First: "${messages.first.content.substring(0, messages.first.content.length > 30 ? 30 : messages.first.content.length)}..."');
-                    print('   - Last: "${messages.last.content.substring(0, messages.last.content.length > 30 ? 30 : messages.last.content.length)}..."');
+                    print(
+                        '   - First: "${messages.first.content.substring(0, messages.first.content.length > 30 ? 30 : messages.first.content.length)}..."');
+                    print(
+                        '   - Last: "${messages.last.content.substring(0, messages.last.content.length > 30 ? 30 : messages.last.content.length)}..."');
                   }
                   print('═══════════════════════════════════════\n');
-                  
+
                   if (messages.isEmpty) {
                     return Center(
                       child: Text(
@@ -382,6 +399,7 @@ class _EventChatPageState extends ConsumerState<EventChatPage> {
                     onSwipeReply: _replyToMessage,
                     messageKeys: _messageKeys,
                     currentUserId: _currentUserId,
+                    eventStateColor: _eventStateColor,
                   );
                 },
                 loading: () => const Center(
@@ -409,9 +427,9 @@ class _EventChatPageState extends ConsumerState<EventChatPage> {
                   _replyingTo = null;
                 });
               },
+              eventStateColor: _eventStateColor,
             ),
           ],
-        ),
         ),
       ),
     );
@@ -623,6 +641,7 @@ class _MessagesList extends StatelessWidget {
   final Function(ChatMessage) onSwipeReply;
   final Map<String, GlobalKey> messageKeys;
   final String? currentUserId;
+  final Color eventStateColor;
 
   const _MessagesList({
     required this.messages,
@@ -632,6 +651,7 @@ class _MessagesList extends StatelessWidget {
     required this.onSwipeReply,
     required this.messageKeys,
     required this.currentUserId,
+    required this.eventStateColor,
   });
 
   String _formatDateSeparator(DateTime date) {
@@ -737,9 +757,9 @@ class _MessagesList extends StatelessWidget {
 
             // Unread indicator
             if (showUnreadIndicator)
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: Gaps.md),
-                child: _UnreadIndicator(),
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: Gaps.md),
+                child: _UnreadIndicator(color: eventStateColor),
               ),
 
             // Message bubble with GlobalKey for scrolling
@@ -801,15 +821,17 @@ class _DateSeparator extends StatelessWidget {
 
 /// Unread messages indicator
 class _UnreadIndicator extends StatelessWidget {
-  const _UnreadIndicator();
+  final Color color;
+
+  const _UnreadIndicator({required this.color});
 
   @override
   Widget build(BuildContext context) {
     return Row(
       children: [
-        const Expanded(
+        Expanded(
           child: Divider(
-            color: BrandColors.planning,
+            color: color,
             thickness: 1,
           ),
         ),
@@ -818,15 +840,15 @@ class _UnreadIndicator extends StatelessWidget {
           child: Text(
             'New messages',
             style: AppText.bodyMedium.copyWith(
-              color: BrandColors.planning,
+              color: color,
               fontSize: 12,
               fontWeight: FontWeight.w600,
             ),
           ),
         ),
-        const Expanded(
+        Expanded(
           child: Divider(
-            color: BrandColors.planning,
+            color: color,
             thickness: 1,
           ),
         ),
@@ -881,7 +903,12 @@ class _MessageBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const userBubbleColor = Color(0xFF0D7A2E);
+    // P2 TODO: Get color from event status provider
+    final userBubbleColor = FakeEventChatConfig.isLiving
+        ? BrandColors.living
+        : FakeEventChatConfig.isRecap
+            ? BrandColors.recap
+            : BrandColors.planning;
     final bubbleColor = message.isDeleted
         ? (isCurrentUser
             ? userBubbleColor.withValues(alpha: 0.3)
@@ -890,9 +917,17 @@ class _MessageBubble extends StatelessWidget {
 
     // Debug: Log reply status
     if (message.replyTo != null) {
-      print('💬 DEBUG _MessageBubble: Message ${message.id.substring(0, 8)} has replyTo: "${message.replyTo!.content.substring(0, message.replyTo!.content.length > 20 ? 20 : message.replyTo!.content.length)}..."');
+      final msgIdPreview =
+          message.id.length > 8 ? message.id.substring(0, 8) : message.id;
+      final replyContentPreview = message.replyTo!.content.length > 20
+          ? message.replyTo!.content.substring(0, 20)
+          : message.replyTo!.content;
+      print(
+          '💬 DEBUG _MessageBubble: Message $msgIdPreview has replyTo: "$replyContentPreview..."');
     } else {
-      print('❌ DEBUG _MessageBubble: Message ${message.id.substring(0, 8)} has NO replyTo');
+      final msgIdPreview =
+          message.id.length > 8 ? message.id.substring(0, 8) : message.id;
+      print('❌ DEBUG _MessageBubble: Message $msgIdPreview has NO replyTo');
     }
 
     // The actual bubble content (without avatar)
@@ -1004,15 +1039,16 @@ class _MessageBubble extends StatelessWidget {
         // Detect swipe direction based on velocity
         if (details.primaryVelocity != null) {
           final velocity = details.primaryVelocity!;
-          
+
           // Current user: swipe left (negative velocity)
           // Other user: swipe right (positive velocity)
-          final isValidSwipe = isCurrentUser 
-              ? velocity < -300  // Swipe left with significant velocity
-              : velocity > 300;  // Swipe right with significant velocity
-          
+          final isValidSwipe = isCurrentUser
+              ? velocity < -300 // Swipe left with significant velocity
+              : velocity > 300; // Swipe right with significant velocity
+
           if (isValidSwipe) {
-            print('🔄 DEBUG: Swipe detected on message ${message.id.substring(0, 8)}, velocity=$velocity');
+            print(
+                '🔄 DEBUG: Swipe detected on message ${message.id.substring(0, 8)}, velocity=$velocity');
             onSwipeReply();
             HapticFeedback.lightImpact();
           }
@@ -1064,6 +1100,7 @@ class _ChatInput extends StatelessWidget {
   final VoidCallback onSend;
   final ChatMessage? replyingTo;
   final VoidCallback? onCancelReply;
+  final Color eventStateColor;
 
   const _ChatInput({
     required this.controller,
@@ -1071,6 +1108,7 @@ class _ChatInput extends StatelessWidget {
     required this.onSend,
     this.replyingTo,
     this.onCancelReply,
+    required this.eventStateColor,
   });
 
   void _showAddExpenseBottomSheet(BuildContext context) {
@@ -1193,6 +1231,65 @@ class _ChatInput extends StatelessWidget {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
+                  // Camera/Add Photo button (Living/Recap only)
+                  // Hidden when text field has text or is focused
+                  ValueListenableBuilder<TextEditingValue>(
+                    valueListenable: controller,
+                    builder: (context, value, child) {
+                      final hasText = value.text.trim().isNotEmpty;
+                      final isFocused = focusNode.hasFocus;
+                      final shouldHide = hasText || isFocused;
+
+                      if (shouldHide ||
+                          (!FakeEventChatConfig.isLiving &&
+                              !FakeEventChatConfig.isRecap)) {
+                        return const SizedBox.shrink();
+                      }
+
+                      return Container(
+                        width: 36,
+                        height: 36,
+                        margin: const EdgeInsets.only(
+                          left: Gaps.xxs,
+                          bottom: Gaps.xxs,
+                        ),
+                        decoration: BoxDecoration(
+                          color: FakeEventChatConfig.isLiving
+                              ? BrandColors.living
+                              : BrandColors.recap,
+                          borderRadius: BorderRadius.circular(Radii.pill),
+                        ),
+                        child: Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            onTap: () {
+                              // P2 TODO: Open camera (living) or gallery (recap)
+                              HapticFeedback.lightImpact();
+                              // ScaffoldMessenger.of(context).showSnackBar(
+                              //   SnackBar(
+                              //     content: Text(
+                              //       FakeEventChatConfig.isLiving
+                              //           ? 'P2 TODO: Open camera'
+                              //           : 'P2 TODO: Open gallery',
+                              //     ),
+                              //     duration: const Duration(seconds: 2),
+                              //   ),
+                              // );
+                            },
+                            borderRadius: BorderRadius.circular(Radii.pill),
+                            child: Icon(
+                              FakeEventChatConfig.isLiving
+                                  ? Icons.camera_alt
+                                  : Icons.add_photo_alternate,
+                              size: IconSizes.smAlt,
+                              color: BrandColors.text1,
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+
                   // Message input field
                   Expanded(
                     child: TextField(
@@ -1233,7 +1330,11 @@ class _ChatInput extends StatelessWidget {
                         ),
                         decoration: BoxDecoration(
                           color: hasText
-                              ? BrandColors.planning
+                              ? (FakeEventChatConfig.isLiving
+                                  ? BrandColors.living
+                                  : FakeEventChatConfig.isRecap
+                                      ? BrandColors.recap
+                                      : BrandColors.planning)
                               : Colors.transparent,
                           borderRadius: BorderRadius.circular(Radii.pill),
                         ),

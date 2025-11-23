@@ -42,6 +42,11 @@
    - Fields: id, userId, userName, userAvatar, status, votedAt
    - Used by HomeEventEntity for allVotes
 
+6. **ParticipantPhoto** (`entities/participant_photo.dart`)
+   - Photo contribution tracking per user (Living/Recap states)
+   - Fields: userId, userName, userAvatar, photoCount
+   - Used by HomeEventEntity for participantPhotos list
+
 7. **PendingEvent** (`entities/pending_event.dart`)
    - **Legacy entity** (kept for backwards compatibility)
    - Used by stacked pending events card
@@ -169,13 +174,23 @@
 6. **FakePendingEventRepository** - **Legacy**
    - For stacked pending events compatibility
 
+**Photo System Mock Data:**
+- Living state: 18 total photos, 30 max (6 participants × 5)
+- Recap state: 12 total photos, 35 max (7 participants × 5)
+- Photo counts distributed across participants (sorted by count)
+- Formula: maxPhotos = max(20, participantCount × 5)
+
 ---
 
 ### ✅ **Shared Components Used** (Already Tokenized)
 **Location**: `lib/shared/components/`
 
 #### **Cards:**
-- `home_event_card.dart` - Next event card with status badge
+- `home_event_card.dart` - Next event card with:
+  - Status-based display (Pending/Confirmed/Living/Recap)
+  - Time-left countdown for Living/Recap states
+  - Photo count display: "X participants • Y/Z photos"
+  - Tap to open PhotosBottomSheet (Living/Recap) or VotesBottomSheet (Pending/Confirmed)
 - `event_small_card.dart` - Confirmed/pending event cards
 - `todo_card.dart` - To-do action item card
 - `payment_summary_card.dart` - Payment summary with user avatar
@@ -192,6 +207,12 @@
 
 #### **Widgets:**
 - `rsvp_widget.dart` - RSVP vote status display
+- `photos_bottom_sheet.dart` - Photo contributions bottom sheet:
+  - Displays participant photo counts sorted descending
+  - Shows "No photos yet" for zero photos
+  - Custom header with title and total count
+  - Used by Living/Recap states
+- `votes_bottom_sheet.dart` - RSVP votes bottom sheet for Pending/Confirmed states
 
 ---
 
@@ -206,6 +227,7 @@ class HomeEventEntity {
   final String name;
   final String emoji;
   final DateTime? date;
+  final DateTime? endDate; // For Living/Recap time-left calculation
   final String? location;
   final HomeEventStatus status;
   final int goingCount;
@@ -213,6 +235,9 @@ class HomeEventEntity {
   final List<String> attendeeNames;
   final bool? userVote; // true = going, false = not going, null = pending
   final List<RsvpVote> allVotes;
+  final int photoCount; // Total photos uploaded (Living/Recap)
+  final int maxPhotos; // Max photos allowed: max(20, 5 × participantCount)
+  final List<ParticipantPhoto> participantPhotos; // Photo contributions per user
 }
 
 enum HomeEventStatus { pending, confirmed, living, recap }
@@ -281,7 +306,7 @@ Future<MemorySummary?> getLastReadyMemory(String userId);
 
 ### **Database Schema Mapping**
 
-#### **Home Events (from events table + rsvps table)**
+#### **Home Events (from events table + rsvps table + event_photos table)**
 ```sql
 -- events table
 SELECT 
@@ -289,6 +314,7 @@ SELECT
   name,
   emoji,
   date,
+  end_date, -- NEW: For Living/Recap time-left calculation
   location,
   status, -- 'pending' | 'confirmed' | 'living' | 'recap'
   group_id
@@ -306,6 +332,14 @@ SELECT
   voted_at
 FROM rsvps
 WHERE event_id IN (...)
+
+-- event_photos table (NEW: For Living/Recap photo counts)
+SELECT
+  user_id,
+  COUNT(*) as photo_count
+FROM event_photos
+WHERE event_id = $eventId
+GROUP BY user_id
 ```
 
 #### **To-Dos (from actions table)**
@@ -379,6 +413,9 @@ ORDER BY date DESC
 1. **HomeEventModel** - Map Supabase row → HomeEventEntity
    - Handle rsvps aggregation (goingCount, attendeeAvatars, attendeeNames, userVote)
    - Parse allVotes from rsvps table
+   - **NEW:** Calculate photoCount from event_photos aggregation
+   - **NEW:** Calculate maxPhotos: max(20, goingCount × 5)
+   - **NEW:** Build participantPhotos list from event_photos join with users table
 
 2. **TodoModel** - Map actions row → TodoEntity
    - Extract event info from event_id foreign key
@@ -595,7 +632,8 @@ CREATE INDEX idx_memories_user_id_date ON memories(user_id, date DESC);
 lib/features/home/
 ├── domain/
 │   ├── entities/
-│   │   ├── home_event.dart ✅
+│   │   ├── home_event.dart ✅ (Updated with photo fields)
+│   │   ├── participant_photo.dart ✅ (NEW)
 │   │   ├── todo_entity.dart ✅
 │   │   ├── payment_summary_entity.dart ✅
 │   │   ├── recent_memory_entity.dart ✅
@@ -700,12 +738,15 @@ The following components are kept for backwards compatibility but should be phas
 
 1. **DO NOT change domain contracts** (entities, repository interfaces) without syncing with P1
 2. **RSVPs aggregation**: HomeEventEntity requires joining events + rsvps tables
-3. **Payment summaries**: Complex aggregation - consider materialized view
-4. **Mock control**: Remove mock control variables from fakes when implementing real repos
-5. **Groups dependency**: Home depends on Groups feature for empty state logic
-6. **User ID**: All queries must use authenticated user ID from Supabase auth
-7. **Date filtering**: Use indexed columns for date range queries
-8. **Error handling**: Return empty lists (not null) for no results scenarios
+3. **Photo system aggregation**: Requires joining event_photos table grouped by user_id
+4. **Photo count formula**: maxPhotos = max(20, participantCount × 5)
+5. **Time-left display**: Requires end_date field for Living/Recap states
+6. **Payment summaries**: Complex aggregation - consider materialized view
+7. **Mock control**: Remove mock control variables from fakes when implementing real repos
+8. **Groups dependency**: Home depends on Groups feature for empty state logic
+9. **User ID**: All queries must use authenticated user ID from Supabase auth
+10. **Date filtering**: Use indexed columns for date range queries
+11. **Error handling**: Return empty lists (not null) for no results scenarios
 
 ---
 

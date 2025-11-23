@@ -3,19 +3,21 @@ import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/constants/text_styles.dart';
 import '../../../../shared/themes/colors.dart';
 
-/// Memory Viewer AppBar with title/subtitle and play preview icon
+/// Memory Viewer AppBar with title/subtitle and optional trailing action
 /// Similar to event_chat AppBar but with different actions
 class MemoryViewerAppBar extends StatelessWidget
     implements PreferredSizeWidget {
   final String title;
   final String? subtitle;
   final VoidCallback onBackPressed;
+  final Widget? trailing;
 
   const MemoryViewerAppBar({
     super.key,
     required this.title,
     this.subtitle,
     required this.onBackPressed,
+    this.trailing,
   });
 
   @override
@@ -71,6 +73,11 @@ class MemoryViewerAppBar extends StatelessWidget
 
                     const SizedBox(width: Gaps.sm),
 
+                    // Trailing action (optional)
+                    if (trailing != null)
+                      trailing!
+                    else
+                      const SizedBox(width: 32), // Spacer for symmetry
                   ],
                 ),
               ),
