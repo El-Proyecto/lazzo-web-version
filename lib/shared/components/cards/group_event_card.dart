@@ -323,6 +323,11 @@ class _GroupEventCardState extends State<GroupEventCard> {
   }
 
   Widget _buildBottomInfo(BuildContext context) {
+    // If user has voted, ALWAYS show RSVP info with "Tap to View Votes" (any status)
+    if (_currentEvent.userVote != null) {
+      return _buildRsvpInfo(context);
+    }
+
     // For Live/Recap events, show participants and photos count
     if (_currentEvent.status == GroupEventStatus.live ||
         _currentEvent.status == GroupEventStatus.recap) {
@@ -420,16 +425,19 @@ class _GroupEventCardState extends State<GroupEventCard> {
   }
 
   String _buildAttendeeText() {
+    final participantCount = _currentEvent.participantCount;
     final goingCount = _currentEvent.goingCount;
-    final membersText = goingCount == 1 ? 'member is going' : 'members are going';
     
-    // If user hasn't voted yet, show "Tap to vote!" message
+    // If user hasn't voted yet, show going count + "Tap to vote!"
     if (_currentEvent.userVote == null) {
+      final membersText = goingCount == 1 ? 'member is going' : 'members are going';
       return '$goingCount $membersText • Tap to vote!';
     }
 
-    // If user has voted, show "Tap to view votes"
-    return '$goingCount $membersText • Tap to view votes';
+    // If user has voted, show participant count + "Tap to View Votes"
+    // This applies to ALL event statuses (Pending, Confirmed, Live, Recap)
+    final participantsText = participantCount == 1 ? 'participant' : 'participants';
+    return '$participantCount $participantsText • Tap to View Votes!';
   }
 
   String _buildParticipantAndPhotosText() {

@@ -472,6 +472,7 @@ class _GroupHubPageState extends ConsumerState<GroupHubPage>
                 currentUserAvatar: currentUserAvatar,
                 onTap: () async {
                   print('\n🚀 [NAVIGATION] Opening event page: ${event.id}');
+                  print('   📊 Current status: ${event.status}');
                   
                   // Navigate to event detail page and refresh on return
                   await Navigator.pushNamed(
@@ -481,12 +482,14 @@ class _GroupHubPageState extends ConsumerState<GroupHubPage>
                   );
                   
                   print('⬅️ [NAVIGATION] Returned from event page');
-                  print('🔄 [NAVIGATION] Refreshing event ${event.id}...');
+                  print('🔄 [NAVIGATION] Refreshing event ${event.id} to check for status/vote changes...');
                   
                   // Refresh only this specific event instead of entire list
-                  // This maintains scroll position and improves UX
+                  // This will fetch updated status, votes, and participant counts
                   await ref.read(groupEventsProvider(widget.groupId).notifier)
                     .refreshSingleEvent(event.id);
+                  
+                  print('✅ [NAVIGATION] Event refresh complete');
                 },
                 onVoteChanged: (eventId, vote) async {
                   print('\n🗳️ [VOTE SHORTCUT] Vote changed on card');
