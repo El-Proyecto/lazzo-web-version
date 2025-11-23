@@ -7,6 +7,7 @@ import '../../themes/colors.dart';
 
 /// ShareCard component with frosted glass effect for sharing memories
 /// Displays hero photo, thumbnails, and event details on a wallpaper background
+/// Optimized for 1080x1920 (9:16) Instagram Story format
 class ShareCard extends StatelessWidget {
   final String title;
   final String? location;
@@ -14,7 +15,6 @@ class ShareCard extends StatelessWidget {
   final int peopleCount;
   final String heroPhotoUrl;
   final List<String> thumbnailUrls;
-  final bool isPreview;
 
   const ShareCard({
     super.key,
@@ -24,7 +24,6 @@ class ShareCard extends StatelessWidget {
     required this.peopleCount,
     required this.heroPhotoUrl,
     required this.thumbnailUrls,
-    this.isPreview = false,
   });
 
   @override
@@ -40,9 +39,9 @@ class ShareCard extends StatelessWidget {
           ),
         ),
         alignment: Alignment.center,
-        padding: EdgeInsets.symmetric(
-          horizontal: isPreview ? Gaps.lg : 32.0,
-          vertical: isPreview ? Gaps.xl : 48.0,
+        padding: const EdgeInsets.symmetric(
+          horizontal: 32.0,
+          vertical: 48.0,
         ),
         child: AspectRatio(
           aspectRatio: 0.7,
@@ -66,7 +65,11 @@ class ShareCard extends StatelessWidget {
                     ),
                   ],
                 ),
-                padding: const EdgeInsets.all(Gaps.md),
+                padding: const EdgeInsets.only(
+                    left: Gaps.md,
+                    right: Gaps.md,
+                    top: Gaps.md,
+                    bottom: Gaps.sm),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   mainAxisSize: MainAxisSize.min,
@@ -77,23 +80,23 @@ class ShareCard extends StatelessWidget {
                       child: AspectRatio(
                         aspectRatio: 1.1,
                         child: ClipRRect(
-                        borderRadius: BorderRadius.circular(Radii.md),
-                        child: Image.network(
-                          heroPhotoUrl,
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) {
-                            return Container(
-                              color: BrandColors.bg3,
-                              child: const Icon(
-                                Icons.image,
-                                color: BrandColors.text2,
-                                size: 48,
-                              ),
-                            );
-                          },
+                          borderRadius: BorderRadius.circular(Radii.md),
+                          child: Image.network(
+                            heroPhotoUrl,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) {
+                              return Container(
+                                color: BrandColors.bg3,
+                                child: const Icon(
+                                  Icons.image,
+                                  color: BrandColors.text2,
+                                  size: 48,
+                                ),
+                              );
+                            },
+                          ),
                         ),
                       ),
-                    ),
                     ),
 
                     const SizedBox(height: Gaps.xs),
@@ -111,12 +114,14 @@ class ShareCard extends StatelessWidget {
                                 child: AspectRatio(
                                   aspectRatio: 1,
                                   child: ClipRRect(
-                                    borderRadius: BorderRadius.circular(Radii.sm),
+                                    borderRadius:
+                                        BorderRadius.circular(Radii.sm),
                                     child: i < thumbnailUrls.length
                                         ? Image.network(
                                             thumbnailUrls[i],
                                             fit: BoxFit.cover,
-                                            errorBuilder: (context, error, stackTrace) {
+                                            errorBuilder:
+                                                (context, error, stackTrace) {
                                               return Container(
                                                 color: BrandColors.bg3,
                                                 child: const Icon(
@@ -167,7 +172,7 @@ class ShareCard extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                     ),
 
-                    const Spacer(),
+                    const SizedBox(height: Gaps.sm),
 
                     // "made with LAZZO" caption
                     Center(
