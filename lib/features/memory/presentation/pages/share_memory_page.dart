@@ -8,7 +8,9 @@ import '../../../../shared/components/cards/share_card.dart';
 import '../../../../shared/themes/colors.dart';
 import '../../../../shared/constants/spacing.dart';
 import '../widgets/share_options_section.dart';
+import '../widgets/edit_share_photos_sheet.dart';
 import '../providers/memory_providers.dart';
+import '../../domain/entities/memory_entity.dart';
 import 'share_memory_preview_page.dart';
 
 /// Share Memory page with preview card and share options
@@ -28,6 +30,56 @@ class _ShareMemoryPageState extends ConsumerState<ShareMemoryPage> {
   final GlobalKey _repaintKey = GlobalKey();
   Uint8List? _cachedImageBytes;
   bool _isGeneratingImage = false;
+  List<String>? _selectedPhotoIds;
+
+  void _openEditPhotosSheet(BuildContext context, MemoryEntity memory) {
+    // Initialize with current photo IDs if not set
+    final currentPhotoIds = _selectedPhotoIds ?? _getInitialPhotoIds(memory);
+
+    EditSharePhotosSheet.show(
+      context: context,
+      memory: memory,
+      initialSelectedPhotoIds: currentPhotoIds,
+      onSave: (photoIds) {
+        setState(() {
+          _selectedPhotoIds = photoIds;
+          _cachedImageBytes = null; // Clear cache to regenerate
+        });
+
+        // Regenerate image with new photos
+        final selectedPhotos =
+            memory.photos.where((p) => photoIds.contains(p.id)).toList();
+
+        if (selectedPhotos.isNotEmpty) {
+          final heroPhoto = selectedPhotos[0];
+          final thumbnails = selectedPhotos.length > 1
+              ? selectedPhotos
+                  .sublist(1, selectedPhotos.length.clamp(0, 4))
+                  .map((p) => p.thumbnailUrl ?? p.url)
+                  .toList()
+              : <String>[];
+
+          _generateShareImage(
+            heroPhoto.coverUrl ?? heroPhoto.url,
+            thumbnails,
+          );
+        }
+      },
+    );
+  }
+
+  List<String> _getInitialPhotoIds(MemoryEntity memory) {
+    if (_selectedPhotoIds != null) return _selectedPhotoIds!;
+
+    // Get cover photos (up to 1) + other photos (up to 3)
+    final covers = memory.coverPhotos;
+    final heroPhoto = covers.isNotEmpty ? covers.first : memory.photos.first;
+
+    final remaining =
+        memory.photos.where((p) => p.id != heroPhoto.id).take(3).toList();
+
+    return [heroPhoto.id, ...remaining.map((p) => p.id)];
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -91,7 +143,11 @@ class _ShareMemoryPageState extends ConsumerState<ShareMemoryPage> {
                   Expanded(
                     child: Center(
                       child: Padding(
-                        padding: const EdgeInsets.only(bottom: Gaps.md, left: Gaps.md, right: Gaps.md, top: Gaps.xs),
+                        padding: const EdgeInsets.only(
+                            bottom: Gaps.md,
+                            left: Gaps.md,
+                            right: Gaps.md,
+                            top: Gaps.xs),
                         child: GestureDetector(
                           onTap: () {
                             if (_cachedImageBytes != null) {
@@ -117,15 +173,41 @@ class _ShareMemoryPageState extends ConsumerState<ShareMemoryPage> {
 
                               // Always show the cached PNG image thumbnail (or loading)
                               if (_cachedImageBytes != null) {
-                                return SizedBox(
-                                  width: cardWidth,
-                                  child: AspectRatio(
-                                    aspectRatio: 9 / 16,
-                                    child: Image.memory(
-                                      _cachedImageBytes!,
-                                      fit: BoxFit.contain,
+                                return Stack(
+                                  children: [
+                                    SizedBox(
+                                      width: cardWidth,
+                                      child: AspectRatio(
+                                        aspectRatio: 9 / 16,
+                                        child: Image.memory(
+                                          _cachedImageBytes!,
+                                          fit: BoxFit.contain,
+                                        ),
+                                      ),
                                     ),
-                                  ),
+                                    // Edit button
+                                    Positioned(
+                                      top: 8,
+                                      right: 8,
+                                      child: GestureDetector(
+                                        onTap: () => _openEditPhotosSheet(
+                                            context, memory),
+                                        child: Container(
+                                          padding: const EdgeInsets.all(8),
+                                          decoration: BoxDecoration(
+                                            color: Colors.black
+                                                .withValues(alpha: 0.6),
+                                            shape: BoxShape.circle,
+                                          ),
+                                          child: const Icon(
+                                            Icons.edit,
+                                            color: Colors.white,
+                                            size: 20,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
                                 );
                               } else {
                                 return SizedBox(
