@@ -48,4 +48,5 @@ app.*.map.json
 config/*.json
 !config/dev.json            # manter dev.json no repo
 !config/*.template          # manter templates (ex.: prod.json.template)
-env.dart
+env.dartassets/wallpaper.png
+lib/features/memory/data/models/wallpaper.png

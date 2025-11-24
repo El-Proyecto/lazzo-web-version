@@ -239,7 +239,7 @@ class _GroupPhotosPageState extends ConsumerState<GroupPhotosPage> {
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
                                     const Icon(
-                                      Icons.share_outlined,
+                                      Icons.ios_share,
                                       color: BrandColors.text1,
                                       size: 20,
                                     ),

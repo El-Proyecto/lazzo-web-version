@@ -15,10 +15,10 @@ class FakeMemoryConfig {
   static int coverLandscapeCount = 1;
 
   /// Number of portrait photos in grid (non-covers)
-  static int gridPortraitCount = 4;
+  static int gridPortraitCount = 1;
 
   /// Number of landscape photos in grid (non-covers)
-  static int gridLandscapeCount = 4;
+  static int gridLandscapeCount = 1;
 
   /// Whether current user is host (can select all photos)
   static bool isHost = true;
