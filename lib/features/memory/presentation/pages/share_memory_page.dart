@@ -46,9 +46,15 @@ class _ShareMemoryPageState extends ConsumerState<ShareMemoryPage> {
           _cachedImageBytes = null; // Clear cache to regenerate
         });
 
-        // Regenerate image with new photos
-        final selectedPhotos =
-            memory.photos.where((p) => photoIds.contains(p.id)).toList();
+        // Regenerate image with new photos in the correct order
+        final selectedPhotos = <MemoryPhoto>[];
+        for (final photoId in photoIds) {
+          final photo = memory.photos.firstWhere(
+            (p) => p.id == photoId,
+            orElse: () => memory.photos.first,
+          );
+          selectedPhotos.add(photo);
+        }
 
         if (selectedPhotos.isNotEmpty) {
           final heroPhoto = selectedPhotos[0];
@@ -114,17 +120,30 @@ class _ShareMemoryPageState extends ConsumerState<ShareMemoryPage> {
             );
           }
 
-          // Get cover photos for the card
-          final covers = memory.coverPhotos;
-          final heroPhoto =
-              covers.isNotEmpty ? covers.first : memory.photos.first;
+          // Get photos based on selection or use defaults
+          final photoIds = _selectedPhotoIds ?? _getInitialPhotoIds(memory);
+
+          // Get selected photos in order
+          final selectedPhotos = <MemoryPhoto>[];
+          for (final photoId in photoIds) {
+            final photo = memory.photos.firstWhere(
+              (p) => p.id == photoId,
+              orElse: () => memory.photos.first,
+            );
+            selectedPhotos.add(photo);
+          }
+
+          final heroPhoto = selectedPhotos.isNotEmpty
+              ? selectedPhotos[0]
+              : memory.photos.first;
 
           // Get up to 3 thumbnails (excluding hero)
-          final thumbnails = memory.photos
-              .where((p) => p.id != heroPhoto.id)
-              .take(3)
-              .map((p) => p.thumbnailUrl ?? p.url)
-              .toList();
+          final thumbnails = selectedPhotos.length > 1
+              ? selectedPhotos
+                  .sublist(1, selectedPhotos.length.clamp(0, 4))
+                  .map((p) => p.thumbnailUrl ?? p.url)
+                  .toList()
+              : <String>[];
 
           final heroUrl = heroPhoto.coverUrl ?? heroPhoto.url;
 

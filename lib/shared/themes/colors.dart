@@ -20,7 +20,7 @@ class BrandColors {
   // Status colors
   static const cantVote = Color(0xFFFF3B30);
   static const warning =
-      Color(0xFFFFB800); // Yellow warning
+      Color.fromARGB(255, 236, 169, 0); // Yellow warning
 
   // Notification banner colors (semantic aliases)
   static const notificationSuccess = planning; // Green for success

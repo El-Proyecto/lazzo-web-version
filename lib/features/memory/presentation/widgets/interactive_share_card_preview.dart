@@ -1,7 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../../../../shared/constants/spacing.dart';
-import '../../../../shared/constants/text_styles.dart';
 import '../../../../shared/themes/colors.dart';
 
 /// Interactive preview of ShareCard with photo slots
@@ -161,18 +160,8 @@ class InteractiveShareCardPreview extends StatelessWidget {
           Icon(
             Icons.add_photo_alternate_outlined,
             color: Colors.white.withValues(alpha: 0.4),
-            size: isHero ? 32 : 20,
+            size: isHero ? 52 : 20,
           ),
-          if (isHero) ...[
-            const SizedBox(height: Gaps.xxs),
-            Text(
-              'Pick a photo',
-              style: AppText.bodyMedium.copyWith(
-                color: Colors.white.withValues(alpha: 0.4),
-                fontSize: 11,
-              ),
-            ),
-          ],
         ],
       ),
     );
