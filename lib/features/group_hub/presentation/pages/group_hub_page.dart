@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../shared/components/nav/common_app_bar.dart';
 import '../../../../shared/components/common/page_segmented_control.dart';
-import '../../../../shared/components/cards/group_event_card.dart';
+import '../../../../shared/components/cards/event_full_card.dart';
 import '../../../../shared/components/cards/memory_card.dart';
 import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/constants/text_styles.dart';
@@ -506,11 +506,22 @@ class _GroupHubPageState extends ConsumerState<GroupHubPage>
               final fallbackAvatar = currentUser?.userMetadata?['avatar_url'] as String?;
               currentUserAvatar ??= fallbackAvatar;
               
+              // Map GroupEventStatus to EventFullCardState
+              EventFullCardState cardState;
+              switch (event.status) {
+                case GroupEventStatus.confirmed:
+                  cardState = EventFullCardState.confirmed;
+                case GroupEventStatus.living:
+                  cardState = EventFullCardState.living;
+                case GroupEventStatus.recap:
+                  cardState = EventFullCardState.recap;
+                case GroupEventStatus.pending:
+                  cardState = EventFullCardState.pending;
+              }
               
-              return GroupEventCard(
+              return EventFullCard(
                 event: event,
-                currentUserId: currentUserId,
-                currentUserAvatar: currentUserAvatar,
+                state: cardState,
                 onTap: () async {
                   print('\n🚀 [NAVIGATION] Opening event page: ${event.id}');
                   print('   📊 Current status: ${event.status}');

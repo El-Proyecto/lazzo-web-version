@@ -1,6 +1,7 @@
 import '../../domain/entities/group_memory_entity.dart';
 import '../../domain/repositories/group_memory_repository.dart';
 import '../data_sources/group_memory_data_source.dart';
+import '../models/group_memory_model.dart';
 
 /// Supabase implementation of GroupMemoryRepository
 /// 
@@ -17,27 +18,16 @@ class GroupMemoryRepositoryImpl implements GroupMemoryRepository {
 
   @override
   Future<List<GroupMemoryEntity>> getGroupMemories(String groupId) async {
-    // P2 TODO: Implement repository method
-    // 
-    // Implementation steps:
-    // 1. Call _dataSource.getGroupMemories(groupId)
-    // 2. Convert each JSON map to GroupMemoryEntity using GroupMemoryModel.fromJson()
-    // 3. Handle errors (catch exceptions, log, return empty list)
-    // 4. Return list of entities
-    //
-    // Example implementation:
-    // try {
-    //   final jsonList = await _dataSource.getGroupMemories(groupId);
-    //   return jsonList
-    //       .map((json) => GroupMemoryModel.fromJson(json))
-    //       .toList();
-    // } catch (e, stackTrace) {
-    //   print('Error fetching group memories: $e');
-    //   print(stackTrace);
-    //   return [];
-    // }
-
-    throw UnimplementedError('P2: Implement getGroupMemories repository method');
+    try {
+      final jsonList = await _dataSource.getGroupMemories(groupId);
+      return jsonList
+          .map((json) => GroupMemoryModel.fromJson(json))
+          .toList();
+    } catch (e, stackTrace) {
+      print('❌ Error fetching group memories: $e');
+      print(stackTrace);
+      return [];
+    }
   }
 
   @override

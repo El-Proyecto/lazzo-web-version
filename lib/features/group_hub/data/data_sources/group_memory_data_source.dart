@@ -43,19 +43,52 @@ class SupabaseGroupMemoryDataSource implements GroupMemoryDataSource {
 
   @override
   Future<List<Map<String, dynamic>>> getGroupMemories(String groupId) async {
-    // P2 TODO: Implement Supabase query
-    // - Query group_memories table filtered by group_id
-    // - Order by date DESC
-    // - Handle errors and return empty list on failure
-    throw UnimplementedError('P2: Implement Supabase query for group memories');
+    try {
+      final response = await _client
+          .from('events')
+          .select('''
+            id,
+            name,
+            start_datetime,
+            location_id,
+            emoji,
+            status,
+            locations:location_id(name)
+          ''')
+          .eq('group_id', groupId)
+          .eq('status', 'completed')
+          .order('start_datetime', ascending: false)
+          .limit(50);
+
+      return List<Map<String, dynamic>>.from(response);
+    } catch (e) {
+      print('❌ Error fetching group memories: $e');
+      return [];
+    }
   }
 
   @override
   Future<Map<String, dynamic>?> getMemoryById(String memoryId) async {
-    // P2 TODO: Implement single memory query
-    // - Get memory by ID
-    // - Include photo count and cover photo
-    // - Return null if not found
-    throw UnimplementedError('P2: Implement Supabase query for memory by ID');
+    try {
+      final response = await _client
+          .from('events')
+          .select('''
+            id,
+            name,
+            start_datetime,
+            location_id,
+            emoji,
+            status,
+            locations:location_id(name)
+          ''')
+          .eq('id', memoryId)
+          .eq('status', 'completed')
+          .single();
+
+      return response;
+    } catch (e) {
+      print('❌ Error fetching memory by ID: $e');
+      return null;
+    }
   }
 }

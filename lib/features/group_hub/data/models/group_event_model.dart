@@ -81,7 +81,7 @@ class GroupEventModel {
       goingCount: goingCount,
       participantCount: calculatedParticipantCount,
       photoCount: json['photo_count'] ?? 0,
-      maxPhotos: json['max_photos'],
+      maxPhotos: json['max_photos'] ?? 0,
       attendeeAvatars: attendeeAvatars,
       attendeeNames: attendeeNames,
       userVote: userVote,

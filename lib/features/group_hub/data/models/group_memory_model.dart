@@ -21,24 +21,21 @@ class GroupMemoryModel {
   /// }
   /// ```
   static GroupMemoryEntity fromJson(Map<String, dynamic> json) {
-    // P2 TODO: Implement JSON parsing
-    // 
-    // Implementation steps:
-    // 1. Parse required fields (id, title, date, photo_count)
-    // 2. Parse optional fields with null checks (location, cover_photo_url)
-    // 3. Convert date string to DateTime using DateTime.parse()
-    // 4. Return GroupMemoryEntity with all parsed data
-    //
-    // Example parsing:
-    // return GroupMemoryEntity(
-    //   id: json['id'] as String,
-    //   title: json['title'] as String,
-    //   date: DateTime.parse(json['date']),
-    //   location: json['location'] as String?,
-    //   coverPhotoUrl: json['cover_photo_url'] as String?,
-    //   photoCount: json['photo_count'] as int,
-    // );
+    // Parse location from nested object
+    final locationData = json['locations'];
+    final locationName = locationData != null ? locationData['name'] as String? : null;
 
-    throw UnimplementedError('P2: Implement JSON to GroupMemoryEntity conversion');
+    // Parse date
+    final dateStr = json['start_datetime'] as String?;
+    final date = dateStr != null ? DateTime.parse(dateStr) : DateTime.now();
+
+    return GroupMemoryEntity(
+      id: json['id'] as String,
+      title: json['name'] as String? ?? 'Untitled Memory',
+      date: date,
+      location: locationName,
+      coverImageUrl: '', // TODO: Get from photos when implemented
+      photoCount: 0, // TODO: Count from group_photos when implemented
+    );
   }
 }
