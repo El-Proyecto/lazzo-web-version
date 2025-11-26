@@ -3,12 +3,15 @@ import '../../domain/entities/event_participant_entity.dart';
 import '../../domain/usecases/get_event_participants.dart';
 import 'event_providers.dart';
 
-final getEventParticipantsUseCaseProvider = Provider<GetEventParticipants>((ref) {
+final getEventParticipantsUseCaseProvider =
+    Provider<GetEventParticipants>((ref) {
   return GetEventParticipants(ref.watch(eventRepositoryProvider));
 });
 
 final eventParticipantsProvider = StateNotifierProvider.family<
-    EventParticipantsController, AsyncValue<List<EventParticipantEntity>>, String>((
+    EventParticipantsController,
+    AsyncValue<List<EventParticipantEntity>>,
+    String>((
   ref,
   eventId,
 ) {
@@ -34,6 +37,7 @@ class EventParticipantsController
       final participants = await _getEventParticipants(_eventId);
       state = AsyncValue.data(participants);
     } catch (error, stackTrace) {
+      print('❌ Error loading participants: $error');
       state = AsyncValue.error(error, stackTrace);
     }
   }

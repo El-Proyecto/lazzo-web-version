@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../features/home/domain/entities/home_event.dart';
+import '../../../features/event/presentation/providers/event_participants_provider.dart';
 import '../../constants/spacing.dart';
 import '../../constants/text_styles.dart';
 import '../../themes/colors.dart';
@@ -17,7 +19,7 @@ enum HomeEventCardState { pending, confirmed, living, recap }
 /// Large event card for Home page "Next Event" section
 /// Shows event details with state-specific border/chip colors
 /// Includes Chat and Expense action buttons at bottom
-class HomeEventCard extends StatefulWidget {
+class HomeEventCard extends ConsumerStatefulWidget {
   final HomeEventEntity event;
   final HomeEventCardState state;
   final VoidCallback? onTap;
@@ -36,10 +38,10 @@ class HomeEventCard extends StatefulWidget {
   });
 
   @override
-  State<HomeEventCard> createState() => _HomeEventCardState();
+  ConsumerState<HomeEventCard> createState() => _HomeEventCardState();
 }
 
-class _HomeEventCardState extends State<HomeEventCard> {
+class _HomeEventCardState extends ConsumerState<HomeEventCard> {
   late HomeEventEntity _currentEvent;
 
   @override
@@ -520,21 +522,130 @@ class _HomeEventCardState extends State<HomeEventCard> {
         // Expense button
         Expanded(
           child: GestureDetector(
-            onTap: () {
-              // Open add expense bottom sheet
-              AddExpenseBottomSheet.show(
-                context: context,
-                participants: const [], // TODO P2: Load real participants
-                onAddExpense: (title, paidByIds, payerIds, totalAmount) {
-                  // TODO P2: Save expense to backend
-                  debugPrint(
-                    'Expense added: $title, \$${totalAmount.toStringAsFixed(2)}',
+            onTap: () async {
+              try {
+                final currentState =
+                    ref.read(eventParticipantsProvider(_currentEvent.id));
+
+                // If loading, wait for it to complete
+                if (currentState is AsyncLoading) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Loading participants...'),
+                      duration: Duration(seconds: 1),
+                    ),
                   );
-                  Navigator.of(context).pop();
-                },
-              );
-              // Also call the callback if provided
-              widget.onExpensePressed?.call();
+
+                  // Wait a bit and try again
+                  await Future.delayed(const Duration(milliseconds: 1500));
+
+                  final newState =
+                      ref.read(eventParticipantsProvider(_currentEvent.id));
+
+                  if (newState is AsyncData) {
+                    final participants = newState.value ?? [];
+
+                    if (participants.isEmpty) {
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                              content:
+                                  Text('No participants found for this event')),
+                        );
+                      }
+                      return;
+                    }
+
+                    // Convert and show
+                    final participantOptions = participants
+                        .map((p) => ExpenseParticipantOption(
+                              id: p.userId,
+                              name: p.displayName,
+                              avatarUrl: p.avatarUrl,
+                            ))
+                        .toList();
+
+                    if (mounted) {
+                      AddExpenseBottomSheet.show(
+                        context: context,
+                        participants: participantOptions,
+                        onAddExpense:
+                            (title, paidById, participantsOwe, totalAmount) {
+                          // TODO: Implement actual expense creation
+                          widget.onExpensePressed?.call();
+                        },
+                      );
+                    }
+                  } else if (newState is AsyncError) {
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                            content: Text(
+                                'Error loading participants: ${newState.error}')),
+                      );
+                    }
+                  } else {
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                            content: Text('Still loading, please try again')),
+                      );
+                    }
+                  }
+                  return;
+                }
+
+                // If already loaded, use data directly
+                if (currentState is AsyncData) {
+                  final participants = currentState.value ?? [];
+
+                  if (participants.isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                          content:
+                              Text('No participants found for this event')),
+                    );
+                    return;
+                  }
+
+                  // Convert to ExpenseParticipantOption
+                  final participantOptions = participants
+                      .map((p) => ExpenseParticipantOption(
+                            id: p.userId,
+                            name: p.displayName,
+                            avatarUrl: p.avatarUrl,
+                          ))
+                      .toList();
+
+                  // Show the bottom sheet
+                  AddExpenseBottomSheet.show(
+                    context: context,
+                    participants: participantOptions,
+                    onAddExpense:
+                        (title, paidById, participantsOwe, totalAmount) {
+                      // TODO: Implement actual expense creation
+                      widget.onExpensePressed?.call();
+                    },
+                  );
+                  return;
+                }
+
+                // If error state
+                if (currentState is AsyncError) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Error: ${currentState.error}')),
+                  );
+                  return;
+                }
+              } catch (e, stack) {
+                debugPrint(
+                    '❌ [HomeEventCard] Error opening expense sheet: $e\n$stack');
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Error: $e')),
+                  );
+                }
+              }
             },
             child: Container(
               height: 44,

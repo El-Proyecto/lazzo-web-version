@@ -1244,19 +1244,23 @@ class _EventPageState extends ConsumerState<EventPage> {
               // Expenses widget
               participantsAsync.when(
                 data: (participants) {
-                  final participantOptions = participants
-                      .map((p) => ExpenseParticipantOption(
-                            id: p.userId,
-                            name: p.displayName,
-                            avatarUrl: p.avatarUrl,
-                          ))
-                      .toList();
+                  print(
+                      '💰 [EventPage] Rendering expenses widget with ${participants.length} participants');
+                  final participantOptions = participants.map((p) {
+                    print('   Converting: ${p.displayName} (${p.userId})');
+                    return ExpenseParticipantOption(
+                      id: p.userId,
+                      name: p.displayName,
+                      avatarUrl: p.avatarUrl,
+                    );
+                  }).toList();
 
                   return EventExpensesWidget(
                     eventId: eventId,
                     mode: ChatMode.planning,
                     participants: participantOptions, // ✅ Participantes reais
                     onAddExpense: (title, paidById, participantsOwe, amount) {
+                      print('💸 [EventPage] Adding expense: $title, €$amount');
                       ref
                           .read(eventExpensesProvider(eventId).notifier)
                           .addExpense(
@@ -1269,8 +1273,16 @@ class _EventPageState extends ConsumerState<EventPage> {
                     },
                   );
                 },
-                loading: () => const SizedBox.shrink(),
-                error: (error, stack) => const SizedBox.shrink(),
+                loading: () {
+                  print(
+                      '⏳ [EventPage] Expenses widget loading participants...');
+                  return const SizedBox.shrink();
+                },
+                error: (error, stack) {
+                  print(
+                      '❌ [EventPage] Error loading participants for expenses: $error');
+                  return const SizedBox.shrink();
+                },
               ),
 
               // Location Widget (if location is set)

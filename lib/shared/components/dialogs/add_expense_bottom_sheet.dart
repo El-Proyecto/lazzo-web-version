@@ -84,11 +84,12 @@ class _AddExpenseBottomSheetState extends State<AddExpenseBottomSheet> {
   @override
   void initState() {
     super.initState();
-    // ✅ Default: primeiro participante como host
-    _selectedPaidBy = widget.participants.isNotEmpty 
-        ? widget.participants.first.id 
-        : null;
+    // Default: primeiro participante como host
+    _selectedPaidBy =
+        widget.participants.isNotEmpty ? widget.participants.first.id : null;
     _selectedParticipants = []; // Vazio inicialmente
+
+    print('💳 [AddExpenseBottomSheet] Default paidBy: $_selectedPaidBy');
   }
 
   @override
@@ -262,7 +263,8 @@ class _AddExpenseBottomSheetState extends State<AddExpenseBottomSheet> {
                         if (_showErrors) _validateFields();
                       },
                     ), // Amount per person (inline display)
-                    if (_totalAmount > 0 && _selectedParticipants.isNotEmpty) ...[
+                    if (_totalAmount > 0 &&
+                        _selectedParticipants.isNotEmpty) ...[
                       const SizedBox(height: Gaps.xs),
                       Padding(
                         padding:
@@ -719,7 +721,8 @@ class _AddExpenseBottomSheetState extends State<AddExpenseBottomSheet> {
           // Select All option
           _buildParticipantOption(
             name: 'Select All',
-            isSelected: _selectedParticipants.length == widget.participants.length,
+            isSelected:
+                _selectedParticipants.length == widget.participants.length,
             onTap: _toggleAllParticipants,
             isSelectAll: true,
             isFirst: true,
@@ -835,14 +838,20 @@ class _AddExpenseBottomSheetState extends State<AddExpenseBottomSheet> {
               ),
               if (isRadio)
                 Icon(
-                  isSelected ? Icons.radio_button_checked : Icons.radio_button_unchecked,
-                  color: isSelected ? BrandColors.planning : BrandColors.text2.withValues(alpha: 0.3),
+                  isSelected
+                      ? Icons.radio_button_checked
+                      : Icons.radio_button_unchecked,
+                  color: isSelected
+                      ? BrandColors.planning
+                      : BrandColors.text2.withValues(alpha: 0.3),
                   size: IconSizes.smAlt,
                 )
               else
                 Icon(
                   isSelected ? Icons.check_circle : Icons.circle_outlined,
-                  color: isSelected ? BrandColors.planning : BrandColors.text2.withValues(alpha: 0.3),
+                  color: isSelected
+                      ? BrandColors.planning
+                      : BrandColors.text2.withValues(alpha: 0.3),
                   size: IconSizes.smAlt,
                 ),
             ],

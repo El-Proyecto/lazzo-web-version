@@ -392,10 +392,19 @@ class _HomePageState extends ConsumerState<HomePage> {
                             }
                           },
                           onChatPressed: () {
-                            // TODO: Navigate to event chat
+                            debugPrint(
+                                '🟢 [HomePage] Chat pressed for event: ${event.id}');
+                            // Navigate to event chat
+                            Navigator.pushNamed(
+                              context,
+                              AppRouter.eventChat,
+                              arguments: {'eventId': event.id},
+                            );
                           },
                           onExpensePressed: () {
-                            // TODO: Open add expense bottom sheet
+                            debugPrint(
+                                '🟡 [HomePage] Expense pressed for event: ${event.id}');
+                            // TODO P2: Implement expense creation
                           },
                           onVoteChanged: (eventId, vote) {
                             // TODO: Update vote in backend
