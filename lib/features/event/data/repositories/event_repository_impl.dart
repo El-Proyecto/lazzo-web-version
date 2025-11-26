@@ -1,71 +1,22 @@
 import '../../domain/entities/event_detail.dart';
-import '../../domain/entities/event_participant_entity.dart';
 import '../../domain/repositories/event_repository.dart';
 import '../data_sources/event_remote_data_source.dart';
 
+/// Implementation of EventRepository using Supabase
 class EventRepositoryImpl implements EventRepository {
-  final EventRemoteDataSource _dataSource;
+  final EventRemoteDataSource _remoteDataSource;
 
-  EventRepositoryImpl(this._dataSource);
+  EventRepositoryImpl(this._remoteDataSource);
 
-  // ✅ IMPLEMENTADO: Buscar participantes do evento
-  @override
-  Future<List<EventParticipantEntity>> getEventParticipants(String eventId) async {
-    try {
-      final data = await _dataSource.getEventParticipants(eventId);
-      
-      return data.map((json) {
-        final userData = json['users'] as Map<String, dynamic>?;
-        
-        return EventParticipantEntity(
-          userId: json['user_id'] as String,
-          displayName: userData?['display_name'] as String? ?? 'Unknown',
-          avatarUrl: userData?['avatar_url'] as String?,
-          status: json['status'] as String,
-        );
-      }).toList();
-    } catch (e) {
-      throw Exception('Failed to get event participants: $e');
-    }
-  }
-
-  // ⚠️ STUB TEMPORÁRIO: Outros métodos (aguardando implementação do colega)
   @override
   Future<EventDetail> getEventDetail(String eventId) async {
-    try {
-      print('⚠️ [STUB] getEventDetail called - delegating to data source');
-      await _dataSource.getEventDetail(eventId);
-      // Se chegar aqui, o colega implementou - mas por agora vai falhar
-      throw UnimplementedError('getEventDetail not implemented yet');
-    } catch (e) {
-      // Retorna default value para não crashar
-      print('⚠️ [STUB] getEventDetail failed: $e - returning default event');
-      return EventDetail(
-        id: eventId,
-        name: 'Event (Loading...)',
-        emoji: '📅',
-        groupId: 'unknown',
-        startDateTime: null,
-        endDateTime: null,
-        location: null,
-        status: EventStatus.pending,
-        createdAt: DateTime.now(),
-        hostId: 'unknown',
-        goingCount: 0,
-        notGoingCount: 0,
-      );
-    }
+    final model = await _remoteDataSource.getEventDetail(eventId);
+    return model.toEntity();
   }
 
   @override
   Future<bool> isUserHost(String eventId, String userId) async {
-    try {
-      print('⚠️ [STUB] isUserHost called');
-      return await _dataSource.isUserHost(eventId, userId);
-    } catch (e) {
-      print('⚠️ [STUB] isUserHost failed: $e - returning false');
-      return false;
-    }
+    return await _remoteDataSource.isUserHost(eventId, userId);
   }
 
   @override
@@ -74,14 +25,12 @@ class EventRepositoryImpl implements EventRepository {
     DateTime startDateTime,
     DateTime? endDateTime,
   ) async {
-    try {
-      print('⚠️ [STUB] updateEventDateTime called');
-      await _dataSource.updateEventDateTime(eventId, startDateTime, endDateTime);
-      throw UnimplementedError('updateEventDateTime not implemented yet');
-    } catch (e) {
-      print('⚠️ [STUB] updateEventDateTime failed: $e');
-      rethrow;
-    }
+    final model = await _remoteDataSource.updateEventDateTime(
+      eventId,
+      startDateTime,
+      endDateTime,
+    );
+    return model.toEntity();
   }
 
   @override
@@ -92,20 +41,14 @@ class EventRepositoryImpl implements EventRepository {
     double latitude,
     double longitude,
   ) async {
-    try {
-      print('⚠️ [STUB] updateEventLocation called');
-      await _dataSource.updateEventLocation(
-        eventId,
-        locationName,
-        address,
-        latitude,
-        longitude,
-      );
-      throw UnimplementedError('updateEventLocation not implemented yet');
-    } catch (e) {
-      print('⚠️ [STUB] updateEventLocation failed: $e');
-      rethrow;
-    }
+    final model = await _remoteDataSource.updateEventLocation(
+      eventId,
+      locationName,
+      address,
+      latitude,
+      longitude,
+    );
+    return model.toEntity();
   }
 
   @override
@@ -113,14 +56,24 @@ class EventRepositoryImpl implements EventRepository {
     String eventId,
     EventStatus status,
   ) async {
-    try {
-      print('⚠️ [STUB] updateEventStatus called');
-      final statusString = status.toString().split('.').last;
-      await _dataSource.updateEventStatus(eventId, statusString);
-      throw UnimplementedError('updateEventStatus not implemented yet');
-    } catch (e) {
-      print('⚠️ [STUB] updateEventStatus failed: $e');
-      rethrow;
+    // Convert enum to string
+    String statusString;
+    switch (status) {
+      case EventStatus.pending:
+        statusString = 'pending';
+        break;
+      case EventStatus.confirmed:
+        statusString = 'confirmed';
+        break;
+      case EventStatus.ended:
+        statusString = 'ended';
+        break;
     }
+
+    final model = await _remoteDataSource.updateEventStatus(
+      eventId,
+      statusString,
+    );
+    return model.toEntity();
   }
 }

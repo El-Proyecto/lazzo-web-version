@@ -278,7 +278,8 @@ class SupabaseGroupsDataSource implements GroupsDataSource {
               is_pinned,
               group_state,
               user_id
-            )
+            ),
+            group_members!inner(count)
           ''')
           .filter('id', 'in', '(${groupIds.join(',')})')
           .order('created_at', ascending: false);
@@ -305,11 +306,19 @@ class SupabaseGroupsDataSource implements GroupsDataSource {
           'group_state': 'active'
         };
 
+        // Extrai member count da resposta agregada
+        final membersList = group['group_members'] as List?;
+        final memberCount = membersList?.isNotEmpty == true 
+            ? (membersList!.first['count'] as int? ?? 0)
+            : 0;
+
         // Remove a configuração aninhada e adiciona os campos na raiz
         group.remove('group_user_settings');
+        group.remove('group_members');
         group['is_muted'] = currentUserSettings['is_muted'] ?? false;
         group['is_pinned'] = currentUserSettings['is_pinned'] ?? false;
         group['group_state'] = currentUserSettings['group_state'] ?? 'active';
+        group['member_count'] = memberCount;
 
         return group;
       }).where((group) => group['group_state'] != 'archived').toList(); // Filtra arquivados
@@ -380,7 +389,8 @@ class SupabaseGroupsDataSource implements GroupsDataSource {
               is_pinned,
               group_state,
               user_id
-            )
+            ),
+            group_members!inner(count)
           ''')
           .filter('id', 'in', '(${archivedGroupIds.join(',')})')
           .order('created_at', ascending: false);
@@ -407,11 +417,19 @@ class SupabaseGroupsDataSource implements GroupsDataSource {
           'group_state': 'archived'
         };
 
+        // Extrai member count da resposta agregada
+        final membersList = group['group_members'] as List?;
+        final memberCount = membersList?.isNotEmpty == true 
+            ? (membersList!.first['count'] as int? ?? 0)
+            : 0;
+
         // Remove a configuração aninhada e adiciona os campos na raiz
         group.remove('group_user_settings');
+        group.remove('group_members');
         group['is_muted'] = currentUserSettings['is_muted'] ?? false;
         group['is_pinned'] = currentUserSettings['is_pinned'] ?? false;
         group['group_state'] = currentUserSettings['group_state'] ?? 'archived';
+        group['member_count'] = memberCount;
 
         return group;
       }).toList();

@@ -23,6 +23,7 @@ abstract class SuggestionRepository {
   Future<SuggestionVote> voteOnSuggestion({
     required String suggestionId,
     required String userId,
+    required String eventId,
   });
 
   /// Remove vote from a suggestion

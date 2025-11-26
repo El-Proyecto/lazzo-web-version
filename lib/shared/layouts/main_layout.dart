@@ -6,6 +6,8 @@ import '../../features/inbox/presentation/pages/inbox_page.dart';
 import '../../features/profile/presentation/pages/profile_page.dart';
 import '../../features/home/presentation/pages/home.dart';
 import '../../features/home/presentation/providers/banner_provider.dart';
+import '../../features/home/presentation/providers/home_event_providers.dart';
+import '../../features/home/domain/entities/home_event.dart';
 import '../../routes/app_router.dart';
 import 'main_layout_providers.dart';
 
@@ -48,8 +50,24 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
 
   void _onNavTap(int index) {
     if (index == 2) {
-      // Center button - navigate to Create Event page
-      Navigator.pushNamed(context, AppRouter.createEvent);
+      // Center button - action depends on NavBar state
+      final nextEventStatus = ref.read(navBarStateProvider);
+
+      if (nextEventStatus == HomeEventStatus.living ||
+          nextEventStatus == HomeEventStatus.recap) {
+        // Navigate to Manage Memory page
+        // TODO: Get actual memory ID from current event
+        Navigator.pushNamed(
+          context,
+          AppRouter.manageMemory,
+          arguments: {
+            'memoryId': 'memory-1',
+          },
+        );
+      } else {
+        // Planning state: navigate to Create Event page
+        Navigator.pushNamed(context, AppRouter.createEvent);
+      }
       return;
     }
 
@@ -112,10 +130,25 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
         navBarIndex = 0;
     }
 
+    // Get NavBar state from next event status
+    final nextEventStatus = ref.watch(navBarStateProvider);
+
+    // Map event status to NavBar state
+    // Pending events also show Planning (green button with +)
+    nav.NavBarState navBarState;
+    if (nextEventStatus == HomeEventStatus.living) {
+      navBarState = nav.NavBarState.living;
+    } else if (nextEventStatus == HomeEventStatus.recap) {
+      navBarState = nav.NavBarState.recap;
+    } else {
+      // Default to planning for pending/confirmed/null
+      navBarState = nav.NavBarState.planning;
+    }
+
     return Scaffold(
       body: _pages[_currentIndex],
       bottomNavigationBar: nav.NavigationBar(
-        state: nav.NavBarState.normal,
+        state: navBarState,
         currentIndex: navBarIndex,
         onTap: _onNavTap,
       ),

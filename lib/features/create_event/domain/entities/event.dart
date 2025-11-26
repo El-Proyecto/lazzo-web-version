@@ -23,14 +23,17 @@ class Event {
     required this.createdAt,
   });
 
+  /// Copy event with updated fields
+  /// CRITICAL: Uses explicit ValueWrapper to allow clearing nullable fields
+  /// This is essential for "Decide Later" functionality (clearing dates/location)
   Event copyWith({
     String? id,
     String? name,
     String? emoji,
     String? groupId,
-    DateTime? startDateTime,
-    DateTime? endDateTime,
-    EventLocation? location,
+    ValueWrapper<DateTime?>? startDateTime,
+    ValueWrapper<DateTime?>? endDateTime,
+    ValueWrapper<EventLocation?>? location,
     EventStatus? status,
     DateTime? createdAt,
   }) {
@@ -39,13 +42,20 @@ class Event {
       name: name ?? this.name,
       emoji: emoji ?? this.emoji,
       groupId: groupId ?? this.groupId,
-      startDateTime: startDateTime ?? this.startDateTime,
-      endDateTime: endDateTime ?? this.endDateTime,
-      location: location ?? this.location,
+      startDateTime: startDateTime != null ? startDateTime.value : this.startDateTime,
+      endDateTime: endDateTime != null ? endDateTime.value : this.endDateTime,
+      location: location != null ? location.value : this.location,
       status: status ?? this.status,
       createdAt: createdAt ?? this.createdAt,
     );
   }
+}
+
+/// Wrapper to distinguish between "not provided" and "explicitly null"
+/// Required for copyWith to allow clearing nullable fields
+class ValueWrapper<T> {
+  final T value;
+  const ValueWrapper(this.value);
 }
 
 /// Event location domain entity

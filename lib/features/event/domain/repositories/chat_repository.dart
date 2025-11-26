@@ -3,8 +3,8 @@ import '../entities/chat_message.dart';
 /// Chat repository interface
 /// Defines the contract for chat data operations
 abstract class ChatRepository {
-  /// Get recent messages for an event
-  Future<List<ChatMessage>> getRecentMessages(String eventId, {int limit = 2});
+  /// Stream of messages for an event (real-time updates)
+  Stream<List<ChatMessage>> watchMessages(String eventId);
 
   /// Send a message
   Future<ChatMessage> sendMessage(
@@ -14,12 +14,9 @@ abstract class ChatRepository {
     ChatMessage? replyTo,
   });
 
-  /// Get all messages for an event
-  Future<List<ChatMessage>> getAllMessages(String eventId);
-
   /// Pin or unpin a message
-  Future<ChatMessage> pinMessage(String messageId, bool isPinned);
+  Future<ChatMessage> pinMessage(String eventId, String messageId, bool isPinned);
 
   /// Delete a message (marks as deleted, doesn't remove)
-  Future<ChatMessage> deleteMessage(String messageId);
+  Future<ChatMessage> deleteMessage(String eventId, String messageId);
 }

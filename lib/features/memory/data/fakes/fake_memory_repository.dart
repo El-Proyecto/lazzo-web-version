@@ -2,20 +2,36 @@
 import '../../domain/entities/memory_entity.dart';
 import '../../domain/repositories/memory_repository.dart';
 
+/// Event status for memory page testing
+enum FakeEventStatus { living, recap, ended }
+
 /// Global test configuration for cover mosaic scenarios
 /// Modify these values to test different layouts
 class FakeMemoryConfig {
   /// Number of portrait photos in covers (0-3)
-  static int coverPortraitCount = 1;
+  static int coverPortraitCount = 2;
 
   /// Number of landscape photos in covers (0-3)
   static int coverLandscapeCount = 1;
 
   /// Number of portrait photos in grid (non-covers)
-  static int gridPortraitCount = 2;
+  static int gridPortraitCount = 4;
 
   /// Number of landscape photos in grid (non-covers)
   static int gridLandscapeCount = 4;
+
+  /// Whether current user is host (can select all photos)
+  static bool isHost = false;
+
+  /// Current event status (living, recap, or ended)
+  /// - living: event is happening now
+  /// - recap: event ended, in recap phase
+  /// - ended: event fully ended, memory is read-only
+  static FakeEventStatus eventStatus = FakeEventStatus.living;
+
+  /// Whether current user has uploaded photos
+  /// Used to determine if edit button should show in living/recap
+  static bool userHasUploadedPhotos = false;
 
   /// Max covers is 3
   static int get totalCovers => coverPortraitCount + coverLandscapeCount;
@@ -38,6 +54,20 @@ class FakeMemoryRepository implements MemoryRepository {
   Future<String> shareMemory(String memoryId) async {
     await Future.delayed(const Duration(milliseconds: 300));
     return 'https://lazzo.app/memory/$memoryId';
+  }
+
+  @override
+  Future<bool> updateCover(String memoryId, String? photoId) async {
+    await Future.delayed(const Duration(milliseconds: 300));
+    // Fake implementation: always succeeds
+    return true;
+  }
+
+  @override
+  Future<bool> removePhoto(String memoryId, String photoId) async {
+    await Future.delayed(const Duration(milliseconds: 300));
+    // Fake implementation: always succeeds
+    return true;
   }
 }
 
@@ -110,7 +140,9 @@ MemoryEntity _buildDynamicMemory() {
   }
 
   // Add grid photos (votos baixos para não interferir)
+  // First 2 portrait photos belong to current user
   for (var i = 0; i < FakeMemoryConfig.gridPortraitCount; i++) {
+    final isCurrentUser = i < 2; // First 2 are from current user
     photos.add(MemoryPhoto(
       id: 'grid_p_$photoIndex',
       url: 'https://picsum.photos/seed/grid_p_$photoIndex/800/1000',
@@ -121,15 +153,17 @@ MemoryEntity _buildDynamicMemory() {
       voteCount: 20 - i * 2,
       capturedAt: timestamp,
       aspectRatio: 0.8,
-      uploaderId: 'user-grid_p_$photoIndex',
-      uploaderName: 'User grid_p_$photoIndex',
+      uploaderId: isCurrentUser ? 'user-1' : 'user-grid_p_$photoIndex',
+      uploaderName: isCurrentUser ? 'Current User' : 'User grid_p_$photoIndex',
       isCover: false,
     ));
     timestamp = timestamp.add(const Duration(hours: 1));
     photoIndex++;
   }
 
+  // First 2 landscape photos belong to current user
   for (var i = 0; i < FakeMemoryConfig.gridLandscapeCount; i++) {
+    final isCurrentUser = i < 2; // First 2 are from current user
     photos.add(MemoryPhoto(
       id: 'grid_l_$photoIndex',
       url: 'https://picsum.photos/seed/grid_l_$photoIndex/1600/900',
@@ -140,8 +174,8 @@ MemoryEntity _buildDynamicMemory() {
       voteCount: 18 - i * 2,
       capturedAt: timestamp,
       aspectRatio: 16 / 9,
-      uploaderId: 'user-grid_l_$photoIndex',
-      uploaderName: 'User grid_l_$photoIndex',
+      uploaderId: isCurrentUser ? 'user-1' : 'user-grid_l_$photoIndex',
+      uploaderName: isCurrentUser ? 'Current User' : 'User grid_l_$photoIndex',
       isCover: false,
     ));
     timestamp = timestamp.add(const Duration(hours: 1));

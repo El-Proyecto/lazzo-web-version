@@ -4,6 +4,7 @@ import '../../constants/spacing.dart';
 import '../../constants/text_styles.dart';
 import '../../themes/colors.dart';
 import '../widgets/votes_bottom_sheet.dart';
+import '../widgets/photos_bottom_sheet.dart';
 import '../widgets/rsvp_widget.dart';
 import '../dialogs/add_expense_bottom_sheet.dart';
 
@@ -45,6 +46,17 @@ class _HomeEventCardState extends State<HomeEventCard> {
   void initState() {
     super.initState();
     _currentEvent = widget.event;
+  }
+
+  @override
+  void didUpdateWidget(HomeEventCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Update local state when event changes from parent
+    if (oldWidget.event.id != widget.event.id ||
+        oldWidget.event.name != widget.event.name ||
+        oldWidget.event.date != widget.event.date) {
+      _currentEvent = widget.event;
+    }
   }
 
   void _updateVote(bool? vote) {
@@ -190,13 +202,11 @@ class _HomeEventCardState extends State<HomeEventCard> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        // Date
+        // Date or Time Left
         Text(
-          _currentEvent.date != null
-              ? _formatEventDate(_currentEvent.date!)
-              : 'To be decided',
+          _getDateOrTimeLeftText(),
           style: AppText.bodyMedium.copyWith(
-            color: BrandColors.text2,
+            color: BrandColors.text1,
             fontWeight: FontWeight.w500,
           ),
         ),
@@ -267,8 +277,15 @@ class _HomeEventCardState extends State<HomeEventCard> {
   }
 
   Widget _buildAttendeeInfo(BuildContext context) {
+    // For Living and Recap states, show photos bottom sheet
+    // For other states, show votes bottom sheet
+    final isPhotoState = widget.state == HomeEventCardState.living ||
+        widget.state == HomeEventCardState.recap;
+
     return InkWell(
-      onTap: () => _showVotesBottomSheet(context),
+      onTap: () => isPhotoState
+          ? _showPhotosBottomSheet(context)
+          : _showVotesBottomSheet(context),
       borderRadius: BorderRadius.circular(Radii.sm),
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: Gaps.xxs),
@@ -278,7 +295,7 @@ class _HomeEventCardState extends State<HomeEventCard> {
             _buildAttendeeAvatars(),
             const SizedBox(width: Gaps.xs),
 
-            // Going count text with names
+            // Going count text with names OR photo count
             Expanded(
               child: Text(
                 _buildAttendeeText(),
@@ -311,7 +328,31 @@ class _HomeEventCardState extends State<HomeEventCard> {
     );
   }
 
+  void _showPhotosBottomSheet(BuildContext context) {
+    PhotosBottomSheet.show(
+      context: context,
+      participants: _currentEvent.participantPhotos,
+      totalPhotos: _currentEvent.photoCount,
+      maxPhotos: _currentEvent.maxPhotos,
+    );
+  }
+
   String _buildAttendeeText() {
+    // For Living and Recap states, show photo count instead of names
+    if (widget.state == HomeEventCardState.living ||
+        widget.state == HomeEventCardState.recap) {
+      final participantText =
+          _currentEvent.goingCount == 1 ? 'participant' : 'participants';
+
+      // Show "No photos yet" if no photos added
+      final photoInfo = _currentEvent.photoCount == 0
+          ? 'No photos yet'
+          : '${_currentEvent.photoCount}/${_currentEvent.maxPhotos} ${_currentEvent.photoCount == 1 ? 'photo' : 'photos'}';
+
+      return '${_currentEvent.goingCount} $participantText • $photoInfo';
+    }
+
+    // For other states (Pending/Confirmed), show names as before
     // If user hasn't voted yet, show "Tap to vote!" message
     if (_currentEvent.userVote == null) {
       return '${_currentEvent.goingCount} going • Tap to vote!';
@@ -528,6 +569,53 @@ class _HomeEventCardState extends State<HomeEventCard> {
     );
   }
 
+  String _getDateOrTimeLeftText() {
+    // Show time left for Living and Recap states
+    if (widget.state == HomeEventCardState.living) {
+      // Living: time until end date
+      if (_currentEvent.endDate != null) {
+        return _formatTimeLeft(_currentEvent.endDate!);
+      }
+      return 'Happening now';
+    } else if (widget.state == HomeEventCardState.recap) {
+      // Recap: 24h countdown from end date for photo uploads
+      if (_currentEvent.endDate != null) {
+        final recapDeadline =
+            _currentEvent.endDate!.add(const Duration(hours: 24));
+        return _formatTimeLeft(recapDeadline);
+      }
+      return 'Upload photos';
+    }
+
+    // For Pending and Confirmed, show normal date
+    return _currentEvent.date != null
+        ? _formatEventDate(_currentEvent.date!)
+        : 'To be decided';
+  }
+
+  String _formatTimeLeft(DateTime targetDate) {
+    final now = DateTime.now();
+    final difference = targetDate.difference(now);
+
+    if (difference.isNegative) {
+      return 'Ended';
+    }
+
+    final hours = difference.inHours;
+    final minutes = difference.inMinutes.remainder(60);
+
+    if (hours > 24) {
+      final days = difference.inDays;
+      return '$days day${days != 1 ? 's' : ''} left';
+    } else if (hours > 0) {
+      return '${hours}h ${minutes}m left';
+    } else if (minutes > 0) {
+      return '${minutes}m left';
+    } else {
+      return 'Less than 1m left';
+    }
+  }
+
   String _formatEventDate(DateTime date) {
     final months = [
       'Jan',
@@ -546,15 +634,20 @@ class _HomeEventCardState extends State<HomeEventCard> {
 
     final weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
-    // For demo purposes, create a range with start and end times
-    const startTime = '15:00';
-    const endTime = '18:00';
+    // ✅ Extract real start and end times from event dates
+    final startTime =
+        '${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
+    final endTime = _currentEvent.endDate != null
+        ? '${_currentEvent.endDate!.hour.toString().padLeft(2, '0')}:${_currentEvent.endDate!.minute.toString().padLeft(2, '0')}'
+        : null;
 
     // Format: "Mon, 26 Feb • 15:00–18:00" for same day
     final weekday = weekdays[date.weekday - 1];
     final day = date.day;
     final month = months[date.month - 1];
 
-    return '$weekday, $day $month • $startTime–$endTime';
+    // Show time range if endDate is available, otherwise just start time
+    final timeRange = endTime != null ? '$startTime–$endTime' : startTime;
+    return '$weekday, $day $month • $timeRange';
   }
 }

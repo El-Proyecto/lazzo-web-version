@@ -18,6 +18,7 @@ import '../../data/fakes/fake_home_event_repository.dart';
 import '../../data/fakes/fake_todo_repository.dart';
 import '../../data/fakes/fake_payment_summary_repository.dart';
 import '../../data/fakes/fake_recent_memory_repository.dart';
+import '../../../auth/presentation/providers/auth_provider.dart';
 
 // Repository providers - default to fake implementations
 final homeEventRepositoryProvider = Provider<HomeEventRepository>((ref) {
@@ -35,6 +36,12 @@ final paymentSummaryRepositoryProvider =
 
 final recentMemoryRepositoryProvider = Provider<RecentMemoryRepository>((ref) {
   return FakeRecentMemoryRepository();
+});
+
+// ✅ NEW: Current user ID provider
+final currentUserIdProvider = Provider<String?>((ref) {
+  final authState = ref.watch(authProvider);
+  return authState.valueOrNull?.id;
 });
 
 // Use case providers
@@ -67,42 +74,79 @@ final getRecentMemoriesProvider = Provider<GetRecentMemories>((ref) {
 });
 
 // Controller providers that expose AsyncValue for UI
+// ✅ Using autoDispose to ensure fresh data on every invalidation
 final nextEventControllerProvider =
-    FutureProvider<HomeEventEntity?>((ref) async {
+    FutureProvider.autoDispose<HomeEventEntity?>((ref) async {
   final useCase = ref.watch(getNextEventProvider);
   return await useCase();
 });
 
 final confirmedEventsControllerProvider =
-    FutureProvider<List<HomeEventEntity>>((ref) async {
-  final useCase = ref.watch(getConfirmedEventsProvider);
-  return await useCase();
+    FutureProvider.autoDispose<List<HomeEventEntity>>((ref) async {
+  // Fetch both confirmed events and next event in parallel
+  final results = await Future.wait([
+    ref.watch(getConfirmedEventsProvider)(),
+    ref.watch(nextEventControllerProvider.future),
+  ]);
+
+  final confirmedEvents = results[0] as List<HomeEventEntity>;
+  final nextEvent = results[1] as HomeEventEntity?;
+
+  // Filter out the next event to avoid duplication
+  if (nextEvent == null) return confirmedEvents;
+  return confirmedEvents.where((e) => e.id != nextEvent.id).toList();
 });
 
 final homePendingEventsControllerProvider =
-    FutureProvider<List<HomeEventEntity>>((ref) async {
-  final useCase = ref.watch(getHomePendingEventsProvider);
-  return await useCase();
+    FutureProvider.autoDispose<List<HomeEventEntity>>((ref) async {
+  // Fetch both pending events and next event in parallel
+  final results = await Future.wait([
+    ref.watch(getHomePendingEventsProvider)(),
+    ref.watch(nextEventControllerProvider.future),
+  ]);
+
+  final pendingEvents = results[0] as List<HomeEventEntity>;
+  final nextEvent = results[1] as HomeEventEntity?;
+
+  // Filter out the next event to avoid duplication
+  if (nextEvent == null) return pendingEvents;
+  return pendingEvents.where((e) => e.id != nextEvent.id).toList();
 });
 
-final todosControllerProvider = FutureProvider<List<TodoEntity>>((ref) async {
+final todosControllerProvider =
+    FutureProvider.autoDispose<List<TodoEntity>>((ref) async {
   final useCase = ref.watch(getTodosProvider);
   return await useCase();
 });
 
 final paymentSummariesControllerProvider =
-    FutureProvider<List<PaymentSummaryEntity>>((ref) async {
+    FutureProvider.autoDispose<List<PaymentSummaryEntity>>((ref) async {
   final useCase = ref.watch(getPaymentSummariesProvider);
   return await useCase();
 });
 
-final totalBalanceControllerProvider = FutureProvider<double>((ref) async {
+final totalBalanceControllerProvider =
+    FutureProvider.autoDispose<double>((ref) async {
   final useCase = ref.watch(getTotalBalanceProvider);
   return await useCase();
 });
 
 final recentMemoriesControllerProvider =
-    FutureProvider<List<RecentMemoryEntity>>((ref) async {
+    FutureProvider.autoDispose<List<RecentMemoryEntity>>((ref) async {
   final useCase = ref.watch(getRecentMemoriesProvider);
   return await useCase();
+});
+
+// NavBar state provider - calculates state based on next event status
+// Planning: default state or when next event is pending/confirmed
+// Living: when next event is living
+// Recap: when next event is recap
+final navBarStateProvider = Provider<HomeEventStatus?>((ref) {
+  final nextEventAsync = ref.watch(nextEventControllerProvider);
+
+  return nextEventAsync.when(
+    data: (event) => event?.status,
+    loading: () => null,
+    error: (_, __) => null,
+  );
 });

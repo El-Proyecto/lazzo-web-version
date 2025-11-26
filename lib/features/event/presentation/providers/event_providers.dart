@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../data/fakes/fake_event_repository.dart';
 import '../../data/fakes/fake_rsvp_repository.dart';
 import '../../data/fakes/fake_poll_repository.dart';
@@ -7,7 +8,6 @@ import '../../data/fakes/fake_suggestion_repository.dart';
 import '../../domain/entities/event_detail.dart';
 import '../../domain/entities/rsvp.dart';
 import '../../domain/entities/poll.dart';
-import '../../domain/entities/chat_message.dart';
 import '../../domain/entities/suggestion.dart';
 import '../../domain/repositories/event_repository.dart';
 import '../../domain/repositories/rsvp_repository.dart';
@@ -18,12 +18,17 @@ import '../../domain/usecases/get_event_detail.dart';
 import '../../domain/usecases/get_event_rsvps.dart';
 import '../../domain/usecases/submit_rsvp.dart';
 import '../../domain/usecases/get_event_polls.dart';
-import '../../domain/usecases/get_recent_messages.dart';
 import '../../domain/usecases/get_event_suggestions.dart';
 import '../../domain/usecases/create_suggestion.dart';
 import '../../domain/usecases/create_location_suggestion.dart';
 import '../../domain/usecases/toggle_suggestion_vote.dart';
 import '../../domain/usecases/update_event_status.dart';
+import '../../domain/usecases/get_group_expenses.dart';
+
+// Current user ID provider
+final currentUserIdProvider = Provider<String?>((ref) {
+  return Supabase.instance.client.auth.currentUser?.id;
+});
 
 // Repository providers (default to fake implementations)
 final eventRepositoryProvider = Provider<EventRepository>((ref) {
@@ -64,9 +69,7 @@ final getEventPollsProvider = Provider<GetEventPolls>((ref) {
   return GetEventPolls(ref.watch(pollRepositoryProvider));
 });
 
-final getRecentMessagesProvider = Provider<GetRecentMessages>((ref) {
-  return GetRecentMessages(ref.watch(chatRepositoryProvider));
-});
+// REMOVED: getRecentMessagesProvider - use chatMessagesProvider (stream) instead
 
 final getEventSuggestionsProvider = Provider<GetEventSuggestions>((ref) {
   return GetEventSuggestions(ref.watch(suggestionRepositoryProvider));
@@ -148,6 +151,7 @@ final userRsvpProvider =
   return UserRsvpNotifier(
     eventId: eventId,
     repository: ref.watch(rsvpRepositoryProvider),
+    ref: ref,
   );
 });
 
@@ -160,70 +164,24 @@ final eventPollsProvider = FutureProvider.family<List<Poll>, String>((
   return await useCase(eventId);
 });
 
-// Recent messages state provider
-final recentMessagesProvider = StateNotifierProvider.family<MessagesNotifier,
-    AsyncValue<List<ChatMessage>>, String>((ref, eventId) {
-  return MessagesNotifier(
-    repository: ref.watch(chatRepositoryProvider),
-    eventId: eventId,
-  );
+// REMOVED: recentMessagesProvider, MessagesNotifier, unreadMessagesCountProvider
+// These are now handled by chatMessagesProvider (stream-based) in chat_providers.dart
+
+// Group expenses provider (for event expenses)
+final getGroupExpensesUseCaseProvider = Provider<GetGroupExpenses>((ref) {
+    return GetGroupExpenses(ref.watch(groupExpenseRepositoryProvider));
+  });
+
+  final groupExpensesProvider = StateNotifierProvider.family<
+      GroupExpensesController, AsyncValue<List<GroupExpenseEntity>>, String>((
+    ref,
+    groupId,
+  ) {
+    return GroupExpensesController(
+      ref.watch(getGroupExpensesUseCaseProvider),
+      groupId,
+    );
 });
-
-// Unread messages count provider
-final unreadMessagesCountProvider = Provider.family<int, String>((
-  ref,
-  eventId,
-) {
-  final messagesAsync = ref.watch(recentMessagesProvider(eventId));
-
-  return messagesAsync.when(
-    data: (messages) {
-      // Count unread messages from other users only
-      return messages
-          .where((m) => !m.read && m.userId != 'current-user')
-          .length;
-    },
-    loading: () => 0,
-    error: (_, stackTrace) => 0,
-  );
-});
-
-// Messages notifier to manage state without losing messages
-class MessagesNotifier extends StateNotifier<AsyncValue<List<ChatMessage>>> {
-  final ChatRepository repository;
-  final String eventId;
-
-  MessagesNotifier({required this.repository, required this.eventId})
-      : super(const AsyncValue.loading()) {
-    _loadMessages();
-  }
-
-  Future<void> _loadMessages() async {
-    try {
-      final messages = await repository.getRecentMessages(eventId);
-      if (mounted) {
-        state = AsyncValue.data(messages);
-      }
-    } catch (error, stackTrace) {
-      if (mounted) {
-        state = AsyncValue.error(error, stackTrace);
-      }
-    }
-  }
-
-  Future<void> addMessage(ChatMessage message) async {
-    state.whenData((currentMessages) {
-      final updatedMessages = [...currentMessages, message];
-      // Sort by timestamp to maintain order
-      updatedMessages.sort((a, b) => b.createdAt.compareTo(a.createdAt));
-      state = AsyncValue.data(updatedMessages);
-    });
-  }
-
-  Future<void> refreshMessages() async {
-    await _loadMessages();
-  }
-}
 
 // Event suggestions state provider
 final eventSuggestionsProvider =
@@ -244,10 +202,10 @@ final suggestionVotesProvider =
 final userSuggestionVotesProvider =
     FutureProvider.family<List<SuggestionVote>, String>((ref, eventId) async {
   final repository = ref.watch(suggestionRepositoryProvider);
-  // TODO: Get current user ID from auth service
+  final currentUserId = ref.watch(currentUserIdProvider);
   return await repository.getUserSuggestionVotes(
     eventId: eventId,
-    userId: 'current-user',
+    userId: currentUserId ?? '',
   );
 });
 
@@ -273,10 +231,10 @@ final locationSuggestionVotesProvider =
 final userLocationSuggestionVotesProvider =
     FutureProvider.family<List<SuggestionVote>, String>((ref, eventId) async {
   final repository = ref.watch(suggestionRepositoryProvider);
-  // TODO: Get current user ID from auth service
+  final currentUserId = ref.watch(currentUserIdProvider);
   return await repository.getUserLocationSuggestionVotes(
     eventId: eventId,
-    userId: 'current-user',
+    userId: currentUserId ?? '',
   );
 });
 
@@ -284,54 +242,63 @@ final userLocationSuggestionVotesProvider =
 class UserRsvpNotifier extends StateNotifier<AsyncValue<Rsvp?>> {
   final String eventId;
   final RsvpRepository repository;
+  final Ref ref;
 
-  UserRsvpNotifier({required this.eventId, required this.repository})
-      : super(const AsyncValue.loading()) {
+  UserRsvpNotifier({
+    required this.eventId,
+    required this.repository,
+    required this.ref,
+  }) : super(const AsyncValue.loading()) {
     _loadUserRsvp();
   }
 
   Future<void> _loadUserRsvp() async {
     state = const AsyncValue.loading();
     try {
-      // TODO: Get current user ID from auth service
-      final userRsvp = await repository.getUserRsvp(eventId, 'current-user');
+      final currentUserId = ref.read(currentUserIdProvider);
+      final userRsvp = await repository.getUserRsvp(eventId, currentUserId ?? '');
       state = AsyncValue.data(userRsvp);
     } catch (error, stackTrace) {
       state = AsyncValue.error(error, stackTrace);
     }
   }
 
-  Future<void> submitVote(RsvpStatus status, {WidgetRef? ref}) async {
+  Future<void> submitVote(RsvpStatus status) async {
     try {
-      // TODO: Get current user ID from auth service
-      final rsvp = await repository.submitRsvp(eventId, 'current-user', status);
-      state = AsyncValue.data(rsvp);
+      final currentUserId = ref.read(currentUserIdProvider);
+      
+      print('🔍 DEBUG submitVote: eventId=$eventId, userId=$currentUserId, newStatus=$status');
+      
+      final rsvp = await repository.submitRsvp(eventId, currentUserId ?? '', status);
+      
+      print('🔍 DEBUG submitVote: RSVP submitted successfully - ${rsvp.status}');
 
-      // If changing to "Can" (going), auto-vote for current event suggestion
-      // If changing from "Can" to something else, remove vote from current event suggestion
-      if (ref != null) {
-        try {
-          await _syncWithCurrentEventSuggestion(status, ref);
-        } catch (e) {
-          // Log error but don't fail the RSVP submission
-          // print('Failed to sync RSVP with suggestion vote: $e');
-        }
-
-        // Invalidate providers BEFORE checking auto-confirmation to get fresh data
-        ref.invalidate(eventRsvpsProvider(eventId));
-        ref.invalidate(eventDetailProvider(eventId));
-
-        // Check auto-confirmation after RSVP submission with fresh data
-        await _checkAutoConfirmation(ref);
+      // Sync with current event suggestion
+      try {
+        await _syncWithCurrentEventSuggestion(status);
+      } catch (e) {
+        // Log error but don't fail the RSVP submission
       }
+
+      // Invalidate providers using StateNotifier's ref
+      ref.invalidate(eventRsvpsProvider(eventId));
+      ref.invalidate(eventDetailProvider(eventId));
+      
+      print('🔍 DEBUG submitVote: Providers invalidated, UI will refresh automatically');
+      
+      // Update local state - this triggers UI rebuild
+      state = AsyncValue.data(rsvp);
+      
+      // Check auto-confirmation after RSVP submission
+      await _checkAutoConfirmation();
     } catch (error, stackTrace) {
+      print('🔴 DEBUG submitVote: ERROR - $error');
       state = AsyncValue.error(error, stackTrace);
-      // Reload on error to get consistent state
       _loadUserRsvp();
     }
   }
 
-  Future<void> _checkAutoConfirmation(WidgetRef ref) async {
+  Future<void> _checkAutoConfirmation() async {
     try {
       // Get fresh data directly from repositories to avoid cache issues
       final eventRepository = ref.read(eventRepositoryProvider);
@@ -363,10 +330,7 @@ class UserRsvpNotifier extends StateNotifier<AsyncValue<Rsvp?>> {
     }
   }
 
-  Future<void> _syncWithCurrentEventSuggestion(
-    RsvpStatus status,
-    WidgetRef ref,
-  ) async {
+  Future<void> _syncWithCurrentEventSuggestion(RsvpStatus status) async {
     try {
       // NOTE: Manual sync is disabled because the FakeRsvpRepository.submitRsvp()
       // already calls FakeSuggestionRepository.syncCurrentSuggestionWithRsvp()
@@ -388,14 +352,8 @@ class UserRsvpNotifier extends StateNotifier<AsyncValue<Rsvp?>> {
   }
 }
 
-// Send message notifier
-final sendMessageProvider =
-    StateNotifierProvider<SendMessageNotifier, AsyncValue<void>>((ref) {
-  return SendMessageNotifier(
-    repository: ref.watch(chatRepositoryProvider),
-    ref: ref,
-  );
-});
+// REMOVED: sendMessageProvider and SendMessageNotifier
+// Now using chatActionsProvider in chat_providers.dart
 
 // Create suggestion notifier
 final createSuggestionNotifierProvider =
@@ -437,33 +395,6 @@ final toggleLocationSuggestionVoteNotifierProvider = StateNotifierProvider<
   );
 });
 
-class SendMessageNotifier extends StateNotifier<AsyncValue<void>> {
-  final ChatRepository repository;
-  final Ref ref;
-
-  SendMessageNotifier({required this.repository, required this.ref})
-      : super(const AsyncValue.data(null));
-
-  Future<void> sendMessage(String eventId, String content) async {
-    state = const AsyncValue.loading();
-    try {
-      // Send the message
-      final message = await repository.sendMessage(
-        eventId,
-        'current-user',
-        content,
-      );
-
-      // Add the message to the local state without losing other messages
-      ref.read(recentMessagesProvider(eventId).notifier).addMessage(message);
-
-      state = const AsyncValue.data(null);
-    } catch (error, stackTrace) {
-      state = AsyncValue.error(error, stackTrace);
-    }
-  }
-}
-
 class CreateSuggestionNotifier extends StateNotifier<AsyncValue<void>> {
   final CreateSuggestion createSuggestion;
   final Ref ref;
@@ -478,13 +409,14 @@ class CreateSuggestionNotifier extends StateNotifier<AsyncValue<void>> {
   }) async {
     state = const AsyncValue.loading();
     try {
+      final currentUserId = ref.read(currentUserIdProvider);
       // Create the requested suggestion
       // Get event details for current dates
       final event = await ref.read(eventDetailProvider(eventId).future);
 
       final userSuggestion = await createSuggestion(
         eventId: eventId,
-        userId: 'current-user',
+        userId: currentUserId ?? '',
         startDateTime: startDateTime,
         endDateTime: endDateTime,
         currentEventStartDateTime: event.startDateTime,
@@ -495,7 +427,8 @@ class CreateSuggestionNotifier extends StateNotifier<AsyncValue<void>> {
       final suggestionRepository = ref.read(suggestionRepositoryProvider);
       await suggestionRepository.voteOnSuggestion(
         suggestionId: userSuggestion.id,
-        userId: 'current-user',
+        userId: currentUserId ?? '',
+        eventId: eventId,
       );
 
       // Invalidate providers to refresh data
@@ -520,6 +453,7 @@ class ToggleSuggestionVoteNotifier extends StateNotifier<AsyncValue<void>> {
   Future<void> toggleVote_(String eventId, String suggestionId) async {
     state = const AsyncValue.loading();
     try {
+      final currentUserId = ref.read(currentUserIdProvider);
       // Check if this is the current event suggestion before toggling
       final isCurrentEventSuggestion = await _isCurrentEventSuggestion(
         eventId,
@@ -534,10 +468,9 @@ class ToggleSuggestionVoteNotifier extends StateNotifier<AsyncValue<void>> {
         (vote) => vote.suggestionId == suggestionId,
       );
 
-      // TODO: Get current user ID from auth service
       await toggleVote(
         suggestionId: suggestionId,
-        userId: 'current-user',
+        userId: currentUserId ?? '',
         eventId: eventId,
       );
 
@@ -547,7 +480,7 @@ class ToggleSuggestionVoteNotifier extends StateNotifier<AsyncValue<void>> {
           final rsvpRepository = ref.read(rsvpRepositoryProvider);
           final currentRsvp = await rsvpRepository.getUserRsvp(
             eventId,
-            'current-user',
+            currentUserId ?? '',
           );
 
           if (!hasCurrentVote) {
@@ -555,7 +488,7 @@ class ToggleSuggestionVoteNotifier extends StateNotifier<AsyncValue<void>> {
             if (currentRsvp?.status != RsvpStatus.going) {
               await rsvpRepository.submitRsvp(
                 eventId,
-                'current-user',
+                currentUserId ?? '',
                 RsvpStatus.going,
               );
               ref.invalidate(userRsvpProvider(eventId));
@@ -566,7 +499,7 @@ class ToggleSuggestionVoteNotifier extends StateNotifier<AsyncValue<void>> {
             if (currentRsvp?.status != RsvpStatus.notGoing) {
               await rsvpRepository.submitRsvp(
                 eventId,
-                'current-user',
+                currentUserId ?? '',
                 RsvpStatus.notGoing,
               );
               ref.invalidate(userRsvpProvider(eventId));
@@ -579,11 +512,11 @@ class ToggleSuggestionVoteNotifier extends StateNotifier<AsyncValue<void>> {
         }
       }
 
-      // Invalidate providers to refresh data
+      // Invalidate and force immediate refresh to update vote counts in UI
       ref.invalidate(eventSuggestionsProvider(eventId));
       ref.invalidate(suggestionVotesProvider(eventId));
       ref.invalidate(userSuggestionVotesProvider(eventId));
-
+      
       state = const AsyncValue.data(null);
     } catch (error, stackTrace) {
       state = AsyncValue.error(error, stackTrace);
@@ -641,10 +574,11 @@ class CreateLocationSuggestionNotifier extends StateNotifier<AsyncValue<void>> {
   }) async {
     state = const AsyncValue.loading();
     try {
+      final currentUserId = ref.read(currentUserIdProvider);
       // Create the requested location suggestion
       final userSuggestion = await repository.createLocationSuggestion(
         eventId: eventId,
-        userId: 'current-user',
+        userId: currentUserId ?? '',
         locationName: locationName,
         address: address,
         latitude: latitude,
@@ -656,7 +590,7 @@ class CreateLocationSuggestionNotifier extends StateNotifier<AsyncValue<void>> {
       // Automatically vote for the user's new suggestion
       await repository.voteOnLocationSuggestion(
         suggestionId: userSuggestion.id,
-        userId: 'current-user',
+        userId: currentUserId ?? '',
       );
 
       // Invalidate providers to refresh data
@@ -684,6 +618,7 @@ class ToggleLocationSuggestionVoteNotifier
   Future<void> toggleVote(String eventId, String suggestionId) async {
     state = const AsyncValue.loading();
     try {
+      final currentUserId = ref.read(currentUserIdProvider);
       // Get current vote status
       final userVotes = await ref.read(
         userLocationSuggestionVotesProvider(eventId).future,
@@ -692,26 +627,25 @@ class ToggleLocationSuggestionVoteNotifier
         (vote) => vote.suggestionId == suggestionId,
       );
 
-      // TODO: Get current user ID from auth service
       if (hasCurrentVote) {
         // Remove vote
         await repository.removeVoteFromLocationSuggestion(
           suggestionId: suggestionId,
-          userId: 'current-user',
+          userId: currentUserId ?? '',
         );
       } else {
         // Add vote
         await repository.voteOnLocationSuggestion(
           suggestionId: suggestionId,
-          userId: 'current-user',
+          userId: currentUserId ?? '',
         );
       }
 
-      // Invalidate providers to refresh data
+      // Invalidate and force immediate refresh to update vote counts in UI
       ref.invalidate(eventLocationSuggestionsProvider(eventId));
       ref.invalidate(locationSuggestionVotesProvider(eventId));
       ref.invalidate(userLocationSuggestionVotesProvider(eventId));
-
+      
       state = const AsyncValue.data(null);
     } catch (error, stackTrace) {
       state = AsyncValue.error(error, stackTrace);

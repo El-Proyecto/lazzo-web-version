@@ -1,9 +1,18 @@
+import 'dart:async';
 import '../../domain/entities/chat_message.dart';
 import '../../domain/repositories/chat_repository.dart';
 
 /// Fake chat repository for development
 class FakeChatRepository implements ChatRepository {
   final List<ChatMessage> _messages = [];
+  final StreamController<List<ChatMessage>> _messagesController = StreamController<List<ChatMessage>>.broadcast();
+  
+  @override
+  Stream<List<ChatMessage>> watchMessages(String eventId) {
+    // Return stream with current messages
+    Future.microtask(() => _messagesController.add(_messages));
+    return _messagesController.stream;
+  }
 
   FakeChatRepository() {
     _initializeMessages();
@@ -86,7 +95,7 @@ class FakeChatRepository implements ChatRepository {
         userId: 'user-6',
         userName: 'Pedro Costa',
         userAvatar: null,
-        content: 'Esta mensagem foi eliminada',
+        content: 'Message Deleted',
         createdAt: DateTime.now().subtract(const Duration(minutes: 3)),
         read: false,
         isDeleted: true, // This message was deleted
@@ -176,7 +185,6 @@ class FakeChatRepository implements ChatRepository {
     ]);
   }
 
-  @override
   Future<List<ChatMessage>> getRecentMessages(
     String eventId, {
     int limit = 50,
@@ -187,6 +195,16 @@ class FakeChatRepository implements ChatRepository {
     eventMessages.sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
     return eventMessages.take(limit).toList();
+  }
+
+  // DEPRECATED: Use watchMessages instead
+  Future<List<ChatMessage>> getAllMessages(String eventId) async {
+    await Future.delayed(const Duration(milliseconds: 300));
+    return _messages
+        .where((m) => m.eventId == eventId)
+        .toList()
+        .reversed
+        .toList();
   }
 
   @override
@@ -214,17 +232,7 @@ class FakeChatRepository implements ChatRepository {
   }
 
   @override
-  Future<List<ChatMessage>> getAllMessages(String eventId) async {
-    await Future.delayed(const Duration(milliseconds: 300));
-    return _messages
-        .where((m) => m.eventId == eventId)
-        .toList()
-        .reversed
-        .toList();
-  }
-
-  @override
-  Future<ChatMessage> pinMessage(String messageId, bool isPinned) async {
+  Future<ChatMessage> pinMessage(String eventId, String messageId, bool isPinned) async {
     await Future.delayed(const Duration(milliseconds: 300));
 
     final index = _messages.indexWhere((m) => m.id == messageId);
@@ -232,10 +240,10 @@ class FakeChatRepository implements ChatRepository {
       throw Exception('Message not found');
     }
 
-    // If pinning a new message, unpin all others (only one pinned at a time)
+    // If pinning a new message, unpin all others in the same event (only one pinned at a time)
     if (isPinned) {
       for (var i = 0; i < _messages.length; i++) {
-        if (_messages[i].isPinned) {
+        if (_messages[i].eventId == eventId && _messages[i].isPinned) {
           _messages[i] = _messages[i].copyWith(isPinned: false);
         }
       }
@@ -247,7 +255,7 @@ class FakeChatRepository implements ChatRepository {
   }
 
   @override
-  Future<ChatMessage> deleteMessage(String messageId) async {
+  Future<ChatMessage> deleteMessage(String eventId, String messageId) async {
     await Future.delayed(const Duration(milliseconds: 300));
 
     final index = _messages.indexWhere((m) => m.id == messageId);
@@ -257,7 +265,7 @@ class FakeChatRepository implements ChatRepository {
 
     final updatedMessage = _messages[index].copyWith(
       isDeleted: true,
-      content: 'Esta mensagem foi eliminada',
+      content: 'Message Deleted',
     );
     _messages[index] = updatedMessage;
     return updatedMessage;

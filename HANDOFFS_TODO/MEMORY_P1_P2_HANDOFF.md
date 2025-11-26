@@ -38,10 +38,21 @@
   - **NEW:** `FakeMemoryConfig` global variables for dynamic testing
   - Configurable cover count (portrait/landscape) and grid count
   - Helper methods for easy scenario switching
+  - **NEW:** Event state configuration (`eventStatus`: living/recap/ended)
+  - **NEW:** User state flags (`isHost`, `userHasUploadedPhotos`)
 
 #### Routes & DI
 - ✅ Route registered: `/memory` → `MemoryPage`
 - ✅ DI wired in `main.dart`: `memoryRepositoryProvider` defaults to `FakeMemoryRepository`
+
+#### 3-State Event System
+- **NEW:** Memory page adapts UI based on event status:
+  - **Living:** CTA banner (purple camera) if no photos uploaded, edit button if host/has photos
+  - **Recap:** CTA banner (orange gallery) if no photos uploaded, edit button if host/has photos
+  - **Ended:** Read-only (no CTA, no edit button)
+- **NEW:** `AddPhotosCtaCard` shared component for prompting photo uploads
+  - P1: Navigates to Manage Photos (temporary)
+  - P2 TODO: Open camera (living) or gallery (recap)
 
 ---
 
