@@ -234,334 +234,426 @@ class _HomePageState extends ConsumerState<HomePage> {
             : null,
       ),
       body: SafeArea(
-        child: ListView(
-          padding: EdgeInsets.zero,
-          children: [
-            const SizedBox(height: Gaps.xs),
+        child: RefreshIndicator(
+          onRefresh: () async {
+            _refreshAllData();
+          },
+          color: BrandColors.planning,
+          backgroundColor: BrandColors.bg2,
+          child: ListView(
+            padding: EdgeInsets.zero,
+            children: [
+              const SizedBox(height: Gaps.xs),
 
-            // Success banner if needed
-            Consumer(
-              builder: (context, ref, child) {
-                final isVisible = ref.watch(
-                  bannerProvider.select((state) => state.isVisible),
-                );
-                if (!isVisible) {
-                  return const SizedBox.shrink();
-                }
+              // Success banner if needed
+              Consumer(
+                builder: (context, ref, child) {
+                  final isVisible = ref.watch(
+                    bannerProvider.select((state) => state.isVisible),
+                  );
+                  if (!isVisible) {
+                    return const SizedBox.shrink();
+                  }
 
-                final bannerState = ref.watch(bannerProvider);
+                  final bannerState = ref.watch(bannerProvider);
 
-                return Padding(
+                  return Padding(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: Insets.screenH),
+                    child: Column(
+                      children: [
+                        EventCreatedBanner(
+                          eventName: bannerState.eventName,
+                          groupName: bannerState.groupName,
+                          onClose: () {
+                            ref.read(bannerProvider.notifier).hideBanner();
+                          },
+                        ),
+                        const SizedBox(height: Gaps.md),
+                      ],
+                    ),
+                  );
+                },
+              ),
+
+              // Search Bar - only show if user has groups
+              if (!showNoGroupsCard)
+                Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: Insets.screenH),
+                  child: custom.SearchBar(
+                    placeholder: 'Search groups, events, memories...',
+                    enabled: false,
+                    onTap: () {
+                      // TODO: Navigate to search page
+                    },
+                  ),
+                ),
+              if (!showNoGroupsCard) const SizedBox(height: Gaps.md),
+
+              // Empty States - purely based on provider data
+              // IMPORTANT: Only show when data is loaded to avoid flickering
+              // Show "No groups yet" if user has no groups (when data loaded)
+              if (showNoGroupsCard)
+                Padding(
                   padding:
                       const EdgeInsets.symmetric(horizontal: Insets.screenH),
                   child: Column(
                     children: [
-                      EventCreatedBanner(
-                        eventName: bannerState.eventName,
-                        groupName: bannerState.groupName,
-                        onClose: () {
-                          ref.read(bannerProvider.notifier).hideBanner();
+                      NoGroupsYetCard(
+                        onCreateGroup: () {
+                          Navigator.pushNamed(context, AppRouter.createGroup);
+                          // TODO P2: After group created, auto-open create event
                         },
-                      ),
-                      const SizedBox(height: Gaps.md),
-                    ],
-                  ),
-                );
-              },
-            ),
-
-            // Search Bar - only show if user has groups
-            if (!showNoGroupsCard)
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: Insets.screenH),
-                child: custom.SearchBar(
-                  placeholder: 'Search groups, events, memories...',
-                  enabled: false,
-                  onTap: () {
-                    // TODO: Navigate to search page
-                  },
-                ),
-              ),
-            if (!showNoGroupsCard) const SizedBox(height: Gaps.md),
-
-            // Empty States - purely based on provider data
-            // IMPORTANT: Only show when data is loaded to avoid flickering
-            // Show "No groups yet" if user has no groups (when data loaded)
-            if (showNoGroupsCard)
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: Insets.screenH),
-                child: Column(
-                  children: [
-                    NoGroupsYetCard(
-                      onCreateGroup: () {
-                        Navigator.pushNamed(context, AppRouter.createGroup);
-                        // TODO P2: After group created, auto-open create event
-                      },
-                    ),
-                    const SizedBox(height: Gaps.lg),
-                  ],
-                ),
-              )
-            // Show "No upcoming events" if user has groups but no events (when data loaded)
-            else if (showNoEventsCard)
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: Insets.screenH),
-                child: Column(
-                  children: [
-                    groupsAsync.when(
-                      data: (groups) {
-                        // Convert groups to GroupChipData
-                        final groupChips = groups
-                            .take(5) // Max 5 most active groups
-                            .map(
-                              (g) => GroupChipData(
-                                id: g.id,
-                                name: g.name,
-                                photoUrl:
-                                    g.photoPath, // Using photoPath for now
-                              ),
-                            )
-                            .toList();
-
-                        return NoUpcomingEventsCard(
-                          groups: groupChips,
-                          onCreateEvent: (groupId) {
-                            // TODO P2: Navigate to create event with group prefilled
-                            Navigator.pushNamed(
-                              context,
-                              AppRouter.createEvent,
-                              arguments: {'groupId': groupId},
-                            );
-                          },
-                          onDismiss: () {
-                            setState(() {
-                              _isNoEventsCardDismissed = true;
-                            });
-                          },
-                        );
-                      },
-                      loading: () => const SizedBox.shrink(),
-                      error: (_, __) => const SizedBox.shrink(),
-                    ),
-                    const SizedBox(height: Gaps.lg),
-                  ],
-                ),
-              ),
-
-            // EVENT SECTIONS - Only show if NOT in empty state
-            if (!showNoGroupsCard && !showNoEventsCard) ...[
-              // Next Event Section
-              nextEventAsync.when(
-                data: (event) {
-                  if (event == null) {
-                    return const SizedBox.shrink();
-                  }
-
-                  // Determine section title based on event status
-                  String sectionTitle;
-                  switch (event.status) {
-                    case HomeEventStatus.living:
-                      sectionTitle = 'Live Event';
-                      break;
-                    case HomeEventStatus.recap:
-                      sectionTitle = 'Recap Event';
-                      break;
-                    case HomeEventStatus.pending:
-                    case HomeEventStatus.confirmed:
-                      sectionTitle = 'Next Event';
-                      break;
-                  }
-
-                  return Column(
-                    children: [
-                      SectionBlock(
-                        title: sectionTitle,
-                        child: HomeEventCard(
-                          event: event,
-                          state: _mapStatusToHomeCardState(event.status),
-                          onTap: () async {
-                            // ✅ Navigate to event details
-                            await Navigator.pushNamed(
-                              context,
-                              AppRouter.event,
-                              arguments: {'eventId': event.id},
-                            );
-                            // ✅ Refresh data when returning from event page
-                            if (mounted) {
-                              _refreshAllData();
-                            }
-                          },
-                          onChatPressed: () {
-                            // TODO: Navigate to event chat
-                          },
-                          onExpensePressed: () {
-                            // TODO: Open add expense bottom sheet
-                          },
-                          onVoteChanged: (eventId, vote) {
-                            // TODO: Update vote in backend
-                            debugPrint(
-                              'Vote changed for event $eventId: $vote',
-                            );
-                          },
-                        ),
                       ),
                       const SizedBox(height: Gaps.lg),
                     ],
-                  );
-                },
-                loading: () => SectionBlock(
-                  title: 'Next Event',
-                  child: Container(
-                    height: 200,
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.surface,
-                      borderRadius: BorderRadius.circular(Radii.md),
+                  ),
+                )
+              // Show "No upcoming events" if user has groups but no events (when data loaded)
+              else if (showNoEventsCard)
+                Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: Insets.screenH),
+                  child: Column(
+                    children: [
+                      groupsAsync.when(
+                        data: (groups) {
+                          // Convert groups to GroupChipData
+                          final groupChips = groups
+                              .take(5) // Max 5 most active groups
+                              .map(
+                                (g) => GroupChipData(
+                                  id: g.id,
+                                  name: g.name,
+                                  photoUrl:
+                                      g.photoPath, // Using photoPath for now
+                                ),
+                              )
+                              .toList();
+
+                          return NoUpcomingEventsCard(
+                            groups: groupChips,
+                            onCreateEvent: (groupId) {
+                              // TODO P2: Navigate to create event with group prefilled
+                              Navigator.pushNamed(
+                                context,
+                                AppRouter.createEvent,
+                                arguments: {'groupId': groupId},
+                              );
+                            },
+                            onDismiss: () {
+                              setState(() {
+                                _isNoEventsCardDismissed = true;
+                              });
+                            },
+                          );
+                        },
+                        loading: () => const SizedBox.shrink(),
+                        error: (_, __) => const SizedBox.shrink(),
+                      ),
+                      const SizedBox(height: Gaps.lg),
+                    ],
+                  ),
+                ),
+
+              // EVENT SECTIONS - Only show if NOT in empty state
+              if (!showNoGroupsCard && !showNoEventsCard) ...[
+                // Next Event Section
+                nextEventAsync.when(
+                  data: (event) {
+                    if (event == null) {
+                      return const SizedBox.shrink();
+                    }
+
+                    // Determine section title based on event status
+                    String sectionTitle;
+                    switch (event.status) {
+                      case HomeEventStatus.living:
+                        sectionTitle = 'Live Event';
+                        break;
+                      case HomeEventStatus.recap:
+                        sectionTitle = 'Recap Event';
+                        break;
+                      case HomeEventStatus.pending:
+                      case HomeEventStatus.confirmed:
+                        sectionTitle = 'Next Event';
+                        break;
+                    }
+
+                    return Column(
+                      children: [
+                        SectionBlock(
+                          title: sectionTitle,
+                          child: HomeEventCard(
+                            event: event,
+                            state: _mapStatusToHomeCardState(event.status),
+                            onTap: () async {
+                              // ✅ Navigate to event details
+                              await Navigator.pushNamed(
+                                context,
+                                AppRouter.event,
+                                arguments: {'eventId': event.id},
+                              );
+                              // ✅ Refresh data when returning from event page
+                              if (mounted) {
+                                _refreshAllData();
+                              }
+                            },
+                            onChatPressed: () {
+                              // TODO: Navigate to event chat
+                            },
+                            onExpensePressed: () {
+                              // TODO: Open add expense bottom sheet
+                            },
+                            onVoteChanged: (eventId, vote) {
+                              // TODO: Update vote in backend
+                              debugPrint(
+                                'Vote changed for event $eventId: $vote',
+                              );
+                            },
+                          ),
+                        ),
+                        const SizedBox(height: Gaps.lg),
+                      ],
+                    );
+                  },
+                  loading: () => SectionBlock(
+                    title: 'Next Event',
+                    child: Container(
+                      height: 200,
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.surface,
+                        borderRadius: BorderRadius.circular(Radii.md),
+                      ),
+                      child: const Center(
+                        child: CircularProgressIndicator(),
+                      ),
                     ),
-                    child: const Center(
+                  ),
+                  error: (error, stackTrace) => const SizedBox.shrink(),
+                ),
+
+                // Confirmed Events Section
+                confirmedEventsAsync.when(
+                  data: (events) {
+                    if (events.isEmpty) {
+                      return const SizedBox.shrink();
+                    }
+                    return Column(
+                      children: [
+                        SectionBlock(
+                          title: 'Confirmed Events',
+                          child: Column(
+                            children: events.asMap().entries.map((entry) {
+                              final index = entry.key;
+                              final event = entry.value;
+                              return Column(
+                                children: [
+                                  EventSmallCard(
+                                    emoji: event.emoji,
+                                    title: event.name,
+                                    dateTime: _formatEventDate(event.date),
+                                    location: event.location ?? 'Location TBD',
+                                    state: _mapStatusToSmallCardState(
+                                        event.status),
+                                    onTap: () async {
+                                      // ✅ Navigate to event details
+                                      await Navigator.pushNamed(
+                                        context,
+                                        AppRouter.event,
+                                        arguments: {'eventId': event.id},
+                                      );
+                                      // ✅ Refresh data when returning
+                                      if (mounted) {
+                                        _refreshAllData();
+                                      }
+                                    },
+                                  ),
+                                  if (index < events.length - 1)
+                                    const SizedBox(height: Gaps.sm),
+                                ],
+                              );
+                            }).toList(),
+                          ),
+                        ),
+                        const SizedBox(height: Gaps.lg),
+                      ],
+                    );
+                  },
+                  loading: () => const SectionBlock(
+                    title: 'Confirmed Events',
+                    child: Center(
                       child: CircularProgressIndicator(),
                     ),
                   ),
+                  error: (error, stackTrace) => const SizedBox.shrink(),
                 ),
-                error: (error, stackTrace) => const SizedBox.shrink(),
-              ),
 
-              // Confirmed Events Section
-              confirmedEventsAsync.when(
-                data: (events) {
-                  if (events.isEmpty) {
+                // Pending Events Section
+                pendingEventsAsync.when(
+                  data: (events) {
+                    if (events.isEmpty) {
+                      return const SizedBox.shrink();
+                    }
+                    return Column(
+                      children: [
+                        SectionBlock(
+                          title: 'Pending Events',
+                          child: Column(
+                            children: events.asMap().entries.map((entry) {
+                              final index = entry.key;
+                              final event = entry.value;
+                              return Column(
+                                children: [
+                                  EventSmallCard(
+                                    emoji: event.emoji,
+                                    title: event.name,
+                                    dateTime: _formatEventDate(event.date),
+                                    location: event.location ?? 'Location TBD',
+                                    state: _mapStatusToSmallCardState(
+                                        event.status),
+                                    onTap: () async {
+                                      // ✅ Navigate to event details
+                                      await Navigator.pushNamed(
+                                        context,
+                                        AppRouter.event,
+                                        arguments: {'eventId': event.id},
+                                      );
+                                      // ✅ Refresh data when returning
+                                      if (mounted) {
+                                        _refreshAllData();
+                                      }
+                                    },
+                                  ),
+                                  if (index < events.length - 1)
+                                    const SizedBox(height: Gaps.sm),
+                                ],
+                              );
+                            }).toList(),
+                          ),
+                        ),
+                        const SizedBox(height: Gaps.lg),
+                      ],
+                    );
+                  },
+                  loading: () => const SectionBlock(
+                    title: 'Pending Events',
+                    child: Center(
+                      child: CircularProgressIndicator(),
+                    ),
+                  ),
+                  error: (error, stackTrace) => const SizedBox.shrink(),
+                ),
+
+                // To Dos Section (only show if there are events)
+                todosAsync.when(
+                  data: (todos) {
+                    if (todos.isEmpty) {
+                      return const SizedBox.shrink();
+                    }
+                    return Column(
+                      children: [
+                        SectionBlock(
+                          title: 'To Dos',
+                          child: Column(
+                            children: todos.asMap().entries.map((entry) {
+                              final index = entry.key;
+                              final todo = entry.value;
+                              return Column(
+                                children: [
+                                  TodoCard(
+                                    todo: todo,
+                                    onTap: () {
+                                      // TODO P2: Navigate to event details
+                                    },
+                                  ),
+                                  if (index < todos.length - 1)
+                                    const SizedBox(height: Gaps.sm),
+                                ],
+                              );
+                            }).toList(),
+                          ),
+                        ),
+                        const SizedBox(height: Gaps.lg),
+                      ],
+                    );
+                  },
+                  loading: () => const SizedBox.shrink(),
+                  error: (error, stackTrace) => const SizedBox.shrink(),
+                ),
+              ], // End of EVENT SECTIONS
+
+              // Payments Section (shows even without events)
+              paymentsAsync.when(
+                data: (payments) {
+                  if (payments.isEmpty) {
                     return const SizedBox.shrink();
                   }
                   return Column(
                     children: [
-                      SectionBlock(
-                        title: 'Confirmed Events',
-                        child: Column(
-                          children: events.asMap().entries.map((entry) {
-                            final index = entry.key;
-                            final event = entry.value;
-                            return Column(
-                              children: [
-                                EventSmallCard(
-                                  emoji: event.emoji,
-                                  title: event.name,
-                                  dateTime: _formatEventDate(event.date),
-                                  location: event.location ?? 'Location TBD',
-                                  state:
-                                      _mapStatusToSmallCardState(event.status),
-                                  onTap: () async {
-                                    // ✅ Navigate to event details
-                                    await Navigator.pushNamed(
-                                      context,
-                                      AppRouter.event,
-                                      arguments: {'eventId': event.id},
-                                    );
-                                    // ✅ Refresh data when returning
-                                    if (mounted) {
-                                      _refreshAllData();
-                                    }
-                                  },
-                                ),
-                                if (index < events.length - 1)
-                                  const SizedBox(height: Gaps.sm),
-                              ],
-                            );
-                          }).toList(),
+                      // Section title with total balance
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: Insets.screenH,
+                        ),
+                        child: Row(
+                          children: [
+                            Text(
+                              'Payments',
+                              style: AppText.titleMediumEmph.copyWith(
+                                color: BrandColors.text1,
+                              ),
+                            ),
+                            const Spacer(),
+                            totalBalanceAsync.when(
+                              data: (balance) {
+                                return Text(
+                                  balance >= 0
+                                      ? '+€${balance.toStringAsFixed(0)}'
+                                      : '-€${balance.abs().toStringAsFixed(0)}',
+                                  style: AppText.titleMediumEmph.copyWith(
+                                    color: balance >= 0
+                                        ? BrandColors.planning // Green
+                                        : BrandColors.cantVote, // Red
+                                  ),
+                                );
+                              },
+                              loading: () => const SizedBox.shrink(),
+                              error: (_, __) => const SizedBox.shrink(),
+                            ),
+                          ],
                         ),
                       ),
-                      const SizedBox(height: Gaps.lg),
-                    ],
-                  );
-                },
-                loading: () => const SectionBlock(
-                  title: 'Confirmed Events',
-                  child: Center(
-                    child: CircularProgressIndicator(),
-                  ),
-                ),
-                error: (error, stackTrace) => const SizedBox.shrink(),
-              ),
+                      const SizedBox(height: Gaps.md),
 
-              // Pending Events Section
-              pendingEventsAsync.when(
-                data: (events) {
-                  if (events.isEmpty) {
-                    return const SizedBox.shrink();
-                  }
-                  return Column(
-                    children: [
-                      SectionBlock(
-                        title: 'Pending Events',
-                        child: Column(
-                          children: events.asMap().entries.map((entry) {
-                            final index = entry.key;
-                            final event = entry.value;
-                            return Column(
-                              children: [
-                                EventSmallCard(
-                                  emoji: event.emoji,
-                                  title: event.name,
-                                  dateTime: _formatEventDate(event.date),
-                                  location: event.location ?? 'Location TBD',
-                                  state:
-                                      _mapStatusToSmallCardState(event.status),
-                                  onTap: () async {
-                                    // ✅ Navigate to event details
-                                    await Navigator.pushNamed(
-                                      context,
-                                      AppRouter.event,
-                                      arguments: {'eventId': event.id},
-                                    );
-                                    // ✅ Refresh data when returning
-                                    if (mounted) {
-                                      _refreshAllData();
-                                    }
-                                  },
-                                ),
-                                if (index < events.length - 1)
-                                  const SizedBox(height: Gaps.sm),
-                              ],
-                            );
-                          }).toList(),
+                      // Payment cards - 2 per row
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: Insets.screenH,
                         ),
-                      ),
-                      const SizedBox(height: Gaps.lg),
-                    ],
-                  );
-                },
-                loading: () => const SectionBlock(
-                  title: 'Pending Events',
-                  child: Center(
-                    child: CircularProgressIndicator(),
-                  ),
-                ),
-                error: (error, stackTrace) => const SizedBox.shrink(),
-              ),
-
-              // To Dos Section (only show if there are events)
-              todosAsync.when(
-                data: (todos) {
-                  if (todos.isEmpty) {
-                    return const SizedBox.shrink();
-                  }
-                  return Column(
-                    children: [
-                      SectionBlock(
-                        title: 'To Dos',
-                        child: Column(
-                          children: todos.asMap().entries.map((entry) {
-                            final index = entry.key;
-                            final todo = entry.value;
-                            return Column(
-                              children: [
-                                TodoCard(
-                                  todo: todo,
-                                  onTap: () {
-                                    // TODO P2: Navigate to event details
-                                  },
-                                ),
-                                if (index < todos.length - 1)
-                                  const SizedBox(height: Gaps.sm),
-                              ],
+                        child: Wrap(
+                          spacing: Gaps.sm,
+                          runSpacing: Gaps.sm,
+                          children: payments.take(4).map((payment) {
+                            return SizedBox(
+                              width: (MediaQuery.of(context).size.width -
+                                      (Insets.screenH * 2) -
+                                      Gaps.sm) /
+                                  2,
+                              child: PaymentSummaryCard(
+                                payment: payment,
+                                onTap: () {
+                                  // Set inbox tab to Payments (index 2)
+                                  ref
+                                      .read(inboxTabIndexProvider.notifier)
+                                      .state = 2;
+                                  // Navigate to Inbox tab (index 2)
+                                  ref
+                                      .read(mainLayoutTabProvider.notifier)
+                                      .state = 2;
+                                },
+                              ),
                             );
                           }).toList(),
                         ),
@@ -573,153 +665,73 @@ class _HomePageState extends ConsumerState<HomePage> {
                 loading: () => const SizedBox.shrink(),
                 error: (error, stackTrace) => const SizedBox.shrink(),
               ),
-            ], // End of EVENT SECTIONS
 
-            // Payments Section (shows even without events)
-            paymentsAsync.when(
-              data: (payments) {
-                if (payments.isEmpty) {
-                  return const SizedBox.shrink();
-                }
-                return Column(
-                  children: [
-                    // Section title with total balance
-                    Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: Insets.screenH,
-                      ),
-                      child: Row(
-                        children: [
-                          Text(
-                            'Payments',
+              // Recent Memories Section
+              recentMemoriesAsync.when(
+                data: (memories) {
+                  if (memories.isEmpty) {
+                    return const SizedBox.shrink();
+                  }
+
+                  // Calculate card width: (screen width - screen padding * 2 - gap between cards) / 2
+                  final cardWidth = (MediaQuery.of(context).size.width -
+                          (Insets.screenH * 2) -
+                          Gaps.sm) /
+                      2;
+
+                  return Column(
+                    children: [
+                      // Section title
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: Insets.screenH,
+                        ),
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            'Recent Memories',
                             style: AppText.titleMediumEmph.copyWith(
                               color: BrandColors.text1,
                             ),
                           ),
-                          const Spacer(),
-                          totalBalanceAsync.when(
-                            data: (balance) {
-                              return Text(
-                                balance >= 0
-                                    ? '+€${balance.toStringAsFixed(0)}'
-                                    : '-€${balance.abs().toStringAsFixed(0)}',
-                                style: AppText.titleMediumEmph.copyWith(
-                                  color: balance >= 0
-                                      ? BrandColors.planning // Green
-                                      : BrandColors.cantVote, // Red
-                                ),
-                              );
-                            },
-                            loading: () => const SizedBox.shrink(),
-                            error: (_, __) => const SizedBox.shrink(),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: Gaps.md),
-
-                    // Payment cards - 2 per row
-                    Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: Insets.screenH,
-                      ),
-                      child: Wrap(
-                        spacing: Gaps.sm,
-                        runSpacing: Gaps.sm,
-                        children: payments.take(4).map((payment) {
-                          return SizedBox(
-                            width: (MediaQuery.of(context).size.width -
-                                    (Insets.screenH * 2) -
-                                    Gaps.sm) /
-                                2,
-                            child: PaymentSummaryCard(
-                              payment: payment,
-                              onTap: () {
-                                // Set inbox tab to Payments (index 2)
-                                ref.read(inboxTabIndexProvider.notifier).state =
-                                    2;
-                                // Navigate to Inbox tab (index 2)
-                                ref.read(mainLayoutTabProvider.notifier).state =
-                                    2;
-                              },
-                            ),
-                          );
-                        }).toList(),
-                      ),
-                    ),
-                    const SizedBox(height: Gaps.lg),
-                  ],
-                );
-              },
-              loading: () => const SizedBox.shrink(),
-              error: (error, stackTrace) => const SizedBox.shrink(),
-            ),
-
-            // Recent Memories Section
-            recentMemoriesAsync.when(
-              data: (memories) {
-                if (memories.isEmpty) {
-                  return const SizedBox.shrink();
-                }
-
-                // Calculate card width: (screen width - screen padding * 2 - gap between cards) / 2
-                final cardWidth = (MediaQuery.of(context).size.width -
-                        (Insets.screenH * 2) -
-                        Gaps.sm) /
-                    2;
-
-                return Column(
-                  children: [
-                    // Section title
-                    Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: Insets.screenH,
-                      ),
-                      child: Align(
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          'Recent Memories',
-                          style: AppText.titleMediumEmph.copyWith(
-                            color: BrandColors.text1,
-                          ),
                         ),
                       ),
-                    ),
-                    const SizedBox(height: Gaps.md),
+                      const SizedBox(height: Gaps.md),
 
-                    // Horizontal scroll with memory cards
-                    SizedBox(
-                      height: 200,
-                      child: ListView.separated(
-                        scrollDirection: Axis.horizontal,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: Insets.screenH,
+                      // Horizontal scroll with memory cards
+                      SizedBox(
+                        height: 200,
+                        child: ListView.separated(
+                          scrollDirection: Axis.horizontal,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: Insets.screenH,
+                          ),
+                          itemCount: memories.length,
+                          separatorBuilder: (context, index) =>
+                              const SizedBox(width: Gaps.sm),
+                          itemBuilder: (context, index) {
+                            final memory = memories[index];
+                            return SizedBox(
+                              width: cardWidth,
+                              child: RecentMemoryCard(
+                                memory: memory,
+                                onTap: () {
+                                  // TODO P2: Navigate to memory detail
+                                },
+                              ),
+                            );
+                          },
                         ),
-                        itemCount: memories.length,
-                        separatorBuilder: (context, index) =>
-                            const SizedBox(width: Gaps.sm),
-                        itemBuilder: (context, index) {
-                          final memory = memories[index];
-                          return SizedBox(
-                            width: cardWidth,
-                            child: RecentMemoryCard(
-                              memory: memory,
-                              onTap: () {
-                                // TODO P2: Navigate to memory detail
-                              },
-                            ),
-                          );
-                        },
                       ),
-                    ),
-                    const SizedBox(height: Gaps.lg),
-                  ],
-                );
-              },
-              loading: () => const SizedBox.shrink(),
-              error: (error, stackTrace) => const SizedBox.shrink(),
-            ),
-          ],
+                      const SizedBox(height: Gaps.lg),
+                    ],
+                  );
+                },
+                loading: () => const SizedBox.shrink(),
+                error: (error, stackTrace) => const SizedBox.shrink(),
+              ),
+            ],
+          ),
         ),
       ),
     );

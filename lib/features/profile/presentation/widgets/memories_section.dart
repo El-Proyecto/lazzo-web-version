@@ -36,7 +36,10 @@ class MemoriesSection extends StatelessWidget {
         // Memories Grid
         if (memories.isEmpty)
           Container(
-            height: 120,
+            constraints: BoxConstraints(
+              minHeight: 120,
+              maxHeight: MediaQuery.of(context).size.height * 0.4,
+            ),
             alignment: Alignment.center,
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
