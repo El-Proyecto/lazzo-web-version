@@ -23,6 +23,7 @@ class HomeEventRemoteDataSource {
           .from(_eventsView)
           .select('''
             event_id, event_name, emoji,
+            group_id, group_name,
             start_datetime, end_datetime,
             location_name, event_status,
             user_rsvp, voted_at,
@@ -61,6 +62,9 @@ class HomeEventRemoteDataSource {
       final nextEvent = events.first;
       print(
           '✅ Next event selected: ${nextEvent.name} (status: ${nextEvent.status})');
+      print(
+          '   📍 Group: ${nextEvent.groupName ?? 'No group'} (ID: ${nextEvent.groupId ?? 'null'})');
+      print('   📍 Location: ${nextEvent.location ?? 'No location'}');
       return nextEvent;
     } catch (e) {
       print('❌ Error fetching next event: $e');
@@ -77,6 +81,7 @@ class HomeEventRemoteDataSource {
           .from(_eventsView)
           .select('''
             event_id, event_name, emoji,
+            group_id, group_name,
             start_datetime, end_datetime,
             location_name, event_status,
             user_rsvp, voted_at,
@@ -113,6 +118,7 @@ class HomeEventRemoteDataSource {
           .from(_eventsView)
           .select('''
             event_id, event_name, emoji,
+            group_id, group_name,
             start_datetime, end_datetime,
             location_name, event_status,
             user_rsvp, voted_at,
