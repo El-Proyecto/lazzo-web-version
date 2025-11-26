@@ -81,7 +81,7 @@ class _HomePageState extends ConsumerState<HomePage> {
     print('🔄 Refreshing home data...');
     ref.invalidate(nextEventControllerProvider);
     ref.invalidate(confirmedEventsControllerProvider);
-    ref.invalidate(homePendingEventsControllerProvider);
+    ref.invalidate(homeEventsControllerProvider);
     ref.invalidate(todosControllerProvider);
     ref.invalidate(paymentSummariesControllerProvider);
     ref.invalidate(totalBalanceControllerProvider);
@@ -168,7 +168,7 @@ class _HomePageState extends ConsumerState<HomePage> {
   Widget build(BuildContext context) {
     final nextEventAsync = ref.watch(nextEventControllerProvider);
     final confirmedEventsAsync = ref.watch(confirmedEventsControllerProvider);
-    final pendingEventsAsync = ref.watch(homePendingEventsControllerProvider);
+    final pendingEventsAsync = ref.watch(homeEventsControllerProvider);
     final todosAsync = ref.watch(todosControllerProvider);
     final paymentsAsync = ref.watch(paymentSummariesControllerProvider);
     final totalBalanceAsync = ref.watch(totalBalanceControllerProvider);

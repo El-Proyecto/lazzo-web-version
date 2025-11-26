@@ -97,7 +97,7 @@ final confirmedEventsControllerProvider =
   return confirmedEvents.where((e) => e.id != nextEvent.id).toList();
 });
 
-final homePendingEventsControllerProvider =
+final homeEventsControllerProvider =
     FutureProvider.autoDispose<List<HomeEventEntity>>((ref) async {
   // Fetch both pending events and next event in parallel
   final results = await Future.wait([

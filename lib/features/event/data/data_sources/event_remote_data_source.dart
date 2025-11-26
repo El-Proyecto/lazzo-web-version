@@ -1,5 +1,6 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/event_detail_model.dart';
+import '../../domain/entities/event_participant_entity.dart';
 
 /// Remote data source for event operations
 /// Handles all Supabase queries related to events
@@ -13,9 +14,7 @@ class EventRemoteDataSource {
   Future<EventDetailModel> getEventDetail(String eventId) async {
     try {
       // Main event query
-      final response = await _supabaseClient
-          .from('events')
-          .select('''
+      final response = await _supabaseClient.from('events').select('''
             id,
             group_id,
             name,
@@ -26,23 +25,21 @@ class EventRemoteDataSource {
             location_id,
             created_by,
             created_at
-          ''')
-          .eq('id', eventId)
-          .single();
+          ''').eq('id', eventId).single();
 
       // Get location details if exists
       String? locationName;
       String? locationAddress;
       double? locationLat;
       double? locationLng;
-      
+
       if (response['location_id'] != null) {
         final locationResponse = await _supabaseClient
             .from('locations')
             .select('display_name, formatted_address, latitude, longitude')
             .eq('id', response['location_id'])
             .maybeSingle();
-        
+
         if (locationResponse != null) {
           locationName = locationResponse['display_name'] as String?;
           locationAddress = locationResponse['formatted_address'] as String?;
@@ -220,6 +217,35 @@ class EventRemoteDataSource {
       throw Exception('Failed to update event status: ${e.message}');
     } catch (e) {
       throw Exception('Failed to update event status: $e');
+    }
+  }
+
+  /// Get event participants
+  Future<List<EventParticipantEntity>> getEventParticipants(
+      String eventId) async {
+    try {
+      final response =
+          await _supabaseClient.from('event_participants').select('''
+            user_id,
+            rsvp,
+            profiles!inner(
+              display_name,
+              avatar_url
+            )
+          ''').eq('pevent_id', eventId);
+
+      return (response as List).map((participant) {
+        return EventParticipantEntity(
+          userId: participant['user_id'] as String,
+          displayName: participant['profiles']['display_name'] as String,
+          avatarUrl: participant['profiles']['avatar_url'] as String?,
+          status: participant['rsvp'] as String,
+        );
+      }).toList();
+    } on PostgrestException catch (e) {
+      throw Exception('Failed to get event participants: ${e.message}');
+    } catch (e) {
+      throw Exception('Failed to get event participants: $e');
     }
   }
 }

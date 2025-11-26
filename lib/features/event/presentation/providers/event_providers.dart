@@ -23,7 +23,6 @@ import '../../domain/usecases/create_suggestion.dart';
 import '../../domain/usecases/create_location_suggestion.dart';
 import '../../domain/usecases/toggle_suggestion_vote.dart';
 import '../../domain/usecases/update_event_status.dart';
-import '../../domain/usecases/get_group_expenses.dart';
 
 // Current user ID provider
 final currentUserIdProvider = Provider<String?>((ref) {
@@ -50,7 +49,6 @@ final chatRepositoryProvider = Provider<ChatRepository>((ref) {
 final suggestionRepositoryProvider = Provider<SuggestionRepository>((ref) {
   return FakeSuggestionRepository();
 });
-
 
 // Use case providers
 final getEventDetailProvider = Provider<GetEventDetail>((ref) {
@@ -167,22 +165,6 @@ final eventPollsProvider = FutureProvider.family<List<Poll>, String>((
 // REMOVED: recentMessagesProvider, MessagesNotifier, unreadMessagesCountProvider
 // These are now handled by chatMessagesProvider (stream-based) in chat_providers.dart
 
-// Group expenses provider (for event expenses)
-final getGroupExpensesUseCaseProvider = Provider<GetGroupExpenses>((ref) {
-    return GetGroupExpenses(ref.watch(groupExpenseRepositoryProvider));
-  });
-
-  final groupExpensesProvider = StateNotifierProvider.family<
-      GroupExpensesController, AsyncValue<List<GroupExpenseEntity>>, String>((
-    ref,
-    groupId,
-  ) {
-    return GroupExpensesController(
-      ref.watch(getGroupExpensesUseCaseProvider),
-      groupId,
-    );
-});
-
 // Event suggestions state provider
 final eventSuggestionsProvider =
     FutureProvider.family<List<Suggestion>, String>((ref, eventId) async {
@@ -256,7 +238,8 @@ class UserRsvpNotifier extends StateNotifier<AsyncValue<Rsvp?>> {
     state = const AsyncValue.loading();
     try {
       final currentUserId = ref.read(currentUserIdProvider);
-      final userRsvp = await repository.getUserRsvp(eventId, currentUserId ?? '');
+      final userRsvp =
+          await repository.getUserRsvp(eventId, currentUserId ?? '');
       state = AsyncValue.data(userRsvp);
     } catch (error, stackTrace) {
       state = AsyncValue.error(error, stackTrace);
@@ -266,12 +249,15 @@ class UserRsvpNotifier extends StateNotifier<AsyncValue<Rsvp?>> {
   Future<void> submitVote(RsvpStatus status) async {
     try {
       final currentUserId = ref.read(currentUserIdProvider);
-      
-      print('🔍 DEBUG submitVote: eventId=$eventId, userId=$currentUserId, newStatus=$status');
-      
-      final rsvp = await repository.submitRsvp(eventId, currentUserId ?? '', status);
-      
-      print('🔍 DEBUG submitVote: RSVP submitted successfully - ${rsvp.status}');
+
+      print(
+          '🔍 DEBUG submitVote: eventId=$eventId, userId=$currentUserId, newStatus=$status');
+
+      final rsvp =
+          await repository.submitRsvp(eventId, currentUserId ?? '', status);
+
+      print(
+          '🔍 DEBUG submitVote: RSVP submitted successfully - ${rsvp.status}');
 
       // Sync with current event suggestion
       try {
@@ -283,12 +269,13 @@ class UserRsvpNotifier extends StateNotifier<AsyncValue<Rsvp?>> {
       // Invalidate providers using StateNotifier's ref
       ref.invalidate(eventRsvpsProvider(eventId));
       ref.invalidate(eventDetailProvider(eventId));
-      
-      print('🔍 DEBUG submitVote: Providers invalidated, UI will refresh automatically');
-      
+
+      print(
+          '🔍 DEBUG submitVote: Providers invalidated, UI will refresh automatically');
+
       // Update local state - this triggers UI rebuild
       state = AsyncValue.data(rsvp);
-      
+
       // Check auto-confirmation after RSVP submission
       await _checkAutoConfirmation();
     } catch (error, stackTrace) {
@@ -516,7 +503,7 @@ class ToggleSuggestionVoteNotifier extends StateNotifier<AsyncValue<void>> {
       ref.invalidate(eventSuggestionsProvider(eventId));
       ref.invalidate(suggestionVotesProvider(eventId));
       ref.invalidate(userSuggestionVotesProvider(eventId));
-      
+
       state = const AsyncValue.data(null);
     } catch (error, stackTrace) {
       state = AsyncValue.error(error, stackTrace);
@@ -645,11 +632,10 @@ class ToggleLocationSuggestionVoteNotifier
       ref.invalidate(eventLocationSuggestionsProvider(eventId));
       ref.invalidate(locationSuggestionVotesProvider(eventId));
       ref.invalidate(userLocationSuggestionVotesProvider(eventId));
-      
+
       state = const AsyncValue.data(null);
     } catch (error, stackTrace) {
       state = AsyncValue.error(error, stackTrace);
     }
   }
 }
-
