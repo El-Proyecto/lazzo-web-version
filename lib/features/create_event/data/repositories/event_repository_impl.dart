@@ -82,70 +82,59 @@ class EventRepositoryImpl implements EventRepository {
 			print('📝 DEBUG: - groupId: $effectiveGroupId');
 			print('📝 DEBUG: - createdBy: $userId');
 			print('📝 DEBUG: - locationId: $locationId');
+			print('📝 DEBUG: - startDateTime: ${event.startDateTime}');
+			print('📝 DEBUG: - status: ${event.status.toString().split('.').last}');
 			
-			final response = await _dataSource.createEvent(
-				name: event.name,
-				emoji: event.emoji,
-				groupId: effectiveGroupId,
-				startDateTime: event.startDateTime,
-				endDateTime: event.endDateTime,
-				locationId: locationId,
-				status: event.status.toString().split('.').last,
-				createdBy: userId,
-			);
-			
-			print('📝 SUCCESS: Event created with ID: ${response['id']}');
+			Map<String, dynamic> response;
+			try {
+				print('🔄 Calling _dataSource.createEvent...');
+				response = await _dataSource.createEvent(
+					name: event.name,
+					emoji: event.emoji,
+					groupId: effectiveGroupId,
+					startDateTime: event.startDateTime,
+					endDateTime: event.endDateTime,
+					locationId: locationId,
+					status: event.status.toString().split('.').last,
+					createdBy: userId,
+				);
+				print('📝 SUCCESS: Event created with ID: ${response['id']}');
+			} catch (e) {
+				print('❌ FAILED to create event in Supabase!');
+				rethrow;
+			}
 			
 			final eventId = response['id'] as String;
 			
-		// Create initial RSVP for event creator (automatically "yes")
-		print('👤 DEBUG: Creating initial RSVP for creator - eventId=$eventId, userId=$userId');
-		
-		// Prepare the data - Use UPSERT to handle any conflicts
-		final rsvpData = {
-			'pevent_id': eventId,
-			'user_id': userId,
-			'rsvp': 'yes', // CRITICAL: Must be 'yes', not 'pending'
-			'confirmed_at': DateTime.now().toIso8601String(),
-		};
-		
-		print('📤 DEBUG: Upserting RSVP data (to handle conflicts): $rsvpData');
-		
-		try {
-			// Use UPSERT instead of INSERT to handle any conflicts
-			// This ensures 'yes' is always saved even if a row already exists
-			final rsvpResponse = await _client
-				.from('event_participants')
-				.upsert(
-					rsvpData,
-					onConflict: 'pevent_id,user_id', // Composite primary key
-				)
-				.select();
+			// ✅ TRIGGER HANDLING:
+			// The Supabase trigger 'on_event_created_add_par...' automatically adds
+			// all group members as participants with rsvp='pending'.
+			// We need to UPDATE the creator's RSVP from 'pending' to 'yes'.
 			
-			print('✅ DEBUG: Initial RSVP upserted successfully');
-			print('📥 DEBUG: Supabase response: $rsvpResponse');
+			print('👤 DEBUG: Updating creator RSVP to "yes" (from trigger default "pending")');
 			
-			// Verify what was actually saved
-			if (rsvpResponse.isNotEmpty) {
-				final savedRsvp = rsvpResponse.first['rsvp'];
-				print('🔍 DEBUG: Saved RSVP status in DB: $savedRsvp');
-				if (savedRsvp != 'yes') {
-					print('⚠️⚠️⚠️ CRITICAL WARNING ⚠️⚠️⚠️');
-					print('⚠️ RSVP was saved as "$savedRsvp" instead of "yes"!');
-					print('⚠️ Check Supabase:');
-					print('⚠️   1. event_participants table default values');
-					print('⚠️   2. Triggers on INSERT/UPDATE');
-					print('⚠️   3. RLS policies that modify data');
-					print('⚠️⚠️⚠️ END WARNING ⚠️⚠️⚠️');
-				}
+			try {
+				// Wait a tiny bit for trigger to complete (triggers run async)
+				await Future.delayed(const Duration(milliseconds: 100));
+				
+				final updateResponse = await _client
+					.from('event_participants')
+					.update({
+						'rsvp': 'yes',
+						'confirmed_at': DateTime.now().toIso8601String(),
+					})
+					.eq('pevent_id', eventId)
+					.eq('user_id', userId)
+					.select();
+				
+				print('✅ DEBUG: Creator RSVP updated to "yes"');
+				print('📥 DEBUG: Updated row: $updateResponse');
+			} catch (e) {
+				print('❌ DEBUG: Failed to update creator RSVP to "yes"');
+				print('❌ DEBUG: Error: $e');
+				print('❌ SOLUTION: Check RLS UPDATE policy on event_participants');
+				// Don't fail event creation if RSVP update fails
 			}
-		} catch (e, stackTrace) {
-			print('❌ DEBUG: Failed to upsert initial RSVP');
-			print('❌ DEBUG: Error: $e');
-			print('❌ DEBUG: StackTrace: $stackTrace');
-			print('❌ DEBUG: This means the creator will not show as "Going" automatically');
-			// Don't fail event creation if RSVP fails, but log it for debugging
-		}
 		
 		// If event has initial date/time, create it as a suggestion
 			if (event.startDateTime != null) {
