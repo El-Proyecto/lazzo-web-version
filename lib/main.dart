@@ -58,6 +58,8 @@ import '../features/create_event/data/repositories/event_repository_impl.dart'
 // EVENT FEATURES - Real implementation
 import '../features/event/presentation/providers/event_providers.dart';
 import '../features/event/data/data_sources/event_remote_data_source.dart';
+import '../features/event/data/data_sources/event_photo_data_source.dart';
+import '../features/event/data/repositories/event_photo_repository_impl.dart';
 import '../features/event/data/data_sources/rsvp_remote_data_source.dart';
 import '../features/event/data/data_sources/suggestion_remote_data_source.dart';
 import '../features/event/data/data_sources/poll_remote_data_source.dart';
@@ -211,6 +213,13 @@ void main() async {
             PollRemoteDataSource(Supabase.instance.client),
           ),
         ),
+
+        // ✅ EVENT PHOTO UPLOAD -> real (Supabase Storage) via DI (Nov 25, 2025)
+        eventPhotoRepositoryProvider.overrideWith((ref) {
+          final client = Supabase.instance.client;
+          final dataSource = EventPhotoDataSource(client);
+          return EventPhotoRepositoryImpl(dataSource);
+        }),
         chatRepositoryProvider.overrideWith(
           (ref) => ChatRepositoryImpl(
            ChatRemoteDataSource(Supabase.instance.client),

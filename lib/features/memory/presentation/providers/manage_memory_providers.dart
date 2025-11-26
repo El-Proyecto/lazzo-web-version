@@ -3,6 +3,9 @@ import '../../domain/entities/memory_entity.dart';
 import '../../data/fakes/fake_memory_repository.dart';
 import 'memory_providers.dart';
 
+/// Provider for selected photo paths from gallery
+final selectedPhotoPathsProvider = StateProvider<List<String>?>((ref) => null);
+
 /// State for managing memory photos
 class ManageMemoryState {
   final String memoryId;
@@ -116,6 +119,25 @@ class ManageMemoryNotifier
                 isUploadedByCurrentUser: p.uploaderId == currentUserId,
               ))
           .toList();
+
+      // Add selected photos from gallery (if provided)
+      final selectedPhotoPaths = ref.read(selectedPhotoPathsProvider);
+      if (selectedPhotoPaths != null && selectedPhotoPaths.isNotEmpty) {
+        for (int i = 0; i < selectedPhotoPaths.length; i++) {
+          photoItems.insert(
+            0,
+            ManagePhotoItem(
+              id: 'temp-${DateTime.now().millisecondsSinceEpoch}-$i',
+              url: selectedPhotoPaths[i], // Local file path
+              thumbnailUrl: null,
+              isPortrait: false, // TODO: Detect orientation
+              uploaderId: currentUserId,
+              uploaderName: 'You',
+              isUploadedByCurrentUser: true,
+            ),
+          );
+        }
+      }
 
       // No cover selected by default
       final ManagePhotoItem? currentCover = null;

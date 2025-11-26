@@ -17,6 +17,7 @@ import '../../domain/repositories/poll_repository.dart';
 import '../../domain/repositories/chat_repository.dart';
 import '../../domain/repositories/suggestion_repository.dart';
 import '../../domain/repositories/group_expense_repository.dart';
+import '../../domain/repositories/event_photo_repository.dart';
 import '../../domain/usecases/get_event_detail.dart';
 import '../../domain/usecases/get_event_rsvps.dart';
 import '../../domain/usecases/submit_rsvp.dart';
@@ -127,6 +128,11 @@ final suggestionRepositoryProvider = Provider<SuggestionRepository>((ref) {
 
 final groupExpenseRepositoryProvider = Provider<GroupExpenseRepository>((ref) {
   return FakeGroupExpenseRepository();
+});
+
+// Event photo repository provider (default to fake, override in main.dart)
+final eventPhotoRepositoryProvider = Provider<EventPhotoRepository>((ref) {
+  throw UnimplementedError('EventPhotoRepository must be overridden in main.dart');
 });
 
 // Use case providers
