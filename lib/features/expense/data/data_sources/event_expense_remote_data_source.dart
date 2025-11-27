@@ -80,7 +80,7 @@ class EventExpenseRemoteDataSource {
       final expenses = <EventExpenseDto>[];
       for (final expenseJson in expensesResponse as List) {
         final expenseId = expenseJson['id'] as String;
-        
+
         // Fetch splits for this expense
         final splitsResponse = await _client
             .from('expense_splits')
