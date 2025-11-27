@@ -12,6 +12,7 @@ class GroupEventEntity {
   final String? location;
   final GroupEventStatus status;
   final int goingCount;
+  final int participantCount; // Total participants (for "X participants")
   final List<String> attendeeAvatars; // Profile picture URLs
   final List<String> attendeeNames; // Names of attendees
   final bool?
@@ -30,6 +31,7 @@ class GroupEventEntity {
     this.location,
     required this.status,
     required this.goingCount,
+    required this.participantCount,
     required this.attendeeAvatars,
     required this.attendeeNames,
     this.userVote,
@@ -48,12 +50,13 @@ class GroupEventEntity {
     String? location,
     GroupEventStatus? status,
     int? goingCount,
+    int? participantCount,
+    int? photoCount,
+    int? maxPhotos,
     List<String>? attendeeAvatars,
     List<String>? attendeeNames,
     bool? userVote,
     List<RsvpVote>? allVotes,
-    int? photoCount,
-    int? maxPhotos,
     List<ParticipantPhoto>? participantPhotos,
     bool updateUserVote = false, // Flag to allow explicit null setting
   }) {
@@ -66,6 +69,7 @@ class GroupEventEntity {
       location: location ?? this.location,
       status: status ?? this.status,
       goingCount: goingCount ?? this.goingCount,
+      participantCount: participantCount ?? this.participantCount,
       attendeeAvatars: attendeeAvatars ?? this.attendeeAvatars,
       attendeeNames: attendeeNames ?? this.attendeeNames,
       userVote: updateUserVote ? userVote : (userVote ?? this.userVote),

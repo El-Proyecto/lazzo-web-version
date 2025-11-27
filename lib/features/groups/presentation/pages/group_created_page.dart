@@ -272,7 +272,7 @@ class _ShareLinkSection extends StatelessWidget {
                 borderRadius: BorderRadius.circular(10),
                 onTap: onShareLink,
                 child: const Icon(
-                  Icons.share,
+                  Icons.ios_share,
                   size: IconSizes.sm,
                   color: BrandColors.text1,
                 ),

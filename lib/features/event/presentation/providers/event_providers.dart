@@ -14,6 +14,8 @@ import '../../domain/repositories/rsvp_repository.dart';
 import '../../domain/repositories/poll_repository.dart';
 import '../../domain/repositories/chat_repository.dart';
 import '../../domain/repositories/suggestion_repository.dart';
+import '../../domain/repositories/group_expense_repository.dart';
+import '../../domain/repositories/event_photo_repository.dart';
 import '../../domain/usecases/get_event_detail.dart';
 import '../../domain/usecases/get_event_rsvps.dart';
 import '../../domain/usecases/submit_rsvp.dart';
@@ -23,10 +25,82 @@ import '../../domain/usecases/create_suggestion.dart';
 import '../../domain/usecases/create_location_suggestion.dart';
 import '../../domain/usecases/toggle_suggestion_vote.dart';
 import '../../domain/usecases/update_event_status.dart';
+import '../../domain/usecases/get_group_expenses.dart';
+import '../../../group_hub/presentation/providers/group_hub_providers.dart';
 
 // Current user ID provider
 final currentUserIdProvider = Provider<String?>((ref) {
   return Supabase.instance.client.auth.currentUser?.id;
+});
+
+/// Provider to check if current user is admin of the event's group
+/// Used to determine if user can see/edit event status and settings
+final isUserGroupAdminProvider = FutureProvider.family<bool, String>((ref, groupId) async {
+  final currentUserId = ref.watch(currentUserIdProvider);
+  
+  if (currentUserId == null) return false;
+  
+  try {
+    // Get group members to check if current user is admin
+    final membersState = ref.watch(groupMembersProvider(groupId));
+    
+    // Wait for data to load using whenData or handle loading/error states
+    return await membersState.when(
+      data: (members) {
+        // Find current user in members list
+        try {
+          final currentUserMember = members.firstWhere(
+            (member) => member.id == currentUserId,
+          );
+          return currentUserMember.isAdmin;
+        } catch (e) {
+          // User not found in group members
+          print('⚠️ [IS_ADMIN_CHECK] User not found in group members');
+          return false;
+        }
+      },
+      loading: () => false, // Not admin while loading
+      error: (error, stack) {
+        print('❌ [IS_ADMIN_CHECK] Error loading members: $error');
+        return false;
+      },
+    );
+  } catch (e) {
+    print('❌ [IS_ADMIN_CHECK] Error checking admin status: $e');
+    return false;
+  }
+});
+
+/// Provider to check if current user can manage event (host or group admin)
+/// Combines host check and admin check
+final canManageEventProvider = FutureProvider.family<bool, String>((ref, eventId) async {
+  try {
+    // Get event details to check host and group
+    final event = await ref.watch(eventDetailProvider(eventId).future);
+    final currentUserId = ref.watch(currentUserIdProvider);
+    
+    if (currentUserId == null) return false;
+    
+    // Check if user is event host
+    final isHost = event.hostId == currentUserId;
+    
+    if (isHost) {
+      print('✅ [CAN_MANAGE] User is event host');
+      return true;
+    }
+    
+    // Check if user is group admin
+    final isAdmin = await ref.watch(isUserGroupAdminProvider(event.groupId).future);
+    
+    if (isAdmin) {
+      print('✅ [CAN_MANAGE] User is group admin');
+    }
+    
+    return isAdmin;
+  } catch (e) {
+    print('❌ [CAN_MANAGE] Error checking manage permission: $e');
+    return false;
+  }
 });
 
 // Repository providers (default to fake implementations)
@@ -48,6 +122,15 @@ final chatRepositoryProvider = Provider<ChatRepository>((ref) {
 
 final suggestionRepositoryProvider = Provider<SuggestionRepository>((ref) {
   return FakeSuggestionRepository();
+});
+
+final groupExpenseRepositoryProvider = Provider<GroupExpenseRepository>((ref) {
+  return FakeGroupExpenseRepository();
+});
+
+// Event photo repository provider (default to fake, override in main.dart)
+final eventPhotoRepositoryProvider = Provider<EventPhotoRepository>((ref) {
+  throw UnimplementedError('EventPhotoRepository must be overridden in main.dart');
 });
 
 // Use case providers
@@ -103,12 +186,16 @@ class EventStatusNotifier extends StateNotifier<AsyncValue<EventDetail?>> {
     state = const AsyncValue.loading();
 
     try {
+      print('🔄 [STATUS UPDATE] Updating event $eventId to status: $newStatus');
       final updatedEvent = await _updateEventStatus(eventId, newStatus);
       state = AsyncValue.data(updatedEvent);
+      print('✅ [STATUS UPDATE] Event status updated successfully');
 
       // Invalidate the event detail provider to refresh the UI
       _ref.invalidate(eventDetailProvider(eventId));
+      print('🔄 [STATUS UPDATE] Event detail provider invalidated');
     } catch (error, stackTrace) {
+      print('❌ [STATUS UPDATE] Error updating status: $error');
       state = AsyncValue.error(error, stackTrace);
     }
   }

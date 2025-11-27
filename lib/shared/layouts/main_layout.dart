@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
 import '../components/nav/navigation_bar.dart' as nav;
 import '../../features/groups/presentation/pages/groups_page.dart';
 import '../../features/inbox/presentation/pages/inbox_page.dart';
@@ -48,22 +49,56 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
     const ProfilePage(), // 3 - Profile (moved from index 4)
   ];
 
-  void _onNavTap(int index) {
+  void _onNavTap(int index) async {
     if (index == 2) {
       // Center button - action depends on NavBar state
       final nextEventStatus = ref.read(navBarStateProvider);
 
-      if (nextEventStatus == HomeEventStatus.living ||
-          nextEventStatus == HomeEventStatus.recap) {
-        // Navigate to Manage Memory page
-        // TODO: Get actual memory ID from current event
-        Navigator.pushNamed(
-          context,
-          AppRouter.manageMemory,
-          arguments: {
-            'memoryId': 'memory-1',
-          },
+      if (nextEventStatus == HomeEventStatus.living) {
+        // Living mode: open camera (TODO: implement)
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('📸 Camera for living mode coming soon!'),
+            duration: Duration(seconds: 2),
+          ),
         );
+      } else if (nextEventStatus == HomeEventStatus.recap) {
+        // Recap mode: open gallery with multi-select (max 5 photos)
+        final picker = ImagePicker();
+        final selectedImages = await picker.pickMultiImage(
+          maxWidth: 1920,
+          maxHeight: 1920,
+          imageQuality: 85,
+        );
+
+        if (selectedImages.isNotEmpty && mounted) {
+          // Limit to 5 photos
+          final limitedImages = selectedImages.take(5).toList();
+          
+          if (limitedImages.length < selectedImages.length) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Maximum 5 photos selected'),
+                duration: Duration(seconds: 2),
+              ),
+            );
+          }
+
+          // Navigate to ManageMemoryPage with selected photos
+          // TODO P2: Get actual memoryId from current event
+          final memoryId = 'memory-1'; // Placeholder
+          
+          if (mounted) {
+            Navigator.pushNamed(
+              context,
+              AppRouter.manageMemory,
+              arguments: {
+                'memoryId': memoryId,
+                'selectedPhotos': limitedImages.map((img) => img.path).toList(),
+              },
+            );
+          }
+        }
       } else {
         // Planning state: navigate to Create Event page
         Navigator.pushNamed(context, AppRouter.createEvent);

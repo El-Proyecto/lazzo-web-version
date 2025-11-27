@@ -27,6 +27,9 @@ import '../features/memory/presentation/pages/memory_page.dart';
 import '../features/memory/presentation/pages/memory_viewer_page.dart';
 import '../features/memory/presentation/pages/manage_memory_page.dart';
 import '../features/memory/presentation/pages/photo_preview_page.dart';
+import '../features/memory/presentation/pages/memory_ready_page.dart';
+import '../features/memory/presentation/pages/share_memory_page.dart';
+// share_memory_preview_page import removed - uses direct navigation
 
 class AppRouter {
   static const String home = '/home';
@@ -50,6 +53,9 @@ class AppRouter {
   static const String memoryViewer = '/memory-viewer';
   static const String photoPreview = '/photo-preview';
   static const String manageMemory = '/manage-memory';
+  static const String memoryReady = '/memory-ready';
+  static const String shareMemory = '/share-memory';
+  // shareMemoryPreview removed - uses direct Navigator.push with imageBytes
   static const String loginPage = '/login';
   static const String otpVerification = '/otp';
   static const String loginVerification = '/otp-login';
@@ -153,6 +159,21 @@ class AppRouter {
         memoryId: args?['memoryId'] ?? 'memory-1',
       );
     },
+    memoryReady: (context) {
+      final args =
+          ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+      return MemoryReadyPage(
+        memoryId: args?['memoryId'] ?? 'memory-1',
+      );
+    },
+    shareMemory: (context) {
+      final args =
+          ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+      return ShareMemoryPage(
+        memoryId: args?['memoryId'] ?? 'memory-1',
+      );
+    },
+    // shareMemoryPreview removed - uses direct Navigator.push with imageBytes
     loginPage: (context) => const LoginPage(),
     loginVerification: (context) {
       final args =

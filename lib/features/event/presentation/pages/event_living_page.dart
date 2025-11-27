@@ -9,11 +9,17 @@ import '../../../../shared/themes/colors.dart';
 import '../../domain/entities/chat_message.dart';
 import '../providers/event_providers.dart';
 import '../providers/chat_providers.dart';
+import '../providers/event_photo_providers.dart';
 import '../widgets/living_time_left_pill.dart';
 import '../widgets/living_action_row.dart';
 import '../widgets/chat_preview_widget.dart';
 import '../widgets/host_time_controls.dart';
 import '../widgets/living_expenses_widget.dart';
+
+/// Helper function to display "You" for current user, otherwise their name
+String _getUserDisplayName(String userId, String userName, String? currentUserId) {
+  return userId == currentUserId ? 'You' : userName;
+}
 
 /// Event page for Living mode
 /// Displays event in progress with photo upload, chat, and host controls
@@ -24,6 +30,7 @@ class EventLivingPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final currentUserId = ref.watch(currentUserIdProvider);
     final eventAsync = ref.watch(eventDetailProvider(eventId));
     final messagesAsync = ref.watch(chatMessagesProvider(eventId));
 
@@ -87,8 +94,46 @@ class EventLivingPage extends ConsumerWidget {
                       },
                     );
                   },
-                  onTakePhoto: () {
-                    // TODO: Open camera
+                  onTakePhoto: () async {
+                    // Get photo upload notifier
+                    final photoNotifier = ref.read(
+                      eventPhotoUploadNotifierProvider(eventId).notifier,
+                    );
+
+                    // Take photo and upload
+                    await photoNotifier.takePhoto(
+                      eventId: eventId,
+                      groupId: event.groupId,
+                    );
+
+                    // Show result
+                    final uploadState = ref.read(
+                      eventPhotoUploadNotifierProvider(eventId),
+                    );
+
+                    uploadState.when(
+                      data: (photoUrl) {
+                        if (photoUrl != null) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('✅ Photo uploaded successfully!'),
+                              duration: Duration(seconds: 2),
+                            ),
+                          );
+                          // Refresh event to update photo count
+                          ref.invalidate(eventDetailProvider(eventId));
+                        }
+                      },
+                      loading: () {},
+                      error: (error, _) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('❌ Failed to upload photo: $error'),
+                            duration: const Duration(seconds: 3),
+                          ),
+                        );
+                      },
+                    );
                   },
                   onViewMemory: () {
                     // TODO: Navigate to memory
@@ -104,13 +149,12 @@ class EventLivingPage extends ConsumerWidget {
                     );
                     return ChatPreviewWidget(
                       newMessagesCount: unreadCount,
-                      currentUserId:
-                          'current-user', // TODO: Get from auth provider
+                      currentUserId: currentUserId ?? 'current-user',
                       recentMessages: messages
                           .map(
                             (m) => ChatMessagePreview(
                               userId: m.userId,
-                              userName: m.userName,
+                              userName: _getUserDisplayName(m.userId, m.userName, currentUserId),
                               userAvatar: m.userAvatar,
                               content: m.content,
                               timestamp: m.createdAt,

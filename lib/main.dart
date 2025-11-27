@@ -45,18 +45,31 @@ import 'features/expense/presentation/providers/event_expense_providers.dart';
 import 'features/expense/data/data_sources/event_expense_remote_data_source.dart';
 import 'features/expense/data/repositories/event_expense_repository_impl.dart';
 
+// GROUP HUB - Real implementation
+import '../features/group_hub/presentation/providers/group_hub_providers.dart' as group_hub;
+import '../features/group_hub/data/data_sources/group_event_data_source.dart' as group_hub_ds;
+import '../features/group_hub/data/repositories/group_event_repository_impl.dart' as group_hub_repo;
+import '../features/group_hub/data/data_sources/group_memory_data_source.dart';
+import '../features/group_hub/data/repositories/group_memory_repository_impl.dart';
+import '../features/group_hub/data/data_sources/group_photos_data_source.dart';
+import '../features/group_hub/data/repositories/group_photos_repository_impl.dart';
+
 // PROFILE - Real implementation
 import '../features/profile/data/data_sources/profile_remote_data_source.dart';
 import '../features/profile/data/repositories/profile_repository_impl.dart';
 import '../features/profile/presentation/providers/profile_providers.dart';
 
 // CREATE EVENT - Real implementation
-import '../features/create_event/presentation/providers/event_providers.dart' as create_event;
-import '../features/create_event/data/repositories/event_repository_impl.dart' as create_event_impl;
+import '../features/create_event/presentation/providers/event_providers.dart'
+    as create_event;
+import '../features/create_event/data/repositories/event_repository_impl.dart'
+    as create_event_impl;
 
 // EVENT FEATURES - Real implementation
 import '../features/event/presentation/providers/event_providers.dart';
 import '../features/event/data/data_sources/event_remote_data_source.dart';
+import '../features/event/data/data_sources/event_photo_data_source.dart';
+import '../features/event/data/repositories/event_photo_repository_impl.dart';
 import '../features/event/data/data_sources/rsvp_remote_data_source.dart';
 import '../features/event/data/data_sources/suggestion_remote_data_source.dart';
 import '../features/event/data/data_sources/poll_remote_data_source.dart';
@@ -136,11 +149,32 @@ void main() async {
         // ),
 
         // ✅ GROUPS repo -> real (Supabase) via DI (P2 implementation)
-         groupRepositoryProvider.overrideWith((ref) {
-           final client = Supabase.instance.client;
-           final dataSource = SupabaseGroupsDataSource(client);
-           return GroupRepositoryImpl(dataSource, client);
-         }),
+        groupRepositoryProvider.overrideWith((ref) {
+          final client = Supabase.instance.client;
+          final dataSource = SupabaseGroupsDataSource(client);
+          return GroupRepositoryImpl(dataSource, client);
+        }),
+
+        // ✅ GROUP HUB EVENTS repo -> real (Supabase) via DI (Nov 18, 2025)
+        group_hub.groupEventRepositoryProvider.overrideWith((ref) {
+          final client = Supabase.instance.client;
+          final dataSource = group_hub_ds.SupabaseGroupEventDataSource(client);
+          return group_hub_repo.GroupEventRepositoryImpl(dataSource);
+        }),
+
+        // ✅ GROUP MEMORIES repo -> real (Supabase) via DI (Nov 25, 2025)
+        group_hub.groupMemoryRepositoryProvider.overrideWith((ref) {
+          final client = Supabase.instance.client;
+          final dataSource = SupabaseGroupMemoryDataSource(client);
+          return GroupMemoryRepositoryImpl(dataSource);
+        }),
+
+        // ✅ GROUP PHOTOS repo -> real (Supabase) via DI (Nov 25, 2025)
+        group_hub.groupPhotosRepositoryProvider.overrideWith((ref) {
+          final client = Supabase.instance.client;
+          final dataSource = GroupPhotosDataSource(client);
+          return GroupPhotosRepositoryImpl(dataSource);
+        }),
 
         // Profile repo -> real (Supabase)
         profileRepositoryProvider.overrideWith(
@@ -176,30 +210,37 @@ void main() async {
 
         // ✅ EVENT DETAIL FEATURES -> real (Supabase) via DI (P2 implementation)
         eventRepositoryProvider.overrideWith(
-           (ref) => EventRepositoryImpl(
-             EventRemoteDataSource(Supabase.instance.client),
-           ),
-         ),
-         rsvpRepositoryProvider.overrideWith(
-           (ref) => RsvpRepositoryImpl(
-             RsvpRemoteDataSource(Supabase.instance.client),
-           ),
-         ),
-         suggestionRepositoryProvider.overrideWith(
-           (ref) => SuggestionRepositoryImpl(
-             SuggestionRemoteDataSource(Supabase.instance.client),
-           ),
-         ),
-         pollRepositoryProvider.overrideWith(
-           (ref) => PollRepositoryImpl(
-             PollRemoteDataSource(Supabase.instance.client),
-           ),
-         ),
-         chatRepositoryProvider.overrideWith(
-           (ref) => ChatRepositoryImpl(
-             ChatRemoteDataSource(Supabase.instance.client),
-           ),
-         ),
+          (ref) => EventRepositoryImpl(
+            EventRemoteDataSource(Supabase.instance.client),
+          ),
+        ),
+        rsvpRepositoryProvider.overrideWith(
+          (ref) => RsvpRepositoryImpl(
+            RsvpRemoteDataSource(Supabase.instance.client),
+          ),
+        ),
+        suggestionRepositoryProvider.overrideWith(
+          (ref) => SuggestionRepositoryImpl(
+            SuggestionRemoteDataSource(Supabase.instance.client),
+          ),
+        ),
+        pollRepositoryProvider.overrideWith(
+          (ref) => PollRepositoryImpl(
+            PollRemoteDataSource(Supabase.instance.client),
+          ),
+        ),
+
+        // ✅ EVENT PHOTO UPLOAD -> real (Supabase Storage) via DI (Nov 25, 2025)
+        eventPhotoRepositoryProvider.overrideWith((ref) {
+          final client = Supabase.instance.client;
+          final dataSource = EventPhotoDataSource(client);
+          return EventPhotoRepositoryImpl(dataSource);
+        }),
+        chatRepositoryProvider.overrideWith(
+          (ref) => ChatRepositoryImpl(
+           ChatRemoteDataSource(Supabase.instance.client),
+          ),
+        ),
       ],
       child: const LazzoApp(),
     ),

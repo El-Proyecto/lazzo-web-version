@@ -966,6 +966,297 @@ For questions about the P1 implementation or clarification on P2 requirements:
 
 ---
 
+## 🔄 Recap Phase: Host Close Feature (Added 18 de novembro de 2025)
+
+### **CloseRecapCard Component**
+
+#### **Component Overview**
+- **Location:** `shared/components/cards/close_recap_card.dart`
+- **Purpose:** Allow hosts to close recap phase early in Manage Photos page
+- **Status:** ✅ Complete (P1)
+- **Visibility:** Only shown when `eventStatus == recap && isHost == true`
+
+#### **Features Implemented**
+- Host-only card for early recap closure
+- Countdown timer display: "Closes automatically in {time}"
+- Subtitle: "Memory can be shared after!"
+- Destructive red button: "Close Now" (BrandColors.cantVote)
+- Confirmation dialog before closing recap
+- Success feedback via top banner
+- Automatic navigation back to Memory page after close
+
+#### **Layout Structure**
+```dart
+Container (bg2, md radius, md padding)
+├─ Row
+   ├─ Expanded (left text content)
+   │  ├─ Title: "Closes automatically in {timeRemaining}"
+   │  └─ Subtitle: "Memory can be shared after!"
+   └─ Button (right)
+      └─ "Close Now" (red, smAlt radius)
+```
+
+#### **Component Usage**
+```dart
+// In manage_memory_page.dart
+if (eventStatus == FakeEventStatus.recap && isHost) {
+  CloseRecapCard(
+    timeRemaining: FakeMemoryConfig.formattedRemainingTime,
+    onCloseConfirmed: _handleCloseRecap,
+  ),
+}
+```
+
+#### **Close Recap Flow**
+```dart
+void _handleCloseRecap() {
+  // P1: Update fake config status
+  setState(() {
+    FakeMemoryConfig.eventStatus = FakeEventStatus.ended;
+  });
+
+  // Show success banner
+  TopBanner.showSuccess(
+    context,
+    message: 'Recap closed successfully!',
+  );
+
+  // Navigate back to memory page
+  Navigator.pop(context);
+  
+  // P2 TODO: Call repository method
+  // await ref.read(memoryRepositoryProvider)
+  //   .closeRecapEarly(memoryId);
+}
+```
+
+#### **Confirmation Dialog**
+- **Title:** "Close Recap Early?"
+- **Message:** "This will end the recap phase. This action cannot be undone."
+- **Confirm Text:** "Close Now"
+- **Cancel Text:** "Cancel"
+- **Type:** Destructive (red confirm button)
+- **Component:** Uses existing `ConfirmationDialog` from `shared/components/dialogs/`
+
+#### **Positioning in Manage Photos**
+```dart
+// Layout order (top to bottom):
+1. Gaps.lg (spacing)
+2. CloseRecapCard (if recap && host)
+3. Gaps.sm (spacing)
+4. AddPhotosCtaCard OR CoverSelectionCard
+5. Gaps.lg (spacing)
+6. Photo grid
+```
+
+#### **Testing Scenarios**
+```dart
+// Scenario 1: Recap + Host (card visible)
+FakeMemoryConfig.eventStatus = FakeEventStatus.recap;
+FakeMemoryConfig.isHost = true;
+FakeMemoryConfig.closeTime = DateTime.now().add(Duration(hours: 2));
+// Expected: CloseRecapCard visible with "2h 0m" countdown
+
+// Scenario 2: Recap + Non-Host (card hidden)
+FakeMemoryConfig.eventStatus = FakeEventStatus.recap;
+FakeMemoryConfig.isHost = false;
+// Expected: CloseRecapCard not visible
+
+// Scenario 3: Living + Host (card hidden)
+FakeMemoryConfig.eventStatus = FakeEventStatus.living;
+FakeMemoryConfig.isHost = true;
+// Expected: CloseRecapCard not visible (only in recap)
+
+// Scenario 4: Ended + Host (card hidden)
+FakeMemoryConfig.eventStatus = FakeEventStatus.ended;
+FakeMemoryConfig.isHost = true;
+// Expected: CloseRecapCard not visible (recap already closed)
+
+// Scenario 5: Close recap flow
+// - Tap "Close Now" button
+// - See confirmation dialog
+// - Tap "Close Now" in dialog
+// Expected: Status changes to ended, success banner, navigate back
+
+// Scenario 6: Cancel close flow
+// - Tap "Close Now" button
+// - See confirmation dialog
+// - Tap "Cancel"
+// Expected: Dialog dismissed, status unchanged
+```
+
+#### **Architecture Compliance**
+- ✅ Stateless shared component
+- ✅ All values tokenized (Gaps, Pads, Radii, AppText, BrandColors)
+- ✅ No hardcoded dimensions or colors
+- ✅ No Supabase imports in presentation layer
+- ✅ Fake-first implementation with FakeMemoryConfig
+- ✅ Proper callback pattern for parent state management
+- ✅ Reuses existing ConfirmationDialog component
+
+#### **P2 Tasks**
+- [ ] Create `closeRecapEarly()` method in MemoryRepository
+- [ ] Implement data source method to update event status
+- [ ] Update `events.status` from 'recap' to 'ended'
+- [ ] Set `events.recap_end_time = NOW()` in database
+- [ ] Trigger push notifications to all event participants
+- [ ] Update RLS policies to allow host to close recap
+- [ ] Handle edge cases (already closed, expired timer)
+- [ ] Add real-time sync for status changes (other devices)
+- [ ] Log close action in audit table for analytics
+
+#### **Database Requirements for P2**
+```sql
+-- RLS policy for closing recap
+CREATE POLICY events_host_can_close_recap ON events
+  FOR UPDATE
+  USING (host_id = auth.uid() AND status = 'recap')
+  WITH CHECK (
+    -- Allow updating only status and recap_end_time
+    status = 'ended'
+    AND recap_end_time IS NOT NULL
+  );
+
+-- Function to close recap with validation
+CREATE OR REPLACE FUNCTION close_recap_early(event_id UUID)
+RETURNS BOOLEAN AS $$
+BEGIN
+  UPDATE events
+  SET 
+    status = 'ended',
+    recap_end_time = NOW(),
+    updated_at = NOW()
+  WHERE 
+    id = event_id
+    AND status = 'recap'
+    AND host_id = auth.uid();
+  
+  RETURN FOUND;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Index for recap queries
+CREATE INDEX idx_events_recap_status 
+ON events(status) 
+WHERE status = 'recap';
+```
+
+---
+
+### **Manage Photos Page Recap Integration**
+
+#### **Layout Changes**
+- CloseRecapCard added as first element after initial spacing
+- Only visible when `eventStatus == recap && isHost`
+- Positioned above CTA banner or cover selection card
+- Spacing reduced from Gaps.lg to Gaps.sm between close card and CTA
+
+#### **State Management Updates**
+```dart
+// In ManageMemoryState
+class ManageMemoryState {
+  // ... existing fields
+  final FakeEventStatus eventStatus;  // NEW: track event status
+  final String? recapTimeRemaining;   // NEW: countdown timer string
+}
+```
+
+#### **Files Modified**
+1. `shared/components/cards/close_recap_card.dart` ✅ (NEW)
+   - Stateless component with timer and callback
+   - Confirmation dialog integration
+   - Tokenized styling
+
+2. `shared/components/components.dart` ✅
+   - Added export for `close_recap_card.dart`
+
+3. `features/memory/presentation/pages/manage_memory_page.dart` ✅
+   - Conditional CloseRecapCard rendering
+   - `_handleCloseRecap()` method
+   - Status update logic (P1: FakeMemoryConfig, P2: repository call)
+
+4. `features/memory/data/fakes/fake_memory_repository.dart` ✅
+   - Timer fields already added (closeTime, formattedRemainingTime, etc.)
+   - No additional changes needed for close functionality
+
+---
+
+### **Key Design Decisions**
+
+#### **Why Host-Only?**
+- Hosts have final control over event lifecycle
+- Prevents premature closure by contributors
+- Aligns with event management permissions model
+
+#### **Why Confirmation Dialog?**
+- Destructive action (cannot undo)
+- Affects all event participants
+- Prevents accidental taps
+
+#### **Why Red Button?**
+- Signals destructive/final action
+- Matches platform conventions (iOS/Android)
+- Uses existing `BrandColors.cantVote` for consistency
+
+#### **Why Top Positioning?**
+- High visibility for host
+- Separate from photo management actions
+- Clear hierarchy (event control > photo actions)
+
+---
+
+### **User Experience Flow**
+
+1. **Host enters Manage Photos during recap**
+   - CloseRecapCard visible at top
+   - Shows countdown timer from FakeMemoryConfig
+   - Clear call-to-action with red button
+
+2. **Host taps "Close Now"**
+   - Confirmation dialog appears immediately
+   - Title and message explain consequences
+   - Two clear options: "Close Now" (red) or "Cancel"
+
+3. **Host confirms closure**
+   - Status changes to ended
+   - Success banner: "Recap closed successfully!"
+   - Automatic navigation back to Memory page
+   - Memory page now shows ended state (no edit button, no CTA)
+
+4. **Other participants see update (P2)**
+   - Real-time status sync via Supabase Realtime
+   - Their Memory page updates to ended state
+   - Push notification: "Memory recap closed by host"
+
+---
+
+### **Testing Checklist**
+- [x] CloseRecapCard visible only when recap + host
+- [x] Countdown timer displays correctly
+- [x] Button tap shows confirmation dialog
+- [x] Confirmation dialog shows correct text and styling
+- [x] Cancel button dismisses dialog without changes
+- [x] Close Now updates FakeMemoryConfig.eventStatus
+- [x] Success banner appears after close
+- [x] Navigation back to Memory page works
+- [x] Memory page reflects ended state after close
+- [x] All styling uses design tokens (no hardcoded values)
+- [x] Component is stateless and reusable
+
+---
+
+### **Known Limitations (P1)**
+- Status change only affects local FakeMemoryConfig
+- No actual database update
+- No push notifications to participants
+- No real-time sync across devices
+- Timer countdown is static (no auto-refresh)
+- Permission check uses FakeMemoryConfig.isHost (not real auth)
+
+**P2 will address:** Supabase integration, real-time updates, push notifications, proper RLS policies, and audit logging.
+
+---
+
 ## 📋 P1 Implementation Summary
 
 ### **Domain Contracts** ✅

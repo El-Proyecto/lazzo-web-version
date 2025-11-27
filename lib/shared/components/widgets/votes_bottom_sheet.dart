@@ -15,6 +15,8 @@ class VotesBottomSheet {
     String? eventLocation,
     bool? userVote, // true = going, false = not going, null = not voted
     Function(bool?)? onVoteChanged, // Updated callback to handle null (unvote)
+    String? currentUserId,
+    String? currentUserAvatar,
   }) {
     showModalBottomSheet(
       context: context,
@@ -28,6 +30,8 @@ class VotesBottomSheet {
         eventLocation: eventLocation,
         initialUserVote: userVote,
         onVoteChanged: onVoteChanged,
+        currentUserId: currentUserId,
+        currentUserAvatar: currentUserAvatar,
       ),
     );
   }
@@ -42,6 +46,8 @@ class _VotesBottomSheetContent extends StatefulWidget {
   final String? eventLocation;
   final bool? initialUserVote;
   final Function(bool?)? onVoteChanged;
+  final String? currentUserId;
+  final String? currentUserAvatar;
 
   const _VotesBottomSheetContent({
     required this.allVotes,
@@ -51,6 +57,8 @@ class _VotesBottomSheetContent extends StatefulWidget {
     required this.eventLocation,
     required this.initialUserVote,
     required this.onVoteChanged,
+    this.currentUserId,
+    this.currentUserAvatar,
   });
 
   @override
@@ -105,15 +113,17 @@ class _VotesBottomSheetContentState extends State<_VotesBottomSheetContent> {
   }
 
   void _updateUserVote(bool vote) {
+    final userId = widget.currentUserId ?? 'current_user';
+    
     // Remove existing user vote if any
-    _currentVotes.removeWhere((v) => v.userId == 'current_user');
+    _currentVotes.removeWhere((v) => v.userId == userId);
 
-    // Add new user vote
+    // Add new user vote with real avatar
     final newVote = RsvpVote(
-      id: 'vote_current_user_${DateTime.now().millisecondsSinceEpoch}',
-      userId: 'current_user',
+      id: 'vote_${userId}_${DateTime.now().millisecondsSinceEpoch}',
+      userId: userId,
       userName: 'You',
-      userAvatar: null,
+      userAvatar: widget.currentUserAvatar,
       status: vote ? RsvpVoteStatus.going : RsvpVoteStatus.notGoing,
       votedAt: DateTime.now(),
     );
@@ -121,15 +131,17 @@ class _VotesBottomSheetContentState extends State<_VotesBottomSheetContent> {
   }
 
   void _removeUserVote() {
+    final userId = widget.currentUserId ?? 'current_user';
+    
     // Remove existing user vote if any
-    _currentVotes.removeWhere((v) => v.userId == 'current_user');
+    _currentVotes.removeWhere((v) => v.userId == userId);
 
     // Add user as pending (no response) to show in "No response" section
     final pendingVote = RsvpVote(
-      id: 'vote_current_user_pending_${DateTime.now().millisecondsSinceEpoch}',
-      userId: 'current_user',
+      id: 'vote_${userId}_pending_${DateTime.now().millisecondsSinceEpoch}',
+      userId: userId,
       userName: 'You',
-      userAvatar: null,
+      userAvatar: widget.currentUserAvatar,
       status: RsvpVoteStatus.pending,
       votedAt: null, // No vote time for pending votes
     );
@@ -300,7 +312,12 @@ class _VotesBottomSheetContentState extends State<_VotesBottomSheetContent> {
         children: [
           // Can section
           if (going.isNotEmpty) ...[
-            _VoteSection(title: 'Can', count: going.length, votes: going),
+            _VoteSection(
+              title: 'Can',
+              count: going.length,
+              votes: going,
+              currentUserId: widget.currentUserId,
+            ),
             const SizedBox(height: Gaps.md),
           ],
 
@@ -310,6 +327,7 @@ class _VotesBottomSheetContentState extends State<_VotesBottomSheetContent> {
               title: 'Can\'t',
               count: notGoing.length,
               votes: notGoing,
+              currentUserId: widget.currentUserId,
             ),
             const SizedBox(height: Gaps.md),
           ],
@@ -320,6 +338,7 @@ class _VotesBottomSheetContentState extends State<_VotesBottomSheetContent> {
               title: 'No response',
               count: pending.length,
               votes: pending,
+              currentUserId: widget.currentUserId,
             ),
           ],
         ],
@@ -461,11 +480,13 @@ class _VoteSection extends StatelessWidget {
   final String title;
   final int count;
   final List<RsvpVote> votes;
+  final String? currentUserId;
 
   const _VoteSection({
     required this.title,
     required this.count,
     required this.votes,
+    this.currentUserId,
   });
 
   Color _getTitleColor() {
@@ -510,7 +531,11 @@ class _VoteSection extends StatelessWidget {
         ),
         const SizedBox(height: Gaps.md),
         ...votes.map(
-          (vote) => _VoteItem(vote: vote, showDate: title != 'No response'),
+          (vote) => _VoteItem(
+            vote: vote,
+            showDate: title != 'No response',
+            currentUserId: currentUserId,
+          ),
         ),
       ],
     );
@@ -521,16 +546,25 @@ class _VoteSection extends StatelessWidget {
 class _VoteItem extends StatelessWidget {
   final RsvpVote vote;
   final bool showDate;
+  final String? currentUserId;
 
-  const _VoteItem({required this.vote, this.showDate = true});
+  const _VoteItem({
+    required this.vote,
+    this.showDate = true,
+    this.currentUserId,
+  });
 
   String get _displayName {
     // Show "You" for current user, otherwise show the user name
-    return vote.userId == 'current_user' ? 'You' : vote.userName;
+    return vote.userId == currentUserId ? 'You' : vote.userName;
   }
 
   @override
   Widget build(BuildContext context) {
+    print('🔍 [UI] Rendering vote for ${vote.userName}:');
+    print('   🎨 Avatar URL: ${vote.userAvatar}');
+    print('   ❓ Is null? ${vote.userAvatar == null}');
+    
     return Padding(
       padding: const EdgeInsets.only(bottom: Gaps.sm),
       child: Row(
@@ -546,8 +580,10 @@ class _VoteItem extends StatelessWidget {
                       width: 32,
                       height: 32,
                       fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) =>
-                          _buildDefaultAvatar(),
+                      errorBuilder: (context, error, stackTrace) {
+                        print('❌ [UI] Image.network error for ${vote.userName}: $error');
+                        return _buildDefaultAvatar();
+                      },
                     ),
                   )
                 : _buildDefaultAvatar(),

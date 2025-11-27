@@ -19,10 +19,20 @@ import '../../data/fakes/fake_group_details_repository.dart';
 import '../../data/fakes/fake_group_photos_repository.dart';
 
 // Repository providers - defaults to fake
+// 
+// P2 TODO: Override these providers in main.dart with real implementations:
+// ```dart
+// groupEventRepositoryProvider.overrideWith((ref) {
+//   final client = Supabase.instance.client;
+//   final dataSource = SupabaseGroupEventDataSource(client);
+//   return GroupEventRepositoryImpl(dataSource);
+// }),
+// ```
 final groupEventRepositoryProvider = Provider<GroupEventRepository>((ref) {
   return FakeGroupEventRepository();
 });
 
+// P2 TODO: Override in main.dart with SupabaseGroupMemoryDataSource + GroupMemoryRepositoryImpl
 final groupMemoryRepositoryProvider = Provider<GroupMemoryRepository>((ref) {
   return FakeGroupMemoryRepository();
 });
@@ -65,6 +75,7 @@ final groupEventsProvider = StateNotifierProvider.family<GroupEventsController,
 ) {
   return GroupEventsController(
     ref.watch(getGroupEventsUseCaseProvider),
+    ref.watch(groupEventRepositoryProvider),
     groupId,
   );
 });
@@ -117,10 +128,14 @@ final groupPhotosProvider = StateNotifierProvider.family<GroupPhotosController,
 class GroupEventsController
     extends StateNotifier<AsyncValue<List<GroupEventEntity>>> {
   final GetGroupEvents _getGroupEvents;
+  final GroupEventRepository _repository;
   final String _groupId;
 
-  GroupEventsController(this._getGroupEvents, this._groupId)
-      : super(const AsyncValue.loading()) {
+  GroupEventsController(
+    this._getGroupEvents,
+    this._repository,
+    this._groupId,
+  ) : super(const AsyncValue.loading()) {
     loadEvents();
   }
 
@@ -136,6 +151,51 @@ class GroupEventsController
 
   Future<void> refresh() async {
     await loadEvents();
+  }
+
+  /// Refresh only a specific event without reloading the entire list
+  /// This maintains scroll position and improves UX
+  Future<void> refreshSingleEvent(String eventId) async {
+    print('🔄 [REFRESH] Starting refresh for single event: $eventId');
+    
+    final currentState = state;
+    if (!currentState.hasValue) {
+      print('⚠️ [REFRESH] No current state, skipping refresh');
+      return;
+    }
+
+    try {
+      print('📡 [REFRESH] Fetching updated data for event $eventId...');
+      
+      // Fetch ONLY this specific event (much faster than getting all)
+      final updatedEvent = await _repository.getEventById(eventId);
+      
+      if (updatedEvent == null) {
+        print('⚠️ [REFRESH] Event not found: $eventId');
+        return;
+      }
+
+      print('✅ [REFRESH] Event fetched successfully');
+      print('   📊 Going count: ${updatedEvent.goingCount}');
+      print('   🎯 User vote: ${updatedEvent.userVote}');
+      print('   👥 Total votes: ${updatedEvent.allVotes.length}');
+
+      // Update only the specific event in the list
+      final updatedList = currentState.value!.map((event) {
+        if (event.id == eventId) {
+          print('🔄 [REFRESH] Replacing event in list');
+          return updatedEvent;
+        }
+        return event;
+      }).toList();
+
+      state = AsyncValue.data(updatedList);
+      print('✅ [REFRESH] State updated successfully without full reload');
+    } catch (error, stackTrace) {
+      // On error, keep current state instead of showing error
+      print('❌ [REFRESH] Failed to refresh single event: $error');
+      print('   Stack: $stackTrace');
+    }
   }
 }
 

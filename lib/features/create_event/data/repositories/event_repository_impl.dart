@@ -82,33 +82,61 @@ class EventRepositoryImpl implements EventRepository {
 			print('📝 DEBUG: - groupId: $effectiveGroupId');
 			print('📝 DEBUG: - createdBy: $userId');
 			print('📝 DEBUG: - locationId: $locationId');
+			print('📝 DEBUG: - startDateTime: ${event.startDateTime}');
+			print('📝 DEBUG: - status: ${event.status.toString().split('.').last}');
 			
-			final response = await _dataSource.createEvent(
-				name: event.name,
-				emoji: event.emoji,
-				groupId: effectiveGroupId,
-				startDateTime: event.startDateTime,
-				endDateTime: event.endDateTime,
-				locationId: locationId,
-				status: event.status.toString().split('.').last,
-				createdBy: userId,
-			);
-			
-			print('📝 SUCCESS: Event created with ID: ${response['id']}');
+			Map<String, dynamic> response;
+			try {
+				print('🔄 Calling _dataSource.createEvent...');
+				response = await _dataSource.createEvent(
+					name: event.name,
+					emoji: event.emoji,
+					groupId: effectiveGroupId,
+					startDateTime: event.startDateTime,
+					endDateTime: event.endDateTime,
+					locationId: locationId,
+					status: event.status.toString().split('.').last,
+					createdBy: userId,
+				);
+				print('📝 SUCCESS: Event created with ID: ${response['id']}');
+			} catch (e) {
+				print('❌ FAILED to create event in Supabase!');
+				rethrow;
+			}
 			
 			final eventId = response['id'] as String;
 			
-		// Create initial RSVP for event creator (automatically "yes")
-		try {
-			await _client.from('event_participants').insert({
-				'pevent_id': eventId,
-				'user_id': userId,
-				'rsvp': 'yes', // rsvp_status enum: pending, yes, no, maybe
-				'confirmed_at': DateTime.now().toIso8601String(),
-			});
-		} catch (e) {
-			// Don't fail event creation if RSVP fails
-		}			// If event has initial date/time, create it as a suggestion
+			// ✅ TRIGGER HANDLING:
+			// The Supabase trigger 'on_event_created_add_par...' automatically adds
+			// all group members as participants with rsvp='pending'.
+			// We need to UPDATE the creator's RSVP from 'pending' to 'yes'.
+			
+			print('👤 DEBUG: Updating creator RSVP to "yes" (from trigger default "pending")');
+			
+			try {
+				// Wait a tiny bit for trigger to complete (triggers run async)
+				await Future.delayed(const Duration(milliseconds: 100));
+				
+				final updateResponse = await _client
+					.from('event_participants')
+					.update({
+						'rsvp': 'yes',
+						'confirmed_at': DateTime.now().toIso8601String(),
+					})
+					.eq('pevent_id', eventId)
+					.eq('user_id', userId)
+					.select();
+				
+				print('✅ DEBUG: Creator RSVP updated to "yes"');
+				print('📥 DEBUG: Updated row: $updateResponse');
+			} catch (e) {
+				print('❌ DEBUG: Failed to update creator RSVP to "yes"');
+				print('❌ DEBUG: Error: $e');
+				print('❌ SOLUTION: Check RLS UPDATE policy on event_participants');
+				// Don't fail event creation if RSVP update fails
+			}
+		
+		// If event has initial date/time, create it as a suggestion
 			if (event.startDateTime != null) {
 				try {
 					final suggestionResponse = await _client.from('event_date_options').insert({

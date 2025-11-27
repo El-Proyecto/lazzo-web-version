@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../shared/components/nav/common_app_bar.dart';
 import '../../../../shared/components/common/page_segmented_control.dart';
 import '../../../../shared/components/cards/event_full_card.dart';
@@ -10,6 +11,8 @@ import '../../../../shared/constants/text_styles.dart';
 import '../../../../shared/themes/colors.dart';
 import '../providers/group_hub_providers.dart';
 import '../../domain/entities/group_memory_entity.dart';
+import '../../../event/domain/entities/rsvp.dart';
+import '../../../event/presentation/providers/event_providers.dart';
 import '../../domain/entities/group_event_entity.dart';
 import 'group_details_page.dart';
 
@@ -481,18 +484,107 @@ class _GroupHubPageState extends ConsumerState<GroupHubPage>
             return const SizedBox(height: Gaps.md);
           },
           itemBuilder: (context, index) {
-            if (index < sortedEvents.length) {
-              final event = sortedEvents[index];
+            if (index < events.length) {
+              final event = events[index];
+              final currentUser = Supabase.instance.client.auth.currentUser;
+              final currentUserId = currentUser?.id;
+              
+              // Try to get avatar from the event's vote list (more reliable than userMetadata)
+              String? currentUserAvatar;
+              if (currentUserId != null && event.allVotes.isNotEmpty) {
+                try {
+                  final userVote = event.allVotes.firstWhere(
+                    (vote) => vote.userId == currentUserId,
+                  );
+                  currentUserAvatar = userVote.userAvatar;
+                  
+                } catch (e) {
+                  print('⚠️ [PAGE] Current user not found in votes, using fallback');
+                }
+              }
+              // Fallback to userMetadata if not found in votes
+              final fallbackAvatar = currentUser?.userMetadata?['avatar_url'] as String?;
+              currentUserAvatar ??= fallbackAvatar;
+              
+              // Map GroupEventStatus to EventFullCardState
+              EventFullCardState cardState;
+              switch (event.status) {
+                case GroupEventStatus.confirmed:
+                  cardState = EventFullCardState.confirmed;
+                case GroupEventStatus.living:
+                  cardState = EventFullCardState.living;
+                case GroupEventStatus.recap:
+                  cardState = EventFullCardState.recap;
+                case GroupEventStatus.pending:
+                  cardState = EventFullCardState.pending;
+              }
+              
               return EventFullCard(
                 event: event,
-                state: _mapEventStatusToState(event.status),
-                onTap: () {
-                  // TODO: Navigate to event detail
-                  print('Navigate to event: ${event.id}');
+                state: cardState,
+                onTap: () async {
+                  print('\n🚀 [NAVIGATION] Opening event page: ${event.id}');
+                  print('   📊 Current status: ${event.status}');
+                  
+                  // Navigate to event detail page and refresh on return
+                  await Navigator.pushNamed(
+                    context,
+                    '/event',
+                    arguments: {'eventId': event.id},
+                  );
+                  
+                  print('⬅️ [NAVIGATION] Returned from event page');
+                  print('🔄 [NAVIGATION] Refreshing event ${event.id} to check for status/vote changes...');
+                  
+                  // Refresh only this specific event instead of entire list
+                  // This will fetch updated status, votes, and participant counts
+                  await ref.read(groupEventsProvider(widget.groupId).notifier)
+                    .refreshSingleEvent(event.id);
+                  
+                  print('✅ [NAVIGATION] Event refresh complete');
                 },
-                onVoteChanged: (eventId, vote) {
-                  // TODO: Implement vote persistence
-                  print('Vote changed for event $eventId: $vote');
+                onVoteChanged: (eventId, vote) async {
+                  print('\n🗳️ [VOTE SHORTCUT] Vote changed on card');
+                  print('   📍 Event ID: $eventId');
+                  print('   ✅ Vote: $vote');
+                  
+                  // Persist RSVP to Supabase
+                  try {
+                    final rsvpRepo = ref.read(rsvpRepositoryProvider);
+                    final userId = Supabase.instance.client.auth.currentUser?.id;
+                    
+                    if (userId == null) {
+                      print('❌ [VOTE SHORTCUT] User not authenticated');
+                      return;
+                    }
+
+                    // Convert vote to RsvpStatus
+                    final status = vote == null 
+                        ? RsvpStatus.pending 
+                        : (vote ? RsvpStatus.going : RsvpStatus.notGoing);
+
+                    print('📤 [VOTE SHORTCUT] Submitting RSVP to Supabase...');
+                    print('   👤 User ID: $userId');
+                    print('   📊 Status: $status');
+                    
+                    await rsvpRepo.submitRsvp(eventId, userId, status);
+                    
+                    print('✅ [VOTE SHORTCUT] RSVP submitted successfully');
+                    
+                    // Refresh ONLY this specific event (no full page reload)
+                    print('🔄 [VOTE SHORTCUT] Refreshing only this event...');
+                    await ref.read(groupEventsProvider(widget.groupId).notifier)
+                        .refreshSingleEvent(eventId);
+                    
+                    // Also invalidate event-specific providers for consistency
+                    ref.invalidate(eventRsvpsProvider(eventId));
+                    ref.invalidate(userRsvpProvider(eventId));
+                    
+                    print('✅ [VOTE SHORTCUT] Event refreshed without full reload');
+                  } catch (e, stackTrace) {
+                    print('❌ [VOTE SHORTCUT] Error submitting RSVP: $e');
+                    print('   Stack: $stackTrace');
+                  }
                 },
               );
             } else {
@@ -592,18 +684,5 @@ class _GroupHubPageState extends ConsumerState<GroupHubPage>
         ),
       ),
     );
-  }
-
-  EventFullCardState _mapEventStatusToState(GroupEventStatus status) {
-    switch (status) {
-      case GroupEventStatus.pending:
-        return EventFullCardState.pending;
-      case GroupEventStatus.confirmed:
-        return EventFullCardState.confirmed;
-      case GroupEventStatus.living:
-        return EventFullCardState.living;
-      case GroupEventStatus.recap:
-        return EventFullCardState.recap;
-    }
   }
 }

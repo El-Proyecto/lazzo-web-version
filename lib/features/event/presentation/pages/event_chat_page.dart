@@ -2,13 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:image_picker/image_picker.dart';
+import '../../../../routes/app_router.dart';
 import '../../../../shared/components/dialogs/add_expense_bottom_sheet.dart';
+import '../../../../shared/components/common/top_banner.dart';
 import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/constants/text_styles.dart';
 import '../../../../shared/themes/colors.dart';
 import '../../domain/entities/chat_message.dart';
 import '../providers/chat_providers.dart';
 import '../providers/event_providers.dart';
+import '../../data/fakes/fake_chat_repository.dart';
 
 /// Event chat page
 /// Full-screen chat interface for event communication
@@ -35,6 +39,19 @@ class _EventChatPageState extends ConsumerState<EventChatPage> {
 
   /// Get current user ID from Supabase auth
   String? get _currentUserId => Supabase.instance.client.auth.currentUser?.id;
+
+  /// Get current event state color based on FakeEventChatConfig
+  /// P2 TODO: Get from actual event status provider
+  Color get _eventStateColor {
+    switch (FakeEventChatConfig.eventStatus) {
+      case FakeEventChatStatus.living:
+        return BrandColors.living; // Purple
+      case FakeEventChatStatus.recap:
+        return BrandColors.recap; // Orange
+      case FakeEventChatStatus.planning:
+        return BrandColors.planning; // Green
+    }
+  }
 
   @override
   void initState() {
@@ -315,108 +332,107 @@ class _EventChatPageState extends ConsumerState<EventChatPage> {
       onTap: () {
         FocusScope.of(context).unfocus();
       },
-      child: Hero(
-        tag: 'chat-widget',
-        child: Scaffold(
-          backgroundColor: BrandColors.bg1,
-          appBar: eventAsync.when(
-            data: (event) => _ChatAppBar(
-              title: event.name,
-              subtitle: _formatSubtitle(
-                  event.startDateTime, event.location?.displayName),
-              onBackPressed: () => Navigator.of(context).pop(),
-              notificationsMuted: _notificationsMuted,
-              showBanner: _showBanner,
-              onToggleNotifications: _toggleNotifications,
-              pinnedMessage: pinnedMessage,
-              onPinnedMessageTap: pinnedMessage != null
-                  ? () => _scrollToMessage(pinnedMessage)
-                  : null,
-            ),
-            loading: () => _ChatAppBar(
-              title: '',
-              onBackPressed: () => Navigator.of(context).pop(),
-              notificationsMuted: _notificationsMuted,
-              showBanner: false,
-              onToggleNotifications: () {},
-            ),
-            error: (_, __) => _ChatAppBar(
-              title: 'Chat',
-              onBackPressed: () => Navigator.of(context).pop(),
-              notificationsMuted: _notificationsMuted,
-              showBanner: false,
-              onToggleNotifications: () {},
-            ),
+      child: Scaffold(
+        backgroundColor: BrandColors.bg1,
+        appBar: eventAsync.when(
+          data: (event) => _ChatAppBar(
+            title: event.name,
+            subtitle: _formatSubtitle(
+                event.startDateTime, event.location?.displayName),
+            onBackPressed: () => Navigator.of(context).pop(),
+            notificationsMuted: _notificationsMuted,
+            showBanner: _showBanner,
+            onToggleNotifications: _toggleNotifications,
+            pinnedMessage: pinnedMessage,
+            onPinnedMessageTap: pinnedMessage != null
+                ? () => _scrollToMessage(pinnedMessage)
+                : null,
           ),
-          body: Column(
-            children: [
-              // Messages list
-              Expanded(
-                child: messagesAsync.when(
-                  data: (messages) {
-                    print('\n═══════════════════════════════════════');
-                    print('💬 [EventChatPage] CHAT PAGE - New data received!');
-                    print('   - Event ID: ${widget.eventId}');
-                    print('   - Total messages: ${messages.length}');
-                    if (messages.isNotEmpty) {
-                      print(
-                          '   - First: "${messages.first.content.substring(0, messages.first.content.length > 30 ? 30 : messages.first.content.length)}..."');
-                      print(
-                          '   - Last: "${messages.last.content.substring(0, messages.last.content.length > 30 ? 30 : messages.last.content.length)}..."');
-                    }
-                    print('═══════════════════════════════════════\n');
+          loading: () => _ChatAppBar(
+            title: '',
+            onBackPressed: () => Navigator.of(context).pop(),
+            notificationsMuted: _notificationsMuted,
+            showBanner: false,
+            onToggleNotifications: () {},
+          ),
+          error: (_, __) => _ChatAppBar(
+            title: 'Chat',
+            onBackPressed: () => Navigator.of(context).pop(),
+            notificationsMuted: _notificationsMuted,
+            showBanner: false,
+            onToggleNotifications: () {},
+          ),
+        ),
+        body: Column(
+          children: [
+            // Messages list
+            Expanded(
+              child: messagesAsync.when(
+                data: (messages) {
+                  print('\n═══════════════════════════════════════');
+                  print('💬 [EventChatPage] CHAT PAGE - New data received!');
+                  print('   - Event ID: ${widget.eventId}');
+                  print('   - Total messages: ${messages.length}');
+                  if (messages.isNotEmpty) {
+                    print(
+                        '   - First: "${messages.first.content.substring(0, messages.first.content.length > 30 ? 30 : messages.first.content.length)}..."');
+                    print(
+                        '   - Last: "${messages.last.content.substring(0, messages.last.content.length > 30 ? 30 : messages.last.content.length)}..."');
+                  }
+                  print('═══════════════════════════════════════\n');
 
-                    if (messages.isEmpty) {
-                      return Center(
-                        child: Text(
-                          'No messages yet.\nBe the first to start the conversation!',
-                          style: AppText.bodyMedium.copyWith(
-                            color: BrandColors.text2,
-                          ),
-                          textAlign: TextAlign.center,
+                  if (messages.isEmpty) {
+                    return Center(
+                      child: Text(
+                        'No messages yet.\nBe the first to start the conversation!',
+                        style: AppText.bodyMedium.copyWith(
+                          color: BrandColors.text2,
                         ),
-                      );
-                    }
-
-                    // Build list with date separators and unread indicator
-                    return _MessagesList(
-                      messages: messages,
-                      scrollController: _scrollController,
-                      onMessageLongPress: _onMessageLongPress,
-                      onMessageTap: _scrollToMessage,
-                      onSwipeReply: _replyToMessage,
-                      messageKeys: _messageKeys,
-                      currentUserId: _currentUserId,
-                    );
-                  },
-                  loading: () => const Center(
-                    child: CircularProgressIndicator(),
-                  ),
-                  error: (error, _) => Center(
-                    child: Text(
-                      'Error loading messages',
-                      style: AppText.bodyMedium.copyWith(
-                        color: BrandColors.text2,
+                        textAlign: TextAlign.center,
                       ),
+                    );
+                  }
+
+                  // Build list with date separators and unread indicator
+                  return _MessagesList(
+                    messages: messages,
+                    scrollController: _scrollController,
+                    onMessageLongPress: _onMessageLongPress,
+                    onMessageTap: _scrollToMessage,
+                    onSwipeReply: _replyToMessage,
+                    messageKeys: _messageKeys,
+                    currentUserId: _currentUserId,
+                    eventStateColor: _eventStateColor,
+                  );
+                },
+                loading: () => const Center(
+                  child: CircularProgressIndicator(),
+                ),
+                error: (error, _) => Center(
+                  child: Text(
+                    'Error loading messages',
+                    style: AppText.bodyMedium.copyWith(
+                      color: BrandColors.text2,
                     ),
                   ),
                 ),
               ),
+            ),
 
-              // Message input
-              _ChatInput(
-                controller: _messageController,
-                focusNode: _focusNode,
-                onSend: _sendMessage,
-                replyingTo: _replyingTo,
-                onCancelReply: () {
-                  setState(() {
-                    _replyingTo = null;
-                  });
-                },
-              ),
-            ],
-          ),
+            // Message input
+            _ChatInput(
+              controller: _messageController,
+              focusNode: _focusNode,
+              onSend: _sendMessage,
+              replyingTo: _replyingTo,
+              onCancelReply: () {
+                setState(() {
+                  _replyingTo = null;
+                });
+              },
+              eventStateColor: _eventStateColor,
+            ),
+          ],
         ),
       ),
     );
@@ -628,6 +644,7 @@ class _MessagesList extends StatelessWidget {
   final Function(ChatMessage) onSwipeReply;
   final Map<String, GlobalKey> messageKeys;
   final String? currentUserId;
+  final Color eventStateColor;
 
   const _MessagesList({
     required this.messages,
@@ -637,6 +654,7 @@ class _MessagesList extends StatelessWidget {
     required this.onSwipeReply,
     required this.messageKeys,
     required this.currentUserId,
+    required this.eventStateColor,
   });
 
   String _formatDateSeparator(DateTime date) {
@@ -742,9 +760,9 @@ class _MessagesList extends StatelessWidget {
 
             // Unread indicator
             if (showUnreadIndicator)
-              const Padding(
-                padding: EdgeInsets.symmetric(vertical: Gaps.md),
-                child: _UnreadIndicator(),
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: Gaps.md),
+                child: _UnreadIndicator(color: eventStateColor),
               ),
 
             // Message bubble with GlobalKey for scrolling
@@ -806,15 +824,17 @@ class _DateSeparator extends StatelessWidget {
 
 /// Unread messages indicator
 class _UnreadIndicator extends StatelessWidget {
-  const _UnreadIndicator();
+  final Color color;
+
+  const _UnreadIndicator({required this.color});
 
   @override
   Widget build(BuildContext context) {
     return Row(
       children: [
-        const Expanded(
+        Expanded(
           child: Divider(
-            color: BrandColors.planning,
+            color: color,
             thickness: 1,
           ),
         ),
@@ -823,15 +843,15 @@ class _UnreadIndicator extends StatelessWidget {
           child: Text(
             'New messages',
             style: AppText.bodyMedium.copyWith(
-              color: BrandColors.planning,
+              color: color,
               fontSize: 12,
               fontWeight: FontWeight.w600,
             ),
           ),
         ),
-        const Expanded(
+        Expanded(
           child: Divider(
-            color: BrandColors.planning,
+            color: color,
             thickness: 1,
           ),
         ),
@@ -886,7 +906,12 @@ class _MessageBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const userBubbleColor = Color(0xFF0D7A2E);
+    // P2 TODO: Get color from event status provider
+    final userBubbleColor = FakeEventChatConfig.isLiving
+        ? BrandColors.living
+        : FakeEventChatConfig.isRecap
+            ? BrandColors.recap
+            : BrandColors.planning;
     final bubbleColor = message.isDeleted
         ? (isCurrentUser
             ? userBubbleColor.withValues(alpha: 0.3)
@@ -895,11 +920,17 @@ class _MessageBubble extends StatelessWidget {
 
     // Debug: Log reply status
     if (message.replyTo != null) {
+      final msgIdPreview =
+          message.id.length > 8 ? message.id.substring(0, 8) : message.id;
+      final replyContentPreview = message.replyTo!.content.length > 20
+          ? message.replyTo!.content.substring(0, 20)
+          : message.replyTo!.content;
       print(
-          '💬 DEBUG _MessageBubble: Message ${message.id.substring(0, 8)} has replyTo: "${message.replyTo!.content.substring(0, message.replyTo!.content.length > 20 ? 20 : message.replyTo!.content.length)}..."');
+          '💬 DEBUG _MessageBubble: Message $msgIdPreview has replyTo: "$replyContentPreview..."');
     } else {
-      print(
-          '❌ DEBUG _MessageBubble: Message ${message.id.substring(0, 8)} has NO replyTo');
+      final msgIdPreview =
+          message.id.length > 8 ? message.id.substring(0, 8) : message.id;
+      print('❌ DEBUG _MessageBubble: Message $msgIdPreview has NO replyTo');
     }
 
     // The actual bubble content (without avatar)
@@ -1072,6 +1103,7 @@ class _ChatInput extends StatelessWidget {
   final VoidCallback onSend;
   final ChatMessage? replyingTo;
   final VoidCallback? onCancelReply;
+  final Color eventStateColor;
 
   const _ChatInput({
     required this.controller,
@@ -1079,6 +1111,7 @@ class _ChatInput extends StatelessWidget {
     required this.onSend,
     this.replyingTo,
     this.onCancelReply,
+    required this.eventStateColor,
   });
 
   void _showAddExpenseBottomSheet(BuildContext context) {
@@ -1201,6 +1234,98 @@ class _ChatInput extends StatelessWidget {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
+                  // Camera/Add Photo button (Living/Recap only)
+                  // Hidden when text field has text or is focused
+                  ValueListenableBuilder<TextEditingValue>(
+                    valueListenable: controller,
+                    builder: (context, value, child) {
+                      final hasText = value.text.trim().isNotEmpty;
+                      final isFocused = focusNode.hasFocus;
+                      final shouldHide = hasText || isFocused;
+
+                      if (shouldHide ||
+                          (!FakeEventChatConfig.isLiving &&
+                              !FakeEventChatConfig.isRecap)) {
+                        return const SizedBox.shrink();
+                      }
+
+                      return Container(
+                        width: 36,
+                        height: 36,
+                        margin: const EdgeInsets.only(
+                          left: Gaps.xxs,
+                          bottom: Gaps.xxs,
+                        ),
+                        decoration: BoxDecoration(
+                          color: FakeEventChatConfig.isLiving
+                              ? BrandColors.living
+                              : BrandColors.recap,
+                          borderRadius: BorderRadius.circular(Radii.pill),
+                        ),
+                        child: Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            onTap: () async {
+                              HapticFeedback.lightImpact();
+                              
+                              // Recap mode: open gallery with multi-select (max 5)
+                              if (FakeEventChatConfig.isRecap) {
+                                final picker = ImagePicker();
+                                final selectedImages = await picker.pickMultiImage(
+                                  maxWidth: 1920,
+                                  maxHeight: 1920,
+                                  imageQuality: 85,
+                                );
+
+                                if (selectedImages.isNotEmpty && context.mounted) {
+                                  // Limit to 5 photos
+                                  final limitedImages = selectedImages.take(5).toList();
+                                  
+                                  if (limitedImages.length < selectedImages.length && context.mounted) {
+                                    TopBanner.showInfo(
+                                      context,
+                                      message: 'Maximum 5 photos selected',
+                                    );
+                                  }
+
+                                  // Navigate to ManageMemoryPage with selected photos
+                                  // TODO P2: Get actual memoryId from event
+                                  final memoryId = 'memory-1'; // Placeholder
+                                  
+                                  if (context.mounted) {
+                                    Navigator.of(context).pushNamed(
+                                      AppRouter.manageMemory,
+                                      arguments: {
+                                        'memoryId': memoryId,
+                                        'selectedPhotos': limitedImages.map((img) => img.path).toList(),
+                                      },
+                                    );
+                                  }
+                                }
+                              } else {
+                                // Living mode: TODO - implement camera
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('📸 Camera upload coming soon!'),
+                                    duration: Duration(seconds: 2),
+                                  ),
+                                );
+                              }
+                            },
+                            borderRadius: BorderRadius.circular(Radii.pill),
+                            child: Icon(
+                              FakeEventChatConfig.isLiving
+                                  ? Icons.camera_alt
+                                  : Icons.add_photo_alternate,
+                              size: IconSizes.smAlt,
+                              color: BrandColors.text1,
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+
                   // Message input field
                   Expanded(
                     child: TextField(
@@ -1241,7 +1366,11 @@ class _ChatInput extends StatelessWidget {
                         ),
                         decoration: BoxDecoration(
                           color: hasText
-                              ? BrandColors.planning
+                              ? (FakeEventChatConfig.isLiving
+                                  ? BrandColors.living
+                                  : FakeEventChatConfig.isRecap
+                                      ? BrandColors.recap
+                                      : BrandColors.planning)
                               : Colors.transparent,
                           borderRadius: BorderRadius.circular(Radii.pill),
                         ),
