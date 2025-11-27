@@ -6,6 +6,7 @@ import '../../data/fakes/fake_memory_repository.dart';
 import '../../data/data_sources/memory_photo_data_source.dart';
 import 'memory_providers.dart';
 import '../../../home/presentation/providers/home_event_providers.dart';
+import '../../../../services/storage_service.dart';
 
 /// Provider for selected photo paths from gallery
 final selectedPhotoPathsProvider = StateProvider<List<String>?>((ref) => null);
@@ -172,12 +173,17 @@ class ManageMemoryNotifier
               isPortrait: false, // TODO: Detect orientation from image
             );
             
+            // Generate signed URL for display (storage path was returned)
+            final storagePath = uploadResult['storage_path'] as String;
+            final storageService = StorageService(Supabase.instance.client);
+            final signedUrl = await storageService.getSignedUrl(storagePath);
+            
             // Add uploaded photo to the beginning of the list
             photoItems.insert(
               0,
               ManagePhotoItem(
                 id: uploadResult['id'] as String,
-                url: uploadResult['url'] as String,
+                url: signedUrl, // Use signed URL for display
                 thumbnailUrl: null,
                 isPortrait: false,
                 uploaderId: currentUserId,
