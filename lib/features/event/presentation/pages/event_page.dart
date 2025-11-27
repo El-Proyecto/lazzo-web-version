@@ -22,7 +22,7 @@ import '../../domain/entities/chat_message.dart';
 import '../providers/event_providers.dart';
 import '../providers/chat_providers.dart';
 import '../widgets/chat_preview_widget.dart';
-import '../widgets/living_expenses_widget.dart';
+import '../widgets/event_expenses_widget.dart';
 import '../widgets/date_time_suggestions_widget.dart'
     show DateTimeSuggestionsWidget, DateTimeSuggestion;
 import '../widgets/date_time_suggestions_widget.dart' as datetime_widget;

@@ -1,25 +1,26 @@
 import 'package:flutter/material.dart';
+import '../../../expense/domain/entities/event_expense_entity.dart';
 import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/constants/text_styles.dart';
 import '../../../../shared/themes/colors.dart';
-import '../../../expense/domain/entities/event_expense_entity.dart';
 
-/// Card displaying a single event expense
 class EventExpenseCard extends StatelessWidget {
   final EventExpenseEntity expense;
-  final String payerName; // ✅ Name of person who paid
+  final String eventName;
   final double userAmount;
+  final double totalAmount;
   final bool isOwedToUser;
-  final bool isUserRelated; // ✅ Whether current user is part of this expense
+  final String paymentStatus; // "Paid", "Settled", or empty
   final VoidCallback? onTap;
 
   const EventExpenseCard({
     super.key,
     required this.expense,
-    required this.payerName,
+    required this.eventName,
     required this.userAmount,
+    required this.totalAmount,
     required this.isOwedToUser,
-    required this.isUserRelated,
+    required this.paymentStatus,
     this.onTap,
   });
 
@@ -28,91 +29,105 @@ class EventExpenseCard extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.all(Pads.sectionH),
+        padding: const EdgeInsets.all(Pads.ctlH),
         decoration: BoxDecoration(
-          color: BrandColors.bg3,
+          color: BrandColors.bg2,
           borderRadius: BorderRadius.circular(Radii.md),
+          border: Border.all(color: BrandColors.bg3, width: 1),
         ),
-        child: Row(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Expense icon
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: BrandColors.bg2,
-                borderRadius: BorderRadius.circular(Radii.sm),
-              ),
-              child: const Icon(
-                Icons.receipt_long_outlined,
-                color: BrandColors.text2,
-                size: 20,
-              ),
-            ),
-            const SizedBox(width: Gaps.md),
-
-            // Expense details
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
+            // Title and amount/status
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Text(
                     expense.description,
                     style: AppText.bodyMediumEmph.copyWith(
                       color: BrandColors.text1,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                // Show status (Settled/Paid) or amount
+                Text(
+                  paymentStatus.isNotEmpty
+                      ? paymentStatus
+                      : '${isOwedToUser ? '+' : '-'}€${userAmount.toStringAsFixed(2)}',
+                  style: AppText.bodyMediumEmph.copyWith(
+                    color: paymentStatus.isNotEmpty
+                        ? BrandColors.text1
+                        : (isOwedToUser
+                            ? BrandColors.planning
+                            : BrandColors.cantVote),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: Gaps.xs),
+
+            // Date and Event info on left, Status or Total on right
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                // Date and Event (hide event name if empty)
+                Expanded(
+                  child: Text(
+                    eventName.isEmpty
+                        ? _formatDate(expense.date)
+                        : '${_formatDate(expense.date)} • $eventName',
+                    style: AppText.bodyMedium.copyWith(
+                      color: BrandColors.text2,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: Gaps.xxs),
-                  Text(
-                    'Paid by $payerName', // ✅ Show name instead of UUID
-                    style: AppText.bodyMedium.copyWith(
-                      color: BrandColors.text2,
-                      fontSize: 12,
-                    ),
+                ),
+                // Total amount (always show)
+                Text(
+                  'Total: €${totalAmount.toStringAsFixed(2)}',
+                  style: AppText.bodyMedium.copyWith(
+                    color: BrandColors.text2,
                   ),
-                ],
-              ),
-            ),
-
-            // Amount (green if owed to user, red if user owes, grey if not related)
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                if (!isUserRelated)
-                  Text(
-                    'Not related',
-                    style: AppText.bodyMedium.copyWith(
-                      color: BrandColors.text2,
-                      fontSize: 12,
-                    ),
-                  )
-                else
-                  Text(
-                    '${isOwedToUser ? '+' : '-'}€${userAmount.toStringAsFixed(2)}',
-                    style: AppText.bodyMediumEmph.copyWith(
-                      color: isOwedToUser
-                          ? const Color(0xFF10B981)
-                          : const Color(0xFFEF4444),
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                if (expense.isSettled) ...[
-                  const SizedBox(height: Gaps.xxs),
-                  Text(
-                    'Settled',
-                    style: AppText.bodyMedium.copyWith(
-                      color: BrandColors.text2,
-                      fontSize: 10,
-                    ),
-                  ),
-                ],
+                ),
               ],
             ),
           ],
         ),
       ),
     );
+  }
+
+  String _formatDate(DateTime date) {
+    final now = DateTime.now();
+    final difference = now.difference(date);
+
+    if (difference.inDays == 0) {
+      return 'Today';
+    } else if (difference.inDays == 1) {
+      return 'Yesterday';
+    } else if (difference.inDays < 7) {
+      return '${difference.inDays} days ago';
+    } else {
+      const months = [
+        'Jan',
+        'Feb',
+        'Mar',
+        'Apr',
+        'May',
+        'Jun',
+        'Jul',
+        'Aug',
+        'Sep',
+        'Oct',
+        'Nov',
+        'Dec'
+      ];
+      return '${date.day} ${months[date.month - 1]}';
+    }
   }
 }

@@ -5,7 +5,7 @@ import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/constants/text_styles.dart';
 import '../../../../shared/themes/colors.dart';
 import 'chat_preview_widget.dart';
-import 'living_expenses_widget.dart';
+import 'event_expenses_widget.dart';
 
 class ExpenseDetailBottomSheet extends StatefulWidget {
   // ✅ MUDAR: GroupExpenseEntity → EventExpenseEntity

@@ -14,7 +14,7 @@ import '../widgets/living_time_left_pill.dart';
 import '../widgets/living_action_row.dart';
 import '../widgets/chat_preview_widget.dart';
 import '../widgets/host_time_controls.dart';
-import '../widgets/living_expenses_widget.dart';
+import '../widgets/event_expenses_widget.dart';
 
 /// Helper function to display "You" for current user, otherwise their name
 String _getUserDisplayName(String userId, String userName, String? currentUserId) {
