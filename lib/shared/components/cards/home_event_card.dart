@@ -394,24 +394,8 @@ class _HomeEventCardState extends State<HomeEventCard> {
       return '${_currentEvent.goingCount} going • Tap to vote!';
     }
 
-    if (_currentEvent.attendeeNames.isEmpty) {
-      return '${_currentEvent.goingCount} going';
-    }
-
-    if (_currentEvent.attendeeNames.length == 1) {
-      return '${_currentEvent.goingCount} going • ${_currentEvent.attendeeNames.first}';
-    }
-
-    if (_currentEvent.attendeeNames.length == 2) {
-      return '${_currentEvent.goingCount} going • ${_currentEvent.attendeeNames[0]} and ${_currentEvent.attendeeNames[1]}';
-    }
-
-    if (_currentEvent.attendeeNames.length >= 3) {
-      final othersCount = _currentEvent.attendeeNames.length - 2;
-      return '${_currentEvent.goingCount} going • ${_currentEvent.attendeeNames[0]}, ${_currentEvent.attendeeNames[1]} and $othersCount other${othersCount > 1 ? 's' : ''}';
-    }
-
-    return '${_currentEvent.goingCount} going';
+    // If user has voted, show "Tap to view votes" message
+    return '${_currentEvent.goingCount} going • Tap to view votes';
   }
 
   Widget _buildAttendeeAvatars() {

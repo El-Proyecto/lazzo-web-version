@@ -70,5 +70,12 @@
 	<!-- Permissões para adicionar eventos ao calendário -->
 	<key>NSCalendarsUsageDescription</key>
 	<string>Este app precisa de acesso ao calendário para adicionar eventos.</string>
+	<!-- Permissões para câmera e fotos -->
+	<key>NSCameraUsageDescription</key>
+	<string>Este app precisa de acesso à câmera para tirar fotos das memórias do evento.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Este app precisa de acesso às suas fotos para escolher imagens para as memórias do evento.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Este app precisa de permissão para guardar fotos das memórias do evento.</string>
 </dict>
 </plist>

@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:image_picker/image_picker.dart';
+import '../../../../routes/app_router.dart';
 import '../../../../shared/components/dialogs/add_expense_bottom_sheet.dart';
+import '../../../../shared/components/common/top_banner.dart';
 import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/constants/text_styles.dart';
 import '../../../../shared/themes/colors.dart';
@@ -1262,19 +1265,52 @@ class _ChatInput extends StatelessWidget {
                         child: Material(
                           color: Colors.transparent,
                           child: InkWell(
-                            onTap: () {
-                              // P2 TODO: Open camera (living) or gallery (recap)
+                            onTap: () async {
                               HapticFeedback.lightImpact();
-                              // ScaffoldMessenger.of(context).showSnackBar(
-                              //   SnackBar(
-                              //     content: Text(
-                              //       FakeEventChatConfig.isLiving
-                              //           ? 'P2 TODO: Open camera'
-                              //           : 'P2 TODO: Open gallery',
-                              //     ),
-                              //     duration: const Duration(seconds: 2),
-                              //   ),
-                              // );
+                              
+                              // Recap mode: open gallery with multi-select (max 5)
+                              if (FakeEventChatConfig.isRecap) {
+                                final picker = ImagePicker();
+                                final selectedImages = await picker.pickMultiImage(
+                                  maxWidth: 1920,
+                                  maxHeight: 1920,
+                                  imageQuality: 85,
+                                );
+
+                                if (selectedImages.isNotEmpty && context.mounted) {
+                                  // Limit to 5 photos
+                                  final limitedImages = selectedImages.take(5).toList();
+                                  
+                                  if (limitedImages.length < selectedImages.length && context.mounted) {
+                                    TopBanner.showInfo(
+                                      context,
+                                      message: 'Maximum 5 photos selected',
+                                    );
+                                  }
+
+                                  // Navigate to ManageMemoryPage with selected photos
+                                  // TODO P2: Get actual memoryId from event
+                                  final memoryId = 'memory-1'; // Placeholder
+                                  
+                                  if (context.mounted) {
+                                    Navigator.of(context).pushNamed(
+                                      AppRouter.manageMemory,
+                                      arguments: {
+                                        'memoryId': memoryId,
+                                        'selectedPhotos': limitedImages.map((img) => img.path).toList(),
+                                      },
+                                    );
+                                  }
+                                }
+                              } else {
+                                // Living mode: TODO - implement camera
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('📸 Camera upload coming soon!'),
+                                    duration: Duration(seconds: 2),
+                                  ),
+                                );
+                              }
                             },
                             borderRadius: BorderRadius.circular(Radii.pill),
                             child: Icon(

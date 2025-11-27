@@ -53,6 +53,17 @@ class _ManageMemoryPageState extends ConsumerState<ManageMemoryPage> {
 
   @override
   Widget build(BuildContext context) {
+    // Extract selected photos from route arguments and set in provider
+    final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+    final selectedPhotos = args?['selectedPhotos'] as List<String>?;
+    
+    // Set selected photos in provider if provided
+    if (selectedPhotos != null && selectedPhotos.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        ref.read(selectedPhotoPathsProvider.notifier).state = selectedPhotos;
+      });
+    }
+    
     final manageState = ref.watch(manageMemoryProvider(widget.memoryId));
 
     return Scaffold(
