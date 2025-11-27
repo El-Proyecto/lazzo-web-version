@@ -1,7 +1,11 @@
+import 'dart:io';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../domain/entities/memory_entity.dart';
 import '../../data/fakes/fake_memory_repository.dart';
+import '../../data/data_sources/memory_photo_data_source.dart';
 import 'memory_providers.dart';
+import '../../../home/presentation/providers/home_event_providers.dart';
 
 /// Provider for selected photo paths from gallery
 final selectedPhotoPathsProvider = StateProvider<List<String>?>((ref) => null);
@@ -92,8 +96,13 @@ class ManageMemoryNotifier
         return;
       }
 
-      // TODO: Get current user ID from auth provider
-      const currentUserId = 'user-1'; // Placeholder
+      // Get current authenticated user ID from Supabase
+      final currentUserId = Supabase.instance.client.auth.currentUser?.id;
+      
+      if (currentUserId == null) {
+        state = AsyncValue.error('User not authenticated', StackTrace.current);
+        return;
+      }
 
       // Get isHost from fake config (toggle for testing)
       final isHost = FakeMemoryConfig.isHost;
@@ -120,23 +129,72 @@ class ManageMemoryNotifier
               ))
           .toList();
 
-      // Add selected photos from gallery (if provided)
+      // Upload selected photos from gallery (if provided)
       final selectedPhotoPaths = ref.read(selectedPhotoPathsProvider);
       if (selectedPhotoPaths != null && selectedPhotoPaths.isNotEmpty) {
-        for (int i = 0; i < selectedPhotoPaths.length; i++) {
-          photoItems.insert(
-            0,
-            ManagePhotoItem(
-              id: 'temp-${DateTime.now().millisecondsSinceEpoch}-$i',
-              url: selectedPhotoPaths[i], // Local file path
-              thumbnailUrl: null,
-              isPortrait: false, // TODO: Detect orientation
-              uploaderId: currentUserId,
-              uploaderName: 'You',
-              isUploadedByCurrentUser: true,
-            ),
-          );
+        print('📸 Found ${selectedPhotoPaths.length} photos to upload');
+        
+        // Get real eventId from next event
+        final nextEvent = await ref.read(nextEventControllerProvider.future);
+        if (nextEvent == null) {
+          print('❌ No next event found, cannot upload photos');
+          state = AsyncValue.error('No active event to upload photos', StackTrace.current);
+          return;
         }
+        
+        final eventId = nextEvent.id;
+        
+        // Get groupId from events table (since HomeEventEntity doesn't expose it)
+        final eventData = await Supabase.instance.client
+            .from('events')
+            .select('group_id')
+            .eq('id', eventId)
+            .single();
+        
+        final groupId = eventData['group_id'] as String;
+        print('🎯 Using real IDs - eventId: $eventId, groupId: $groupId');
+        
+        final dataSource = MemoryPhotoDataSource(Supabase.instance.client);
+        
+        for (int i = 0; i < selectedPhotoPaths.length; i++) {
+          try {
+            final filePath = selectedPhotoPaths[i];
+            final file = File(filePath);
+            
+            print('📤 Uploading photo ${i + 1}/${selectedPhotoPaths.length}...');
+            
+            // Upload photo to Supabase
+            final uploadResult = await dataSource.uploadPhoto(
+              groupId: groupId,
+              eventId: eventId,
+              userId: currentUserId,
+              file: file,
+              isPortrait: false, // TODO: Detect orientation from image
+            );
+            
+            // Add uploaded photo to the beginning of the list
+            photoItems.insert(
+              0,
+              ManagePhotoItem(
+                id: uploadResult['id'] as String,
+                url: uploadResult['url'] as String,
+                thumbnailUrl: null,
+                isPortrait: false,
+                uploaderId: currentUserId,
+                uploaderName: 'You',
+                isUploadedByCurrentUser: true,
+              ),
+            );
+            
+            print('✅ Photo ${i + 1} uploaded successfully');
+          } catch (e) {
+            print('❌ Failed to upload photo ${i + 1}: $e');
+            // Continue with other photos even if one fails
+          }
+        }
+        
+        // Clear the selected photos provider after upload
+        ref.read(selectedPhotoPathsProvider.notifier).state = null;
       }
 
       // No cover selected by default
