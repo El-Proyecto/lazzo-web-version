@@ -111,18 +111,19 @@ class EventExpensesWidget extends ConsumerWidget {
                       : payerParticipant.name;
 
                   final isUserRelated = _isUserRelated(expense);
-                  
+
                   // Determine payment status
-                  final hasUserPaid = currentUserId != null && 
+                  final hasUserPaid = currentUserId != null &&
                       expense.participantsPaid.contains(currentUserId);
-                  final paymentStatus = expense.isSettled 
-                      ? 'Settled' 
+                  final paymentStatus = expense.isSettled
+                      ? 'Settled'
                       : (hasUserPaid && isUserRelated ? 'Paid' : '');
 
                   // ✅ MUDAR: GroupExpenseCard → EventExpenseCard
                   return EventExpenseCard(
                     expense: expense,
-                    eventName: '', // Empty for event page (we're already in event context)
+                    eventName:
+                        '', // Empty for event page (we're already in event context)
                     userAmount: userAmount,
                     totalAmount: expense.amount,
                     isOwedToUser: userOwed,
