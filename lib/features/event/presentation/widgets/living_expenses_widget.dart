@@ -110,6 +110,8 @@ class EventExpensesWidget extends ConsumerWidget {
                       ? 'You'
                       : payerParticipant.name;
 
+                  final isUserRelated = _isUserRelated(expense);
+
                   // ✅ MUDAR: GroupExpenseCard → EventExpenseCard
                   return EventExpenseCard(
                     expense: expense,
@@ -117,6 +119,7 @@ class EventExpensesWidget extends ConsumerWidget {
                         payerName, // ✅ Pass name (shows "You" if current user)
                     userAmount: userAmount,
                     isOwedToUser: userOwed,
+                    isUserRelated: isUserRelated,
                     onTap: () => _showExpenseDetail(context, expense),
                   );
                 },
@@ -265,6 +268,16 @@ class EventExpensesWidget extends ConsumerWidget {
 
     // User is owed money if they paid the expense
     return expense.paidBy == currentUserId;
+  }
+
+  bool _isUserRelated(EventExpenseEntity expense) {
+    // Get current user ID
+    final currentUserId = Supabase.instance.client.auth.currentUser?.id;
+    if (currentUserId == null) return false;
+
+    // User is related if they paid OR if they owe
+    return expense.paidBy == currentUserId ||
+        expense.participantsOwe.contains(currentUserId);
   }
 }
 

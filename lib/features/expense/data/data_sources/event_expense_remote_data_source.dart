@@ -1,5 +1,6 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/event_expense_model.dart';
+import '../models/user_event_expense_view_model.dart';
 
 class EventExpenseRemoteDataSource {
   final SupabaseClient _client;
@@ -62,55 +63,85 @@ class EventExpenseRemoteDataSource {
     }
   }
 
-  /// Busca despesas de um evento com splits
+  /// Busca despesas de um evento usando a view user_event_expenses
   Future<List<EventExpenseDto>> getEventExpenses(String eventId) async {
     try {
-      print('💰 [DataSource] Fetching expenses for event: $eventId');
+      print('💰 [DataSource] Fetching expenses from view for event: $eventId');
 
-      // Fetch expenses
-      final expensesResponse = await _client
-          .from('event_expenses')
+      // Get current user ID
+      final currentUserId = _client.auth.currentUser?.id;
+      if (currentUserId == null) {
+        print('   ❌ No authenticated user');
+        return [];
+      }
+
+      // Query the view - gets all expenses for this event (all participants)
+      final response = await _client
+          .from('user_event_expenses')
           .select()
           .eq('event_id', eventId)
           .order('created_at', ascending: false);
 
-      print('   ✅ Found ${expensesResponse.length} expenses');
+      // Group by expense_id and build DTOs with all participants
+      final expenseMap = <String, List<UserEventExpenseViewDto>>{};
 
-      // For each expense, fetch splits
+      for (final row in response as List) {
+        final viewDto = UserEventExpenseViewDto.fromJson(row);
+        expenseMap.putIfAbsent(viewDto.expenseId, () => []).add(viewDto);
+      }
+
+      // Convert to EventExpenseDto
       final expenses = <EventExpenseDto>[];
-      for (final expenseJson in expensesResponse as List) {
-        final expenseId = expenseJson['id'] as String;
+      for (final expenseRows in expenseMap.values) {
+        final first = expenseRows.first;
 
-        // Fetch splits for this expense
-        final splitsResponse = await _client
-            .from('expense_splits')
-            .select()
-            .eq('expense_id', expenseId);
-
-        // Build participantsOwe list (user_ids from splits)
-        final participantsOwe = (splitsResponse as List)
-            .map((split) => split['user_id'] as String)
+        // Get all participants who owe (exclude 'not_related')
+        final participantsOwe = expenseRows
+            .where((row) => row.userRole != 'not_related')
+            .map((row) => row.participantId)
             .toList();
 
-        // Create DTO with splits data
-        final dto = EventExpenseDto.fromJson(expenseJson);
+        // Get participants who already paid
+        final participantsPaid = expenseRows
+            .where((row) => row.participantHasPaid == true)
+            .map((row) => row.participantId)
+            .toList();
+
         expenses.add(EventExpenseDto(
-          id: dto.id,
-          eventId: dto.eventId,
-          description: dto.description,
-          amount: dto.amount,
-          paidBy: dto.paidBy,
-          participantsOwe: participantsOwe, // ✅ Real data from splits
-          participantsPaid: [], // Not tracking this yet
-          createdAt: dto.createdAt,
-          isSettled: dto.isSettled,
+          id: first.expenseId,
+          eventId: first.eventId,
+          description: first.title,
+          amount: first.totalAmount,
+          paidBy: first.paidByUserId,
+          participantsOwe: participantsOwe,
+          participantsPaid: participantsPaid,
+          createdAt: first.createdAt,
+          isSettled: false,
         ));
       }
 
       return expenses;
     } catch (e) {
-      print('   ❌ Failed to fetch expenses: $e');
       throw Exception('Failed to get expenses: $e');
+    }
+  }
+
+  /// Busca todos os participantes de uma despesa específica usando a view
+  Future<List<UserEventExpenseViewDto>> getExpenseParticipants(
+      String expenseId) async {
+    try {
+      print('💰 [DataSource] Fetching participants for expense: $expenseId');
+
+      final response = await _client
+          .from('user_event_expenses')
+          .select()
+          .eq('expense_id', expenseId);
+
+      return (response as List)
+          .map((json) => UserEventExpenseViewDto.fromJson(json))
+          .toList();
+    } catch (e) {
+      throw Exception('Failed to get expense participants: $e');
     }
   }
 }

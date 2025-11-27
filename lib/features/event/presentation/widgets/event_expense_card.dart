@@ -10,6 +10,7 @@ class EventExpenseCard extends StatelessWidget {
   final String payerName; // ✅ Name of person who paid
   final double userAmount;
   final bool isOwedToUser;
+  final bool isUserRelated; // ✅ Whether current user is part of this expense
   final VoidCallback? onTap;
 
   const EventExpenseCard({
@@ -18,6 +19,7 @@ class EventExpenseCard extends StatelessWidget {
     required this.payerName,
     required this.userAmount,
     required this.isOwedToUser,
+    required this.isUserRelated,
     this.onTap,
   });
 
@@ -74,19 +76,28 @@ class EventExpenseCard extends StatelessWidget {
               ),
             ),
 
-            // Amount (green if owed to user, red if user owes)
+            // Amount (green if owed to user, red if user owes, grey if not related)
             Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                Text(
-                  '${isOwedToUser ? '+' : '-'}€${userAmount.toStringAsFixed(2)}',
-                  style: AppText.bodyMediumEmph.copyWith(
-                    color: isOwedToUser
-                        ? const Color(0xFF10B981)
-                        : const Color(0xFFEF4444),
-                    fontWeight: FontWeight.w600,
+                if (!isUserRelated)
+                  Text(
+                    'Not related',
+                    style: AppText.bodyMedium.copyWith(
+                      color: BrandColors.text2,
+                      fontSize: 12,
+                    ),
+                  )
+                else
+                  Text(
+                    '${isOwedToUser ? '+' : '-'}€${userAmount.toStringAsFixed(2)}',
+                    style: AppText.bodyMediumEmph.copyWith(
+                      color: isOwedToUser
+                          ? const Color(0xFF10B981)
+                          : const Color(0xFFEF4444),
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
-                ),
                 if (expense.isSettled) ...[
                   const SizedBox(height: Gaps.xxs),
                   Text(
