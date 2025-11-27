@@ -14,7 +14,6 @@ import '../../domain/repositories/rsvp_repository.dart';
 import '../../domain/repositories/poll_repository.dart';
 import '../../domain/repositories/chat_repository.dart';
 import '../../domain/repositories/suggestion_repository.dart';
-import '../../domain/repositories/group_expense_repository.dart';
 import '../../domain/repositories/event_photo_repository.dart';
 import '../../domain/usecases/get_event_detail.dart';
 import '../../domain/usecases/get_event_rsvps.dart';
@@ -25,7 +24,6 @@ import '../../domain/usecases/create_suggestion.dart';
 import '../../domain/usecases/create_location_suggestion.dart';
 import '../../domain/usecases/toggle_suggestion_vote.dart';
 import '../../domain/usecases/update_event_status.dart';
-import '../../domain/usecases/get_group_expenses.dart';
 import '../../../group_hub/presentation/providers/group_hub_providers.dart';
 
 // Current user ID provider
@@ -122,10 +120,6 @@ final chatRepositoryProvider = Provider<ChatRepository>((ref) {
 
 final suggestionRepositoryProvider = Provider<SuggestionRepository>((ref) {
   return FakeSuggestionRepository();
-});
-
-final groupExpenseRepositoryProvider = Provider<GroupExpenseRepository>((ref) {
-  return FakeGroupExpenseRepository();
 });
 
 // Event photo repository provider (default to fake, override in main.dart)
