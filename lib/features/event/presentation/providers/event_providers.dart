@@ -33,15 +33,16 @@ final currentUserIdProvider = Provider<String?>((ref) {
 
 /// Provider to check if current user is admin of the event's group
 /// Used to determine if user can see/edit event status and settings
-final isUserGroupAdminProvider = FutureProvider.family<bool, String>((ref, groupId) async {
+final isUserGroupAdminProvider =
+    FutureProvider.family<bool, String>((ref, groupId) async {
   final currentUserId = ref.watch(currentUserIdProvider);
-  
+
   if (currentUserId == null) return false;
-  
+
   try {
     // Get group members to check if current user is admin
     final membersState = ref.watch(groupMembersProvider(groupId));
-    
+
     // Wait for data to load using whenData or handle loading/error states
     return await membersState.when(
       data: (members) {
@@ -71,29 +72,31 @@ final isUserGroupAdminProvider = FutureProvider.family<bool, String>((ref, group
 
 /// Provider to check if current user can manage event (host or group admin)
 /// Combines host check and admin check
-final canManageEventProvider = FutureProvider.family<bool, String>((ref, eventId) async {
+final canManageEventProvider =
+    FutureProvider.family<bool, String>((ref, eventId) async {
   try {
     // Get event details to check host and group
     final event = await ref.watch(eventDetailProvider(eventId).future);
     final currentUserId = ref.watch(currentUserIdProvider);
-    
+
     if (currentUserId == null) return false;
-    
+
     // Check if user is event host
     final isHost = event.hostId == currentUserId;
-    
+
     if (isHost) {
       print('✅ [CAN_MANAGE] User is event host');
       return true;
     }
-    
+
     // Check if user is group admin
-    final isAdmin = await ref.watch(isUserGroupAdminProvider(event.groupId).future);
-    
+    final isAdmin =
+        await ref.watch(isUserGroupAdminProvider(event.groupId).future);
+
     if (isAdmin) {
       print('✅ [CAN_MANAGE] User is group admin');
     }
-    
+
     return isAdmin;
   } catch (e) {
     print('❌ [CAN_MANAGE] Error checking manage permission: $e');
@@ -124,7 +127,8 @@ final suggestionRepositoryProvider = Provider<SuggestionRepository>((ref) {
 
 // Event photo repository provider (default to fake, override in main.dart)
 final eventPhotoRepositoryProvider = Provider<EventPhotoRepository>((ref) {
-  throw UnimplementedError('EventPhotoRepository must be overridden in main.dart');
+  throw UnimplementedError(
+      'EventPhotoRepository must be overridden in main.dart');
 });
 
 // Use case providers
