@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../features/home/domain/entities/home_event.dart';
 import '../../../features/event/presentation/providers/event_participants_provider.dart';
+import '../../../features/expense/presentation/providers/event_expense_providers.dart';
 import '../../constants/spacing.dart';
 import '../../constants/text_styles.dart';
 import '../../themes/colors.dart';
@@ -565,14 +566,61 @@ class _HomeEventCardState extends ConsumerState<HomeEventCard> {
                             ))
                         .toList();
 
+                    // Capture eventId before async callback
+                    final eventId = _currentEvent.id;
+
                     if (mounted) {
                       AddExpenseBottomSheet.show(
                         context: context,
                         participants: participantOptions,
-                        onAddExpense:
-                            (title, paidById, participantsOwe, totalAmount) {
-                          // TODO: Implement actual expense creation
-                          widget.onExpensePressed?.call();
+                        onAddExpense: (title, paidById, participantsOwe,
+                            totalAmount) async {
+                          try {
+                            print(
+                                '🎯 [HomeEventCard] Expense button callback triggered');
+                            print('   Event ID: $eventId');
+                            print('   Title: $title');
+                            print('   PaidBy: $paidById');
+                            print('   ParticipantsOwe: $participantsOwe');
+                            print('   TotalAmount: €$totalAmount');
+
+                            // ✅ Create expense in Supabase
+                            print('🎯 [HomeEventCard] Calling provider...');
+                            await ref
+                                .read(eventExpensesProvider(eventId).notifier)
+                                .addExpense(
+                              description: title,
+                              amount: totalAmount,
+                              paidBy: paidById,
+                              participantsOwe: participantsOwe,
+                              participantsPaid: [],
+                            );
+                            print('🎯 [HomeEventCard] Provider call completed');
+
+                            // Show success message
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Expense "$title" created!'),
+                                  backgroundColor: BrandColors.planning,
+                                ),
+                              );
+                            }
+
+                            widget.onExpensePressed?.call();
+                          } catch (e, stack) {
+                            print('❌ [HomeEventCard] Error in callback: $e');
+                            print('Stack: $stack');
+                            // Show error message
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Error creating expense: $e'),
+                                  backgroundColor: BrandColors.cantVote,
+                                ),
+                              );
+                            }
+                          }
                         },
                       );
                     }
@@ -617,14 +665,61 @@ class _HomeEventCardState extends ConsumerState<HomeEventCard> {
                           ))
                       .toList();
 
+                  // Capture event ID before async callback
+                  final eventId = _currentEvent.id;
+
                   // Show the bottom sheet
                   AddExpenseBottomSheet.show(
                     context: context,
                     participants: participantOptions,
                     onAddExpense:
-                        (title, paidById, participantsOwe, totalAmount) {
-                      // TODO: Implement actual expense creation
-                      widget.onExpensePressed?.call();
+                        (title, paidById, participantsOwe, totalAmount) async {
+                      try {
+                        print(
+                            '🔴 [HomeEventCard] Expense button callback triggered');
+                        print('   Event ID: $eventId');
+                        print('   Title: $title');
+                        print('   PaidBy: $paidById');
+                        print('   ParticipantsOwe: $participantsOwe');
+                        print('   TotalAmount: €$totalAmount');
+
+                        // ✅ Create expense in Supabase
+                        print('🔴 [HomeEventCard] Calling provider...');
+                        await ref
+                            .read(eventExpensesProvider(eventId).notifier)
+                            .addExpense(
+                          description: title,
+                          amount: totalAmount,
+                          paidBy: paidById,
+                          participantsOwe: participantsOwe,
+                          participantsPaid: [],
+                        );
+                        print('🔴 [HomeEventCard] Provider call completed');
+
+                        // Show success message
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Expense "$title" created!'),
+                              backgroundColor: BrandColors.planning,
+                            ),
+                          );
+                        }
+
+                        widget.onExpensePressed?.call();
+                      } catch (e, stack) {
+                        print('❌ [HomeEventCard] Error in callback: $e');
+                        print('Stack: $stack');
+                        // Show error message
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Error creating expense: $e'),
+                              backgroundColor: BrandColors.cantVote,
+                            ),
+                          );
+                        }
+                      }
                     },
                   );
                   return;

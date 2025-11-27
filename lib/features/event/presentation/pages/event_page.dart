@@ -1259,7 +1259,8 @@ class _EventPageState extends ConsumerState<EventPage> {
                     eventId: eventId,
                     mode: ChatMode.planning,
                     participants: participantOptions, // ✅ Participantes reais
-                    onAddExpense: (title, paidById, participantsOwe, amount) {
+                    onAddExpense:
+                        (title, paidById, participantsOwe, amount) async {
                       print('💸 [EventPage] Adding expense: $title, €$amount');
                       ref
                           .read(eventExpensesProvider(eventId).notifier)

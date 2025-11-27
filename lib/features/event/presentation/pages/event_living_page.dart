@@ -82,7 +82,7 @@ class EventLivingPage extends ConsumerWidget {
                     AddExpenseBottomSheet.show(
                       context: context,
                       participants: [], // TODO: Get event participants
-                      onAddExpense: (title, paidByIds, payerIds, amount) {
+                      onAddExpense: (title, paidByIds, payerIds, amount) async {
                         // TODO: Implement add expense
                       },
                     );
@@ -121,22 +121,24 @@ class EventLivingPage extends ConsumerWidget {
                       onOpenChat: () {
                         // TODO: Navigate to chat
                       },
-                      onSendMessage: (content, {ChatMessagePreview? replyTo}) async {
+                      onSendMessage: (content,
+                          {ChatMessagePreview? replyTo}) async {
                         // Convert ChatMessagePreview to ChatMessage if replying
                         ChatMessage? replyToMessage;
                         if (replyTo != null && messagesAsync.hasValue) {
                           final messages = messagesAsync.value!;
                           try {
                             replyToMessage = messages.firstWhere(
-                              (m) => m.userId == replyTo.userId && 
-                                     m.content == replyTo.content &&
-                                     m.createdAt == replyTo.timestamp,
+                              (m) =>
+                                  m.userId == replyTo.userId &&
+                                  m.content == replyTo.content &&
+                                  m.createdAt == replyTo.timestamp,
                             );
                           } catch (_) {
                             // Message not found, ignore reply
                           }
                         }
-                        
+
                         await ref
                             .read(chatActionsProvider(eventId))
                             .sendMessage(content, replyTo: replyToMessage);
@@ -155,7 +157,7 @@ class EventLivingPage extends ConsumerWidget {
                   eventId: eventId,
                   mode: ChatMode.living,
                   participants: const [], // TODO: Get event participants
-                  onAddExpense: (title, paidByIds, payerIds, amount) {
+                  onAddExpense: (title, paidByIds, payerIds, amount) async {
                     // TODO: Implement add expense
                   },
                 ),

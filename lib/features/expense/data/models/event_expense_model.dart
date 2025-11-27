@@ -26,14 +26,15 @@ class EventExpenseDto {
   factory EventExpenseDto.fromJson(Map<String, dynamic> json) {
     return EventExpenseDto(
       id: json['id'] as String,
-      eventId: json['event_id'] as String, // ✅ Mudou de group_id
-      description: json['description'] as String,
-      amount: (json['amount'] as num).toDouble(),
-      paidBy: json['paid_by'] as String,
-      participantsOwe: List<String>.from(json['participants_owe'] ?? []),
-      participantsPaid: List<String>.from(json['participants_paid'] ?? []),
+      eventId: json['event_id'] as String,
+      description: json['title'] as String, // ✅ DB column is 'title'
+      amount: (json['total_amount'] as num)
+          .toDouble(), // ✅ DB column is 'total_amount'
+      paidBy: json['created_by'] as String, // ✅ DB column is 'created_by'
+      participantsOwe: [], // ✅ Not in event_expenses table, loaded separately
+      participantsPaid: [], // ✅ Not in event_expenses table, loaded separately
       createdAt: DateTime.parse(json['created_at'] as String),
-      isSettled: json['is_settled'] as bool? ?? false,
+      isSettled: false, // ✅ No is_settled column yet, default to false
     );
   }
 

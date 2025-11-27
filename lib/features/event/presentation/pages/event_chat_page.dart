@@ -41,10 +41,11 @@ class _EventChatPageState extends ConsumerState<EventChatPage> {
     super.initState();
     _scrollController.addListener(_onScroll);
     _messageController.addListener(_onTextChanged);
-    
+
     // Extract scrollToMessageId from navigation arguments after first frame
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+      final args =
+          ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
       if (args != null && args.containsKey('scrollToMessageId')) {
         setState(() {
           _scrollToMessageId = args['scrollToMessageId'] as String?;
@@ -260,7 +261,7 @@ class _EventChatPageState extends ConsumerState<EventChatPage> {
   Widget build(BuildContext context) {
     final messagesAsync = ref.watch(chatMessagesProvider(widget.eventId));
     final eventAsync = ref.watch(eventDetailProvider(widget.eventId));
-    
+
     // Auto-scroll to message if scrollToMessageId is set
     messagesAsync.whenData((messages) {
       if (_scrollToMessageId != null) {
@@ -268,12 +269,13 @@ class _EventChatPageState extends ConsumerState<EventChatPage> {
         final targetMessage = messages.cast<ChatMessage?>().firstWhere(
           (m) {
             if (m == null) return false;
-            final messageId = '${m.userId}_${m.createdAt.millisecondsSinceEpoch}';
+            final messageId =
+                '${m.userId}_${m.createdAt.millisecondsSinceEpoch}';
             return messageId == _scrollToMessageId;
           },
           orElse: () => null,
         );
-        
+
         if (targetMessage != null) {
           // Scroll after messages are rendered
           WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -296,7 +298,8 @@ class _EventChatPageState extends ConsumerState<EventChatPage> {
         final pinned = messages.where((m) => m.isPinned).toList();
         print('🔍 DEBUG: Pinned messages: ${pinned.length}');
         if (pinned.isNotEmpty) {
-          print('✅ DEBUG: Found pinned message: ${pinned.first.id} - ${pinned.first.content}');
+          print(
+              '✅ DEBUG: Found pinned message: ${pinned.first.id} - ${pinned.first.content}');
         }
         return pinned.isNotEmpty ? pinned.first : null;
       },
@@ -305,7 +308,7 @@ class _EventChatPageState extends ConsumerState<EventChatPage> {
         return null;
       },
     );
-    
+
     print('🎯 DEBUG: pinnedMessage = ${pinnedMessage?.id ?? "null"}');
 
     return GestureDetector(
@@ -317,101 +320,103 @@ class _EventChatPageState extends ConsumerState<EventChatPage> {
         child: Scaffold(
           backgroundColor: BrandColors.bg1,
           appBar: eventAsync.when(
-          data: (event) => _ChatAppBar(
-            title: event.name,
-            subtitle: _formatSubtitle(
-                event.startDateTime, event.location?.displayName),
-            onBackPressed: () => Navigator.of(context).pop(),
-            notificationsMuted: _notificationsMuted,
-            showBanner: _showBanner,
-            onToggleNotifications: _toggleNotifications,
-            pinnedMessage: pinnedMessage,
-            onPinnedMessageTap: pinnedMessage != null
-                ? () => _scrollToMessage(pinnedMessage)
-                : null,
+            data: (event) => _ChatAppBar(
+              title: event.name,
+              subtitle: _formatSubtitle(
+                  event.startDateTime, event.location?.displayName),
+              onBackPressed: () => Navigator.of(context).pop(),
+              notificationsMuted: _notificationsMuted,
+              showBanner: _showBanner,
+              onToggleNotifications: _toggleNotifications,
+              pinnedMessage: pinnedMessage,
+              onPinnedMessageTap: pinnedMessage != null
+                  ? () => _scrollToMessage(pinnedMessage)
+                  : null,
+            ),
+            loading: () => _ChatAppBar(
+              title: '',
+              onBackPressed: () => Navigator.of(context).pop(),
+              notificationsMuted: _notificationsMuted,
+              showBanner: false,
+              onToggleNotifications: () {},
+            ),
+            error: (_, __) => _ChatAppBar(
+              title: 'Chat',
+              onBackPressed: () => Navigator.of(context).pop(),
+              notificationsMuted: _notificationsMuted,
+              showBanner: false,
+              onToggleNotifications: () {},
+            ),
           ),
-          loading: () => _ChatAppBar(
-            title: '',
-            onBackPressed: () => Navigator.of(context).pop(),
-            notificationsMuted: _notificationsMuted,
-            showBanner: false,
-            onToggleNotifications: () {},
-          ),
-          error: (_, __) => _ChatAppBar(
-            title: 'Chat',
-            onBackPressed: () => Navigator.of(context).pop(),
-            notificationsMuted: _notificationsMuted,
-            showBanner: false,
-            onToggleNotifications: () {},
-          ),
-        ),
-        body: Column(
-          children: [
-            // Messages list
-            Expanded(
-              child: messagesAsync.when(
-                data: (messages) {
-                  print('\n═══════════════════════════════════════');
-                  print('💬 [EventChatPage] CHAT PAGE - New data received!');
-                  print('   - Event ID: ${widget.eventId}');
-                  print('   - Total messages: ${messages.length}');
-                  if (messages.isNotEmpty) {
-                    print('   - First: "${messages.first.content.substring(0, messages.first.content.length > 30 ? 30 : messages.first.content.length)}..."');
-                    print('   - Last: "${messages.last.content.substring(0, messages.last.content.length > 30 ? 30 : messages.last.content.length)}..."');
-                  }
-                  print('═══════════════════════════════════════\n');
-                  
-                  if (messages.isEmpty) {
-                    return Center(
-                      child: Text(
-                        'No messages yet.\nBe the first to start the conversation!',
-                        style: AppText.bodyMedium.copyWith(
-                          color: BrandColors.text2,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                    );
-                  }
+          body: Column(
+            children: [
+              // Messages list
+              Expanded(
+                child: messagesAsync.when(
+                  data: (messages) {
+                    print('\n═══════════════════════════════════════');
+                    print('💬 [EventChatPage] CHAT PAGE - New data received!');
+                    print('   - Event ID: ${widget.eventId}');
+                    print('   - Total messages: ${messages.length}');
+                    if (messages.isNotEmpty) {
+                      print(
+                          '   - First: "${messages.first.content.substring(0, messages.first.content.length > 30 ? 30 : messages.first.content.length)}..."');
+                      print(
+                          '   - Last: "${messages.last.content.substring(0, messages.last.content.length > 30 ? 30 : messages.last.content.length)}..."');
+                    }
+                    print('═══════════════════════════════════════\n');
 
-                  // Build list with date separators and unread indicator
-                  return _MessagesList(
-                    messages: messages,
-                    scrollController: _scrollController,
-                    onMessageLongPress: _onMessageLongPress,
-                    onMessageTap: _scrollToMessage,
-                    onSwipeReply: _replyToMessage,
-                    messageKeys: _messageKeys,
-                    currentUserId: _currentUserId,
-                  );
-                },
-                loading: () => const Center(
-                  child: CircularProgressIndicator(),
-                ),
-                error: (error, _) => Center(
-                  child: Text(
-                    'Error loading messages',
-                    style: AppText.bodyMedium.copyWith(
-                      color: BrandColors.text2,
+                    if (messages.isEmpty) {
+                      return Center(
+                        child: Text(
+                          'No messages yet.\nBe the first to start the conversation!',
+                          style: AppText.bodyMedium.copyWith(
+                            color: BrandColors.text2,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      );
+                    }
+
+                    // Build list with date separators and unread indicator
+                    return _MessagesList(
+                      messages: messages,
+                      scrollController: _scrollController,
+                      onMessageLongPress: _onMessageLongPress,
+                      onMessageTap: _scrollToMessage,
+                      onSwipeReply: _replyToMessage,
+                      messageKeys: _messageKeys,
+                      currentUserId: _currentUserId,
+                    );
+                  },
+                  loading: () => const Center(
+                    child: CircularProgressIndicator(),
+                  ),
+                  error: (error, _) => Center(
+                    child: Text(
+                      'Error loading messages',
+                      style: AppText.bodyMedium.copyWith(
+                        color: BrandColors.text2,
+                      ),
                     ),
                   ),
                 ),
               ),
-            ),
 
-            // Message input
-            _ChatInput(
-              controller: _messageController,
-              focusNode: _focusNode,
-              onSend: _sendMessage,
-              replyingTo: _replyingTo,
-              onCancelReply: () {
-                setState(() {
-                  _replyingTo = null;
-                });
-              },
-            ),
-          ],
-        ),
+              // Message input
+              _ChatInput(
+                controller: _messageController,
+                focusNode: _focusNode,
+                onSend: _sendMessage,
+                replyingTo: _replyingTo,
+                onCancelReply: () {
+                  setState(() {
+                    _replyingTo = null;
+                  });
+                },
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -890,9 +895,11 @@ class _MessageBubble extends StatelessWidget {
 
     // Debug: Log reply status
     if (message.replyTo != null) {
-      print('💬 DEBUG _MessageBubble: Message ${message.id.substring(0, 8)} has replyTo: "${message.replyTo!.content.substring(0, message.replyTo!.content.length > 20 ? 20 : message.replyTo!.content.length)}..."');
+      print(
+          '💬 DEBUG _MessageBubble: Message ${message.id.substring(0, 8)} has replyTo: "${message.replyTo!.content.substring(0, message.replyTo!.content.length > 20 ? 20 : message.replyTo!.content.length)}..."');
     } else {
-      print('❌ DEBUG _MessageBubble: Message ${message.id.substring(0, 8)} has NO replyTo');
+      print(
+          '❌ DEBUG _MessageBubble: Message ${message.id.substring(0, 8)} has NO replyTo');
     }
 
     // The actual bubble content (without avatar)
@@ -1004,15 +1011,16 @@ class _MessageBubble extends StatelessWidget {
         // Detect swipe direction based on velocity
         if (details.primaryVelocity != null) {
           final velocity = details.primaryVelocity!;
-          
+
           // Current user: swipe left (negative velocity)
           // Other user: swipe right (positive velocity)
-          final isValidSwipe = isCurrentUser 
-              ? velocity < -300  // Swipe left with significant velocity
-              : velocity > 300;  // Swipe right with significant velocity
-          
+          final isValidSwipe = isCurrentUser
+              ? velocity < -300 // Swipe left with significant velocity
+              : velocity > 300; // Swipe right with significant velocity
+
           if (isValidSwipe) {
-            print('🔄 DEBUG: Swipe detected on message ${message.id.substring(0, 8)}, velocity=$velocity');
+            print(
+                '🔄 DEBUG: Swipe detected on message ${message.id.substring(0, 8)}, velocity=$velocity');
             onSwipeReply();
             HapticFeedback.lightImpact();
           }
@@ -1097,7 +1105,7 @@ class _ChatInput extends StatelessWidget {
     AddExpenseBottomSheet.show(
       context: context,
       participants: participants,
-      onAddExpense: (title, paidByIds, payerIds, totalAmount) {
+      onAddExpense: (title, paidByIds, payerIds, totalAmount) async {
         // TODO: Implement add expense logic with repository
         print('Add Expense:');
         print('  Title: $title');

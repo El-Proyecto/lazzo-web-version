@@ -8,7 +8,7 @@ class EventExpenseRemoteDataSource {
 
   /// Cria despesa associada a um evento
   Future<EventExpenseDto> createExpense({
-    required String eventId, // ✅ event_id
+    required String eventId,
     required String description,
     required double amount,
     required String paidBy,
@@ -17,25 +17,47 @@ class EventExpenseRemoteDataSource {
   }) async {
     try {
       print('💰 [DataSource] Creating expense for event: $eventId');
-      
-      final response = await _client
-          .from('event_expenses') // ✅ Nova tabela
+      print('   title: $description');
+      print('   total_amount: $amount');
+      print('   created_by: $paidBy');
+
+      // Step 1: Create expense record
+      final expenseResponse = await _client
+          .from('event_expenses')
           .insert({
             'event_id': eventId,
-            'description': description,
-            'amount': amount,
-            'paid_by': paidBy,
-            'participants_owe': participantsOwe,
-            'participants_paid': participantsPaid,
-            'is_settled': false,
+            'title': description, // ✅ Corrected: title not description
+            'total_amount': amount, // ✅ Corrected: total_amount not amount
+            'created_by': paidBy, // ✅ Corrected: created_by not paid_by
           })
           .select()
           .single();
 
-      print('   ✅ Expense created: ${response['id']}');
-      return EventExpenseDto.fromJson(response);
-    } catch (e) {
+      final expenseId = expenseResponse['id'] as String;
+      print('   ✅ Expense created: $expenseId');
+
+      // Step 2: Insert expense_splits (who owes)
+      if (participantsOwe.isNotEmpty) {
+        print('   💸 Inserting ${participantsOwe.length} splits...');
+        final amountPerPerson = amount / participantsOwe.length;
+        await _client.from('expense_splits').insert(
+              participantsOwe
+                  .map((userId) => {
+                        'expense_id': expenseId,
+                        'user_id': userId,
+                        'amount': amountPerPerson,
+                        'has_paid': userId ==
+                            paidBy, // ✅ Person who paid already has their part paid
+                      })
+                  .toList(),
+            );
+      }
+
+      print('   ✅ All expense data inserted successfully!');
+      return EventExpenseDto.fromJson(expenseResponse);
+    } catch (e, stack) {
       print('   ❌ Failed to create expense: $e');
+      print('   Stack: $stack');
       throw Exception('Failed to create expense: $e');
     }
   }
@@ -44,7 +66,7 @@ class EventExpenseRemoteDataSource {
   Future<List<EventExpenseDto>> getEventExpenses(String eventId) async {
     try {
       print('💰 [DataSource] Fetching expenses for event: $eventId');
-      
+
       final response = await _client
           .from('event_expenses')
           .select()

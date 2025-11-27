@@ -22,7 +22,7 @@ class ExpenseParticipantOption {
 /// Allows user to input expense details including title, payer(s), participants, and amount
 class AddExpenseBottomSheet extends StatefulWidget {
   final List<ExpenseParticipantOption> participants;
-  final Function(
+  final Future<void> Function(
     String title,
     String paidBy,
     List<String> participantsOwe,
@@ -39,7 +39,7 @@ class AddExpenseBottomSheet extends StatefulWidget {
   static Future<T?> show<T>({
     required BuildContext context,
     required List<ExpenseParticipantOption> participants,
-    required Function(
+    required Future<void> Function(
       String title,
       String paidBy,
       List<String> participantsOwe,
@@ -87,9 +87,12 @@ class _AddExpenseBottomSheetState extends State<AddExpenseBottomSheet> {
     // Default: primeiro participante como host
     _selectedPaidBy =
         widget.participants.isNotEmpty ? widget.participants.first.id : null;
-    _selectedParticipants = []; // Vazio inicialmente
+    // ✅ Default: todos os participantes selecionados para dividir a despesa
+    _selectedParticipants = widget.participants.map((p) => p.id).toList();
 
     print('💳 [AddExpenseBottomSheet] Default paidBy: $_selectedPaidBy');
+    print(
+        '💳 [AddExpenseBottomSheet] Default participants: $_selectedParticipants');
   }
 
   @override
@@ -130,8 +133,17 @@ class _AddExpenseBottomSheetState extends State<AddExpenseBottomSheet> {
     });
   }
 
-  void _handleAddExpense() {
+  Future<void> _handleAddExpense() async {
+    print('💳 [AddExpenseBottomSheet] _handleAddExpense called');
+    print('   isValid: $_isValid');
+    print('   title: ${_titleController.text.trim()}');
+    print('   paidBy: $_selectedPaidBy');
+    print(
+        '   participants: $_selectedParticipants (${_selectedParticipants.length})');
+    print('   amount: $_totalAmount');
+
     if (!_isValid) {
+      print('   ⚠️ Validation failed, showing errors');
       _validateFields();
       setState(() {
         _showErrors = true;
@@ -139,14 +151,18 @@ class _AddExpenseBottomSheetState extends State<AddExpenseBottomSheet> {
       return;
     }
 
-    widget.onAddExpense(
+    print('   ✅ Validation passed, calling callback...');
+    await widget.onAddExpense(
       _titleController.text.trim(),
       _selectedPaidBy!,
       _selectedParticipants,
       _totalAmount,
     );
+    print('   ✅ Callback completed, closing bottom sheet');
 
-    Navigator.of(context).pop();
+    if (mounted) {
+      Navigator.of(context).pop();
+    }
   }
 
   void _selectPaidBy(String participantId) {

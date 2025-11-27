@@ -17,7 +17,7 @@ class EventExpensesWidget extends ConsumerWidget {
   final String eventId;
   final List<ExpenseParticipantOption> participants;
   final ChatMode mode;
-  final Function(
+  final Future<void> Function(
     String title,
     String paidById, // ✅ Mudou de List<String> para String
     List<String> participantsOwe,
@@ -154,7 +154,8 @@ class EventExpensesWidget extends ConsumerWidget {
               avatarUrl: null,
               amount: _calculateUserAmount(expense),
               hasPaid: expense.participantsPaid.contains(id),
-              paidAt: expense.participantsPaid.contains(id) ? expense.date : null,
+              paidAt:
+                  expense.participantsPaid.contains(id) ? expense.date : null,
             ))
         .toList();
 
@@ -186,7 +187,7 @@ class EventExpensesWidget extends ConsumerWidget {
 
   double _calculateUserAmount(EventExpenseEntity expense) {
     // TODO: Lógica real de cálculo (por agora split igualitário)
-    final totalParticipants = 
+    final totalParticipants =
         (expense.participantsOwe.length + expense.participantsPaid.length);
     return totalParticipants > 0 ? expense.amount / totalParticipants : 0.0;
   }
