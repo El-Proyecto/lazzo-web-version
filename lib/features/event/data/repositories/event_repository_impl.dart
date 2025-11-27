@@ -70,10 +70,16 @@ class EventRepositoryImpl implements EventRepository {
         break;
     }
 
+    print('📝 [REPOSITORY] Updating event $eventId status to: $statusString');
+
     final model = await _remoteDataSource.updateEventStatus(
       eventId,
       statusString,
     );
+    
+    print('✅ [REPOSITORY] Event status updated in Supabase');
+    print('   📊 New status from DB: ${model.status}');
+    
     return model.toEntity();
   }
 }

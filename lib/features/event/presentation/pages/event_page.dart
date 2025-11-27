@@ -46,6 +46,11 @@ class _EventPageState extends ConsumerState<EventPage> {
 
   String get eventId => widget.eventId;
 
+  /// Helper to replace current user's name with "You"
+  String _getUserDisplayName(String userId, String userName, String? currentUserId) {
+    return userId == currentUserId ? 'You' : userName;
+  }
+
   /// Show dialog to change event status
   void _showStatusChangeDialog(
     BuildContext context,
@@ -68,6 +73,11 @@ class _EventPageState extends ConsumerState<EventPage> {
         onConfirm: () async {
           final newStatus =
               isConfirmed ? EventStatus.pending : EventStatus.confirmed;
+
+          print('📢 [DIALOG] User confirmed status change');
+          print('   📄 Current status: $currentStatus');
+          print('   ➡️ New status: $newStatus');
+          print('   🎯 Is confirmed: $isConfirmed');
 
           await ref
               .read(eventStatusNotifierProvider(eventId).notifier)
@@ -158,39 +168,60 @@ class _EventPageState extends ConsumerState<EventPage> {
           icon: const Icon(Icons.arrow_back, color: BrandColors.text1),
           onPressed: () => Navigator.of(context).pop(),
         ),
-        trailing: IconButton(
-          icon: const Icon(Icons.edit, color: BrandColors.text1),
-          onPressed: () {
-            // Only navigate if event data is available
-            final eventData = eventAsync.value;
-            if (eventData != null) {
-              // Convert EventDetail to Event for edit page
-              final editEvent = create_event.Event(
-                id: eventData.id,
-                name: eventData.name,
-                emoji: eventData.emoji,
-                groupId: eventData.groupId,
-                startDateTime: eventData.startDateTime,
-                endDateTime: eventData.endDateTime,
-                location: eventData.location != null
-                    ? create_event.EventLocation(
-                        id: eventData.location!.id,
-                        displayName: eventData.location!.displayName,
-                        formattedAddress: eventData.location!.formattedAddress,
-                        latitude: eventData.location!.latitude,
-                        longitude: eventData.location!.longitude,
-                      )
-                    : null,
-                status: create_event.EventStatus.confirmed,
-                createdAt: eventData.createdAt,
-              );
+        trailing: Consumer(
+          builder: (context, consumerRef, _) {
+            final canManageAsync = consumerRef.watch(
+              canManageEventProvider(eventId),
+            );
+            
+            return canManageAsync.when(
+              data: (canManage) {
+                // Only show settings icon for host or group admins
+                if (!canManage) {
+                  print('⚙️ [SETTINGS] User cannot manage event - settings hidden');
+                  return const SizedBox.shrink();
+                }
+                
+                print('⚙️ [SETTINGS] User can manage event - settings visible');
+                return IconButton(
+                  icon: const Icon(Icons.edit, color: BrandColors.text1),
+                  onPressed: () {
+                    // Only navigate if event data is available
+                    final eventData = eventAsync.value;
+                    if (eventData != null) {
+                      // Convert EventDetail to Event for edit page
+                      final editEvent = create_event.Event(
+                        id: eventData.id,
+                        name: eventData.name,
+                        emoji: eventData.emoji,
+                        groupId: eventData.groupId,
+                        startDateTime: eventData.startDateTime,
+                        endDateTime: eventData.endDateTime,
+                        location: eventData.location != null
+                            ? create_event.EventLocation(
+                                id: eventData.location!.id,
+                                displayName: eventData.location!.displayName,
+                                formattedAddress: eventData.location!.formattedAddress,
+                                latitude: eventData.location!.latitude,
+                                longitude: eventData.location!.longitude,
+                              )
+                            : null,
+                        status: create_event.EventStatus.confirmed,
+                        createdAt: eventData.createdAt,
+                      );
 
-              Navigator.pushNamed(
-                context,
-                AppRouter.editEvent,
-                arguments: {'event': editEvent},
-              );
-            }
+                      Navigator.pushNamed(
+                        context,
+                        AppRouter.editEvent,
+                        arguments: {'event': editEvent},
+                      );
+                    }
+                  },
+                );
+              },
+              loading: () => const SizedBox.shrink(),
+              error: (_, __) => const SizedBox.shrink(),
+            );
           },
         ),
       ),
@@ -212,23 +243,49 @@ class _EventPageState extends ConsumerState<EventPage> {
               ),
               const SizedBox(height: Gaps.md),
 
-              // Event status chip
+              // Event status chip - visible for event host OR group admins
               Consumer(
-                builder: (context, consumerRef, child) {
-                  return EventStatusChip(
-                    status: event.status,
-                    isHost:
-                        event.hostId == 'current-user', // TODO: Get from auth
-                    onTap: () => _showStatusChangeDialog(
-                      context,
-                      ref,
-                      eventId,
-                      event.status,
-                    ),
+                builder: (context, consumerRef, _) {
+                  final canManageAsync = consumerRef.watch(
+                    canManageEventProvider(eventId),
+                  );
+                  
+                  return canManageAsync.when(
+                    data: (canManage) {
+                      if (!canManage) {
+                        print('🎯 [STATUS CHIP] User cannot manage event - chip hidden');
+                        return const SizedBox.shrink();
+                      }
+                      
+                      final isHost = event.hostId == currentUserId;
+                      print('🎯 [STATUS CHIP] Permission check:');
+                      print('   Event host ID: ${event.hostId}');
+                      print('   Current user ID: $currentUserId');
+                      print('   Is host: $isHost');
+                      print('   Can manage: $canManage');
+                      print('   Chip visible: true');
+                      
+                      return Column(
+                        children: [
+                          EventStatusChip(
+                            status: event.status,
+                            isHost: true,
+                            onTap: () => _showStatusChangeDialog(
+                              context,
+                              ref,
+                              eventId,
+                              event.status,
+                            ),
+                          ),
+                          const SizedBox(height: Gaps.lg),
+                        ],
+                      );
+                    },
+                    loading: () => const SizedBox.shrink(),
+                    error: (_, __) => const SizedBox.shrink(),
                   );
                 },
               ),
-              const SizedBox(height: Gaps.lg),
 
               // RSVP Widget
               rsvpsAsync.when(
@@ -325,7 +382,7 @@ class _EventPageState extends ConsumerState<EventPage> {
                                           (r) => rsvp_widget.RsvpVote(
                                             id: r.id,
                                             userId: r.userId,
-                                            userName: r.userName,
+                                            userName: _getUserDisplayName(r.userId, r.userName, currentUserId),
                                             userAvatar: r.userAvatar,
                                             status: r.status == RsvpStatus.going
                                                 ? rsvp_widget
@@ -422,7 +479,7 @@ class _EventPageState extends ConsumerState<EventPage> {
                                         (r) => rsvp_widget.RsvpVote(
                                           id: r.id,
                                           userId: r.userId,
-                                          userName: r.userName,
+                                          userName: _getUserDisplayName(r.userId, r.userName, currentUserId),
                                           userAvatar: r.userAvatar,
                                           status: r.status == RsvpStatus.going
                                               ? rsvp_widget.RsvpVoteStatus.going
@@ -505,7 +562,7 @@ class _EventPageState extends ConsumerState<EventPage> {
                                         (r) => rsvp_widget.RsvpVote(
                                           id: r.id,
                                           userId: r.userId,
-                                          userName: r.userName,
+                                          userName: _getUserDisplayName(r.userId, r.userName, currentUserId),
                                           userAvatar: r.userAvatar,
                                           status: r.status == RsvpStatus.going
                                               ? rsvp_widget.RsvpVoteStatus.going
@@ -585,7 +642,7 @@ class _EventPageState extends ConsumerState<EventPage> {
                                 (r) => rsvp_widget.RsvpVote(
                                   id: r.id,
                                   userId: r.userId,
-                                  userName: r.userName,
+                                  userName: _getUserDisplayName(r.userId, r.userName, currentUserId),
                                   userAvatar: r.userAvatar,
                                   status: r.status == RsvpStatus.going
                                       ? rsvp_widget.RsvpVoteStatus.going
@@ -654,7 +711,7 @@ class _EventPageState extends ConsumerState<EventPage> {
                                 (r) => rsvp_widget.RsvpVote(
                                   id: r.id,
                                   userId: r.userId,
-                                  userName: r.userName,
+                                  userName: _getUserDisplayName(r.userId, r.userName, currentUserId),
                                   userAvatar: r.userAvatar,
                                   status: r.status == RsvpStatus.going
                                       ? rsvp_widget.RsvpVoteStatus.going
@@ -790,7 +847,7 @@ class _EventPageState extends ConsumerState<EventPage> {
                                   (vote) => datetime_widget.SuggestionVote(
                                     id: vote.id,
                                     userId: vote.userId,
-                                    userName: vote.userName,
+                                    userName: _getUserDisplayName(vote.userId, vote.userName, currentUserId),
                                     userAvatar: vote.userAvatar,
                                     votedAt: vote.createdAt,
                                   ),
@@ -1036,7 +1093,7 @@ class _EventPageState extends ConsumerState<EventPage> {
                       .map(
                         (m) => ChatMessagePreview(
                           userId: m.userId,
-                          userName: m.userName,
+                          userName: _getUserDisplayName(m.userId, m.userName, currentUserId),
                           userAvatar: m.userAvatar,
                           content: m.content,
                           timestamp: m.createdAt,
@@ -1045,7 +1102,7 @@ class _EventPageState extends ConsumerState<EventPage> {
                           replyTo: m.replyTo != null
                               ? ChatMessagePreview(
                                   userId: m.replyTo!.userId,
-                                  userName: m.replyTo!.userName,
+                                  userName: _getUserDisplayName(m.replyTo!.userId, m.replyTo!.userName, currentUserId),
                                   userAvatar: m.replyTo!.userAvatar,
                                   content: m.replyTo!.content,
                                   timestamp: m.replyTo!.createdAt,

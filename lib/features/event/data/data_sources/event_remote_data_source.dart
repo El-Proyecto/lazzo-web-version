@@ -210,15 +210,55 @@ class EventRemoteDataSource {
     String status,
   ) async {
     try {
-      await _supabaseClient.from('events').update({
-        'status': status,
-      }).eq('id', eventId);
+      print('🔧 [DATA SOURCE] Updating event $eventId in Supabase');
+      print('   🎯 New status value: "$status"');
+      print('   📊 Building update payload: {status: $status}');
+      
+      // Execute update without select to avoid issues
+      print('   🚀 Executing UPDATE query on events table...');
+      await _supabaseClient
+          .from('events')
+          .update({'status': status})
+          .eq('id', eventId);
+
+      print('✅ [DATA SOURCE] Supabase UPDATE command executed');
+
+      // Verify the update by fetching the event directly with a small delay
+      await Future.delayed(const Duration(milliseconds: 100));
+      
+      print('🔍 [DATA SOURCE] Verifying update by fetching event...');
+      final verifyResponse = await _supabaseClient
+          .from('events')
+          .select('id, name, status')
+          .eq('id', eventId)
+          .single();
+      
+      print('📊 [DATA SOURCE] Verification result:');
+      print('   📌 Event ID: ${verifyResponse['id']}');
+      print('   📝 Event Name: ${verifyResponse['name']}');
+      print('   🎯 Current status in DB: "${verifyResponse['status']}"');
+
+      if (verifyResponse['status'] != status) {
+        print('⚠️ [DATA SOURCE] WARNING: Status mismatch!');
+        print('   Expected: "$status"');
+        print('   Got: "${verifyResponse['status']}"');
+        throw Exception('Status update failed: expected $status but got ${verifyResponse['status']}');
+      }
 
       // Return updated event detail
-      return await getEventDetail(eventId);
+      print('📦 [DATA SOURCE] Fetching full event detail...');
+      final updatedEvent = await getEventDetail(eventId);
+      print('✅ [DATA SOURCE] Full event detail model status: "${updatedEvent.status}"');
+      
+      return updatedEvent;
     } on PostgrestException catch (e) {
+      print('❌ [DATA SOURCE] PostgrestException: ${e.message}');
+      print('   Code: ${e.code}');
+      print('   Details: ${e.details}');
       throw Exception('Failed to update event status: ${e.message}');
-    } catch (e) {
+    } catch (e, stackTrace) {
+      print('❌ [DATA SOURCE] Exception: $e');
+      print('   Stack trace: $stackTrace');
       throw Exception('Failed to update event status: $e');
     }
   }

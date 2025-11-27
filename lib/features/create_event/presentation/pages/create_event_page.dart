@@ -17,6 +17,7 @@ import '../../../../shared/themes/colors.dart';
 import '../../../../shared/components/common/top_banner.dart';
 import '../../../groups/presentation/providers/groups_provider.dart';
 import '../../../groups/domain/entities/group.dart';
+import '../../../event/presentation/providers/event_providers.dart';
 
 /// Página principal para criação de eventos
 /// Usa todos os widgets tokenizados e reutilizáveis
@@ -788,12 +789,27 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
     // Clear draft since event is being created
     await _draftService.clearDraft();
 
+    // Small delay to ensure RSVP is inserted in DB before navigation
+    // The repository creates the RSVP asynchronously, so we wait a bit
+    await Future.delayed(const Duration(milliseconds: 300));
+
+    // Invalidate user RSVP provider to ensure fresh data load
+    // This guarantees the creator's automatic "Yes" vote is shown
+    ref.invalidate(userRsvpProvider(eventId));
+    
+    // Also invalidate event RSVPs provider for vote counts
+    ref.invalidate(eventRsvpsProvider(eventId));
+    
+    // Also invalidate event detail provider to refresh counts
+    ref.invalidate(eventDetailProvider(eventId));
+
     // Navigate to event detail page with the created event ID
     // Use pushReplacementNamed to replace CreateEvent with Event page
     // This way, back button from Event goes to Home (which is still in the stack)
     if (mounted) {
-      Navigator.of(context).pushReplacementNamed(
-        '/event',
+      Navigator.of(context).pushNamedAndRemoveUntil(
+        '/main',
+        (Route<dynamic> route) => false,
         arguments: {
           'eventId': eventId,
           'showSuccessBanner': true,
