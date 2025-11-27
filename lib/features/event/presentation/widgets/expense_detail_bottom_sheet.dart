@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 // ✅ MUDAR: import de expense/ em vez de event/
 import '../../../expense/domain/entities/event_expense_entity.dart';
 import '../../../../shared/constants/spacing.dart';
@@ -89,16 +90,25 @@ class _ExpenseDetailBottomSheetState extends State<ExpenseDetailBottomSheet> {
     final singleAmount =
         _participants.isNotEmpty ? _participants.first.amount : 0.0;
 
+    // Get current user ID from Supabase auth
+    final currentUserId = Supabase.instance.client.auth.currentUser?.id;
+
+    // Find current user in participants list (uses real UUID)
     final currentUserParticipant = _participants.firstWhere(
-      (p) => p.id == 'current_user',
+      (p) => p.id == currentUserId,
       orElse: () => ExpenseParticipantDisplay(
-        id: 'current_user',
+        id: '',
         name: 'You',
         amount: singleAmount,
-        hasPaid: false,
+        hasPaid:
+            true, // Default to true so button doesn't show if user not found
       ),
     );
-    final showMarkAsPaidButton = !currentUserParticipant.hasPaid;
+
+    // Show button if user is in the expense (whether paid or not)
+    final showButton =
+        currentUserId != null && currentUserParticipant.id.isNotEmpty;
+    final hasUserPaid = currentUserParticipant.hasPaid;
 
     return Container(
       decoration: const BoxDecoration(
@@ -139,7 +149,7 @@ class _ExpenseDetailBottomSheetState extends State<ExpenseDetailBottomSheet> {
                     _buildSectionHeader(
                       'Paid',
                       paidParticipants.length,
-                      const Color(0xFF10B981),
+                      BrandColors.planning,
                     ),
                     const SizedBox(height: Gaps.xs),
                     ...paidParticipants
@@ -152,14 +162,15 @@ class _ExpenseDetailBottomSheetState extends State<ExpenseDetailBottomSheet> {
                     _buildSectionHeader(
                       'Owes',
                       oweParticipants.length,
-                      const Color(0xFFEF4444),
+                      BrandColors.cantVote,
                     ),
                     const SizedBox(height: Gaps.xs),
                     ...oweParticipants
                         .map((p) => _buildParticipantRow(p, false)),
                   ],
 
-                  if (showMarkAsPaidButton) const SizedBox(height: 32),
+                  // Bottom spacing
+                  SizedBox(height: showButton ? 32 : Pads.sectionH),
                 ],
               ),
             ),
@@ -172,8 +183,12 @@ class _ExpenseDetailBottomSheetState extends State<ExpenseDetailBottomSheet> {
             )),
 
           // Fixed bottom button
-          if (showMarkAsPaidButton)
-            _buildFixedBottomButton(context, currentUserParticipant.amount),
+          if (showButton)
+            _buildFixedBottomButton(
+              context,
+              currentUserParticipant.amount,
+              hasUserPaid,
+            ),
         ],
       ),
     );
@@ -397,9 +412,12 @@ class _ExpenseDetailBottomSheetState extends State<ExpenseDetailBottomSheet> {
   }
 
   void _handleMarkAsPaid() {
+    final currentUserId = Supabase.instance.client.auth.currentUser?.id;
+    if (currentUserId == null) return;
+
     setState(() {
       final currentUserIndex =
-          _participants.indexWhere((p) => p.id == 'current_user');
+          _participants.indexWhere((p) => p.id == currentUserId);
       if (currentUserIndex != -1) {
         _participants[currentUserIndex] = ExpenseParticipantDisplay(
           id: _participants[currentUserIndex].id,
@@ -430,7 +448,8 @@ class _ExpenseDetailBottomSheetState extends State<ExpenseDetailBottomSheet> {
     }
   }
 
-  Widget _buildFixedBottomButton(BuildContext context, double amount) {
+  Widget _buildFixedBottomButton(
+      BuildContext context, double amount, bool hasPaid) {
     return Container(
       padding: EdgeInsets.only(
         left: Pads.sectionH,
@@ -442,20 +461,29 @@ class _ExpenseDetailBottomSheetState extends State<ExpenseDetailBottomSheet> {
       child: SizedBox(
         width: double.infinity,
         child: ElevatedButton(
-          onPressed: _handleMarkAsPaid,
+          onPressed:
+              hasPaid ? null : _handleMarkAsPaid, // Disable if already paid
           style: ElevatedButton.styleFrom(
-            backgroundColor: widget.mode == ChatMode.living
-                ? BrandColors.living
-                : BrandColors.planning,
-            foregroundColor: BrandColors.text1,
+            backgroundColor: hasPaid
+                ? BrandColors.bg3
+                : (widget.mode == ChatMode.living
+                    ? BrandColors.living
+                    : BrandColors.planning),
+            foregroundColor: hasPaid ? BrandColors.text2 : BrandColors.text1,
+            disabledBackgroundColor: BrandColors.bg3,
+            disabledForegroundColor: BrandColors.text2,
             padding: const EdgeInsets.symmetric(vertical: Pads.ctlV),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(Radii.smAlt),
             ),
           ),
           child: Text(
-            'Mark €${amount.toStringAsFixed(2)} as paid',
-            style: AppText.bodyMediumEmph.copyWith(color: BrandColors.text1),
+            hasPaid
+                ? 'Already Paid'
+                : 'Mark €${amount.toStringAsFixed(2)} as paid',
+            style: AppText.bodyMediumEmph.copyWith(
+              color: hasPaid ? BrandColors.text2 : BrandColors.text1,
+            ),
           ),
         ),
       ),

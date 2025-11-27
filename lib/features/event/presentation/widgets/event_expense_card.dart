@@ -11,6 +11,7 @@ class EventExpenseCard extends StatelessWidget {
   final double totalAmount;
   final bool isOwedToUser;
   final String paymentStatus; // "Paid", "Settled", or empty
+  final bool isUserRelated; // Whether user is part of this expense
   final VoidCallback? onTap;
 
   const EventExpenseCard({
@@ -21,6 +22,7 @@ class EventExpenseCard extends StatelessWidget {
     required this.totalAmount,
     required this.isOwedToUser,
     required this.paymentStatus,
+    required this.isUserRelated,
     this.onTap,
   });
 
@@ -51,17 +53,21 @@ class EventExpenseCard extends StatelessWidget {
                     ),
                   ),
                 ),
-                // Show status (Settled/Paid) or amount
+                // Show status (Settled/Paid/Not related) or amount
                 Text(
-                  paymentStatus.isNotEmpty
-                      ? paymentStatus
-                      : '${isOwedToUser ? '+' : '-'}€${userAmount.toStringAsFixed(2)}',
+                  !isUserRelated
+                      ? 'Not related'
+                      : (paymentStatus.isNotEmpty
+                          ? paymentStatus
+                          : '${isOwedToUser ? '' : '-'}${userAmount.toStringAsFixed(2)} €'),
                   style: AppText.bodyMediumEmph.copyWith(
-                    color: paymentStatus.isNotEmpty
-                        ? BrandColors.text1
-                        : (isOwedToUser
-                            ? BrandColors.planning
-                            : BrandColors.cantVote),
+                    color: !isUserRelated
+                        ? BrandColors.text2
+                        : (paymentStatus.isNotEmpty
+                            ? BrandColors.text1
+                            : (isOwedToUser
+                                ? BrandColors.planning
+                                : BrandColors.cantVote)),
                     fontWeight: FontWeight.w600,
                   ),
                 ),

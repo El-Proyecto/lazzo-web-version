@@ -46,6 +46,7 @@ class EventExpensesWidget extends ConsumerWidget {
 
         final userTotal = _calculateUserTotal(expenses);
         final isOwedToUser = userTotal > 0;
+        final allSettled = _areAllExpensesSettled(expenses);
 
         return Container(
           padding: const EdgeInsets.all(Pads.sectionH),
@@ -67,11 +68,15 @@ class EventExpensesWidget extends ConsumerWidget {
                     ),
                   ),
                   Text(
-                    '${isOwedToUser ? '+' : '-'}€${userTotal.abs().toStringAsFixed(2)}',
+                    allSettled
+                        ? 'Settled'
+                        : '${isOwedToUser ? '+' : '-'}${userTotal.abs().toStringAsFixed(2)} €',
                     style: AppText.bodyMediumEmph.copyWith(
-                      color: isOwedToUser
-                          ? const Color(0xFF10B981)
-                          : const Color(0xFFEF4444),
+                      color: allSettled
+                          ? BrandColors.text2
+                          : (isOwedToUser
+                              ? BrandColors.planning
+                              : BrandColors.cantVote),
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -113,8 +118,10 @@ class EventExpensesWidget extends ConsumerWidget {
                   final isUserRelated = _isUserRelated(expense);
 
                   // Determine payment status
+                  // Only show 'Paid' if user paid someone else's expense (not their own)
                   final hasUserPaid = currentUserId != null &&
-                      expense.participantsPaid.contains(currentUserId);
+                      expense.participantsPaid.contains(currentUserId) &&
+                      expense.paidBy != currentUserId; // Not the creator
                   final paymentStatus = expense.isSettled
                       ? 'Settled'
                       : (hasUserPaid && isUserRelated ? 'Paid' : '');
@@ -128,6 +135,7 @@ class EventExpensesWidget extends ConsumerWidget {
                     totalAmount: expense.amount,
                     isOwedToUser: userOwed,
                     paymentStatus: paymentStatus,
+                    isUserRelated: isUserRelated,
                     onTap: () => _showExpenseDetail(context, expense),
                   );
                 },
@@ -256,13 +264,59 @@ class EventExpensesWidget extends ConsumerWidget {
     return total;
   }
 
+  bool _areAllExpensesSettled(List<EventExpenseEntity> expenses) {
+    final currentUserId = Supabase.instance.client.auth.currentUser?.id;
+    if (currentUserId == null) return true;
+
+    // Check if user has any pending expenses (owes or is owed)
+    for (final expense in expenses) {
+      if (expense.isSettled) continue;
+
+      // Check if user owes money and hasn't paid
+      if (expense.participantsOwe.contains(currentUserId) &&
+          !expense.participantsPaid.contains(currentUserId)) {
+        return false;
+      }
+
+      // Check if user is owed money and not everyone has paid
+      if (expense.paidBy == currentUserId) {
+        final hasUnpaidParticipants = expense.participantsOwe
+            .any((id) => !expense.participantsPaid.contains(id));
+        if (hasUnpaidParticipants) {
+          return false;
+        }
+      }
+    }
+
+    return true;
+  }
+
   double _calculateUserAmount(EventExpenseEntity expense) {
     // Get current user ID
     final currentUserId = Supabase.instance.client.auth.currentUser?.id;
     if (currentUserId == null) return 0.0;
 
+    // If user is the payer, calculate how much is owed to them (only unpaid participants)
+    if (expense.paidBy == currentUserId) {
+      // Count participants who haven't paid yet
+      final unpaidParticipants = expense.participantsOwe
+          .where((id) => !expense.participantsPaid.contains(id))
+          .length;
+
+      if (unpaidParticipants == 0) return 0.0; // Everyone paid
+
+      final amountPerPerson = expense.participantsOwe.isNotEmpty
+          ? expense.amount / expense.participantsOwe.length
+          : 0.0;
+
+      return amountPerPerson * unpaidParticipants;
+    }
+
     // If user is not part of this expense, return 0
     if (!expense.participantsOwe.contains(currentUserId)) return 0.0;
+
+    // If user already paid their part, return 0
+    if (expense.participantsPaid.contains(currentUserId)) return 0.0;
 
     // Calculate split amount (total divided by number of people who owe)
     final totalParticipants = expense.participantsOwe.length;
@@ -274,8 +328,14 @@ class EventExpensesWidget extends ConsumerWidget {
     final currentUserId = Supabase.instance.client.auth.currentUser?.id;
     if (currentUserId == null) return false;
 
-    // User is owed money if they paid the expense
-    return expense.paidBy == currentUserId;
+    // User is owed money if they paid the expense AND there are unpaid participants
+    if (expense.paidBy != currentUserId) return false;
+
+    // Check if anyone still owes money
+    final hasUnpaidParticipants = expense.participantsOwe
+        .any((id) => !expense.participantsPaid.contains(id));
+
+    return hasUnpaidParticipants;
   }
 
   bool _isUserRelated(EventExpenseEntity expense) {

@@ -51,7 +51,8 @@ class _EventPageState extends ConsumerState<EventPage> {
   String get eventId => widget.eventId;
 
   /// Helper to replace current user's name with "You"
-  String _getUserDisplayName(String userId, String userName, String? currentUserId) {
+  String _getUserDisplayName(
+      String userId, String userName, String? currentUserId) {
     return userId == currentUserId ? 'You' : userName;
   }
 
@@ -178,15 +179,16 @@ class _EventPageState extends ConsumerState<EventPage> {
             final canManageAsync = consumerRef.watch(
               canManageEventProvider(eventId),
             );
-            
+
             return canManageAsync.when(
               data: (canManage) {
                 // Only show settings icon for host or group admins
                 if (!canManage) {
-                  print('⚙️ [SETTINGS] User cannot manage event - settings hidden');
+                  print(
+                      '⚙️ [SETTINGS] User cannot manage event - settings hidden');
                   return const SizedBox.shrink();
                 }
-                
+
                 print('⚙️ [SETTINGS] User can manage event - settings visible');
                 return IconButton(
                   icon: const Icon(Icons.edit, color: BrandColors.text1),
@@ -206,7 +208,8 @@ class _EventPageState extends ConsumerState<EventPage> {
                             ? create_event.EventLocation(
                                 id: eventData.location!.id,
                                 displayName: eventData.location!.displayName,
-                                formattedAddress: eventData.location!.formattedAddress,
+                                formattedAddress:
+                                    eventData.location!.formattedAddress,
                                 latitude: eventData.location!.latitude,
                                 longitude: eventData.location!.longitude,
                               )
@@ -254,14 +257,15 @@ class _EventPageState extends ConsumerState<EventPage> {
                   final canManageAsync = consumerRef.watch(
                     canManageEventProvider(eventId),
                   );
-                  
+
                   return canManageAsync.when(
                     data: (canManage) {
                       if (!canManage) {
-                        print('🎯 [STATUS CHIP] User cannot manage event - chip hidden');
+                        print(
+                            '🎯 [STATUS CHIP] User cannot manage event - chip hidden');
                         return const SizedBox.shrink();
                       }
-                      
+
                       final isHost = event.hostId == currentUserId;
                       print('🎯 [STATUS CHIP] Permission check:');
                       print('   Event host ID: ${event.hostId}');
@@ -269,7 +273,7 @@ class _EventPageState extends ConsumerState<EventPage> {
                       print('   Is host: $isHost');
                       print('   Can manage: $canManage');
                       print('   Chip visible: true');
-                      
+
                       return Column(
                         children: [
                           EventStatusChip(
@@ -387,7 +391,10 @@ class _EventPageState extends ConsumerState<EventPage> {
                                           (r) => rsvp_widget.RsvpVote(
                                             id: r.id,
                                             userId: r.userId,
-                                            userName: _getUserDisplayName(r.userId, r.userName, currentUserId),
+                                            userName: _getUserDisplayName(
+                                                r.userId,
+                                                r.userName,
+                                                currentUserId),
                                             userAvatar: r.userAvatar,
                                             status: r.status == RsvpStatus.going
                                                 ? rsvp_widget
@@ -484,7 +491,10 @@ class _EventPageState extends ConsumerState<EventPage> {
                                         (r) => rsvp_widget.RsvpVote(
                                           id: r.id,
                                           userId: r.userId,
-                                          userName: _getUserDisplayName(r.userId, r.userName, currentUserId),
+                                          userName: _getUserDisplayName(
+                                              r.userId,
+                                              r.userName,
+                                              currentUserId),
                                           userAvatar: r.userAvatar,
                                           status: r.status == RsvpStatus.going
                                               ? rsvp_widget.RsvpVoteStatus.going
@@ -567,7 +577,10 @@ class _EventPageState extends ConsumerState<EventPage> {
                                         (r) => rsvp_widget.RsvpVote(
                                           id: r.id,
                                           userId: r.userId,
-                                          userName: _getUserDisplayName(r.userId, r.userName, currentUserId),
+                                          userName: _getUserDisplayName(
+                                              r.userId,
+                                              r.userName,
+                                              currentUserId),
                                           userAvatar: r.userAvatar,
                                           status: r.status == RsvpStatus.going
                                               ? rsvp_widget.RsvpVoteStatus.going
@@ -647,7 +660,8 @@ class _EventPageState extends ConsumerState<EventPage> {
                                 (r) => rsvp_widget.RsvpVote(
                                   id: r.id,
                                   userId: r.userId,
-                                  userName: _getUserDisplayName(r.userId, r.userName, currentUserId),
+                                  userName: _getUserDisplayName(
+                                      r.userId, r.userName, currentUserId),
                                   userAvatar: r.userAvatar,
                                   status: r.status == RsvpStatus.going
                                       ? rsvp_widget.RsvpVoteStatus.going
@@ -716,7 +730,8 @@ class _EventPageState extends ConsumerState<EventPage> {
                                 (r) => rsvp_widget.RsvpVote(
                                   id: r.id,
                                   userId: r.userId,
-                                  userName: _getUserDisplayName(r.userId, r.userName, currentUserId),
+                                  userName: _getUserDisplayName(
+                                      r.userId, r.userName, currentUserId),
                                   userAvatar: r.userAvatar,
                                   status: r.status == RsvpStatus.going
                                       ? rsvp_widget.RsvpVoteStatus.going
@@ -852,7 +867,8 @@ class _EventPageState extends ConsumerState<EventPage> {
                                   (vote) => datetime_widget.SuggestionVote(
                                     id: vote.id,
                                     userId: vote.userId,
-                                    userName: _getUserDisplayName(vote.userId, vote.userName, currentUserId),
+                                    userName: _getUserDisplayName(vote.userId,
+                                        vote.userName, currentUserId),
                                     userAvatar: vote.userAvatar,
                                     votedAt: vote.createdAt,
                                   ),
@@ -1098,7 +1114,8 @@ class _EventPageState extends ConsumerState<EventPage> {
                       .map(
                         (m) => ChatMessagePreview(
                           userId: m.userId,
-                          userName: _getUserDisplayName(m.userId, m.userName, currentUserId),
+                          userName: _getUserDisplayName(
+                              m.userId, m.userName, currentUserId),
                           userAvatar: m.userAvatar,
                           content: m.content,
                           timestamp: m.createdAt,
@@ -1107,7 +1124,10 @@ class _EventPageState extends ConsumerState<EventPage> {
                           replyTo: m.replyTo != null
                               ? ChatMessagePreview(
                                   userId: m.replyTo!.userId,
-                                  userName: _getUserDisplayName(m.replyTo!.userId, m.replyTo!.userName, currentUserId),
+                                  userName: _getUserDisplayName(
+                                      m.replyTo!.userId,
+                                      m.replyTo!.userName,
+                                      currentUserId),
                                   userAvatar: m.replyTo!.userAvatar,
                                   content: m.replyTo!.content,
                                   timestamp: m.replyTo!.createdAt,
@@ -1346,6 +1366,7 @@ class _EventPageState extends ConsumerState<EventPage> {
                   return const SizedBox.shrink();
                 },
               ),
+              const SizedBox(height: Gaps.lg),
 
               // Location Widget (if location is set)
               if (event.location != null) ...[
