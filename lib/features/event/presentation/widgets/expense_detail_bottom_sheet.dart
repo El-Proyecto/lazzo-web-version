@@ -10,6 +10,7 @@ import 'living_expenses_widget.dart';
 class ExpenseDetailBottomSheet extends StatefulWidget {
   // ✅ MUDAR: GroupExpenseEntity → EventExpenseEntity
   final EventExpenseEntity expense;
+  final String payerName; // ✅ Name of person who paid
   // ✅ USAR: modelo local de living_expenses_widget.dart
   final List<ExpenseParticipantDisplay> participants;
   final bool isCurrentUserPayer;
@@ -20,6 +21,7 @@ class ExpenseDetailBottomSheet extends StatefulWidget {
   const ExpenseDetailBottomSheet({
     super.key,
     required this.expense,
+    required this.payerName,
     required this.participants,
     required this.isCurrentUserPayer,
     this.mode,
@@ -34,6 +36,7 @@ class ExpenseDetailBottomSheet extends StatefulWidget {
   static Future<void> show({
     required BuildContext context,
     required EventExpenseEntity expense, // ✅ Mudou
+    required String payerName,
     required List<ExpenseParticipantDisplay> participants,
     required bool isCurrentUserPayer,
     ChatMode? mode,
@@ -48,6 +51,7 @@ class ExpenseDetailBottomSheet extends StatefulWidget {
       isScrollControlled: true,
       builder: (context) => ExpenseDetailBottomSheet(
         expense: expense,
+        payerName: payerName,
         participants: participants,
         isCurrentUserPayer: isCurrentUserPayer,
         mode: mode,
@@ -212,7 +216,7 @@ class _ExpenseDetailBottomSheetState extends State<ExpenseDetailBottomSheet> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'Paid by ${widget.expense.paidBy}',
+                'Paid by ${widget.payerName}', // ✅ Show name instead of UUID
                 style: AppText.bodyMedium.copyWith(
                   color: BrandColors.text2,
                 ),
@@ -268,9 +272,21 @@ class _ExpenseDetailBottomSheetState extends State<ExpenseDetailBottomSheet> {
           ),
           const SizedBox(width: Gaps.md),
           Expanded(
-            child: Text(
-              participant.name,
-              style: AppText.bodyMedium.copyWith(color: BrandColors.text1),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  participant.name,
+                  style: AppText.bodyMedium.copyWith(color: BrandColors.text1),
+                ),
+                Text(
+                  '€${participant.amount.toStringAsFixed(2)}', // ✅ Show split amount
+                  style: AppText.bodyMedium.copyWith(
+                    color: BrandColors.text2,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
             ),
           ),
           if (hasPaid)

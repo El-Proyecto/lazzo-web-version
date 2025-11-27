@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/constants/text_styles.dart';
 import '../../../../shared/themes/colors.dart';
@@ -90,9 +91,28 @@ class EventExpensesWidget extends ConsumerWidget {
                   final userAmount = _calculateUserAmount(expense);
                   final userOwed = _isOwedToUser(expense);
 
+                  // Get current user ID
+                  final currentUserId = Supabase.instance.client.auth.currentUser?.id;
+
+                  // Find payer name from participants
+                  final payerParticipant = participants.firstWhere(
+                    (p) => p.id == expense.paidBy,
+                    orElse: () => ExpenseParticipantOption(
+                      id: expense.paidBy,
+                      name: 'Unknown',
+                      avatarUrl: null,
+                    ),
+                  );
+                  
+                  // Show "You" if current user is payer, otherwise show name
+                  final payerName = expense.paidBy == currentUserId 
+                      ? 'You' 
+                      : payerParticipant.name;
+
                   // ✅ MUDAR: GroupExpenseCard → EventExpenseCard
                   return EventExpenseCard(
                     expense: expense,
+                    payerName: payerName, // ✅ Pass name (shows "You" if current user)
                     userAmount: userAmount,
                     isOwedToUser: userOwed,
                     onTap: () => _showExpenseDetail(context, expense),
@@ -145,25 +165,61 @@ class EventExpensesWidget extends ConsumerWidget {
   }
 
   void _showExpenseDetail(BuildContext context, EventExpenseEntity expense) {
-    // ✅ CRIAR: Modelo local para participantes (em vez de entity separada)
-    final participants = (expense.participantsOwe + expense.participantsPaid)
+    // Get current user ID
+    final currentUserId = Supabase.instance.client.auth.currentUser?.id;
+    
+    // Find payer name
+    final payerParticipant = participants.firstWhere(
+      (p) => p.id == expense.paidBy,
+      orElse: () => ExpenseParticipantOption(
+        id: expense.paidBy,
+        name: 'Unknown',
+        avatarUrl: null,
+      ),
+    );
+    
+    // Show "You" if current user is payer, otherwise show name
+    final payerName = expense.paidBy == currentUserId ? 'You' : payerParticipant.name;
+    
+    // Map participant IDs to names using the participants list
+    final participantDisplayList = (expense.participantsOwe + expense.participantsPaid)
         .toSet() // Remove duplicados
-        .map((id) => ExpenseParticipantDisplay(
+        .map((id) {
+          // Find participant name from the list
+          final participant = participants.firstWhere(
+            (p) => p.id == id,
+            orElse: () => ExpenseParticipantOption(
               id: id,
-              name: id == 'current_user' ? 'You' : id,
+              name: 'Unknown',
               avatarUrl: null,
-              amount: _calculateUserAmount(expense),
-              hasPaid: expense.participantsPaid.contains(id),
-              paidAt:
-                  expense.participantsPaid.contains(id) ? expense.date : null,
-            ))
+            ),
+          );
+          
+          // Calculate individual split amount for this participant
+          final splitAmount = expense.participantsOwe.length > 0 
+              ? expense.amount / expense.participantsOwe.length 
+              : 0.0;
+          
+          // Check if this participant has paid (person who paid the expense has their part paid)
+          final participantHasPaid = id == expense.paidBy;
+          
+          return ExpenseParticipantDisplay(
+            id: id,
+            name: participant.name, // ✅ Use real name
+            avatarUrl: participant.avatarUrl,
+            amount: splitAmount, // ✅ Individual split amount
+            hasPaid: participantHasPaid, // ✅ True if this person paid the expense
+            paidAt: participantHasPaid ? expense.date : null,
+          );
+        })
         .toList();
 
     ExpenseDetailBottomSheet.show(
       context: context,
       expense: expense,
-      participants: participants,
-      isCurrentUserPayer: expense.paidBy == 'current_user',
+      payerName: payerName, // ✅ Pass payer name (shows "You" if current user)
+      participants: participantDisplayList,
+      isCurrentUserPayer: expense.paidBy == currentUserId, // ✅ Compare with actual user ID
       mode: mode,
       onMarkAsPaid: () {
         // TODO: Implementar mark as paid
@@ -186,14 +242,25 @@ class EventExpensesWidget extends ConsumerWidget {
   }
 
   double _calculateUserAmount(EventExpenseEntity expense) {
-    // TODO: Lógica real de cálculo (por agora split igualitário)
-    final totalParticipants =
-        (expense.participantsOwe.length + expense.participantsPaid.length);
+    // Get current user ID
+    final currentUserId = Supabase.instance.client.auth.currentUser?.id;
+    if (currentUserId == null) return 0.0;
+    
+    // If user is not part of this expense, return 0
+    if (!expense.participantsOwe.contains(currentUserId)) return 0.0;
+    
+    // Calculate split amount (total divided by number of people who owe)
+    final totalParticipants = expense.participantsOwe.length;
     return totalParticipants > 0 ? expense.amount / totalParticipants : 0.0;
   }
 
   bool _isOwedToUser(EventExpenseEntity expense) {
-    return expense.paidBy == 'current_user';
+    // Get current user ID
+    final currentUserId = Supabase.instance.client.auth.currentUser?.id;
+    if (currentUserId == null) return false;
+    
+    // User is owed money if they paid the expense
+    return expense.paidBy == currentUserId;
   }
 }
 

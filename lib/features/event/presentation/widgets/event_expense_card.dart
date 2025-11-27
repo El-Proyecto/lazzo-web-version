@@ -7,6 +7,7 @@ import '../../../expense/domain/entities/event_expense_entity.dart';
 /// Card displaying a single event expense
 class EventExpenseCard extends StatelessWidget {
   final EventExpenseEntity expense;
+  final String payerName; // ✅ Name of person who paid
   final double userAmount;
   final bool isOwedToUser;
   final VoidCallback? onTap;
@@ -14,6 +15,7 @@ class EventExpenseCard extends StatelessWidget {
   const EventExpenseCard({
     super.key,
     required this.expense,
+    required this.payerName,
     required this.userAmount,
     required this.isOwedToUser,
     this.onTap,
@@ -62,7 +64,7 @@ class EventExpenseCard extends StatelessWidget {
                   ),
                   const SizedBox(height: Gaps.xxs),
                   Text(
-                    'Paid by ${expense.paidBy}',
+                    'Paid by $payerName', // ✅ Show name instead of UUID
                     style: AppText.bodyMedium.copyWith(
                       color: BrandColors.text2,
                       fontSize: 12,

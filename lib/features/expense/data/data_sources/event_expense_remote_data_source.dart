@@ -62,21 +62,52 @@ class EventExpenseRemoteDataSource {
     }
   }
 
-  /// Busca despesas de um evento
+  /// Busca despesas de um evento com splits
   Future<List<EventExpenseDto>> getEventExpenses(String eventId) async {
     try {
       print('💰 [DataSource] Fetching expenses for event: $eventId');
 
-      final response = await _client
+      // Fetch expenses
+      final expensesResponse = await _client
           .from('event_expenses')
           .select()
           .eq('event_id', eventId)
           .order('created_at', ascending: false);
 
-      print('   ✅ Found ${response.length} expenses');
-      return (response as List)
-          .map((json) => EventExpenseDto.fromJson(json))
-          .toList();
+      print('   ✅ Found ${expensesResponse.length} expenses');
+
+      // For each expense, fetch splits
+      final expenses = <EventExpenseDto>[];
+      for (final expenseJson in expensesResponse as List) {
+        final expenseId = expenseJson['id'] as String;
+        
+        // Fetch splits for this expense
+        final splitsResponse = await _client
+            .from('expense_splits')
+            .select()
+            .eq('expense_id', expenseId);
+
+        // Build participantsOwe list (user_ids from splits)
+        final participantsOwe = (splitsResponse as List)
+            .map((split) => split['user_id'] as String)
+            .toList();
+
+        // Create DTO with splits data
+        final dto = EventExpenseDto.fromJson(expenseJson);
+        expenses.add(EventExpenseDto(
+          id: dto.id,
+          eventId: dto.eventId,
+          description: dto.description,
+          amount: dto.amount,
+          paidBy: dto.paidBy,
+          participantsOwe: participantsOwe, // ✅ Real data from splits
+          participantsPaid: [], // Not tracking this yet
+          createdAt: dto.createdAt,
+          isSettled: dto.isSettled,
+        ));
+      }
+
+      return expenses;
     } catch (e) {
       print('   ❌ Failed to fetch expenses: $e');
       throw Exception('Failed to get expenses: $e');
