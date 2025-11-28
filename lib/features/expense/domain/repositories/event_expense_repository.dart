@@ -17,4 +17,9 @@ abstract class EventExpenseRepository {
     required List<String> participantsOwe,
     required List<String> participantsPaid,
   });
+
+  Future<void> markExpenseAsPaid({
+    required String expenseId,
+    required String userId,
+  });
 }

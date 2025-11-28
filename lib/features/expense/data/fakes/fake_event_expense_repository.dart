@@ -69,4 +69,14 @@ class FakeEventExpenseRepository implements EventExpenseRepository {
     _expenses.insert(0, newExpense);
     return newExpense;
   }
+
+  @override
+  Future<void> markExpenseAsPaid({
+    required String expenseId,
+    required String userId,
+  }) async {
+    // Simular delay
+    await Future.delayed(Duration(milliseconds: 500));
+    // Mock implementation para testes
+  }
 }

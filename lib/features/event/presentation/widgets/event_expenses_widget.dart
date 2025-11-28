@@ -136,7 +136,7 @@ class EventExpensesWidget extends ConsumerWidget {
                     isOwedToUser: userOwed,
                     paymentStatus: paymentStatus,
                     isUserRelated: isUserRelated,
-                    onTap: () => _showExpenseDetail(context, expense),
+                    onTap: () => _showExpenseDetail(context, ref, expense),
                   );
                 },
               ),
@@ -185,15 +185,29 @@ class EventExpensesWidget extends ConsumerWidget {
     );
   }
 
-  void _showExpenseDetail(BuildContext context, EventExpenseEntity expense) {
+  void _showExpenseDetail(
+      BuildContext context, WidgetRef ref, EventExpenseEntity expense) {
     // Get current user ID
     final currentUserId = Supabase.instance.client.auth.currentUser?.id;
 
-    // Find payer name
+    // 🔄 Buscar estado MAIS RECENTE da despesa antes de abrir bottom sheet
+    final expensesState = ref.read(eventExpensesProvider(eventId));
+    final latestExpense = expensesState.maybeWhen(
+      data: (expenses) {
+        try {
+          return expenses.firstWhere((e) => e.id == expense.id);
+        } catch (_) {
+          return expense; // fallback se não encontrar
+        }
+      },
+      orElse: () => expense,
+    );
+
+    // Find payer name usando dados atualizados
     final payerParticipant = participants.firstWhere(
-      (p) => p.id == expense.paidBy,
+      (p) => p.id == latestExpense.paidBy,
       orElse: () => ExpenseParticipantOption(
-        id: expense.paidBy,
+        id: latestExpense.paidBy,
         name: 'Unknown',
         avatarUrl: null,
       ),
@@ -201,11 +215,11 @@ class EventExpensesWidget extends ConsumerWidget {
 
     // Show "You" if current user is payer, otherwise show name
     final payerName =
-        expense.paidBy == currentUserId ? 'You' : payerParticipant.name;
+        latestExpense.paidBy == currentUserId ? 'You' : payerParticipant.name;
 
-    // Map participant IDs to names using the participants list
+    // Construir lista de participantes com dados atualizados
     final participantDisplayList =
-        (expense.participantsOwe + expense.participantsPaid)
+        (latestExpense.participantsOwe + latestExpense.participantsPaid)
             .toSet() // Remove duplicados
             .map((id) {
       // Find participant name from the list
@@ -219,33 +233,48 @@ class EventExpensesWidget extends ConsumerWidget {
       );
 
       // Calculate individual split amount for this participant
-      final splitAmount = expense.participantsOwe.length > 0
-          ? expense.amount / expense.participantsOwe.length
+      // Total participants = those who owe + those who already paid
+      final totalParticipants =
+          (latestExpense.participantsOwe + latestExpense.participantsPaid)
+              .toSet()
+              .length;
+      final splitAmount = totalParticipants > 0
+          ? latestExpense.amount / totalParticipants
           : 0.0;
 
-      // Check if this participant has paid (person who paid the expense has their part paid)
-      final participantHasPaid = id == expense.paidBy;
+      // ✅ Check if participant has paid (in participantsPaid list)
+      final participantHasPaid = latestExpense.participantsPaid.contains(id);
 
       return ExpenseParticipantDisplay(
         id: id,
-        name: participant.name, // ✅ Use real name
+        name: participant.name,
         avatarUrl: participant.avatarUrl,
-        amount: splitAmount, // ✅ Individual split amount
-        hasPaid: participantHasPaid, // ✅ True if this person paid the expense
-        paidAt: participantHasPaid ? expense.date : null,
+        amount: splitAmount,
+        hasPaid: participantHasPaid, // ✅ Vem da lista atualizada
+        paidAt: participantHasPaid ? latestExpense.date : null,
       );
     }).toList();
 
     ExpenseDetailBottomSheet.show(
       context: context,
-      expense: expense,
+      expense: latestExpense,
       payerName: payerName, // ✅ Pass payer name (shows "You" if current user)
       participants: participantDisplayList,
-      isCurrentUserPayer:
-          expense.paidBy == currentUserId, // ✅ Compare with actual user ID
+      isCurrentUserPayer: latestExpense.paidBy ==
+          currentUserId, // ✅ Compare with actual user ID
       mode: mode,
-      onMarkAsPaid: () {
-        // TODO: Implementar mark as paid
+      onMarkAsPaid: () async {
+        final currentUserId = Supabase.instance.client.auth.currentUser?.id;
+        if (currentUserId == null) return;
+
+        await ref.read(eventExpensesProvider(eventId).notifier).markAsPaid(
+              expenseId: latestExpense.id,
+              userId: currentUserId,
+            );
+
+        if (context.mounted) {
+          Navigator.pop(context);
+        }
       },
       onNotifyParticipant: (participantId) {
         // TODO: Implementar notificação
@@ -296,31 +325,30 @@ class EventExpensesWidget extends ConsumerWidget {
     final currentUserId = Supabase.instance.client.auth.currentUser?.id;
     if (currentUserId == null) return 0.0;
 
+    // Total number of participants (who owe + who already paid)
+    final allParticipants =
+        {...expense.participantsOwe, ...expense.participantsPaid}.length;
+    if (allParticipants == 0) return 0.0;
+
+    final amountPerPerson = expense.amount / allParticipants;
+
     // If user is the payer, calculate how much is owed to them (only unpaid participants)
     if (expense.paidBy == currentUserId) {
-      // Count participants who haven't paid yet
-      final unpaidParticipants = expense.participantsOwe
-          .where((id) => !expense.participantsPaid.contains(id))
-          .length;
-
-      if (unpaidParticipants == 0) return 0.0; // Everyone paid
-
-      final amountPerPerson = expense.participantsOwe.isNotEmpty
-          ? expense.amount / expense.participantsOwe.length
-          : 0.0;
-
-      return amountPerPerson * unpaidParticipants;
+      // Count only those who haven't paid yet
+      final unpaidCount = expense.participantsOwe.length;
+      return amountPerPerson * unpaidCount;
     }
 
     // If user is not part of this expense, return 0
-    if (!expense.participantsOwe.contains(currentUserId)) return 0.0;
+    final isUserInExpense = expense.participantsOwe.contains(currentUserId) ||
+        expense.participantsPaid.contains(currentUserId);
+    if (!isUserInExpense) return 0.0;
 
     // If user already paid their part, return 0
     if (expense.participantsPaid.contains(currentUserId)) return 0.0;
 
-    // Calculate split amount (total divided by number of people who owe)
-    final totalParticipants = expense.participantsOwe.length;
-    return totalParticipants > 0 ? expense.amount / totalParticipants : 0.0;
+    // User still owes their share
+    return amountPerPerson;
   }
 
   bool _isOwedToUser(EventExpenseEntity expense) {
@@ -343,9 +371,10 @@ class EventExpensesWidget extends ConsumerWidget {
     final currentUserId = Supabase.instance.client.auth.currentUser?.id;
     if (currentUserId == null) return false;
 
-    // User is related if they paid OR if they owe
+    // User is related if they created it, owe, or already paid
     return expense.paidBy == currentUserId ||
-        expense.participantsOwe.contains(currentUserId);
+        expense.participantsOwe.contains(currentUserId) ||
+        expense.participantsPaid.contains(currentUserId);
   }
 }
 

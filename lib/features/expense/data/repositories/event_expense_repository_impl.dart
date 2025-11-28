@@ -37,4 +37,15 @@ class EventExpenseRepositoryImpl implements EventExpenseRepository {
   Future<EventExpenseEntity?> getExpenseById(String expenseId) async {
     throw UnimplementedError();
   }
+
+  @override
+  Future<void> markExpenseAsPaid({
+    required String expenseId,
+    required String userId,
+  }) async {
+    await _dataSource.markExpenseAsPaid(
+      expenseId: expenseId,
+      userId: userId,
+    );
+  }
 }

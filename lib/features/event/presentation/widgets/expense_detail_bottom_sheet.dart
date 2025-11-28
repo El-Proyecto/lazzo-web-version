@@ -16,7 +16,7 @@ class ExpenseDetailBottomSheet extends StatefulWidget {
   final List<ExpenseParticipantDisplay> participants;
   final bool isCurrentUserPayer;
   final ChatMode? mode;
-  final VoidCallback? onMarkAsPaid;
+  final Future<void> Function()? onMarkAsPaid;
   final Function(String participantId)? onNotifyParticipant;
 
   const ExpenseDetailBottomSheet({
@@ -41,7 +41,7 @@ class ExpenseDetailBottomSheet extends StatefulWidget {
     required List<ExpenseParticipantDisplay> participants,
     required bool isCurrentUserPayer,
     ChatMode? mode,
-    VoidCallback? onMarkAsPaid,
+    Future<void> Function()? onMarkAsPaid,
     Function(String participantId)? onNotifyParticipant,
   }) {
     return showModalBottomSheet<void>(
@@ -411,7 +411,7 @@ class _ExpenseDetailBottomSheetState extends State<ExpenseDetailBottomSheet> {
     }
   }
 
-  void _handleMarkAsPaid() {
+  Future<void> _handleMarkAsPaid() async {
     final currentUserId = Supabase.instance.client.auth.currentUser?.id;
     if (currentUserId == null) return;
 
@@ -430,8 +430,11 @@ class _ExpenseDetailBottomSheetState extends State<ExpenseDetailBottomSheet> {
       }
     });
 
-    widget.onMarkAsPaid?.call();
-    Navigator.pop(context);
+    // Aguardar a operação async completar
+    await widget.onMarkAsPaid?.call();
+
+    // Não fechar aqui - o callback já fecha o bottom sheet
+    // Navigator.pop(context);
   }
 
   String _getTimeUntilNextNotification(String participantId) {

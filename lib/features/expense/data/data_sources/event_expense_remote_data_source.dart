@@ -17,11 +17,6 @@ class EventExpenseRemoteDataSource {
     required List<String> participantsPaid,
   }) async {
     try {
-      print('💰 [DataSource] Creating expense for event: $eventId');
-      print('   title: $description');
-      print('   total_amount: $amount');
-      print('   created_by: $paidBy');
-
       // Step 1: Create expense record
       final expenseResponse = await _client
           .from('event_expenses')
@@ -35,11 +30,9 @@ class EventExpenseRemoteDataSource {
           .single();
 
       final expenseId = expenseResponse['id'] as String;
-      print('   ✅ Expense created: $expenseId');
 
       // Step 2: Insert expense_splits (who owes)
       if (participantsOwe.isNotEmpty) {
-        print('   💸 Inserting ${participantsOwe.length} splits...');
         final amountPerPerson = amount / participantsOwe.length;
         await _client.from('expense_splits').insert(
               participantsOwe
@@ -54,11 +47,8 @@ class EventExpenseRemoteDataSource {
             );
       }
 
-      print('   ✅ All expense data inserted successfully!');
       return EventExpenseDto.fromJson(expenseResponse);
-    } catch (e, stack) {
-      print('   ❌ Failed to create expense: $e');
-      print('   Stack: $stack');
+    } catch (e) {
       throw Exception('Failed to create expense: $e');
     }
   }
@@ -66,16 +56,14 @@ class EventExpenseRemoteDataSource {
   /// Busca despesas de um evento usando a view user_event_expenses
   Future<List<EventExpenseDto>> getEventExpenses(String eventId) async {
     try {
-      print('💰 [DataSource] Fetching expenses from view for event: $eventId');
-
       // Get current user ID
       final currentUserId = _client.auth.currentUser?.id;
       if (currentUserId == null) {
-        print('   ❌ No authenticated user');
         return [];
       }
 
       // Query the view - gets all expenses for this event (all participants)
+      // Add timestamp to force fresh data (bypass any cache)
       final response = await _client
           .from('user_event_expenses')
           .select()
@@ -95,17 +83,24 @@ class EventExpenseRemoteDataSource {
       for (final expenseRows in expenseMap.values) {
         final first = expenseRows.first;
 
-        // Get all participants who owe (exclude 'not_related')
-        final participantsOwe = expenseRows
-            .where((row) => row.userRole != 'not_related')
-            .map((row) => row.participantId)
-            .toList();
-
         // Get participants who already paid
         final participantsPaid = expenseRows
             .where((row) => row.participantHasPaid == true)
             .map((row) => row.participantId)
             .toList();
+
+        // Get participants who still owe (haven't paid yet)
+        final participantsOwe = expenseRows
+            .where((row) =>
+                row.userRole != 'not_related' && row.participantHasPaid != true)
+            .map((row) => row.participantId)
+            .toList();
+
+        // Calcular se está settled: todos os participantes pagaram
+        final allParticipants =
+            expenseRows.where((row) => row.userRole != 'not_related').toList();
+        final isSettled = allParticipants.isNotEmpty &&
+            allParticipants.every((row) => row.participantHasPaid == true);
 
         expenses.add(EventExpenseDto(
           id: first.expenseId,
@@ -116,7 +111,7 @@ class EventExpenseRemoteDataSource {
           participantsOwe: participantsOwe,
           participantsPaid: participantsPaid,
           createdAt: first.createdAt,
-          isSettled: false,
+          isSettled: isSettled,
         ));
       }
 
@@ -130,8 +125,6 @@ class EventExpenseRemoteDataSource {
   Future<List<UserEventExpenseViewDto>> getExpenseParticipants(
       String expenseId) async {
     try {
-      print('💰 [DataSource] Fetching participants for expense: $expenseId');
-
       final response = await _client
           .from('user_event_expenses')
           .select()
@@ -142,6 +135,29 @@ class EventExpenseRemoteDataSource {
           .toList();
     } catch (e) {
       throw Exception('Failed to get expense participants: $e');
+    }
+  }
+
+  Future<void> markExpenseAsPaid({
+    required String expenseId,
+    required String userId,
+  }) async {
+    try {
+      final updateResult = await _client
+          .from('expense_splits')
+          .update({'has_paid': true})
+          .eq('expense_id', expenseId)
+          .eq('user_id', userId)
+          .select();
+
+      final updatedCount = (updateResult as List).length;
+
+      if (updatedCount == 0) {
+        throw Exception(
+            'No rows updated - check if record exists and RLS policies allow UPDATE');
+      }
+    } catch (e) {
+      throw Exception('Failed to mark expense as paid: $e');
     }
   }
 }
