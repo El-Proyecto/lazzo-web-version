@@ -43,26 +43,112 @@ class SupabaseGroupMemoryDataSource implements GroupMemoryDataSource {
 
   @override
   Future<List<Map<String, dynamic>>> getGroupMemories(String groupId) async {
+    print('\n🔍 [MEMORIES DATA SOURCE] getGroupMemories called');
+    print('   📍 Group ID: $groupId');
     try {
-      final response = await _client
+      // Query events with cover photo JOIN
+      print('\n📡 [MEMORIES DATA SOURCE] Querying events table...');
+      print('   🔎 Filter: group_id = $groupId, status = recap');
+      final eventsResponse = await _client
           .from('events')
           .select('''
             id,
             name,
             start_datetime,
-            location_id,
             emoji,
             status,
-            locations:location_id(name)
+            cover_photo_id,
+            locations!location_id(display_name)
           ''')
           .eq('group_id', groupId)
-          .eq('status', 'completed')
+          .eq('status', 'recap')
           .order('start_datetime', ascending: false)
           .limit(50);
 
-      return List<Map<String, dynamic>>.from(response);
-    } catch (e) {
-      print('❌ Error fetching group memories: $e');
+      print('✅ [MEMORIES DATA SOURCE] Events query returned ${eventsResponse.length} results');
+      if (eventsResponse.isEmpty) {
+        print('ℹ️ [MEMORIES DATA SOURCE] No recap events found for this group');
+        return [];
+      }
+
+      final events = List<Map<String, dynamic>>.from(eventsResponse);
+      print('📝 [MEMORIES DATA SOURCE] First event: ${events.first}');
+      
+      // For each event, get cover photo or fallback to first photo
+      for (int i = 0; i < events.length; i++) {
+        final event = events[i];
+        final eventId = event['id'] as String;
+        final coverPhotoId = event['cover_photo_id'] as String?;
+        
+        print('\n🔄 [MEMORIES DATA SOURCE] Processing event ${i + 1}/${events.length}: $eventId');
+        print('   📸 Cover photo ID: ${coverPhotoId ?? "null"}');
+        
+        // Get photo count for this event
+        print('   🔢 Counting photos...');
+        final photosResponse = await _client
+            .from('group_photos')
+            .select('id')
+            .eq('event_id', eventId);
+        
+        event['photo_count'] = photosResponse.length;
+        print('   ✅ Found ${photosResponse.length} photos');
+        
+        // Get cover photo or first photo
+        String? coverStoragePath;
+        
+        if (coverPhotoId != null) {
+          // Try to get the selected cover photo
+          print('   🔍 Fetching selected cover photo...');
+          try {
+            final coverPhoto = await _client
+                .from('group_photos')
+                .select('storage_path')
+                .eq('id', coverPhotoId)
+                .maybeSingle();
+            
+            if (coverPhoto != null) {
+              coverStoragePath = coverPhoto['storage_path'] as String?;
+              print('   ✅ Cover photo found: $coverStoragePath');
+            } else {
+              print('   ⚠️ Cover photo ID exists but photo not found in DB');
+            }
+          } catch (e) {
+            print('   ⚠️ Cover photo not found: $coverPhotoId - $e');
+          }
+        }
+        
+        // Fallback to first photo if no cover selected or cover not found
+        if (coverStoragePath == null) {
+          print('   🔄 No cover selected, falling back to first photo...');
+          try {
+            final firstPhoto = await _client
+                .from('group_photos')
+                .select('storage_path')
+                .eq('event_id', eventId)
+                .order('created_at', ascending: true)
+                .limit(1)
+                .maybeSingle();
+            
+            if (firstPhoto != null) {
+              coverStoragePath = firstPhoto['storage_path'] as String?;
+              print('   ✅ Fallback photo found: $coverStoragePath');
+            } else {
+              print('   ℹ️ No photos found for this event');
+            }
+          } catch (e) {
+            print('   ⚠️ No photos found for event: $eventId - $e');
+          }
+        }
+        
+        event['cover_storage_path'] = coverStoragePath;
+        print('   📦 Final cover_storage_path: ${coverStoragePath ?? "null"}');
+      }
+
+      print('\n✅ [MEMORIES DATA SOURCE] Successfully processed ${events.length} memories for group $groupId');
+      return events;
+    } catch (e, stackTrace) {
+      print('❌ [MEMORIES DATA SOURCE] Error fetching group memories: $e');
+      print('   Stack trace: $stackTrace');
       return [];
     }
   }

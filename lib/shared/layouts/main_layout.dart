@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../components/nav/navigation_bar.dart' as nav;
 import '../../features/groups/presentation/pages/groups_page.dart';
 import '../../features/inbox/presentation/pages/inbox_page.dart';
@@ -9,7 +10,9 @@ import '../../features/home/presentation/pages/home.dart';
 import '../../features/home/presentation/providers/banner_provider.dart';
 import '../../features/home/presentation/providers/home_event_providers.dart';
 import '../../features/home/domain/entities/home_event.dart';
+import '../../features/memory/presentation/providers/memory_providers.dart';
 import '../../routes/app_router.dart';
+import '../../services/event_status_service.dart';
 import 'main_layout_providers.dart';
 
 class MainLayout extends ConsumerStatefulWidget {
@@ -63,40 +66,81 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
           ),
         );
       } else if (nextEventStatus == HomeEventStatus.recap) {
-        // Recap mode: open gallery with multi-select (max 5 photos)
-        final picker = ImagePicker();
-        final selectedImages = await picker.pickMultiImage(
-          maxWidth: 1920,
-          maxHeight: 1920,
-          imageQuality: 85,
-        );
-
-        if (selectedImages.isNotEmpty && mounted) {
-          // Limit to 5 photos
-          final limitedImages = selectedImages.take(5).toList();
-          
-          if (limitedImages.length < selectedImages.length) {
+        // First, update event statuses to ensure recap events are correctly marked
+        print('\n🔄 [MAIN LAYOUT] Updating event statuses before loading recap mode...');
+        try {
+          final statusService = EventStatusService(Supabase.instance.client);
+          final updatedCount = await statusService.updateEventStatuses();
+          if (updatedCount > 0) {
+            print('✅ [MAIN LAYOUT] Updated $updatedCount events');
+            // Refresh next event provider to get updated status
+            ref.invalidate(nextEventControllerProvider);
+          }
+        } catch (e) {
+          print('❌ [MAIN LAYOUT] Error updating statuses: $e');
+        }
+        
+        // Recap mode: Get memoryId from next event (event in recap = memory)
+        final nextEvent = await ref.read(nextEventControllerProvider.future);
+        
+        if (nextEvent == null) {
+          if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
-                content: Text('Maximum 5 photos selected'),
+                content: Text('No event in recap mode found'),
                 duration: Duration(seconds: 2),
               ),
             );
           }
+          return;
+        }
+        
+        final memoryId = nextEvent.id; // eventId = memoryId for recap events
+        
+        // Get memory to check if user has already uploaded photos
+        final memoryAsync = await ref.read(memoryDetailProvider(memoryId).future);
+        final hasPhotos = memoryAsync != null && memoryAsync.photos.isNotEmpty;
+        
+        if (hasPhotos && mounted) {
+          // User already has photos → go directly to manage memory page
+          Navigator.pushNamed(
+            context,
+            AppRouter.manageMemory,
+            arguments: {'memoryId': memoryId},
+          );
+        } else {
+          // No photos yet → open gallery to upload photos
+          final picker = ImagePicker();
+          final selectedImages = await picker.pickMultiImage(
+            maxWidth: 1920,
+            maxHeight: 1920,
+            imageQuality: 85,
+          );
 
-          // Navigate to ManageMemoryPage with selected photos
-          // TODO P2: Get actual memoryId from current event
-          final memoryId = 'memory-1'; // Placeholder
-          
-          if (mounted) {
-            Navigator.pushNamed(
-              context,
-              AppRouter.manageMemory,
-              arguments: {
-                'memoryId': memoryId,
-                'selectedPhotos': limitedImages.map((img) => img.path).toList(),
-              },
-            );
+          if (selectedImages.isNotEmpty && mounted) {
+            // Limit to 5 photos
+            final limitedImages = selectedImages.take(5).toList();
+            
+            if (limitedImages.length < selectedImages.length) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Maximum 5 photos selected'),
+                  duration: Duration(seconds: 2),
+                ),
+              );
+            }
+
+            // Navigate to ManageMemoryPage with selected photos
+            if (mounted) {
+              Navigator.pushNamed(
+                context,
+                AppRouter.manageMemory,
+                arguments: {
+                  'memoryId': memoryId,
+                  'selectedPhotos': limitedImages.map((img) => img.path).toList(),
+                },
+              );
+            }
           }
         }
       } else {

@@ -128,11 +128,24 @@ class MemoryPhotoDataSource {
   }
 
   /// Delete a photo (both storage and database record)
-  Future<void> deletePhoto({
-    required String photoId,
-    required String storagePath,
-  }) async {
+  /// 
+  /// photoId: UUID of the photo record in group_photos table
+  Future<void> deletePhoto(String photoId) async {
     try {
+      // First get the storage_path from the database
+      final photoData = await _client
+          .from('group_photos')
+          .select('storage_path')
+          .eq('id', photoId)
+          .maybeSingle();
+      
+      if (photoData == null) {
+        print('⚠️ Photo not found in database: $photoId');
+        return;
+      }
+      
+      final storagePath = photoData['storage_path'] as String;
+      
       // Delete from storage using the stored path
       await _client.storage
           .from('memory_groups')

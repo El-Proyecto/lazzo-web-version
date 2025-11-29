@@ -273,10 +273,22 @@ class ManageMemoryNotifier
   Future<void> saveChanges() async {
     state.whenData((currentState) async {
       try {
+        print('\n💾 [MANAGE MEMORY] Saving cover changes...');
+        print('   📸 Selected cover ID: ${currentState.selectedCover?.id}');
+        
         // Call use case to update cover
         final updateUseCase = ref.read(updateMemoryCoverUseCaseProvider);
         await updateUseCase(memoryId, currentState.selectedCover?.id);
+        
+        print('✅ [MANAGE MEMORY] Cover updated successfully');
+        print('🔄 [MANAGE MEMORY] Invalidating memoryDetailProvider to refresh data');
+        
+        // Invalidate the memory detail provider so it refetches with updated cover
+        ref.invalidate(memoryDetailProvider(memoryId));
+        
+        print('✅ [MANAGE MEMORY] Provider invalidated - next access will fetch fresh data');
       } catch (error, stackTrace) {
+        print('❌ [MANAGE MEMORY] Error saving cover: $error');
         state = AsyncValue.error(error, stackTrace);
       }
     });
