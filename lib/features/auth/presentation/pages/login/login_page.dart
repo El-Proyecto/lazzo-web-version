@@ -1,6 +1,7 @@
 import 'package:app/features/auth/presentation/widgets/login_form.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../../shared/components/common/top_banner.dart';
 import '../../../../../shared/constants/spacing.dart';
 import '../../../../../shared/components/sections/lazzo_header.dart';
 import '../../providers/auth_provider.dart';
@@ -32,8 +33,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 
   void _validateForm() {
     setState(() {
-      _canSubmit =
-          _emailController.text.isNotEmpty &&
+      _canSubmit = _emailController.text.isNotEmpty &&
           _emailController.text.contains('@');
     });
   }
@@ -55,25 +55,20 @@ class _LoginPageState extends ConsumerState<LoginPage> {
       // Limpa o campo após o envio bem-sucedido
       _emailController.clear();
 
-      // Mostra mensagem de sucesso
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Verification code sent to $email'),
-          backgroundColor: Colors.green,
-          duration: const Duration(seconds: 3),
-        ),
-      );
-
       // Navega para a página de verificação específica de login
       Navigator.pushNamed(context, '/otp-login', arguments: {'email': email});
+
+      // Mostra mensagem de sucesso
+      TopBanner.showSuccess(
+        context,
+        message: 'Verification code sent to $email',
+      );
     } catch (e) {
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error: ${e.toString()}'),
-          backgroundColor: Colors.red,
-        ),
+      TopBanner.showError(
+        context,
+        message: 'Error: ${e.toString()}',
       );
     } finally {
       if (mounted) {
@@ -105,11 +100,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
       }
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Google Sign In failed: ${e.toString()}'),
-          backgroundColor: Colors.red,
-        ),
+      TopBanner.showError(
+        context,
+        message: 'Google Sign In failed: ${e.toString()}',
       );
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -139,9 +132,8 @@ class _LoginPageState extends ConsumerState<LoginPage> {
               const SizedBox(height: Gaps.xl),
               LoginForm(
                 emailController: _emailController,
-                onCreateAccount: _canSubmit && !_isLoading
-                    ? _handleSubmit
-                    : null,
+                onCreateAccount:
+                    _canSubmit && !_isLoading ? _handleSubmit : null,
                 isLoading: _isLoading,
                 onGoogleSignIn: _handleGoogleLogIn,
                 onAppleSignIn: _handleAppleLogIn,

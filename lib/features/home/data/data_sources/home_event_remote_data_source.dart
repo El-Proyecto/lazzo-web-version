@@ -91,18 +91,65 @@ class HomeEventRemoteDataSource {
           ''')
           .eq('user_id', userId)
           .eq('event_status', 'confirmed') // ✅ Only confirmed events
-          // ✅ Filtrar por start_datetime futura (confirmed = não começou ainda)
-          .gte('start_datetime', DateTime.now().toIso8601String())
-          .order('start_datetime', ascending: true)
-          .limit(10);
+          .limit(20); // Increased to get both dated and null dated events
 
       final data = response as List<dynamic>;
+      print('📦 [CONFIRMED] Raw data from Supabase: ${data.length} events');
 
-      print('✅ Fetched ${data.length} confirmed events');
+      // Debug each raw event
+      for (var i = 0; i < data.length; i++) {
+        final event = data[i] as Map<String, dynamic>;
+        print(
+            '   [$i] ${event['event_name']} | start_datetime: ${event['start_datetime']} | location: ${event['location_name']}');
+      }
 
-      return data
-          .map((e) => homeEventFromMap(e as Map<String, dynamic>))
-          .toList();
+      // Convert to entities
+      print(
+          '🔄 [CONFIRMED] Converting ${data.length} raw events to entities...');
+      final events =
+          data.map((e) => homeEventFromMap(e as Map<String, dynamic>)).toList();
+      print('✅ [CONFIRMED] Converted to ${events.length} entities');
+
+      // Debug entities before filtering
+      for (var i = 0; i < events.length; i++) {
+        print(
+            '   Entity[$i]: ${events[i].name} | date: ${events[i].date} | status: ${events[i].status}');
+      }
+
+      // Filter out past events (keep future and null dates)
+      final now = DateTime.now();
+      print('⏰ [CONFIRMED] Current time: $now');
+      final filteredEvents = events.where((event) {
+        if (event.date == null) {
+          print('   ✅ Keeping ${event.name} (null date)');
+          return true; // Keep events without date
+        }
+        final isFuture = event.date!.isAfter(now);
+        print(
+            '   ${isFuture ? "✅" : "❌"} ${event.name} (date: ${event.date}, future: $isFuture)');
+        return isFuture; // Keep future events
+      }).toList();
+
+      print('🔍 [CONFIRMED] After filtering: ${filteredEvents.length} events');
+
+      // Sort: future dates first (ascending), null dates last
+      filteredEvents.sort((a, b) {
+        if (a.date == null && b.date == null) return 0;
+        if (a.date == null) return 1; // a (null) goes after b
+        if (b.date == null) return -1; // b (null) goes after a
+        return a.date!.compareTo(b.date!); // Normal date comparison
+      });
+
+      print('📊 [CONFIRMED] After sorting:');
+      for (var i = 0; i < filteredEvents.length; i++) {
+        print(
+            '   [$i] ${filteredEvents[i].name} | date: ${filteredEvents[i].date}');
+      }
+
+      print(
+          '✅ [CONFIRMED] Final result: ${filteredEvents.length} events (taking max 10)');
+
+      return filteredEvents.take(10).toList();
     } catch (e) {
       print('❌ Error fetching confirmed events: $e');
       return [];
@@ -128,16 +175,47 @@ class HomeEventRemoteDataSource {
           ''')
           .eq('user_id', userId)
           .eq('event_status', 'pending') // ✅ Backend status (pending/confirmed)
-          .order('start_datetime', ascending: true)
-          .limit(10);
+          .limit(20); // Increased to get both dated and null dated events
 
       final data = response as List<dynamic>;
+      print('📦 [PENDING] Raw data from Supabase: ${data.length} events');
 
-      print('✅ Fetched ${data.length} pending events');
+      // Debug each raw event
+      for (var i = 0; i < data.length; i++) {
+        final event = data[i] as Map<String, dynamic>;
+        print(
+            '   [$i] ${event['event_name']} | start_datetime: ${event['start_datetime']} | location: ${event['location_name']}');
+      }
 
-      return data
-          .map((e) => homeEventFromMap(e as Map<String, dynamic>))
-          .toList();
+      // Convert to entities
+      print('🔄 [PENDING] Converting ${data.length} raw events to entities...');
+      final events =
+          data.map((e) => homeEventFromMap(e as Map<String, dynamic>)).toList();
+      print('✅ [PENDING] Converted to ${events.length} entities');
+
+      // Debug entities before sorting
+      for (var i = 0; i < events.length; i++) {
+        print(
+            '   Entity[$i]: ${events[i].name} | date: ${events[i].date} | status: ${events[i].status}');
+      }
+
+      // Sort: future dates first (ascending), null dates last
+      events.sort((a, b) {
+        if (a.date == null && b.date == null) return 0;
+        if (a.date == null) return 1; // a (null) goes after b
+        if (b.date == null) return -1; // b (null) goes after a
+        return a.date!.compareTo(b.date!); // Normal date comparison
+      });
+
+      print('📊 [PENDING] After sorting:');
+      for (var i = 0; i < events.length; i++) {
+        print('   [$i] ${events[i].name} | date: ${events[i].date}');
+      }
+
+      print(
+          '✅ [PENDING] Final result: ${events.length} events (taking max 10)');
+
+      return events.take(10).toList();
     } catch (e) {
       print('❌ Error fetching pending events: $e');
       return [];

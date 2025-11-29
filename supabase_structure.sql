@@ -35,8 +35,8 @@ CREATE TABLE public.event_date_votes (
   event_id uuid NOT NULL,
   CONSTRAINT event_date_votes_pkey PRIMARY KEY (option_id, user_id),
   CONSTRAINT edv_option_same_event FOREIGN KEY (option_id) REFERENCES public.event_date_options(id),
-  CONSTRAINT edv_option_same_event FOREIGN KEY (event_id) REFERENCES public.event_date_options(id),
   CONSTRAINT edv_option_same_event FOREIGN KEY (option_id) REFERENCES public.event_date_options(event_id),
+  CONSTRAINT edv_option_same_event FOREIGN KEY (event_id) REFERENCES public.event_date_options(id),
   CONSTRAINT edv_option_same_event FOREIGN KEY (event_id) REFERENCES public.event_date_options(event_id),
   CONSTRAINT event_date_votes_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
 );

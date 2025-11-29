@@ -13,7 +13,6 @@ import '../../../../shared/components/widgets/location_widget.dart';
 import '../../../../shared/components/widgets/date_time_widget.dart';
 import '../../../../shared/components/widgets/poll_widget.dart';
 import '../../../../shared/constants/spacing.dart';
-import '../../../../shared/constants/text_styles.dart';
 import '../../../../shared/themes/colors.dart';
 import '../../../../services/calendar_service.dart';
 import '../../domain/entities/rsvp.dart';
@@ -263,6 +262,7 @@ class _EventPageState extends ConsumerState<EventPage> {
                   location: event.location?.displayName,
                   dateTime: event.startDateTime,
                   endDateTime: event.endDateTime,
+                  groupName: event.groupName,
                 ),
                 const SizedBox(height: Gaps.md),
 
@@ -1400,37 +1400,6 @@ class _EventPageState extends ConsumerState<EventPage> {
                     location: event.location?.formattedAddress,
                     onAddToCalendar: () => _addToCalendar(context, event),
                     isAddedToCalendar: _addedToCalendar.contains(event.id),
-                  ),
-                  const SizedBox(height: Gaps.lg),
-                ],
-
-                // Group Information (if group is set)
-                if (event.groupName != null) ...[
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(Pads.sectionH),
-                    decoration: BoxDecoration(
-                      color: BrandColors.bg2,
-                      borderRadius: BorderRadius.circular(Radii.md),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(
-                          Icons.group,
-                          size: 20,
-                          color: BrandColors.text2,
-                        ),
-                        const SizedBox(width: Gaps.sm),
-                        Expanded(
-                          child: Text(
-                            event.groupName!,
-                            style: AppText.bodyMedium.copyWith(
-                              color: BrandColors.text1,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
                   ),
                   const SizedBox(height: Gaps.lg),
                 ],

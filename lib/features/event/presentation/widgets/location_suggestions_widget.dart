@@ -565,8 +565,7 @@ class _LocationSuggestionVoteSection extends StatelessWidget {
         const SizedBox(height: Gaps.md),
 
         // Vote list (sorted by most recent first)
-        ...(votes.toList()
-              ..sort((a, b) => b.createdAt.compareTo(a.createdAt)))
+        ...(votes.toList()..sort((a, b) => b.createdAt.compareTo(a.createdAt)))
             .map((vote) => _LocationSuggestionVoteItem(vote: vote)),
       ],
     );
