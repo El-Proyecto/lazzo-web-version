@@ -114,7 +114,7 @@ class _VotesBottomSheetContentState extends State<_VotesBottomSheetContent> {
 
   void _updateUserVote(bool vote) {
     final userId = widget.currentUserId ?? 'current_user';
-    
+
     // Remove existing user vote if any
     _currentVotes.removeWhere((v) => v.userId == userId);
 
@@ -132,7 +132,7 @@ class _VotesBottomSheetContentState extends State<_VotesBottomSheetContent> {
 
   void _removeUserVote() {
     final userId = widget.currentUserId ?? 'current_user';
-    
+
     // Remove existing user vote if any
     _currentVotes.removeWhere((v) => v.userId == userId);
 
@@ -299,10 +299,22 @@ class _VotesBottomSheetContentState extends State<_VotesBottomSheetContent> {
 
   Widget _buildVotedContent() {
     final going =
-        _currentVotes.where((v) => v.status == RsvpVoteStatus.going).toList();
+        _currentVotes.where((v) => v.status == RsvpVoteStatus.going).toList()
+          ..sort((a, b) {
+            if (a.votedAt == null && b.votedAt == null) return 0;
+            if (a.votedAt == null) return 1;
+            if (b.votedAt == null) return -1;
+            return b.votedAt!.compareTo(a.votedAt!);
+          });
     final notGoing = _currentVotes
         .where((v) => v.status == RsvpVoteStatus.notGoing)
-        .toList();
+        .toList()
+          ..sort((a, b) {
+            if (a.votedAt == null && b.votedAt == null) return 0;
+            if (a.votedAt == null) return 1;
+            if (b.votedAt == null) return -1;
+            return b.votedAt!.compareTo(a.votedAt!);
+          });
     final pending =
         _currentVotes.where((v) => v.status == RsvpVoteStatus.pending).toList();
 
@@ -564,7 +576,7 @@ class _VoteItem extends StatelessWidget {
     print('🔍 [UI] Rendering vote for ${vote.userName}:');
     print('   🎨 Avatar URL: ${vote.userAvatar}');
     print('   ❓ Is null? ${vote.userAvatar == null}');
-    
+
     return Padding(
       padding: const EdgeInsets.only(bottom: Gaps.sm),
       child: Row(
@@ -581,7 +593,8 @@ class _VoteItem extends StatelessWidget {
                       height: 32,
                       fit: BoxFit.cover,
                       errorBuilder: (context, error, stackTrace) {
-                        print('❌ [UI] Image.network error for ${vote.userName}: $error');
+                        print(
+                            '❌ [UI] Image.network error for ${vote.userName}: $error');
                         return _buildDefaultAvatar();
                       },
                     ),
@@ -621,7 +634,10 @@ class _VoteItem extends StatelessWidget {
     final diff = now.difference(votedAt);
 
     if (diff.inDays == 0) {
-      return 'Today';
+      // Show time if voted today (e.g., "10:23")
+      final hour = votedAt.hour.toString().padLeft(2, '0');
+      final minute = votedAt.minute.toString().padLeft(2, '0');
+      return '$hour:$minute';
     } else if (diff.inDays == 1) {
       return 'Yesterday';
     } else if (diff.inDays < 7) {

@@ -13,9 +13,7 @@ class EventRemoteDataSource {
   Future<EventDetailModel> getEventDetail(String eventId) async {
     try {
       // Main event query
-      final response = await _supabaseClient
-          .from('events')
-          .select('''
+      final response = await _supabaseClient.from('events').select('''
             id,
             group_id,
             name,
@@ -26,23 +24,35 @@ class EventRemoteDataSource {
             location_id,
             created_by,
             created_at
-          ''')
-          .eq('id', eventId)
-          .single();
+          ''').eq('id', eventId).single();
+
+      // Get group name if exists
+      String? groupName;
+      if (response['group_id'] != null) {
+        final groupResponse = await _supabaseClient
+            .from('groups')
+            .select('name')
+            .eq('id', response['group_id'])
+            .maybeSingle();
+
+        if (groupResponse != null) {
+          groupName = groupResponse['name'] as String?;
+        }
+      }
 
       // Get location details if exists
       String? locationName;
       String? locationAddress;
       double? locationLat;
       double? locationLng;
-      
+
       if (response['location_id'] != null) {
         final locationResponse = await _supabaseClient
             .from('locations')
             .select('display_name, formatted_address, latitude, longitude')
             .eq('id', response['location_id'])
             .maybeSingle();
-        
+
         if (locationResponse != null) {
           locationName = locationResponse['display_name'] as String?;
           locationAddress = locationResponse['formatted_address'] as String?;
@@ -74,6 +84,7 @@ class EventRemoteDataSource {
       final eventData = <String, dynamic>{
         'id': response['id'],
         'group_id': response['group_id'],
+        'group_name': groupName,
         'name': response['name'],
         'emoji': response['emoji'],
         'start_datetime': response['start_datetime'],
@@ -213,26 +224,25 @@ class EventRemoteDataSource {
       print('🔧 [DATA SOURCE] Updating event $eventId in Supabase');
       print('   🎯 New status value: "$status"');
       print('   📊 Building update payload: {status: $status}');
-      
+
       // Execute update without select to avoid issues
       print('   🚀 Executing UPDATE query on events table...');
       await _supabaseClient
           .from('events')
-          .update({'status': status})
-          .eq('id', eventId);
+          .update({'status': status}).eq('id', eventId);
 
       print('✅ [DATA SOURCE] Supabase UPDATE command executed');
 
       // Verify the update by fetching the event directly with a small delay
       await Future.delayed(const Duration(milliseconds: 100));
-      
+
       print('🔍 [DATA SOURCE] Verifying update by fetching event...');
       final verifyResponse = await _supabaseClient
           .from('events')
           .select('id, name, status')
           .eq('id', eventId)
           .single();
-      
+
       print('📊 [DATA SOURCE] Verification result:');
       print('   📌 Event ID: ${verifyResponse['id']}');
       print('   📝 Event Name: ${verifyResponse['name']}');
@@ -242,14 +252,16 @@ class EventRemoteDataSource {
         print('⚠️ [DATA SOURCE] WARNING: Status mismatch!');
         print('   Expected: "$status"');
         print('   Got: "${verifyResponse['status']}"');
-        throw Exception('Status update failed: expected $status but got ${verifyResponse['status']}');
+        throw Exception(
+            'Status update failed: expected $status but got ${verifyResponse['status']}');
       }
 
       // Return updated event detail
       print('📦 [DATA SOURCE] Fetching full event detail...');
       final updatedEvent = await getEventDetail(eventId);
-      print('✅ [DATA SOURCE] Full event detail model status: "${updatedEvent.status}"');
-      
+      print(
+          '✅ [DATA SOURCE] Full event detail model status: "${updatedEvent.status}"');
+
       return updatedEvent;
     } on PostgrestException catch (e) {
       print('❌ [DATA SOURCE] PostgrestException: ${e.message}');
