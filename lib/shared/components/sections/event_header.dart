@@ -11,6 +11,7 @@ class EventHeader extends StatelessWidget {
   final String? location;
   final DateTime? dateTime;
   final DateTime? endDateTime;
+  final String? groupName;
 
   const EventHeader({
     super.key,
@@ -19,6 +20,7 @@ class EventHeader extends StatelessWidget {
     this.location,
     this.dateTime,
     this.endDateTime,
+    this.groupName,
   });
 
   @override
@@ -54,6 +56,12 @@ class EventHeader extends StatelessWidget {
             icon: Icons.calendar_today,
             text: _formatDateTime(dateTime!, endDateTime),
           ),
+        ],
+
+        // Group info (if available)
+        if (groupName != null) ...[
+          const SizedBox(height: Gaps.xxs),
+          _InfoRow(icon: Icons.group, text: groupName!),
         ],
       ],
     );

@@ -3,6 +3,7 @@ import '../../constants/spacing.dart';
 import '../../constants/text_styles.dart';
 import '../../themes/colors.dart';
 import '../common/common_bottom_sheet.dart';
+import '../common/top_banner.dart';
 import '../../../features/create_event/presentation/widgets/inline_date_picker.dart';
 import '../../../features/create_event/presentation/widgets/inline_time_picker.dart';
 
@@ -466,12 +467,9 @@ class RsvpWidget extends StatelessWidget {
                                   ? () {
                                       Navigator.of(context).pop();
                                       // TODO: Create poll with the selected dates/times
-                                      ScaffoldMessenger.of(
+                                      TopBanner.showSuccess(
                                         context,
-                                      ).showSnackBar(
-                                        const SnackBar(
-                                          content: Text('Suggestion added!'),
-                                        ),
+                                        message: 'Suggestion added!',
                                       );
                                     }
                                   : null,

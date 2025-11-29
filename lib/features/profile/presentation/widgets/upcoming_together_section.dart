@@ -50,7 +50,7 @@ class UpcomingTogetherSection extends StatelessWidget {
                 emoji: event.emoji,
                 title: event.name,
                 dateTime: _formatEventDate(event.date),
-                location: event.location ?? 'Location TBD',
+                location: event.location ?? 'Location to be decided',
                 onTap: () => onEventTap?.call(event),
               ),
             );

@@ -306,9 +306,8 @@ class _VotesBottomSheetContentState extends State<_VotesBottomSheetContent> {
             if (b.votedAt == null) return -1;
             return b.votedAt!.compareTo(a.votedAt!);
           });
-    final notGoing = _currentVotes
-        .where((v) => v.status == RsvpVoteStatus.notGoing)
-        .toList()
+    final notGoing =
+        _currentVotes.where((v) => v.status == RsvpVoteStatus.notGoing).toList()
           ..sort((a, b) {
             if (a.votedAt == null && b.votedAt == null) return 0;
             if (a.votedAt == null) return 1;

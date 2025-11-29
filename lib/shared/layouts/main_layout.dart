@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import '../components/nav/navigation_bar.dart' as nav;
+import '../components/common/top_banner.dart';
 import '../../features/groups/presentation/pages/groups_page.dart';
 import '../../features/inbox/presentation/pages/inbox_page.dart';
 import '../../features/profile/presentation/pages/profile_page.dart';
 import '../../features/home/presentation/pages/home.dart';
-import '../../features/home/presentation/providers/banner_provider.dart';
 import '../../features/home/presentation/providers/home_event_providers.dart';
 import '../../features/home/domain/entities/home_event.dart';
 import '../../routes/app_router.dart';
@@ -21,24 +21,30 @@ class MainLayout extends ConsumerStatefulWidget {
 
 class _MainLayoutState extends ConsumerState<MainLayout> {
   int _currentIndex = 0; // Começar na aba Home
+  bool _hasShownBanner = false; // Track if banner was already shown
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
 
-    // Check for success banner arguments
-    final args =
-        ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
-    if (args != null && args['showSuccessBanner'] == true) {
-      // Set banner state via provider
-      final eventName = args['eventName'] ?? '';
-      final groupName = args['groupName'] ?? '';
+    // Check for success banner arguments - only show once
+    if (!_hasShownBanner) {
+      final args =
+          ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+      if (args != null && args['showSuccessBanner'] == true) {
+        final eventName = args['eventName'] ?? '';
 
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        ref
-            .read(bannerProvider.notifier)
-            .showSuccessBanner(eventName, groupName);
-      });
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          TopBanner.showSuccess(
+            context,
+            message: '$eventName created successfully!',
+          );
+        });
+
+        // Mark banner as shown and clear the argument to prevent re-showing
+        _hasShownBanner = true;
+        args['showSuccessBanner'] = false;
+      }
     }
   }
 
@@ -74,7 +80,7 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
         if (selectedImages.isNotEmpty && mounted) {
           // Limit to 5 photos
           final limitedImages = selectedImages.take(5).toList();
-          
+
           if (limitedImages.length < selectedImages.length) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
@@ -87,7 +93,7 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
           // Navigate to ManageMemoryPage with selected photos
           // TODO P2: Get actual memoryId from current event
           final memoryId = 'memory-1'; // Placeholder
-          
+
           if (mounted) {
             Navigator.pushNamed(
               context,

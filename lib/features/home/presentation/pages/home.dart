@@ -12,11 +12,9 @@ import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/constants/text_styles.dart';
 import '../../../../shared/themes/colors.dart';
 import '../../../../shared/layouts/main_layout_providers.dart';
-import '../../../create_event/presentation/widgets/event_created_banner.dart';
 import '../../../groups/presentation/providers/groups_provider.dart';
 import '../widgets/no_groups_yet_card.dart';
 import '../widgets/no_upcoming_events_card.dart';
-import '../providers/banner_provider.dart';
 import '../providers/home_event_providers.dart';
 import '../../domain/entities/home_event.dart';
 import '../../../../routes/app_router.dart';
@@ -114,7 +112,7 @@ class _HomePageState extends ConsumerState<HomePage> {
   }
 
   String _formatEventDate(DateTime? date) {
-    if (date == null) return 'Date to be decided';
+    if (date == null) return 'Date and Location to be decided';
 
     final months = [
       'Jan',
@@ -244,37 +242,6 @@ class _HomePageState extends ConsumerState<HomePage> {
             padding: EdgeInsets.zero,
             children: [
               const SizedBox(height: Gaps.xs),
-
-              // Success banner if needed
-              Consumer(
-                builder: (context, ref, child) {
-                  final isVisible = ref.watch(
-                    bannerProvider.select((state) => state.isVisible),
-                  );
-                  if (!isVisible) {
-                    return const SizedBox.shrink();
-                  }
-
-                  final bannerState = ref.watch(bannerProvider);
-
-                  return Padding(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: Insets.screenH),
-                    child: Column(
-                      children: [
-                        EventCreatedBanner(
-                          eventName: bannerState.eventName,
-                          groupName: bannerState.groupName,
-                          onClose: () {
-                            ref.read(bannerProvider.notifier).hideBanner();
-                          },
-                        ),
-                        const SizedBox(height: Gaps.md),
-                      ],
-                    ),
-                  );
-                },
-              ),
 
               // Search Bar - only show if user has groups
               if (!showNoGroupsCard)
@@ -454,7 +421,9 @@ class _HomePageState extends ConsumerState<HomePage> {
                                     emoji: event.emoji,
                                     title: event.name,
                                     dateTime: _formatEventDate(event.date),
-                                    location: event.location ?? 'Location TBD',
+                                    location: event.date == null 
+                                        ? null // Don't show location when date is TBD
+                                        : (event.location ?? 'Location to be decided'),
                                     state: _mapStatusToSmallCardState(
                                         event.status),
                                     onTap: () async {
@@ -510,7 +479,9 @@ class _HomePageState extends ConsumerState<HomePage> {
                                     emoji: event.emoji,
                                     title: event.name,
                                     dateTime: _formatEventDate(event.date),
-                                    location: event.location ?? 'Location TBD',
+                                    location: event.date == null 
+                                        ? null // Don't show location when date is TBD
+                                        : (event.location ?? 'Location to be decided'),
                                     state: _mapStatusToSmallCardState(
                                         event.status),
                                     onTap: () async {

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../shared/components/common/top_banner.dart';
 import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/constants/text_styles.dart';
 import '../../../../shared/themes/colors.dart';
@@ -110,23 +111,13 @@ class _ConfirmEventBottomSheetState
 
         // Chamar callback com o eventId
         widget.onEventCreated?.call(createdEvent.id);
-
-        // Mostrar mensagem de sucesso
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Event created successfully!'),
-            backgroundColor: BrandColors.planning,
-          ),
-        );
       }
     } catch (e) {
       // Mostrar erro
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error creating event: ${e.toString()}'),
-            backgroundColor: Colors.red,
-          ),
+        TopBanner.showError(
+          context,
+          message: 'Error creating event: ${e.toString()}',
         );
       }
     }
