@@ -49,7 +49,7 @@ class DateTimeSuggestionsWidget extends StatefulWidget {
   final bool isHost; // Whether current user is host/admin
   final VoidCallback onAddSuggestion; // Callback for add suggestion button
   final Function(DateTimeSuggestion selectedSuggestion)
-  onSetDate; // Callback for set date
+      onSetDate; // Callback for set date
   final DateTime? currentEventStartDateTime; // Current event start date/time
   final DateTime? currentEventEndDateTime; // Current event end date/time
 
@@ -94,9 +94,8 @@ class _DateTimeSuggestionsWidgetState extends State<DateTimeSuggestionsWidget> {
     // If in selection mode, handle selection instead of voting
     if (_isSelectionMode) {
       setState(() {
-        _selectedSuggestionId = _selectedSuggestionId == suggestionId
-            ? null
-            : suggestionId;
+        _selectedSuggestionId =
+            _selectedSuggestionId == suggestionId ? null : suggestionId;
       });
       return;
     }
@@ -344,52 +343,54 @@ class _DateTimeSuggestionsWidgetState extends State<DateTimeSuggestionsWidget> {
           decoration: BoxDecoration(
             color: _isSelectionMode
                 ? (isSelected
-                      ? BrandColors.planning.withValues(alpha: 0.1)
-                      : BrandColors.bg3)
+                    ? BrandColors.planning.withValues(alpha: 0.1)
+                    : BrandColors.bg3)
                 : isCurrentEvent
-                ? BrandColors.bg3
-                : hasUserVoted
-                ? BrandColors.planning.withValues(alpha: 0.1)
-                : BrandColors.bg3,
+                    ? BrandColors.bg3
+                    : hasUserVoted
+                        ? BrandColors.planning.withValues(alpha: 0.1)
+                        : BrandColors.bg3,
             borderRadius: BorderRadius.circular(10),
             border: _isSelectionMode
                 ? (isSelected
-                      ? Border.all(color: BrandColors.planning, width: 1)
-                      : null)
+                    ? Border.all(color: BrandColors.planning, width: 1)
+                    : null)
                 : isCurrentEvent
-                ? null
-                : hasUserVoted
-                ? Border.all(color: BrandColors.planning, width: 1)
-                : null,
+                    ? null
+                    : hasUserVoted
+                        ? Border.all(color: BrandColors.planning, width: 1)
+                        : null,
           ),
           child: Row(
             children: [
               // Vote indicator, star for current event, or selection indicator
               if (isCurrentEvent) ...[
                 const Icon(Icons.star, size: 20, color: BrandColors.text2),
-                ] else if (_isSelectionMode) ...[
+              ] else if (_isSelectionMode) ...[
                 AnimatedContainer(
                   duration: const Duration(milliseconds: 150),
                   width: 20,
                   height: 20,
                   decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: isSelected ? BrandColors.planning : Colors.transparent,
-                  border: Border.all(
-                    color: isSelected ? BrandColors.planning : BrandColors.text2,
-                    width: isSelected ? 2.2 : 1.5,
-                  ),
-                  ),
-                  child: Center(
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 150),
-                    width: isSelected ? 8 : 0,
-                    height: isSelected ? 8 : 0,
-                    decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: isSelected ? Colors.white : Colors.transparent,
+                    color:
+                        isSelected ? BrandColors.planning : Colors.transparent,
+                    border: Border.all(
+                      color:
+                          isSelected ? BrandColors.planning : BrandColors.text2,
+                      width: isSelected ? 2.2 : 1.5,
                     ),
                   ),
+                  child: Center(
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 150),
+                      width: isSelected ? 8 : 0,
+                      height: isSelected ? 8 : 0,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: isSelected ? Colors.white : Colors.transparent,
+                      ),
+                    ),
                   ),
                 ),
               ] else ...[
@@ -427,20 +428,20 @@ class _DateTimeSuggestionsWidgetState extends State<DateTimeSuggestionsWidget> {
                       style: AppText.bodyMedium.copyWith(
                         color: _isSelectionMode
                             ? (isSelected
-                                  ? BrandColors.text1
-                                  : BrandColors.text1)
+                                ? BrandColors.text1
+                                : BrandColors.text1)
                             : isCurrentEvent
-                            ? BrandColors.text2
-                            : hasUserVoted
-                            ? BrandColors.text1
-                            : BrandColors.text1,
+                                ? BrandColors.text2
+                                : hasUserVoted
+                                    ? BrandColors.text1
+                                    : BrandColors.text1,
                         fontWeight: _isSelectionMode
                             ? (isSelected ? FontWeight.w600 : FontWeight.normal)
                             : isCurrentEvent
-                            ? FontWeight.normal
-                            : hasUserVoted
-                            ? FontWeight.w600
-                            : FontWeight.normal,
+                                ? FontWeight.normal
+                                : hasUserVoted
+                                    ? FontWeight.w600
+                                    : FontWeight.normal,
                       ),
                       child: Text(
                         _formatDateRange(
@@ -476,10 +477,10 @@ class _DateTimeSuggestionsWidgetState extends State<DateTimeSuggestionsWidget> {
                   color: _isSelectionMode
                       ? (isSelected ? BrandColors.planning : BrandColors.border)
                       : isCurrentEvent
-                      ? BrandColors.border
-                      : hasUserVoted
-                      ? BrandColors.planning
-                      : BrandColors.border,
+                          ? BrandColors.border
+                          : hasUserVoted
+                              ? BrandColors.planning
+                              : BrandColors.border,
                   borderRadius: BorderRadius.circular(Radii.pill),
                 ),
                 child: Text(
@@ -488,10 +489,10 @@ class _DateTimeSuggestionsWidgetState extends State<DateTimeSuggestionsWidget> {
                     color: _isSelectionMode
                         ? (isSelected ? Colors.white : BrandColors.text2)
                         : isCurrentEvent
-                        ? BrandColors.text2
-                        : hasUserVoted
-                        ? Colors.white
-                        : BrandColors.text2,
+                            ? BrandColors.text2
+                            : hasUserVoted
+                                ? Colors.white
+                                : BrandColors.text2,
                     fontWeight: FontWeight.w600,
                     fontSize: 12,
                   ),
@@ -653,8 +654,15 @@ class _SuggestionVoteSection extends StatelessWidget {
 
         const SizedBox(height: Gaps.md),
 
-        // Vote list
-        ...votes.map((vote) => _SuggestionVoteItem(vote: vote)),
+        // Vote list (sorted by most recent first)
+        ...(votes.toList()
+              ..sort((a, b) {
+                if (a.votedAt == null && b.votedAt == null) return 0;
+                if (a.votedAt == null) return 1;
+                if (b.votedAt == null) return -1;
+                return b.votedAt!.compareTo(a.votedAt!);
+              }))
+            .map((vote) => _SuggestionVoteItem(vote: vote)),
       ],
     );
   }
@@ -717,7 +725,10 @@ class _SuggestionVoteItem extends StatelessWidget {
     final difference = now.difference(date).inDays;
 
     if (difference == 0) {
-      return 'Today';
+      // Show time if voted today (e.g., "10:23")
+      final hour = date.hour.toString().padLeft(2, '0');
+      final minute = date.minute.toString().padLeft(2, '0');
+      return '$hour:$minute';
     } else if (difference == 1) {
       return 'Yesterday';
     } else if (difference < 7) {

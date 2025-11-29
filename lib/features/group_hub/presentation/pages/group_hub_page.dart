@@ -488,7 +488,7 @@ class _GroupHubPageState extends ConsumerState<GroupHubPage>
               final event = events[index];
               final currentUser = Supabase.instance.client.auth.currentUser;
               final currentUserId = currentUser?.id;
-              
+
               // Try to get avatar from the event's vote list (more reliable than userMetadata)
               String? currentUserAvatar;
               if (currentUserId != null && event.allVotes.isNotEmpty) {
@@ -497,15 +497,16 @@ class _GroupHubPageState extends ConsumerState<GroupHubPage>
                     (vote) => vote.userId == currentUserId,
                   );
                   currentUserAvatar = userVote.userAvatar;
-                  
                 } catch (e) {
-                  print('⚠️ [PAGE] Current user not found in votes, using fallback');
+                  print(
+                      '⚠️ [PAGE] Current user not found in votes, using fallback');
                 }
               }
               // Fallback to userMetadata if not found in votes
-              final fallbackAvatar = currentUser?.userMetadata?['avatar_url'] as String?;
+              final fallbackAvatar =
+                  currentUser?.userMetadata?['avatar_url'] as String?;
               currentUserAvatar ??= fallbackAvatar;
-              
+
               // Map GroupEventStatus to EventFullCardState
               EventFullCardState cardState;
               switch (event.status) {
@@ -518,69 +519,97 @@ class _GroupHubPageState extends ConsumerState<GroupHubPage>
                 case GroupEventStatus.pending:
                   cardState = EventFullCardState.pending;
               }
-              
+
+              // Create a modified event with default location text if location is null
+              final displayEvent =
+                  event.location == null || event.location!.isEmpty
+                      ? GroupEventEntity(
+                          id: event.id,
+                          name: event.name,
+                          emoji: event.emoji,
+                          date: event.date,
+                          endDate: event.endDate,
+                          location: 'Location to be decided',
+                          status: event.status,
+                          goingCount: event.goingCount,
+                          participantCount: event.participantCount,
+                          attendeeAvatars: event.attendeeAvatars,
+                          attendeeNames: event.attendeeNames,
+                          allVotes: event.allVotes,
+                          userVote: event.userVote,
+                          photoCount: event.photoCount,
+                          maxPhotos: event.maxPhotos,
+                          participantPhotos: event.participantPhotos,
+                        )
+                      : event;
+
               return EventFullCard(
-                event: event,
+                event: displayEvent,
                 state: cardState,
                 onTap: () async {
                   print('\n🚀 [NAVIGATION] Opening event page: ${event.id}');
                   print('   📊 Current status: ${event.status}');
-                  
+
                   // Navigate to event detail page and refresh on return
                   await Navigator.pushNamed(
                     context,
                     '/event',
                     arguments: {'eventId': event.id},
                   );
-                  
+
                   print('⬅️ [NAVIGATION] Returned from event page');
-                  print('🔄 [NAVIGATION] Refreshing event ${event.id} to check for status/vote changes...');
-                  
+                  print(
+                      '🔄 [NAVIGATION] Refreshing event ${event.id} to check for status/vote changes...');
+
                   // Refresh only this specific event instead of entire list
                   // This will fetch updated status, votes, and participant counts
-                  await ref.read(groupEventsProvider(widget.groupId).notifier)
-                    .refreshSingleEvent(event.id);
-                  
+                  await ref
+                      .read(groupEventsProvider(widget.groupId).notifier)
+                      .refreshSingleEvent(event.id);
+
                   print('✅ [NAVIGATION] Event refresh complete');
                 },
                 onVoteChanged: (eventId, vote) async {
                   print('\n🗳️ [VOTE SHORTCUT] Vote changed on card');
                   print('   📍 Event ID: $eventId');
                   print('   ✅ Vote: $vote');
-                  
+
                   // Persist RSVP to Supabase
                   try {
                     final rsvpRepo = ref.read(rsvpRepositoryProvider);
-                    final userId = Supabase.instance.client.auth.currentUser?.id;
-                    
+                    final userId =
+                        Supabase.instance.client.auth.currentUser?.id;
+
                     if (userId == null) {
                       print('❌ [VOTE SHORTCUT] User not authenticated');
                       return;
                     }
 
                     // Convert vote to RsvpStatus
-                    final status = vote == null 
-                        ? RsvpStatus.pending 
+                    final status = vote == null
+                        ? RsvpStatus.pending
                         : (vote ? RsvpStatus.going : RsvpStatus.notGoing);
 
                     print('📤 [VOTE SHORTCUT] Submitting RSVP to Supabase...');
                     print('   👤 User ID: $userId');
                     print('   📊 Status: $status');
-                    
+
                     await rsvpRepo.submitRsvp(eventId, userId, status);
-                    
+
                     print('✅ [VOTE SHORTCUT] RSVP submitted successfully');
-                    
+
                     // Refresh ONLY this specific event (no full page reload)
                     print('🔄 [VOTE SHORTCUT] Refreshing only this event...');
-                    await ref.read(groupEventsProvider(widget.groupId).notifier)
+                    await ref
+                        .read(groupEventsProvider(widget.groupId).notifier)
                         .refreshSingleEvent(eventId);
-                    
+
                     // Also invalidate event-specific providers for consistency
                     ref.invalidate(eventRsvpsProvider(eventId));
                     ref.invalidate(userRsvpProvider(eventId));
-                    
-                    print('✅ [VOTE SHORTCUT] Event refreshed without full reload');
+
+                    print(
+                        '✅ [VOTE SHORTCUT] Event refreshed without full reload');
                   } catch (e, stackTrace) {
                     print('❌ [VOTE SHORTCUT] Error submitting RSVP: $e');
                     print('   Stack: $stackTrace');

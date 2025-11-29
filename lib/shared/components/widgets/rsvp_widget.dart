@@ -170,9 +170,21 @@ class RsvpWidget extends StatelessWidget {
 
   void _showViewVotesBottomSheet(BuildContext context) {
     final going =
-        allVotes.where((v) => v.status == RsvpVoteStatus.going).toList();
+        allVotes.where((v) => v.status == RsvpVoteStatus.going).toList()
+          ..sort((a, b) {
+            if (a.votedAt == null && b.votedAt == null) return 0;
+            if (a.votedAt == null) return 1;
+            if (b.votedAt == null) return -1;
+            return b.votedAt!.compareTo(a.votedAt!);
+          });
     final notGoing =
-        allVotes.where((v) => v.status == RsvpVoteStatus.notGoing).toList();
+        allVotes.where((v) => v.status == RsvpVoteStatus.notGoing).toList()
+          ..sort((a, b) {
+            if (a.votedAt == null && b.votedAt == null) return 0;
+            if (a.votedAt == null) return 1;
+            if (b.votedAt == null) return -1;
+            return b.votedAt!.compareTo(a.votedAt!);
+          });
     final pending =
         allVotes.where((v) => v.status == RsvpVoteStatus.pending).toList();
 
@@ -727,7 +739,10 @@ class _VoteItem extends StatelessWidget {
     final diff = now.difference(date);
 
     if (diff.inDays == 0) {
-      return 'Today';
+      // Show time if voted today (e.g., "10:23")
+      final hour = date.hour.toString().padLeft(2, '0');
+      final minute = date.minute.toString().padLeft(2, '0');
+      return '$hour:$minute';
     } else if (diff.inDays == 1) {
       return 'Yesterday';
     } else if (diff.inDays < 7) {
@@ -757,8 +772,9 @@ class _VoteButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // 🔍 DEBUG: Print count value
-    print('🔍 DEBUG _VoteButton [$label]: count=$count, isSelected=$isSelected');
-    
+    print(
+        '🔍 DEBUG _VoteButton [$label]: count=$count, isSelected=$isSelected');
+
     return Container(
       height: TouchTargets.min,
       decoration: BoxDecoration(

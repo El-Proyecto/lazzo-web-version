@@ -62,7 +62,7 @@ class CloseRecapCard extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Closes automatically in $timeRemaining',
+                'Closes in $timeRemaining',
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: AppText.titleMediumEmph.copyWith(
