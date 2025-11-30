@@ -33,6 +33,21 @@ class _ReportProblemPageState extends ConsumerState<ReportProblemPage> {
   String? _selectedCategory;
   final TextEditingController _descriptionController = TextEditingController();
   int _characterCount = 0;
+  bool _showValidationErrors = false;
+
+  String? get _categoryError {
+    if (_selectedCategory == null) {
+      return 'Please select a category';
+    }
+    return null;
+  }
+
+  String? get _descriptionError {
+    if (_descriptionController.text.trim().isEmpty) {
+      return 'Please describe what happened';
+    }
+    return null;
+  }
 
   @override
   void initState() {
@@ -68,12 +83,21 @@ class _ReportProblemPageState extends ConsumerState<ReportProblemPage> {
     if (selected != null) {
       setState(() {
         _selectedCategory = selected;
+        // Clear validation errors when field becomes valid
+        if (_showValidationErrors && _categoryError == null) {
+          _showValidationErrors = false;
+        }
       });
     }
   }
 
   Future<void> _submitReport() async {
-    if (!_canSubmit) return;
+    if (!_canSubmit) {
+      setState(() {
+        _showValidationErrors = true;
+      });
+      return;
+    }
 
     final userId = Supabase.instance.client.auth.currentUser?.id;
     if (userId == null) {
@@ -135,7 +159,7 @@ class _ReportProblemPageState extends ConsumerState<ReportProblemPage> {
               children: [
                 // Intro text
                 Text(
-                  'Tell us what went wrong so we can fix it during the beta.',
+                  'Help us improve Lazzo by reporting any issues you encounter. Your feedback is essential during our beta phase and will be reviewed by our team.',
                   style: AppText.bodyMedium.copyWith(
                     color: BrandColors.text2,
                   ),
@@ -147,6 +171,7 @@ class _ReportProblemPageState extends ConsumerState<ReportProblemPage> {
                 _buildSection(
                   title: 'What went wrong?',
                   child: _buildCategorySelector(),
+                  error: _categoryError,
                 ),
 
                 const SizedBox(height: Gaps.xl),
@@ -155,6 +180,7 @@ class _ReportProblemPageState extends ConsumerState<ReportProblemPage> {
                 _buildSection(
                   title: 'Describe what happened',
                   child: _buildDescriptionField(),
+                  error: _descriptionError,
                 ),
 
                 const SizedBox(height: Gaps.xl),
@@ -162,7 +188,7 @@ class _ReportProblemPageState extends ConsumerState<ReportProblemPage> {
                 // Submit button
                 _buildSubmitButton(reportState),
 
-                const SizedBox(height: Gaps.xl),
+                const SizedBox(height: 100),
               ],
             ),
           ),
@@ -183,6 +209,7 @@ class _ReportProblemPageState extends ConsumerState<ReportProblemPage> {
   Widget _buildSection({
     required String title,
     required Widget child,
+    String? error,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -196,6 +223,15 @@ class _ReportProblemPageState extends ConsumerState<ReportProblemPage> {
         ),
         const SizedBox(height: Gaps.md),
         child,
+        if (error != null && _showValidationErrors) ...[
+          const SizedBox(height: Gaps.xs),
+          Text(
+            error,
+            style: AppText.bodyMedium.copyWith(
+              color: BrandColors.cantVote,
+            ),
+          ),
+        ],
       ],
     );
   }
@@ -210,7 +246,7 @@ class _ReportProblemPageState extends ConsumerState<ReportProblemPage> {
           vertical: Pads.ctlV,
         ),
         decoration: BoxDecoration(
-          color: BrandColors.bg3,
+          color: BrandColors.bg2,
           borderRadius: BorderRadius.circular(Radii.smAlt),
           border: Border.all(
             color: BrandColors.border,
@@ -246,7 +282,7 @@ class _ReportProblemPageState extends ConsumerState<ReportProblemPage> {
         Container(
           padding: const EdgeInsets.all(Pads.ctlH),
           decoration: BoxDecoration(
-            color: BrandColors.bg3,
+            color: BrandColors.bg2,
             borderRadius: BorderRadius.circular(Radii.smAlt),
             border: Border.all(
               color: BrandColors.border,
@@ -289,24 +325,26 @@ class _ReportProblemPageState extends ConsumerState<ReportProblemPage> {
   }
 
   Widget _buildSubmitButton(AsyncValue<void> reportState) {
-    return SizedBox(
-      width: double.infinity,
-      child: ElevatedButton(
-        onPressed: _canSubmit && !reportState.isLoading ? _submitReport : null,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: _canSubmit
-              ? Theme.of(context).colorScheme.primary
-              : BrandColors.bg3,
-          foregroundColor: _canSubmit ? Colors.white : BrandColors.text2,
-          padding: const EdgeInsets.symmetric(vertical: Pads.ctlV),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(Radii.smAlt),
+    return Padding(
+      padding: EdgeInsets.zero,
+      child: SizedBox(
+        width: double.infinity,
+        child: ElevatedButton(
+          onPressed: !reportState.isLoading ? _submitReport : null,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: _canSubmit
+                ? Theme.of(context).colorScheme.primary
+                : BrandColors.bg3,
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(Radii.smAlt),
+            ),
           ),
-        ),
-        child: Text(
-          'Submit Report',
-          style: AppText.labelLarge.copyWith(
-            color: _canSubmit ? Colors.white : BrandColors.text2,
+          child: Text(
+            'Submit Report',
+            style: AppText.titleMediumEmph.copyWith(
+              color: _canSubmit ? BrandColors.text1 : BrandColors.text2,
+            ),
           ),
         ),
       ),

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import '../../constants/spacing.dart';
 import '../../constants/text_styles.dart';
 import '../../themes/colors.dart';
-import '../widgets/grabber_bar.dart';
 
 /// Simple bottom sheet for selecting from a list of options
 /// Used for single-choice selections like categories, languages, etc.
@@ -45,9 +44,6 @@ class SimpleSelectionSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      constraints: BoxConstraints(
-        maxHeight: MediaQuery.of(context).size.height * 0.6,
-      ),
       decoration: const BoxDecoration(
         color: BrandColors.bg2,
         borderRadius: BorderRadius.only(
@@ -58,16 +54,9 @@ class SimpleSelectionSheet extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Grabber
-          const Center(child: GrabberBar()),
-          const SizedBox(height: Gaps.sm),
-
           // Title
           Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: Pads.sectionH,
-              vertical: Gaps.sm,
-            ),
+            padding: const EdgeInsets.all(Pads.sectionH),
             child: Text(
               title,
               style: AppText.titleMediumEmph.copyWith(
@@ -78,62 +67,67 @@ class SimpleSelectionSheet extends StatelessWidget {
 
           const SizedBox(height: Gaps.xs),
 
-          // Options list
-          Flexible(
-            child: ListView.builder(
-              shrinkWrap: true,
-              itemCount: options.length,
-              padding: const EdgeInsets.symmetric(
-                horizontal: Pads.sectionH,
-                vertical: Gaps.xs,
-              ),
-              itemBuilder: (context, index) {
-                final option = options[index];
+          // Options list (no scroll, shows all options)
+          Padding(
+            padding: const EdgeInsets.only(
+              left: Pads.sectionH,
+              right: Pads.sectionH,
+              bottom: Pads.sectionH,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: options.asMap().entries.map((entry) {
+                final index = entry.key;
+                final option = entry.value;
                 final isSelected = option == selectedOption;
 
-                return InkWell(
-                  onTap: () => onSelected(option),
-                  borderRadius: BorderRadius.circular(Radii.smAlt),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: Pads.ctlH,
-                      vertical: Pads.ctlV,
-                    ),
-                    margin: const EdgeInsets.only(bottom: Gaps.xs),
-                    decoration: BoxDecoration(
-                      color: BrandColors.bg3,
-                      borderRadius: BorderRadius.circular(Radii.smAlt),
-                      border: isSelected
-                          ? Border.all(
-                              color: Theme.of(context).colorScheme.primary,
-                              width: 2,
-                            )
-                          : null,
-                    ),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            option,
-                            style: AppText.bodyLarge.copyWith(
-                              color: BrandColors.text1,
-                              fontWeight: isSelected
-                                  ? FontWeight.w600
-                                  : FontWeight.w400,
+                return Padding(
+                  padding: EdgeInsets.only(
+                    bottom: index < options.length - 1 ? Gaps.xs : 0,
+                  ),
+                  child: InkWell(
+                    onTap: () => onSelected(option),
+                    borderRadius: BorderRadius.circular(Radii.smAlt),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: Pads.ctlH,
+                        vertical: Pads.ctlV,
+                      ),
+                      decoration: BoxDecoration(
+                        color: BrandColors.bg3,
+                        borderRadius: BorderRadius.circular(Radii.smAlt),
+                        border: isSelected
+                            ? Border.all(
+                                color: Theme.of(context).colorScheme.primary,
+                                width: 2,
+                              )
+                            : null,
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              option,
+                              style: AppText.bodyLarge.copyWith(
+                                color: BrandColors.text1,
+                                fontWeight: isSelected
+                                    ? FontWeight.w600
+                                    : FontWeight.w400,
+                              ),
                             ),
                           ),
-                        ),
-                        if (isSelected)
-                          Icon(
-                            Icons.check,
-                            color: Theme.of(context).colorScheme.primary,
-                            size: 20,
-                          ),
-                      ],
+                          if (isSelected)
+                            Icon(
+                              Icons.check,
+                              color: Theme.of(context).colorScheme.primary,
+                              size: 20,
+                            ),
+                        ],
+                      ),
                     ),
                   ),
                 );
-              },
+              }).toList(),
             ),
           ),
 

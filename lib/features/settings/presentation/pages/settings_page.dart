@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../../shared/components/common/common_bottom_sheet.dart';
+import '../../../../shared/components/common/simple_selection_sheet.dart';
 import '../../../../shared/components/common/top_banner.dart';
 import '../../../../shared/components/dialogs/confirmation_dialog.dart';
 import '../../../../shared/components/nav/common_app_bar.dart';
@@ -227,73 +227,31 @@ class SettingsPage extends ConsumerWidget {
   }
 
   void _showLanguageSelection(
-      BuildContext context, WidgetRef ref, String currentLanguage) {
-    CommonBottomSheet.show(
+      BuildContext context, WidgetRef ref, String currentLanguage) async {
+    final languageMap = {
+      'English': 'en',
+      'Português': 'pt',
+    };
+
+    // Find current language label
+    final currentLabel = languageMap.entries
+        .firstWhere((entry) => entry.value == currentLanguage,
+            orElse: () => languageMap.entries.first)
+        .key;
+
+    final selected = await SimpleSelectionSheet.show(
       context: context,
       title: 'Select Language',
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _buildLanguageOption(
-            context: context,
-            ref: ref,
-            label: 'English',
-            code: 'en',
-            isSelected: currentLanguage == 'en',
-          ),
-          const SizedBox(height: Gaps.xs),
-          _buildLanguageOption(
-            context: context,
-            ref: ref,
-            label: 'Português',
-            code: 'pt',
-            isSelected: currentLanguage == 'pt',
-          ),
-        ],
-      ),
+      options: languageMap.keys.toList(),
+      selectedOption: currentLabel,
     );
-  }
 
-  Widget _buildLanguageOption({
-    required BuildContext context,
-    required WidgetRef ref,
-    required String label,
-    required String code,
-    required bool isSelected,
-  }) {
-    return InkWell(
-      onTap: () {
-        ref.read(settingsControllerProvider.notifier).updateLanguage(code);
-        Navigator.pop(context);
-      },
-      borderRadius: BorderRadius.circular(Radii.smAlt),
-      child: Container(
-        padding: const EdgeInsets.all(Pads.ctlV),
-        decoration: BoxDecoration(
-          color: BrandColors.bg3,
-          borderRadius: BorderRadius.circular(Radii.smAlt),
-        ),
-        child: Row(
-          children: [
-            Expanded(
-              child: Text(
-                label,
-                style: AppText.bodyLarge.copyWith(
-                  color: isSelected ? BrandColors.planning : BrandColors.text1,
-                  fontWeight: isSelected ? FontWeight.w500 : FontWeight.w400,
-                ),
-              ),
-            ),
-            if (isSelected)
-              const Icon(
-                Icons.check,
-                color: BrandColors.planning,
-                size: 20,
-              ),
-          ],
-        ),
-      ),
-    );
+    if (selected != null) {
+      final languageCode = languageMap[selected]!;
+      ref
+          .read(settingsControllerProvider.notifier)
+          .updateLanguage(languageCode);
+    }
   }
 
   void _showLogoutDialog(BuildContext context, WidgetRef ref) {
