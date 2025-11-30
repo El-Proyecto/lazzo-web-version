@@ -7,8 +7,7 @@ class EventDataSource {
 
   EventDataSource(this._client);
 
-  /// Calculate correct event status based on current time
-  /// Status flow: draft → pending → confirmed → living → recap
+
   String _calculateEventStatus(DateTime? startDateTime, DateTime? endDateTime, String currentStatus) {
     // If dates are not set, keep current status (draft/pending)
     if (startDateTime == null || endDateTime == null) {
