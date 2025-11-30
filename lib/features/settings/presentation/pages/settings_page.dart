@@ -134,7 +134,9 @@ class SettingsPage extends ConsumerWidget {
                         title: 'Report a problem',
                         trailing: SettingsOptionTrailing.arrow(
                           onTap: () {
-                            // TODO P2: Navigate to report problem
+                            Navigator.of(context).pushNamed(
+                              AppRouter.reportProblem,
+                            );
                           },
                         ),
                       ),
