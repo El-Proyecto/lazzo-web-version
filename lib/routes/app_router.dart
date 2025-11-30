@@ -30,7 +30,8 @@ import '../features/memory/presentation/pages/photo_preview_page.dart';
 import '../features/memory/presentation/pages/memory_ready_page.dart';
 import '../features/memory/presentation/pages/share_memory_page.dart';
 import '../features/settings/presentation/pages/settings_page.dart';
-import '../features/report/presentation/pages/report_problem_page.dart';
+import '../features/settings/presentation/pages/report_problem_page.dart';
+import '../features/settings/presentation/pages/share_suggestion_page.dart';
 // share_memory_preview_page import removed - uses direct navigation
 
 class AppRouter {
@@ -67,6 +68,7 @@ class AppRouter {
   static const String finishSetup = '/finish-setup';
   static const String settings = '/settings';
   static const String reportProblem = '/report-problem';
+  static const String shareSuggestion = '/share-suggestion';
 
   static final routes = <String, WidgetBuilder>{
     auth: (context) => const AuthPage(),
@@ -196,5 +198,6 @@ class AppRouter {
     finishSetup: (context) => const CreateProfilePage(),
     settings: (context) => const SettingsPage(),
     reportProblem: (context) => const ReportProblemPage(),
+    shareSuggestion: (context) => const ShareSuggestionPage(),
   };
 }

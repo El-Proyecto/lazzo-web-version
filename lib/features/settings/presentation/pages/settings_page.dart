@@ -145,7 +145,9 @@ class SettingsPage extends ConsumerWidget {
                         title: 'Share a suggestion',
                         trailing: SettingsOptionTrailing.arrow(
                           onTap: () {
-                            // TODO P2: Navigate to share suggestion
+                            Navigator.of(context).pushNamed(
+                              AppRouter.shareSuggestion,
+                            );
                           },
                         ),
                       ),
