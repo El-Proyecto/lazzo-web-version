@@ -54,16 +54,17 @@ class _ManageMemoryPageState extends ConsumerState<ManageMemoryPage> {
   @override
   Widget build(BuildContext context) {
     // Extract selected photos from route arguments and set in provider
-    final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+    final args =
+        ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
     final selectedPhotos = args?['selectedPhotos'] as List<String>?;
-    
+
     // Set selected photos in provider if provided
     if (selectedPhotos != null && selectedPhotos.isNotEmpty) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         ref.read(selectedPhotoPathsProvider.notifier).state = selectedPhotos;
       });
     }
-    
+
     final manageState = ref.watch(manageMemoryProvider(widget.memoryId));
 
     return Scaffold(
@@ -379,11 +380,9 @@ class _ManageMemoryPageState extends ConsumerState<ManageMemoryPage> {
     });
 
     // Show success message
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Recap closed. Memory is now shareable!'),
-        backgroundColor: BrandColors.planning,
-      ),
+    TopBanner.showSuccess(
+      context,
+      message: 'Recap closed. Memory is now shareable!',
     );
 
     // Navigate back to memory page

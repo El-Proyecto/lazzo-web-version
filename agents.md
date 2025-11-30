@@ -42,6 +42,14 @@ lib/
 - Entity/Use case/repo interface → `features/<f>/domain/...`
 - Supabase queries & DTOs → `features/<f>/data/...`
 
+**Database documentation**
+- **Source of truth (raw schema):** `supabase_structure.sql` — auto-exported from Supabase, updated by P2 team
+- **Human-readable docs:** `SUPABASE_DATABASE_STRUCTURE.md` — comprehensive guide with 21 tables, relationships, indexes, triggers, views, RLS policies, performance guidelines, and pending features
+- **When to use which:**
+  - Use `supabase_structure.sql` for quick schema lookups and precise field definitions
+  - Use `SUPABASE_DATABASE_STRUCTURE.md` for understanding relationships, query patterns, optimization strategies, and pending work
+- **Critical:** When `supabase_structure.sql` changes, `SUPABASE_DATABASE_STRUCTURE.md` must be updated to match
+
 ---
 
 ## 3) Tokens & Theme (Source of Truth)
@@ -105,6 +113,15 @@ lib/
 - **Indexes**: sort & filter by indexed columns; always `limit`.
 - **Storage**: path convention `/groupId/eventId/userId/uuid.jpg` + metadata (uploader, type, ts).
 - **RPC/Triggers**: live in DB; expose via repository method signatures.
+- **Database reference**: See `supabase_structure.sql` for current schema (source of truth) and `SUPABASE_DATABASE_STRUCTURE.md` for comprehensive documentation with relationships, query patterns, indexes, triggers, and RLS policies.
+
+**Performance & Optimization (Always Recommend When Possible):**
+- **Query optimization**: Select only required columns; use indexed columns for filtering/sorting; always add `LIMIT`; leverage materialized views for complex aggregations; batch operations to reduce round trips.
+- **Schema design**: Denormalize strategically with materialized views; use foreign keys with CASCADE; validate data with DB constraints; use UUIDs for primary keys.
+- **Caching strategies**: Use materialized views for expensive queries; client-side caching with Riverpod; consider local database (SQLite/Isar) for offline-first features; stale-while-revalidate pattern for non-critical data.
+- **Efficient indexing**: Composite indexes for common query patterns; partial indexes for filtered queries; monitor index usage and drop unused ones; B-tree indexes for equality/range queries.
+- **Local database usage**: Cache frequently accessed data; optimistic updates (local first, sync async); conflict resolution with `updated_at` timestamps; selective sync for active groups/events only.
+- **Payload size minimization**: Paginate all lists with `limit + offset` or cursor-based; compress images before upload; JSON field pruning (only non-null fields); use storage CDN for images (never fetch full blobs via API).
 
 ---
 

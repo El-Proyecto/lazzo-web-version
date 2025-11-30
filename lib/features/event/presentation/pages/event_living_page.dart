@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../shared/components/nav/common_app_bar.dart';
+import '../../../../shared/components/common/top_banner.dart';
 import '../../../../shared/components/sections/event_header.dart';
 import '../../../../shared/components/widgets/location_widget.dart';
 import '../../../../shared/components/dialogs/add_expense_bottom_sheet.dart';
@@ -17,7 +18,8 @@ import '../widgets/host_time_controls.dart';
 import '../widgets/living_expenses_widget.dart';
 
 /// Helper function to display "You" for current user, otherwise their name
-String _getUserDisplayName(String userId, String userName, String? currentUserId) {
+String _getUserDisplayName(
+    String userId, String userName, String? currentUserId) {
   return userId == currentUserId ? 'You' : userName;
 }
 
@@ -114,11 +116,9 @@ class EventLivingPage extends ConsumerWidget {
                     uploadState.when(
                       data: (photoUrl) {
                         if (photoUrl != null) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('✅ Photo uploaded successfully!'),
-                              duration: Duration(seconds: 2),
-                            ),
+                          TopBanner.showSuccess(
+                            context,
+                            message: '✅ Photo uploaded successfully!',
                           );
                           // Refresh event to update photo count
                           ref.invalidate(eventDetailProvider(eventId));
@@ -126,11 +126,9 @@ class EventLivingPage extends ConsumerWidget {
                       },
                       loading: () {},
                       error: (error, _) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('❌ Failed to upload photo: $error'),
-                            duration: const Duration(seconds: 3),
-                          ),
+                        TopBanner.showError(
+                          context,
+                          message: '❌ Failed to upload photo: $error',
                         );
                       },
                     );
@@ -154,7 +152,8 @@ class EventLivingPage extends ConsumerWidget {
                           .map(
                             (m) => ChatMessagePreview(
                               userId: m.userId,
-                              userName: _getUserDisplayName(m.userId, m.userName, currentUserId),
+                              userName: _getUserDisplayName(
+                                  m.userId, m.userName, currentUserId),
                               userAvatar: m.userAvatar,
                               content: m.content,
                               timestamp: m.createdAt,
@@ -165,22 +164,24 @@ class EventLivingPage extends ConsumerWidget {
                       onOpenChat: () {
                         // TODO: Navigate to chat
                       },
-                      onSendMessage: (content, {ChatMessagePreview? replyTo}) async {
+                      onSendMessage: (content,
+                          {ChatMessagePreview? replyTo}) async {
                         // Convert ChatMessagePreview to ChatMessage if replying
                         ChatMessage? replyToMessage;
                         if (replyTo != null && messagesAsync.hasValue) {
                           final messages = messagesAsync.value!;
                           try {
                             replyToMessage = messages.firstWhere(
-                              (m) => m.userId == replyTo.userId && 
-                                     m.content == replyTo.content &&
-                                     m.createdAt == replyTo.timestamp,
+                              (m) =>
+                                  m.userId == replyTo.userId &&
+                                  m.content == replyTo.content &&
+                                  m.createdAt == replyTo.timestamp,
                             );
                           } catch (_) {
                             // Message not found, ignore reply
                           }
                         }
-                        
+
                         await ref
                             .read(chatActionsProvider(eventId))
                             .sendMessage(content, replyTo: replyToMessage);

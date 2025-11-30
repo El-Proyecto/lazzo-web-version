@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
+import '../../../../shared/components/common/top_banner.dart';
 import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/constants/text_styles.dart';
 import '../../../../shared/themes/colors.dart';
@@ -117,9 +118,8 @@ class _LocationSectionState extends State<LocationSection>
             controller: _tabController,
             labels: const ['Decide later', 'Set Now'],
             onTap: (index) {
-              final newState = index == 0
-                  ? LocationState.decideLater
-                  : LocationState.setNow;
+              final newState =
+                  index == 0 ? LocationState.decideLater : LocationState.setNow;
               _changeState(newState);
             },
           ),
@@ -421,11 +421,9 @@ class _LocationSectionState extends State<LocationSection>
 
   void _showLocationError(String message) {
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(message),
-          backgroundColor: BrandColors.cantVote,
-        ),
+      TopBanner.showError(
+        context,
+        message: message,
       );
     }
   }
@@ -518,7 +516,7 @@ class _LocationSectionState extends State<LocationSection>
     try {
       // Use real geocoding
       final locations = await locationFromAddress(query);
-      
+
       if (locations.isEmpty) {
         setState(() {
           _suggestions = [];
@@ -536,7 +534,7 @@ class _LocationSectionState extends State<LocationSection>
             location.latitude,
             location.longitude,
           );
-          
+
           if (placemarks.isNotEmpty) {
             final placemark = placemarks.first;
             results.add(LocationSuggestion(
@@ -716,9 +714,8 @@ class _LocationSectionState extends State<LocationSection>
                     suggestion.name,
                     style: AppText.bodyMedium.copyWith(
                       color: BrandColors.text1,
-                      fontWeight: isTopMatch
-                          ? FontWeight.w600
-                          : FontWeight.normal,
+                      fontWeight:
+                          isTopMatch ? FontWeight.w600 : FontWeight.normal,
                     ),
                   ),
                   if (suggestion.address != suggestion.name) ...[
@@ -844,7 +841,7 @@ class _ExpandedLocationPickerState extends State<ExpandedLocationPicker> {
     try {
       // Use real geocoding
       final locations = await locationFromAddress(query);
-      
+
       if (locations.isEmpty) {
         if (mounted) {
           setState(() {
@@ -864,7 +861,7 @@ class _ExpandedLocationPickerState extends State<ExpandedLocationPicker> {
             location.latitude,
             location.longitude,
           );
-          
+
           if (placemarks.isNotEmpty) {
             final placemark = placemarks.first;
             results.add(LocationSuggestion(
@@ -1073,11 +1070,9 @@ class _ExpandedLocationPickerState extends State<ExpandedLocationPicker> {
 
   void _showLocationError(String message) {
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(message),
-          backgroundColor: BrandColors.cantVote,
-        ),
+      TopBanner.showError(
+        context,
+        message: message,
       );
     }
   }
@@ -1148,7 +1143,8 @@ class _CurrentLocationButton extends StatelessWidget {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.my_location, color: BrandColors.planning, size: 20),
+            const Icon(Icons.my_location,
+                color: BrandColors.planning, size: 20),
             const SizedBox(width: Gaps.sm),
             Text(
               'Use Current Location',
@@ -1184,7 +1180,8 @@ class _CustomNameFieldState extends State<_CustomNameField> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: Pads.ctlH, vertical: Pads.ctlV),
+      padding: const EdgeInsets.symmetric(
+          horizontal: Pads.ctlH, vertical: Pads.ctlV),
       decoration: BoxDecoration(
         color: BrandColors.bg3,
         borderRadius: BorderRadius.circular(Radii.smAlt),
@@ -1195,7 +1192,8 @@ class _CustomNameFieldState extends State<_CustomNameField> {
       ),
       child: Row(
         children: [
-          const Icon(Icons.edit_location_alt, color: BrandColors.text2, size: 18),
+          const Icon(Icons.edit_location_alt,
+              color: BrandColors.text2, size: 18),
           const SizedBox(width: Gaps.xs),
           Expanded(
             child: TextField(
