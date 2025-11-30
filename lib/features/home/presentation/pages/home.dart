@@ -371,7 +371,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                               // TODO: Navigate to event chat
                             },
                             onExpensePressed: () {
-                              // TODO: Open add expense bottom sheet
+                              // Handled inside HomeEventCard
                             },
                             onVoteChanged: (eventId, vote) {
                               // TODO: Update vote in backend
@@ -421,9 +421,10 @@ class _HomePageState extends ConsumerState<HomePage> {
                                     emoji: event.emoji,
                                     title: event.name,
                                     dateTime: _formatEventDate(event.date),
-                                    location: event.date == null 
+                                    location: event.date == null
                                         ? null // Don't show location when date is TBD
-                                        : (event.location ?? 'Location to be decided'),
+                                        : (event.location ??
+                                            'Location to be decided'),
                                     state: _mapStatusToSmallCardState(
                                         event.status),
                                     onTap: () async {
@@ -479,9 +480,10 @@ class _HomePageState extends ConsumerState<HomePage> {
                                     emoji: event.emoji,
                                     title: event.name,
                                     dateTime: _formatEventDate(event.date),
-                                    location: event.date == null 
+                                    location: event.date == null
                                         ? null // Don't show location when date is TBD
-                                        : (event.location ?? 'Location to be decided'),
+                                        : (event.location ??
+                                            'Location to be decided'),
                                     state: _mapStatusToSmallCardState(
                                         event.status),
                                     onTap: () async {

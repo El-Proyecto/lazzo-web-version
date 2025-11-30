@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../routes/app_router.dart';
 import '../../../create_event/domain/entities/event.dart' as create_event;
 import '../../../../shared/components/nav/common_app_bar.dart';
@@ -1375,51 +1376,59 @@ class _EventPageState extends ConsumerState<EventPage> {
                 ),
                 const SizedBox(height: Gaps.lg),
 
-              // Expenses widget
-              participantsAsync.when(
-                data: (participants) {
-                  print(
-                      '💰 [EventPage] Rendering expenses widget with ${participants.length} participants');
-                  final participantOptions = participants.map((p) {
-                    print('   Converting: ${p.displayName} (${p.userId})');
-                    return ExpenseParticipantOption(
-                      id: p.userId,
-                      name: p.displayName,
-                      avatarUrl: p.avatarUrl,
-                    );
-                  }).toList();
-
-                  return EventExpensesWidget(
-                    eventId: eventId,
-                    mode: ChatMode.planning,
-                    participants: participantOptions, // ✅ Participantes reais
-                    onAddExpense:
-                        (title, paidById, participantsOwe, amount) async {
-                      print('💸 [EventPage] Adding expense: $title, €$amount');
-                      ref
-                          .read(eventExpensesProvider(eventId).notifier)
-                          .addExpense(
-                        description: title,
-                        amount: amount,
-                        paidBy: paidById,
-                        participantsOwe: participantsOwe,
-                        participantsPaid: [],
+                // Expenses widget
+                participantsAsync.when(
+                  data: (participants) {
+                    final currentUserId =
+                        Supabase.instance.client.auth.currentUser?.id;
+                    final participantOptions = participants.map((p) {
+                      return ExpenseParticipantOption(
+                        id: p.userId,
+                        name: _getUserDisplayName(
+                            p.userId, p.displayName, currentUserId),
+                        avatarUrl: p.avatarUrl,
                       );
-                    },
-                  );
-                },
-                loading: () {
-                  print(
-                      '⏳ [EventPage] Expenses widget loading participants...');
-                  return const SizedBox.shrink();
-                },
-                error: (error, stack) {
-                  print(
-                      '❌ [EventPage] Error loading participants for expenses: $error');
-                  return const SizedBox.shrink();
-                },
-              ),
-              const SizedBox(height: Gaps.lg),
+                    }).toList();
+
+                    // Sort: "You" first, then alphabetically by name
+                    participantOptions.sort((a, b) {
+                      if (a.name == 'You') return -1;
+                      if (b.name == 'You') return 1;
+                      return a.name.compareTo(b.name);
+                    });
+
+                    return EventExpensesWidget(
+                      eventId: eventId,
+                      mode: ChatMode.planning,
+                      participants: participantOptions, // ✅ Participantes reais
+                      onAddExpense:
+                          (title, paidById, participantsOwe, amount) async {
+                        print(
+                            '💸 [EventPage] Adding expense: $title, €$amount');
+                        ref
+                            .read(eventExpensesProvider(eventId).notifier)
+                            .addExpense(
+                          description: title,
+                          amount: amount,
+                          paidBy: paidById,
+                          participantsOwe: participantsOwe,
+                          participantsPaid: [],
+                        );
+                      },
+                    );
+                  },
+                  loading: () {
+                    print(
+                        '⏳ [EventPage] Expenses widget loading participants...');
+                    return const SizedBox.shrink();
+                  },
+                  error: (error, stack) {
+                    print(
+                        '❌ [EventPage] Error loading participants for expenses: $error');
+                    return const SizedBox.shrink();
+                  },
+                ),
+                const SizedBox(height: Gaps.lg),
 
                 // Location Widget (if location is set)
                 if (event.location != null) ...[

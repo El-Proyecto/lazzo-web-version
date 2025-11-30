@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../features/home/domain/entities/home_event.dart';
 import '../../../features/event/presentation/providers/event_participants_provider.dart';
 import '../../../features/expense/presentation/providers/event_expense_providers.dart';
@@ -253,62 +254,62 @@ class _HomeEventCardState extends ConsumerState<HomeEventCard> {
         // Event name, group, and location
         Expanded(
           child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            _currentEvent.name,
-            style: AppText.titleMediumEmph.copyWith(
-          color: BrandColors.text1,
-            ),
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-          ),
-          const SizedBox(height: 4),
-          // Location with icon
-          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-          const Icon(
-            Icons.location_on,
-            size: 14,
-            color: BrandColors.text2,
-          ),
-          const SizedBox(width: 4),
-          Expanded(
-            child: Text(
-              _currentEvent.location ?? 'To be decided',
-              style: AppText.bodyMedium.copyWith(
-            color: BrandColors.text2,
+              Text(
+                _currentEvent.name,
+                style: AppText.titleMediumEmph.copyWith(
+                  color: BrandColors.text1,
+                ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
               ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
+              const SizedBox(height: 4),
+              // Location with icon
+              Row(
+                children: [
+                  const Icon(
+                    Icons.location_on,
+                    size: 14,
+                    color: BrandColors.text2,
+                  ),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Text(
+                      _currentEvent.location ?? 'To be decided',
+                      style: AppText.bodyMedium.copyWith(
+                        color: BrandColors.text2,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+              if (_currentEvent.groupName != null) const SizedBox(height: 2),
+              // Group with icon
+              if (_currentEvent.groupName != null)
+                Row(
+                  children: [
+                    const Icon(
+                      Icons.group,
+                      size: 14,
+                      color: BrandColors.text2,
+                    ),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: Text(
+                        _currentEvent.groupName!,
+                        style: AppText.bodyMedium.copyWith(
+                          color: BrandColors.text2,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
             ],
-          ),
-          if (_currentEvent.groupName != null) const SizedBox(height: 2),
-          // Group with icon
-          if (_currentEvent.groupName != null)
-            Row(
-          children: [
-            const Icon(
-              Icons.group,
-              size: 14,
-              color: BrandColors.text2,
-            ),
-            const SizedBox(width: 4),
-            Expanded(
-              child: Text(
-            _currentEvent.groupName!,
-            style: AppText.bodyMedium.copyWith(
-              color: BrandColors.text2,
-            ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          ],
-            ),
-        ],
           ),
         ),
       ],
@@ -577,14 +578,27 @@ class _HomeEventCardState extends ConsumerState<HomeEventCard> {
                       return;
                     }
 
-                    // Convert and show
+                    // Get current user ID
+                    final currentUserId =
+                        Supabase.instance.client.auth.currentUser?.id;
+
+                    // Convert participants - replace current user name with "You"
                     final participantOptions = participants
                         .map((p) => ExpenseParticipantOption(
                               id: p.userId,
-                              name: p.displayName,
+                              name: p.userId == currentUserId
+                                  ? 'You'
+                                  : p.displayName,
                               avatarUrl: p.avatarUrl,
                             ))
                         .toList();
+
+                    // Sort: "You" first, then alphabetically by name
+                    participantOptions.sort((a, b) {
+                      if (a.name == 'You') return -1;
+                      if (b.name == 'You') return 1;
+                      return a.name.compareTo(b.name);
+                    });
 
                     // Capture eventId before async callback
                     final eventId = _currentEvent.id;

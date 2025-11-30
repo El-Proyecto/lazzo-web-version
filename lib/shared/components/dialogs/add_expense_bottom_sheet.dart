@@ -89,10 +89,6 @@ class _AddExpenseBottomSheetState extends State<AddExpenseBottomSheet> {
         widget.participants.isNotEmpty ? widget.participants.first.id : null;
     // ✅ Default: todos os participantes selecionados para dividir a despesa
     _selectedParticipants = widget.participants.map((p) => p.id).toList();
-
-    print('💳 [AddExpenseBottomSheet] Default paidBy: $_selectedPaidBy');
-    print(
-        '💳 [AddExpenseBottomSheet] Default participants: $_selectedParticipants');
   }
 
   @override
