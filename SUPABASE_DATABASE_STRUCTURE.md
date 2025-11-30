@@ -921,6 +921,150 @@ WHERE event_id = $1 AND user_id = $2;
 
 ---
 
+### user_payment_debts_view ✅
+
+**Purpose:** Aggregates all unpaid debts for the Inbox Payments tab, showing who owes whom with full context (event, group, user names).
+
+**Status:** ✅ Implemented and serving Inbox Payments feature.
+
+**Schema:**
+```sql
+CREATE OR REPLACE VIEW user_payment_debts_view AS
+SELECT
+  -- Unique payment identifier
+  es.expense_id || '_' || es.user_id AS payment_id,
+  
+  -- Expense information
+  ee.id AS expense_id,
+  ee.title AS expense_title,
+  es.amount AS debt_amount,
+  es.has_paid,
+  ee.created_at,
+  
+  -- Creditor (who paid, who is owed)
+  ee.created_by AS paid_by_user_id,
+  payer.display_name AS paid_by_user_name,
+  payer.avatar_url AS paid_by_avatar_url,
+  
+  -- Debtor (who owes)
+  es.user_id AS debtor_user_id,
+  debtor.display_name AS debtor_user_name,
+  debtor.avatar_url AS debtor_avatar_url,
+  
+  -- Event context
+  e.id AS event_id,
+  e.name AS event_name,
+  e.emoji AS event_emoji,
+  
+  -- Group context
+  g.id AS group_id,
+  g.name AS group_name
+  
+FROM expense_splits es
+INNER JOIN event_expenses ee ON es.expense_id = ee.id
+INNER JOIN events e ON ee.event_id = e.id
+INNER JOIN groups g ON e.group_id = g.id
+INNER JOIN users payer ON ee.created_by = payer.id
+INNER JOIN users debtor ON es.user_id = debtor.id
+WHERE es.has_paid = false;  -- Only unpaid debts
+```
+
+**Indexes:**
+```sql
+-- Optimize queries by debtor
+CREATE INDEX IF NOT EXISTS idx_expense_splits_user_unpaid 
+  ON expense_splits(user_id, has_paid) 
+  WHERE has_paid = false;
+
+-- Optimize joins
+CREATE INDEX IF NOT EXISTS idx_expense_splits_expense 
+  ON expense_splits(expense_id);
+
+CREATE INDEX IF NOT EXISTS idx_event_expenses_created_by 
+  ON event_expenses(created_by);
+```
+
+**Usage:**
+```sql
+-- Get all debts where user owes money (user is debtor)
+SELECT * FROM user_payment_debts_view
+WHERE debtor_user_id = $userId
+ORDER BY created_at DESC;
+
+-- Get all debts owed to user (user is creditor)
+SELECT * FROM user_payment_debts_view
+WHERE paid_by_user_id = $userId
+ORDER BY created_at DESC;
+
+-- Get all debts involving user (both directions)
+SELECT * FROM user_payment_debts_view
+WHERE debtor_user_id = $userId OR paid_by_user_id = $userId
+ORDER BY created_at DESC;
+```
+
+**Query Patterns:**
+```dart
+// Dart/Flutter data source example
+Future<List<PaymentDebtDto>> getDebtsUserOwes(String userId) async {
+  final response = await supabase
+      .from('user_payment_debts_view')
+      .select()
+      .eq('debtor_user_id', userId)
+      .order('created_at', ascending: false);
+  
+  return (response as List)
+      .map((json) => PaymentDebtDto.fromJson(json))
+      .toList();
+}
+```
+
+**Performance Characteristics:**
+- Expected query time: **< 100ms** per user (with indexes)
+- Filters unpaid debts at database level (`WHERE has_paid = false`)
+- Denormalizes user names and group/event context for single-query fetch
+- Supports pagination with `LIMIT` and `OFFSET`
+
+**Net Balance Calculation:**
+The view returns individual debts. Net balance calculation (bidirectional debt netting) is performed client-side using `PaymentGroup.groupByUser()`:
+
+```dart
+// Client-side grouping (in PaymentGroup entity)
+final owedToUsTotal = debts
+    .where((d) => d.paidByUserId == currentUserId)
+    .fold(0.0, (sum, d) => sum + d.amount);
+
+final weOweTotal = debts
+    .where((d) => d.debtorUserId == currentUserId)
+    .fold(0.0, (sum, d) => sum + d.amount);
+
+final netAmount = owedToUsTotal - weOweTotal; // Positive = they owe us
+```
+
+**RLS Policies:**
+```sql
+-- Users can only see debts where they are involved (debtor or creditor)
+CREATE POLICY "Users can view their own payment debts"
+ON user_payment_debts_view FOR SELECT
+USING (
+  debtor_user_id = auth.uid() OR paid_by_user_id = auth.uid()
+);
+```
+
+**Notes:**
+- View provides raw debt data; app handles grouping and netting
+- Includes complete context (event name, group name, user names) to avoid additional queries
+- Only shows unpaid debts (`has_paid = false`); paid debts filtered at DB level
+- If performance degrades with large datasets, consider materialized view with trigger refresh
+
+**Related Files:**
+- Implementation: `lib/features/inbox/data/data_source/payments_remote_data_source.dart`
+- DTO: `lib/features/inbox/data/models/payment_debt_model.dart`
+- Entity: `lib/features/inbox/domain/entities/payment_entity.dart`
+- UI: `lib/features/inbox/presentation/widgets/payments_section.dart`
+- Proposal doc: `PAYMENTS_VIEW_PROPOSAL.md`
+
+---
+
 ### home_events_view ⚠️ (Needs optimization)
 
 **Purpose:** Unified view for Home screen showing planning, live, and recap events.

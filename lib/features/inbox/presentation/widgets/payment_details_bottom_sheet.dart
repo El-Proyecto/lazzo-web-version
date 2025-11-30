@@ -104,9 +104,14 @@ class PaymentDetailsBottomSheet extends StatelessWidget {
   }
 
   Widget _buildPaymentItem(PaymentEntity payment) {
-    // Determine if this specific payment is owed to user or we owe
-    final paymentIsOwedToUser = payment.fromUserId != 'current_user' &&
-        payment.toUserId == 'current_user';
+    // Each individual payment has its own direction
+    // Check if current user is the creditor (toUserId) = they owe us = green/+
+    // Or if current user is the debtor (fromUserId) = we owe them = red/-
+    final currentUserId = paymentGroup.userId; // This is the OTHER person's ID
+
+    // If payment.fromUserId == other person → they owe us (green, +)
+    // If payment.toUserId == other person → we owe them (red, -)
+    final paymentIsOwedToUser = payment.fromUserId == currentUserId;
 
     return GestureDetector(
       onTap: () => onPaymentTap?.call(payment),
