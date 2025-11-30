@@ -6,6 +6,8 @@ class _HomeEventModel {
   final String id;
   final String name;
   final String emoji;
+  final String? groupId;
+  final String? groupName;
   final DateTime? date;
   final DateTime? endDate;
   final String? location;
@@ -23,6 +25,8 @@ class _HomeEventModel {
     required this.id,
     required this.name,
     required this.emoji,
+    this.groupId,
+    this.groupName,
     this.date,
     this.endDate,
     this.location,
@@ -44,6 +48,8 @@ class _HomeEventModel {
 
     print(
         '📊 Event: ${map['event_name']} | DB status: $backendStatus | Start: $startDate');
+    print(
+        '   🏷️ Group: ${_asString(map['group_name']) ?? 'No group'} (ID: ${_asString(map['group_id']) ?? 'null'})');
 
     // ✅ CALCULAR estado baseado em datas e status da DB
     final calculatedStatus =
@@ -55,6 +61,8 @@ class _HomeEventModel {
       id: _asString(map['event_id']) ?? '',
       name: _asString(map['event_name']) ?? '',
       emoji: _normalizeEmoji(map['emoji']),
+      groupId: _asString(map['group_id']),
+      groupName: _asString(map['group_name']),
       date: startDate,
       endDate: endDate,
       location: _asString(map['location_name']),
@@ -82,6 +90,8 @@ class _HomeEventModel {
       id: id,
       name: name,
       emoji: emoji,
+      groupId: groupId,
+      groupName: groupName,
       date: date,
       endDate: endDate,
       location: location,

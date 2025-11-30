@@ -250,29 +250,65 @@ class _HomeEventCardState extends ConsumerState<HomeEventCard> {
         ),
         const SizedBox(width: Gaps.md),
 
-        // Event name and location
+        // Event name, group, and location
         Expanded(
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            _currentEvent.name,
+            style: AppText.titleMediumEmph.copyWith(
+          color: BrandColors.text1,
+            ),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 4),
+          // Location with icon
+          Row(
             children: [
-              Text(
-                _currentEvent.name,
-                style: AppText.titleMediumEmph.copyWith(
-                  color: BrandColors.text1,
-                ),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
+          const Icon(
+            Icons.location_on,
+            size: 14,
+            color: BrandColors.text2,
+          ),
+          const SizedBox(width: 4),
+          Expanded(
+            child: Text(
+              _currentEvent.location ?? 'To be decided',
+              style: AppText.bodyMedium.copyWith(
+            color: BrandColors.text2,
               ),
-              const SizedBox(height: 2),
-              Text(
-                _currentEvent.location ?? 'To be decided',
-                style: AppText.bodyMedium.copyWith(
-                  color: BrandColors.text2,
-                ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
             ],
+          ),
+          if (_currentEvent.groupName != null) const SizedBox(height: 2),
+          // Group with icon
+          if (_currentEvent.groupName != null)
+            Row(
+          children: [
+            const Icon(
+              Icons.group,
+              size: 14,
+              color: BrandColors.text2,
+            ),
+            const SizedBox(width: 4),
+            Expanded(
+              child: Text(
+            _currentEvent.groupName!,
+            style: AppText.bodyMedium.copyWith(
+              color: BrandColors.text2,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+            ),
+        ],
           ),
         ),
       ],

@@ -15,6 +15,7 @@ class FakeEventRepository implements EventRepository {
         name: 'Churrascada em Sesimbra',
         emoji: '🍖',
         groupId: 'group-1',
+        groupName: 'Família',
         startDateTime: DateTime.now().add(const Duration(days: 3, hours: 14)),
         endDateTime: DateTime.now().add(const Duration(days: 3, hours: 20)),
         location: const EventLocation(
@@ -46,6 +47,7 @@ class FakeEventRepository implements EventRepository {
         name: event.name,
         emoji: event.emoji,
         groupId: event.groupId,
+        groupName: event.groupName,
         startDateTime: event.startDateTime,
         endDateTime: event.endDateTime,
         location: event.location,
@@ -74,6 +76,7 @@ class FakeEventRepository implements EventRepository {
       name: 'Churrascada em Sesimbra',
       emoji: '🍖',
       groupId: 'group-1',
+      groupName: 'Família',
       startDateTime: DateTime.now().add(const Duration(days: 3, hours: 14)),
       endDateTime: DateTime.now().add(const Duration(days: 3, hours: 20)),
       location: const EventLocation(
@@ -114,6 +117,7 @@ class FakeEventRepository implements EventRepository {
           name: 'Churrascada em Sesimbra',
           emoji: '🍖',
           groupId: 'group-1',
+          groupName: 'Família',
           startDateTime: startDateTime,
           endDateTime: endDateTime,
           location: const EventLocation(
@@ -136,6 +140,7 @@ class FakeEventRepository implements EventRepository {
       name: existingEvent.name,
       emoji: existingEvent.emoji,
       groupId: existingEvent.groupId,
+      groupName: existingEvent.groupName,
       startDateTime: startDateTime,
       endDateTime: endDateTime,
       location: existingEvent.location,
@@ -175,6 +180,7 @@ class FakeEventRepository implements EventRepository {
       name: existingEvent.name,
       emoji: existingEvent.emoji,
       groupId: existingEvent.groupId,
+      groupName: existingEvent.groupName,
       startDateTime: existingEvent.startDateTime,
       endDateTime: existingEvent.endDateTime,
       location: EventLocation(
@@ -217,6 +223,7 @@ class FakeEventRepository implements EventRepository {
       name: existingEvent.name,
       emoji: existingEvent.emoji,
       groupId: existingEvent.groupId,
+      groupName: existingEvent.groupName,
       startDateTime: existingEvent.startDateTime,
       endDateTime: existingEvent.endDateTime,
       location: existingEvent.location,

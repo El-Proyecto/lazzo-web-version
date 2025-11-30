@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
 import '../../../../shared/components/inputs/segmented_control.dart';
+import '../../../../shared/components/common/top_banner.dart';
 import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/constants/text_styles.dart';
 import '../../../../shared/themes/colors.dart';
@@ -320,15 +321,15 @@ class _AddSuggestionBottomSheetState
               setState(() {
                 // Calculate the difference in days between old and new start date
                 final daysDifference = date.difference(startDate).inDays;
-                
+
                 // Update start date
                 startDate = date;
-                
+
                 // Adjust end date to maintain the same duration
                 if (daysDifference != 0) {
                   endDate = endDate.add(Duration(days: daysDifference));
                 }
-                
+
                 isStartDatePickerExpanded = false;
               });
             },
@@ -732,13 +733,11 @@ class _AddSuggestionBottomSheetState
       // Show success and close
       final suggestionType =
           _selectedType == SuggestionType.dateTime ? 'Date/Time' : 'Location';
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('$suggestionType suggestion added!'),
-          backgroundColor: Colors.green,
-        ),
-      );
       Navigator.of(context).pop();
+      TopBanner.showSuccess(
+        context,
+        message: '$suggestionType suggestion added!',
+      );
     }
   }
 
@@ -996,7 +995,7 @@ class _AddSuggestionBottomSheetState
     try {
       // Use geocoding to search for locations
       final locations = await locationFromAddress(query);
-      
+
       if (locations.isEmpty) {
         setState(() {
           _searchResults = [];
@@ -1014,7 +1013,7 @@ class _AddSuggestionBottomSheetState
             location.latitude,
             location.longitude,
           );
-          
+
           if (placemarks.isNotEmpty) {
             final placemark = placemarks.first;
             results.add(LocationSuggestion(
@@ -1173,7 +1172,7 @@ class _AddSuggestionBottomSheetState
       if (placemarks.isNotEmpty) {
         final placemark = placemarks.first;
         final address = _formatAddress(placemark);
-        
+
         final currentLocation = LocationInfo(
           id: 'current-location-${DateTime.now().millisecondsSinceEpoch}',
           displayName: _locationNameController.text.isNotEmpty
@@ -1215,11 +1214,9 @@ class _AddSuggestionBottomSheetState
 
   void _showLocationError(String message) {
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(message),
-          backgroundColor: BrandColors.cantVote,
-        ),
+      TopBanner.showError(
+        context,
+        message: message,
       );
     }
   }

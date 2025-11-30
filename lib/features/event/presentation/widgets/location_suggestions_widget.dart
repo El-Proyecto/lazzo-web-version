@@ -15,7 +15,7 @@ class LocationSuggestionsWidget extends StatefulWidget {
   final bool isHost; // Whether current user is host/admin
   final VoidCallback onAddSuggestion; // Callback for add suggestion button
   final Function(LocationSuggestion selectedSuggestion)
-  onPickLocation; // Callback for pick location
+      onPickLocation; // Callback for pick location
   final String? currentEventLocationName; // Current event location name
   final String? currentEventAddress; // Current event address
 
@@ -61,9 +61,8 @@ class _LocationSuggestionsWidgetState extends State<LocationSuggestionsWidget> {
     // If in selection mode, handle selection instead of voting
     if (_isSelectionMode) {
       setState(() {
-        _selectedSuggestionId = _selectedSuggestionId == suggestionId
-            ? null
-            : suggestionId;
+        _selectedSuggestionId =
+            _selectedSuggestionId == suggestionId ? null : suggestionId;
       });
       return;
     }
@@ -325,23 +324,23 @@ class _LocationSuggestionsWidgetState extends State<LocationSuggestionsWidget> {
           decoration: BoxDecoration(
             color: _isSelectionMode
                 ? (isSelected
-                      ? BrandColors.planning.withValues(alpha: 0.1)
-                      : BrandColors.bg3)
+                    ? BrandColors.planning.withValues(alpha: 0.1)
+                    : BrandColors.bg3)
                 : isCurrentEvent
-                ? BrandColors.bg3
-                : hasUserVoted
-                ? BrandColors.planning.withValues(alpha: 0.1)
-                : BrandColors.bg3,
+                    ? BrandColors.bg3
+                    : hasUserVoted
+                        ? BrandColors.planning.withValues(alpha: 0.1)
+                        : BrandColors.bg3,
             borderRadius: BorderRadius.circular(10),
             border: _isSelectionMode
                 ? (isSelected
-                      ? Border.all(color: BrandColors.planning, width: 1)
-                      : null)
+                    ? Border.all(color: BrandColors.planning, width: 1)
+                    : null)
                 : isCurrentEvent
-                ? null
-                : hasUserVoted
-                ? Border.all(color: BrandColors.planning, width: 1)
-                : null,
+                    ? null
+                    : hasUserVoted
+                        ? Border.all(color: BrandColors.planning, width: 1)
+                        : null,
           ),
           child: Row(
             children: [
@@ -355,13 +354,11 @@ class _LocationSuggestionsWidgetState extends State<LocationSuggestionsWidget> {
                   height: 20,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: isSelected
-                        ? BrandColors.planning
-                        : Colors.transparent,
+                    color:
+                        isSelected ? BrandColors.planning : Colors.transparent,
                     border: Border.all(
-                      color: isSelected
-                          ? BrandColors.planning
-                          : BrandColors.text2,
+                      color:
+                          isSelected ? BrandColors.planning : BrandColors.text2,
                       width: isSelected ? 2.2 : 1.5,
                     ),
                   ),
@@ -412,20 +409,20 @@ class _LocationSuggestionsWidgetState extends State<LocationSuggestionsWidget> {
                       style: AppText.bodyMedium.copyWith(
                         color: _isSelectionMode
                             ? (isSelected
-                                  ? BrandColors.text1
-                                  : BrandColors.text1)
+                                ? BrandColors.text1
+                                : BrandColors.text1)
                             : isCurrentEvent
-                            ? BrandColors.text2
-                            : hasUserVoted
-                            ? BrandColors.text1
-                            : BrandColors.text1,
+                                ? BrandColors.text2
+                                : hasUserVoted
+                                    ? BrandColors.text1
+                                    : BrandColors.text1,
                         fontWeight: _isSelectionMode
                             ? (isSelected ? FontWeight.w600 : FontWeight.normal)
                             : isCurrentEvent
-                            ? FontWeight.normal
-                            : hasUserVoted
-                            ? FontWeight.w600
-                            : FontWeight.normal,
+                                ? FontWeight.normal
+                                : hasUserVoted
+                                    ? FontWeight.w600
+                                    : FontWeight.normal,
                       ),
                       child: Text(suggestion.locationName),
                     ),
@@ -453,10 +450,10 @@ class _LocationSuggestionsWidgetState extends State<LocationSuggestionsWidget> {
                   color: _isSelectionMode
                       ? (isSelected ? BrandColors.planning : BrandColors.border)
                       : isCurrentEvent
-                      ? BrandColors.border
-                      : hasUserVoted
-                      ? BrandColors.planning
-                      : BrandColors.border,
+                          ? BrandColors.border
+                          : hasUserVoted
+                              ? BrandColors.planning
+                              : BrandColors.border,
                   borderRadius: BorderRadius.circular(Radii.pill),
                 ),
                 child: Text(
@@ -465,10 +462,10 @@ class _LocationSuggestionsWidgetState extends State<LocationSuggestionsWidget> {
                     color: _isSelectionMode
                         ? (isSelected ? Colors.white : BrandColors.text2)
                         : isCurrentEvent
-                        ? BrandColors.text2
-                        : hasUserVoted
-                        ? Colors.white
-                        : BrandColors.text2,
+                            ? BrandColors.text2
+                            : hasUserVoted
+                                ? Colors.white
+                                : BrandColors.text2,
                     fontWeight: FontWeight.w600,
                     fontSize: 12,
                   ),
@@ -567,8 +564,9 @@ class _LocationSuggestionVoteSection extends StatelessWidget {
 
         const SizedBox(height: Gaps.md),
 
-        // Vote list
-        ...votes.map((vote) => _LocationSuggestionVoteItem(vote: vote)),
+        // Vote list (sorted by most recent first)
+        ...(votes.toList()..sort((a, b) => b.createdAt.compareTo(a.createdAt)))
+            .map((vote) => _LocationSuggestionVoteItem(vote: vote)),
       ],
     );
   }
@@ -630,7 +628,10 @@ class _LocationSuggestionVoteItem extends StatelessWidget {
     final difference = now.difference(date).inDays;
 
     if (difference == 0) {
-      return 'Today';
+      // Show time if voted today (e.g., "10:23")
+      final hour = date.hour.toString().padLeft(2, '0');
+      final minute = date.minute.toString().padLeft(2, '0');
+      return '$hour:$minute';
     } else if (difference == 1) {
       return 'Yesterday';
     } else if (difference < 7) {

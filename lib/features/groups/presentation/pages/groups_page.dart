@@ -144,19 +144,26 @@ class _GroupsPageState extends ConsumerState<GroupsPage>
                   return _buildEmptyState();
                 }
 
-                return ListView.builder(
-                  padding: EdgeInsets.zero,
-                  itemCount:
-                      filteredGroups.length, // Apenas grupos, filtros fora
-                  itemBuilder: (context, index) {
-                    final group = filteredGroups[index];
-                    return GroupCard(
-                      group: group,
-                      onTap: () => _handleGroupTap(group.id),
-                      onLongPress: (cardKey) =>
-                          _handleGroupLongPress(context, group.id, cardKey),
-                    );
+                return RefreshIndicator(
+                  onRefresh: () async {
+                    ref.read(groupsControllerProvider).refreshGroups();
                   },
+                  color: BrandColors.planning,
+                  backgroundColor: BrandColors.bg2,
+                  child: ListView.builder(
+                    padding: EdgeInsets.zero,
+                    itemCount:
+                        filteredGroups.length, // Apenas grupos, filtros fora
+                    itemBuilder: (context, index) {
+                      final group = filteredGroups[index];
+                      return GroupCard(
+                        group: group,
+                        onTap: () => _handleGroupTap(group.id),
+                        onLongPress: (cardKey) =>
+                            _handleGroupLongPress(context, group.id, cardKey),
+                      );
+                    },
+                  ),
                 );
               },
               loading: () => _buildLoadingState(),
