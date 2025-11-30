@@ -107,7 +107,6 @@ class SettingsOptionItem extends StatelessWidget {
               title,
               style: AppText.bodyLarge.copyWith(
                 color: textColor,
-                fontWeight: FontWeight.w500,
               ),
             ),
           ),

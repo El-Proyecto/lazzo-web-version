@@ -37,8 +37,9 @@ class SettingsProfileSection extends StatelessWidget {
                   ? Text(
                       name.isNotEmpty ? name[0].toUpperCase() : 'U',
                       style: AppText.bodyLarge.copyWith(
-                        color: BrandColors.text1,
+                        color: BrandColors.text2,
                         fontSize: 20,
+                        fontWeight: FontWeight.w600,
                       ),
                     )
                   : null,

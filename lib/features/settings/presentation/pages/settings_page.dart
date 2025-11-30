@@ -194,7 +194,7 @@ class SettingsPage extends ConsumerWidget {
                         ),
                       ),
                       SettingsOptionItem(
-                        icon: Icons.delete_outline,
+                        icon: Icons.delete_forever,
                         title: 'Delete account',
                         isDanger: true,
                         trailing: SettingsOptionTrailing.none(
@@ -304,9 +304,25 @@ class SettingsPage extends ConsumerWidget {
           confirmText: 'Log Out',
           cancelText: 'Cancel',
           isDestructive: true,
-          onConfirm: () {
-            ref.read(settingsControllerProvider.notifier).logOut();
-            // TODO P2: Navigate to login
+          onConfirm: () async {
+            try {
+              await ref.read(settingsControllerProvider.notifier).logOut();
+
+              if (context.mounted) {
+                // Navigate to login and clear all previous routes
+                Navigator.of(context).pushNamedAndRemoveUntil(
+                  AppRouter.loginPage,
+                  (route) => false,
+                );
+              }
+            } catch (e) {
+              if (context.mounted) {
+                TopBanner.showError(
+                  context,
+                  message: 'Failed to log out. Please try again.',
+                );
+              }
+            }
           },
         );
       },
@@ -324,9 +340,27 @@ class SettingsPage extends ConsumerWidget {
           confirmText: 'Delete',
           cancelText: 'Cancel',
           isDestructive: true,
-          onConfirm: () {
-            ref.read(settingsControllerProvider.notifier).deleteAccount();
-            // TODO P2: Navigate to login
+          onConfirm: () async {
+            try {
+              await ref
+                  .read(settingsControllerProvider.notifier)
+                  .deleteAccount();
+
+              if (context.mounted) {
+                // Navigate to login and clear all previous routes
+                Navigator.of(context).pushNamedAndRemoveUntil(
+                  AppRouter.loginPage,
+                  (route) => false,
+                );
+              }
+            } catch (e) {
+              if (context.mounted) {
+                TopBanner.showError(
+                  context,
+                  message: 'Failed to delete account. Please try again.',
+                );
+              }
+            }
           },
         );
       },

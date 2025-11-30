@@ -13,7 +13,7 @@ import '../features/home/presentation/providers/memory_providers.dart';
 // HOME EVENTS
 import 'features/home/data/data_sources/home_event_remote_data_source.dart';
 import 'features/home/data/repositories/home_event_repository_impl.dart';
-import 'features/home/presentation/providers/home_event_providers.dart'; 
+import 'features/home/presentation/providers/home_event_providers.dart';
 
 // INBOX PAYMENTS - TODO: Add real implementation imports when available
 // import '../features/inbox/data/data_sources/payment_remote_data_source.dart';
@@ -36,9 +36,12 @@ import '../features/groups/data/data_sources/groups_data_source.dart';
 import '../features/groups/data/repositories/group_repository_impl.dart';
 
 // GROUP HUB - Real implementation
-import '../features/group_hub/presentation/providers/group_hub_providers.dart' as group_hub;
-import '../features/group_hub/data/data_sources/group_event_data_source.dart' as group_hub_ds;
-import '../features/group_hub/data/repositories/group_event_repository_impl.dart' as group_hub_repo;
+import '../features/group_hub/presentation/providers/group_hub_providers.dart'
+    as group_hub;
+import '../features/group_hub/data/data_sources/group_event_data_source.dart'
+    as group_hub_ds;
+import '../features/group_hub/data/repositories/group_event_repository_impl.dart'
+    as group_hub_repo;
 import '../features/group_hub/data/data_sources/group_memory_data_source.dart';
 import '../features/group_hub/data/repositories/group_memory_repository_impl.dart';
 import '../features/group_hub/data/data_sources/group_photos_data_source.dart';
@@ -79,6 +82,11 @@ import '../features/auth/data/repositories/auth_repository_impl.dart';
 import '../features/auth/presentation/providers/users_repository_provider.dart';
 import '../features/auth/data/datasources/users_remote_datasource.dart';
 import '../features/auth/data/repositories/users_repository.dart';
+
+// SETTINGS - Real implementation
+import '../features/settings/presentation/providers/settings_providers.dart';
+import '../features/settings/data/data_sources/settings_remote_data_source.dart';
+import '../features/settings/data/repositories/settings_repository_impl.dart';
 
 // CREATE EVENT & EVENT FEATURES (P1 - fake only, no imports needed)
 // Default fake repositories will be used automatically
@@ -222,9 +230,16 @@ void main() async {
         }),
         chatRepositoryProvider.overrideWith(
           (ref) => ChatRepositoryImpl(
-           ChatRemoteDataSource(Supabase.instance.client),
+            ChatRemoteDataSource(Supabase.instance.client),
           ),
         ),
+
+        // ✅ SETTINGS repo -> real (Supabase) via DI (Nov 30, 2025)
+        settingsRepositoryProvider.overrideWith((ref) {
+          final client = Supabase.instance.client;
+          final dataSource = SettingsRemoteDataSource(client);
+          return SettingsRepositoryImpl(dataSource);
+        }),
       ],
       child: const LazzoApp(),
     ),

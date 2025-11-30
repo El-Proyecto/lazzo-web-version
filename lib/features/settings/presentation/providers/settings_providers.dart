@@ -54,7 +54,16 @@ class SettingsController extends StateNotifier<AsyncValue<SettingsEntity>> {
     final updateNotifications = ref.read(updateNotificationsUseCaseProvider);
     try {
       await updateNotifications(enabled);
-      await _loadSettings();
+      // Update state directly without loading to prevent page reset
+      state.whenData((settings) {
+        state = AsyncValue.data(
+          SettingsEntity(
+            notificationsEnabled: enabled,
+            language: settings.language,
+            earlyAccessInvites: settings.earlyAccessInvites,
+          ),
+        );
+      });
     } catch (e) {
       // Handle error
     }
