@@ -13,9 +13,13 @@ class PaymentEntity {
   final DateTime createdAt;
   final DateTime? dueDate;
   final String? fromUserId;
+  final String? fromUserName; // Name of the person who owes
   final String? toUserId;
+  final String? toUserName; // Name of the person being owed
   final String? groupId;
+  final String? groupName; // Name of the group
   final String? eventId;
+  final String? eventName; // Name of the event
   final List<String>? participantIds;
 
   const PaymentEntity({
@@ -29,9 +33,13 @@ class PaymentEntity {
     required this.createdAt,
     this.dueDate,
     this.fromUserId,
+    this.fromUserName,
     this.toUserId,
+    this.toUserName,
     this.groupId,
+    this.groupName,
     this.eventId,
+    this.eventName,
     this.participantIds,
   });
 
@@ -49,9 +57,13 @@ class PaymentEntity {
     DateTime? createdAt,
     DateTime? dueDate,
     String? fromUserId,
+    String? fromUserName,
     String? toUserId,
+    String? toUserName,
     String? groupId,
+    String? groupName,
     String? eventId,
+    String? eventName,
     List<String>? participantIds,
   }) {
     return PaymentEntity(
@@ -65,9 +77,13 @@ class PaymentEntity {
       createdAt: createdAt ?? this.createdAt,
       dueDate: dueDate ?? this.dueDate,
       fromUserId: fromUserId ?? this.fromUserId,
+      fromUserName: fromUserName ?? this.fromUserName,
       toUserId: toUserId ?? this.toUserId,
+      toUserName: toUserName ?? this.toUserName,
       groupId: groupId ?? this.groupId,
+      groupName: groupName ?? this.groupName,
       eventId: eventId ?? this.eventId,
+      eventName: eventName ?? this.eventName,
       participantIds: participantIds ?? this.participantIds,
     );
   }

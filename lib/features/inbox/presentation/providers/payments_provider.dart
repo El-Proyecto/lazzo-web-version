@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../domain/entities/payment_entity.dart';
 import '../../domain/repositories/payment_repository.dart';
 import '../../domain/usecases/get_user_payments.dart';
@@ -29,42 +30,44 @@ final markPaymentAsPaidUseCaseProvider = Provider<MarkPaymentAsPaid>((ref) {
 });
 
 // State providers
-final paymentsOwedToUserProvider =
-    StateNotifierProvider<
-      PaymentsOwedToUserController,
-      AsyncValue<List<PaymentEntity>>
-    >((ref) {
-      return PaymentsOwedToUserController(
-        ref.watch(getPaymentsOwedToUserUseCaseProvider),
-      );
-    });
+final paymentsOwedToUserProvider = StateNotifierProvider<
+    PaymentsOwedToUserController, AsyncValue<List<PaymentEntity>>>((ref) {
+  return PaymentsOwedToUserController(
+    ref.watch(getPaymentsOwedToUserUseCaseProvider),
+  );
+});
 
-final paymentsUserOwesProvider =
-    StateNotifierProvider<
-      PaymentsUserOwesController,
-      AsyncValue<List<PaymentEntity>>
-    >((ref) {
-      return PaymentsUserOwesController(
-        ref.watch(getPaymentsUserOwesUseCaseProvider),
-      );
-    });
+final paymentsUserOwesProvider = StateNotifierProvider<
+    PaymentsUserOwesController, AsyncValue<List<PaymentEntity>>>((ref) {
+  return PaymentsUserOwesController(
+    ref.watch(getPaymentsUserOwesUseCaseProvider),
+  );
+});
 
 class PaymentsOwedToUserController
     extends StateNotifier<AsyncValue<List<PaymentEntity>>> {
   final GetPaymentsOwedToUser _getPaymentsOwedToUser;
 
   PaymentsOwedToUserController(this._getPaymentsOwedToUser)
-    : super(const AsyncValue.loading()) {
+      : super(const AsyncValue.loading()) {
     loadPayments();
   }
 
   Future<void> loadPayments() async {
     state = const AsyncValue.loading();
     try {
-      // Using a dummy user ID for fake data
-      final payments = await _getPaymentsOwedToUser('current_user');
+      final userId = Supabase.instance.client.auth.currentUser?.id;
+      if (userId == null) {
+        throw Exception('User not authenticated');
+      }
+      print(
+          '🔍 [PaymentsOwedToUserController] Loading payments owed to user: $userId');
+      final payments = await _getPaymentsOwedToUser(userId);
+      print(
+          '✅ [PaymentsOwedToUserController] Got ${payments.length} payments owed to user');
       state = AsyncValue.data(payments);
     } catch (error, stackTrace) {
+      print('❌ [PaymentsOwedToUserController] Error: $error');
       state = AsyncValue.error(error, stackTrace);
     }
   }
@@ -79,17 +82,25 @@ class PaymentsUserOwesController
   final GetPaymentsUserOwes _getPaymentsUserOwes;
 
   PaymentsUserOwesController(this._getPaymentsUserOwes)
-    : super(const AsyncValue.loading()) {
+      : super(const AsyncValue.loading()) {
     loadPayments();
   }
 
   Future<void> loadPayments() async {
     state = const AsyncValue.loading();
     try {
-      // Using a dummy user ID for fake data
-      final payments = await _getPaymentsUserOwes('current_user');
+      final userId = Supabase.instance.client.auth.currentUser?.id;
+      if (userId == null) {
+        throw Exception('User not authenticated');
+      }
+      print(
+          '🔍 [PaymentsUserOwesController] Loading payments user owes: $userId');
+      final payments = await _getPaymentsUserOwes(userId);
+      print(
+          '✅ [PaymentsUserOwesController] Got ${payments.length} payments user owes');
       state = AsyncValue.data(payments);
     } catch (error, stackTrace) {
+      print('❌ [PaymentsUserOwesController] Error: $error');
       state = AsyncValue.error(error, stackTrace);
     }
   }

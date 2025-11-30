@@ -153,7 +153,7 @@ class PaymentDetailsBottomSheet extends StatelessWidget {
                 const Icon(Icons.event, size: 14, color: BrandColors.text2),
                 const SizedBox(width: Gaps.xs / 2),
                 Text(
-                  _getEventName(payment.eventId ?? ''),
+                  payment.eventName ?? 'Event',
                   style: AppText.bodyMedium.copyWith(
                     color: BrandColors.text2,
                   ),
@@ -162,7 +162,7 @@ class PaymentDetailsBottomSheet extends StatelessWidget {
                 const Icon(Icons.group, size: 14, color: BrandColors.text2),
                 const SizedBox(width: Gaps.xs / 2),
                 Text(
-                  _getGroupName(payment.groupId ?? ''),
+                  payment.groupName ?? 'Group',
                   style: AppText.bodyMedium.copyWith(
                     color: BrandColors.text2,
                   ),
@@ -194,34 +194,6 @@ class PaymentDetailsBottomSheet extends StatelessWidget {
       return '${difference.inDays} days ago';
     } else {
       return '${date.day}/${date.month}/${date.year}';
-    }
-  }
-
-  String _getEventName(String eventId) {
-    // In a real app, this would come from an Event entity
-    switch (eventId) {
-      case 'event1':
-        return 'Friday Dinner';
-      case 'event2':
-        return 'Concert Night';
-      case 'event3':
-        return 'Beach BBQ';
-      default:
-        return 'Event';
-    }
-  }
-
-  String _getGroupName(String groupId) {
-    // In a realwd app, this would come from a Group entity
-    switch (groupId) {
-      case 'group1':
-        return 'Dinner Group';
-      case 'group2':
-        return 'Beach Friends';
-      case 'group3':
-        return 'Weekend Hikers';
-      default:
-        return 'Group';
     }
   }
 }

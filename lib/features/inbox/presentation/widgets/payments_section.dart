@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../domain/entities/payment_entity.dart';
 import '../../domain/entities/payment_group.dart';
 import '../../../../shared/constants/spacing.dart';
@@ -41,17 +42,27 @@ class PaymentsSection extends StatelessWidget {
     }
 
     // Group payments by user (pass all payments for net calculation)
+    final currentUserId = Supabase.instance.client.auth.currentUser?.id ?? '';
+    print('🔍 [PaymentsSection] Building with currentUserId: $currentUserId');
+    print(
+        '🔍 [PaymentsSection] owedToUser: ${owedToUser.length}, userOwes: ${userOwes.length}');
+
     final allPayments = [...owedToUser, ...userOwes];
     final owedToUserGroups = PaymentGroup.groupByUser(
       allPayments,
       true,
+      currentUserId,
       _getUserName,
     );
     final userOwesGroups = PaymentGroup.groupByUser(
       allPayments,
       false,
+      currentUserId,
       _getUserName,
     );
+
+    print(
+        '✅ [PaymentsSection] owedToUserGroups: ${owedToUserGroups.length}, userOwesGroups: ${userOwesGroups.length}');
     return RefreshIndicator(
       onRefresh: () async {
         onRefresh?.call();
@@ -181,23 +192,27 @@ class PaymentsSection extends StatelessWidget {
   }
 
   String _getUserName(String userId) {
-    // In a real app, this would come from a User entity or service
-    switch (userId) {
-      case 'ana':
-        return 'Ana';
-      case 'maria':
-        return 'Maria';
-      case 'joao':
-        return 'João';
-      case 'sofia':
-        return 'Sofia';
-      default:
-        return 'Unknown User';
+    // Find user name from payments (already populated by DTO from view)
+    final allPayments = [...owedToUser, ...userOwes];
+
+    for (final payment in allPayments) {
+      if (payment.fromUserId == userId && payment.fromUserName != null) {
+        return payment.fromUserName!;
+      }
+      if (payment.toUserId == userId && payment.toUserName != null) {
+        return payment.toUserName!;
+      }
     }
+
+    // Fallback
+    return 'User ${userId.substring(0, 8)}';
   }
 
   PaymentEntity _createGroupPayment(PaymentGroup group) {
     // Create a summary payment entity representing the group
+    final currentUserId = Supabase.instance.client.auth.currentUser?.id ?? '';
+    final currentUserName = 'You'; // Could be fetched from profile if needed
+
     return PaymentEntity(
       id: 'group_${group.userId}',
       title: group.displaySubtitle,
@@ -206,8 +221,10 @@ class PaymentsSection extends StatelessWidget {
       status: PaymentStatus.pending,
       amount: group.totalAmount,
       createdAt: DateTime.now(),
-      fromUserId: group.isOwedToUser ? group.userId : 'current_user',
-      toUserId: group.isOwedToUser ? 'current_user' : group.userId,
+      fromUserId: group.isOwedToUser ? group.userId : currentUserId,
+      fromUserName: group.isOwedToUser ? group.userName : currentUserName,
+      toUserId: group.isOwedToUser ? currentUserId : group.userId,
+      toUserName: group.isOwedToUser ? currentUserName : group.userName,
     );
   }
 
