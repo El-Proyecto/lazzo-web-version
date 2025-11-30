@@ -571,14 +571,10 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
   }
 
   void _showEventHistory() {
-    showModalBottomSheet(
+    EventHistoryBottomSheet.show(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => EventHistoryBottomSheet(
-        events: _getMockEventHistory(),
-        onEventSelected: _loadEventFromHistory,
-      ),
+      events: _getMockEventHistory(),
+      onEventSelected: _loadEventFromHistory,
     );
   }
 
@@ -796,10 +792,10 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
     // Invalidate user RSVP provider to ensure fresh data load
     // This guarantees the creator's automatic "Yes" vote is shown
     ref.invalidate(userRsvpProvider(eventId));
-    
+
     // Also invalidate event RSVPs provider for vote counts
     ref.invalidate(eventRsvpsProvider(eventId));
-    
+
     // Also invalidate event detail provider to refresh counts
     ref.invalidate(eventDetailProvider(eventId));
 

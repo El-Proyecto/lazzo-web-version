@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/constants/text_styles.dart';
 import '../../../../shared/themes/colors.dart';
-import '../../../../shared/components/widgets/grabber_bar.dart';
+import '../../../../shared/components/common/common_bottom_sheet.dart';
 
 /// Bottom sheet para exibir histórico de eventos
 /// Permite selecionar um evento anterior para usar como template
@@ -16,103 +16,62 @@ class EventHistoryBottomSheet extends StatelessWidget {
     this.onEventSelected,
   });
 
+  /// Show event history bottom sheet
+  static Future<void> show({
+    required BuildContext context,
+    required List<EventHistoryItem> events,
+    Function(EventHistoryItem)? onEventSelected,
+  }) {
+    return CommonBottomSheet.show(
+      context: context,
+      title: 'Event History',
+      maxHeight: 400,
+      content: EventHistoryBottomSheet(
+        events: events,
+        onEventSelected: onEventSelected,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
-    final screenHeight = MediaQuery.of(context).size.height;
-    final maxHeight = screenHeight * 0.9;
-
-    return Container(
-      width: double.infinity,
-      constraints: BoxConstraints(
-        maxHeight: keyboardHeight > 0 ? maxHeight : 400,
-      ),
-      decoration: const BoxDecoration(
-        color: BrandColors.bg2,
-        borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(Radii.md),
-          topRight: Radius.circular(Radii.md),
-        ),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Grabber bar
-          const Padding(
-            padding: EdgeInsets.only(top: Gaps.sm),
-            child: Center(child: GrabberBar()),
-          ),
-
-          // Header
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: Gaps.lg),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Event History',
-                  style: AppText.titleMediumEmph.copyWith(
-                    color: BrandColors.text1,
-                  ),
-                ),
-                IconButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  icon: const Icon(Icons.close, color: BrandColors.text2),
-                ),
-              ],
+    if (events.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(
+              Icons.history,
+              color: BrandColors.text2,
+              size: 48,
             ),
-          ),
-
-          const SizedBox(height: 12),
-
-          // Lista de eventos
-          Flexible(
-            child: Padding(
-              padding: EdgeInsets.only(
-                left: Gaps.lg,
-                right: Gaps.lg,
-                bottom: Gaps.lg + MediaQuery.of(context).viewInsets.bottom,
+            const SizedBox(height: Gaps.sm),
+            Text(
+              'No events yet',
+              style: AppText.bodyMedium.copyWith(
+                color: BrandColors.text2,
               ),
-              child: events.isEmpty
-                  ? Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(
-                            Icons.history,
-                            color: BrandColors.text2,
-                            size: 48,
-                          ),
-                          const SizedBox(height: Gaps.sm),
-                          Text(
-                            'No events yet',
-                            style: AppText.bodyMedium.copyWith(
-                              color: BrandColors.text2,
-                            ),
-                          ),
-                        ],
-                      ),
-                    )
-                  : ListView.separated(
-                      shrinkWrap: true,
-                      itemCount: events.length,
-                      separatorBuilder: (context, index) =>
-                          const SizedBox(height: Gaps.sm),
-                      itemBuilder: (context, index) {
-                        final event = events[index];
-                        return _EventHistoryTile(
-                          event: event,
-                          onTap: () {
-                            Navigator.of(context).pop();
-                            onEventSelected?.call(event);
-                          },
-                        );
-                      },
-                    ),
             ),
-          ),
-        ],
-      ),
+          ],
+        ),
+      );
+    }
+
+    return ListView.separated(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: events.length,
+      separatorBuilder: (context, index) => const SizedBox(height: Gaps.sm),
+      itemBuilder: (context, index) {
+        final event = events[index];
+        return _EventHistoryTile(
+          event: event,
+          onTap: () {
+            Navigator.of(context).pop();
+            onEventSelected?.call(event);
+          },
+        );
+      },
     );
   }
 }
@@ -176,7 +135,8 @@ class _EventHistoryTile extends StatelessWidget {
             ),
 
             // Seta
-            const Icon(Icons.arrow_forward_ios, color: BrandColors.text2, size: 16),
+            const Icon(Icons.arrow_forward_ios,
+                color: BrandColors.text2, size: 16),
           ],
         ),
       ),

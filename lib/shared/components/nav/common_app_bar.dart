@@ -121,29 +121,32 @@ class CommonAppBar extends StatelessWidget implements PreferredSizeWidget {
       shadowColor: Colors.transparent,
       elevation: elevation,
       automaticallyImplyLeading: automaticallyImplyLeading,
-      title: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      title: Stack(
         children: [
-          // Leading widget or spacer
-          leading ?? const SizedBox(width: 28, height: 28),
+          // Leading widget (left-aligned)
+          Align(
+            alignment: Alignment.centerLeft,
+            child: leading ?? const SizedBox(width: 28, height: 28),
+          ),
 
-          // Title
-          Expanded(
-            child: Center(
-              child: Text(
-                title,
-                style: AppText.dropdownTitle.copyWith(
-                  color: BrandColors.text1,
-                  fontSize: 22,
-                  fontWeight: FontWeight.w500,
-                ),
-                textAlign: TextAlign.center,
+          // Title (absolutely centered)
+          Center(
+            child: Text(
+              title,
+              style: AppText.dropdownTitle.copyWith(
+                color: BrandColors.text1,
+                fontSize: 22,
+                fontWeight: FontWeight.w500,
               ),
+              textAlign: TextAlign.center,
             ),
           ),
 
-          // Trailing widget or spacer
-          trailing ?? const SizedBox(width: 28, height: 28),
+          // Trailing widget (right-aligned)
+          Align(
+            alignment: Alignment.centerRight,
+            child: trailing ?? const SizedBox(width: 28, height: 28),
+          ),
         ],
       ),
     );

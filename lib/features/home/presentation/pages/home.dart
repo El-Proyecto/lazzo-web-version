@@ -208,26 +208,31 @@ class _HomePageState extends ConsumerState<HomePage> {
         centerTitle: true,
         trailing: (nextEventStatus == HomeEventStatus.living ||
                 nextEventStatus == HomeEventStatus.recap)
-            ? IconButton(
-                icon: Container(
-                  width: 24,
-                  height: 24,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: BrandColors.text1,
-                      width: 1.5,
-                    ),
-                  ),
-                  child: const Icon(
-                    Icons.add,
-                    color: BrandColors.text1,
-                    size: 20,
-                  ),
-                ),
-                onPressed: () {
+            ? GestureDetector(
+                onTap: () {
                   Navigator.pushNamed(context, AppRouter.createEvent);
                 },
+                child: Container(
+                  width: 28,
+                  height: 28,
+                  alignment: Alignment.center,
+                  child: Container(
+                    width: 24,
+                    height: 24,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: BrandColors.text1,
+                        width: 1.5,
+                      ),
+                    ),
+                    child: const Icon(
+                      Icons.add,
+                      color: BrandColors.text1,
+                      size: 20,
+                    ),
+                  ),
+                ),
               )
             : null,
       ),
@@ -421,9 +426,10 @@ class _HomePageState extends ConsumerState<HomePage> {
                                     emoji: event.emoji,
                                     title: event.name,
                                     dateTime: _formatEventDate(event.date),
-                                    location: event.date == null 
+                                    location: event.date == null
                                         ? null // Don't show location when date is TBD
-                                        : (event.location ?? 'Location to be decided'),
+                                        : (event.location ??
+                                            'Location to be decided'),
                                     state: _mapStatusToSmallCardState(
                                         event.status),
                                     onTap: () async {
@@ -479,9 +485,10 @@ class _HomePageState extends ConsumerState<HomePage> {
                                     emoji: event.emoji,
                                     title: event.name,
                                     dateTime: _formatEventDate(event.date),
-                                    location: event.date == null 
+                                    location: event.date == null
                                         ? null // Don't show location when date is TBD
-                                        : (event.location ?? 'Location to be decided'),
+                                        : (event.location ??
+                                            'Location to be decided'),
                                     state: _mapStatusToSmallCardState(
                                         event.status),
                                     onTap: () async {
