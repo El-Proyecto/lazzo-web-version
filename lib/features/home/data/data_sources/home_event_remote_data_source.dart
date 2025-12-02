@@ -42,8 +42,17 @@ class HomeEventRemoteDataSource {
       }
 
       // ✅ Convert all events and find highest priority
-      final events =
-          data.map((e) => homeEventFromMap(e as Map<String, dynamic>)).toList();
+      // Pass callback to persist status changes
+      final events = data.map((e) => homeEventFromMap(
+        e as Map<String, dynamic>,
+        onStatusMismatch: (eventId, newStatus) {
+          // Persist status change asynchronously (fire and forget)
+          updateEventStatus(eventId, newStatus).catchError((error) {
+            print('❌ Failed to persist status for event $eventId: $error');
+            return false;
+          });
+        },
+      )).toList();
 
       // Priority order: living (4) > recap (3) > confirmed (2) > pending (1)
       final priorityMap = {
@@ -103,11 +112,18 @@ class HomeEventRemoteDataSource {
             '   [$i] ${event['event_name']} | start_datetime: ${event['start_datetime']} | location: ${event['location_name']}');
       }
 
-      // Convert to entities
+      // Convert to entities with status persistence
       print(
           '🔄 [CONFIRMED] Converting ${data.length} raw events to entities...');
-      final events =
-          data.map((e) => homeEventFromMap(e as Map<String, dynamic>)).toList();
+      final events = data.map((e) => homeEventFromMap(
+        e as Map<String, dynamic>,
+        onStatusMismatch: (eventId, newStatus) {
+          updateEventStatus(eventId, newStatus).catchError((error) {
+            print('❌ Failed to persist status for event $eventId: $error');
+            return false;
+          });
+        },
+      )).toList();
       print('✅ [CONFIRMED] Converted to ${events.length} entities');
 
       // Debug entities before filtering
@@ -187,10 +203,17 @@ class HomeEventRemoteDataSource {
             '   [$i] ${event['event_name']} | start_datetime: ${event['start_datetime']} | location: ${event['location_name']}');
       }
 
-      // Convert to entities
+      // Convert to entities with status persistence
       print('🔄 [PENDING] Converting ${data.length} raw events to entities...');
-      final events =
-          data.map((e) => homeEventFromMap(e as Map<String, dynamic>)).toList();
+      final events = data.map((e) => homeEventFromMap(
+        e as Map<String, dynamic>,
+        onStatusMismatch: (eventId, newStatus) {
+          updateEventStatus(eventId, newStatus).catchError((error) {
+            print('❌ Failed to persist status for event $eventId: $error');
+            return false;
+          });
+        },
+      )).toList();
       print('✅ [PENDING] Converted to ${events.length} entities');
 
       // Debug entities before sorting
@@ -242,6 +265,25 @@ class HomeEventRemoteDataSource {
       return true;
     } catch (e) {
       print('❌ Vote error: $e');
+      return false;
+    }
+  }
+
+  /// Update event status in Supabase
+  /// Called when calculated status differs from DB status
+  Future<bool> updateEventStatus(String eventId, String newStatus) async {
+    try {
+      print('🔄 [STATUS UPDATE] Updating event $eventId to status: $newStatus');
+      
+      await client
+          .from('events')
+          .update({'status': newStatus})
+          .eq('id', eventId);
+      
+      print('✅ [STATUS UPDATE] Event status updated successfully in DB');
+      return true;
+    } catch (e) {
+      print('❌ [STATUS UPDATE] Error updating event status: $e');
       return false;
     }
   }
