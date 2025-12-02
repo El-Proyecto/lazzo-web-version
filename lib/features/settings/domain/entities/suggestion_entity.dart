@@ -29,4 +29,9 @@ class SuggestionEntity {
       status: status ?? this.status,
     );
   }
+
+  @override
+  String toString() {
+    return 'SuggestionEntity(id: $id, status: $status, userId: $userId)';
+  }
 }

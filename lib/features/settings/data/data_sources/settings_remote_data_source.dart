@@ -61,14 +61,9 @@ class SettingsRemoteDataSource {
       throw Exception('User not authenticated');
     }
 
-    print(
-        '🔔 [SettingsDataSource] Updating notifications to: $enabled for user: $userId');
-
     await _client
         .from('user_settings')
         .update({'notifications_enabled': enabled}).eq('user_id', userId);
-
-    print('✅ [SettingsDataSource] Notifications updated successfully');
   }
 
   /// Update language preference in Supabase
@@ -78,14 +73,9 @@ class SettingsRemoteDataSource {
       throw Exception('User not authenticated');
     }
 
-    print(
-        '🌐 [SettingsDataSource] Updating language to: $language for user: $userId');
-
     await _client
         .from('user_settings')
         .update({'language': language}).eq('user_id', userId);
-
-    print('✅ [SettingsDataSource] Language updated successfully');
   }
 
   /// Share early access invite (decrement counter)
@@ -94,9 +84,6 @@ class SettingsRemoteDataSource {
     if (userId == null) {
       throw Exception('User not authenticated');
     }
-
-    print(
-        '🎁 [SettingsDataSource] Decrementing invite count for user: $userId');
 
     // Get current invite count
     final current = await _client
@@ -114,9 +101,6 @@ class SettingsRemoteDataSource {
     // Decrement invite count
     await _client.from('user_settings').update(
         {'early_access_invites': currentCount - 1}).eq('user_id', userId);
-
-    print(
-        '✅ [SettingsDataSource] Invite count decremented: ${currentCount - 1} remaining');
   }
 
   /// Log out current user from Supabase

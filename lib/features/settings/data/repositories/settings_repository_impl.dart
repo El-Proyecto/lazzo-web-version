@@ -31,11 +31,8 @@ class SettingsRepositoryImpl implements SettingsRepository {
   @override
   Future<void> updateNotifications(bool enabled) async {
     try {
-      print('🔔 [SettingsRepository] Updating notifications to: $enabled');
       await _remoteDataSource.updateNotifications(enabled);
-      print('✅ [SettingsRepository] Notifications updated successfully');
     } catch (e) {
-      print('❌ [SettingsRepository] Failed to update notifications: $e');
       throw Exception('Failed to update notifications: $e');
     }
   }
@@ -43,11 +40,8 @@ class SettingsRepositoryImpl implements SettingsRepository {
   @override
   Future<void> updateLanguage(String language) async {
     try {
-      print('🌐 [SettingsRepository] Updating language to: $language');
       await _remoteDataSource.updateLanguage(language);
-      print('✅ [SettingsRepository] Language updated successfully');
     } catch (e) {
-      print('❌ [SettingsRepository] Failed to update language: $e');
       throw Exception('Failed to update language: $e');
     }
   }
@@ -55,11 +49,8 @@ class SettingsRepositoryImpl implements SettingsRepository {
   @override
   Future<void> shareInvite() async {
     try {
-      print('🎁 [SettingsRepository] Sharing invite...');
       await _remoteDataSource.shareInvite();
-      print('✅ [SettingsRepository] Invite shared successfully');
     } catch (e) {
-      print('❌ [SettingsRepository] Failed to share invite: $e');
       throw Exception('Failed to share invite: $e');
     }
   }

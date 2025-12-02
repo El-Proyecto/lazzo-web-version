@@ -19,11 +19,13 @@ class SuggestionController extends StateNotifier<AsyncValue<void>> {
     required String description,
     required String userId,
   }) async {
+    print('\n🚀 [SuggestionController] Submitting suggestion');
     state = const AsyncValue.loading();
 
     try {
       if (repository == null) {
         // P1: Simulate success without actual submission
+        print('⚠️ [SuggestionController] Using fake repository (P1)');
         state = const AsyncValue.data(null);
         return;
       }
@@ -36,7 +38,9 @@ class SuggestionController extends StateNotifier<AsyncValue<void>> {
 
       await repository!.submitSuggestion(suggestion);
       state = const AsyncValue.data(null);
+      print('✅ [SuggestionController] Suggestion submitted successfully');
     } catch (e, st) {
+      print('❌ [SuggestionController] Failed to submit suggestion: $e');
       state = AsyncValue.error(e, st);
     }
   }

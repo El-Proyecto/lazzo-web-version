@@ -33,4 +33,9 @@ class ReportEntity {
       status: status ?? this.status,
     );
   }
+
+  @override
+  String toString() {
+    return 'ReportEntity(id: $id, category: $category, status: $status, userId: $userId)';
+  }
 }
