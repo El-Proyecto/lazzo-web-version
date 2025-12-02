@@ -40,17 +40,21 @@ class SettingsController extends StateNotifier<AsyncValue<SettingsEntity>> {
   }
 
   Future<void> _loadSettings() async {
+    print('\n🚀 [SettingsController] Loading settings...');
     state = const AsyncValue.loading();
     try {
       final getSettings = ref.read(getSettingsUseCaseProvider);
       final settings = await getSettings();
       state = AsyncValue.data(settings);
+      print('✅ [SettingsController] Settings loaded successfully: $settings');
     } catch (e, stack) {
+      print('❌ [SettingsController] Failed to load settings: $e');
       state = AsyncValue.error(e, stack);
     }
   }
 
   Future<void> toggleNotifications(bool enabled) async {
+    print('\n🔔 [SettingsController] Toggling notifications to: $enabled');
     final updateNotifications = ref.read(updateNotificationsUseCaseProvider);
     try {
       await updateNotifications(enabled);
@@ -64,27 +68,35 @@ class SettingsController extends StateNotifier<AsyncValue<SettingsEntity>> {
           ),
         );
       });
+      print('✅ [SettingsController] Notifications toggled successfully');
     } catch (e) {
+      print('❌ [SettingsController] Failed to toggle notifications: $e');
       // Handle error
     }
   }
 
   Future<void> updateLanguage(String language) async {
+    print('\n🌐 [SettingsController] Updating language to: $language');
     final repository = ref.read(settingsRepositoryProvider);
     try {
       await repository.updateLanguage(language);
       await _loadSettings();
+      print('✅ [SettingsController] Language updated and reloaded');
     } catch (e) {
+      print('❌ [SettingsController] Failed to update language: $e');
       // Handle error
     }
   }
 
   Future<void> shareInvite() async {
+    print('\n🎁 [SettingsController] Sharing invite...');
     final repository = ref.read(settingsRepositoryProvider);
     try {
       await repository.shareInvite();
       await _loadSettings();
+      print('✅ [SettingsController] Invite shared and reloaded');
     } catch (e) {
+      print('❌ [SettingsController] Failed to share invite: $e');
       // Handle error
     }
   }

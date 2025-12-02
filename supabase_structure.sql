@@ -35,8 +35,8 @@ CREATE TABLE public.event_date_votes (
   event_id uuid NOT NULL,
   CONSTRAINT event_date_votes_pkey PRIMARY KEY (option_id, user_id),
   CONSTRAINT edv_option_same_event FOREIGN KEY (option_id) REFERENCES public.event_date_options(id),
-  CONSTRAINT edv_option_same_event FOREIGN KEY (option_id) REFERENCES public.event_date_options(event_id),
   CONSTRAINT edv_option_same_event FOREIGN KEY (event_id) REFERENCES public.event_date_options(id),
+  CONSTRAINT edv_option_same_event FOREIGN KEY (option_id) REFERENCES public.event_date_options(event_id),
   CONSTRAINT edv_option_same_event FOREIGN KEY (event_id) REFERENCES public.event_date_options(event_id),
   CONSTRAINT event_date_votes_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
 );
@@ -243,6 +243,37 @@ CREATE TABLE public.photos (
   CONSTRAINT photos_pkey PRIMARY KEY (photo_id),
   CONSTRAINT photos_event_id_fkey FOREIGN KEY (event_id) REFERENCES public.events(id),
   CONSTRAINT photos_uploaded_by_fkey FOREIGN KEY (uploaded_by) REFERENCES public.users(id)
+);
+CREATE TABLE public.problem_reports (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  category text NOT NULL CHECK (category = ANY (ARRAY['Sign up / Login'::text, 'Create or join event'::text, 'Upload photos & memories'::text, 'Share memories'::text, 'Payments & expenses'::text, 'Notifications'::text, 'Other'::text])),
+  description text NOT NULL CHECK (char_length(description) >= 10 AND char_length(description) <= 500),
+  status USER-DEFINED NOT NULL DEFAULT 'pending'::report_status,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT problem_reports_pkey PRIMARY KEY (id),
+  CONSTRAINT problem_reports_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
+);
+CREATE TABLE public.user_settings (
+  user_id uuid NOT NULL,
+  notifications_enabled boolean NOT NULL DEFAULT true,
+  language text NOT NULL DEFAULT 'en'::text CHECK (language = ANY (ARRAY['en'::text, 'pt'::text])),
+  early_access_invites integer NOT NULL DEFAULT 3,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT user_settings_pkey PRIMARY KEY (user_id),
+  CONSTRAINT user_settings_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
+);
+CREATE TABLE public.user_suggestions (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  description text NOT NULL CHECK (char_length(description) >= 10 AND char_length(description) <= 500),
+  status USER-DEFINED NOT NULL DEFAULT 'pending'::suggestion_status,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT user_suggestions_pkey PRIMARY KEY (id),
+  CONSTRAINT user_suggestions_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
 );
 CREATE TABLE public.users (
   id uuid NOT NULL DEFAULT gen_random_uuid(),

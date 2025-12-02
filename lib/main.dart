@@ -234,8 +234,9 @@ void main() async {
           ),
         ),
 
-        // ✅ SETTINGS repo -> real (Supabase) via DI (Nov 30, 2025)
+        // ✅ SETTINGS repo -> real (Supabase) via DI (P2 Implementation Complete)
         settingsRepositoryProvider.overrideWith((ref) {
+          print('🔧 [DI] Initializing REAL SettingsRepository with Supabase');
           final client = Supabase.instance.client;
           final dataSource = SettingsRemoteDataSource(client);
           return SettingsRepositoryImpl(dataSource);

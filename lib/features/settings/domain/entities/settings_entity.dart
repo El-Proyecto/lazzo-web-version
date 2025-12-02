@@ -21,4 +21,9 @@ class SettingsEntity {
       earlyAccessInvites: earlyAccessInvites ?? this.earlyAccessInvites,
     );
   }
+
+  @override
+  String toString() {
+    return 'SettingsEntity(notificationsEnabled: $notificationsEnabled, language: $language, earlyAccessInvites: $earlyAccessInvites)';
+  }
 }
