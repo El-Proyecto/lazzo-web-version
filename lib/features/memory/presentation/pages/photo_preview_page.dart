@@ -179,18 +179,23 @@ class _PhotoPreviewPageState extends ConsumerState<PhotoPreviewPage> {
               // Uploader info with profile photo
               Row(
                 children: [
-                  // Profile photo
+                  // Profile photo - Show initials for now
+                  // TODO: Fetch real profile photo from ProfileEntity
                   Container(
                     width: 32,
                     height: 32,
-                    decoration: BoxDecoration(
+                    decoration: const BoxDecoration(
                       shape: BoxShape.circle,
                       color: BrandColors.bg3,
-                      image: DecorationImage(
-                        image: NetworkImage(
-                          'https://i.pravatar.cc/150?u=${photo.uploaderId}',
+                    ),
+                    child: Center(
+                      child: Text(
+                        photo.uploaderName.isNotEmpty
+                            ? photo.uploaderName[0].toUpperCase()
+                            : '?',
+                        style: AppText.labelLarge.copyWith(
+                          color: BrandColors.text1,
                         ),
-                        fit: BoxFit.cover,
                       ),
                     ),
                   ),
@@ -338,9 +343,13 @@ class _PhotoPreviewPageState extends ConsumerState<PhotoPreviewPage> {
     }
   }
 
-  void _handlePromoteToCover(BuildContext context, ManagePhotoItem photo) {
-    // Promote to cover
-    ref.read(manageMemoryProvider(widget.memoryId).notifier).selectCover(photo);
+  Future<void> _handlePromoteToCover(BuildContext context, ManagePhotoItem photo) async {
+    print('\n🎯 [PHOTO PREVIEW] Promoting photo ${photo.id.substring(0, 8)}... to cover');
+    
+    // Promote to cover (will persist to Supabase)
+    await ref.read(manageMemoryProvider(widget.memoryId).notifier).selectCover(photo);
+
+    if (!mounted) return;
 
     // Navigate back to Manage Photos
     Navigator.of(context).pop();

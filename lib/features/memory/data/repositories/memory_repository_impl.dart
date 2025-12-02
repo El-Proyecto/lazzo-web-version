@@ -25,26 +25,38 @@ class MemoryRepositoryImpl implements MemoryRepository {
   @override
   Future<MemoryEntity?> getMemoryByEventId(String eventId) async {
     try {
+      print('\n🔍 [MEMORY REPO] Getting memory by eventId: $eventId');
+      
       // Get memory data (event)
       final memoryData = await _memoryDataSource.getMemoryByEventId(eventId);
-      if (memoryData == null) return null;
+      if (memoryData == null) {
+        print('❌ [MEMORY REPO] Memory not found');
+        return null;
+      }
+
+      final coverPhotoId = memoryData['cover_photo_id'] as String?;
+      print('   🎯 Cover photo ID from DB: ${coverPhotoId ?? "null"}');
 
       // Get photos for this memory
       final photosData = await _memoryDataSource.getMemoryPhotos(eventId);
+      print('   📸 Found ${photosData.length} photos');
 
       // Convert photos to entities with signed URLs
       final photos = <MemoryPhoto>[];
       for (final photoData in photosData) {
+        final photoId = photoData['id'] as String;
         final storagePath = photoData['storage_path'] as String;
+        final isCoverPhoto = photoId == coverPhotoId;
+        
+        print('   📷 Photo ${photoId.substring(0, 8)}...: isCover=$isCoverPhoto');
         
         // Generate signed URL (with caching in StorageService)
         final signedUrl = await _storageService.getSignedUrl(storagePath);
 
         final isPortrait = photoData['is_portrait'] as bool? ?? false;
-        final coverPhotoId = memoryData['cover_photo_id'] as String?;
         
         photos.add(MemoryPhoto(
-          id: photoData['id'] as String,
+          id: photoId,
           url: signedUrl,
           thumbnailUrl: null, // TODO: Generate thumbnails
           coverUrl: null,
@@ -54,9 +66,11 @@ class MemoryRepositoryImpl implements MemoryRepository {
           aspectRatio: isPortrait ? 0.75 : 1.33, // Portrait ~3:4, Landscape ~4:3
           uploaderId: photoData['uploader_id'] as String,
           uploaderName: photoData['uploader_id'] as String, // TODO: Join with profiles
-          isCover: photoData['id'] == coverPhotoId,
+          isCover: isCoverPhoto,
         ));
       }
+
+      print('   ✅ Converted ${photos.length} photos, ${photos.where((p) => p.isCover).length} marked as cover');
 
       // Extract location from nested JSON
       final locationsData = memoryData['locations'];
