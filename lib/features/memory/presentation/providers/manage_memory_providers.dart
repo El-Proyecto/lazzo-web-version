@@ -203,8 +203,31 @@ class ManageMemoryNotifier
         ref.read(selectedPhotoPathsProvider.notifier).state = null;
       }
 
-      // No cover selected by default
-      final ManagePhotoItem? currentCover = null;
+      // Find cover photo from memory (cover photos have isCover = true)
+      final coverPhoto = memoryAsync.coverPhotos.isNotEmpty 
+          ? memoryAsync.coverPhotos.first 
+          : null;
+      
+      ManagePhotoItem? currentCover;
+      if (coverPhoto != null) {
+        // Find matching photo in photoItems list
+        currentCover = photoItems.firstWhere(
+          (item) => item.id == coverPhoto.id,
+          orElse: () => ManagePhotoItem(
+            id: coverPhoto.id,
+            url: coverPhoto.url,
+            thumbnailUrl: coverPhoto.thumbnailUrl,
+            isPortrait: coverPhoto.isPortrait,
+            uploaderId: coverPhoto.uploaderId,
+            uploaderName: coverPhoto.uploaderName,
+            isUploadedByCurrentUser: coverPhoto.uploaderId == currentUserId,
+          ),
+        );
+        print('📸 [MANAGE MEMORY] Found cover photo: ${currentCover.id}');
+      } else {
+        currentCover = null;
+        print('ℹ️ [MANAGE MEMORY] No cover photo selected');
+      }
 
       // Calculate max photos: max(20, 5 * N people)
       // TODO: Get actual participant count from event
