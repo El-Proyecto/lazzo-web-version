@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:image/image.dart' as img;
 import '../../domain/entities/memory_entity.dart';
 import '../../data/fakes/fake_memory_repository.dart';
 import '../../data/data_sources/memory_photo_data_source.dart';
@@ -181,13 +182,26 @@ class ManageMemoryNotifier
             
             print('📤 Uploading photo ${i + 1}/${selectedPhotoPaths.length}...');
             
+            // Detect image orientation
+            bool isPortrait = false;
+            try {
+              final bytes = await file.readAsBytes();
+              final image = img.decodeImage(bytes);
+              if (image != null) {
+                isPortrait = image.height > image.width;
+                print('📐 Image dimensions: ${image.width}x${image.height} -> ${isPortrait ? "Portrait" : "Landscape"}');
+              }
+            } catch (e) {
+              print('⚠️ Could not detect orientation: $e');
+            }
+            
             // Upload photo to Supabase
             final uploadResult = await dataSource.uploadPhoto(
               groupId: groupId,
               eventId: eventId,
               userId: currentUserId,
               file: file,
-              isPortrait: false, // TODO: Detect orientation from image
+              isPortrait: isPortrait,
             );
             
             // Generate signed URL for display (storage path was returned)
@@ -202,7 +216,7 @@ class ManageMemoryNotifier
                 id: uploadResult['id'] as String,
                 url: signedUrl, // Use signed URL for display
                 thumbnailUrl: null,
-                isPortrait: false,
+                isPortrait: isPortrait,
                 uploaderId: currentUserId,
                 uploaderName: 'You',
                 isUploadedByCurrentUser: true,

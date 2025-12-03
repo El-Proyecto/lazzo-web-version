@@ -45,7 +45,7 @@ class GroupMemoryRepositoryImpl implements GroupMemoryRepository {
         print('   - Photo count: ${memory.photoCount}');
         
         // If memory has a cover storage path, generate signed URL
-        if (memory.coverImageUrl.isNotEmpty) {
+        if (memory.coverImageUrl.isNotEmpty && memory.coverImageUrl != 'placeholder') {
           try {
             print('   🔐 Generating signed URL for cover...');
             final signedUrl = await _storageService.getSignedUrl(
@@ -64,13 +64,27 @@ class GroupMemoryRepositoryImpl implements GroupMemoryRepository {
             ));
           } catch (e) {
             print('   ⚠️ Failed to generate signed URL for cover: $e');
-            // Add memory without cover if URL generation fails
-            memories.add(memory);
+            // Add memory without cover (null URL)
+            memories.add(GroupMemoryEntity(
+              id: memory.id,
+              title: memory.title,
+              date: memory.date,
+              location: memory.location,
+              coverImageUrl: 'placeholder', // Use placeholder to prevent NetworkImage error
+              photoCount: memory.photoCount,
+            ));
           }
         } else {
-          print('   ℹ️ No cover photo, adding memory as-is');
-          // No cover photo, add memory as-is
-          memories.add(memory);
+          print('   ℹ️ No cover photo (portrait), memory will show placeholder');
+          // No cover photo, ensure we use placeholder instead of empty string
+          memories.add(GroupMemoryEntity(
+            id: memory.id,
+            title: memory.title,
+            date: memory.date,
+            location: memory.location,
+            coverImageUrl: 'placeholder', // Placeholder to prevent NetworkImage error
+            photoCount: memory.photoCount,
+          ));
         }
       }
       

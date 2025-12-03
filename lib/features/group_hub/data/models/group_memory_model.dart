@@ -49,7 +49,7 @@ class GroupMemoryModel {
       title: json['name'] as String? ?? 'Untitled Memory',
       date: date,
       location: locationName,
-      coverImageUrl: coverStoragePath ?? '', // Storage path (repository will generate signed URL)
+      coverImageUrl: coverStoragePath ?? 'placeholder', // Storage path (repository will generate signed URL) or placeholder
       photoCount: photoCount,
     );
   }

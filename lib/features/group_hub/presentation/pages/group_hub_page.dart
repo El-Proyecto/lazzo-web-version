@@ -162,27 +162,44 @@ class _GroupHubPageState extends ConsumerState<GroupHubPage>
       backgroundColor: BrandColors.bg1,
       appBar: _buildAppBar(),
       body: SafeArea(
-        child: GestureDetector(
-          // Detect vertical drag up to snap when not snapped
-          onVerticalDragUpdate: (details) {
-            if (!_isSnapped && details.delta.dy < 0) {
-              // Only snap if drag is primarily vertical (not diagonal)
-              final horizontalMovement = details.delta.dx.abs();
-              final verticalMovement = details.delta.dy.abs();
+        child: RefreshIndicator(
+          onRefresh: _handleRefresh,
+          color: BrandColors.planning,
+          backgroundColor: BrandColors.bg2,
+          child: GestureDetector(
+            // Detect vertical drag up to snap when not snapped
+            onVerticalDragUpdate: (details) {
+              if (!_isSnapped && details.delta.dy < 0) {
+                // Only snap if drag is primarily vertical (not diagonal)
+                final horizontalMovement = details.delta.dx.abs();
+                final verticalMovement = details.delta.dy.abs();
 
-              if (verticalMovement > horizontalMovement * 1.5) {
-                // Trigger snap immediately
-                _setSnapState(true);
+                if (verticalMovement > horizontalMovement * 1.5) {
+                  // Trigger snap immediately
+                  _setSnapState(true);
+                }
               }
-            }
-          },
-          child: NotificationListener<ScrollNotification>(
-            onNotification: _handleScrollNotification,
-            child: _isSnapped ? _buildSnappedView() : _buildNormalView(),
+            },
+            child: NotificationListener<ScrollNotification>(
+              onNotification: _handleScrollNotification,
+              child: _isSnapped ? _buildSnappedView() : _buildNormalView(),
+            ),
           ),
         ),
       ),
     );
+  }
+
+  Future<void> _handleRefresh() async {
+    print('🔄 [GROUP HUB] Pull-to-refresh triggered');
+    
+    // Refresh events
+    await ref.read(groupEventsProvider(widget.groupId).notifier).refresh();
+    
+    // Refresh memories
+    await ref.read(groupMemoriesProvider(widget.groupId).notifier).refresh();
+    
+    print('✅ [GROUP HUB] Refresh completed');
   }
 
   PreferredSizeWidget _buildAppBar() {

@@ -93,12 +93,12 @@ class SupabaseGroupMemoryDataSource implements GroupMemoryDataSource {
         event['photo_count'] = photosResponse.length;
         print('   ✅ Found ${photosResponse.length} photos');
         
-        // Get cover photo or first photo
+        // Get cover photo
         String? coverStoragePath;
         
         if (coverPhotoId != null) {
-          // Try to get the selected cover photo
-          print('   🔍 Fetching selected cover photo...');
+          // Try to get the manually selected cover photo (user choice takes priority)
+          print('   🔍 Fetching manually selected cover photo...');
           try {
             final coverPhoto = await _client
                 .from('group_photos')
@@ -108,7 +108,7 @@ class SupabaseGroupMemoryDataSource implements GroupMemoryDataSource {
             
             if (coverPhoto != null) {
               coverStoragePath = coverPhoto['storage_path'] as String?;
-              print('   ✅ Cover photo found: $coverStoragePath');
+              print('   ✅ Manual cover photo found: $coverStoragePath');
             } else {
               print('   ⚠️ Cover photo ID exists but photo not found in DB');
             }
@@ -117,26 +117,27 @@ class SupabaseGroupMemoryDataSource implements GroupMemoryDataSource {
           }
         }
         
-        // Fallback to first photo if no cover selected or cover not found
+        // Fallback to first PORTRAIT photo if no cover selected or cover not found
         if (coverStoragePath == null) {
-          print('   🔄 No cover selected, falling back to first photo...');
+          print('   🔄 No cover selected, searching for first PORTRAIT photo...');
           try {
-            final firstPhoto = await _client
+            final firstPortraitPhoto = await _client
                 .from('group_photos')
                 .select('storage_path')
                 .eq('event_id', eventId)
+                .eq('is_portrait', true)
                 .order('created_at', ascending: true)
                 .limit(1)
                 .maybeSingle();
             
-            if (firstPhoto != null) {
-              coverStoragePath = firstPhoto['storage_path'] as String?;
-              print('   ✅ Fallback photo found: $coverStoragePath');
+            if (firstPortraitPhoto != null) {
+              coverStoragePath = firstPortraitPhoto['storage_path'] as String?;
+              print('   ✅ First portrait photo found: $coverStoragePath');
             } else {
-              print('   ℹ️ No photos found for this event');
+              print('   ℹ️ No portrait photos found for this event - cover will be empty');
             }
           } catch (e) {
-            print('   ⚠️ No photos found for event: $eventId - $e');
+            print('   ⚠️ Error searching for portrait photos: $eventId - $e');
           }
         }
         
