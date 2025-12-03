@@ -1,4 +1,5 @@
 import '../entities/event.dart';
+import '../entities/event_history.dart';
 
 /// Repository interface for event operations
 /// Pure Dart interface - no Flutter/Supabase dependencies
@@ -23,4 +24,12 @@ abstract class EventRepository {
 
   /// Get current device location
   Future<EventLocation?> getCurrentLocation();
+
+  /// Get user's recent events for template reuse
+  /// Returns events ordered by start_datetime DESC
+  /// Independent of group (shows all user's events)
+  Future<List<EventHistory>> getUserEventHistory({
+    required String userId,
+    int limit = 10,
+  });
 }

@@ -20,16 +20,21 @@ class EventDataSource {
     String status = 'draft',
     required String createdBy,
   }) async {
-    final response = await _client.from('events').insert({
-      'name': name,
-      'emoji': emoji,
-      'group_id': groupId,
-      'start_datetime': startDateTime?.toIso8601String(),
-      'end_datetime': endDateTime?.toIso8601String(),
-      'location_id': locationId,
-      'status': status,
-      'created_by': createdBy,
-    }).select('id, name, emoji, group_id, start_datetime, end_datetime, location_id, status, created_by, created_at').single();
+    final response = await _client
+        .from('events')
+        .insert({
+          'name': name,
+          'emoji': emoji,
+          'group_id': groupId,
+          'start_datetime': startDateTime?.toIso8601String(),
+          'end_datetime': endDateTime?.toIso8601String(),
+          'location_id': locationId,
+          'status': status,
+          'created_by': createdBy,
+        })
+        .select(
+            'id, name, emoji, group_id, start_datetime, end_datetime, location_id, status, created_by, created_at')
+        .single();
 
     return response;
   }
@@ -39,7 +44,8 @@ class EventDataSource {
   Future<Map<String, dynamic>?> getEventById(String id) async {
     final response = await _client
         .from('events')
-        .select('id, name, emoji, group_id, start_datetime, end_datetime, location_id, status, created_by, created_at')
+        .select(
+            'id, name, emoji, group_id, start_datetime, end_datetime, location_id, status, created_by, created_at')
         .eq('id', id)
         .maybeSingle();
 
@@ -77,14 +83,16 @@ class EventDataSource {
           .from('events')
           .update(updateData)
           .eq('id', id)
-          .select('id, name, emoji, group_id, start_datetime, end_datetime, location_id, status, created_by, created_at, updated_at')
+          .select(
+              'id, name, emoji, group_id, start_datetime, end_datetime, location_id, status, created_by, created_at, updated_at')
           .single(); // Use .single() instead of .maybeSingle() to get proper error
 
       return response;
     } on PostgrestException catch (e) {
       // PGRST116 = no rows returned (either doesn't exist or RLS blocked)
       if (e.code == 'PGRST116') {
-        throw Exception('Event not found or you do not have permission to update it. Make sure you are the creator of this event.');
+        throw Exception(
+            'Event not found or you do not have permission to update it. Make sure you are the creator of this event.');
       }
       rethrow;
     }
@@ -104,7 +112,8 @@ class EventDataSource {
   }) async {
     final response = await _client
         .from('events')
-        .select('id, name, emoji, group_id, start_datetime, end_datetime, location_id, status, created_by, created_at')
+        .select(
+            'id, name, emoji, group_id, start_datetime, end_datetime, location_id, status, created_by, created_at')
         .eq('group_id', groupId)
         .order('created_at', ascending: false)
         .limit(limit);
@@ -122,13 +131,17 @@ class EventDataSource {
     required double longitude,
     required String createdBy,
   }) async {
-    final response = await _client.from('locations').insert({
-      'display_name': displayName,
-      'formatted_address': formattedAddress,
-      'latitude': latitude,
-      'longitude': longitude,
-      'created_by': createdBy,
-    }).select('id, display_name, formatted_address, latitude, longitude').single();
+    final response = await _client
+        .from('locations')
+        .insert({
+          'display_name': displayName,
+          'formatted_address': formattedAddress,
+          'latitude': latitude,
+          'longitude': longitude,
+          'created_by': createdBy,
+        })
+        .select('id, display_name, formatted_address, latitude, longitude')
+        .single();
 
     return response;
   }
@@ -155,5 +168,42 @@ class EventDataSource {
         .limit(10);
 
     return List<Map<String, dynamic>>.from(response);
+  }
+
+  /// Get user's recent events for history
+  /// Joins with locations table to get denormalized location data
+  /// Respects RLS - user can only see events they created
+  Future<List<Map<String, dynamic>>> getUserEventHistory({
+    required String userId,
+    int limit = 10,
+  }) async {
+    try {
+      final response = await _client
+          .from('events')
+          .select('''
+            id,
+            name,
+            emoji,
+            start_datetime,
+            location_id,
+            group_id,
+            created_at,
+            locations (
+              display_name,
+              formatted_address,
+              latitude,
+              longitude
+            )
+          ''')
+          .eq('created_by', userId)
+          .inFilter('status', ['confirmed', 'living', 'recap', 'ended'])
+          .not('start_datetime', 'is', null)
+          .order('start_datetime', ascending: false)
+          .limit(limit);
+
+      return List<Map<String, dynamic>>.from(response);
+    } catch (e) {
+      throw Exception('Failed to fetch event history: $e');
+    }
   }
 }

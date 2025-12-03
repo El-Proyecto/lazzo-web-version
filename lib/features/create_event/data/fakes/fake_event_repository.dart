@@ -1,4 +1,5 @@
 import '../../domain/entities/event.dart';
+import '../../domain/entities/event_history.dart';
 import '../../domain/repositories/event_repository.dart';
 import 'package:uuid/uuid.dart';
 
@@ -102,28 +103,28 @@ class FakeEventRepository implements EventRepository {
 
     // Mock location data for development
     return [
-          const EventLocation(
-            id: '1',
-            displayName: 'Starbucks Coffee',
-            formattedAddress: '123 Main St, Downtown',
-            latitude: 40.7128,
-            longitude: -74.0060,
-          ),
-          const EventLocation(
-            id: '2',
-            displayName: 'Central Park',
-            formattedAddress: 'Central Park, New York, NY',
-            latitude: 40.7829,
-            longitude: -73.9654,
-          ),
-          const EventLocation(
-            id: '3',
-            displayName: 'Local Restaurant',
-            formattedAddress: '456 Oak Ave, Midtown',
-            latitude: 40.7589,
-            longitude: -73.9851,
-          ),
-        ]
+      const EventLocation(
+        id: '1',
+        displayName: 'Starbucks Coffee',
+        formattedAddress: '123 Main St, Downtown',
+        latitude: 40.7128,
+        longitude: -74.0060,
+      ),
+      const EventLocation(
+        id: '2',
+        displayName: 'Central Park',
+        formattedAddress: 'Central Park, New York, NY',
+        latitude: 40.7829,
+        longitude: -73.9654,
+      ),
+      const EventLocation(
+        id: '3',
+        displayName: 'Local Restaurant',
+        formattedAddress: '456 Oak Ave, Midtown',
+        latitude: 40.7589,
+        longitude: -73.9851,
+      ),
+    ]
         .where(
           (loc) =>
               loc.displayName.toLowerCase().contains(query.toLowerCase()) ||
@@ -144,5 +145,57 @@ class FakeEventRepository implements EventRepository {
       latitude: 40.7831,
       longitude: -73.9712,
     );
+  }
+
+  @override
+  Future<List<EventHistory>> getUserEventHistory({
+    required String userId,
+    int limit = 10,
+  }) async {
+    // Simulate network delay
+    await Future.delayed(const Duration(milliseconds: 500));
+
+    // Mock realistic Portuguese events for development
+    final mockHistory = [
+      EventHistory(
+        id: 'hist-1',
+        name: 'Baza ao Rio',
+        emoji: '🌊',
+        startDateTime: DateTime.now().subtract(const Duration(days: 15)),
+        locationName: 'Tascardoso Lisboa',
+        locationAddress: 'Rua do Alecrim 47, 1200-014 Lisboa',
+        latitude: 38.7093,
+        longitude: -9.1431,
+        groupId: 'group-1',
+        createdAt: DateTime.now().subtract(const Duration(days: 20)),
+      ),
+      EventHistory(
+        id: 'hist-2',
+        name: 'Futebol',
+        emoji: '⚽',
+        startDateTime: DateTime.now().subtract(const Duration(days: 30)),
+        locationName: 'Campo do Jamor',
+        locationAddress: 'Estádio Nacional, 1495-751 Cruz Quebrada',
+        latitude: 38.7182,
+        longitude: -9.2344,
+        groupId: 'group-2',
+        createdAt: DateTime.now().subtract(const Duration(days: 35)),
+      ),
+      EventHistory(
+        id: 'hist-3',
+        name: 'Cinema Night',
+        emoji: '🎬',
+        startDateTime: DateTime.now().subtract(const Duration(days: 45)),
+        locationName: 'Cinemas NOS Alvalade',
+        locationAddress: 'Praça Alvalade 6, 1700-036 Lisboa',
+        latitude: 38.7575,
+        longitude: -9.1440,
+        groupId: 'group-1',
+        createdAt: DateTime.now().subtract(const Duration(days: 50)),
+      ),
+    ];
+
+    // Respect limit parameter
+    return mockHistory.take(limit).toList();
   }
 }

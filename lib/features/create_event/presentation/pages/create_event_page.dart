@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/constants/text_styles.dart';
 import '../../../../routes/app_router.dart';
@@ -18,6 +19,7 @@ import '../../../../shared/components/common/top_banner.dart';
 import '../../../groups/presentation/providers/groups_provider.dart';
 import '../../../groups/domain/entities/group.dart';
 import '../../../event/presentation/providers/event_providers.dart';
+import '../providers/event_history_provider.dart';
 
 /// Página principal para criação de eventos
 /// Usa todos os widgets tokenizados e reutilizáveis
@@ -570,12 +572,58 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
     );
   }
 
-  void _showEventHistory() {
-    EventHistoryBottomSheet.show(
-      context: context,
-      events: _getMockEventHistory(),
-      onEventSelected: _loadEventFromHistory,
-    );
+  void _showEventHistory() async {
+    final userId = Supabase.instance.client.auth.currentUser?.id;
+    if (userId == null) {
+      // User not authenticated, show empty history
+      EventHistoryBottomSheet.show(
+        context: context,
+        events: const [],
+        onEventSelected: _loadEventFromHistory,
+      );
+      return;
+    }
+
+    // Fetch event history
+    try {
+      final historyList = await ref.read(eventHistoryProvider(userId).future);
+
+      // Convert EventHistory to EventHistoryItem
+      final items = historyList.map((history) {
+        // Extract TimeOfDay from DateTime
+        final timeOfDay = TimeOfDay(
+          hour: history.startDateTime.hour,
+          minute: history.startDateTime.minute,
+        );
+
+        return EventHistoryItem(
+          id: history.id,
+          name: history.name,
+          emoji: history.emoji,
+          lastDate: history.startDateTime,
+          lastTime: timeOfDay,
+          location: history.locationName,
+          groupId: history.groupId,
+        );
+      }).toList();
+
+      if (mounted) {
+        EventHistoryBottomSheet.show(
+          context: context,
+          events: items,
+          onEventSelected: _loadEventFromHistory,
+        );
+      }
+    } catch (e) {
+      // On error, show empty history
+      if (mounted) {
+        EventHistoryBottomSheet.show(
+          context: context,
+          events: const [],
+          onEventSelected: _loadEventFromHistory,
+        );
+      }
+    }
   }
 
   void _showConfirmDialog() {
@@ -814,37 +862,5 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
         },
       );
     }
-  }
-
-  List<EventHistoryItem> _getMockEventHistory() {
-    return [
-      EventHistoryItem(
-        id: '1',
-        name: 'Baza ao Rio',
-        emoji: '🍖',
-        lastDate: DateTime.now().subtract(const Duration(days: 7)),
-        lastTime: const TimeOfDay(hour: 19, minute: 30),
-        location: 'Tascardoso, Lisboa',
-        groupId: 'group1',
-      ),
-      EventHistoryItem(
-        id: '2',
-        name: 'Futebol',
-        emoji: '⚽',
-        lastDate: DateTime.now().subtract(const Duration(days: 14)),
-        lastTime: const TimeOfDay(hour: 18, minute: 0),
-        location: 'Campo do Jamor',
-        groupId: 'group1',
-      ),
-      EventHistoryItem(
-        id: '3',
-        name: 'Cinema Night',
-        emoji: '🎬',
-        lastDate: DateTime.now().subtract(const Duration(days: 21)),
-        lastTime: const TimeOfDay(hour: 21, minute: 0),
-        location: 'Cinemas NOS Amoreiras',
-        groupId: 'group2',
-      ),
-    ];
   }
 }
