@@ -54,7 +54,9 @@ class MemoryDataSource {
   /// Get all photos for a memory (event)
   /// 
   /// Query structure:
-  /// SELECT * FROM group_photos
+  /// SELECT group_photos.*, profiles.name
+  /// FROM group_photos
+  /// LEFT JOIN profiles ON group_photos.uploader_id = profiles.id
   /// WHERE event_id = eventId
   /// ORDER BY created_at ASC
   Future<List<Map<String, dynamic>>> getMemoryPhotos(String eventId) async {
@@ -67,12 +69,22 @@ class MemoryDataSource {
             uploader_id,
             is_portrait,
             captured_at,
-            created_at
+            created_at,
+            profiles:uploader_id (
+              name
+            )
           ''')
           .eq('event_id', eventId)
           .order('created_at', ascending: true);
 
       print('✅ Found ${response.length} photos for memory');
+      print('📋 [MEMORY DATA SOURCE] Sample photo data:');
+      if (response.isNotEmpty) {
+        final sample = response.first;
+        print('   - uploader_id: ${sample['uploader_id']}');
+        print('   - profiles: ${sample['profiles']}');
+      }
+      
       return List<Map<String, dynamic>>.from(response);
     } on PostgrestException catch (e) {
       print('❌ Failed to get memory photos: ${e.message}');

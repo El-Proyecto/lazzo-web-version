@@ -177,37 +177,47 @@ class _PhotoPreviewPageState extends ConsumerState<PhotoPreviewPage> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               // Uploader info with profile photo
-              Row(
-                children: [
-                  // Profile photo - Show initials for now
-                  // TODO: Fetch real profile photo from ProfileEntity
-                  Container(
-                    width: 32,
-                    height: 32,
-                    decoration: const BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: BrandColors.bg3,
-                    ),
-                    child: Center(
-                      child: Text(
-                        photo.uploaderName.isNotEmpty
-                            ? photo.uploaderName[0].toUpperCase()
-                            : '?',
-                        style: AppText.labelLarge.copyWith(
+              Builder(
+                builder: (context) {
+                  print('\n👤 [PHOTO PREVIEW] Uploader info:');
+                  print('   - uploaderId: ${photo.uploaderId}');
+                  print('   - uploaderName: "${photo.uploaderName}"');
+                  print('   - isUploadedByCurrentUser: ${photo.isUploadedByCurrentUser}');
+                  print('   - Display: ${photo.isUploadedByCurrentUser ? "You" : photo.uploaderName}');
+                  
+                  return Row(
+                    children: [
+                      // Profile photo - Show initials for now
+                      // TODO: Fetch real profile photo from ProfileEntity
+                      Container(
+                        width: 32,
+                        height: 32,
+                        decoration: const BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: BrandColors.bg3,
+                        ),
+                        child: Center(
+                          child: Text(
+                            photo.uploaderName.isNotEmpty
+                                ? photo.uploaderName[0].toUpperCase()
+                                : '?',
+                            style: AppText.labelLarge.copyWith(
+                              color: BrandColors.text1,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: Gaps.sm),
+                      // Uploader name
+                      Text(
+                        photo.isUploadedByCurrentUser ? 'You' : photo.uploaderName,
+                        style: AppText.bodyMedium.copyWith(
                           color: BrandColors.text1,
                         ),
                       ),
-                    ),
-                  ),
-                  const SizedBox(width: Gaps.sm),
-                  // Uploader name
-                  Text(
-                    photo.isUploadedByCurrentUser ? 'You' : photo.uploaderName,
-                    style: AppText.bodyMedium.copyWith(
-                      color: BrandColors.text1,
-                    ),
-                  ),
-                ],
+                    ],
+                  );
+                },
               ),
 
               // Delete button (only if can delete)

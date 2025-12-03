@@ -55,6 +55,21 @@ class MemoryRepositoryImpl implements MemoryRepository {
 
         final isPortrait = photoData['is_portrait'] as bool? ?? false;
         
+        // Extract uploader name from profiles join
+        final uploaderId = photoData['uploader_id'] as String;
+        String? uploaderName;
+        final profiles = photoData['profiles'];
+        if (profiles != null) {
+          if (profiles is Map<String, dynamic>) {
+            uploaderName = profiles['name'] as String?;
+          } else if (profiles is List && profiles.isNotEmpty) {
+            final firstProfile = profiles[0] as Map<String, dynamic>;
+            uploaderName = firstProfile['name'] as String?;
+          }
+        }
+        
+        print('   👤 Uploader: id=$uploaderId, name="${uploaderName ?? "Unknown"}"');
+        
         photos.add(MemoryPhoto(
           id: photoId,
           url: signedUrl,
@@ -64,8 +79,8 @@ class MemoryRepositoryImpl implements MemoryRepository {
           capturedAt: DateTime.parse(photoData['captured_at'] as String? ?? 
                                      photoData['created_at'] as String),
           aspectRatio: isPortrait ? 0.75 : 1.33, // Portrait ~3:4, Landscape ~4:3
-          uploaderId: photoData['uploader_id'] as String,
-          uploaderName: photoData['uploader_id'] as String, // TODO: Join with profiles
+          uploaderId: uploaderId,
+          uploaderName: uploaderName ?? 'Unknown', // Actual name from profiles join
           isCover: isCoverPhoto,
         ));
       }

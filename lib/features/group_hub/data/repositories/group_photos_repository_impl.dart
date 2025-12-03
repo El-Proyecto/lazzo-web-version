@@ -12,15 +12,30 @@ class GroupPhotosRepositoryImpl implements GroupPhotosRepository {
   @override
   Future<List<GroupPhotoEntity>> getMemoryPhotos(String memoryId) async {
     try {
+      print('\n📸 [GROUP PHOTOS REPO] Getting photos for memory: $memoryId');
       final photosData = await _dataSource.getEventPhotos(memoryId);
+      
+      print('📸 [GROUP PHOTOS REPO] Received ${photosData.length} photos from data source');
       
       if (photosData.isEmpty) {
         return [];
       }
 
-      return photosData
-          .map((json) => GroupPhotoModel.fromJson(json).toEntity())
+      final entities = photosData
+          .map((json) {
+            print('   - Photo: ${json['id']}');
+            print('     uploader_id: ${json['uploader_id']}');
+            print('     profiles: ${json['profiles']}');
+            
+            final model = GroupPhotoModel.fromJson(json);
+            print('     → uploaderName after parsing: "${model.uploaderName}"');
+            
+            return model.toEntity();
+          })
           .toList();
+      
+      print('✅ [GROUP PHOTOS REPO] Returning ${entities.length} entities');
+      return entities;
     } on Exception catch (e) {
       // Network/auth errors - rethrow
       throw Exception('Failed to load event photos: $e');
