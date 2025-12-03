@@ -167,6 +167,7 @@ class FakeEventRepository implements EventRepository {
         latitude: 38.7093,
         longitude: -9.1431,
         groupId: 'group-1',
+        groupName: 'Os Traquinas',
         createdAt: DateTime.now().subtract(const Duration(days: 20)),
       ),
       EventHistory(
@@ -179,6 +180,7 @@ class FakeEventRepository implements EventRepository {
         latitude: 38.7182,
         longitude: -9.2344,
         groupId: 'group-2',
+        groupName: 'Sporting',
         createdAt: DateTime.now().subtract(const Duration(days: 35)),
       ),
       EventHistory(
@@ -191,6 +193,7 @@ class FakeEventRepository implements EventRepository {
         latitude: 38.7575,
         longitude: -9.1440,
         groupId: 'group-1',
+        groupName: 'Os Traquinas',
         createdAt: DateTime.now().subtract(const Duration(days: 50)),
       ),
     ];

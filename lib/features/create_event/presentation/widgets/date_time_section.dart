@@ -59,6 +59,15 @@ class _DateTimeSectionState extends State<DateTimeSection>
   }
 
   @override
+  void didUpdateWidget(DateTimeSection oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // React to external state changes (e.g., from event history)
+    if (oldWidget.initialState != widget.initialState) {
+      _changeState(widget.initialState);
+    }
+  }
+
+  @override
   void dispose() {
     _tabController.dispose();
     super.dispose();
@@ -122,9 +131,8 @@ class _DateTimeSectionState extends State<DateTimeSection>
             controller: _tabController,
             labels: const ['Decide later', 'Set Now'],
             onTap: (index) {
-              final newState = index == 0
-                  ? DateTimeState.decideLater
-                  : DateTimeState.setNow;
+              final newState =
+                  index == 0 ? DateTimeState.decideLater : DateTimeState.setNow;
               _changeState(newState);
             },
           ),
@@ -171,7 +179,10 @@ class _DateTimeSectionState extends State<DateTimeSection>
     }
 
     // Notify parent of state change for validation
-    widget.onStateChanged?.call(newState);
+    // Use post-frame callback to avoid setState during build
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      widget.onStateChanged?.call(newState);
+    });
   }
 }
 

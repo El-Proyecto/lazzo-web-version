@@ -11,6 +11,7 @@ class EventHistory {
   final double? latitude; // Denormalized for performance
   final double? longitude; // Denormalized for performance
   final String groupId;
+  final String? groupName; // Denormalized for performance
   final DateTime createdAt;
 
   const EventHistory({
@@ -24,11 +25,12 @@ class EventHistory {
     this.latitude,
     this.longitude,
     required this.groupId,
+    this.groupName,
     required this.createdAt,
   });
 
   @override
   String toString() {
-    return 'EventHistory(id: $id, name: $name, emoji: $emoji, startDateTime: $startDateTime, locationName: $locationName, groupId: $groupId)';
+    return 'EventHistory(id: $id, name: $name, emoji: $emoji, startDateTime: $startDateTime, locationName: $locationName, groupId: $groupId, groupName: $groupName)';
   }
 }

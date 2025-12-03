@@ -109,7 +109,7 @@ class _EventHistoryTile extends StatelessWidget {
 
             const SizedBox(width: Gaps.sm),
 
-            // Nome e data
+            // Nome e informação
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -121,15 +121,14 @@ class _EventHistoryTile extends StatelessWidget {
                       fontWeight: FontWeight.w500,
                     ),
                   ),
-                  if (event.lastTime != null || event.location != null) ...[
-                    const SizedBox(height: 2),
-                    Text(
-                      _formatTimeAndLocation(event.lastTime, event.location),
-                      style: AppText.bodyMedium.copyWith(
-                        color: BrandColors.text2,
-                      ),
+                  const SizedBox(height: 2),
+                  Text(
+                    _formatEventInfo(event.lastDate, event.lastTime,
+                        event.location, event.groupName),
+                    style: AppText.bodyMedium.copyWith(
+                      color: BrandColors.text2,
                     ),
-                  ],
+                  ),
                 ],
               ),
             ),
@@ -143,20 +142,30 @@ class _EventHistoryTile extends StatelessWidget {
     );
   }
 
-  String _formatTimeAndLocation(TimeOfDay? time, String? location) {
+  String _formatEventInfo(
+      DateTime? date, TimeOfDay? time, String? location, String? groupName) {
     final parts = <String>[];
 
-    if (time != null) {
+    // Add weekday and time (e.g., "Fri, 22:00")
+    if (date != null && time != null) {
+      final weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+      final weekday = weekdays[date.weekday - 1];
       final hour = time.hour.toString().padLeft(2, '0');
       final minute = time.minute.toString().padLeft(2, '0');
-      parts.add('$hour:$minute');
+      parts.add('$weekday, $hour:$minute');
     }
 
+    // Add location if present
     if (location != null && location.isNotEmpty) {
       parts.add(location);
     }
 
-    return parts.join(' • ');
+    // Add group name if present
+    if (groupName != null && groupName.isNotEmpty) {
+      parts.add(groupName);
+    }
+
+    return parts.isNotEmpty ? parts.join(' • ') : '';
   }
 }
 
@@ -169,6 +178,7 @@ class EventHistoryItem {
   final TimeOfDay? lastTime;
   final String? location;
   final String? groupId;
+  final String? groupName;
 
   const EventHistoryItem({
     required this.id,
@@ -178,5 +188,6 @@ class EventHistoryItem {
     this.lastTime,
     this.location,
     this.groupId,
+    this.groupName,
   });
 }

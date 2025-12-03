@@ -65,6 +65,21 @@ class _LocationSectionState extends State<LocationSection>
   }
 
   @override
+  void didUpdateWidget(LocationSection oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // React to external state changes (e.g., from event history)
+    if (oldWidget.initialState != widget.initialState) {
+      _changeState(widget.initialState);
+    }
+    // Update controllers when location changes
+    if (oldWidget.selectedLocation != widget.selectedLocation &&
+        widget.selectedLocation != null) {
+      _locationNameController.text = widget.selectedLocation!.displayName ?? '';
+      _addressSearchController.text = widget.selectedLocation!.formattedAddress;
+    }
+  }
+
+  @override
   void dispose() {
     _searchDebounceTimer?.cancel();
     _tabController.dispose();
@@ -464,11 +479,14 @@ class _LocationSectionState extends State<LocationSection>
     // Update TabController to match the state
     _tabController.animateTo(newState == LocationState.decideLater ? 0 : 1);
 
-    if (newState == LocationState.decideLater) {
-      widget.onLocationChanged?.call(null);
-    }
-    // Notify parent of state change for validation
-    widget.onStateChanged?.call(newState);
+    // Use post-frame callback to avoid setState during build
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (newState == LocationState.decideLater) {
+        widget.onLocationChanged?.call(null);
+      }
+      // Notify parent of state change for validation
+      widget.onStateChanged?.call(newState);
+    });
   }
 
   void _updateLocationName(String name) {

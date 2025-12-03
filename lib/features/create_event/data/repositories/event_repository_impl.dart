@@ -409,9 +409,12 @@ class EventRepositoryImpl implements EventRepository {
         userId: userId,
         limit: limit,
       );
-      return response
-          .map((json) => EventHistoryModel.fromJson(json).toEntity())
-          .toList();
+
+      final entities = response.map((json) {
+        return EventHistoryModel.fromJson(json).toEntity();
+      }).toList();
+
+      return entities;
     } catch (e) {
       throw Exception('Repository: Failed to get user event history - $e');
     }

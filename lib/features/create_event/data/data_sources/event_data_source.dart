@@ -178,6 +178,7 @@ class EventDataSource {
     int limit = 10,
   }) async {
     try {
+      // Use explicit foreign key to avoid ambiguity: events.group_id → groups.id
       final response = await _client
           .from('events')
           .select('''
@@ -188,11 +189,15 @@ class EventDataSource {
             location_id,
             group_id,
             created_at,
+            status,
             locations (
               display_name,
               formatted_address,
               latitude,
               longitude
+            ),
+            groups!events_group_id_fkey (
+              name
             )
           ''')
           .eq('created_by', userId)

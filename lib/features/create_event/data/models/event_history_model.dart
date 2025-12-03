@@ -13,6 +13,7 @@ class EventHistoryModel {
   final double? latitude;
   final double? longitude;
   final String groupId;
+  final String? groupName;
   final DateTime createdAt;
 
   const EventHistoryModel({
@@ -26,6 +27,7 @@ class EventHistoryModel {
     this.latitude,
     this.longitude,
     required this.groupId,
+    this.groupName,
     required this.createdAt,
   });
 
@@ -46,6 +48,7 @@ class EventHistoryModel {
       latitude: locationData?['latitude'] as double?,
       longitude: locationData?['longitude'] as double?,
       groupId: json['group_id'] as String,
+      groupName: (json['groups'] as Map<String, dynamic>?)?['name'] as String?,
       createdAt: DateTime.parse(json['created_at'] as String),
     );
   }
@@ -63,6 +66,7 @@ class EventHistoryModel {
       latitude: latitude,
       longitude: longitude,
       groupId: groupId,
+      groupName: groupName,
       createdAt: createdAt,
     );
   }
@@ -80,6 +84,7 @@ class EventHistoryModel {
       latitude: entity.latitude,
       longitude: entity.longitude,
       groupId: entity.groupId,
+      groupName: entity.groupName,
       createdAt: entity.createdAt,
     );
   }

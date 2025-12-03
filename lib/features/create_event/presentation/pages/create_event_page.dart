@@ -574,6 +574,7 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
 
   void _showEventHistory() async {
     final userId = Supabase.instance.client.auth.currentUser?.id;
+
     if (userId == null) {
       // User not authenticated, show empty history
       EventHistoryBottomSheet.show(
@@ -604,6 +605,7 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
           lastTime: timeOfDay,
           location: history.locationName,
           groupId: history.groupId,
+          groupName: history.groupName,
         );
       }).toList();
 
@@ -741,13 +743,13 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
     );
   }
 
-  void _loadEventFromHistory(EventHistoryItem event) {
+  void _loadEventFromHistory(EventHistoryItem event) async {
     setState(() {
       _eventName = event.name;
       _eventEmoji = event.emoji;
 
-      // Carregar data: mesmo dia da semana ou dia seguinte
-      if (event.lastDate != null) {
+      // Carregar data e hora: mesmo dia da semana, próxima ocorrência
+      if (event.lastDate != null && event.lastTime != null) {
         final now = DateTime.now();
         final lastWeekday = event.lastDate!.weekday;
         var nextDate = now;
@@ -759,23 +761,19 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
 
         // Se for hoje e já passou a hora, usar próxima semana
         if (nextDate.day == now.day &&
-            event.lastTime != null &&
             TimeOfDay.now().hour >= event.lastTime!.hour) {
           nextDate = nextDate.add(const Duration(days: 7));
         }
 
         _selectedDate = nextDate;
-        _dateTimeState = DateTimeState.setNow;
-      }
-
-      // Manter a mesma hora
-      if (event.lastTime != null) {
         _selectedTime = event.lastTime;
+        _endDate = nextDate; // End date igual ao start date
+        _endTime = event.lastTime; // End time igual ao start time
         _dateTimeState = DateTimeState.setNow;
       }
 
       // Carregar localização se existir
-      if (event.location != null) {
+      if (event.location != null && event.location!.isNotEmpty) {
         _selectedLocation = LocationInfo(
           id: 'history',
           displayName: event.location!,
@@ -786,10 +784,50 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
         _locationState = LocationState.setNow;
       }
     });
+
+    // Tentar pré-selecionar o grupo se existir
+    if (event.groupId != null) {
+      try {
+        final groupsAsync = ref.read(groupsProvider);
+        await groupsAsync.when(
+          data: (groups) async {
+            // Find matching group by ID
+            final matchingGroup =
+                groups.where((g) => g.id == event.groupId).firstOrNull;
+            if (matchingGroup != null) {
+              // Load group image URL
+              final imageUrl = await ref.read(
+                groupCoverUrlProvider(
+                        (matchingGroup.photoPath, matchingGroup.photoUpdatedAt))
+                    .future,
+              );
+
+              if (mounted) {
+                setState(() {
+                  _selectedGroup = GroupInfo(
+                    id: matchingGroup.id,
+                    name: matchingGroup.name,
+                    imageUrl: imageUrl,
+                    memberCount: matchingGroup.memberCount,
+                  );
+                  // Clear group error if validation is showing
+                  if (_showValidationErrors) {
+                    _groupError = null;
+                  }
+                });
+              }
+            }
+          },
+          loading: () {},
+          error: (_, __) {},
+        );
+      } catch (e) {
+        // Silently fail if group not found - user can select manually
+      }
+    }
   }
 
   void _createNewGroup() async {
-    print('🎯 [CreateEvent] Navigating to create group page');
     // Save current draft before navigating
     await _saveDraft();
     // Check mounted before using context after await
@@ -807,7 +845,6 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
       final groupName = result['groupName'] as String?;
       final memberCount = result['memberCount'] as int?;
       if (groupId != null && groupName != null) {
-        print('✅ [CreateEvent] Group created: $groupId');
         setState(() {
           _selectedGroup = GroupInfo(
             id: groupId,
