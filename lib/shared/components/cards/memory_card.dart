@@ -34,18 +34,26 @@ class MemoryCard extends StatelessWidget {
               width: double.infinity,
               height: double.infinity,
               decoration: ShapeDecoration(
-                image: coverImageUrl != null
+                image: coverImageUrl != null && 
+                       coverImageUrl!.isNotEmpty && 
+                       coverImageUrl != 'placeholder'
                     ? DecorationImage(
                         image: NetworkImage(coverImageUrl!),
                         fit: BoxFit.cover,
                       )
                     : null,
-                color: coverImageUrl == null ? BrandColors.bg3 : null,
+                color: coverImageUrl == null || 
+                       coverImageUrl!.isEmpty || 
+                       coverImageUrl == 'placeholder' 
+                    ? BrandColors.bg3 
+                    : null,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(Radii.md),
                 ),
               ),
-              child: coverImageUrl == null
+              child: coverImageUrl == null || 
+                     coverImageUrl!.isEmpty || 
+                     coverImageUrl == 'placeholder'
                   ? const Icon(
                       Icons.image_outlined,
                       size: 48,

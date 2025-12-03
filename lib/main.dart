@@ -5,10 +5,17 @@ import 'env.dart';
 
 import 'package:app/app.dart';
 
-// MEMORY
+// MEMORY (Home recent memories - different from manage_memory)
 import '../features/home/data/data_sources/memory_remote_data_source.dart';
 import '../features/home/data/repositories/memory_repository_impl.dart';
 import '../features/home/presentation/providers/memory_providers.dart';
+
+// MEMORY MANAGEMENT (upload & manage photos)
+import '../features/memory/presentation/providers/memory_providers.dart' as memory_manage;
+import '../features/memory/data/data_sources/memory_data_source.dart' as memory_ds;
+import '../features/memory/data/data_sources/memory_photo_data_source.dart';
+import '../features/memory/data/repositories/memory_repository_impl.dart' as memory_repo;
+import '../services/storage_service.dart';
 
 // HOME EVENTS
 import 'features/home/data/data_sources/home_event_remote_data_source.dart';
@@ -174,10 +181,12 @@ void main() async {
         }),
 
         // ✅ GROUP MEMORIES repo -> real (Supabase) via DI (Nov 25, 2025)
+        // Updated Nov 27: Added StorageService for signed URL generation
         group_hub.groupMemoryRepositoryProvider.overrideWith((ref) {
           final client = Supabase.instance.client;
           final dataSource = SupabaseGroupMemoryDataSource(client);
-          return GroupMemoryRepositoryImpl(dataSource);
+          final storageService = StorageService(client);
+          return GroupMemoryRepositoryImpl(dataSource, storageService);
         }),
 
         // ✅ GROUP PHOTOS repo -> real (Supabase) via DI (Nov 25, 2025)
@@ -185,6 +194,19 @@ void main() async {
           final client = Supabase.instance.client;
           final dataSource = GroupPhotosDataSource(client);
           return GroupPhotosRepositoryImpl(dataSource);
+        }),
+
+        // ✅ MEMORY MANAGEMENT repo -> real (Supabase) via DI (Nov 27, 2025)
+        memory_manage.memoryRepositoryProvider.overrideWith((ref) {
+          final client = Supabase.instance.client;
+          final memoryDataSource = memory_ds.MemoryDataSource(client);
+          final photoDataSource = MemoryPhotoDataSource(client);
+          final storageService = StorageService(client);
+          return memory_repo.MemoryRepositoryImpl(
+            memoryDataSource,
+            photoDataSource,
+            storageService,
+          );
         }),
 
         // Profile repo -> real (Supabase)

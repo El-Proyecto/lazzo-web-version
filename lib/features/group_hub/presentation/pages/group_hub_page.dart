@@ -9,6 +9,8 @@ import '../../../../shared/components/cards/memory_card.dart';
 import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/constants/text_styles.dart';
 import '../../../../shared/themes/colors.dart';
+import '../../../../routes/app_router.dart';
+import '../../../../services/event_status_service.dart';
 import '../providers/group_hub_providers.dart';
 import '../../domain/entities/group_memory_entity.dart';
 import '../../../event/domain/entities/rsvp.dart';
@@ -54,6 +56,46 @@ class _GroupHubPageState extends ConsumerState<GroupHubPage>
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
     _initializeScrollControllers();
+    
+    // Update event statuses before loading data
+    _updateEventStatuses();
+  }
+  
+  /// Update event statuses on page load
+  /// This ensures events transition correctly between states
+  Future<void> _updateEventStatuses() async {
+    try {
+      print('\n🔄 [GROUP HUB] Updating event statuses...');
+      final statusService = EventStatusService(Supabase.instance.client);
+      
+      // Get events that need updating (for logging)
+      final needsUpdate = await statusService.getEventsNeedingUpdate();
+      final confirmedToLiving = needsUpdate['confirmed_to_living']!;
+      final livingToRecap = needsUpdate['living_to_recap']!;
+      
+      if (confirmedToLiving.isNotEmpty || livingToRecap.isNotEmpty) {
+        print('📊 [GROUP HUB] Events needing status update:');
+        print('   - Confirmed → Living: ${confirmedToLiving.length}');
+        print('   - Living → Recap: ${livingToRecap.length}');
+        
+        // Update all event statuses
+        final updatedCount = await statusService.updateEventStatuses();
+        
+        if (updatedCount > 0) {
+          print('✅ [GROUP HUB] Updated $updatedCount events');
+          
+          // Refresh providers to show updated data
+          if (mounted) {
+            ref.invalidate(groupEventsProvider(widget.groupId));
+            ref.invalidate(groupMemoriesProvider(widget.groupId));
+          }
+        }
+      } else {
+        print('ℹ️ [GROUP HUB] All events have correct status');
+      }
+    } catch (e) {
+      print('❌ [GROUP HUB] Error updating event statuses: $e');
+    }
   }
 
   void _initializeScrollControllers() {
@@ -120,27 +162,44 @@ class _GroupHubPageState extends ConsumerState<GroupHubPage>
       backgroundColor: BrandColors.bg1,
       appBar: _buildAppBar(),
       body: SafeArea(
-        child: GestureDetector(
-          // Detect vertical drag up to snap when not snapped
-          onVerticalDragUpdate: (details) {
-            if (!_isSnapped && details.delta.dy < 0) {
-              // Only snap if drag is primarily vertical (not diagonal)
-              final horizontalMovement = details.delta.dx.abs();
-              final verticalMovement = details.delta.dy.abs();
+        child: RefreshIndicator(
+          onRefresh: _handleRefresh,
+          color: BrandColors.planning,
+          backgroundColor: BrandColors.bg2,
+          child: GestureDetector(
+            // Detect vertical drag up to snap when not snapped
+            onVerticalDragUpdate: (details) {
+              if (!_isSnapped && details.delta.dy < 0) {
+                // Only snap if drag is primarily vertical (not diagonal)
+                final horizontalMovement = details.delta.dx.abs();
+                final verticalMovement = details.delta.dy.abs();
 
-              if (verticalMovement > horizontalMovement * 1.5) {
-                // Trigger snap immediately
-                _setSnapState(true);
+                if (verticalMovement > horizontalMovement * 1.5) {
+                  // Trigger snap immediately
+                  _setSnapState(true);
+                }
               }
-            }
-          },
-          child: NotificationListener<ScrollNotification>(
-            onNotification: _handleScrollNotification,
-            child: _isSnapped ? _buildSnappedView() : _buildNormalView(),
+            },
+            child: NotificationListener<ScrollNotification>(
+              onNotification: _handleScrollNotification,
+              child: _isSnapped ? _buildSnappedView() : _buildNormalView(),
+            ),
           ),
         ),
       ),
     );
+  }
+
+  Future<void> _handleRefresh() async {
+    print('🔄 [GROUP HUB] Pull-to-refresh triggered');
+    
+    // Refresh events
+    await ref.read(groupEventsProvider(widget.groupId).notifier).refresh();
+    
+    // Refresh memories
+    await ref.read(groupMemoriesProvider(widget.groupId).notifier).refresh();
+    
+    print('✅ [GROUP HUB] Refresh completed');
   }
 
   PreferredSizeWidget _buildAppBar() {
@@ -288,6 +347,15 @@ class _GroupHubPageState extends ConsumerState<GroupHubPage>
                           coverImageUrl: memories[i].coverImageUrl,
                           date: memories[i].date,
                           location: memories[i].location,
+                          onTap: () {
+                            Navigator.pushNamed(
+                              context,
+                              AppRouter.memory,
+                              arguments: {
+                                'memoryId': memories[i].id,
+                              },
+                            );
+                          },
                         ),
                       ),
                     ),
@@ -305,6 +373,15 @@ class _GroupHubPageState extends ConsumerState<GroupHubPage>
                             coverImageUrl: memories[i + 1].coverImageUrl,
                             date: memories[i + 1].date,
                             location: memories[i + 1].location,
+                            onTap: () {
+                              Navigator.pushNamed(
+                                context,
+                                AppRouter.memory,
+                                arguments: {
+                                  'memoryId': memories[i + 1].id,
+                                },
+                              );
+                            },
                           ),
                         ),
                       )
@@ -626,31 +703,58 @@ class _GroupHubPageState extends ConsumerState<GroupHubPage>
   }
 
   Widget _buildMemoriesSection() {
+    print('\n🎨 [PAGE] Building memories section for groupId: ${widget.groupId}');
     final memoriesAsync = ref.watch(groupMemoriesProvider(widget.groupId));
+    print('📊 [PAGE] Provider state: ${memoriesAsync.runtimeType}');
 
     return memoriesAsync.when(
-      loading: () => const Center(
-        child: CircularProgressIndicator(color: BrandColors.planning),
-      ),
-      error: (error, stackTrace) => Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(
-              Icons.error_outline,
-              size: 48,
-              color: BrandColors.text2,
-            ),
-            const SizedBox(height: Gaps.md),
-            Text(
-              'Error loading memories',
-              style: AppText.bodyMedium.copyWith(color: BrandColors.text2),
-            ),
-          ],
-        ),
-      ),
+      loading: () {
+        print('⏳ [PAGE] Memories are loading...');
+        return const Center(
+          child: CircularProgressIndicator(color: BrandColors.planning),
+        );
+      },
+      error: (error, stackTrace) {
+        print('❌ [PAGE] Error in memories section: $error');
+        print('   Stack: $stackTrace');
+        return Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(
+                Icons.error_outline,
+                size: 48,
+                color: BrandColors.text2,
+              ),
+              const SizedBox(height: Gaps.md),
+              Text(
+                'Error loading memories',
+                style: AppText.bodyMedium.copyWith(color: BrandColors.text2),
+              ),
+              const SizedBox(height: Gaps.sm),
+              Text(
+                error.toString(),
+                style: AppText.bodyMedium.copyWith(
+                  color: BrandColors.text2,
+                  fontSize: 12,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        );
+      },
       data: (memories) {
+        print('✅ [PAGE] Memories data received: ${memories.length} items');
+        if (memories.isNotEmpty) {
+          print('📝 [PAGE] First memory:');
+          print('   - ID: ${memories.first.id}');
+          print('   - Title: ${memories.first.title}');
+          print('   - Cover: ${memories.first.coverImageUrl}');
+        }
+        
         if (memories.isEmpty) {
+          print('ℹ️ [PAGE] No memories to display (empty list)');
           return _buildEmptyState(
             icon: Icons.photo_library_outlined,
             title: 'No memories yet',
@@ -658,6 +762,7 @@ class _GroupHubPageState extends ConsumerState<GroupHubPage>
           );
         }
 
+        print('🎨 [PAGE] Rendering ${memories.length} memories in grid');
         return SingleChildScrollView(
           controller: _memoriesScrollController,
           physics: _isSnapped

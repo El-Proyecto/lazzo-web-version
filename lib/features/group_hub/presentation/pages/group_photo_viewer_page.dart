@@ -50,6 +50,14 @@ class _GroupPhotoViewerPageState extends State<GroupPhotoViewerPage> {
         itemCount: widget.photos.length,
         itemBuilder: (context, index) {
           final photo = widget.photos[index];
+          
+          // Debug print for uploader info
+          print('\n👤 [GROUP PHOTO VIEWER] Photo uploader info:');
+          print('   - photoId: ${photo.id}');
+          print('   - uploaderId: ${photo.uploaderId}');
+          print('   - uploaderName: "${photo.uploaderName}"');
+          print('   - Display: ${photo.uploaderName ?? "Unknown"}');
+          
           return Center(
             child: InteractiveViewer(
               minScale: 0.5,

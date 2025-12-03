@@ -205,20 +205,36 @@ class GroupMemoriesController
 
   GroupMemoriesController(this._getGroupMemories, this._groupId)
       : super(const AsyncValue.loading()) {
+    print('\n🎬 [MEMORIES CONTROLLER] Initializing for groupId: $_groupId');
     loadMemories();
   }
 
   Future<void> loadMemories() async {
+    print('\n📡 [MEMORIES CONTROLLER] Starting loadMemories for groupId: $_groupId');
     state = const AsyncValue.loading();
+    print('⏳ [MEMORIES CONTROLLER] State set to loading');
     try {
+      print('🔍 [MEMORIES CONTROLLER] Calling use case...');
       final memories = await _getGroupMemories(_groupId);
+      print('✅ [MEMORIES CONTROLLER] Use case returned ${memories.length} memories');
+      if (memories.isNotEmpty) {
+        print('📝 [MEMORIES CONTROLLER] First memory:');
+        print('   - ID: ${memories.first.id}');
+        print('   - Title: ${memories.first.title}');
+        print('   - Cover URL: ${memories.first.coverImageUrl}');
+        print('   - Photo count: ${memories.first.photoCount}');
+      }
       state = AsyncValue.data(memories);
+      print('✅ [MEMORIES CONTROLLER] State updated with data');
     } catch (error, stackTrace) {
+      print('❌ [MEMORIES CONTROLLER] ERROR: $error');
+      print('   Stack trace: $stackTrace');
       state = AsyncValue.error(error, stackTrace);
     }
   }
 
   Future<void> refresh() async {
+    print('🔄 [MEMORIES CONTROLLER] Refresh requested');
     await loadMemories();
   }
 }

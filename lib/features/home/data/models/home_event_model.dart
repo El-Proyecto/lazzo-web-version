@@ -41,10 +41,11 @@ class _HomeEventModel {
     required this.noResponseUsers,
   });
 
-  factory _HomeEventModel.fromMap(Map<String, dynamic> map) {
+  factory _HomeEventModel.fromMap(Map<String, dynamic> map, {Function(String, String)? onStatusMismatch}) {
     final startDate = _parseDateTime(map['start_datetime']);
     final endDate = _parseDateTime(map['end_datetime']);
     final backendStatus = _asString(map['event_status']) ?? 'pending';
+    final eventId = _asString(map['event_id']) ?? '';
 
     print(
         '📊 Event: ${map['event_name']} | DB status: $backendStatus | Start: $startDate');
@@ -56,6 +57,12 @@ class _HomeEventModel {
         _calculateStatusFromDates(startDate, endDate, backendStatus);
 
     print('   → Calculated status: $calculatedStatus');
+    
+    // ✅ Se status calculado difere do DB, notifica para atualizar
+    if (calculatedStatus != backendStatus && onStatusMismatch != null) {
+      print('   ⚠️ Status mismatch detected! Updating DB: $backendStatus → $calculatedStatus');
+      onStatusMismatch(eventId, calculatedStatus);
+    }
 
     return _HomeEventModel(
       id: _asString(map['event_id']) ?? '',
@@ -249,6 +256,6 @@ class _HomeEventModel {
 }
 
 /// Public function to convert Map to HomeEventEntity
-HomeEventEntity homeEventFromMap(Map<String, dynamic> map) {
-  return _HomeEventModel.fromMap(map).toEntity();
+HomeEventEntity homeEventFromMap(Map<String, dynamic> map, {Function(String, String)? onStatusMismatch}) {
+  return _HomeEventModel.fromMap(map, onStatusMismatch: onStatusMismatch).toEntity();
 }

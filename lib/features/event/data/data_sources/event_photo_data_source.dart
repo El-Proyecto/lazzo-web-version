@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:image/image.dart' as img;
 
 /// Data source for event photo operations using Supabase
 /// Handles photo uploads to memory_groups storage bucket
@@ -128,12 +129,27 @@ class EventPhotoDataSource {
   }
 
   /// Check if image is portrait orientation
+  /// Returns true if height > width (portrait), false if width >= height (landscape/square)
   Future<bool> _isPortrait(File imageFile) async {
     try {
-      // Basic heuristic: if filename contains 'portrait' or check actual dimensions
-      // For now, return false as default (can be enhanced with image package)
-      return false;
+      // Read image file bytes
+      final bytes = await imageFile.readAsBytes();
+      
+      // Decode image to get dimensions
+      final image = img.decodeImage(bytes);
+      
+      if (image == null) {
+        print('⚠️ Could not decode image, defaulting to landscape');
+        return false;
+      }
+      
+      // Portrait if height > width
+      final isPortrait = image.height > image.width;
+      print('📐 Image dimensions: ${image.width}x${image.height} -> ${isPortrait ? "Portrait" : "Landscape"}');
+      
+      return isPortrait;
     } catch (e) {
+      print('⚠️ Error checking image orientation: $e, defaulting to landscape');
       return false;
     }
   }
