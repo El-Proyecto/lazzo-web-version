@@ -7,6 +7,35 @@ class EventDataSource {
 
   EventDataSource(this._client);
 
+
+  String _calculateEventStatus(DateTime? startDateTime, DateTime? endDateTime, String currentStatus) {
+    // If dates are not set, keep current status (draft/pending)
+    if (startDateTime == null || endDateTime == null) {
+      return currentStatus;
+    }
+    
+    final now = DateTime.now().toUtc();
+    final startUtc = startDateTime.toUtc();
+    final endUtc = endDateTime.toUtc();
+    
+    // Event has ended → recap
+    if (now.isAfter(endUtc)) {
+      return 'recap';
+    }
+    
+    // Event is happening now → living
+    if (now.isAfter(startUtc) && now.isBefore(endUtc)) {
+      return 'living';
+    }
+    
+    // Event hasn't started yet → confirmed (or keep pending/draft)
+    if (currentStatus == 'draft' || currentStatus == 'pending') {
+      return currentStatus;
+    }
+    
+    return 'confirmed';
+  }
+
   /// Create a new event in Supabase
   /// Respects RLS - user can only create events in groups they belong to
   Future<Map<String, dynamic>> createEvent({
@@ -20,21 +49,25 @@ class EventDataSource {
     String status = 'draft',
     required String createdBy,
   }) async {
-    final response = await _client
-        .from('events')
-        .insert({
-          'name': name,
-          'emoji': emoji,
-          'group_id': groupId,
-          'start_datetime': startDateTime?.toIso8601String(),
-          'end_datetime': endDateTime?.toIso8601String(),
-          'location_id': locationId,
-          'status': status,
-          'created_by': createdBy,
-        })
-        .select(
-            'id, name, emoji, group_id, start_datetime, end_datetime, location_id, status, created_by, created_at')
-        .single();
+    // Calculate correct status based on time if event is being confirmed
+    String finalStatus = status;
+    if (status == 'confirmed' || status == 'living' || status == 'recap') {
+      finalStatus = _calculateEventStatus(startDateTime, endDateTime, status);
+      if (finalStatus != status) {
+        print('🔄 [EVENT DATA SOURCE] Status auto-corrected on create: $status → $finalStatus');
+      }
+    }
+    
+    final response = await _client.from('events').insert({
+      'name': name,
+      'emoji': emoji,
+      'group_id': groupId,
+      'start_datetime': startDateTime?.toIso8601String(),
+      'end_datetime': endDateTime?.toIso8601String(),
+      'location_id': locationId,
+      'status': finalStatus,
+      'created_by': createdBy,
+    }).select('id, name, emoji, group_id, start_datetime, end_datetime, location_id, status, created_by, created_at').single();
 
     return response;
   }
@@ -66,6 +99,15 @@ class EventDataSource {
     required String? locationId,
     required String status,
   }) async {
+    // Calculate correct status based on time if event is confirmed/living/recap
+    String finalStatus = status;
+    if (status == 'confirmed' || status == 'living' || status == 'recap') {
+      finalStatus = _calculateEventStatus(startDateTime, endDateTime, status);
+      if (finalStatus != status) {
+        print('🔄 [EVENT DATA SOURCE] Status auto-corrected: $status → $finalStatus');
+      }
+    }
+    
     // Build update data - include ALL fields to allow clearing nullable ones
     final updateData = <String, dynamic>{
       'name': name,
@@ -74,7 +116,7 @@ class EventDataSource {
       'start_datetime': startDateTime?.toIso8601String(),
       'end_datetime': endDateTime?.toIso8601String(),
       'location_id': locationId,
-      'status': status,
+      'status': finalStatus,
       'updated_at': DateTime.now().toIso8601String(),
     };
 

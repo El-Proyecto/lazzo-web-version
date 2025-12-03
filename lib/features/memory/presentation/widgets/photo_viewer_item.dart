@@ -140,29 +140,40 @@ class _PhotoViewerItemState extends State<PhotoViewerItem> {
                       Positioned(
                         top: Insets.screenH,
                         left: Insets.screenH,
-                        child: Row(
-                          children: [
-                            CircleAvatar(
-                              radius: 16,
-                              backgroundColor: BrandColors.bg3,
-                              child: Text(
-                                widget.photo.uploaderName[0].toUpperCase(),
-                                style: AppText.bodyMedium.copyWith(
-                                  color: BrandColors.text1,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w600,
+                        child: Builder(
+                          builder: (context) {
+                            print('\n👤 [PHOTO VIEWER] Uploader overlay:');
+                            print('   - uploaderId: ${widget.photo.uploaderId}');
+                            print('   - uploaderName: "${widget.photo.uploaderName}"');
+                            print('   - Display initial: ${widget.photo.uploaderName.isNotEmpty ? widget.photo.uploaderName[0].toUpperCase() : "?"}');
+                            
+                            return Row(
+                              children: [
+                                CircleAvatar(
+                                  radius: 16,
+                                  backgroundColor: BrandColors.bg3,
+                                  child: Text(
+                                    widget.photo.uploaderName.isNotEmpty
+                                        ? widget.photo.uploaderName[0].toUpperCase()
+                                        : '?',
+                                    style: AppText.bodyMedium.copyWith(
+                                      color: BrandColors.text1,
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
                                 ),
-                              ),
-                            ),
-                            const SizedBox(width: Gaps.xs),
-                            Text(
-                              widget.photo.uploaderName,
-                              style: AppText.bodyMedium.copyWith(
-                                color: BrandColors.text1,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ],
+                                const SizedBox(width: Gaps.xs),
+                                Text(
+                                  widget.photo.uploaderName,
+                                  style: AppText.bodyMedium.copyWith(
+                                    color: BrandColors.text1,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            );
+                          },
                         ),
                       ),
 
