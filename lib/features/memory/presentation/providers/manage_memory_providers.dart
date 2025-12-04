@@ -54,6 +54,7 @@ class ManagePhotoItem {
   final bool isPortrait;
   final String uploaderId;
   final String uploaderName;
+  final String? profileImageUrl;
   final bool isUploadedByCurrentUser;
 
   const ManagePhotoItem({
@@ -63,6 +64,7 @@ class ManagePhotoItem {
     required this.isPortrait,
     required this.uploaderId,
     required this.uploaderName,
+    this.profileImageUrl,
     required this.isUploadedByCurrentUser,
   });
 }
@@ -143,6 +145,7 @@ class ManageMemoryNotifier
               isPortrait: p.isPortrait,
               uploaderId: p.uploaderId,
               uploaderName: p.uploaderName,
+              profileImageUrl: p.profileImageUrl,
               isUploadedByCurrentUser: isCurrentUser,
             );
           })
@@ -152,6 +155,28 @@ class ManageMemoryNotifier
       final selectedPhotoPaths = ref.read(selectedPhotoPathsProvider);
       if (selectedPhotoPaths != null && selectedPhotoPaths.isNotEmpty) {
         print('📸 Found ${selectedPhotoPaths.length} photos to upload');
+        
+        // Get current user's profile photo
+        String? currentUserProfileUrl;
+        try {
+          final userResponse = await Supabase.instance.client
+              .from('users')
+              .select('avatar_url')
+              .eq('id', currentUserId)
+              .maybeSingle();
+          
+          if (userResponse != null && userResponse['avatar_url'] != null) {
+            final avatarPath = userResponse['avatar_url'] as String;
+            final storageService = StorageService(Supabase.instance.client);
+            currentUserProfileUrl = await storageService.getSignedUrl(
+              avatarPath,
+              bucket: 'users-profile-pic',
+            );
+            print('   👤 Current user profile URL fetched: ${currentUserProfileUrl.substring(0, 60)}...');
+          }
+        } catch (e) {
+          print('   ⚠️ Failed to fetch current user profile photo: $e');
+        }
         
         // Get real eventId from next event
         final nextEvent = await ref.read(nextEventControllerProvider.future);
@@ -219,6 +244,7 @@ class ManageMemoryNotifier
                 isPortrait: isPortrait,
                 uploaderId: currentUserId,
                 uploaderName: 'You',
+                profileImageUrl: currentUserProfileUrl,
                 isUploadedByCurrentUser: true,
               ),
             );
@@ -261,21 +287,16 @@ class ManageMemoryNotifier
               isPortrait: coverPhoto.isPortrait,
               uploaderId: coverPhoto.uploaderId,
               uploaderName: coverPhoto.uploaderName,
+              profileImageUrl: coverPhoto.profileImageUrl,
               isUploadedByCurrentUser: coverPhoto.uploaderId == currentUserId,
             );
           },
         );
         print('   ✅ Cover photo set in state: ${currentCover.id.substring(0, 8)}...');
       } else {
-        // No cover defined - use first photo as default but don't persist yet
-        if (photoItems.isNotEmpty) {
-          currentCover = photoItems.first;
-          print('   ℹ️ No cover in DB, using first photo as default: ${currentCover.id.substring(0, 8)}...');
-          print('   💡 User can tap to select a different cover or confirm this one');
-        } else {
-          currentCover = null;
-          print('   ℹ️ No cover photo selected (no photos available)');
-        }
+        // No cover defined - keep it null until user explicitly selects one
+        currentCover = null;
+        print('   ℹ️ No cover photo selected - user must choose one');
       }
 
       // Calculate max photos: max(20, 5 * N people)

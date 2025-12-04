@@ -72,11 +72,13 @@ class _GroupHubPageState extends ConsumerState<GroupHubPage>
       final needsUpdate = await statusService.getEventsNeedingUpdate();
       final confirmedToLiving = needsUpdate['confirmed_to_living']!;
       final livingToRecap = needsUpdate['living_to_recap']!;
+      final recapToEnded = needsUpdate['recap_to_ended']!;
       
-      if (confirmedToLiving.isNotEmpty || livingToRecap.isNotEmpty) {
+      if (confirmedToLiving.isNotEmpty || livingToRecap.isNotEmpty || recapToEnded.isNotEmpty) {
         print('📊 [GROUP HUB] Events needing status update:');
         print('   - Confirmed → Living: ${confirmedToLiving.length}');
         print('   - Living → Recap: ${livingToRecap.length}');
+        print('   - Recap → Ended: ${recapToEnded.length}');
         
         // Update all event statuses
         final updatedCount = await statusService.updateEventStatuses();
