@@ -48,7 +48,7 @@ class SupabaseGroupMemoryDataSource implements GroupMemoryDataSource {
     try {
       // Query events with cover photo JOIN
       print('\n📡 [MEMORIES DATA SOURCE] Querying events table...');
-      print('   🔎 Filter: group_id = $groupId, status = recap');
+      print('   🔎 Filter: group_id = $groupId (all statuses - will filter by photos later)');
       final eventsResponse = await _client
           .from('events')
           .select('''
@@ -61,7 +61,6 @@ class SupabaseGroupMemoryDataSource implements GroupMemoryDataSource {
             locations!location_id(display_name)
           ''')
           .eq('group_id', groupId)
-          .eq('status', 'recap')
           .order('start_datetime', ascending: false)
           .limit(50);
 
@@ -134,7 +133,26 @@ class SupabaseGroupMemoryDataSource implements GroupMemoryDataSource {
               coverStoragePath = firstPortraitPhoto['storage_path'] as String?;
               print('   ✅ First portrait photo found: $coverStoragePath');
             } else {
-              print('   ℹ️ No portrait photos found for this event - cover will be empty');
+              print('   ℹ️ No portrait photos found, searching for ANY first photo...');
+              // Final fallback: if no portrait photos, get any first photo
+              try {
+                final firstAnyPhoto = await _client
+                    .from('group_photos')
+                    .select('storage_path')
+                    .eq('event_id', eventId)
+                    .order('created_at', ascending: true)
+                    .limit(1)
+                    .maybeSingle();
+                
+                if (firstAnyPhoto != null) {
+                  coverStoragePath = firstAnyPhoto['storage_path'] as String?;
+                  print('   ✅ First photo (any orientation) found: $coverStoragePath');
+                } else {
+                  print('   ℹ️ No photos found for this event - cover will be empty');
+                }
+              } catch (e) {
+                print('   ⚠️ Error searching for any photo: $eventId - $e');
+              }
             }
           } catch (e) {
             print('   ⚠️ Error searching for portrait photos: $eventId - $e');
@@ -145,8 +163,16 @@ class SupabaseGroupMemoryDataSource implements GroupMemoryDataSource {
         print('   📦 Final cover_storage_path: ${coverStoragePath ?? "null"}');
       }
 
+      // Filter out memories with no photos
+      final memoriesWithPhotos = events.where((event) {
+        final photoCount = event['photo_count'] as int? ?? 0;
+        return photoCount > 0;
+      }).toList();
+      
       print('\n✅ [MEMORIES DATA SOURCE] Successfully processed ${events.length} memories for group $groupId');
-      return events;
+      print('   📸 Memories with photos: ${memoriesWithPhotos.length}/${events.length}');
+      
+      return memoriesWithPhotos;
     } catch (e, stackTrace) {
       print('❌ [MEMORIES DATA SOURCE] Error fetching group memories: $e');
       print('   Stack trace: $stackTrace');
