@@ -2,7 +2,6 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../domain/entities/payment_entity.dart';
 import '../../domain/repositories/payment_repository.dart';
 import '../data_source/payments_remote_data_source.dart';
-import '../models/payment_debt_model.dart';
 
 /// Real implementation of PaymentRepository using Supabase
 class PaymentRepositoryImpl implements PaymentRepository {

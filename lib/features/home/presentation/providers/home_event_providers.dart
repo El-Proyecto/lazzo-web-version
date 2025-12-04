@@ -1,24 +1,23 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../domain/entities/home_event.dart';
 import '../../domain/entities/todo_entity.dart';
 import '../../domain/entities/payment_summary_entity.dart';
 import '../../domain/entities/recent_memory_entity.dart';
 import '../../domain/repositories/home_event_repository.dart';
 import '../../domain/repositories/todo_repository.dart';
-import '../../domain/repositories/payment_summary_repository.dart';
 import '../../domain/repositories/recent_memory_repository.dart';
 import '../../domain/usecases/get_next_event.dart';
 import '../../domain/usecases/get_confirmed_events.dart';
 import '../../domain/usecases/get_home_pending_events.dart';
 import '../../domain/usecases/get_todos.dart';
-import '../../domain/usecases/get_payment_summaries.dart';
-import '../../domain/usecases/get_total_balance.dart';
 import '../../domain/usecases/get_recent_memories.dart';
 import '../../data/fakes/fake_home_event_repository.dart';
 import '../../data/fakes/fake_todo_repository.dart';
-import '../../data/fakes/fake_payment_summary_repository.dart';
 import '../../data/fakes/fake_recent_memory_repository.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
+import '../../../inbox/domain/entities/payment_group.dart';
+import '../../../inbox/presentation/providers/payments_provider.dart';
 
 // Repository providers - default to fake implementations
 final homeEventRepositoryProvider = Provider<HomeEventRepository>((ref) {
@@ -27,11 +26,6 @@ final homeEventRepositoryProvider = Provider<HomeEventRepository>((ref) {
 
 final todoRepositoryProvider = Provider<TodoRepository>((ref) {
   return FakeTodoRepository();
-});
-
-final paymentSummaryRepositoryProvider =
-    Provider<PaymentSummaryRepository>((ref) {
-  return FakePaymentSummaryRepository();
 });
 
 final recentMemoryRepositoryProvider = Provider<RecentMemoryRepository>((ref) {
@@ -59,14 +53,6 @@ final getHomePendingEventsProvider = Provider<GetHomePendingEvents>((ref) {
 
 final getTodosProvider = Provider<GetTodos>((ref) {
   return GetTodos(ref.watch(todoRepositoryProvider));
-});
-
-final getPaymentSummariesProvider = Provider<GetPaymentSummaries>((ref) {
-  return GetPaymentSummaries(ref.watch(paymentSummaryRepositoryProvider));
-});
-
-final getTotalBalanceProvider = Provider<GetTotalBalance>((ref) {
-  return GetTotalBalance(ref.watch(paymentSummaryRepositoryProvider));
 });
 
 final getRecentMemoriesProvider = Provider<GetRecentMemories>((ref) {
@@ -119,16 +105,67 @@ final todosControllerProvider =
   return await useCase();
 });
 
+/// Payment summaries for home page - reuses inbox payment data
+/// Converts PaymentGroup to PaymentSummaryEntity for display
 final paymentSummariesControllerProvider =
     FutureProvider.autoDispose<List<PaymentSummaryEntity>>((ref) async {
-  final useCase = ref.watch(getPaymentSummariesProvider);
-  return await useCase();
+  final currentUserId = Supabase.instance.client.auth.currentUser?.id;
+  if (currentUserId == null) {
+    throw Exception('User not authenticated');
+  }
+
+  // Get payments from both directions (reuses inbox providers)
+  final owedToUserAsync = ref.watch(paymentsOwedToUserProvider);
+  final userOwesAsync = ref.watch(paymentsUserOwesProvider);
+
+  final owedToUser = owedToUserAsync.asData?.value ?? [];
+  final userOwes = userOwesAsync.asData?.value ?? [];
+
+  final allPayments = [...owedToUser, ...userOwes];
+
+  // Helper to get user name from payment based on current user
+  String getUserName(String userId) {
+    final payment = allPayments.firstWhere(
+      (p) => p.fromUserId == userId || p.toUserId == userId,
+      orElse: () => allPayments.first,
+    );
+    return userId == payment.fromUserId
+        ? payment.fromUserName ?? 'Unknown'
+        : payment.toUserName ?? 'Unknown';
+  }
+
+  // Group in both directions
+  final owedGroups =
+      PaymentGroup.groupByUser(allPayments, true, currentUserId, getUserName);
+  final owingGroups =
+      PaymentGroup.groupByUser(allPayments, false, currentUserId, getUserName);
+
+  // Combine and convert to PaymentSummaryEntity
+  final allGroups = [...owedGroups, ...owingGroups];
+  final summaries = allGroups.map((group) {
+    // Amount is positive if owed to user, negative if user owes
+    final amount = group.isOwedToUser ? group.totalAmount : -group.totalAmount;
+    return PaymentSummaryEntity(
+      userId: group.userId,
+      userName: group.userName,
+      userPhotoUrl: null,
+      amount: amount,
+      expenseCount: group.payments.length,
+      currency: 'EUR',
+    );
+  }).toList();
+
+  // Sort by absolute amount (impact)
+  summaries.sort((a, b) => b.absoluteAmount.compareTo(a.absoluteAmount));
+
+  return summaries;
 });
 
+/// Total balance for home page - sum of all payment summaries
 final totalBalanceControllerProvider =
     FutureProvider.autoDispose<double>((ref) async {
-  final useCase = ref.watch(getTotalBalanceProvider);
-  return await useCase();
+  final summaries = await ref.watch(paymentSummariesControllerProvider.future);
+  return summaries.fold<double>(0.0, (sum, s) => sum + s.amount);
 });
 
 final recentMemoriesControllerProvider =

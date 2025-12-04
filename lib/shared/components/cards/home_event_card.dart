@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../features/home/domain/entities/home_event.dart';
 import '../../../features/event/presentation/providers/event_participants_provider.dart';
 import '../../../features/expense/presentation/providers/event_expense_providers.dart';
+import '../../../features/inbox/presentation/providers/payments_provider.dart';
 import '../../constants/spacing.dart';
 import '../../constants/text_styles.dart';
 import '../../themes/colors.dart';
@@ -631,6 +632,10 @@ class _HomeEventCardState extends ConsumerState<HomeEventCard> {
                             );
                             print('🎯 [HomeEventCard] Provider call completed');
 
+                            // ✅ Invalidate payments to refresh home page
+                            ref.invalidate(paymentsOwedToUserProvider);
+                            ref.invalidate(paymentsUserOwesProvider);
+
                             // Show success message
                             if (mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
@@ -690,14 +695,27 @@ class _HomeEventCardState extends ConsumerState<HomeEventCard> {
                     return;
                   }
 
-                  // Convert to ExpenseParticipantOption
+                  // Get current user ID
+                  final currentUserId =
+                      Supabase.instance.client.auth.currentUser?.id;
+
+                  // Convert participants - replace current user name with "You"
                   final participantOptions = participants
                       .map((p) => ExpenseParticipantOption(
                             id: p.userId,
-                            name: p.displayName,
+                            name: p.userId == currentUserId
+                                ? 'You'
+                                : p.displayName,
                             avatarUrl: p.avatarUrl,
                           ))
                       .toList();
+
+                  // Sort: "You" first, then alphabetically by name
+                  participantOptions.sort((a, b) {
+                    if (a.name == 'You') return -1;
+                    if (b.name == 'You') return 1;
+                    return a.name.compareTo(b.name);
+                  });
 
                   // Capture event ID before async callback
                   final eventId = _currentEvent.id;

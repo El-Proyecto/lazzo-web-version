@@ -52,26 +52,16 @@ class PaymentsRemoteDataSource {
   /// Returns combined list of debts where user is either debtor or creditor
   Future<List<PaymentDebtDto>> getAllUserDebts(String userId) async {
     try {
-      print('🔍 [PaymentsRemoteDataSource] Fetching debts for userId: $userId');
-
       final response = await _supabase
           .from('user_payment_debts_view')
           .select()
           .or('debtor_user_id.eq.$userId,paid_by_user_id.eq.$userId')
           .order('created_at', ascending: false);
 
-      print(
-          '✅ [PaymentsRemoteDataSource] Got ${(response as List).length} debts from view');
-
-      final dtos = (response as List)
+      return (response as List)
           .map((json) => PaymentDebtDto.fromJson(json as Map<String, dynamic>))
           .toList();
-
-      print('✅ [PaymentsRemoteDataSource] Converted to ${dtos.length} DTOs');
-      return dtos;
-    } catch (e, stackTrace) {
-      print('❌ [PaymentsRemoteDataSource] Error fetching debts: $e');
-      print('Stack trace: $stackTrace');
+    } catch (e) {
       throw Exception('Failed to fetch all user debts: $e');
     }
   }
@@ -101,14 +91,21 @@ class PaymentsRemoteDataSource {
 
   /// Mark a debt as paid by updating expense_splits.has_paid
   ///
-  /// Note: This updates the underlying table, not the view
+  /// Requires proper RLS policies on expense_splits table that allow:
+  /// 1. Debtor (user_id) to update their own splits
+  /// 2. Creditor (created_by in event_expenses) to update splits owed to them
   Future<void> markDebtAsPaid(String expenseId, String userId) async {
     try {
-      await _supabase
+      final result = await _supabase
           .from('expense_splits')
           .update({'has_paid': true})
           .eq('expense_id', expenseId)
-          .eq('user_id', userId);
+          .eq('user_id', userId)
+          .select();
+
+      if ((result as List).isEmpty) {
+        throw Exception('Failed to update expense_split - no rows affected');
+      }
     } catch (e) {
       throw Exception('Failed to mark debt as paid: $e');
     }

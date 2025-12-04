@@ -33,6 +33,7 @@ import '../providers/event_participants_provider.dart';
 
 import '../../../../shared/components/dialogs/add_expense_bottom_sheet.dart';
 import '../../../expense/presentation/providers/event_expense_providers.dart';
+import '../../../inbox/presentation/providers/payments_provider.dart';
 
 /// Event detail page
 /// Displays all event information and interactions
@@ -181,6 +182,16 @@ class _EventPageState extends ConsumerState<EventPage> {
       ref.invalidate(locationSuggestionVotesProvider(eventId));
       ref.invalidate(userLocationSuggestionVotesProvider(eventId));
       ref.invalidate(eventParticipantsProvider(eventId));
+
+      // Invalidate expenses for this event
+      ref.invalidate(eventExpensesProvider(eventId));
+
+      // Invalidate base payment providers (affects all events)
+      final currentUserId = Supabase.instance.client.auth.currentUser?.id;
+      if (currentUserId != null) {
+        ref.invalidate(paymentsOwedToUserProvider);
+        ref.invalidate(paymentsUserOwesProvider);
+      }
     }
 
     return Scaffold(

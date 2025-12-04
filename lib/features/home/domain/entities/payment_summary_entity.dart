@@ -29,6 +29,6 @@ class PaymentSummaryEntity {
   /// Formatted amount with sign
   String get formattedAmount {
     final sign = amount >= 0 ? '+' : '';
-    return '$sign€${amount.abs().toStringAsFixed(0)}';
+    return '$sign€${amount.abs().toStringAsFixed(2)}';
   }
 }

@@ -29,26 +29,30 @@ final markPaymentAsPaidUseCaseProvider = Provider<MarkPaymentAsPaid>((ref) {
   return MarkPaymentAsPaid(ref.watch(paymentRepositoryProvider));
 });
 
+// Selected payment user ID provider (for navigation from home to inbox)
+final selectedPaymentUserIdProvider = StateProvider<String?>((ref) => null);
+
 // State providers
 final paymentsOwedToUserProvider = StateNotifierProvider<
-    PaymentsOwedToUserController, AsyncValue<List<PaymentEntity>>>((ref) {
-  return PaymentsOwedToUserController(
+    PaymentsOwedToUserControllerProvider,
+    AsyncValue<List<PaymentEntity>>>((ref) {
+  return PaymentsOwedToUserControllerProvider(
     ref.watch(getPaymentsOwedToUserUseCaseProvider),
   );
 });
 
 final paymentsUserOwesProvider = StateNotifierProvider<
-    PaymentsUserOwesController, AsyncValue<List<PaymentEntity>>>((ref) {
-  return PaymentsUserOwesController(
+    PaymentsUserOwesControllerProvider, AsyncValue<List<PaymentEntity>>>((ref) {
+  return PaymentsUserOwesControllerProvider(
     ref.watch(getPaymentsUserOwesUseCaseProvider),
   );
 });
 
-class PaymentsOwedToUserController
+class PaymentsOwedToUserControllerProvider
     extends StateNotifier<AsyncValue<List<PaymentEntity>>> {
   final GetPaymentsOwedToUser _getPaymentsOwedToUser;
 
-  PaymentsOwedToUserController(this._getPaymentsOwedToUser)
+  PaymentsOwedToUserControllerProvider(this._getPaymentsOwedToUser)
       : super(const AsyncValue.loading()) {
     loadPayments();
   }
@@ -77,11 +81,11 @@ class PaymentsOwedToUserController
   }
 }
 
-class PaymentsUserOwesController
+class PaymentsUserOwesControllerProvider
     extends StateNotifier<AsyncValue<List<PaymentEntity>>> {
   final GetPaymentsUserOwes _getPaymentsUserOwes;
 
-  PaymentsUserOwesController(this._getPaymentsUserOwes)
+  PaymentsUserOwesControllerProvider(this._getPaymentsUserOwes)
       : super(const AsyncValue.loading()) {
     loadPayments();
   }

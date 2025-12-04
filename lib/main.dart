@@ -128,6 +128,9 @@ void main() async {
           ),
         ),
 
+        // Note: HOME PAYMENT SUMMARIES reuses inbox payment data directly
+        // No separate repository needed - see paymentSummariesControllerProvider
+
         // ✅ INBOX PAYMENTS repo -> real (Supabase) via DI
         paymentRepositoryProvider.overrideWith(
           (ref) {
