@@ -285,7 +285,7 @@ class ManageMemoryNotifier
 
       print('\n✅ [MANAGE MEMORY] State created successfully:');
       print('   📸 Total photos: ${photoItems.length}');
-      print('   🎯 Cover photo: ${currentCover != null ? currentCover.id.substring(0, 8) + "..." : "null"}');
+      print('   🎯 Cover photo: ${currentCover != null ? "${currentCover.id.substring(0, 8)}..." : "null"}');
       print('   👤 Is host: $isHost');
       print('   📊 Max photos: $maxPhotos\n');
 

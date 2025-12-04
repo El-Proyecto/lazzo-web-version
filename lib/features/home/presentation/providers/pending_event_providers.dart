@@ -201,7 +201,6 @@ class VoteStateNotifier extends StateNotifier<VoteState> {
       final success = await voteOnEvent(eventId, currentUserId, isYes);
 
       if (success) {
-        print('✅ Vote success - updating UI state');
 
         state = state.copyWith(
           status: VoteStatus.voted,

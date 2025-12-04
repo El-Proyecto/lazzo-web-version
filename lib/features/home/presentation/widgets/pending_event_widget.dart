@@ -28,9 +28,6 @@ class PendingEventWidget extends ConsumerWidget {
     final authState = ref.watch(authProvider);
     final currentUser = authState.valueOrNull;
 
-    print(
-        '🔍 Event ${event.eventId}: userVote=${event.userVote}, state=${voteState.status}');
-
     final effectiveStatus = _getEffectiveStatus(
       voteState.status,
       event.userVote,

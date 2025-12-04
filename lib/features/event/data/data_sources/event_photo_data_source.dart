@@ -32,8 +32,6 @@ class EventPhotoDataSource {
       final extension = imageFile.path.split('.').last.toLowerCase();
       final storagePath = '$groupId/$eventId/$userId/$timestamp.$extension';
 
-      print('📤 Uploading photo to: $storagePath');
-
       // 2. Upload to Supabase Storage
       final uploadPath = await _client.storage
           .from('memory_groups')
@@ -46,14 +44,10 @@ class EventPhotoDataSource {
             ),
           );
 
-      print('✅ Photo uploaded to storage: $uploadPath');
-
       // 3. Get public URL (will require signed URL for private bucket)
       final publicUrl = _client.storage
           .from('memory_groups')
           .getPublicUrl(storagePath);
-
-      print('🔗 Public URL: $publicUrl');
 
       // 4. Create database record in group_photos table
       final photoData = {
@@ -71,8 +65,6 @@ class EventPhotoDataSource {
           .select('id, url, storage_path, captured_at, uploader_id, is_portrait')
           .single();
 
-      print('✅ Database record created: ${response['id']}');
-
       return response;
     } catch (e, stackTrace) {
       print('❌ Error uploading photo: $e');
@@ -89,11 +81,8 @@ class EventPhotoDataSource {
     try {
       // 1. Delete from storage
       await _client.storage.from('memory_groups').remove([storagePath]);
-      print('✅ Deleted from storage: $storagePath');
-
       // 2. Delete from database
       await _client.from('group_photos').delete().eq('id', photoId);
-      print('✅ Deleted from database: $photoId');
     } catch (e) {
       print('❌ Error deleting photo: $e');
       throw Exception('Failed to delete photo: $e');

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -109,17 +110,21 @@ class _EventChatPageState extends ConsumerState<EventChatPage> {
   void _toggleNotifications() {
     setState(() {
       _notificationsMuted = !_notificationsMuted;
-      _showBanner = true;
+      // Do not use the AppBar banner anymore; show TopBanner instead
+      _showBanner = false;
     });
+
     HapticFeedback.lightImpact();
 
-    Future.delayed(const Duration(seconds: 3), () {
-      if (mounted) {
-        setState(() {
-          _showBanner = false;
-        });
-      }
-    });
+    // Show TopBanner to notify user about mute/unmute action
+    if (mounted) {
+      TopBanner.showInfo(
+        context,
+        message: _notificationsMuted
+            ? 'Chat message notifications muted'
+            : 'Chat message notifications enabled',
+      );
+    }
   }
 
   void _sendMessage() {
@@ -183,7 +188,6 @@ class _EventChatPageState extends ConsumerState<EventChatPage> {
   }
 
   void _togglePin(ChatMessage message) {
-    Navigator.pop(context);
     FocusScope.of(context).unfocus();
 
     ref.read(chatActionsProvider(widget.eventId)).togglePin(
@@ -194,11 +198,6 @@ class _EventChatPageState extends ConsumerState<EventChatPage> {
   }
 
   void _replyToMessage(ChatMessage message) {
-    // Close bottom sheet if open
-    if (Navigator.canPop(context)) {
-      Navigator.pop(context);
-    }
-
     setState(() {
       _replyingTo = message;
     });
@@ -212,7 +211,6 @@ class _EventChatPageState extends ConsumerState<EventChatPage> {
   }
 
   void _deleteMessage(ChatMessage message) {
-    Navigator.pop(context);
     FocusScope.of(context).unfocus();
 
     ref.read(chatActionsProvider(widget.eventId)).deleteMessage(message.id);
@@ -311,129 +309,107 @@ class _EventChatPageState extends ConsumerState<EventChatPage> {
     // Use firstWhereOrNull from collection package for nullable result
     final pinnedMessage = messagesAsync.maybeWhen(
       data: (messages) {
-        print('🔍 DEBUG: Total messages: ${messages.length}');
         final pinned = messages.where((m) => m.isPinned).toList();
-        print('🔍 DEBUG: Pinned messages: ${pinned.length}');
-        if (pinned.isNotEmpty) {
-          print(
-              '✅ DEBUG: Found pinned message: ${pinned.first.id} - ${pinned.first.content}');
-        }
         return pinned.isNotEmpty ? pinned.first : null;
       },
-      orElse: () {
-        print('⚠️ DEBUG: messagesAsync not in data state');
-        return null;
-      },
+      orElse: () => null,
     );
 
-    print('🎯 DEBUG: pinnedMessage = ${pinnedMessage?.id ?? "null"}');
-
-    return GestureDetector(
-      onTap: () {
-        FocusScope.of(context).unfocus();
-      },
-      child: Scaffold(
-        backgroundColor: BrandColors.bg1,
-        appBar: eventAsync.when(
-          data: (event) => _ChatAppBar(
-            title: event.name,
-            subtitle: _formatSubtitle(
-                event.startDateTime, event.location?.displayName),
-            onBackPressed: () => Navigator.of(context).pop(),
-            notificationsMuted: _notificationsMuted,
-            showBanner: _showBanner,
-            onToggleNotifications: _toggleNotifications,
-            pinnedMessage: pinnedMessage,
-            onPinnedMessageTap: pinnedMessage != null
-                ? () => _scrollToMessage(pinnedMessage)
-                : null,
-          ),
-          loading: () => _ChatAppBar(
-            title: '',
-            onBackPressed: () => Navigator.of(context).pop(),
-            notificationsMuted: _notificationsMuted,
-            showBanner: false,
-            onToggleNotifications: () {},
-          ),
-          error: (_, __) => _ChatAppBar(
-            title: 'Chat',
-            onBackPressed: () => Navigator.of(context).pop(),
-            notificationsMuted: _notificationsMuted,
-            showBanner: false,
-            onToggleNotifications: () {},
-          ),
+    return Scaffold(
+      backgroundColor: BrandColors.bg1,
+      appBar: eventAsync.when(
+        data: (event) => _ChatAppBar(
+          title: event.name,
+          subtitle:
+              _formatSubtitle(event.startDateTime, event.location?.displayName),
+          onBackPressed: () {
+            Navigator.of(context).pop();
+          },
+          notificationsMuted: _notificationsMuted,
+          showBanner: _showBanner,
+          onToggleNotifications: _toggleNotifications,
+          pinnedMessage: pinnedMessage,
+          onPinnedMessageTap: pinnedMessage != null
+              ? () => _scrollToMessage(pinnedMessage)
+              : null,
         ),
-        body: Column(
-          children: [
-            // Messages list
-            Expanded(
-              child: messagesAsync.when(
-                data: (messages) {
-                  print('\n═══════════════════════════════════════');
-                  print('💬 [EventChatPage] CHAT PAGE - New data received!');
-                  print('   - Event ID: ${widget.eventId}');
-                  print('   - Total messages: ${messages.length}');
-                  if (messages.isNotEmpty) {
-                    print(
-                        '   - First: "${messages.first.content.substring(0, messages.first.content.length > 30 ? 30 : messages.first.content.length)}..."');
-                    print(
-                        '   - Last: "${messages.last.content.substring(0, messages.last.content.length > 30 ? 30 : messages.last.content.length)}..."');
-                  }
-                  print('═══════════════════════════════════════\n');
-
-                  if (messages.isEmpty) {
-                    return Center(
-                      child: Text(
-                        'No messages yet.\nBe the first to start the conversation!',
-                        style: AppText.bodyMedium.copyWith(
-                          color: BrandColors.text2,
-                        ),
-                        textAlign: TextAlign.center,
+        loading: () => _ChatAppBar(
+          title: '',
+          onBackPressed: () {
+            Navigator.of(context).pop();
+          },
+          notificationsMuted: _notificationsMuted,
+          showBanner: false,
+          onToggleNotifications: () {},
+        ),
+        error: (_, __) => _ChatAppBar(
+          title: 'Chat',
+          onBackPressed: () {
+            Navigator.of(context).pop();
+          },
+          notificationsMuted: _notificationsMuted,
+          showBanner: false,
+          onToggleNotifications: () {},
+        ),
+      ),
+      body: Column(
+        children: [
+          // Messages list
+          Expanded(
+            child: messagesAsync.when(
+              data: (messages) {
+                if (messages.isEmpty) {
+                  return Center(
+                    child: Text(
+                      'No messages yet.\nBe the first to start the conversation!',
+                      style: AppText.bodyMedium.copyWith(
+                        color: BrandColors.text2,
                       ),
-                    );
-                  }
-
-                  // Build list with date separators and unread indicator
-                  return _MessagesList(
-                    messages: messages,
-                    scrollController: _scrollController,
-                    onMessageLongPress: _onMessageLongPress,
-                    onMessageTap: _scrollToMessage,
-                    onSwipeReply: _replyToMessage,
-                    messageKeys: _messageKeys,
-                    currentUserId: _currentUserId,
-                    eventStateColor: _eventStateColor,
-                  );
-                },
-                loading: () => const Center(
-                  child: CircularProgressIndicator(),
-                ),
-                error: (error, _) => Center(
-                  child: Text(
-                    'Error loading messages',
-                    style: AppText.bodyMedium.copyWith(
-                      color: BrandColors.text2,
+                      textAlign: TextAlign.center,
                     ),
+                  );
+                }
+
+                // Build list with date separators and unread indicator
+                return _MessagesList(
+                  messages: messages,
+                  scrollController: _scrollController,
+                  onMessageLongPress: _onMessageLongPress,
+                  onMessageTap: _scrollToMessage,
+                  onSwipeReply: _replyToMessage,
+                  messageKeys: _messageKeys,
+                  currentUserId: _currentUserId,
+                  eventStateColor: _eventStateColor,
+                );
+              },
+              loading: () => const Center(
+                child: CircularProgressIndicator(),
+              ),
+              error: (error, _) => Center(
+                child: Text(
+                  'Error loading messages',
+                  style: AppText.bodyMedium.copyWith(
+                    color: BrandColors.text2,
                   ),
                 ),
               ),
             ),
+          ),
 
-            // Message input
-            _ChatInput(
-              controller: _messageController,
-              focusNode: _focusNode,
-              onSend: _sendMessage,
-              replyingTo: _replyingTo,
-              onCancelReply: () {
-                setState(() {
-                  _replyingTo = null;
-                });
-              },
-              eventStateColor: _eventStateColor,
-            ),
-          ],
-        ),
+          // Message input
+          _ChatInput(
+            controller: _messageController,
+            focusNode: _focusNode,
+            onSend: _sendMessage,
+            replyingTo: _replyingTo,
+            onCancelReply: () {
+              setState(() {
+                _replyingTo = null;
+              });
+            },
+            eventStateColor: _eventStateColor,
+          ),
+        ],
       ),
     );
   }
@@ -719,6 +695,7 @@ class _MessagesList extends StatelessWidget {
     return ListView.builder(
       controller: scrollController,
       reverse: true,
+      physics: const AlwaysScrollableScrollPhysics(), // Always allow scroll
       padding: const EdgeInsets.symmetric(
         horizontal: Pads.sectionH,
       ),
@@ -861,7 +838,7 @@ class _UnreadIndicator extends StatelessWidget {
 }
 
 /// Message bubble widget with grouped styling and swipe-to-reply
-class _MessageBubble extends StatelessWidget {
+class _MessageBubble extends StatefulWidget {
   final ChatMessage message;
   final bool isCurrentUser;
   final bool isFirstInGroup;
@@ -880,6 +857,14 @@ class _MessageBubble extends StatelessWidget {
     required this.onSwipeReply,
   });
 
+  @override
+  State<_MessageBubble> createState() => _MessageBubbleState();
+}
+
+class _MessageBubbleState extends State<_MessageBubble> {
+  double _dragDistance = 0;
+  double _startDragX = 0;
+
   String _formatTimestamp(DateTime timestamp) {
     final hour = timestamp.hour.toString().padLeft(2, '0');
     final minute = timestamp.minute.toString().padLeft(2, '0');
@@ -887,18 +872,19 @@ class _MessageBubble extends StatelessWidget {
   }
 
   BorderRadius _getBubbleRadius() {
-    if (isCurrentUser) {
+    if (widget.isCurrentUser) {
       return BorderRadius.only(
         topLeft: const Radius.circular(Radii.md),
-        topRight: Radius.circular(isFirstInGroup ? Radii.md : Radii.sm),
+        topRight: Radius.circular(widget.isFirstInGroup ? Radii.md : Radii.sm),
         bottomLeft: const Radius.circular(Radii.md),
-        bottomRight: Radius.circular(isLastInGroup ? Radii.md : Radii.sm),
+        bottomRight:
+            Radius.circular(widget.isLastInGroup ? Radii.md : Radii.sm),
       );
     } else {
       return BorderRadius.only(
-        topLeft: Radius.circular(isFirstInGroup ? Radii.md : Radii.sm),
+        topLeft: Radius.circular(widget.isFirstInGroup ? Radii.md : Radii.sm),
         topRight: const Radius.circular(Radii.md),
-        bottomLeft: Radius.circular(isLastInGroup ? Radii.md : Radii.sm),
+        bottomLeft: Radius.circular(widget.isLastInGroup ? Radii.md : Radii.sm),
         bottomRight: const Radius.circular(Radii.md),
       );
     }
@@ -912,38 +898,24 @@ class _MessageBubble extends StatelessWidget {
         : FakeEventChatConfig.isRecap
             ? BrandColors.recap
             : BrandColors.planning;
-    final bubbleColor = message.isDeleted
-        ? (isCurrentUser
+    final bubbleColor = widget.message.isDeleted
+        ? (widget.isCurrentUser
             ? userBubbleColor.withValues(alpha: 0.3)
             : BrandColors.bg3.withValues(alpha: 0.5))
-        : (isCurrentUser ? userBubbleColor : BrandColors.bg3);
-
-    // Debug: Log reply status
-    if (message.replyTo != null) {
-      final msgIdPreview =
-          message.id.length > 8 ? message.id.substring(0, 8) : message.id;
-      final replyContentPreview = message.replyTo!.content.length > 20
-          ? message.replyTo!.content.substring(0, 20)
-          : message.replyTo!.content;
-      print(
-          '💬 DEBUG _MessageBubble: Message $msgIdPreview has replyTo: "$replyContentPreview..."');
-    } else {
-      final msgIdPreview =
-          message.id.length > 8 ? message.id.substring(0, 8) : message.id;
-      print('❌ DEBUG _MessageBubble: Message $msgIdPreview has NO replyTo');
-    }
+        : (widget.isCurrentUser ? userBubbleColor : BrandColors.bg3);
 
     // The actual bubble content (without avatar)
     final bubbleContent = GestureDetector(
-      onLongPress: onLongPress,
+      onLongPress: widget.onLongPress,
       child: Column(
-        crossAxisAlignment:
-            isCurrentUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+        crossAxisAlignment: widget.isCurrentUser
+            ? CrossAxisAlignment.end
+            : CrossAxisAlignment.start,
         children: [
           // Reply preview bubble (if replying to a message)
-          if (message.replyTo != null) ...[
+          if (widget.message.replyTo != null) ...[
             GestureDetector(
-              onTap: onReplyTap,
+              onTap: widget.onReplyTap,
               child: Container(
                 padding: const EdgeInsets.symmetric(
                   horizontal: Pads.ctlH,
@@ -951,12 +923,13 @@ class _MessageBubble extends StatelessWidget {
                 ),
                 margin: const EdgeInsets.only(bottom: Gaps.xxs),
                 decoration: BoxDecoration(
-                  color: (isCurrentUser ? userBubbleColor : BrandColors.bg3)
-                      .withValues(alpha: 0.3),
+                  color:
+                      (widget.isCurrentUser ? userBubbleColor : BrandColors.bg3)
+                          .withValues(alpha: 0.3),
                   borderRadius: _getBubbleRadius(),
                 ),
                 child: Text(
-                  message.replyTo!.content,
+                  widget.message.replyTo!.content,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: AppText.bodyMedium.copyWith(
@@ -978,7 +951,7 @@ class _MessageBubble extends StatelessWidget {
               color: bubbleColor,
               borderRadius: _getBubbleRadius(),
             ),
-            child: message.isDeleted
+            child: widget.message.isDeleted
                 ? Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -998,7 +971,7 @@ class _MessageBubble extends StatelessWidget {
                     ],
                   )
                 : Text(
-                    message.content,
+                    widget.message.content,
                     style: AppText.bodyMedium.copyWith(
                       color: BrandColors.text1,
                     ),
@@ -1006,14 +979,14 @@ class _MessageBubble extends StatelessWidget {
           ),
 
           // Metadata (only on last message in group)
-          if (isLastInGroup) ...[
+          if (widget.isLastInGroup) ...[
             const SizedBox(height: Gaps.xxs),
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                if (!isCurrentUser) ...[
+                if (!widget.isCurrentUser) ...[
                   Text(
-                    message.userName,
+                    widget.message.userName,
                     style: AppText.bodyMedium.copyWith(
                       color: BrandColors.text2,
                       fontSize: 12,
@@ -1023,7 +996,7 @@ class _MessageBubble extends StatelessWidget {
                   const SizedBox(width: Gaps.xs),
                 ],
                 Text(
-                  _formatTimestamp(message.createdAt),
+                  _formatTimestamp(widget.message.createdAt),
                   style: AppText.bodyMedium.copyWith(
                     color: BrandColors.text2,
                     fontSize: 12,
@@ -1037,47 +1010,72 @@ class _MessageBubble extends StatelessWidget {
     );
 
     // Wrap bubble content with GestureDetector for swipe-to-reply
-    final swipeableBubble = GestureDetector(
-      onHorizontalDragEnd: (details) {
-        // Detect swipe direction based on velocity
-        if (details.primaryVelocity != null) {
-          final velocity = details.primaryVelocity!;
+    // Using RawGestureDetector to have more control over gesture arena
+    final swipeableBubble = RawGestureDetector(
+      gestures: {
+        HorizontalDragGestureRecognizer: GestureRecognizerFactoryWithHandlers<
+            HorizontalDragGestureRecognizer>(
+          () => HorizontalDragGestureRecognizer(debugOwner: this),
+          (HorizontalDragGestureRecognizer instance) {
+            instance
+              ..onStart = (details) {
+                setState(() {
+                  _startDragX = details.localPosition.dx;
+                  _dragDistance = 0;
+                });
+              }
+              ..onUpdate = (details) {
+                setState(() {
+                  _dragDistance = details.localPosition.dx - _startDragX;
+                });
+              }
+              ..onEnd = (details) {
+                // Current user messages: detect LEFT swipe (negative distance)
+                // Other user messages: detect RIGHT swipe (positive distance)
+                final threshold = 30.0; // pixels
+                final isValidSwipe = widget.isCurrentUser
+                    ? _dragDistance < -threshold // Swipe left
+                    : _dragDistance > threshold; // Swipe right
 
-          // Current user: swipe left (negative velocity)
-          // Other user: swipe right (positive velocity)
-          final isValidSwipe = isCurrentUser
-              ? velocity < -300 // Swipe left with significant velocity
-              : velocity > 300; // Swipe right with significant velocity
+                if (isValidSwipe) {
+                  widget.onSwipeReply();
+                  HapticFeedback.lightImpact();
+                }
 
-          if (isValidSwipe) {
-            print(
-                '🔄 DEBUG: Swipe detected on message ${message.id.substring(0, 8)}, velocity=$velocity');
-            onSwipeReply();
-            HapticFeedback.lightImpact();
-          }
-        }
+                setState(() {
+                  _dragDistance = 0;
+                  _startDragX = 0;
+                });
+              }
+              ..onCancel = () {
+                setState(() {
+                  _dragDistance = 0;
+                  _startDragX = 0;
+                });
+              };
+          },
+        ),
       },
       child: bubbleContent,
-    );
-
-    // Final Row with avatar + swipeable bubble
+    ); // Final Row with avatar + swipeable bubble
     return Row(
-      mainAxisAlignment:
-          isCurrentUser ? MainAxisAlignment.end : MainAxisAlignment.start,
+      mainAxisAlignment: widget.isCurrentUser
+          ? MainAxisAlignment.end
+          : MainAxisAlignment.start,
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
-        if (!isCurrentUser) ...[
+        if (!widget.isCurrentUser) ...[
           // Avatar only on LAST message in group (bottom-most)
-          if (isLastInGroup)
+          if (widget.isLastInGroup)
             CircleAvatar(
               radius: 16,
               backgroundColor: BrandColors.bg3,
-              backgroundImage: message.userAvatar != null
-                  ? NetworkImage(message.userAvatar!)
+              backgroundImage: widget.message.userAvatar != null
+                  ? NetworkImage(widget.message.userAvatar!)
                   : null,
-              child: message.userAvatar == null
+              child: widget.message.userAvatar == null
                   ? Text(
-                      message.userName[0].toUpperCase(),
+                      widget.message.userName[0].toUpperCase(),
                       style: AppText.bodyMedium.copyWith(
                         color: BrandColors.text2,
                         fontSize: 14,
@@ -1140,11 +1138,6 @@ class _ChatInput extends StatelessWidget {
       participants: participants,
       onAddExpense: (title, paidByIds, payerIds, totalAmount) {
         // TODO: Implement add expense logic with repository
-        print('Add Expense:');
-        print('  Title: $title');
-        print('  Paid by: $paidByIds');
-        print('  Payers: $payerIds');
-        print('  Total: $totalAmount');
       },
     );
   }
@@ -1267,21 +1260,26 @@ class _ChatInput extends StatelessWidget {
                           child: InkWell(
                             onTap: () async {
                               HapticFeedback.lightImpact();
-                              
+
                               // Recap mode: open gallery with multi-select (max 5)
                               if (FakeEventChatConfig.isRecap) {
                                 final picker = ImagePicker();
-                                final selectedImages = await picker.pickMultiImage(
+                                final selectedImages =
+                                    await picker.pickMultiImage(
                                   maxWidth: 1920,
                                   maxHeight: 1920,
                                   imageQuality: 85,
                                 );
 
-                                if (selectedImages.isNotEmpty && context.mounted) {
+                                if (selectedImages.isNotEmpty &&
+                                    context.mounted) {
                                   // Limit to 5 photos
-                                  final limitedImages = selectedImages.take(5).toList();
-                                  
-                                  if (limitedImages.length < selectedImages.length && context.mounted) {
+                                  final limitedImages =
+                                      selectedImages.take(5).toList();
+
+                                  if (limitedImages.length <
+                                          selectedImages.length &&
+                                      context.mounted) {
                                     TopBanner.showInfo(
                                       context,
                                       message: 'Maximum 5 photos selected',
@@ -1291,13 +1289,15 @@ class _ChatInput extends StatelessWidget {
                                   // Navigate to ManageMemoryPage with selected photos
                                   // TODO P2: Get actual memoryId from event
                                   final memoryId = 'memory-1'; // Placeholder
-                                  
+
                                   if (context.mounted) {
                                     Navigator.of(context).pushNamed(
                                       AppRouter.manageMemory,
                                       arguments: {
                                         'memoryId': memoryId,
-                                        'selectedPhotos': limitedImages.map((img) => img.path).toList(),
+                                        'selectedPhotos': limitedImages
+                                            .map((img) => img.path)
+                                            .toList(),
                                       },
                                     );
                                   }
@@ -1306,7 +1306,8 @@ class _ChatInput extends StatelessWidget {
                                 // Living mode: TODO - implement camera
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   const SnackBar(
-                                    content: Text('📸 Camera upload coming soon!'),
+                                    content:
+                                        Text('📸 Camera upload coming soon!'),
                                     duration: Duration(seconds: 2),
                                   ),
                                 );
@@ -1485,7 +1486,11 @@ class _MenuOption extends StatelessWidget {
     return Material(
       color: BrandColors.bg2,
       child: InkWell(
-        onTap: onTap,
+        onTap: () {
+          // Close bottom sheet first, then execute callback
+          Navigator.of(context).pop();
+          onTap();
+        },
         child: Padding(
           padding: const EdgeInsets.symmetric(
             horizontal: Pads.sectionH,

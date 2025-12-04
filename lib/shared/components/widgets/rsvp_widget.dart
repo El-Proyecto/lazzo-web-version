@@ -769,10 +769,6 @@ class _VoteButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // 🔍 DEBUG: Print count value
-    print(
-        '🔍 DEBUG _VoteButton [$label]: count=$count, isSelected=$isSelected');
-
     return Container(
       height: TouchTargets.min,
       decoration: BoxDecoration(

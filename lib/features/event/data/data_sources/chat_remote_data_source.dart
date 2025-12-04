@@ -39,21 +39,12 @@ class ChatRemoteDataSource {
 
   /// Watch messages in real-time for an event
   Stream<List<ChatMessageModel>> watchMessages(String eventId) async* {
-    if (kDebugMode) {
-      print('🎬 [ChatDataSource] watchMessages called for event: $eventId');
-    }
     
     // Create stream controller if not exists
     if (!_messageStreams.containsKey(eventId)) {
-      if (kDebugMode) {
-        print('📺 [ChatDataSource] Creating NEW stream for event: $eventId');
-      }
       _messageStreams[eventId] = StreamController<List<ChatMessageModel>>.broadcast();
       
       // Initial fetch
-      if (kDebugMode) {
-        print('🔍 [ChatDataSource] Performing initial fetch for event: $eventId');
-      }
       _fetchAndEmitMessages(eventId);
       
       // Subscribe to realtime updates
@@ -65,30 +56,14 @@ class ChatRemoteDataSource {
             table: 'chat_messages',
             filter: PostgresChangeFilter(type: PostgresChangeFilterType.eq, column: 'event_id', value: eventId),
             callback: (payload) {
-              if (kDebugMode) {
-                print('🔔 [ChatDataSource] Realtime event received!');
-                print('   - Event type: ${payload.eventType}');
-                print('   - Event ID: $eventId');
-                print('   - Payload: ${payload.newRecord}');
-              }
               // Refetch all messages on any change
               _fetchAndEmitMessages(eventId);
             },
           )
           .subscribe();
       
-      if (kDebugMode) {
-        print('✅ [ChatDataSource] Subscribed to realtime channel: chat_messages_$eventId');
-      }
-    } else {
-      if (kDebugMode) {
-        print('♻️ [ChatDataSource] Reusing EXISTING stream for event: $eventId');
-      }
     }
     
-    if (kDebugMode) {
-      print('📤 [ChatDataSource] Yielding stream for event: $eventId');
-    }
     yield* _messageStreams[eventId]!.stream;
   }
   
@@ -97,9 +72,6 @@ class ChatRemoteDataSource {
     // ⚡ Debounce: cancel previous timer and set new one
     _debounceTimers[eventId]?.cancel();
     _debounceTimers[eventId] = Timer(const Duration(milliseconds: 150), () async {
-      if (kDebugMode) {
-        print('🔄 [ChatDataSource] _fetchAndEmitMessages START for event: $eventId');
-      }
       try {
         final response = await _supabaseClient
             .from('chat_messages')
@@ -118,10 +90,6 @@ class ChatRemoteDataSource {
             .eq('event_id', eventId)
             .order('created_at', ascending: false)
             .limit(50);  // ⚡ LIMIT to 50 messages for performance
-
-        if (kDebugMode) {
-          print('📦 [ChatDataSource] Raw response from DB: ${(response as List).length} messages');
-        }
       
       // Convert storage paths to signed URLs for avatar_url
       final messages = response as List;
@@ -132,17 +100,7 @@ class ChatRemoteDataSource {
       }
       
         final models = messages.map((json) => ChatMessageModel.fromJson(json)).toList();
-        if (kDebugMode) {
-          print('✅ [ChatDataSource] Emitting ${models.length} messages to stream');
-          if (models.isNotEmpty) {
-            print('   - First message: "${models.first.content.substring(0, models.first.content.length > 30 ? 30 : models.first.content.length)}..."');
-            print('   - Last message: "${models.last.content.substring(0, models.last.content.length > 30 ? 30 : models.last.content.length)}..."');
-          }
-        }
         _messageStreams[eventId]?.add(models);
-        if (kDebugMode) {
-          print('✅ [ChatDataSource] _fetchAndEmitMessages COMPLETE for event: $eventId');
-        }
       } catch (e) {
         if (kDebugMode) {
           print('❌ [ChatDataSource] Error fetching messages: $e');
@@ -199,13 +157,6 @@ class ChatRemoteDataSource {
     String content, {
     String? replyToId,
   }) async {
-    if (kDebugMode) {
-      print('📤 [ChatDataSource] sendMessage called');
-      print('   - Event ID: $eventId');
-      print('   - User ID: $userId');
-      print('   - Content: "$content"');
-      print('   - Reply To: $replyToId');
-    }
     
     try {
       final insertData = {
@@ -220,9 +171,6 @@ class ChatRemoteDataSource {
         insertData['reply_to_id'] = replyToId;
       }
       
-      if (kDebugMode) {
-        print('💾 [ChatDataSource] Inserting into database...');
-      }
       
       final response = await _supabaseClient
           .from('chat_messages')
@@ -238,13 +186,6 @@ class ChatRemoteDataSource {
             user:user_id(id, name, avatar_url)
           ''')
           .single();
-
-      if (kDebugMode) {
-        print('✅ [ChatDataSource] Message inserted successfully!');
-        print('   - Message ID: ${response['id']}');
-        print('   - Content: "${response['content']}"');
-        print('   - Realtime should trigger soon...');
-      }
       
       // Convert avatar storage path to signed URL
       if (response['user'] != null && response['user']['avatar_url'] != null) {
@@ -305,14 +246,12 @@ class ChatRemoteDataSource {
           'event_id': eventId,
           'should_pin': true,
         });
-        print('✅ [ChatDataSource] Pinned message $messageId');
       } else {
         // Simple update to unpin
         await _supabaseClient
             .from('chat_messages')
             .update({'is_pinned': false, 'updated_at': DateTime.now().toIso8601String()})
             .eq('id', messageId);
-        print('✅ [ChatDataSource] Unpinned message $messageId');
       }
     } on PostgrestException catch (e) {
       throw Exception('Failed to pin message: ${e.message}');
@@ -328,7 +267,6 @@ class ChatRemoteDataSource {
       await _supabaseClient.rpc('soft_delete_chat_message', params: {
         'message_id': messageId,
       });
-      print('✅ [ChatDataSource] Soft deleted message $messageId');
     } on PostgrestException catch (e) {
       throw Exception('Failed to delete message: ${e.message}');
     } catch (e) {

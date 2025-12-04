@@ -21,8 +21,6 @@ class EventPhotoUploadNotifier extends StateNotifier<AsyncValue<String?>> {
     required String groupId,
   }) async {
     try {
-      print('📸 Opening camera...');
-
       // Pick image from camera
       final XFile? photo = await _imagePicker.pickImage(
         source: ImageSource.camera,
@@ -32,11 +30,8 @@ class EventPhotoUploadNotifier extends StateNotifier<AsyncValue<String?>> {
       );
 
       if (photo == null) {
-        print('⚠️ User cancelled camera');
         return;
       }
-
-      print('✅ Photo captured: ${photo.path}');
 
       // Upload photo
       await _uploadPhoto(
@@ -45,7 +40,6 @@ class EventPhotoUploadNotifier extends StateNotifier<AsyncValue<String?>> {
         imageFile: File(photo.path),
       );
     } catch (error, stackTrace) {
-      print('❌ Error taking photo: $error');
       state = AsyncValue.error(error, stackTrace);
     }
   }
@@ -56,8 +50,6 @@ class EventPhotoUploadNotifier extends StateNotifier<AsyncValue<String?>> {
     required String groupId,
   }) async {
     try {
-      print('🖼️ Opening gallery...');
-
       // Pick image from gallery
       final XFile? photo = await _imagePicker.pickImage(
         source: ImageSource.gallery,
@@ -67,11 +59,8 @@ class EventPhotoUploadNotifier extends StateNotifier<AsyncValue<String?>> {
       );
 
       if (photo == null) {
-        print('⚠️ User cancelled gallery picker');
         return;
       }
-
-      print('✅ Photo selected: ${photo.path}');
 
       // Upload photo
       await _uploadPhoto(
@@ -80,7 +69,6 @@ class EventPhotoUploadNotifier extends StateNotifier<AsyncValue<String?>> {
         imageFile: File(photo.path),
       );
     } catch (error, stackTrace) {
-      print('❌ Error picking photo from gallery: $error');
       state = AsyncValue.error(error, stackTrace);
     }
   }
@@ -94,19 +82,14 @@ class EventPhotoUploadNotifier extends StateNotifier<AsyncValue<String?>> {
     state = const AsyncValue.loading();
 
     try {
-      print('📤 Uploading photo...');
-
       final photoUrl = await _uploadEventPhoto(
         eventId: eventId,
         groupId: groupId,
         imageFile: imageFile,
       );
 
-      print('✅ Photo uploaded successfully: $photoUrl');
-
       state = AsyncValue.data(photoUrl);
     } catch (error, stackTrace) {
-      print('❌ Error uploading photo: $error');
       state = AsyncValue.error(error, stackTrace);
     }
   }
@@ -130,9 +113,7 @@ final imagePickerProvider = Provider<ImagePicker>((ref) {
 
 /// StateNotifier provider for photo upload
 final eventPhotoUploadNotifierProvider = StateNotifierProvider.family<
-    EventPhotoUploadNotifier,
-    AsyncValue<String?>,
-    String>((ref, eventId) {
+    EventPhotoUploadNotifier, AsyncValue<String?>, String>((ref, eventId) {
   final uploadUseCase = ref.watch(uploadEventPhotoProvider);
   final imagePicker = ref.watch(imagePickerProvider);
 

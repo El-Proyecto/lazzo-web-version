@@ -37,15 +37,16 @@ final currentUserIdProvider = Provider<String?>((ref) {
 
 /// Provider to check if current user is admin of the event's group
 /// Used to determine if user can see/edit event status and settings
-final isUserGroupAdminProvider = FutureProvider.family<bool, String>((ref, groupId) async {
+final isUserGroupAdminProvider =
+    FutureProvider.family<bool, String>((ref, groupId) async {
   final currentUserId = ref.watch(currentUserIdProvider);
-  
+
   if (currentUserId == null) return false;
-  
+
   try {
     // Get group members to check if current user is admin
     final membersState = ref.watch(groupMembersProvider(groupId));
-    
+
     // Wait for data to load using whenData or handle loading/error states
     return await membersState.when(
       data: (members) {
@@ -57,50 +58,43 @@ final isUserGroupAdminProvider = FutureProvider.family<bool, String>((ref, group
           return currentUserMember.isAdmin;
         } catch (e) {
           // User not found in group members
-          print('⚠️ [IS_ADMIN_CHECK] User not found in group members');
           return false;
         }
       },
       loading: () => false, // Not admin while loading
       error: (error, stack) {
-        print('❌ [IS_ADMIN_CHECK] Error loading members: $error');
         return false;
       },
     );
   } catch (e) {
-    print('❌ [IS_ADMIN_CHECK] Error checking admin status: $e');
     return false;
   }
 });
 
 /// Provider to check if current user can manage event (host or group admin)
 /// Combines host check and admin check
-final canManageEventProvider = FutureProvider.family<bool, String>((ref, eventId) async {
+final canManageEventProvider =
+    FutureProvider.family<bool, String>((ref, eventId) async {
   try {
     // Get event details to check host and group
     final event = await ref.watch(eventDetailProvider(eventId).future);
     final currentUserId = ref.watch(currentUserIdProvider);
-    
+
     if (currentUserId == null) return false;
-    
+
     // Check if user is event host
     final isHost = event.hostId == currentUserId;
-    
+
     if (isHost) {
-      print('✅ [CAN_MANAGE] User is event host');
       return true;
     }
-    
+
     // Check if user is group admin
-    final isAdmin = await ref.watch(isUserGroupAdminProvider(event.groupId).future);
-    
-    if (isAdmin) {
-      print('✅ [CAN_MANAGE] User is group admin');
-    }
-    
+    final isAdmin =
+        await ref.watch(isUserGroupAdminProvider(event.groupId).future);
+
     return isAdmin;
   } catch (e) {
-    print('❌ [CAN_MANAGE] Error checking manage permission: $e');
     return false;
   }
 });
@@ -132,7 +126,8 @@ final groupExpenseRepositoryProvider = Provider<GroupExpenseRepository>((ref) {
 
 // Event photo repository provider (default to fake, override in main.dart)
 final eventPhotoRepositoryProvider = Provider<EventPhotoRepository>((ref) {
-  throw UnimplementedError('EventPhotoRepository must be overridden in main.dart');
+  throw UnimplementedError(
+      'EventPhotoRepository must be overridden in main.dart');
 });
 
 // Use case providers
@@ -188,16 +183,12 @@ class EventStatusNotifier extends StateNotifier<AsyncValue<EventDetail?>> {
     state = const AsyncValue.loading();
 
     try {
-      print('🔄 [STATUS UPDATE] Updating event $eventId to status: $newStatus');
       final updatedEvent = await _updateEventStatus(eventId, newStatus);
       state = AsyncValue.data(updatedEvent);
-      print('✅ [STATUS UPDATE] Event status updated successfully');
 
       // Invalidate the event detail provider to refresh the UI
       _ref.invalidate(eventDetailProvider(eventId));
-      print('🔄 [STATUS UPDATE] Event detail provider invalidated');
     } catch (error, stackTrace) {
-      print('❌ [STATUS UPDATE] Error updating status: $error');
       state = AsyncValue.error(error, stackTrace);
     }
   }
@@ -256,18 +247,18 @@ final eventPollsProvider = FutureProvider.family<List<Poll>, String>((
 
 // Group expenses provider (for event expenses)
 final getGroupExpensesUseCaseProvider = Provider<GetGroupExpenses>((ref) {
-    return GetGroupExpenses(ref.watch(groupExpenseRepositoryProvider));
-  });
+  return GetGroupExpenses(ref.watch(groupExpenseRepositoryProvider));
+});
 
-  final groupExpensesProvider = StateNotifierProvider.family<
-      GroupExpensesController, AsyncValue<List<GroupExpenseEntity>>, String>((
-    ref,
+final groupExpensesProvider = StateNotifierProvider.family<
+    GroupExpensesController, AsyncValue<List<GroupExpenseEntity>>, String>((
+  ref,
+  groupId,
+) {
+  return GroupExpensesController(
+    ref.watch(getGroupExpensesUseCaseProvider),
     groupId,
-  ) {
-    return GroupExpensesController(
-      ref.watch(getGroupExpensesUseCaseProvider),
-      groupId,
-    );
+  );
 });
 
 // Event suggestions state provider
@@ -343,7 +334,8 @@ class UserRsvpNotifier extends StateNotifier<AsyncValue<Rsvp?>> {
     state = const AsyncValue.loading();
     try {
       final currentUserId = ref.read(currentUserIdProvider);
-      final userRsvp = await repository.getUserRsvp(eventId, currentUserId ?? '');
+      final userRsvp =
+          await repository.getUserRsvp(eventId, currentUserId ?? '');
       state = AsyncValue.data(userRsvp);
     } catch (error, stackTrace) {
       state = AsyncValue.error(error, stackTrace);
@@ -353,12 +345,9 @@ class UserRsvpNotifier extends StateNotifier<AsyncValue<Rsvp?>> {
   Future<void> submitVote(RsvpStatus status) async {
     try {
       final currentUserId = ref.read(currentUserIdProvider);
-      
-      print('🔍 DEBUG submitVote: eventId=$eventId, userId=$currentUserId, newStatus=$status');
-      
-      final rsvp = await repository.submitRsvp(eventId, currentUserId ?? '', status);
-      
-      print('🔍 DEBUG submitVote: RSVP submitted successfully - ${rsvp.status}');
+
+      final rsvp =
+          await repository.submitRsvp(eventId, currentUserId ?? '', status);
 
       // Sync with current event suggestion
       try {
@@ -370,16 +359,13 @@ class UserRsvpNotifier extends StateNotifier<AsyncValue<Rsvp?>> {
       // Invalidate providers using StateNotifier's ref
       ref.invalidate(eventRsvpsProvider(eventId));
       ref.invalidate(eventDetailProvider(eventId));
-      
-      print('🔍 DEBUG submitVote: Providers invalidated, UI will refresh automatically');
-      
+
       // Update local state - this triggers UI rebuild
       state = AsyncValue.data(rsvp);
-      
+
       // Check auto-confirmation after RSVP submission
       await _checkAutoConfirmation();
     } catch (error, stackTrace) {
-      print('🔴 DEBUG submitVote: ERROR - $error');
       state = AsyncValue.error(error, stackTrace);
       _loadUserRsvp();
     }
@@ -413,7 +399,6 @@ class UserRsvpNotifier extends StateNotifier<AsyncValue<Rsvp?>> {
       }
     } catch (e) {
       // Log error but don't fail the RSVP submission
-      print('Failed to check auto-confirmation: $e');
     }
   }
 
@@ -434,7 +419,7 @@ class UserRsvpNotifier extends StateNotifier<AsyncValue<Rsvp?>> {
       ref.invalidate(locationSuggestionVotesProvider(eventId));
       ref.invalidate(userLocationSuggestionVotesProvider(eventId));
     } catch (e) {
-      print('❌ Error in provider sync: $e');
+      // Silent fail - don't break RSVP flow
     }
   }
 }
@@ -603,7 +588,7 @@ class ToggleSuggestionVoteNotifier extends StateNotifier<AsyncValue<void>> {
       ref.invalidate(eventSuggestionsProvider(eventId));
       ref.invalidate(suggestionVotesProvider(eventId));
       ref.invalidate(userSuggestionVotesProvider(eventId));
-      
+
       state = const AsyncValue.data(null);
     } catch (error, stackTrace) {
       state = AsyncValue.error(error, stackTrace);
@@ -732,7 +717,7 @@ class ToggleLocationSuggestionVoteNotifier
       ref.invalidate(eventLocationSuggestionsProvider(eventId));
       ref.invalidate(locationSuggestionVotesProvider(eventId));
       ref.invalidate(userLocationSuggestionVotesProvider(eventId));
-      
+
       state = const AsyncValue.data(null);
     } catch (error, stackTrace) {
       state = AsyncValue.error(error, stackTrace);

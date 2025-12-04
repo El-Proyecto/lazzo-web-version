@@ -75,11 +75,6 @@ class _EventPageState extends ConsumerState<EventPage> {
           final newStatus =
               isConfirmed ? EventStatus.pending : EventStatus.confirmed;
 
-          print('📢 [DIALOG] User confirmed status change');
-          print('   📄 Current status: $currentStatus');
-          print('   ➡️ New status: $newStatus');
-          print('   🎯 Is confirmed: $isConfirmed');
-
           await ref
               .read(eventStatusNotifierProvider(eventId).notifier)
               .updateStatus(eventId, newStatus);
@@ -194,12 +189,9 @@ class _EventPageState extends ConsumerState<EventPage> {
               data: (canManage) {
                 // Only show settings icon for host or group admins
                 if (!canManage) {
-                  print(
-                      '⚙️ [SETTINGS] User cannot manage event - settings hidden');
                   return const SizedBox.shrink();
                 }
 
-                print('⚙️ [SETTINGS] User can manage event - settings visible');
                 return IconButton(
                   icon: const Icon(Icons.edit, color: BrandColors.text1),
                   onPressed: () {
@@ -276,18 +268,8 @@ class _EventPageState extends ConsumerState<EventPage> {
                     return canManageAsync.when(
                       data: (canManage) {
                         if (!canManage) {
-                          print(
-                              '🎯 [STATUS CHIP] User cannot manage event - chip hidden');
                           return const SizedBox.shrink();
                         }
-
-                        final isHost = event.hostId == currentUserId;
-                        print('🎯 [STATUS CHIP] Permission check:');
-                        print('   Event host ID: ${event.hostId}');
-                        print('   Current user ID: $currentUserId');
-                        print('   Is host: $isHost');
-                        print('   Can manage: $canManage');
-                        print('   Chip visible: true');
 
                         return Column(
                           children: [
@@ -1097,32 +1079,21 @@ class _EventPageState extends ConsumerState<EventPage> {
                                 );
                               },
                               loading: () {
-                                if (kDebugMode) {
-                                  print(
-                                      '⏳ [EventPage] Loading user location votes...');
-                                }
+                                if (kDebugMode) {}
                                 return const SizedBox.shrink();
                               },
                               error: (error, stack) {
-                                if (kDebugMode) {
-                                  print(
-                                      '❌ [EventPage] Error loading user location votes: $error');
-                                }
+                                if (kDebugMode) {}
                                 return const SizedBox.shrink();
                               },
                             );
                           },
                           loading: () {
-                            if (kDebugMode) {
-                              print('⏳ [EventPage] Loading location votes...');
-                            }
+                            if (kDebugMode) {}
                             return const SizedBox.shrink();
                           },
                           error: (error, stack) {
-                            if (kDebugMode) {
-                              print(
-                                  '❌ [EventPage] Error loading location votes: $error');
-                            }
+                            if (kDebugMode) {}
                             return const SizedBox.shrink();
                           },
                         );
@@ -1137,17 +1108,7 @@ class _EventPageState extends ConsumerState<EventPage> {
                 messagesAsync.when(
                   data: (messages) {
                     if (kDebugMode) {
-                      print('\n═══════════════════════════════════════');
-                      print('💬 [EventPage] PREVIEW - New data received!');
-                      print('   - Event ID: $eventId');
-                      print('   - Total messages: ${messages.length}');
-                      if (messages.isNotEmpty) {
-                        print(
-                            '   - First: "${messages.first.content.substring(0, messages.first.content.length > 30 ? 30 : messages.first.content.length)}..." (read=${messages.first.read})');
-                        print(
-                            '   - Last: "${messages.last.content.substring(0, messages.last.content.length > 30 ? 30 : messages.last.content.length)}..."');
-                      }
-                      print('═══════════════════════════════════════\n');
+                      if (messages.isNotEmpty) {}
                     }
 
                     final unreadCount = ref.watch(
@@ -1183,33 +1144,6 @@ class _EventPageState extends ConsumerState<EventPage> {
                         )
                         .toList();
 
-                    if (kDebugMode) {
-                      print(
-                          '💬 [EventPage] Passing ${previewMessages.length} messages to ChatPreviewWidget');
-                      print(
-                          '💬 [EventPage] Unread count: $unreadCount, currentUserId: $currentUserId');
-
-                      // Check for messages with replyTo
-                      final messagesWithReply = previewMessages
-                          .where((m) => m.replyTo != null)
-                          .length;
-                      print(
-                          '📨 [EventPage] Messages with replyTo: $messagesWithReply/${previewMessages.length}');
-
-                      if (previewMessages.isNotEmpty) {
-                        print('💬 [EventPage] Preview messages details:');
-                        for (var i = 0;
-                            i < previewMessages.length && i < 3;
-                            i++) {
-                          final hasReply = previewMessages[i].replyTo != null
-                              ? ' (replying to: "${previewMessages[i].replyTo!.content.substring(0, previewMessages[i].replyTo!.content.length > 15 ? 15 : previewMessages[i].replyTo!.content.length)}...")'
-                              : '';
-                          print(
-                              '   $i: "${previewMessages[i].content}" (user: ${previewMessages[i].userName}, read: ${previewMessages[i].read})$hasReply');
-                        }
-                      }
-                    }
-
                     return ChatPreviewWidget(
                       newMessagesCount: unreadCount,
                       currentUserId: currentUserId ?? '',
@@ -1233,13 +1167,7 @@ class _EventPageState extends ConsumerState<EventPage> {
                       },
                       onSendMessage: (content,
                           {ChatMessagePreview? replyTo}) async {
-                        if (kDebugMode) {
-                          print(
-                              '\n🚀 [EventPage] PREVIEW sending message (DATA state):');
-                          print('   - Content: "$content"');
-                          print('   - Event ID: $eventId');
-                          print('   - ReplyTo: ${replyTo?.content}');
-                        }
+                        if (kDebugMode) {}
 
                         // Convert ChatMessagePreview to ChatMessage if replying
                         ChatMessage? replyToMessage;
@@ -1252,15 +1180,9 @@ class _EventPageState extends ConsumerState<EventPage> {
                                   m.content == replyTo.content &&
                                   m.createdAt == replyTo.timestamp,
                             );
-                            if (kDebugMode) {
-                              print(
-                                  '   ✅ Found original message to reply to: ${replyToMessage.id}');
-                            }
+                            if (kDebugMode) {}
                           } catch (e) {
-                            if (kDebugMode) {
-                              print(
-                                  '   ⚠️ Could not find original message for reply');
-                            }
+                            if (kDebugMode) {}
                           }
                         }
 
@@ -1270,9 +1192,7 @@ class _EventPageState extends ConsumerState<EventPage> {
                               content,
                               replyTo: replyToMessage,
                             );
-                        if (kDebugMode) {
-                          print('✅ [EventPage] PREVIEW sendMessage completed');
-                        }
+                        if (kDebugMode) {}
                       },
                       onPinMessage: (message) async {
                         final originalMessage = messages.firstWhere(
@@ -1332,18 +1252,11 @@ class _EventPageState extends ConsumerState<EventPage> {
                       onOpenChat: () {},
                       onSendMessage: (content,
                           {ChatMessagePreview? replyTo}) async {
-                        if (kDebugMode) {
-                          print(
-                              '\n🚀 [EventPage] PREVIEW sending message (ERROR state):');
-                          print('   - Content: "$content"');
-                          print('   - ReplyTo: ${replyTo?.content}');
-                        }
+                        if (kDebugMode) {}
                         await ref
                             .read(chatActionsProvider(eventId))
                             .sendMessage(content);
-                        if (kDebugMode) {
-                          print('✅ [EventPage] PREVIEW sendMessage completed');
-                        }
+                        if (kDebugMode) {}
                       },
                       onPinMessage: (message) async {
                         // Try to send action even in error state

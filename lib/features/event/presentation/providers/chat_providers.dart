@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../domain/entities/chat_message.dart';
@@ -19,11 +18,10 @@ final unreadMessagesCountProvider = Provider.family<int, String>(
   (ref, eventId) {
     final messagesAsync = ref.watch(chatMessagesProvider(eventId));
     final currentUserId = Supabase.instance.client.auth.currentUser?.id;
-    
+
     return messagesAsync.when(
-      data: (messages) => messages
-          .where((m) => !m.read && m.userId != currentUserId)
-          .length,
+      data: (messages) =>
+          messages.where((m) => !m.read && m.userId != currentUserId).length,
       loading: () => 0,
       error: (_, __) => 0,
     );
@@ -51,34 +49,18 @@ class ChatActions {
 
   /// Send a new message
   Future<void> sendMessage(String content, {ChatMessage? replyTo}) async {
-    if (kDebugMode) {
-      print('📝 [ChatActions] sendMessage called');
-      print('   - Event ID: $eventId');
-      print('   - Content: "$content"');
-      print('   - Reply To: ${replyTo?.id}');
-    }
-    
     final userId = Supabase.instance.client.auth.currentUser?.id;
-    
+
     if (userId == null) {
-      if (kDebugMode) {
-        print('❌ [ChatActions] User not authenticated!');
-      }
       throw Exception('User not authenticated');
     }
-    
-    if (kDebugMode) {
-      print('👤 [ChatActions] Sending as user: $userId');
-    }
+
     await repository.sendMessage(
       eventId,
       userId,
       content,
       replyTo: replyTo,
     );
-    if (kDebugMode) {
-      print('✅ [ChatActions] sendMessage completed, waiting for stream update...');
-    }
     // No need to refresh - stream will auto-update
   }
 
