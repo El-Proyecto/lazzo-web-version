@@ -352,7 +352,7 @@ class _PhotoPreviewPageState extends ConsumerState<PhotoPreviewPage> {
   }
 
   Future<void> _handlePromoteToCover(BuildContext context, ManagePhotoItem photo) async {
-    print('\n🎯 [PHOTO PREVIEW] Promoting photo ${photo.id.substring(0, 8)}... to cover');
+    print('\n [PHOTO PREVIEW] Promoting photo ${photo.id.substring(0, 8)}... to cover');
     
     // Promote to cover (will persist to Supabase)
     await ref.read(manageMemoryProvider(widget.memoryId).notifier).selectCover(photo);
@@ -363,13 +363,15 @@ class _PhotoPreviewPageState extends ConsumerState<PhotoPreviewPage> {
     Navigator.of(context).pop();
 
     // Show success banner on Manage Photos page
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (context.mounted) {
-        TopBanner.showSuccess(
-          context,
-          message: 'Photo promoted to cover',
-        );
-      }
-    });
+    if (mounted) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (context.mounted) {
+          TopBanner.showSuccess(
+            context,
+            message: 'Photo promoted to cover',
+          );
+        }
+      });
+    }
   }
 }

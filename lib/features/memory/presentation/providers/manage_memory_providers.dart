@@ -306,7 +306,7 @@ class ManageMemoryNotifier
 
       print('\n✅ [MANAGE MEMORY] State created successfully:');
       print('   📸 Total photos: ${photoItems.length}');
-      print('   🎯 Cover photo: ${currentCover != null ? currentCover.id.substring(0, 8) + "..." : "null"}');
+      print('   🎯 Cover photo: ${currentCover != null ? '${currentCover.id.substring(0, 8)}...' : "null"}');
       print('   👤 Is host: $isHost');
       print('   📊 Max photos: $maxPhotos\n');
 
@@ -326,7 +326,7 @@ class ManageMemoryNotifier
 
   /// Select a photo as cover and persist to Supabase
   Future<void> selectCover(ManagePhotoItem photo) async {
-    print('\n🎯 [MANAGE MEMORY] Selecting cover photo: ${photo.id}');
+    
     
     state.whenData((currentState) async {
       // Update state immediately for UI responsiveness
@@ -350,7 +350,7 @@ class ManageMemoryNotifier
 
   /// Remove cover selection and persist to Supabase
   Future<void> removeCover() async {
-    print('\n🗑️ [MANAGE MEMORY] Removing cover photo');
+    
     
     state.whenData((currentState) async {
       // Update state immediately
@@ -407,15 +407,12 @@ class ManageMemoryNotifier
   Future<void> saveChanges() async {
     state.whenData((currentState) async {
       try {
-        print('\n💾 [MANAGE MEMORY] Saving cover changes...');
-        print('   📸 Selected cover ID: ${currentState.selectedCover?.id}');
         
         // Call use case to update cover
         final updateUseCase = ref.read(updateMemoryCoverUseCaseProvider);
         await updateUseCase(memoryId, currentState.selectedCover?.id);
         
-        print('✅ [MANAGE MEMORY] Cover updated successfully');
-        print('🔄 [MANAGE MEMORY] Invalidating memoryDetailProvider to refresh data');
+        
         
         // Invalidate the memory detail provider so it refetches with updated cover
         ref.invalidate(memoryDetailProvider(memoryId));

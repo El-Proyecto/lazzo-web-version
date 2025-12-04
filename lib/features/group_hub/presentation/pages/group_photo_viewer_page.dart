@@ -102,7 +102,7 @@ class _GroupPhotoViewerPageState extends State<GroupPhotoViewerPage> {
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   decoration: BoxDecoration(
-                    color: BrandColors.bg1.withOpacity(0.8),
+                    color: BrandColors.bg1.withValues(alpha: 0.8),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Row(

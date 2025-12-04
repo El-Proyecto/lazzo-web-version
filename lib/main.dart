@@ -53,6 +53,12 @@ import '../features/group_hub/data/data_sources/group_memory_data_source.dart';
 import '../features/group_hub/data/repositories/group_memory_repository_impl.dart';
 import '../features/group_hub/data/data_sources/group_photos_data_source.dart';
 import '../features/group_hub/data/repositories/group_photos_repository_impl.dart';
+import '../features/group_hub/data/data_sources/group_details_data_source.dart';
+import '../features/group_hub/data/repositories/group_details_repository_impl.dart';
+
+// GROUPS UPDATE - Real implementation
+import '../features/groups/presentation/providers/update_group_provider.dart';
+import '../features/groups/data/repositories/supabase_update_group_repository.dart';
 
 // PROFILE - Real implementation
 import '../features/profile/data/data_sources/profile_remote_data_source.dart';
@@ -195,6 +201,19 @@ void main() async {
           final dataSource = GroupPhotosDataSource(client);
           final storageService = StorageService(client);
           return GroupPhotosRepositoryImpl(dataSource, storageService);
+        }),
+
+        // ✅ GROUP DETAILS repo -> real (Supabase) via DI (Dec 4, 2025)
+        group_hub.groupDetailsRepositoryProvider.overrideWith((ref) {
+          final client = Supabase.instance.client;
+          final dataSource = GroupDetailsDataSource(client);
+          return GroupDetailsRepositoryImpl(dataSource, client);
+        }),
+
+        // ✅ UPDATE GROUP repo -> real (Supabase) via DI (Dec 4, 2025)
+        updateGroupRepositoryProvider.overrideWith((ref) {
+          final client = Supabase.instance.client;
+          return SupabaseUpdateGroupRepository(client);
         }),
 
         // ✅ MEMORY MANAGEMENT repo -> real (Supabase) via DI (Nov 27, 2025)

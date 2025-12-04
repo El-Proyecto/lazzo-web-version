@@ -359,6 +359,7 @@ class _ShareMemoryPageState extends ConsumerState<ShareMemoryPage> {
         return;
       }
 
+      if (!mounted) return;
       final renderObject = context.findRenderObject();
       final boundary = renderObject as RenderRepaintBoundary?;
 

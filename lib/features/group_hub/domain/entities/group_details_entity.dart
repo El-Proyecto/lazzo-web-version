@@ -1,3 +1,5 @@
+import '../../../groups/domain/entities/group_permissions.dart';
+
 /// Group details entity with full group information
 class GroupDetailsEntity {
   final String id;
@@ -6,6 +8,7 @@ class GroupDetailsEntity {
   final int memberCount;
   final bool isCurrentUserAdmin;
   final bool isMuted;
+  final GroupPermissions permissions;
 
   const GroupDetailsEntity({
     required this.id,
@@ -14,6 +17,7 @@ class GroupDetailsEntity {
     required this.memberCount,
     required this.isCurrentUserAdmin,
     required this.isMuted,
+    required this.permissions,
   });
 
   GroupDetailsEntity copyWith({
@@ -23,6 +27,7 @@ class GroupDetailsEntity {
     int? memberCount,
     bool? isCurrentUserAdmin,
     bool? isMuted,
+    GroupPermissions? permissions,
   }) {
     return GroupDetailsEntity(
       id: id ?? this.id,
@@ -31,6 +36,7 @@ class GroupDetailsEntity {
       memberCount: memberCount ?? this.memberCount,
       isCurrentUserAdmin: isCurrentUserAdmin ?? this.isCurrentUserAdmin,
       isMuted: isMuted ?? this.isMuted,
+      permissions: permissions ?? this.permissions,
     );
   }
 }

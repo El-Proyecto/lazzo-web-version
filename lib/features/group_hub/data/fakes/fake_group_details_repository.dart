@@ -1,3 +1,4 @@
+import '../../../groups/domain/entities/group_permissions.dart';
 import '../../domain/entities/group_details_entity.dart';
 import '../../domain/entities/group_member_entity.dart';
 import '../../domain/repositories/group_details_repository.dart';
@@ -16,6 +17,11 @@ class FakeGroupDetailsRepository implements GroupDetailsRepository {
       memberCount: 8,
       isCurrentUserAdmin: true,
       isMuted: false,
+      permissions: GroupPermissions(
+        membersCanInvite: true,
+        membersCanAddMembers: false,
+        membersCanCreateEvents: true,
+      ),
     );
   }
 
