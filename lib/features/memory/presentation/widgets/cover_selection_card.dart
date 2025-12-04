@@ -66,6 +66,10 @@ class CoverSelectionCard extends StatelessWidget {
     }
 
     // Photo selected state
+    print('🎨 [COVER CARD] Rendering with photo:');
+    print('   ID: ${selectedPhoto!.id}');
+    print('   URL: ${(selectedPhoto!.thumbnailUrl ?? selectedPhoto!.url).substring(0, 60)}...');
+    
     return GestureDetector(
       onTap: onTap,
       child: Stack(
@@ -79,6 +83,9 @@ class CoverSelectionCard extends StatelessWidget {
                 image: NetworkImage(
                     selectedPhoto!.thumbnailUrl ?? selectedPhoto!.url),
                 fit: BoxFit.cover,
+                onError: (error, stackTrace) {
+                  print('❌ [COVER CARD] Failed to load image: $error');
+                },
               ),
             ),
           ),

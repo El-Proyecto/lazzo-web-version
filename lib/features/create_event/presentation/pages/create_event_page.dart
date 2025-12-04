@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/constants/text_styles.dart';
 import '../../../../routes/app_router.dart';
@@ -18,6 +19,7 @@ import '../../../../shared/components/common/top_banner.dart';
 import '../../../groups/presentation/providers/groups_provider.dart';
 import '../../../groups/domain/entities/group.dart';
 import '../../../event/presentation/providers/event_providers.dart';
+import '../providers/event_history_provider.dart';
 
 /// Página principal para criação de eventos
 /// Usa todos os widgets tokenizados e reutilizáveis
@@ -570,16 +572,60 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
     );
   }
 
-  void _showEventHistory() {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => EventHistoryBottomSheet(
-        events: _getMockEventHistory(),
+  void _showEventHistory() async {
+    final userId = Supabase.instance.client.auth.currentUser?.id;
+
+    if (userId == null) {
+      // User not authenticated, show empty history
+      EventHistoryBottomSheet.show(
+        context: context,
+        events: const [],
         onEventSelected: _loadEventFromHistory,
-      ),
-    );
+      );
+      return;
+    }
+
+    // Fetch event history
+    try {
+      final historyList = await ref.read(eventHistoryProvider(userId).future);
+
+      // Convert EventHistory to EventHistoryItem
+      final items = historyList.map((history) {
+        // Extract TimeOfDay from DateTime
+        final timeOfDay = TimeOfDay(
+          hour: history.startDateTime.hour,
+          minute: history.startDateTime.minute,
+        );
+
+        return EventHistoryItem(
+          id: history.id,
+          name: history.name,
+          emoji: history.emoji,
+          lastDate: history.startDateTime,
+          lastTime: timeOfDay,
+          location: history.locationName,
+          groupId: history.groupId,
+          groupName: history.groupName,
+        );
+      }).toList();
+
+      if (mounted) {
+        EventHistoryBottomSheet.show(
+          context: context,
+          events: items,
+          onEventSelected: _loadEventFromHistory,
+        );
+      }
+    } catch (e) {
+      // On error, show empty history
+      if (mounted) {
+        EventHistoryBottomSheet.show(
+          context: context,
+          events: const [],
+          onEventSelected: _loadEventFromHistory,
+        );
+      }
+    }
   }
 
   void _showConfirmDialog() {
@@ -697,13 +743,13 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
     );
   }
 
-  void _loadEventFromHistory(EventHistoryItem event) {
+  void _loadEventFromHistory(EventHistoryItem event) async {
     setState(() {
       _eventName = event.name;
       _eventEmoji = event.emoji;
 
-      // Carregar data: mesmo dia da semana ou dia seguinte
-      if (event.lastDate != null) {
+      // Carregar data e hora: mesmo dia da semana, próxima ocorrência
+      if (event.lastDate != null && event.lastTime != null) {
         final now = DateTime.now();
         final lastWeekday = event.lastDate!.weekday;
         var nextDate = now;
@@ -715,23 +761,19 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
 
         // Se for hoje e já passou a hora, usar próxima semana
         if (nextDate.day == now.day &&
-            event.lastTime != null &&
             TimeOfDay.now().hour >= event.lastTime!.hour) {
           nextDate = nextDate.add(const Duration(days: 7));
         }
 
         _selectedDate = nextDate;
-        _dateTimeState = DateTimeState.setNow;
-      }
-
-      // Manter a mesma hora
-      if (event.lastTime != null) {
         _selectedTime = event.lastTime;
+        _endDate = nextDate; // End date igual ao start date
+        _endTime = event.lastTime; // End time igual ao start time
         _dateTimeState = DateTimeState.setNow;
       }
 
       // Carregar localização se existir
-      if (event.location != null) {
+      if (event.location != null && event.location!.isNotEmpty) {
         _selectedLocation = LocationInfo(
           id: 'history',
           displayName: event.location!,
@@ -742,10 +784,50 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
         _locationState = LocationState.setNow;
       }
     });
+
+    // Tentar pré-selecionar o grupo se existir
+    if (event.groupId != null) {
+      try {
+        final groupsAsync = ref.read(groupsProvider);
+        await groupsAsync.when(
+          data: (groups) async {
+            // Find matching group by ID
+            final matchingGroup =
+                groups.where((g) => g.id == event.groupId).firstOrNull;
+            if (matchingGroup != null) {
+              // Load group image URL
+              final imageUrl = await ref.read(
+                groupCoverUrlProvider(
+                        (matchingGroup.photoPath, matchingGroup.photoUpdatedAt))
+                    .future,
+              );
+
+              if (mounted) {
+                setState(() {
+                  _selectedGroup = GroupInfo(
+                    id: matchingGroup.id,
+                    name: matchingGroup.name,
+                    imageUrl: imageUrl,
+                    memberCount: matchingGroup.memberCount,
+                  );
+                  // Clear group error if validation is showing
+                  if (_showValidationErrors) {
+                    _groupError = null;
+                  }
+                });
+              }
+            }
+          },
+          loading: () {},
+          error: (_, __) {},
+        );
+      } catch (e) {
+        // Silently fail if group not found - user can select manually
+      }
+    }
   }
 
   void _createNewGroup() async {
-    print('🎯 [CreateEvent] Navigating to create group page');
     // Save current draft before navigating
     await _saveDraft();
     // Check mounted before using context after await
@@ -763,7 +845,6 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
       final groupName = result['groupName'] as String?;
       final memberCount = result['memberCount'] as int?;
       if (groupId != null && groupName != null) {
-        print('✅ [CreateEvent] Group created: $groupId');
         setState(() {
           _selectedGroup = GroupInfo(
             id: groupId,
@@ -796,10 +877,10 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
     // Invalidate user RSVP provider to ensure fresh data load
     // This guarantees the creator's automatic "Yes" vote is shown
     ref.invalidate(userRsvpProvider(eventId));
-    
+
     // Also invalidate event RSVPs provider for vote counts
     ref.invalidate(eventRsvpsProvider(eventId));
-    
+
     // Also invalidate event detail provider to refresh counts
     ref.invalidate(eventDetailProvider(eventId));
 
@@ -818,37 +899,5 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
         },
       );
     }
-  }
-
-  List<EventHistoryItem> _getMockEventHistory() {
-    return [
-      EventHistoryItem(
-        id: '1',
-        name: 'Baza ao Rio',
-        emoji: '🍖',
-        lastDate: DateTime.now().subtract(const Duration(days: 7)),
-        lastTime: const TimeOfDay(hour: 19, minute: 30),
-        location: 'Tascardoso, Lisboa',
-        groupId: 'group1',
-      ),
-      EventHistoryItem(
-        id: '2',
-        name: 'Futebol',
-        emoji: '⚽',
-        lastDate: DateTime.now().subtract(const Duration(days: 14)),
-        lastTime: const TimeOfDay(hour: 18, minute: 0),
-        location: 'Campo do Jamor',
-        groupId: 'group1',
-      ),
-      EventHistoryItem(
-        id: '3',
-        name: 'Cinema Night',
-        emoji: '🎬',
-        lastDate: DateTime.now().subtract(const Duration(days: 21)),
-        lastTime: const TimeOfDay(hour: 21, minute: 0),
-        location: 'Cinemas NOS Amoreiras',
-        groupId: 'group2',
-      ),
-    ];
   }
 }

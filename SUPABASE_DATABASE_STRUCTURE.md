@@ -76,8 +76,9 @@ Supabase uses PostgreSQL custom enum types for several fields. These enforce typ
    - Used in: `event_participants.rsvp`
 
 2. **`event_state`** — Event lifecycle states
-   - Values: `'pending'`, `'planning'`, `'confirmed'`, `'live'`, `'ended'`, `'cancelled'`
+   - Values: `'pending'`, `'confirmed'`, `'living'`, `'recap'`, `'ended'`
    - Used in: `events.status`
+   - **Note:** `'living'` represents active/live events (not `'live'`)
 
 3. **`member_role`** — Group member roles
    - Values: `'admin'`, `'member'`
@@ -302,11 +303,14 @@ CREATE TABLE events (
 );
 
 -- Custom enum type
-CREATE TYPE event_state AS ENUM ('pending', 'planning', 'confirmed', 'live', 'ended', 'cancelled');
+CREATE TYPE event_state AS ENUM ('pending', 'confirmed', 'living', 'recap', 'ended');
 ```
 
 **Indexes:**
 - `idx_events_state` on `status`
+- `idx_events_created_by` on `created_by` (for event history queries)
+- `idx_events_start_datetime` on `start_datetime DESC` (for chronological ordering)
+- `idx_events_history_query` on `(created_by, start_datetime DESC)` WHERE status IN ('confirmed', 'living', 'recap', 'ended') — **Composite partial index** for event history feature
 - `idx_events_cover_photo` on `cover_photo_id`
 
 **Triggers:**
@@ -324,16 +328,17 @@ CREATE TYPE event_state AS ENUM ('pending', 'planning', 'confirmed', 'live', 'en
 - Has many `event_expenses`
 
 **Event lifecycle:**
-1. **planning** — Initial state; RSVP collection, date/location polls
-2. **confirmed** — Date/location set; RSVP threshold met
-3. **live** — Event started; photo uploads enabled
-4. **ended** — Event finished; 24h upload window begins
-5. **cancelled** — Event cancelled by host
+1. **pending** — Initial state; event created but not yet confirmed
+2. **confirmed** — Date/location set; event ready to start
+3. **living** — Event is currently happening; photo uploads enabled
+4. **recap** — Event finished; 24h upload window for additional photos
+5. **ended** — Event closed; memories finalized
 
 **Query patterns:**
-- Upcoming events: `SELECT * FROM events WHERE group_id = $1 AND status IN ('planning', 'confirmed') AND starts_at > now() ORDER BY starts_at LIMIT 10`
-- Live events: `SELECT * FROM events WHERE group_id = $1 AND status = 'live' ORDER BY starts_at DESC LIMIT 1`
-- Recent memories: `SELECT * FROM events WHERE group_id = $1 AND status = 'ended' ORDER BY ends_at DESC LIMIT 20`
+- Upcoming events: `SELECT * FROM events WHERE group_id = $1 AND status IN ('pending', 'confirmed') AND start_datetime > now() ORDER BY start_datetime LIMIT 10`
+- Live events: `SELECT * FROM events WHERE group_id = $1 AND status = 'living' ORDER BY start_datetime DESC LIMIT 1`
+- Recent memories: `SELECT * FROM events WHERE group_id = $1 AND status = 'ended' ORDER BY end_datetime DESC LIMIT 20`
+- **User event history** (for Create Event templates): `SELECT * FROM events WHERE created_by = $1 AND status IN ('confirmed', 'living', 'recap', 'ended') AND start_datetime IS NOT NULL ORDER BY start_datetime DESC LIMIT 10`
 
 **RLS:** Group members can read; creators and admins can update.
 
@@ -1363,7 +1368,132 @@ GROUP BY rsvp;
 
 ---
 
+## Test Queries for Database Verification
+
+### Index Performance Testing
+
+**Check if events history query uses index:**
+```sql
+EXPLAIN ANALYZE
+SELECT 
+  id, name, emoji, start_datetime, location_id, group_id, created_at
+FROM events
+WHERE created_by = 'YOUR_USER_ID'
+  AND status IN ('confirmed', 'living', 'recap', 'ended')
+  AND start_datetime IS NOT NULL
+ORDER BY start_datetime DESC
+LIMIT 10;
+
+-- Expected: "Index Scan using idx_events_history_query"
+-- Red flag: "Seq Scan" means no index is being used
+```
+
+**List all indexes on events table:**
+```sql
+SELECT 
+  indexname,
+  indexdef
+FROM pg_indexes
+WHERE tablename = 'events'
+ORDER BY indexname;
+```
+
+**Check index size and usage:**
+```sql
+-- Size of specific index
+SELECT pg_size_pretty(pg_relation_size('idx_events_history_query')) as index_size;
+
+-- All indexes with sizes
+SELECT
+  schemaname,
+  tablename,
+  indexname,
+  pg_size_pretty(pg_relation_size(indexname::regclass)) as index_size
+FROM pg_indexes
+WHERE tablename = 'events'
+ORDER BY pg_relation_size(indexname::regclass) DESC;
+```
+
+### RLS Policy Testing
+
+**Test user can read own events:**
+```sql
+-- As authenticated user
+SELECT COUNT(*) as my_events_count
+FROM events
+WHERE created_by = auth.uid();
+-- Expected: number of events created by user
+```
+
+**Test user cannot read others' events (if RLS restricts):**
+```sql
+-- As authenticated user
+SELECT COUNT(*) as other_events_count
+FROM events
+WHERE created_by != auth.uid()
+  AND created_by IS NOT NULL;
+-- Expected: 0 if RLS policy blocks, or count if events are in shared groups
+```
+
+**Create test event for history:**
+```sql
+INSERT INTO events (
+  name,
+  emoji,
+  group_id,
+  created_by,
+  status,
+  start_datetime
+) VALUES (
+  'Test Event History',
+  '🧪',
+  (SELECT id FROM groups WHERE created_by = auth.uid() LIMIT 1),
+  auth.uid(),
+  'ended',
+  NOW() - INTERVAL '7 days'
+)
+RETURNING id, name, status, start_datetime;
+```
+
+### Event Status Distribution
+
+**Check event status counts:**
+```sql
+SELECT 
+  status,
+  COUNT(*) as count
+FROM events
+GROUP BY status
+ORDER BY count DESC;
+```
+
+**Events by lifecycle stage:**
+```sql
+SELECT
+  CASE
+    WHEN status = 'pending' THEN 'Planning'
+    WHEN status = 'confirmed' THEN 'Confirmed'
+    WHEN status = 'living' THEN 'Live'
+    WHEN status = 'recap' THEN 'Recap'
+    WHEN status = 'ended' THEN 'Ended'
+  END as stage,
+  COUNT(*) as count,
+  ROUND(COUNT(*) * 100.0 / SUM(COUNT(*)) OVER(), 2) as percentage
+FROM events
+GROUP BY status
+ORDER BY count DESC;
+```
+
+---
+
 ## Changelog
+
+**2025-12-03** — Updated event_state enum and added event history index
+- Corrected `event_state` enum values: `'pending'`, `'confirmed'`, `'living'`, `'recap'`, `'ended'` (removed `'planning'`, `'live'`, `'cancelled'`)
+- Added `idx_events_history_query` composite partial index for event history feature
+- Added test queries section for index performance and RLS policy verification
+- Updated event lifecycle documentation with correct status values
+- Added event history query pattern to events table documentation
 
 **2025-11-29** — Complete database structure documentation (synced with `supabase_structure.sql`)
 - Documented all 21 tables with full schema details

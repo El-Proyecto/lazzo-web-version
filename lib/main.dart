@@ -5,10 +5,17 @@ import 'env.dart';
 
 import 'package:app/app.dart';
 
-// MEMORY
+// MEMORY (Home recent memories - different from manage_memory)
 import '../features/home/data/data_sources/memory_remote_data_source.dart';
 import '../features/home/data/repositories/memory_repository_impl.dart';
 import '../features/home/presentation/providers/memory_providers.dart';
+
+// MEMORY MANAGEMENT (upload & manage photos)
+import '../features/memory/presentation/providers/memory_providers.dart' as memory_manage;
+import '../features/memory/data/data_sources/memory_data_source.dart' as memory_ds;
+import '../features/memory/data/data_sources/memory_photo_data_source.dart';
+import '../features/memory/data/repositories/memory_repository_impl.dart' as memory_repo;
+import '../services/storage_service.dart';
 
 // HOME EVENTS
 import 'features/home/data/data_sources/home_event_remote_data_source.dart';
@@ -91,6 +98,24 @@ import '../features/auth/presentation/providers/users_repository_provider.dart';
 import '../features/auth/data/datasources/users_remote_datasource.dart';
 import '../features/auth/data/repositories/users_repository.dart';
 
+// SETTINGS - Real implementation
+import '../features/settings/presentation/providers/settings_providers.dart';
+import '../features/settings/data/data_sources/settings_remote_data_source.dart';
+import '../features/settings/data/repositories/settings_repository_impl.dart';
+
+// REPORT PROBLEM - Real implementation (P2)
+import '../features/settings/presentation/providers/report_providers.dart';
+import '../features/settings/data/data_sources/report_remote_data_source.dart';
+import '../features/settings/data/repositories/report_repository_impl.dart';
+
+// SETTINGS SUGGESTIONS - Real implementation (P2)
+import '../features/settings/presentation/providers/suggestion_providers.dart'
+    as settings_suggestion;
+import '../features/settings/data/data_sources/suggestion_remote_data_source.dart'
+    as settings_suggestion_ds;
+import '../features/settings/data/repositories/suggestion_repository_impl.dart'
+    as settings_suggestion_repo;
+
 // CREATE EVENT & EVENT FEATURES (P1 - fake only, no imports needed)
 // Default fake repositories will be used automatically
 
@@ -169,17 +194,33 @@ void main() async {
         }),
 
         // ✅ GROUP MEMORIES repo -> real (Supabase) via DI (Nov 25, 2025)
+        // Updated Nov 27: Added StorageService for signed URL generation
         group_hub.groupMemoryRepositoryProvider.overrideWith((ref) {
           final client = Supabase.instance.client;
           final dataSource = SupabaseGroupMemoryDataSource(client);
-          return GroupMemoryRepositoryImpl(dataSource);
+          final storageService = StorageService(client);
+          return GroupMemoryRepositoryImpl(dataSource, storageService);
         }),
 
         // ✅ GROUP PHOTOS repo -> real (Supabase) via DI (Nov 25, 2025)
         group_hub.groupPhotosRepositoryProvider.overrideWith((ref) {
           final client = Supabase.instance.client;
           final dataSource = GroupPhotosDataSource(client);
-          return GroupPhotosRepositoryImpl(dataSource);
+          final storageService = StorageService(client);
+          return GroupPhotosRepositoryImpl(dataSource, storageService);
+        }),
+
+        // ✅ MEMORY MANAGEMENT repo -> real (Supabase) via DI (Nov 27, 2025)
+        memory_manage.memoryRepositoryProvider.overrideWith((ref) {
+          final client = Supabase.instance.client;
+          final memoryDataSource = memory_ds.MemoryDataSource(client);
+          final photoDataSource = MemoryPhotoDataSource(client);
+          final storageService = StorageService(client);
+          return memory_repo.MemoryRepositoryImpl(
+            memoryDataSource,
+            photoDataSource,
+            storageService,
+          );
         }),
 
         // Profile repo -> real (Supabase)
@@ -247,6 +288,28 @@ void main() async {
             ChatRemoteDataSource(Supabase.instance.client),
           ),
         ),
+
+        // ✅ SETTINGS repo -> real (Supabase) via DI (P2 Implementation Complete)
+        settingsRepositoryProvider.overrideWith((ref) {
+          final client = Supabase.instance.client;
+          final dataSource = SettingsRemoteDataSource(client);
+          return SettingsRepositoryImpl(dataSource);
+        }),
+
+        // ✅ REPORT PROBLEM repo -> real (Supabase) via DI (P2 Implementation)
+        reportRepositoryProvider.overrideWith((ref) {
+          final client = Supabase.instance.client;
+          final dataSource = ReportRemoteDataSource(client);
+          return ReportRepositoryImpl(dataSource);
+        }),
+
+        // ✅ SETTINGS SUGGESTION repo -> real (Supabase) via DI (P2 Implementation)
+        settings_suggestion.suggestionRepositoryProvider.overrideWith((ref) {
+          final client = Supabase.instance.client;
+          final dataSource =
+              settings_suggestion_ds.SuggestionRemoteDataSource(client);
+          return settings_suggestion_repo.SuggestionRepositoryImpl(dataSource);
+        }),
       ],
       child: const LazzoApp(),
     ),

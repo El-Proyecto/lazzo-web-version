@@ -38,6 +38,7 @@ class MemoryPhoto {
   final double aspectRatio; // width / height
   final String uploaderId;
   final String uploaderName;
+  final String? profileImageUrl;
   final bool isCover; // NOVO
 
   const MemoryPhoto({
@@ -50,6 +51,7 @@ class MemoryPhoto {
     required this.aspectRatio,
     required this.uploaderId,
     required this.uploaderName,
+    this.profileImageUrl,
     required this.isCover,
   });
 

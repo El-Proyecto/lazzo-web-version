@@ -6,6 +6,7 @@ class GroupPhotoEntity {
   final DateTime capturedAt;
   final String? uploaderId;
   final String? uploaderName;
+  final String? profileImageUrl;
   final bool isPortrait;
 
   const GroupPhotoEntity({
@@ -14,6 +15,7 @@ class GroupPhotoEntity {
     required this.capturedAt,
     this.uploaderId,
     this.uploaderName,
+    this.profileImageUrl,
     required this.isPortrait,
   });
 
@@ -23,6 +25,7 @@ class GroupPhotoEntity {
     DateTime? capturedAt,
     String? uploaderId,
     String? uploaderName,
+    String? profileImageUrl,
     bool? isPortrait,
   }) {
     return GroupPhotoEntity(
@@ -31,6 +34,7 @@ class GroupPhotoEntity {
       capturedAt: capturedAt ?? this.capturedAt,
       uploaderId: uploaderId ?? this.uploaderId,
       uploaderName: uploaderName ?? this.uploaderName,
+      profileImageUrl: profileImageUrl ?? this.profileImageUrl,
       isPortrait: isPortrait ?? this.isPortrait,
     );
   }
@@ -44,6 +48,7 @@ class GroupPhotoEntity {
         other.capturedAt == capturedAt &&
         other.uploaderId == uploaderId &&
         other.uploaderName == uploaderName &&
+        other.profileImageUrl == profileImageUrl &&
         other.isPortrait == isPortrait;
   }
 
@@ -55,6 +60,7 @@ class GroupPhotoEntity {
       capturedAt,
       uploaderId,
       uploaderName,
+      profileImageUrl,
       isPortrait,
     );
   }

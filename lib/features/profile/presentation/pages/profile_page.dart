@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../widgets/profile_app_bar.dart';
 import '../widgets/user_info_card.dart';
 import '../widgets/memories_section.dart';
 import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/themes/colors.dart';
 import '../../../../shared/components/common/top_banner.dart';
+import '../../../../shared/components/nav/common_app_bar.dart';
+import '../../../../routes/app_router.dart';
 import '../../domain/entities/profile_entity.dart';
 import '../providers/profile_providers.dart';
 
@@ -20,7 +21,22 @@ class ProfilePage extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: BrandColors.bg1,
-      appBar: ProfileAppBar(onEditPressed: () => _onEditProfile(context)),
+      appBar: CommonAppBar(
+        title: 'Profile',
+        trailing: GestureDetector(
+          onTap: () => Navigator.pushNamed(context, AppRouter.settings),
+          child: Container(
+            width: 28,
+            height: 28,
+            alignment: Alignment.center,
+            child: const Icon(
+              Icons.menu,
+              color: BrandColors.text1,
+              size: 24,
+            ),
+          ),
+        ),
+      ),
       body: profileAsync.when(
         loading: () => const Center(
           child: CircularProgressIndicator(color: BrandColors.planning),
@@ -82,10 +98,6 @@ class ProfilePage extends ConsumerWidget {
         ),
       ),
     );
-  }
-
-  void _onEditProfile(BuildContext context) {
-    Navigator.of(context).pushNamed('/edit-profile');
   }
 
   void _onMemoryTap(BuildContext context, MemoryEntity memory) {

@@ -169,7 +169,7 @@ class _EventPageState extends ConsumerState<EventPage> {
     final participantsAsync = ref.watch(eventParticipantsProvider(eventId));
 
     // Helper to refresh all event data
-    Future<void> _refreshEventData() async {
+    Future<void> refreshEventData() async {
       ref.invalidate(eventDetailProvider(eventId));
       ref.invalidate(eventRsvpsProvider(eventId));
       ref.invalidate(userRsvpProvider(eventId));
@@ -263,7 +263,7 @@ class _EventPageState extends ConsumerState<EventPage> {
       ),
       body: eventAsync.when(
         data: (event) => RefreshIndicator(
-          onRefresh: _refreshEventData,
+          onRefresh: refreshEventData,
           color: BrandColors.planning,
           backgroundColor: BrandColors.bg2,
           child: SingleChildScrollView(

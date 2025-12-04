@@ -177,32 +177,45 @@ class _PhotoPreviewPageState extends ConsumerState<PhotoPreviewPage> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               // Uploader info with profile photo
-              Row(
-                children: [
-                  // Profile photo
-                  Container(
-                    width: 32,
-                    height: 32,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: BrandColors.bg3,
-                      image: DecorationImage(
-                        image: NetworkImage(
-                          'https://i.pravatar.cc/150?u=${photo.uploaderId}',
-                        ),
-                        fit: BoxFit.cover,
+              Builder(
+                builder: (context) {
+                  print('\n👤 [PHOTO PREVIEW] Uploader info:');
+                  print('   - uploaderId: ${photo.uploaderId}');
+                  print('   - uploaderName: "${photo.uploaderName}"');
+                  print('   - isUploadedByCurrentUser: ${photo.isUploadedByCurrentUser}');
+                  print('   - Display: ${photo.isUploadedByCurrentUser ? "You" : photo.uploaderName}');
+                  
+                  return Row(
+                    children: [
+                      // Profile photo with fallback to initials
+                      CircleAvatar(
+                        radius: 16,
+                        backgroundColor: BrandColors.bg3,
+                        foregroundImage: photo.profileImageUrl != null && photo.profileImageUrl!.isNotEmpty
+                            ? NetworkImage(photo.profileImageUrl!)
+                            : null,
+                        child: photo.profileImageUrl == null || photo.profileImageUrl!.isEmpty
+                            ? Text(
+                                photo.uploaderName.isNotEmpty
+                                    ? photo.uploaderName[0].toUpperCase()
+                                    : '?',
+                                style: AppText.labelLarge.copyWith(
+                                  color: BrandColors.text1,
+                                ),
+                              )
+                            : null,
                       ),
-                    ),
-                  ),
-                  const SizedBox(width: Gaps.sm),
-                  // Uploader name
-                  Text(
-                    photo.isUploadedByCurrentUser ? 'You' : photo.uploaderName,
-                    style: AppText.bodyMedium.copyWith(
-                      color: BrandColors.text1,
-                    ),
-                  ),
-                ],
+                      const SizedBox(width: Gaps.sm),
+                      // Uploader name
+                      Text(
+                        photo.isUploadedByCurrentUser ? 'You' : photo.uploaderName,
+                        style: AppText.bodyMedium.copyWith(
+                          color: BrandColors.text1,
+                        ),
+                      ),
+                    ],
+                  );
+                },
               ),
 
               // Delete button (only if can delete)
@@ -338,9 +351,13 @@ class _PhotoPreviewPageState extends ConsumerState<PhotoPreviewPage> {
     }
   }
 
-  void _handlePromoteToCover(BuildContext context, ManagePhotoItem photo) {
-    // Promote to cover
-    ref.read(manageMemoryProvider(widget.memoryId).notifier).selectCover(photo);
+  Future<void> _handlePromoteToCover(BuildContext context, ManagePhotoItem photo) async {
+    print('\n🎯 [PHOTO PREVIEW] Promoting photo ${photo.id.substring(0, 8)}... to cover');
+    
+    // Promote to cover (will persist to Supabase)
+    await ref.read(manageMemoryProvider(widget.memoryId).notifier).selectCover(photo);
+
+    if (!mounted) return;
 
     // Navigate back to Manage Photos
     Navigator.of(context).pop();

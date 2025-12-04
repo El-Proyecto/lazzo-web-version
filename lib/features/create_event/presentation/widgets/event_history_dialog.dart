@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/constants/text_styles.dart';
 import '../../../../shared/themes/colors.dart';
-import '../../../../shared/components/widgets/grabber_bar.dart';
+import '../../../../shared/components/common/common_bottom_sheet.dart';
 
 /// Bottom sheet para exibir histórico de eventos
 /// Permite selecionar um evento anterior para usar como template
@@ -16,103 +16,62 @@ class EventHistoryBottomSheet extends StatelessWidget {
     this.onEventSelected,
   });
 
+  /// Show event history bottom sheet
+  static Future<void> show({
+    required BuildContext context,
+    required List<EventHistoryItem> events,
+    Function(EventHistoryItem)? onEventSelected,
+  }) {
+    return CommonBottomSheet.show(
+      context: context,
+      title: 'Event History',
+      maxHeight: 400,
+      content: EventHistoryBottomSheet(
+        events: events,
+        onEventSelected: onEventSelected,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
-    final screenHeight = MediaQuery.of(context).size.height;
-    final maxHeight = screenHeight * 0.9;
-
-    return Container(
-      width: double.infinity,
-      constraints: BoxConstraints(
-        maxHeight: keyboardHeight > 0 ? maxHeight : 400,
-      ),
-      decoration: const BoxDecoration(
-        color: BrandColors.bg2,
-        borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(Radii.md),
-          topRight: Radius.circular(Radii.md),
-        ),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Grabber bar
-          const Padding(
-            padding: EdgeInsets.only(top: Gaps.sm),
-            child: Center(child: GrabberBar()),
-          ),
-
-          // Header
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: Gaps.lg),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Event History',
-                  style: AppText.titleMediumEmph.copyWith(
-                    color: BrandColors.text1,
-                  ),
-                ),
-                IconButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  icon: const Icon(Icons.close, color: BrandColors.text2),
-                ),
-              ],
+    if (events.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(
+              Icons.history,
+              color: BrandColors.text2,
+              size: 48,
             ),
-          ),
-
-          const SizedBox(height: 12),
-
-          // Lista de eventos
-          Flexible(
-            child: Padding(
-              padding: EdgeInsets.only(
-                left: Gaps.lg,
-                right: Gaps.lg,
-                bottom: Gaps.lg + MediaQuery.of(context).viewInsets.bottom,
+            const SizedBox(height: Gaps.sm),
+            Text(
+              'No events yet',
+              style: AppText.bodyMedium.copyWith(
+                color: BrandColors.text2,
               ),
-              child: events.isEmpty
-                  ? Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(
-                            Icons.history,
-                            color: BrandColors.text2,
-                            size: 48,
-                          ),
-                          const SizedBox(height: Gaps.sm),
-                          Text(
-                            'No events yet',
-                            style: AppText.bodyMedium.copyWith(
-                              color: BrandColors.text2,
-                            ),
-                          ),
-                        ],
-                      ),
-                    )
-                  : ListView.separated(
-                      shrinkWrap: true,
-                      itemCount: events.length,
-                      separatorBuilder: (context, index) =>
-                          const SizedBox(height: Gaps.sm),
-                      itemBuilder: (context, index) {
-                        final event = events[index];
-                        return _EventHistoryTile(
-                          event: event,
-                          onTap: () {
-                            Navigator.of(context).pop();
-                            onEventSelected?.call(event);
-                          },
-                        );
-                      },
-                    ),
             ),
-          ),
-        ],
-      ),
+          ],
+        ),
+      );
+    }
+
+    return ListView.separated(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: events.length,
+      separatorBuilder: (context, index) => const SizedBox(height: Gaps.sm),
+      itemBuilder: (context, index) {
+        final event = events[index];
+        return _EventHistoryTile(
+          event: event,
+          onTap: () {
+            Navigator.of(context).pop();
+            onEventSelected?.call(event);
+          },
+        );
+      },
     );
   }
 }
@@ -150,7 +109,7 @@ class _EventHistoryTile extends StatelessWidget {
 
             const SizedBox(width: Gaps.sm),
 
-            // Nome e data
+            // Nome e informação
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -162,41 +121,51 @@ class _EventHistoryTile extends StatelessWidget {
                       fontWeight: FontWeight.w500,
                     ),
                   ),
-                  if (event.lastTime != null || event.location != null) ...[
-                    const SizedBox(height: 2),
-                    Text(
-                      _formatTimeAndLocation(event.lastTime, event.location),
-                      style: AppText.bodyMedium.copyWith(
-                        color: BrandColors.text2,
-                      ),
+                  const SizedBox(height: 2),
+                  Text(
+                    _formatEventInfo(event.lastDate, event.lastTime,
+                        event.location, event.groupName),
+                    style: AppText.bodyMedium.copyWith(
+                      color: BrandColors.text2,
                     ),
-                  ],
+                  ),
                 ],
               ),
             ),
 
             // Seta
-            const Icon(Icons.arrow_forward_ios, color: BrandColors.text2, size: 16),
+            const Icon(Icons.arrow_forward_ios,
+                color: BrandColors.text2, size: 16),
           ],
         ),
       ),
     );
   }
 
-  String _formatTimeAndLocation(TimeOfDay? time, String? location) {
+  String _formatEventInfo(
+      DateTime? date, TimeOfDay? time, String? location, String? groupName) {
     final parts = <String>[];
 
-    if (time != null) {
+    // Add weekday and time (e.g., "Fri, 22:00")
+    if (date != null && time != null) {
+      final weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+      final weekday = weekdays[date.weekday - 1];
       final hour = time.hour.toString().padLeft(2, '0');
       final minute = time.minute.toString().padLeft(2, '0');
-      parts.add('$hour:$minute');
+      parts.add('$weekday, $hour:$minute');
     }
 
+    // Add location if present
     if (location != null && location.isNotEmpty) {
       parts.add(location);
     }
 
-    return parts.join(' • ');
+    // Add group name if present
+    if (groupName != null && groupName.isNotEmpty) {
+      parts.add(groupName);
+    }
+
+    return parts.isNotEmpty ? parts.join(' • ') : '';
   }
 }
 
@@ -209,6 +178,7 @@ class EventHistoryItem {
   final TimeOfDay? lastTime;
   final String? location;
   final String? groupId;
+  final String? groupName;
 
   const EventHistoryItem({
     required this.id,
@@ -218,5 +188,6 @@ class EventHistoryItem {
     this.lastTime,
     this.location,
     this.groupId,
+    this.groupName,
   });
 }

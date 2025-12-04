@@ -213,26 +213,31 @@ class _HomePageState extends ConsumerState<HomePage> {
         centerTitle: true,
         trailing: (nextEventStatus == HomeEventStatus.living ||
                 nextEventStatus == HomeEventStatus.recap)
-            ? IconButton(
-                icon: Container(
-                  width: 24,
-                  height: 24,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: BrandColors.text1,
-                      width: 1.5,
-                    ),
-                  ),
-                  child: const Icon(
-                    Icons.add,
-                    color: BrandColors.text1,
-                    size: 20,
-                  ),
-                ),
-                onPressed: () {
+            ? GestureDetector(
+                onTap: () {
                   Navigator.pushNamed(context, AppRouter.createEvent);
                 },
+                child: Container(
+                  width: 28,
+                  height: 28,
+                  alignment: Alignment.center,
+                  child: Container(
+                    width: 24,
+                    height: 24,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: BrandColors.text1,
+                        width: 1.5,
+                      ),
+                    ),
+                    child: const Icon(
+                      Icons.add,
+                      color: BrandColors.text1,
+                      size: 20,
+                    ),
+                  ),
+                ),
               )
             : null,
       ),
