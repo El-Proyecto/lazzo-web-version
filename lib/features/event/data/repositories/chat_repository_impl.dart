@@ -8,30 +8,27 @@ class ChatRepositoryImpl implements ChatRepository {
   final ChatRemoteDataSource _remoteDataSource;
 
   ChatRepositoryImpl(this._remoteDataSource);
-  
+
   @override
   Stream<List<ChatMessage>> watchMessages(String eventId) async* {
-    
     await for (final models in _remoteDataSource.watchMessages(eventId)) {
-      
       // Build a map of all messages by ID for fast lookup (for replyTo)
       final messagesById = <String, ChatMessage>{};
-      
+
       // First pass: convert all models to entities (without replyTo)
       for (final model in models) {
         messagesById[model.id] = model.toEntity();
       }
-      
+
       // Second pass: populate replyTo references
       final messagesWithReplies = <ChatMessage>[];
       for (final model in models) {
         final baseMessage = messagesById[model.id]!;
-        
+
         // If this message has a reply_to_id, find the referenced message
-        final replyTo = model.replyToId != null 
-            ? messagesById[model.replyToId]
-            : null;
-        
+        final replyTo =
+            model.replyToId != null ? messagesById[model.replyToId] : null;
+
         messagesWithReplies.add(baseMessage.copyWith(replyTo: replyTo));
       }
 
@@ -49,31 +46,28 @@ class ChatRepositoryImpl implements ChatRepository {
       limit: limit,
     );
 
-    
     // Build a map of all messages by ID for fast lookup (for replyTo)
     final messagesById = <String, ChatMessage>{};
-    
+
     // First pass: convert all models to entities (without replyTo)
     for (final model in models) {
       messagesById[model.id] = model.toEntity();
     }
-    
+
     // Second pass: populate replyTo references
     final messagesWithReplies = <ChatMessage>[];
     for (final model in models) {
       final baseMessage = messagesById[model.id]!;
-      
+
       // If this message has a reply_to_id, find the referenced message
-      final replyTo = model.replyToId != null 
-          ? messagesById[model.replyToId]
-          : null;
-      
-      if (replyTo != null) {
-      }
-      
+      final replyTo =
+          model.replyToId != null ? messagesById[model.replyToId] : null;
+
+      if (replyTo != null) {}
+
       messagesWithReplies.add(baseMessage.copyWith(replyTo: replyTo));
     }
-    
+
     return messagesWithReplies;
   }
 
@@ -97,55 +91,150 @@ class ChatRepositoryImpl implements ChatRepository {
   /// DEPRECATED: Use watchMessages instead
   Future<List<ChatMessage>> getAllMessages(String eventId) async {
     final models = await _remoteDataSource.getAllMessages(eventId);
-    
+
     // Build a map of all messages by ID for fast lookup
     final messagesById = <String, ChatMessage>{};
-    
+
     // First pass: convert all models to entities (without replyTo)
     for (final model in models) {
       messagesById[model.id] = model.toEntity();
     }
-    
+
     // Second pass: populate replyTo references
     final messagesWithReplies = <ChatMessage>[];
     for (final model in models) {
       final baseMessage = messagesById[model.id]!;
-      
+
       // If this message has a reply_to_id, find the referenced message
-      final replyTo = model.replyToId != null 
-          ? messagesById[model.replyToId]
-          : null;
-      
-      if (replyTo != null) {
-      }
-      
+      final replyTo =
+          model.replyToId != null ? messagesById[model.replyToId] : null;
+
+      if (replyTo != null) {}
+
       messagesWithReplies.add(baseMessage.copyWith(replyTo: replyTo));
     }
-    
+
     return messagesWithReplies;
   }
 
   @override
-  Future<ChatMessage> pinMessage(String eventId, String messageId, bool isPinned) async {
-    
+  Future<ChatMessage> pinMessage(
+      String eventId, String messageId, bool isPinned) async {
     await _remoteDataSource.pinMessage(messageId, eventId, isPinned);
-    
+
     // Reload the message to get updated state
     final updatedMessages = await _remoteDataSource.getAllMessages(eventId);
     final updatedMessage = updatedMessages.firstWhere((m) => m.id == messageId);
-    
+
     return updatedMessage.toEntity();
   }
 
   @override
   Future<ChatMessage> deleteMessage(String eventId, String messageId) async {
-    
     await _remoteDataSource.deleteMessage(messageId);
-    
+
     // Reload to get updated state
     final updatedMessages = await _remoteDataSource.getAllMessages(eventId);
     final updatedMessage = updatedMessages.firstWhere((m) => m.id == messageId);
-    
+
     return updatedMessage.toEntity();
+  }
+
+  @override
+  Future<bool> updateLastReadMessage({
+    required String eventId,
+    required String messageId,
+  }) async {
+    try {
+      print('[ChatRepositoryImpl] Updating last read message');
+      print('  Event ID: $eventId');
+      print('  Message ID: $messageId');
+
+      final response = await _remoteDataSource.updateLastReadMessage(
+        eventId: eventId,
+        messageId: messageId,
+      );
+
+      final success = response['success'] == true;
+      print('[ChatRepositoryImpl] Update success: $success');
+
+      return success;
+    } catch (e, stackTrace) {
+      print('[ChatRepositoryImpl] Error updating last read message: $e');
+      print('  Stack trace: $stackTrace');
+      throw Exception('Failed to update last read message: $e');
+    }
+  }
+
+  @override
+  Future<int> getUnreadMessageCount({
+    required String eventId,
+    required String currentUserId,
+  }) async {
+    try {
+      print('[ChatRepositoryImpl] Getting unread message count');
+      print('  Event ID: $eventId');
+      print('  User ID: $currentUserId');
+
+      final count = await _remoteDataSource.getUnreadMessageCount(
+        eventId: eventId,
+        currentUserId: currentUserId,
+      );
+
+      print('[ChatRepositoryImpl] Unread count: $count');
+      return count;
+    } catch (e, stackTrace) {
+      print('[ChatRepositoryImpl] Error getting unread count: $e');
+      print('  Stack trace: $stackTrace');
+      throw Exception('Failed to get unread message count: $e');
+    }
+  }
+
+  @override
+  Future<List<ChatMessage>> getMessagesWithReadStatus({
+    required String eventId,
+    required String currentUserId,
+    int limit = 50,
+  }) async {
+    try {
+      print('[ChatRepositoryImpl] Getting messages with read status');
+      print('  Event ID: $eventId');
+      print('  User ID: $currentUserId');
+      print('  Limit: $limit');
+
+      final models = await _remoteDataSource.getMessagesWithReadStatus(
+        eventId: eventId,
+        currentUserId: currentUserId,
+        limit: limit,
+      );
+
+      // Build a map of all messages by ID for fast lookup (for replyTo)
+      final messagesById = <String, ChatMessage>{};
+
+      // First pass: convert all models to entities (without replyTo)
+      for (final model in models) {
+        messagesById[model.id] = model.toEntity();
+      }
+
+      // Second pass: populate replyTo references
+      final messagesWithReplies = <ChatMessage>[];
+      for (final model in models) {
+        final baseMessage = messagesById[model.id]!;
+
+        // If this message has a reply_to_id, find the referenced message
+        final replyTo =
+            model.replyToId != null ? messagesById[model.replyToId] : null;
+
+        messagesWithReplies.add(baseMessage.copyWith(replyTo: replyTo));
+      }
+
+      print(
+          '[ChatRepositoryImpl] Fetched ${messagesWithReplies.length} messages');
+      return messagesWithReplies;
+    } catch (e, stackTrace) {
+      print('[ChatRepositoryImpl] Error getting messages with read status: $e');
+      print('  Stack trace: $stackTrace');
+      throw Exception('Failed to get messages with read status: $e');
+    }
   }
 }

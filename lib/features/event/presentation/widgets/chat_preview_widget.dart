@@ -3,6 +3,8 @@ import 'package:flutter/services.dart';
 import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/constants/text_styles.dart';
 import '../../../../shared/themes/colors.dart';
+import '../../domain/entities/chat_message.dart';
+import 'chat_message_bubble.dart';
 
 /// Mode for chat preview widget
 enum ChatMode {
@@ -179,7 +181,6 @@ class _ChatPreviewWidgetState extends State<ChatPreviewWidget> {
 
   @override
   Widget build(BuildContext context) {
-
     // Sort messages by timestamp ASCENDING (oldest first)
     final sortedMessages = [...widget.recentMessages]
       ..sort((a, b) => a.timestamp.compareTo(b.timestamp));
@@ -333,32 +334,92 @@ class _ChatPreviewWidgetState extends State<ChatPreviewWidget> {
                           final reversedIndex =
                               messagesToShow.length - 1 - index;
                           final message = messagesToShow[reversedIndex];
+                          final isCurrentUser =
+                              message.userId == widget.currentUserId;
+
+                          // Get previous and next messages for grouping logic
+                          final previousMessage =
+                              index < messagesToShow.length - 1
+                                  ? messagesToShow[
+                                      messagesToShow.length - 1 - (index + 1)]
+                                  : null;
+                          final nextMessage = index > 0
+                              ? messagesToShow[
+                                  messagesToShow.length - 1 - (index - 1)]
+                              : null;
+
+                          // Determine if we should show avatar and metadata
+                          // Same logic as event_chat_page.dart
+                          final isFirstInGroup = previousMessage == null ||
+                              previousMessage.userId != message.userId ||
+                              message.timestamp
+                                      .difference(previousMessage.timestamp)
+                                      .inMinutes >
+                                  5;
+
+                          final isLastInGroup = nextMessage == null ||
+                              nextMessage.userId != message.userId ||
+                              nextMessage.timestamp
+                                      .difference(message.timestamp)
+                                      .inMinutes >
+                                  5;
+
                           return Padding(
                             padding: EdgeInsets.only(
-                              bottom: index == 0 ? 0 : Gaps.md,
+                              top: isLastInGroup ? Gaps.xs : 2,
+                              bottom: isLastInGroup ? Gaps.xs : 2,
                             ),
-                            child: GestureDetector(
+                            child: ChatMessageBubble(
+                              message: _adaptPreviewToMessage(message),
+                              isCurrentUser: isCurrentUser,
+                              isFirstInGroup: isFirstInGroup,
+                              isLastInGroup: isLastInGroup,
+                              bubbleColor: isCurrentUser
+                                  ? (widget.mode == ChatMode.living
+                                      ? BrandColors.living
+                                      : BrandColors.planning)
+                                  : BrandColors.bg3,
                               onLongPress: () => _showMessageActions(message),
-                              child: _MessageBubble(
-                                mode: widget.mode,
-                                message: message,
-                                isCurrentUser:
-                                    message.userId == widget.currentUserId,
-                                onReplyTap: message.replyTo != null
-                                    ? () {
-                                        // Navigate to chat and scroll to replied message
-                                        if (widget.onOpenChatWithMessage !=
-                                            null) {
-                                          final replyMessageId =
-                                              '${message.replyTo!.userId}_${message.replyTo!.timestamp.millisecondsSinceEpoch}';
-                                          widget.onOpenChatWithMessage!(
-                                              replyMessageId);
-                                        } else if (widget.onOpenChat != null) {
-                                          widget.onOpenChat!();
-                                        }
+                              onReplyTap: message.replyTo != null
+                                  ? () {
+                                      // Navigate to chat and scroll to replied message
+                                      if (widget.onOpenChatWithMessage !=
+                                          null) {
+                                        final replyMessageId =
+                                            '${message.replyTo!.userId}_${message.replyTo!.timestamp.millisecondsSinceEpoch}';
+                                        widget.onOpenChatWithMessage!(
+                                            replyMessageId);
+                                      } else if (widget.onOpenChat != null) {
+                                        widget.onOpenChat!();
                                       }
-                                    : null,
-                              ),
+                                    }
+                                  : null,
+                              formatTimestamp: (timestamp) {
+                                final now = DateTime.now();
+                                final isToday = now.year == timestamp.year &&
+                                    now.month == timestamp.month &&
+                                    now.day == timestamp.day;
+
+                                if (isToday) {
+                                  // Show time in HH:mm format for messages today
+                                  final hour =
+                                      timestamp.hour.toString().padLeft(2, '0');
+                                  final minute = timestamp.minute
+                                      .toString()
+                                      .padLeft(2, '0');
+                                  return '$hour:$minute';
+                                } else {
+                                  // Show date for older messages
+                                  final diff = now.difference(timestamp);
+                                  if (diff.inDays == 1) {
+                                    return 'Yesterday';
+                                  } else if (diff.inDays < 7) {
+                                    return '${diff.inDays}d ago';
+                                  } else {
+                                    return '${timestamp.day}/${timestamp.month}';
+                                  }
+                                }
+                              },
                             ),
                           );
                         },
@@ -525,198 +586,30 @@ class _ChatPreviewWidgetState extends State<ChatPreviewWidget> {
   }
 }
 
-/// Individual message bubble
-class _MessageBubble extends StatelessWidget {
-  final ChatMessagePreview message;
-  final bool isCurrentUser;
-  final VoidCallback? onReplyTap;
-  final ChatMode mode;
-
-  const _MessageBubble({
-    required this.message,
-    required this.isCurrentUser,
-    this.onReplyTap,
-    required this.mode,
-  });
-
-  String _formatTimestamp(DateTime timestamp) {
-    final now = DateTime.now();
-    final isToday = now.year == timestamp.year &&
-        now.month == timestamp.month &&
-        now.day == timestamp.day;
-
-    if (isToday) {
-      // Show time in HH:mm format for messages today
-      final hour = timestamp.hour.toString().padLeft(2, '0');
-      final minute = timestamp.minute.toString().padLeft(2, '0');
-      return '$hour:$minute';
-    } else {
-      // Show date for older messages
-      final diff = now.difference(timestamp);
-      if (diff.inDays == 1) {
-        return 'Yesterday';
-      } else if (diff.inDays < 7) {
-        return '${diff.inDays}d ago';
-      } else {
-        return '${timestamp.day}/${timestamp.month}';
-      }
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final bubbleColor = isCurrentUser ? BrandColors.planning : BrandColors.bg3;
-
-    return Column(
-      crossAxisAlignment:
-          isCurrentUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-      children: [
-        // Reply preview bubble (if replying to a message)
-        if (message.replyTo != null) ...[
-          Padding(
-            padding: EdgeInsets.only(
-              left: isCurrentUser ? 0 : 40,
-              right: isCurrentUser ? 0 : 0,
-              bottom: Gaps.xxs,
-            ),
-            child: GestureDetector(
-              onTap: onReplyTap,
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: Pads.ctlH,
-                  vertical: Gaps.xs,
-                ),
-                decoration: BoxDecoration(
-                  color: bubbleColor.withValues(alpha: 0.3),
-                  borderRadius: BorderRadius.circular(Radii.md),
-                  border: const Border(
-                    left: BorderSide(
-                      color: BrandColors.text2,
-                      width: 3,
-                    ),
-                  ),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(
-                      Icons.reply,
-                      size: 14,
-                      color: BrandColors.text2,
-                    ),
-                    const SizedBox(width: Gaps.xs),
-                    Flexible(
-                      child: Text(
-                        message.replyTo!.content,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: AppText.bodyMedium.copyWith(
-                          color: BrandColors.text2,
-                          fontSize: 12,
-                          fontStyle: FontStyle.italic,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ],
-        Row(
-          mainAxisAlignment:
-              isCurrentUser ? MainAxisAlignment.end : MainAxisAlignment.start,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Avatar only shown for other users (not current user)
-            if (!isCurrentUser) ...[
-              CircleAvatar(
-                radius: 16,
-                backgroundColor: BrandColors.bg3,
-                foregroundImage:
-                    message.userAvatar != null && message.userAvatar!.isNotEmpty
-                        ? NetworkImage(message.userAvatar!)
-                        : null,
-                onForegroundImageError: (exception, stackTrace) {
-                  // Log error but don't crash
-                  debugPrint('❌ Failed to load avatar: ${message.userAvatar}');
-                  debugPrint('   Error: $exception');
-                },
-                child: Text(
-                  message.userName.isNotEmpty
-                      ? message.userName[0].toUpperCase()
-                      : '?',
-                  style: AppText.bodyMedium.copyWith(
-                    color: BrandColors.text2,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-              const SizedBox(width: Gaps.xs),
-            ],
-            Flexible(
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: Pads.ctlH,
-                  vertical: Gaps.sm,
-                ),
-                decoration: BoxDecoration(
-                  color: isCurrentUser
-                      ? (mode == ChatMode.living
-                          ? BrandColors.living
-                          : BrandColors.planning)
-                      : BrandColors.bg3,
-                  borderRadius: BorderRadius.circular(Radii.md),
-                ),
-                child: Text(
-                  message.content,
-                  style: AppText.bodyMedium.copyWith(
-                    color:
-                        isCurrentUser ? BrandColors.text1 : BrandColors.text1,
-                  ),
-                ),
-              ),
-            ),
-            // No avatar for current user messages - keeps it clean like WhatsApp
-          ],
-        ),
-        const SizedBox(height: Gaps.xxs),
-        // Name and timestamp below bubble (only timestamp for current user)
-        Padding(
-          padding: EdgeInsets.only(
-            left: isCurrentUser ? 0 : 40,
-            right: isCurrentUser ? 0 : 0,
-          ),
-          child: Row(
-            mainAxisAlignment:
-                isCurrentUser ? MainAxisAlignment.end : MainAxisAlignment.start,
-            children: [
-              // Show name only for other users, not for current user
-              if (!isCurrentUser) ...[
-                Text(
-                  message.userName,
-                  style: AppText.bodyMedium.copyWith(
-                    color: BrandColors.text2,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                const SizedBox(width: Gaps.xs),
-              ],
-              Text(
-                _formatTimestamp(message.timestamp),
-                style: AppText.bodyMedium.copyWith(
-                  color: BrandColors.text2,
-                  fontSize: 11,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
+/// Adapter to convert ChatMessagePreview to ChatMessage for use with ChatMessageBubble
+ChatMessage _adaptPreviewToMessage(ChatMessagePreview preview) {
+  return ChatMessage(
+    id: '${preview.userId}_${preview.timestamp.millisecondsSinceEpoch}',
+    eventId: '', // Not needed for display
+    userId: preview.userId,
+    userName: preview.userName,
+    userAvatar: preview.userAvatar,
+    content: preview.content,
+    createdAt: preview.timestamp,
+    isPinned: false,
+    isDeleted: false,
+    replyTo: preview.replyTo != null
+        ? ChatMessage(
+            id: '${preview.replyTo!.userId}_${preview.replyTo!.timestamp.millisecondsSinceEpoch}',
+            eventId: '',
+            userId: preview.replyTo!.userId,
+            userName: preview.replyTo!.userName,
+            userAvatar: preview.replyTo!.userAvatar,
+            content: preview.replyTo!.content,
+            createdAt: preview.replyTo!.timestamp,
+          )
+        : null,
+  );
 }
 
 /// Action button for message actions bottom sheet

@@ -11,10 +11,13 @@ class ChatMessageModel {
   final String? userAvatar;
   final String content;
   final DateTime createdAt;
+  @Deprecated('Use isReadBySomeone instead')
   final bool read;
+
   final bool isPinned;
   final bool isDeleted;
   final String? replyToId;
+  final bool isReadBySomeone;
 
   const ChatMessageModel({
     required this.id,
@@ -24,17 +27,18 @@ class ChatMessageModel {
     this.userAvatar,
     required this.content,
     required this.createdAt,
-    this.read = false,
+    @Deprecated('Use isReadBySomeone') this.read = false,
     this.isPinned = false,
     this.isDeleted = false,
     this.replyToId,
+    this.isReadBySomeone = false,
   });
 
   /// Create model from Supabase JSON (with user join)
   factory ChatMessageModel.fromJson(Map<String, dynamic> json) {
     // Handle nested user data from join
     final userData = json['user'] as Map<String, dynamic>?;
-    
+
     return ChatMessageModel(
       id: json['id'] as String,
       eventId: json['event_id'] as String,
@@ -47,6 +51,7 @@ class ChatMessageModel {
       isPinned: json['is_pinned'] as bool? ?? false,
       isDeleted: json['is_deleted'] as bool? ?? false,
       replyToId: json['reply_to_id'] as String?,
+      isReadBySomeone: json['is_read_by_someone'] as bool? ?? false,
     );
   }
 
@@ -79,6 +84,7 @@ class ChatMessageModel {
       isPinned: isPinned,
       isDeleted: isDeleted,
       replyTo: null, // Will be populated by repository if needed
+      isReadBySomeone: isReadBySomeone,
     );
   }
 
@@ -96,6 +102,7 @@ class ChatMessageModel {
       isPinned: entity.isPinned,
       isDeleted: entity.isDeleted,
       replyToId: entity.replyTo?.id,
+      isReadBySomeone: entity.isReadBySomeone,
     );
   }
 }

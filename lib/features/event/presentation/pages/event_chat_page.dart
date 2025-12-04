@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -14,6 +13,7 @@ import '../../domain/entities/chat_message.dart';
 import '../providers/chat_providers.dart';
 import '../providers/event_providers.dart';
 import '../../data/fakes/fake_chat_repository.dart';
+import '../widgets/chat_message_bubble.dart';
 
 /// Event chat page
 /// Full-screen chat interface for event communication
@@ -69,6 +69,9 @@ class _EventChatPageState extends ConsumerState<EventChatPage> {
           _scrollToMessageId = args['scrollToMessageId'] as String?;
         });
       }
+
+      // Mark messages as read after page loads
+      _markMessagesAsRead();
     });
   }
 
@@ -104,6 +107,57 @@ class _EventChatPageState extends ConsumerState<EventChatPage> {
       setState(() {
         _shouldAutoScroll = true;
       });
+    }
+  }
+
+  /// Mark all visible messages as read when page opens
+  /// This updates the last_read_message_id for the current user
+  Future<void> _markMessagesAsRead() async {
+    try {
+      print('[EventChatPage] Marking messages as read');
+
+      // Get latest messages from stream
+      final messagesAsync = ref.read(chatMessagesProvider(widget.eventId));
+
+      // Only proceed if we have messages
+      await messagesAsync.when(
+        data: (messages) async {
+          if (messages.isEmpty) {
+            print('[EventChatPage] No messages to mark as read');
+            return;
+          }
+
+          // Get the most recent message (first in list, since sorted DESC)
+          final latestMessage = messages.first;
+
+          print('[EventChatPage] Latest message: ${latestMessage.id}');
+          print('[EventChatPage] Content: ${latestMessage.content}');
+          print('[EventChatPage] Created at: ${latestMessage.createdAt}');
+
+          // Call repository method to update last read message
+          final repository = ref.read(chatRepositoryProvider);
+          final success = await repository.updateLastReadMessage(
+            eventId: widget.eventId,
+            messageId: latestMessage.id,
+          );
+
+          if (success) {
+            print('[EventChatPage] ✅ Successfully marked messages as read');
+          } else {
+            print('[EventChatPage] ⚠️ Failed to mark messages as read');
+          }
+        },
+        loading: () {
+          print(
+              '[EventChatPage] Messages still loading, skipping mark as read');
+        },
+        error: (error, stack) {
+          print('[EventChatPage] ❌ Error loading messages: $error');
+        },
+      );
+    } catch (e, stackTrace) {
+      print('[EventChatPage] ❌ Error in _markMessagesAsRead: $e');
+      print('  Stack trace: $stackTrace');
     }
   }
 
@@ -749,16 +803,24 @@ class _MessagesList extends StatelessWidget {
                 top: isLastInGroup ? Gaps.xs : 2,
                 bottom: isLastInGroup ? Gaps.xs : 2,
               ),
-              child: _MessageBubble(
+              child: ChatMessageBubble(
                 message: message,
                 isCurrentUser: isCurrentUser,
                 isFirstInGroup: isFirstInGroup,
                 isLastInGroup: isLastInGroup,
+                bubbleColor: isCurrentUser
+                    ? (FakeEventChatConfig.isLiving
+                        ? BrandColors.living
+                        : FakeEventChatConfig.isRecap
+                            ? BrandColors.recap
+                            : BrandColors.planning)
+                    : BrandColors.bg3,
                 onLongPress: () => onMessageLongPress(message),
                 onReplyTap: message.replyTo != null
                     ? () => onMessageTap(message.replyTo!)
                     : null,
                 onSwipeReply: () => onSwipeReply(message),
+                enableSwipeToReply: true,
               ),
             ),
           ],
@@ -832,263 +894,6 @@ class _UnreadIndicator extends StatelessWidget {
             thickness: 1,
           ),
         ),
-      ],
-    );
-  }
-}
-
-/// Message bubble widget with grouped styling and swipe-to-reply
-class _MessageBubble extends StatefulWidget {
-  final ChatMessage message;
-  final bool isCurrentUser;
-  final bool isFirstInGroup;
-  final bool isLastInGroup;
-  final VoidCallback onLongPress;
-  final VoidCallback? onReplyTap;
-  final VoidCallback onSwipeReply;
-
-  const _MessageBubble({
-    required this.message,
-    required this.isCurrentUser,
-    required this.isFirstInGroup,
-    required this.isLastInGroup,
-    required this.onLongPress,
-    this.onReplyTap,
-    required this.onSwipeReply,
-  });
-
-  @override
-  State<_MessageBubble> createState() => _MessageBubbleState();
-}
-
-class _MessageBubbleState extends State<_MessageBubble> {
-  double _dragDistance = 0;
-  double _startDragX = 0;
-
-  String _formatTimestamp(DateTime timestamp) {
-    final hour = timestamp.hour.toString().padLeft(2, '0');
-    final minute = timestamp.minute.toString().padLeft(2, '0');
-    return '$hour:$minute';
-  }
-
-  BorderRadius _getBubbleRadius() {
-    if (widget.isCurrentUser) {
-      return BorderRadius.only(
-        topLeft: const Radius.circular(Radii.md),
-        topRight: Radius.circular(widget.isFirstInGroup ? Radii.md : Radii.sm),
-        bottomLeft: const Radius.circular(Radii.md),
-        bottomRight:
-            Radius.circular(widget.isLastInGroup ? Radii.md : Radii.sm),
-      );
-    } else {
-      return BorderRadius.only(
-        topLeft: Radius.circular(widget.isFirstInGroup ? Radii.md : Radii.sm),
-        topRight: const Radius.circular(Radii.md),
-        bottomLeft: Radius.circular(widget.isLastInGroup ? Radii.md : Radii.sm),
-        bottomRight: const Radius.circular(Radii.md),
-      );
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    // P2 TODO: Get color from event status provider
-    final userBubbleColor = FakeEventChatConfig.isLiving
-        ? BrandColors.living
-        : FakeEventChatConfig.isRecap
-            ? BrandColors.recap
-            : BrandColors.planning;
-    final bubbleColor = widget.message.isDeleted
-        ? (widget.isCurrentUser
-            ? userBubbleColor.withValues(alpha: 0.3)
-            : BrandColors.bg3.withValues(alpha: 0.5))
-        : (widget.isCurrentUser ? userBubbleColor : BrandColors.bg3);
-
-    // The actual bubble content (without avatar)
-    final bubbleContent = GestureDetector(
-      onLongPress: widget.onLongPress,
-      child: Column(
-        crossAxisAlignment: widget.isCurrentUser
-            ? CrossAxisAlignment.end
-            : CrossAxisAlignment.start,
-        children: [
-          // Reply preview bubble (if replying to a message)
-          if (widget.message.replyTo != null) ...[
-            GestureDetector(
-              onTap: widget.onReplyTap,
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: Pads.ctlH,
-                  vertical: Gaps.xs,
-                ),
-                margin: const EdgeInsets.only(bottom: Gaps.xxs),
-                decoration: BoxDecoration(
-                  color:
-                      (widget.isCurrentUser ? userBubbleColor : BrandColors.bg3)
-                          .withValues(alpha: 0.3),
-                  borderRadius: _getBubbleRadius(),
-                ),
-                child: Text(
-                  widget.message.replyTo!.content,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppText.bodyMedium.copyWith(
-                    color: BrandColors.text2,
-                    fontSize: 12,
-                  ),
-                ),
-              ),
-            ),
-          ],
-
-          // Main message bubble
-          Container(
-            padding: const EdgeInsets.symmetric(
-              horizontal: Pads.ctlH,
-              vertical: Gaps.sm,
-            ),
-            decoration: BoxDecoration(
-              color: bubbleColor,
-              borderRadius: _getBubbleRadius(),
-            ),
-            child: widget.message.isDeleted
-                ? Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.delete_outline,
-                        size: 16,
-                        color: BrandColors.text2.withValues(alpha: 0.6),
-                      ),
-                      const SizedBox(width: Gaps.xs),
-                      Text(
-                        'Message Deleted',
-                        style: AppText.bodyMedium.copyWith(
-                          color: BrandColors.text2.withValues(alpha: 0.6),
-                          fontStyle: FontStyle.italic,
-                        ),
-                      ),
-                    ],
-                  )
-                : Text(
-                    widget.message.content,
-                    style: AppText.bodyMedium.copyWith(
-                      color: BrandColors.text1,
-                    ),
-                  ),
-          ),
-
-          // Metadata (only on last message in group)
-          if (widget.isLastInGroup) ...[
-            const SizedBox(height: Gaps.xxs),
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (!widget.isCurrentUser) ...[
-                  Text(
-                    widget.message.userName,
-                    style: AppText.bodyMedium.copyWith(
-                      color: BrandColors.text2,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  const SizedBox(width: Gaps.xs),
-                ],
-                Text(
-                  _formatTimestamp(widget.message.createdAt),
-                  style: AppText.bodyMedium.copyWith(
-                    color: BrandColors.text2,
-                    fontSize: 12,
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ],
-      ),
-    );
-
-    // Wrap bubble content with GestureDetector for swipe-to-reply
-    // Using RawGestureDetector to have more control over gesture arena
-    final swipeableBubble = RawGestureDetector(
-      gestures: {
-        HorizontalDragGestureRecognizer: GestureRecognizerFactoryWithHandlers<
-            HorizontalDragGestureRecognizer>(
-          () => HorizontalDragGestureRecognizer(debugOwner: this),
-          (HorizontalDragGestureRecognizer instance) {
-            instance
-              ..onStart = (details) {
-                setState(() {
-                  _startDragX = details.localPosition.dx;
-                  _dragDistance = 0;
-                });
-              }
-              ..onUpdate = (details) {
-                setState(() {
-                  _dragDistance = details.localPosition.dx - _startDragX;
-                });
-              }
-              ..onEnd = (details) {
-                // Current user messages: detect LEFT swipe (negative distance)
-                // Other user messages: detect RIGHT swipe (positive distance)
-                final threshold = 30.0; // pixels
-                final isValidSwipe = widget.isCurrentUser
-                    ? _dragDistance < -threshold // Swipe left
-                    : _dragDistance > threshold; // Swipe right
-
-                if (isValidSwipe) {
-                  widget.onSwipeReply();
-                  HapticFeedback.lightImpact();
-                }
-
-                setState(() {
-                  _dragDistance = 0;
-                  _startDragX = 0;
-                });
-              }
-              ..onCancel = () {
-                setState(() {
-                  _dragDistance = 0;
-                  _startDragX = 0;
-                });
-              };
-          },
-        ),
-      },
-      child: bubbleContent,
-    ); // Final Row with avatar + swipeable bubble
-    return Row(
-      mainAxisAlignment: widget.isCurrentUser
-          ? MainAxisAlignment.end
-          : MainAxisAlignment.start,
-      crossAxisAlignment: CrossAxisAlignment.end,
-      children: [
-        if (!widget.isCurrentUser) ...[
-          // Avatar only on LAST message in group (bottom-most)
-          if (widget.isLastInGroup)
-            CircleAvatar(
-              radius: 16,
-              backgroundColor: BrandColors.bg3,
-              backgroundImage: widget.message.userAvatar != null
-                  ? NetworkImage(widget.message.userAvatar!)
-                  : null,
-              child: widget.message.userAvatar == null
-                  ? Text(
-                      widget.message.userName[0].toUpperCase(),
-                      style: AppText.bodyMedium.copyWith(
-                        color: BrandColors.text2,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    )
-                  : null,
-            )
-          else
-            const SizedBox(width: 32),
-          const SizedBox(width: Gaps.xs),
-        ],
-        Flexible(child: swipeableBubble),
       ],
     );
   }

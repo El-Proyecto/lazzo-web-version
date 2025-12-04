@@ -308,4 +308,59 @@ class FakeChatRepository implements ChatRepository {
     _messagesController.add(eventMessages);
     return updatedMessage;
   }
+
+  @override
+  Future<bool> updateLastReadMessage({
+    required String eventId,
+    required String messageId,
+  }) async {
+    await Future.delayed(const Duration(milliseconds: 200));
+    print('[FakeChatRepository] Updating last read message (fake)');
+    print('  Event ID: $eventId');
+    print('  Message ID: $messageId');
+
+    // In fake mode, always return success
+    return true;
+  }
+
+  @override
+  Future<int> getUnreadMessageCount({
+    required String eventId,
+    required String currentUserId,
+  }) async {
+    await Future.delayed(const Duration(milliseconds: 200));
+
+    // In fake mode, count messages where read = false and userId != currentUserId
+    final unreadCount = _messages
+        .where(
+            (m) => m.eventId == eventId && !m.read && m.userId != currentUserId)
+        .length;
+
+    print('[FakeChatRepository] Unread count (fake): $unreadCount');
+    return unreadCount;
+  }
+
+  @override
+  Future<List<ChatMessage>> getMessagesWithReadStatus({
+    required String eventId,
+    required String currentUserId,
+    int limit = 50,
+  }) async {
+    await Future.delayed(const Duration(milliseconds: 300));
+
+    // In fake mode, return messages with isReadBySomeone = read field value
+    final eventMessages = _messages.where((m) => m.eventId == eventId).toList();
+
+    // Sort DESCENDING (newest first)
+    eventMessages.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+
+    // Map to include isReadBySomeone (use read field as fallback)
+    final messagesWithStatus = eventMessages.take(limit).map((m) {
+      return m.copyWith(isReadBySomeone: m.read);
+    }).toList();
+
+    print(
+        '[FakeChatRepository] Fetched ${messagesWithStatus.length} messages with read status (fake)');
+    return messagesWithStatus;
+  }
 }
