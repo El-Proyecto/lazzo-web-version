@@ -193,7 +193,8 @@ void main() async {
         group_hub.groupPhotosRepositoryProvider.overrideWith((ref) {
           final client = Supabase.instance.client;
           final dataSource = GroupPhotosDataSource(client);
-          return GroupPhotosRepositoryImpl(dataSource);
+          final storageService = StorageService(client);
+          return GroupPhotosRepositoryImpl(dataSource, storageService);
         }),
 
         // ✅ MEMORY MANAGEMENT repo -> real (Supabase) via DI (Nov 27, 2025)

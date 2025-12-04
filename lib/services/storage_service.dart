@@ -48,15 +48,15 @@ class StorageService {
 
   /// Get a signed URL for a private photo (expires after 1 hour)
   /// This validates RLS policies before generating the URL
-  Future<String> getSignedUrl(String storagePath, {int expiresInSeconds = 3600}) async {
+  Future<String> getSignedUrl(String storagePath, {String bucket = 'memory_groups', int expiresInSeconds = 3600}) async {
     try {
       final signedUrl = await _client.storage
-          .from('memory_groups')
+          .from(bucket)
           .createSignedUrl(storagePath, expiresInSeconds);
       
       return signedUrl;
     } catch (e) {
-      print('❌ Failed to generate signed URL: $e');
+      print('❌ Failed to generate signed URL for $bucket/$storagePath: $e');
       rethrow;
     }
   }

@@ -8,6 +8,7 @@ class GroupPhotoModel {
   final DateTime capturedAt;
   final String uploaderId;
   final String? uploaderName;
+  final String? profileImageUrl;
   final bool isPortrait;
 
   const GroupPhotoModel({
@@ -17,20 +18,24 @@ class GroupPhotoModel {
     required this.capturedAt,
     required this.uploaderId,
     this.uploaderName,
+    this.profileImageUrl,
     required this.isPortrait,
   });
 
   /// Parse from Supabase JSON response
   factory GroupPhotoModel.fromJson(Map<String, dynamic> json) {
-    // Handle nested profiles join for uploader name
+    // Handle nested users join for uploader name and profile image
     String? uploaderName;
-    final profiles = json['profiles'];
-    if (profiles != null) {
-      if (profiles is Map<String, dynamic>) {
-        uploaderName = profiles['name'] as String?;
-      } else if (profiles is List && profiles.isNotEmpty) {
-        final firstProfile = profiles[0] as Map<String, dynamic>;
-        uploaderName = firstProfile['name'] as String?;
+    String? profileImageUrl;
+    final users = json['users'];
+    if (users != null) {
+      if (users is Map<String, dynamic>) {
+        uploaderName = users['name'] as String?;
+        profileImageUrl = users['avatar_url'] as String?;
+      } else if (users is List && users.isNotEmpty) {
+        final firstUser = users[0] as Map<String, dynamic>;
+        uploaderName = firstUser['name'] as String?;
+        profileImageUrl = firstUser['avatar_url'] as String?;
       }
     }
 
@@ -41,6 +46,7 @@ class GroupPhotoModel {
       capturedAt: DateTime.parse(json['captured_at'] as String),
       uploaderId: json['uploader_id'] as String,
       uploaderName: uploaderName,
+      profileImageUrl: profileImageUrl,
       isPortrait: json['is_portrait'] as bool? ?? false,
     );
   }
@@ -53,6 +59,7 @@ class GroupPhotoModel {
       capturedAt: capturedAt,
       uploaderId: uploaderId,
       uploaderName: uploaderName,
+      profileImageUrl: profileImageUrl,
       isPortrait: isPortrait,
     );
   }
@@ -76,6 +83,7 @@ class GroupPhotoModel {
     DateTime? capturedAt,
     String? uploaderId,
     String? uploaderName,
+    String? profileImageUrl,
     bool? isPortrait,
   }) {
     return GroupPhotoModel(
@@ -85,6 +93,7 @@ class GroupPhotoModel {
       capturedAt: capturedAt ?? this.capturedAt,
       uploaderId: uploaderId ?? this.uploaderId,
       uploaderName: uploaderName ?? this.uploaderName,
+      profileImageUrl: profileImageUrl ?? this.profileImageUrl,
       isPortrait: isPortrait ?? this.isPortrait,
     );
   }
@@ -99,6 +108,7 @@ class GroupPhotoModel {
         other.capturedAt == capturedAt &&
         other.uploaderId == uploaderId &&
         other.uploaderName == uploaderName &&
+        other.profileImageUrl == profileImageUrl &&
         other.isPortrait == isPortrait;
   }
 
@@ -111,6 +121,7 @@ class GroupPhotoModel {
       capturedAt,
       uploaderId,
       uploaderName,
+      profileImageUrl,
       isPortrait,
     );
   }

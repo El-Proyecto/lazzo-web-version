@@ -38,8 +38,9 @@ class GroupPhotosDataSource {
             captured_at,
             uploader_id,
             is_portrait,
-            profiles:uploader_id (
-              name
+            users:uploader_id (
+              name,
+              avatar_url
             )
           ''')
           .eq('event_id', eventId)
