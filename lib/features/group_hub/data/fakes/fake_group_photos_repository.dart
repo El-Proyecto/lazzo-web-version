@@ -5,7 +5,7 @@ import '../../domain/repositories/group_photos_repository.dart';
 /// Returns mock photo data for development
 class FakeGroupPhotosRepository implements GroupPhotosRepository {
   @override
-  Future<List<GroupPhotoEntity>> getMemoryPhotos(String memoryId) async {
+  Future<List<GroupPhotoEntity>> getGroupPhotos(String groupId) async {
     // Simulate network delay
     await Future.delayed(const Duration(milliseconds: 500));
 

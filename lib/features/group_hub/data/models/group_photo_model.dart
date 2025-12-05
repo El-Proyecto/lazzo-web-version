@@ -41,7 +41,8 @@ class GroupPhotoModel {
 
     return GroupPhotoModel(
       id: json['id'] as String,
-      url: json['url'] as String,
+      // url field may not be selected in query (storage_path is used instead)
+      url: json['url'] as String? ?? '',
       storagePath: json['storage_path'] as String,
       capturedAt: DateTime.parse(json['captured_at'] as String),
       uploaderId: json['uploader_id'] as String,

@@ -52,6 +52,45 @@ class GroupPhotosDataSource {
     }
   }
 
+  /// Get all photos for a group (from all events)
+  /// Returns photos ordered by captured_at descending
+  Future<List<Map<String, dynamic>>> getGroupPhotos(String groupId) async {
+    try {
+      print('🔍 [DATA SOURCE] Querying group_photos for groupId: $groupId');
+      
+      // Join with events table to filter by group_id
+      // Note: We explicitly use 'group_photos_event_id_fkey' relationship
+      // because there are two FK relationships between group_photos and events
+      final response = await _supabase
+          .from('group_photos')
+          .select('''
+            id,
+            storage_path,
+            captured_at,
+            uploader_id,
+            is_portrait,
+            event_id,
+            events!group_photos_event_id_fkey!inner (
+              group_id
+            ),
+            users:uploader_id (
+              name,
+              avatar_url
+            )
+          ''')
+          .eq('events.group_id', groupId)
+          .order('captured_at', ascending: false)
+          .limit(100);
+
+      print('✅ [DATA SOURCE] Query successful, received ${(response as List).length} photos');
+      return List<Map<String, dynamic>>.from(response);
+    } catch (e, stackTrace) {
+      print('❌ [DATA SOURCE] Error fetching group photos: $e');
+      print('   Stack trace: $stackTrace');
+      throw Exception('Failed to fetch group photos: $e');
+    }
+  }
+
   /// Upload a photo to storage and create database record
   /// Returns the created photo data
   Future<Map<String, dynamic>> uploadPhoto({

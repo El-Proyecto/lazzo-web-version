@@ -115,11 +115,11 @@ final groupMembersProvider = StateNotifierProvider.family<
 final groupPhotosProvider = StateNotifierProvider.family<GroupPhotosController,
     AsyncValue<List<GroupPhotoEntity>>, String>((
   ref,
-  memoryId,
+  groupId,
 ) {
   return GroupPhotosController(
     ref.watch(groupPhotosRepositoryProvider),
-    memoryId,
+    groupId,
   );
 });
 
@@ -300,9 +300,9 @@ class GroupMembersController
 class GroupPhotosController
     extends StateNotifier<AsyncValue<List<GroupPhotoEntity>>> {
   final GroupPhotosRepository _repository;
-  final String _memoryId;
+  final String _groupId;
 
-  GroupPhotosController(this._repository, this._memoryId)
+  GroupPhotosController(this._repository, this._groupId)
       : super(const AsyncValue.loading()) {
     loadPhotos();
   }
@@ -310,9 +310,13 @@ class GroupPhotosController
   Future<void> loadPhotos() async {
     state = const AsyncValue.loading();
     try {
-      final photos = await _repository.getMemoryPhotos(_memoryId);
+      print('\n🎬 [CONTROLLER] Starting to load photos for group: $_groupId');
+      final photos = await _repository.getGroupPhotos(_groupId);
+      print('✅ [CONTROLLER] Successfully loaded ${photos.length} photos');
       state = AsyncValue.data(photos);
     } catch (error, stackTrace) {
+      print('❌ [CONTROLLER] Error loading photos: $error');
+      print('   Stack trace: $stackTrace');
       state = AsyncValue.error(error, stackTrace);
     }
   }

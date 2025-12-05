@@ -12,22 +12,43 @@ class GroupPhotosRepositoryImpl implements GroupPhotosRepository {
   GroupPhotosRepositoryImpl(this._dataSource, this._storageService);
 
   @override
-  Future<List<GroupPhotoEntity>> getMemoryPhotos(String memoryId) async {
+  Future<List<GroupPhotoEntity>> getGroupPhotos(String groupId) async {
     try {
-      print('\n📸 [GROUP PHOTOS REPO] Getting photos for memory: $memoryId');
-      final photosData = await _dataSource.getEventPhotos(memoryId);
+      print('\n📸 [GROUP PHOTOS REPO] Getting photos for group: $groupId');
+      
+      List<Map<String, dynamic>> photosData;
+      try {
+        photosData = await _dataSource.getGroupPhotos(groupId);
+      } catch (e, stackTrace) {
+        print('❌ [GROUP PHOTOS REPO] Data source error: $e');
+        print('   Stack trace: $stackTrace');
+        throw Exception('Data source failed: $e');
+      }
       
       print('📸 [GROUP PHOTOS REPO] Received ${photosData.length} photos from data source');
       
       if (photosData.isEmpty) {
+        print('ℹ️ [GROUP PHOTOS REPO] No photos found for group');
         return [];
       }
 
       final entities = <GroupPhotoEntity>[];
       for (final json in photosData) {
         print('   - Photo: ${json['id']}');
+        print('     storage_path: ${json['storage_path']}');
         print('     uploader_id: ${json['uploader_id']}');
         print('     users: ${json['users']}');
+        
+        // Generate signed URL for the photo (from memory_groups bucket)
+        String photoUrl;
+        try {
+          photoUrl = await _dataSource.getSignedUrl(json['storage_path'] as String);
+          print('     ✅ Generated signed URL for photo');
+        } catch (e) {
+          print('     ⚠️ Failed to generate signed URL for photo: $e');
+          // Skip this photo if we can't get a signed URL
+          continue;
+        }
         
         final model = GroupPhotoModel.fromJson(json);
         print('     → uploaderName after parsing: "${model.uploaderName}"');
@@ -40,6 +61,7 @@ class GroupPhotosRepositoryImpl implements GroupPhotosRepository {
               model.profileImageUrl!,
               bucket: 'users-profile-pic',
             );
+            print('     ✅ Generated signed URL for avatar');
           } catch (e) {
             print('     ⚠️ Failed to get avatar signed URL: $e');
             profileImageUrl = null;
@@ -48,7 +70,7 @@ class GroupPhotosRepositoryImpl implements GroupPhotosRepository {
         
         entities.add(GroupPhotoEntity(
           id: model.id,
-          url: model.url,
+          url: photoUrl, // Use the signed URL instead of the storage path
           capturedAt: model.capturedAt,
           uploaderId: model.uploaderId,
           uploaderName: model.uploaderName,
@@ -59,12 +81,15 @@ class GroupPhotosRepositoryImpl implements GroupPhotosRepository {
       
       print('✅ [GROUP PHOTOS REPO] Returning ${entities.length} entities');
       return entities;
-    } on Exception catch (e) {
+    } on Exception catch (e, stackTrace) {
       // Network/auth errors - rethrow
-      throw Exception('Failed to load event photos: $e');
-    } catch (e) {
+      print('❌ [GROUP PHOTOS REPO] Exception caught: $e');
+      print('   Stack trace: $stackTrace');
+      throw Exception('Failed to load group photos: $e');
+    } catch (e, stackTrace) {
       // Parsing errors - log and return empty
-      print('❌ Error parsing photo data: $e');
+      print('❌ [GROUP PHOTOS REPO] Unexpected error: $e');
+      print('   Stack trace: $stackTrace');
       return [];
     }
   }

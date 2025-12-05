@@ -8,13 +8,13 @@ import '../providers/group_hub_providers.dart';
 import 'group_photo_viewer_page.dart';
 
 class GroupPhotosPage extends ConsumerStatefulWidget {
-  final String memoryId;
+  final String groupId;
   final String eventName;
   final String locationAndDate;
 
   const GroupPhotosPage({
     super.key,
-    required this.memoryId,
+    required this.groupId,
     required this.eventName,
     required this.locationAndDate,
   });
@@ -58,7 +58,7 @@ class _GroupPhotosPageState extends ConsumerState<GroupPhotosPage> {
 
   @override
   Widget build(BuildContext context) {
-    final photosAsync = ref.watch(groupPhotosProvider(widget.memoryId));
+    final photosAsync = ref.watch(groupPhotosProvider(widget.groupId));
 
     return Scaffold(
       backgroundColor: BrandColors.bg1,

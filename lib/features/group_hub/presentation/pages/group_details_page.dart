@@ -187,10 +187,10 @@ class GroupDetailsPage extends ConsumerWidget {
                 Navigator.of(context).push(
                   MaterialPageRoute(
                     builder: (context) => GroupPhotosPage(
-                      memoryId: groupId, // Using groupId as memoryId for now
+                      groupId: groupId,
                       eventName: groupName,
                       locationAndDate:
-                          'Porto • Mar 8, 2024', // TODO: Get from event details
+                          'All memories', // Shows photos from all events
                     ),
                   ),
                 );
