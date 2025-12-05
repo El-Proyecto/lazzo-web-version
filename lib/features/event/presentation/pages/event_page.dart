@@ -46,6 +46,15 @@ class _EventPageState extends ConsumerState<EventPage> {
 
   String get eventId => widget.eventId;
 
+  @override
+  void initState() {
+    super.initState();
+    // Setup Realtime subscription for unread count badge updates
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(unreadCountRealtimeProvider(eventId));
+    });
+  }
+
   /// Helper to replace current user's name with "You"
   String _getUserDisplayName(
       String userId, String userName, String? currentUserId) {
@@ -1111,8 +1120,14 @@ class _EventPageState extends ConsumerState<EventPage> {
                       if (messages.isNotEmpty) {}
                     }
 
-                    final unreadCount = ref.watch(
+                    // Get unread count (now returns AsyncValue)
+                    final unreadCountAsync = ref.watch(
                       unreadMessagesCountProvider(eventId),
+                    );
+
+                    final unreadCount = unreadCountAsync.maybeWhen(
+                      data: (count) => count,
+                      orElse: () => 0,
                     );
 
                     final previewMessages = messages

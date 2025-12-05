@@ -6,6 +6,7 @@ import 'package:image_picker/image_picker.dart';
 import '../../../../routes/app_router.dart';
 import '../../../../shared/components/dialogs/add_expense_bottom_sheet.dart';
 import '../../../../shared/components/common/top_banner.dart';
+import '../../../../shared/components/widgets/chat_messages_list.dart';
 import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/constants/text_styles.dart';
 import '../../../../shared/themes/colors.dart';
@@ -13,7 +14,6 @@ import '../../domain/entities/chat_message.dart';
 import '../providers/chat_providers.dart';
 import '../providers/event_providers.dart';
 import '../../data/fakes/fake_chat_repository.dart';
-import '../widgets/chat_message_bubble.dart';
 
 /// Event chat page
 /// Full-screen chat interface for event communication
@@ -424,8 +424,25 @@ class _EventChatPageState extends ConsumerState<EventChatPage> {
                   );
                 }
 
+                // Get unread count from new read receipts system
+                final unreadCountAsync = ref.watch(
+                  unreadMessagesCountProvider(widget.eventId),
+                );
+
+                final unreadCount = unreadCountAsync.when(
+                  data: (count) {
+                    print('[EventChatPage] Unread count for UI: $count');
+                    return count;
+                  },
+                  loading: () => 0,
+                  error: (e, stack) {
+                    print('[EventChatPage] Error loading unread count: $e');
+                    return 0;
+                  },
+                );
+
                 // Build list with date separators and unread indicator
-                return _MessagesList(
+                return ChatMessagesList(
                   messages: messages,
                   scrollController: _scrollController,
                   onMessageLongPress: _onMessageLongPress,
@@ -433,7 +450,14 @@ class _EventChatPageState extends ConsumerState<EventChatPage> {
                   onSwipeReply: _replyToMessage,
                   messageKeys: _messageKeys,
                   currentUserId: _currentUserId,
-                  eventStateColor: _eventStateColor,
+                  bubbleColor: _eventStateColor,
+                  unreadCount: unreadCount,
+                  enableSwipeToReply: true,
+                  reverse: true,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: Pads.sectionH,
+                  ),
+                  physics: const AlwaysScrollableScrollPhysics(),
                 );
               },
               loading: () => const Center(
@@ -666,239 +690,6 @@ class _ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
 }
 
 /// Messages list with date separators and unread indicator
-class _MessagesList extends StatelessWidget {
-  final List<ChatMessage> messages;
-  final ScrollController scrollController;
-  final Function(ChatMessage) onMessageLongPress;
-  final Function(ChatMessage) onMessageTap;
-  final Function(ChatMessage) onSwipeReply;
-  final Map<String, GlobalKey> messageKeys;
-  final String? currentUserId;
-  final Color eventStateColor;
-
-  const _MessagesList({
-    required this.messages,
-    required this.scrollController,
-    required this.onMessageLongPress,
-    required this.onMessageTap,
-    required this.onSwipeReply,
-    required this.messageKeys,
-    required this.currentUserId,
-    required this.eventStateColor,
-  });
-
-  String _formatDateSeparator(DateTime date) {
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final yesterday = today.subtract(const Duration(days: 1));
-    final messageDate = DateTime(date.year, date.month, date.day);
-
-    if (messageDate == today) {
-      return 'Today';
-    } else if (messageDate == yesterday) {
-      return 'Yesterday';
-    } else {
-      final months = [
-        'Jan',
-        'Feb',
-        'Mar',
-        'Apr',
-        'May',
-        'Jun',
-        'Jul',
-        'Aug',
-        'Sep',
-        'Oct',
-        'Nov',
-        'Dec'
-      ];
-      return '${date.day} ${months[date.month - 1]}';
-    }
-  }
-
-  bool _shouldShowDateSeparator(ChatMessage current, ChatMessage? previous) {
-    if (previous == null) return true;
-
-    final currentDate = DateTime(
-      current.createdAt.year,
-      current.createdAt.month,
-      current.createdAt.day,
-    );
-    final previousDate = DateTime(
-      previous.createdAt.year,
-      previous.createdAt.month,
-      previous.createdAt.day,
-    );
-
-    return currentDate != previousDate;
-  }
-
-  int? _findUnreadIndex(List<ChatMessage> messages) {
-    for (int i = 0; i < messages.length; i++) {
-      if (!messages[i].read && messages[i].userId != currentUserId) {
-        return i;
-      }
-    }
-    return null;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final unreadIndex = _findUnreadIndex(messages);
-
-    return ListView.builder(
-      controller: scrollController,
-      reverse: true,
-      physics: const AlwaysScrollableScrollPhysics(), // Always allow scroll
-      padding: const EdgeInsets.symmetric(
-        horizontal: Pads.sectionH,
-      ),
-      itemCount: messages.length,
-      itemBuilder: (context, index) {
-        final message = messages[index];
-        final isCurrentUser = message.userId == currentUserId;
-        final previousMessage =
-            index < messages.length - 1 ? messages[index + 1] : null;
-        final nextMessage = index > 0 ? messages[index - 1] : null;
-
-        // Determine if we should show avatar and metadata
-        final isFirstInGroup = previousMessage == null ||
-            previousMessage.userId != message.userId ||
-            message.createdAt.difference(previousMessage.createdAt).inMinutes >
-                5;
-
-        final isLastInGroup = nextMessage == null ||
-            nextMessage.userId != message.userId ||
-            nextMessage.createdAt.difference(message.createdAt).inMinutes > 5;
-
-        final showDateSeparator =
-            _shouldShowDateSeparator(message, previousMessage);
-        final showUnreadIndicator = unreadIndex != null && index == unreadIndex;
-
-        // Create or get key for this message
-        messageKeys.putIfAbsent(message.id, () => GlobalKey());
-
-        return Column(
-          children: [
-            // Date separator
-            if (showDateSeparator)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: Gaps.md),
-                child: _DateSeparator(
-                  label: _formatDateSeparator(message.createdAt),
-                ),
-              ),
-
-            // Unread indicator
-            if (showUnreadIndicator)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: Gaps.md),
-                child: _UnreadIndicator(color: eventStateColor),
-              ),
-
-            // Message bubble with GlobalKey for scrolling
-            Padding(
-              key: messageKeys[message.id],
-              padding: EdgeInsets.only(
-                top: isLastInGroup ? Gaps.xs : 2,
-                bottom: isLastInGroup ? Gaps.xs : 2,
-              ),
-              child: ChatMessageBubble(
-                message: message,
-                isCurrentUser: isCurrentUser,
-                isFirstInGroup: isFirstInGroup,
-                isLastInGroup: isLastInGroup,
-                bubbleColor: isCurrentUser
-                    ? (FakeEventChatConfig.isLiving
-                        ? BrandColors.living
-                        : FakeEventChatConfig.isRecap
-                            ? BrandColors.recap
-                            : BrandColors.planning)
-                    : BrandColors.bg3,
-                onLongPress: () => onMessageLongPress(message),
-                onReplyTap: message.replyTo != null
-                    ? () => onMessageTap(message.replyTo!)
-                    : null,
-                onSwipeReply: () => onSwipeReply(message),
-                enableSwipeToReply: true,
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
-}
-
-/// Date separator pill
-class _DateSeparator extends StatelessWidget {
-  final String label;
-
-  const _DateSeparator({required this.label});
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Container(
-        padding: const EdgeInsets.symmetric(
-          horizontal: Gaps.sm,
-          vertical: Gaps.xxs,
-        ),
-        decoration: BoxDecoration(
-          color: BrandColors.bg2,
-          borderRadius: BorderRadius.circular(Radii.pill),
-        ),
-        child: Text(
-          label,
-          style: AppText.bodyMedium.copyWith(
-            color: BrandColors.text2,
-            fontSize: 12,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// Unread messages indicator
-class _UnreadIndicator extends StatelessWidget {
-  final Color color;
-
-  const _UnreadIndicator({required this.color});
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          child: Divider(
-            color: color,
-            thickness: 1,
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: Gaps.sm),
-          child: Text(
-            'New messages',
-            style: AppText.bodyMedium.copyWith(
-              color: color,
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ),
-        Expanded(
-          child: Divider(
-            color: color,
-            thickness: 1,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
 /// Chat input widget with dynamic action button
 class _ChatInput extends StatelessWidget {
   final TextEditingController controller;

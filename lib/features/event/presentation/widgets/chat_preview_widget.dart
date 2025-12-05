@@ -3,8 +3,8 @@ import 'package:flutter/services.dart';
 import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/constants/text_styles.dart';
 import '../../../../shared/themes/colors.dart';
+import '../../../../shared/components/widgets/chat_messages_list.dart';
 import '../../domain/entities/chat_message.dart';
-import 'chat_message_bubble.dart';
 
 /// Mode for chat preview widget
 enum ChatMode {
@@ -181,21 +181,53 @@ class _ChatPreviewWidgetState extends State<ChatPreviewWidget> {
 
   @override
   Widget build(BuildContext context) {
-    // Sort messages by timestamp ASCENDING (oldest first)
+    // Sort messages by timestamp DESCENDING (newest first for easier slicing)
     final sortedMessages = [...widget.recentMessages]
-      ..sort((a, b) => a.timestamp.compareTo(b.timestamp));
+      ..sort((a, b) => b.timestamp.compareTo(a.timestamp));
 
-    // Get unread messages from other users (keep chronological order)
+    print('[ChatPreview] Total messages: ${sortedMessages.length}');
+    if (sortedMessages.isNotEmpty) {
+      final newestContent = sortedMessages.first.content.length > 20
+          ? '${sortedMessages.first.content.substring(0, 20)}...'
+          : sortedMessages.first.content;
+      final oldestContent = sortedMessages.last.content.length > 20
+          ? '${sortedMessages.last.content.substring(0, 20)}...'
+          : sortedMessages.last.content;
+      print(
+          '[ChatPreview] Newest message: $newestContent at ${sortedMessages.first.timestamp}');
+      print(
+          '[ChatPreview] Oldest message: $oldestContent at ${sortedMessages.last.timestamp}');
+    }
+
+    // Get unread count from other users
     final unreadMessages = sortedMessages
         .where((m) => !m.read && m.userId != widget.currentUserId)
         .toList();
 
-    // Show unread messages OR last 3 messages (most recent context)
-    final messagesToShow = unreadMessages.isNotEmpty
-        ? unreadMessages
-        : (sortedMessages.length <= 3
-            ? sortedMessages
-            : sortedMessages.skip(sortedMessages.length - 3).toList());
+    print(
+        '[ChatPreview] Unread messages from others: ${unreadMessages.length}');
+
+    // ALWAYS show last 10 messages (most recent)
+    // This ensures preview shows the latest conversation context
+    // Keep them in DESCENDING order (newest first) because ChatMessagesList
+    // with reverse:true will display them correctly (newest at top)
+    List<ChatMessagePreview> messagesToShow = sortedMessages.length <= 10
+        ? sortedMessages
+        : sortedMessages.take(10).toList();
+
+    print('[ChatPreview] Showing ${messagesToShow.length} messages');
+    if (messagesToShow.isNotEmpty) {
+      final firstContent = messagesToShow.first.content.length > 20
+          ? '${messagesToShow.first.content.substring(0, 20)}...'
+          : messagesToShow.first.content;
+      final lastContent = messagesToShow.last.content.length > 20
+          ? '${messagesToShow.last.content.substring(0, 20)}...'
+          : messagesToShow.last.content;
+      print(
+          '[ChatPreview] First in list (will be at TOP): $firstContent at ${messagesToShow.first.timestamp}');
+      print(
+          '[ChatPreview] Last in list (will be at BOTTOM): $lastContent at ${messagesToShow.last.timestamp}');
+    }
 
     // Calculate height constraints
     final screenHeight = MediaQuery.of(context).size.height;
@@ -212,61 +244,69 @@ class _ChatPreviewWidgetState extends State<ChatPreviewWidget> {
         color: Colors.transparent,
         child: Container(
           width: double.infinity,
-          padding: const EdgeInsets.all(Pads.sectionH),
           decoration: BoxDecoration(
-            color: BrandColors.bg2,
+            color: BrandColors.bg1,
+            border: Border.all(color: BrandColors.bg2, width: 4),
             borderRadius: BorderRadius.circular(Radii.md),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Header
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  InkWell(
-                    onTap: widget.onOpenChat,
-                    borderRadius: BorderRadius.circular(Radii.sm),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: Gaps.xs,
-                        vertical: Gaps.xxs,
-                      ),
-                      child: Text('Chat', style: AppText.labelLarge),
-                    ),
+              // Header with bg2 background
+              Container(
+                padding: const EdgeInsets.all(Pads.sectionH - 2),
+                decoration: const BoxDecoration(
+                  color: BrandColors.bg2,
+                  borderRadius: BorderRadius.only(
+                    topLeft: Radius.circular(Radii.md - 4),
+                    topRight: Radius.circular(Radii.md - 4),
                   ),
-                  if (widget.newMessagesCount > 0)
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
                     InkWell(
                       onTap: widget.onOpenChat,
-                      borderRadius: BorderRadius.circular(Radii.pill),
-                      child: Container(
+                      borderRadius: BorderRadius.circular(Radii.sm),
+                      child: Padding(
                         padding: const EdgeInsets.symmetric(
-                          horizontal: Gaps.sm,
-                          vertical: Gaps.xs,
+                          horizontal: Gaps.xxs,
+                          vertical: Gaps.xxs,
                         ),
-                        decoration: BoxDecoration(
-                          color: widget.mode == ChatMode.living
-                              ? BrandColors.living
-                              : BrandColors.planning,
-                          borderRadius: BorderRadius.circular(Radii.pill),
-                        ),
-                        child: Text(
-                          '${widget.newMessagesCount} new',
-                          style: AppText.bodyMedium.copyWith(
-                            color: BrandColors.text1,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
+                        child: Text('Chat', style: AppText.labelLarge),
+                      ),
+                    ),
+                    if (widget.newMessagesCount > 0)
+                      InkWell(
+                        onTap: widget.onOpenChat,
+                        borderRadius: BorderRadius.circular(Radii.pill),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: Gaps.sm,
+                            vertical: Gaps.xs,
+                          ),
+                          decoration: BoxDecoration(
+                            color: widget.mode == ChatMode.living
+                                ? BrandColors.living
+                                : BrandColors.planning,
+                            borderRadius: BorderRadius.circular(Radii.pill),
+                          ),
+                          child: Text(
+                            '${widget.newMessagesCount} new',
+                            style: AppText.bodyMedium.copyWith(
+                              color: BrandColors.text1,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                ],
+                  ],
+                ),
               ),
 
-              const SizedBox(height: Gaps.xxs),
-
-              // Pinned messages section (same style as chat_page)
+              // Pinned messages section (full width, same style as event_chat_page)
               ...sortedMessages.where((m) => m.isPinned).map((pinnedMsg) {
                 // Generate messageId similar to event_chat_page (userId + timestamp)
                 final messageId =
@@ -282,14 +322,15 @@ class _ChatPreviewWidgetState extends State<ChatPreviewWidget> {
                   child: Container(
                     width: double.infinity,
                     padding: const EdgeInsets.symmetric(
-                      horizontal: Pads.ctlH,
+                      horizontal: Insets.screenH,
                       vertical: Gaps.sm,
                     ),
-                    margin: const EdgeInsets.only(bottom: Gaps.xs),
                     decoration: BoxDecoration(
-                      color: BrandColors.bg3,
                       borderRadius: BorderRadius.circular(Radii.sm),
+                      color: BrandColors.bg3,
                     ),
+                    margin: const EdgeInsets.only(
+                        top: Gaps.xs, left: Pads.ctlV, right: Pads.ctlV),
                     child: Row(
                       children: [
                         const Icon(
@@ -314,265 +355,229 @@ class _ChatPreviewWidgetState extends State<ChatPreviewWidget> {
                 );
               }),
 
-              // Messages list with dynamic height
-              if (messagesToShow.isNotEmpty)
-                Container(
-                  height: chatHeight,
-                  padding: const EdgeInsets.only(top: Gaps.xs, bottom: Gaps.xs),
-                  child: Stack(
-                    children: [
-                      ListView.builder(
-                        reverse: true, // Scroll starts at bottom (most recent)
-                        padding: EdgeInsets.zero,
-                        physics:
-                            const AlwaysScrollableScrollPhysics(), // Always allow scroll even with few messages
-                        itemCount: messagesToShow.length,
-                        itemBuilder: (context, index) {
-                          // reverse=true means: index 0 = bottom (newest), last index = top (oldest)
-                          // We want to show messagesToShow in natural order (oldest to newest)
-                          // So we reverse the array access
-                          final reversedIndex =
-                              messagesToShow.length - 1 - index;
-                          final message = messagesToShow[reversedIndex];
-                          final isCurrentUser =
-                              message.userId == widget.currentUserId;
-
-                          // Get previous and next messages for grouping logic
-                          final previousMessage =
-                              index < messagesToShow.length - 1
-                                  ? messagesToShow[
-                                      messagesToShow.length - 1 - (index + 1)]
-                                  : null;
-                          final nextMessage = index > 0
-                              ? messagesToShow[
-                                  messagesToShow.length - 1 - (index - 1)]
-                              : null;
-
-                          // Determine if we should show avatar and metadata
-                          // Same logic as event_chat_page.dart
-                          final isFirstInGroup = previousMessage == null ||
-                              previousMessage.userId != message.userId ||
-                              message.timestamp
-                                      .difference(previousMessage.timestamp)
-                                      .inMinutes >
-                                  5;
-
-                          final isLastInGroup = nextMessage == null ||
-                              nextMessage.userId != message.userId ||
-                              nextMessage.timestamp
-                                      .difference(message.timestamp)
-                                      .inMinutes >
-                                  5;
-
-                          return Padding(
-                            padding: EdgeInsets.only(
-                              top: isLastInGroup ? Gaps.xs : 2,
-                              bottom: isLastInGroup ? Gaps.xs : 2,
-                            ),
-                            child: ChatMessageBubble(
-                              message: _adaptPreviewToMessage(message),
-                              isCurrentUser: isCurrentUser,
-                              isFirstInGroup: isFirstInGroup,
-                              isLastInGroup: isLastInGroup,
-                              bubbleColor: isCurrentUser
-                                  ? (widget.mode == ChatMode.living
-                                      ? BrandColors.living
-                                      : BrandColors.planning)
-                                  : BrandColors.bg3,
-                              onLongPress: () => _showMessageActions(message),
-                              onReplyTap: message.replyTo != null
-                                  ? () {
-                                      // Navigate to chat and scroll to replied message
-                                      if (widget.onOpenChatWithMessage !=
-                                          null) {
-                                        final replyMessageId =
-                                            '${message.replyTo!.userId}_${message.replyTo!.timestamp.millisecondsSinceEpoch}';
-                                        widget.onOpenChatWithMessage!(
-                                            replyMessageId);
-                                      } else if (widget.onOpenChat != null) {
-                                        widget.onOpenChat!();
-                                      }
-                                    }
-                                  : null,
-                              formatTimestamp: (timestamp) {
-                                final now = DateTime.now();
-                                final isToday = now.year == timestamp.year &&
-                                    now.month == timestamp.month &&
-                                    now.day == timestamp.day;
-
-                                if (isToday) {
-                                  // Show time in HH:mm format for messages today
-                                  final hour =
-                                      timestamp.hour.toString().padLeft(2, '0');
-                                  final minute = timestamp.minute
-                                      .toString()
-                                      .padLeft(2, '0');
-                                  return '$hour:$minute';
-                                } else {
-                                  // Show date for older messages
-                                  final diff = now.difference(timestamp);
-                                  if (diff.inDays == 1) {
-                                    return 'Yesterday';
-                                  } else if (diff.inDays < 7) {
-                                    return '${diff.inDays}d ago';
-                                  } else {
-                                    return '${timestamp.day}/${timestamp.month}';
-                                  }
+              // Content area with bg1 background
+              Padding(
+                padding: const EdgeInsets.only(
+                    left: Pads.sectionH,
+                    right: Pads.sectionH,
+                    bottom: Pads.sectionH),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Messages list with dynamic height using shared component
+                    if (messagesToShow.isNotEmpty)
+                      Container(
+                        height: chatHeight,
+                        padding: const EdgeInsets.only(top: 0, bottom: 0),
+                        child: Stack(
+                          children: [
+                            ChatMessagesList(
+                              messages: messagesToShow
+                                  .map((preview) =>
+                                      _adaptPreviewToMessage(preview))
+                                  .toList(),
+                              currentUserId: widget.currentUserId,
+                              unreadCount: widget.newMessagesCount,
+                              bubbleColor: widget.mode == ChatMode.living
+                                  ? BrandColors.living
+                                  : BrandColors.planning,
+                              reverse: true,
+                              padding: EdgeInsets.zero,
+                              physics: const AlwaysScrollableScrollPhysics(),
+                              enableSwipeToReply: true,
+                              onSwipeReply: (message) {
+                                // Find original preview to set as replying
+                                final preview = messagesToShow.firstWhere(
+                                  (p) =>
+                                      p.userId == message.userId &&
+                                      p.timestamp == message.createdAt,
+                                  orElse: () => ChatMessagePreview(
+                                    userId: message.userId,
+                                    userName: message.userName,
+                                    content: message.content,
+                                    timestamp: message.createdAt,
+                                    read: false,
+                                  ),
+                                );
+                                setState(() {
+                                  _replyingTo = preview;
+                                  _focusNode.requestFocus();
+                                });
+                              },
+                              onMessageLongPress: (message) {
+                                // Find original preview to pass to action handler
+                                final preview = messagesToShow.firstWhere(
+                                  (p) =>
+                                      p.userId == message.userId &&
+                                      p.timestamp == message.createdAt,
+                                  orElse: () => ChatMessagePreview(
+                                    userId: message.userId,
+                                    userName: message.userName,
+                                    content: message.content,
+                                    timestamp: message.createdAt,
+                                    read: false,
+                                  ),
+                                );
+                                _showMessageActions(preview);
+                              },
+                              onMessageTap: (message) {
+                                // Navigate to chat and scroll to replied message
+                                if (widget.onOpenChatWithMessage != null) {
+                                  final replyMessageId =
+                                      '${message.userId}_${message.createdAt.millisecondsSinceEpoch}';
+                                  widget.onOpenChatWithMessage!(replyMessageId);
+                                } else if (widget.onOpenChat != null) {
+                                  widget.onOpenChat!();
                                 }
                               },
                             ),
-                          );
-                        },
+                            // Fade-out gradient at the top when scrollable
+                            if (needsScroll)
+                              Positioned(
+                                top: 0,
+                                left: 0,
+                                right: 0,
+                                height: 16,
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    gradient: LinearGradient(
+                                      begin: Alignment.topCenter,
+                                      end: Alignment.bottomCenter,
+                                      colors: [
+                                        BrandColors.bg1,
+                                        BrandColors.bg1.withValues(alpha: 0.0),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                          ],
+                        ),
                       ),
-                      // Fade-out gradient at the top when scrollable
-                      if (needsScroll)
-                        Positioned(
-                          top: 0,
-                          left: 0,
-                          right: 0,
-                          height: 16,
-                          child: Container(
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                begin: Alignment.topCenter,
-                                end: Alignment.bottomCenter,
-                                colors: [
-                                  BrandColors.bg2,
-                                  BrandColors.bg2.withValues(alpha: 0.0),
+
+                    const SizedBox(height: Gaps.xs),
+
+                    // Reply indicator (when replying to a message - same style as event_chat_page)
+                    if (_replyingTo != null)
+                      Container(
+                        width: double.infinity,
+                        margin: const EdgeInsets.only(bottom: Gaps.xs),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: Pads.ctlH,
+                          vertical: Gaps.sm,
+                        ),
+                        decoration: BoxDecoration(
+                          color: BrandColors.bg2,
+                          borderRadius: BorderRadius.circular(Radii.pill),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(
+                              Icons.reply,
+                              size: IconSizes.sm,
+                              color: BrandColors.text2,
+                            ),
+                            const SizedBox(width: Gaps.sm),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    'Replying to ${_replyingTo!.userName}',
+                                    style: AppText.bodyMedium.copyWith(
+                                      color: BrandColors.text2,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                  Text(
+                                    _replyingTo!.content,
+                                    style: AppText.bodyMedium.copyWith(
+                                      color: BrandColors.text1,
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
                                 ],
                               ),
                             ),
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-
-              const SizedBox(height: Gaps.md),
-
-              // Reply indicator (when replying to a message - same style as chat_page)
-              if (_replyingTo != null)
-                Container(
-                  margin: const EdgeInsets.only(bottom: Gaps.xs),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: Pads.ctlH,
-                    vertical: Gaps.sm,
-                  ),
-                  decoration: BoxDecoration(
-                    color: BrandColors.bg3,
-                    borderRadius: BorderRadius.circular(Radii.sm),
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 3,
-                        height: 36,
-                        decoration: BoxDecoration(
-                          color: BrandColors.text2,
-                          borderRadius: BorderRadius.circular(2),
-                        ),
-                      ),
-                      const SizedBox(width: Gaps.sm),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              _replyingTo!.userName,
-                              style: AppText.bodyMedium.copyWith(
+                            GestureDetector(
+                              onTap: () {
+                                setState(() {
+                                  _replyingTo = null;
+                                });
+                              },
+                              child: const Icon(
+                                Icons.close,
+                                size: IconSizes.sm,
                                 color: BrandColors.text2,
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
                               ),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              _replyingTo!.content,
-                              style: AppText.bodyMedium.copyWith(
-                                color: BrandColors.text1,
-                                fontSize: 13,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
                             ),
                           ],
                         ),
                       ),
-                      IconButton(
-                        icon: const Icon(
-                          Icons.close,
-                          size: IconSizes.sm,
-                          color: BrandColors.text2,
-                        ),
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(),
-                        onPressed: () {
-                          setState(() {
-                            _replyingTo = null;
-                          });
-                        },
-                      ),
-                    ],
-                  ),
-                ),
 
-              // Message input
-              Container(
-                decoration: BoxDecoration(
-                  color: BrandColors.bg3,
-                  borderRadius: BorderRadius.circular(Radii.pill),
-                  border: Border.all(color: BrandColors.border),
-                ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: _controller,
-                        focusNode: _focusNode,
-                        style: AppText.bodyMedium,
-                        decoration: InputDecoration(
-                          hintText: 'Type a message…',
-                          hintStyle: AppText.bodyMedium.copyWith(
-                            color: BrandColors.text2,
-                          ),
-                          border: InputBorder.none,
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: Pads.ctlH,
-                            vertical: Pads.ctlV,
-                          ),
-                        ),
-                        textCapitalization: TextCapitalization.sentences,
-                        onSubmitted: (_) => _sendMessage(),
-                      ),
-                    ),
+                    // Message input
                     Container(
-                      margin: const EdgeInsets.only(right: Gaps.xs),
                       decoration: BoxDecoration(
-                        color: widget.mode == ChatMode.living
-                            ? BrandColors.living
-                            : BrandColors.planning,
+                        color: BrandColors.bg3,
                         borderRadius: BorderRadius.circular(Radii.pill),
+                        border: Border.all(color: BrandColors.border),
                       ),
-                      child: Material(
-                        color: Colors.transparent,
-                        child: InkWell(
-                          onTap: widget.onSendMessage != null
-                              ? () {
-                                  _sendMessage();
-                                  HapticFeedback.lightImpact();
-                                }
-                              : null,
-                          borderRadius: BorderRadius.circular(Radii.pill),
-                          child: Container(
-                            padding: const EdgeInsets.all(8),
-                            child: const Icon(
-                              Icons.send,
-                              size: IconSizes.sm,
-                              color: BrandColors.text1,
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: TextField(
+                              controller: _controller,
+                              focusNode: _focusNode,
+                              style: AppText.bodyMedium,
+                              decoration: InputDecoration(
+                                hintText: 'Type a message…',
+                                hintStyle: AppText.bodyMedium.copyWith(
+                                  color: BrandColors.text2,
+                                ),
+                                border: InputBorder.none,
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: Pads.ctlH,
+                                  vertical: Pads.ctlV,
+                                ),
+                              ),
+                              textCapitalization: TextCapitalization.sentences,
+                              onSubmitted: (_) => _sendMessage(),
                             ),
                           ),
-                        ),
+                          Container(
+                            margin: const EdgeInsets.only(right: Gaps.xs),
+                            decoration: BoxDecoration(
+                              color: widget.mode == ChatMode.living
+                                  ? BrandColors.living
+                                  : BrandColors.planning,
+                              borderRadius: BorderRadius.circular(Radii.pill),
+                            ),
+                            child: Material(
+                              color: Colors.transparent,
+                              child: InkWell(
+                                onTap: widget.onSendMessage != null
+                                    ? () {
+                                        _sendMessage();
+                                        HapticFeedback.lightImpact();
+                                      }
+                                    : null,
+                                borderRadius: BorderRadius.circular(Radii.pill),
+                                child: Container(
+                                  padding: const EdgeInsets.all(8),
+                                  child: const Icon(
+                                    Icons.send,
+                                    size: IconSizes.sm,
+                                    color: BrandColors.text1,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ],
