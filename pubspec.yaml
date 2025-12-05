@@ -60,6 +60,9 @@ dependencies:
   # Path manipulation for file operations
   path: ^1.9.0
   path_provider: ^2.1.1
+  # Save images/videos to device gallery (Android & iOS)
+  # Modern alternative to image_gallery_saver with better Android support
+  gal: ^2.3.0
   integration_test:
     sdk: flutter
   # The following adds the Cupertino Icons font to your application.

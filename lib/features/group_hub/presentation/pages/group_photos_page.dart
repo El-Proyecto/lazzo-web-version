@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as path;
+import 'package:gal/gal.dart';
 import '../../../../shared/components/nav/common_app_bar.dart';
 import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/themes/colors.dart';
@@ -159,49 +160,64 @@ class _GroupPhotosPageState extends ConsumerState<GroupPhotosPage> {
         ),
       );
 
-      // Get downloads directory
-      Directory? downloadDir;
-      if (Platform.isAndroid) {
-        downloadDir = Directory('/storage/emulated/0/Download/Lazzo');
-        if (!await downloadDir.exists()) {
-          await downloadDir.create(recursive: true);
-        }
-      } else if (Platform.isIOS) {
-        downloadDir = await getApplicationDocumentsDirectory();
-      } else {
-        downloadDir = await getDownloadsDirectory();
-      }
-
-      if (downloadDir == null) {
-        throw Exception('Could not access downloads directory');
-      }
-
       int successCount = 0;
       for (var i = 0; i < selectedPhotos.length; i++) {
         final photo = selectedPhotos[i];
         try {
+          // Download photo to temporary directory first
           final response = await http.get(Uri.parse(photo.url));
           if (response.statusCode == 200) {
             final timestamp = DateTime.now().millisecondsSinceEpoch;
-            final fileName = 'lazzo_photo_${timestamp}_${i + 1}.jpg';
-            final filePath = path.join(downloadDir.path, fileName);
+            final tempDir = await getTemporaryDirectory();
+            final fileName = 'lazzo_${timestamp}_${i + 1}.jpg';
+            final filePath = path.join(tempDir.path, fileName);
             final file = File(filePath);
             await file.writeAsBytes(response.bodyBytes);
-            successCount++;
+            
+            // Save to device gallery using Gal package
+            // Android: Saves to Pictures/ folder (visible in Gallery/Photos app)
+            // iOS: Saves to Photos app
+            try {
+              await Gal.putImage(filePath, album: 'Lazzo');
+              successCount++;
+              print('✅ Saved photo ${i + 1} to gallery');
+            } catch (e) {
+              print('❌ Failed to save photo ${i + 1} to gallery: $e');
+              // Gallery permission might be needed, but file is downloaded
+            }
           }
         } catch (e) {
-          print('Error downloading photo: $e');
+          print('❌ Error downloading photo ${i + 1}: $e');
         }
       }
 
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Downloaded $successCount photo(s) to ${downloadDir.path}'),
-          backgroundColor: BrandColors.planning,
-          duration: const Duration(seconds: 3),
-        ),
-      );
+      
+      if (successCount > 0) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Saved $successCount photo(s) to gallery!\n'
+              'Check Pictures/Lazzo folder or Photos app',
+            ),
+            backgroundColor: BrandColors.planning,
+            duration: const Duration(seconds: 4),
+            action: SnackBarAction(
+              label: 'OK',
+              textColor: BrandColors.text1,
+              onPressed: () {},
+            ),
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Failed to save photos. Try again.'),
+            backgroundColor: Colors.orange,
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
 
       // Exit selection mode after download
       setState(() {
