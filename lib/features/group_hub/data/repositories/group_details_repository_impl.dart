@@ -68,6 +68,8 @@ class GroupDetailsRepositoryImpl implements GroupDetailsRepository {
           .eq('group_id', groupId)
           .order('role', ascending: false); // Admins first
 
+      print('🔍 [GROUP MEMBERS] Raw response: $response');
+
       final members = <GroupMemberEntity>[];
       
       for (final json in response as List) {
@@ -76,6 +78,9 @@ class GroupDetailsRepositoryImpl implements GroupDetailsRepository {
         final role = json['role'] as String;
         final isAdmin = role == 'admin';
         
+        print('👤 [MEMBER] userId: $userId, isCurrentUser: $isCurrentUser');
+        print('   users field: ${json['users']}');
+        
         // Handle nested users join
         String? name;
         String? profileImageUrl;
@@ -83,12 +88,52 @@ class GroupDetailsRepositoryImpl implements GroupDetailsRepository {
         if (users != null) {
           if (users is Map<String, dynamic>) {
             name = users['name'] as String?;
-            profileImageUrl = users['avatar_url'] as String?;
+            final avatarPath = users['avatar_url'] as String?;
+            
+            // Convert storage path to signed URL (works with private buckets)
+            if (avatarPath != null && avatarPath.isNotEmpty) {
+              // Check if it's already a full URL
+              if (avatarPath.startsWith('http')) {
+                profileImageUrl = avatarPath;
+              } else {
+                // Create signed URL (valid for 1 hour)
+                try {
+                  profileImageUrl = await _supabase.storage
+                      .from('users-profile-pic')
+                      .createSignedUrl(avatarPath, 3600); // 1 hour
+                } catch (e) {
+                  print('   ⚠️ Error creating signed URL: $e');
+                  profileImageUrl = null;
+                }
+              }
+            }
+            
+            print('   ✅ Map: name=$name, avatarPath=$avatarPath → url=$profileImageUrl');
           } else if (users is List && users.isNotEmpty) {
             final firstUser = users[0] as Map<String, dynamic>;
             name = firstUser['name'] as String?;
-            profileImageUrl = firstUser['avatar_url'] as String?;
+            final avatarPath = firstUser['avatar_url'] as String?;
+            
+            // Convert storage path to signed URL (works with private buckets)
+            if (avatarPath != null && avatarPath.isNotEmpty) {
+              if (avatarPath.startsWith('http')) {
+                profileImageUrl = avatarPath;
+              } else {
+                try {
+                  profileImageUrl = await _supabase.storage
+                      .from('users-profile-pic')
+                      .createSignedUrl(avatarPath, 3600); // 1 hour
+                } catch (e) {
+                  print('   ⚠️ Error creating signed URL: $e');
+                  profileImageUrl = null;
+                }
+              }
+            }
+            
+            print('   ✅ List: name=$name, avatarPath=$avatarPath → url=$profileImageUrl');
           }
+        } else {
+          print('   ❌ users field is null!');
         }
 
         members.add(GroupMemberEntity(

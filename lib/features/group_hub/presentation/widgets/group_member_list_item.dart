@@ -63,7 +63,7 @@ class GroupMemberListItem extends StatelessWidget {
             // Name
             Expanded(
               child: Text(
-                member.name,
+                member.isCurrentUser ? 'You' : member.name,
                 style: AppText.bodyMediumEmph.copyWith(
                   color: BrandColors.text1,
                 ),

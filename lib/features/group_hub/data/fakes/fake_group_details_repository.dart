@@ -34,7 +34,7 @@ class FakeGroupDetailsRepository implements GroupDetailsRepository {
       // Current user (always first)
       GroupMemberEntity(
         id: 'current_user',
-        name: 'Tu',
+        name: 'Current User',
         profileImageUrl: null,
         isAdmin: true,
         isCurrentUser: true,
