@@ -1,5 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:http/http.dart' as http;
+import 'dart:io';
+import 'package:path_provider/path_provider.dart';
+import 'package:path/path.dart' as path;
 import '../../../../shared/components/nav/common_app_bar.dart';
 import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/themes/colors.dart';
@@ -26,6 +31,7 @@ class GroupPhotosPage extends ConsumerStatefulWidget {
 class _GroupPhotosPageState extends ConsumerState<GroupPhotosPage> {
   bool _isSelectionMode = false;
   final Set<String> _selectedPhotoIds = {};
+  bool _isProcessing = false;
 
   void _toggleSelectionMode() {
     setState(() {
@@ -46,14 +52,173 @@ class _GroupPhotosPageState extends ConsumerState<GroupPhotosPage> {
     });
   }
 
-  void _handleShare() {
-    // TODO: Implement share functionality
-    print('Sharing ${_selectedPhotoIds.length} photos');
+  Future<void> _handleShare() async {
+    if (_isProcessing) return;
+
+    setState(() => _isProcessing = true);
+
+    try {
+      final photosAsync = ref.read(groupPhotosProvider(widget.groupId));
+      final photos = photosAsync.value;
+      if (photos == null) return;
+
+      final selectedPhotos = photos
+          .where((photo) => _selectedPhotoIds.contains(photo.id))
+          .toList();
+
+      if (selectedPhotos.isEmpty) return;
+
+      // Show loading
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Preparing ${selectedPhotos.length} photo(s)...'),
+          backgroundColor: BrandColors.bg3,
+          duration: const Duration(seconds: 2),
+        ),
+      );
+
+      // Download photos to temp directory
+      final tempDir = await getTemporaryDirectory();
+      final files = <XFile>[];
+
+      for (var i = 0; i < selectedPhotos.length; i++) {
+        final photo = selectedPhotos[i];
+        try {
+          final response = await http.get(Uri.parse(photo.url));
+          if (response.statusCode == 200) {
+            final fileName = 'photo_${i + 1}.jpg';
+            final filePath = path.join(tempDir.path, fileName);
+            final file = File(filePath);
+            await file.writeAsBytes(response.bodyBytes);
+            files.add(XFile(filePath));
+          }
+        } catch (e) {
+          print('Error downloading photo: $e');
+        }
+      }
+
+      if (files.isEmpty) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Failed to prepare photos'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+
+      // Share the files
+      await Share.shareXFiles(
+        files,
+        text: 'Check out these photos from ${widget.eventName}',
+      );
+
+      // Exit selection mode after sharing
+      setState(() {
+        _isSelectionMode = false;
+        _selectedPhotoIds.clear();
+      });
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error sharing photos: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      setState(() => _isProcessing = false);
+    }
   }
 
-  void _handleDownload() {
-    // TODO: Implement download functionality
-    print('Downloading ${_selectedPhotoIds.length} photos');
+  Future<void> _handleDownload() async {
+    if (_isProcessing) return;
+
+    setState(() => _isProcessing = true);
+
+    try {
+      final photosAsync = ref.read(groupPhotosProvider(widget.groupId));
+      final photos = photosAsync.value;
+      if (photos == null) return;
+
+      final selectedPhotos = photos
+          .where((photo) => _selectedPhotoIds.contains(photo.id))
+          .toList();
+
+      if (selectedPhotos.isEmpty) return;
+
+      // Show loading
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Downloading ${selectedPhotos.length} photo(s)...'),
+          backgroundColor: BrandColors.bg3,
+          duration: const Duration(seconds: 2),
+        ),
+      );
+
+      // Get downloads directory
+      Directory? downloadDir;
+      if (Platform.isAndroid) {
+        downloadDir = Directory('/storage/emulated/0/Download/Lazzo');
+        if (!await downloadDir.exists()) {
+          await downloadDir.create(recursive: true);
+        }
+      } else if (Platform.isIOS) {
+        downloadDir = await getApplicationDocumentsDirectory();
+      } else {
+        downloadDir = await getDownloadsDirectory();
+      }
+
+      if (downloadDir == null) {
+        throw Exception('Could not access downloads directory');
+      }
+
+      int successCount = 0;
+      for (var i = 0; i < selectedPhotos.length; i++) {
+        final photo = selectedPhotos[i];
+        try {
+          final response = await http.get(Uri.parse(photo.url));
+          if (response.statusCode == 200) {
+            final timestamp = DateTime.now().millisecondsSinceEpoch;
+            final fileName = 'lazzo_photo_${timestamp}_${i + 1}.jpg';
+            final filePath = path.join(downloadDir.path, fileName);
+            final file = File(filePath);
+            await file.writeAsBytes(response.bodyBytes);
+            successCount++;
+          }
+        } catch (e) {
+          print('Error downloading photo: $e');
+        }
+      }
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Downloaded $successCount photo(s) to ${downloadDir.path}'),
+          backgroundColor: BrandColors.planning,
+          duration: const Duration(seconds: 3),
+        ),
+      );
+
+      // Exit selection mode after download
+      setState(() {
+        _isSelectionMode = false;
+        _selectedPhotoIds.clear();
+      });
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error downloading photos: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      setState(() => _isProcessing = false);
+    }
   }
 
   @override
@@ -166,12 +331,31 @@ class _GroupPhotosPageState extends ConsumerState<GroupPhotosPage> {
                             child: Image.network(
                               photo.url,
                               fit: BoxFit.cover,
+                              // Performance optimization: cache thumbnails at smaller size
+                              cacheWidth: 200,
+                              cacheHeight: 200,
                               errorBuilder: (context, error, stackTrace) {
                                 return Container(
                                   color: BrandColors.bg2,
                                   child: const Icon(
                                     Icons.broken_image,
                                     color: BrandColors.text2,
+                                  ),
+                                );
+                              },
+                              loadingBuilder: (context, child, loadingProgress) {
+                                if (loadingProgress == null) return child;
+                                return Container(
+                                  color: BrandColors.bg2,
+                                  child: const Center(
+                                    child: SizedBox(
+                                      width: 20,
+                                      height: 20,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: BrandColors.text2,
+                                      ),
+                                    ),
                                   ),
                                 );
                               },
@@ -228,60 +412,86 @@ class _GroupPhotosPageState extends ConsumerState<GroupPhotosPage> {
                         children: [
                           Expanded(
                             child: GestureDetector(
-                              onTap: _handleShare,
+                              onTap: _isProcessing ? null : _handleShare,
                               child: Container(
                                 height: 48,
                                 decoration: BoxDecoration(
-                                  color: BrandColors.bg3,
+                                  color: _isProcessing
+                                      ? BrandColors.bg3.withValues(alpha: 0.5)
+                                      : BrandColors.bg3,
                                   borderRadius: BorderRadius.circular(Radii.md),
                                 ),
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    const Icon(
-                                      Icons.ios_share,
-                                      color: BrandColors.text1,
-                                      size: 20,
-                                    ),
-                                    const SizedBox(width: Gaps.xs),
-                                    Text(
-                                      'Share',
-                                      style: AppText.labelLarge.copyWith(
-                                        color: BrandColors.text1,
+                                child: _isProcessing
+                                    ? const Center(
+                                        child: SizedBox(
+                                          width: 20,
+                                          height: 20,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            color: BrandColors.text1,
+                                          ),
+                                        ),
+                                      )
+                                    : Row(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          const Icon(
+                                            Icons.ios_share,
+                                            color: BrandColors.text1,
+                                            size: 20,
+                                          ),
+                                          const SizedBox(width: Gaps.xs),
+                                          Text(
+                                            'Share (${_selectedPhotoIds.length})',
+                                            style: AppText.labelLarge.copyWith(
+                                              color: BrandColors.text1,
+                                            ),
+                                          ),
+                                        ],
                                       ),
-                                    ),
-                                  ],
-                                ),
                               ),
                             ),
                           ),
                           const SizedBox(width: Gaps.md),
                           Expanded(
                             child: GestureDetector(
-                              onTap: _handleDownload,
+                              onTap: _isProcessing ? null : _handleDownload,
                               child: Container(
                                 height: 48,
                                 decoration: BoxDecoration(
-                                  color: BrandColors.planning,
+                                  color: _isProcessing
+                                      ? BrandColors.planning.withValues(alpha: 0.5)
+                                      : BrandColors.planning,
                                   borderRadius: BorderRadius.circular(Radii.md),
                                 ),
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    const Icon(
-                                      Icons.download_rounded,
-                                      color: BrandColors.text1,
-                                      size: 20,
-                                    ),
-                                    const SizedBox(width: Gaps.xs),
-                                    Text(
-                                      'Download',
-                                      style: AppText.labelLarge.copyWith(
-                                        color: BrandColors.text1,
+                                child: _isProcessing
+                                    ? const Center(
+                                        child: SizedBox(
+                                          width: 20,
+                                          height: 20,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            color: BrandColors.text1,
+                                          ),
+                                        ),
+                                      )
+                                    : Row(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          const Icon(
+                                            Icons.download_rounded,
+                                            color: BrandColors.text1,
+                                            size: 20,
+                                          ),
+                                          const SizedBox(width: Gaps.xs),
+                                          Text(
+                                            'Download (${_selectedPhotoIds.length})',
+                                            style: AppText.labelLarge.copyWith(
+                                              color: BrandColors.text1,
+                                            ),
+                                          ),
+                                        ],
                                       ),
-                                    ),
-                                  ],
-                                ),
                               ),
                             ),
                           ),
