@@ -40,23 +40,8 @@ class GroupPhotoImage extends ConsumerWidget {
       );
     }
 
-    // Se photoPath é uma URL (http/https), usar diretamente
-    if (photoPath!.startsWith('http://') || photoPath!.startsWith('https://')) {
-      return Container(
-        width: width,
-        height: height,
-        decoration: BoxDecoration(
-          borderRadius: borderRadius ?? BorderRadius.circular(Radii.md),
-          color: BrandColors.bg2,
-          image: DecorationImage(
-            image: NetworkImage(photoPath!),
-            fit: BoxFit.cover,
-          ),
-        ),
-      );
-    }
-
-    // Se photoPath é um path no storage, converter para URL
+    // Converter photoPath para URL (seja URL ou storage path)
+    // Sempre usar o provider para garantir signed URLs válidas
     final urlProvider = groupCoverUrlProvider((photoPath, photoUpdatedAt));
     
     return Consumer(

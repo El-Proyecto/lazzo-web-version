@@ -48,11 +48,15 @@ class StorageService {
 
   /// Get a signed URL for a private photo (expires after 1 hour)
   /// This validates RLS policies before generating the URL
+  /// Normalizes storage path by removing leading slashes to prevent double-slash URLs
   Future<String> getSignedUrl(String storagePath, {String bucket = 'memory_groups', int expiresInSeconds = 3600}) async {
     try {
+      // Normalize path - remove leading slash if present
+      final normalizedPath = storagePath.startsWith('/') ? storagePath.substring(1) : storagePath;
+      
       final signedUrl = await _client.storage
           .from(bucket)
-          .createSignedUrl(storagePath, expiresInSeconds);
+          .createSignedUrl(normalizedPath, expiresInSeconds);
       
       return signedUrl;
     } catch (e) {

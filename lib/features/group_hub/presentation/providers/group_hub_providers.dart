@@ -13,6 +13,7 @@ import '../../domain/usecases/get_group_memories.dart';
 import '../../domain/usecases/get_group_details.dart';
 import '../../domain/usecases/get_group_members.dart';
 import '../../domain/usecases/toggle_group_mute.dart';
+import '../../domain/usecases/update_member_role.dart';
 import '../../data/fakes/fake_group_event_repository.dart';
 import '../../data/fakes/fake_group_memory_repository.dart';
 import '../../data/fakes/fake_group_details_repository.dart';
@@ -64,6 +65,10 @@ final getGroupMembersUseCaseProvider = Provider<GetGroupMembers>((ref) {
 
 final toggleGroupMuteUseCaseProvider = Provider<ToggleGroupMute>((ref) {
   return ToggleGroupMute(ref.watch(groupDetailsRepositoryProvider));
+});
+
+final updateMemberRoleUseCaseProvider = Provider<UpdateMemberRole>((ref) {
+  return UpdateMemberRole(ref.watch(groupDetailsRepositoryProvider));
 });
 
 // State providers

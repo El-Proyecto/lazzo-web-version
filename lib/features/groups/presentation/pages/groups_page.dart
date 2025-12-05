@@ -242,7 +242,7 @@ class _GroupsPageState extends ConsumerState<GroupsPage>
     Navigator.of(context).pushNamed('/create-group');
   }
 
-  void _handleGroupTap(String groupId) {
+  Future<void> _handleGroupTap(String groupId) async {
     // Find the group in the current list to get its details
     final groupsAsync = _selectedFilter == GroupFilter.archived
         ? ref.read(archivedGroupsProvider)
@@ -259,15 +259,26 @@ class _GroupsPageState extends ConsumerState<GroupsPage>
     );
 
     if (group.id.isNotEmpty) {
-      Navigator.of(context).pushNamed(
-        AppRouter.groupHub,
-        arguments: {
-          'groupId': group.id,
-          'groupName': group.name,
-          'groupPhotoUrl': group.photoPath,
-          'memberCount': group.memberCount,
-        },
-      );
+      // Convert storage path to signed URL before navigation
+      String? groupPhotoUrl;
+      if (group.photoPath != null) {
+        final photoUrlAsync = await ref.read(
+          groupCoverUrlProvider((group.photoPath, group.photoUpdatedAt)).future,
+        );
+        groupPhotoUrl = photoUrlAsync;
+      }
+
+      if (mounted) {
+        Navigator.of(context).pushNamed(
+          AppRouter.groupHub,
+          arguments: {
+            'groupId': group.id,
+            'groupName': group.name,
+            'groupPhotoUrl': groupPhotoUrl,
+            'memberCount': group.memberCount,
+          },
+        );
+      }
     }
   }
 

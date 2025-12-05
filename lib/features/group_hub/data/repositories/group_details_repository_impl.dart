@@ -40,7 +40,30 @@ class GroupDetailsRepositoryImpl implements GroupDetailsRepository {
         isMuted: isMuted,
       );
 
-      return model.toEntity();
+      // Convert storage path to signed URL for group photo
+      String? photoUrl = model.photoUrl;
+      if (photoUrl != null && photoUrl.isNotEmpty && !photoUrl.startsWith('http')) {
+        try {
+          // Normalize path - remove leading slash if present
+          final normalizedPath = photoUrl.startsWith('/') ? photoUrl.substring(1) : photoUrl;
+          photoUrl = await _supabase.storage
+              .from('group-photos')
+              .createSignedUrl(normalizedPath, 3600); // 1 hour
+        } catch (e) {
+          print('⚠️ Failed to generate signed URL for group photo: $e');
+          photoUrl = null;
+        }
+      }
+
+      return GroupDetailsEntity(
+        id: model.id,
+        name: model.name,
+        photoUrl: photoUrl,
+        memberCount: model.memberCount,
+        isCurrentUserAdmin: model.isCurrentUserAdmin,
+        isMuted: model.isMuted,
+        permissions: model.permissions,
+      );
     } catch (e) {
       throw Exception('Failed to load group details: $e');
     }
@@ -90,6 +113,8 @@ class GroupDetailsRepositoryImpl implements GroupDetailsRepository {
             name = users['name'] as String?;
             final avatarPath = users['avatar_url'] as String?;
             
+            print('   🔍 DEBUG avatarPath from DB: "$avatarPath" (starts with /: ${avatarPath?.startsWith('/')})');
+            
             // Convert storage path to signed URL (works with private buckets)
             if (avatarPath != null && avatarPath.isNotEmpty) {
               // Check if it's already a full URL
@@ -97,10 +122,14 @@ class GroupDetailsRepositoryImpl implements GroupDetailsRepository {
                 profileImageUrl = avatarPath;
               } else {
                 // Create signed URL (valid for 1 hour)
+                // Normalize path - remove leading slash if present
                 try {
+                  final normalizedPath = avatarPath.startsWith('/') ? avatarPath.substring(1) : avatarPath;
+                  print('   🔍 DEBUG normalized: "$normalizedPath"');
                   profileImageUrl = await _supabase.storage
                       .from('users-profile-pic')
-                      .createSignedUrl(avatarPath, 3600); // 1 hour
+                      .createSignedUrl(normalizedPath, 3600); // 1 hour
+                  print('   🔍 DEBUG signed URL: "$profileImageUrl"');
                 } catch (e) {
                   print('   ⚠️ Error creating signed URL: $e');
                   profileImageUrl = null;
@@ -119,10 +148,12 @@ class GroupDetailsRepositoryImpl implements GroupDetailsRepository {
               if (avatarPath.startsWith('http')) {
                 profileImageUrl = avatarPath;
               } else {
+                // Normalize path - remove leading slash if present
                 try {
+                  final normalizedPath = avatarPath.startsWith('/') ? avatarPath.substring(1) : avatarPath;
                   profileImageUrl = await _supabase.storage
                       .from('users-profile-pic')
-                      .createSignedUrl(avatarPath, 3600); // 1 hour
+                      .createSignedUrl(normalizedPath, 3600); // 1 hour
                 } catch (e) {
                   print('   ⚠️ Error creating signed URL: $e');
                   profileImageUrl = null;
@@ -178,6 +209,97 @@ class GroupDetailsRepositoryImpl implements GroupDetailsRepository {
           });
     } catch (e) {
       throw Exception('Failed to toggle mute: $e');
+    }
+  }
+
+  @override
+  Future<void> updateMemberRole(String groupId, String userId, bool isAdmin) async {
+    try {
+      final currentUserId = _supabase.auth.currentUser?.id;
+      if (currentUserId == null) {
+        throw Exception('User not authenticated');
+      }
+      
+      print('🔐 [UPDATE ROLE] Starting update...');
+      print('   Group ID: $groupId');
+      print('   User ID to update: $userId');
+      print('   New role: ${isAdmin ? "admin" : "member"}');
+      print('   Current user ID: $currentUserId');
+      
+      // Check if current user is admin of this group
+      print('   🔍 Checking current user permissions...');
+      final currentUserMembership = await _supabase
+          .from('group_members')
+          .select('role')
+          .eq('group_id', groupId)
+          .eq('user_id', currentUserId)
+          .single();
+      
+      final currentUserRole = currentUserMembership['role'] as String;
+      print('   Current user role: $currentUserRole');
+      
+      if (currentUserRole != 'admin') {
+        throw Exception('Only admins can change member roles');
+      }
+      
+      // Validate: cannot demote if this is the last admin
+      if (!isAdmin) {
+        print('   🔍 Checking if this is the last admin...');
+        final members = await getGroupMembers(groupId);
+        final adminCount = members.where((m) => m.isAdmin).length;
+        print('   Current admin count: $adminCount');
+        
+        if (adminCount <= 1) {
+          throw Exception('Cannot demote the last admin. Promote another member first.');
+        }
+      }
+
+      final newRole = isAdmin ? 'admin' : 'member';
+      
+      print('   📝 Executing UPDATE query with RLS context...');
+      
+      // Try using RPC function if available, otherwise direct update
+      try {
+        // Check if RPC function exists
+        await _supabase.rpc('update_group_member_role', params: {
+          'p_group_id': groupId,
+          'p_user_id': userId,
+          'p_new_role': newRole,
+        });
+        print('   ✅ Update via RPC completed');
+      } catch (rpcError) {
+        print('   ⚠️ RPC not available, trying direct update: $rpcError');
+        
+        // Fallback to direct update
+        await _supabase
+            .from('group_members')
+            .update({'role': newRole})
+            .eq('group_id', groupId)
+            .eq('user_id', userId);
+        
+        print('   ✅ Direct update completed');
+      }
+      
+      // Verify the update worked
+      print('   🔍 Verifying role change...');
+      final verifyResponse = await _supabase
+          .from('group_members')
+          .select('role')
+          .eq('group_id', groupId)
+          .eq('user_id', userId)
+          .single();
+      
+      final actualRole = verifyResponse['role'] as String;
+      print('   Current role in database: $actualRole');
+      
+      if (actualRole != newRole) {
+        throw Exception('Role update failed: expected $newRole but got $actualRole. This may be a Row Level Security (RLS) policy issue. Check Supabase dashboard for policies on group_members table.');
+      }
+      
+      print('✅ [UPDATE ROLE] Role successfully changed to $newRole');
+    } catch (e) {
+      print('❌ [UPDATE ROLE] Failed: $e');
+      throw Exception('Failed to update member role: $e');
     }
   }
 }

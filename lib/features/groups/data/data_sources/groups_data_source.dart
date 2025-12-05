@@ -105,14 +105,17 @@ class SupabaseGroupsDataSource implements GroupsDataSource {
       print('🔗 [DataSource] Getting signed URL for: $photoPath');
       
       // Validate that it's a storage path, not a local path
-      if (photoPath.startsWith('/') || photoPath.contains('cache') || photoPath.contains('data/user')) {
+      if (photoPath.contains('cache') || photoPath.contains('data/user')) {
         print('   ❌ Invalid path detected (local path instead of storage path): $photoPath');
         throw Exception('Invalid photo path - local paths are not supported');
       }
       
+      // Normalize path - remove leading slash if present (storage paths shouldn't have leading /)
+      final normalizedPath = photoPath.startsWith('/') ? photoPath.substring(1) : photoPath;
+      
       final signedUrl = await _client.storage
           .from(_bucketName)
-          .createSignedUrl(photoPath, 3600); // 1 hora de validade
+          .createSignedUrl(normalizedPath, 3600); // 1 hora de validade
       
       print('   ✅ Signed URL created successfully');
       return signedUrl;

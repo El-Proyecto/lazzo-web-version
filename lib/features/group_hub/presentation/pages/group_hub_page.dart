@@ -412,20 +412,38 @@ class _GroupHubPageState extends ConsumerState<GroupHubPage>
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(16),
               color: BrandColors.bg3,
-              image: widget.groupPhotoUrl != null
-                  ? DecorationImage(
-                      image: NetworkImage(widget.groupPhotoUrl!),
-                      fit: BoxFit.cover,
-                    )
-                  : null,
             ),
-            child: widget.groupPhotoUrl == null
+            child: widget.groupPhotoUrl == null || widget.groupPhotoUrl!.isEmpty
                 ? const Icon(
                     Icons.group,
                     size: 40,
                     color: BrandColors.text2,
                   )
-                : null,
+                : ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: Image.network(
+                      widget.groupPhotoUrl!,
+                      width: 80,
+                      height: 80,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        return const Icon(
+                          Icons.group,
+                          size: 40,
+                          color: BrandColors.text2,
+                        );
+                      },
+                      loadingBuilder: (context, child, loadingProgress) {
+                        if (loadingProgress == null) return child;
+                        return const Center(
+                          child: CircularProgressIndicator(
+                            color: BrandColors.text2,
+                            strokeWidth: 2,
+                          ),
+                        );
+                      },
+                    ),
+                  ),
           ),
           const SizedBox(height: Gaps.md),
 

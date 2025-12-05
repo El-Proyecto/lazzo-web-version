@@ -134,20 +134,38 @@ class GroupDetailsPage extends ConsumerWidget {
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(16),
               color: BrandColors.bg3,
-              image: photoUrl != null
-                  ? DecorationImage(
-                      image: NetworkImage(photoUrl),
-                      fit: BoxFit.cover,
-                    )
-                  : null,
             ),
-            child: photoUrl == null
+            child: photoUrl == null || photoUrl.isEmpty
                 ? const Icon(
                     Icons.group,
                     size: 40,
                     color: BrandColors.text2,
                   )
-                : null,
+                : ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: Image.network(
+                      photoUrl,
+                      width: 80,
+                      height: 80,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) {
+                        return const Icon(
+                          Icons.group,
+                          size: 40,
+                          color: BrandColors.text2,
+                        );
+                      },
+                      loadingBuilder: (context, child, loadingProgress) {
+                        if (loadingProgress == null) return child;
+                        return const Center(
+                          child: CircularProgressIndicator(
+                            color: BrandColors.text2,
+                            strokeWidth: 2,
+                          ),
+                        );
+                      },
+                    ),
+                  ),
           ),
           const SizedBox(height: Gaps.md),
 
@@ -436,9 +454,32 @@ class GroupDetailsPage extends ConsumerWidget {
             'Promote ${member.name} to group admin? They will have full admin privileges.',
         confirmText: 'Promote',
         cancelText: 'Cancel',
-        onConfirm: () {
-          // TODO: Implement promote logic
-          print('Promote ${member.id} to admin');
+        onConfirm: () async {
+          try {
+            final updateMemberRole = ref.read(updateMemberRoleUseCaseProvider);
+            await updateMemberRole(groupId, member.id, true);
+            
+            if (context.mounted) {
+              // Force immediate refresh of members list
+              await ref.read(groupMembersProvider(groupId).notifier).refresh();
+              
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('${member.name} is now an admin'),
+                  backgroundColor: BrandColors.planning,
+                ),
+              );
+            }
+          } catch (e) {
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Failed to promote: $e'),
+                  backgroundColor: BrandColors.cantVote,
+                ),
+              );
+            }
+          }
         },
       ),
     );
@@ -458,9 +499,32 @@ class GroupDetailsPage extends ConsumerWidget {
         confirmText: 'Demote',
         cancelText: 'Cancel',
         isDestructive: true,
-        onConfirm: () {
-          // TODO: Implement demote logic
-          print('Demote ${member.id} from admin');
+        onConfirm: () async {
+          try {
+            final updateMemberRole = ref.read(updateMemberRoleUseCaseProvider);
+            await updateMemberRole(groupId, member.id, false);
+            
+            if (context.mounted) {
+              // Force immediate refresh of members list
+              await ref.read(groupMembersProvider(groupId).notifier).refresh();
+              
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('${member.name} is now a regular member'),
+                  backgroundColor: BrandColors.planning,
+                ),
+              );
+            }
+          } catch (e) {
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Failed to demote: ${e.toString().replaceAll('Exception: ', '')}'),
+                  backgroundColor: BrandColors.cantVote,
+                ),
+              );
+            }
+          }
         },
       ),
     );

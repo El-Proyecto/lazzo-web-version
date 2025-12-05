@@ -22,6 +22,7 @@ class SupabaseGroupEventDataSource implements GroupEventDataSource {
   /// Convert storage path to authenticated URL for private bucket
   /// Returns empty string if path is null/empty
   /// Uses createSignedUrl for private bucket access with 1 hour expiry
+  /// Normalizes storage path by removing leading slashes
   Future<String> _getAuthenticatedAvatarUrl(String? storagePath) async {
     if (storagePath == null || storagePath.isEmpty) {
       return '';
@@ -33,11 +34,14 @@ class SupabaseGroupEventDataSource implements GroupEventDataSource {
     }
     
     try {
+      // Normalize path - remove leading slash if present
+      final normalizedPath = storagePath.startsWith('/') ? storagePath.substring(1) : storagePath;
+      
       // Storage path - convert to signed URL for private bucket
       // Valid for 1 hour (3600 seconds)
       final url = await _client.storage
           .from(_avatarBucketName)
-          .createSignedUrl(storagePath, 3600);
+          .createSignedUrl(normalizedPath, 3600);
       return url;
     } catch (e) {
       return '';

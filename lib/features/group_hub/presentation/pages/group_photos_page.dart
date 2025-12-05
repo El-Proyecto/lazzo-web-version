@@ -69,17 +69,8 @@ class _GroupPhotosPageState extends ConsumerState<GroupPhotosPage> {
 
       if (selectedPhotos.isEmpty) return;
 
-      // Show loading
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Preparing ${selectedPhotos.length} photo(s)...'),
-          backgroundColor: BrandColors.bg3,
-          duration: const Duration(seconds: 2),
-        ),
-      );
-
       // Download photos to temp directory
+      if (!mounted) return;
       final tempDir = await getTemporaryDirectory();
       final files = <XFile>[];
 
@@ -150,16 +141,7 @@ class _GroupPhotosPageState extends ConsumerState<GroupPhotosPage> {
 
       if (selectedPhotos.isEmpty) return;
 
-      // Show loading
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Downloading ${selectedPhotos.length} photo(s)...'),
-          backgroundColor: BrandColors.bg3,
-          duration: const Duration(seconds: 2),
-        ),
-      );
-
       int successCount = 0;
       for (var i = 0; i < selectedPhotos.length; i++) {
         final photo = selectedPhotos[i];

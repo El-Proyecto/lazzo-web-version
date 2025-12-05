@@ -11,4 +11,8 @@ abstract class GroupDetailsRepository {
 
   /// Toggle mute/unmute for a group
   Future<void> toggleMute(String groupId, bool isMuted);
+
+  /// Update member role (promote to admin or demote to member)
+  /// Validates that at least one admin remains in the group
+  Future<void> updateMemberRole(String groupId, String userId, bool isAdmin);
 }

@@ -39,23 +39,40 @@ class GroupMemberListItem extends StatelessWidget {
             Container(
               width: 40,
               height: 40,
-              decoration: BoxDecoration(
+              decoration: const BoxDecoration(
                 shape: BoxShape.circle,
                 color: BrandColors.bg3,
-                image: member.profileImageUrl != null
-                    ? DecorationImage(
-                        image: NetworkImage(member.profileImageUrl!),
-                        fit: BoxFit.cover,
-                      )
-                    : null,
               ),
-              child: member.profileImageUrl == null
-                  ? const Icon(
-                      Icons.person,
-                      size: 20,
-                      color: BrandColors.text2,
+              child: (member.profileImageUrl == null || member.profileImageUrl!.isEmpty)
+                  ? Center(
+                      child: Text(
+                        member.name.isNotEmpty ? member.name[0].toUpperCase() : '?',
+                        style: AppText.labelLarge.copyWith(
+                          color: BrandColors.text1,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
                     )
-                  : null,
+                  : ClipOval(
+                      child: Image.network(
+                        member.profileImageUrl!,
+                        width: 40,
+                        height: 40,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) {
+                          // Se a imagem falhar ao carregar, mostra a inicial
+                          return Center(
+                            child: Text(
+                              member.name.isNotEmpty ? member.name[0].toUpperCase() : '?',
+                              style: AppText.labelLarge.copyWith(
+                                color: BrandColors.text1,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
             ),
 
             const SizedBox(width: Gaps.md),

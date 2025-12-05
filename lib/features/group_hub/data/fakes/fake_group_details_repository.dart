@@ -99,4 +99,19 @@ class FakeGroupDetailsRepository implements GroupDetailsRepository {
     await Future.delayed(const Duration(milliseconds: 300));
     // In real implementation, this would update the backend
   }
+
+  @override
+  Future<void> updateMemberRole(String groupId, String userId, bool isAdmin) async {
+    // Simulate network delay
+    await Future.delayed(const Duration(milliseconds: 300));
+    
+    // Validate: cannot demote if this is the last admin (fake validation)
+    if (!isAdmin) {
+      // In a real scenario, this would check the actual member list
+      // For fake, we just simulate the validation
+      print('🔐 [FAKE] Updating role for user $userId to ${isAdmin ? "admin" : "member"}');
+    }
+    
+    // In real implementation, this would update the backend
+  }
 }

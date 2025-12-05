@@ -178,11 +178,15 @@ class GroupPhotosDataSource {
   }
 
   /// Get signed URL for authenticated access (for private bucket)
+  /// Normalizes storage path by removing leading slashes
   Future<String> getSignedUrl(String storagePath, {int expiresIn = 3600}) async {
     try {
+      // Normalize path - remove leading slash if present
+      final normalizedPath = storagePath.startsWith('/') ? storagePath.substring(1) : storagePath;
+      
       return await _supabase.storage
           .from('memory_groups')
-          .createSignedUrl(storagePath, expiresIn);
+          .createSignedUrl(normalizedPath, expiresIn);
     } catch (e) {
       throw Exception('Failed to get signed URL: $e');
     }
