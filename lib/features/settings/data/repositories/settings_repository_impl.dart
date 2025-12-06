@@ -12,19 +12,15 @@ class SettingsRepositoryImpl implements SettingsRepository {
   @override
   Future<SettingsEntity> getSettings() async {
     try {
-      print('📦 [SettingsRepository] Fetching settings...');
-
+      
       final json = await _remoteDataSource.getSettings();
       final model = SettingsModel.fromJson(json);
       final entity = model.toEntity();
 
-      print(
-          '✅ [SettingsRepository] Settings fetched: notif=${entity.notificationsEnabled}, lang=${entity.language}, invites=${entity.earlyAccessInvites}');
-
+      
       return entity;
     } catch (e) {
-      print('❌ [SettingsRepository] Failed to get settings: $e');
-      throw Exception('Failed to get settings: $e');
+            throw Exception('Failed to get settings: $e');
     }
   }
 

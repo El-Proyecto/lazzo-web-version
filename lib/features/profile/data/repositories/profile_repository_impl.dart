@@ -96,15 +96,12 @@ class ProfileRepositoryImpl implements ProfileRepository {
   @override
   Future<String> uploadProfilePicture(XFile imageFile) async {
     try {
-      print('🚀 [Repository] Starting profile picture upload process');
-      
+            
       final storagePath = await remote.uploadProfilePicture(imageFile);
       
-      print('✅ [Repository] Profile picture upload completed: $storagePath');
-      return storagePath;
+            return storagePath;
     } catch (e) {
-      print('❌ [Repository] Profile picture upload failed: $e');
-      throw Exception('Failed to upload profile picture: $e');
+            throw Exception('Failed to upload profile picture: $e');
     }
   }
 
@@ -119,24 +116,20 @@ class ProfileRepositoryImpl implements ProfileRepository {
       final signedUrl = await remote.getProfilePictureSignedUrl(avatarUrl);
       return signedUrl;
     } catch (e) {
-      print('⚠️ [Repository] Failed to get profile picture URL: $e');
-      return null;
+            return null;
     }
   }
 
   @override
   Future<void> deleteProfilePicture() async {
     try {
-      print('🗑️ [Repository] Deleting profile picture');
-      
+            
       // First get current profile to find current avatar URL
       final profile = await getCurrentUserProfile();
       await remote.deleteProfilePicture(profile.profileImageUrl);
       
-      print('✅ [Repository] Profile picture deleted successfully');
-    } catch (e) {
-      print('❌ [Repository] Failed to delete profile picture: $e');
-      throw Exception('Failed to delete profile picture: $e');
+          } catch (e) {
+            throw Exception('Failed to delete profile picture: $e');
     }
   }
 }

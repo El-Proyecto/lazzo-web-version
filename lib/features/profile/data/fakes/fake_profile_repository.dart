@@ -149,6 +149,5 @@ class FakeProfileRepository implements ProfileRepository {
     await Future.delayed(const Duration(milliseconds: 500));
     
     // In a fake implementation, we just log the operation
-    print('Fake: Deleted profile picture');
-  }
+      }
 }

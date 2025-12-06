@@ -43,9 +43,7 @@ class EventPhotoRepositoryImpl implements EventPhotoRepository {
       // 4. Return photo URL
       final photoUrl = photoData['url'] as String;
       return photoUrl;
-    } catch (e, stackTrace) {
-      print('❌ Error in repository uploadPhoto: $e');
-      print(stackTrace);
+    } catch (e) {
       throw Exception('Failed to upload photo: $e');
     }
   }

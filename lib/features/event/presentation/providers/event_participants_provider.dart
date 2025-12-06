@@ -37,8 +37,7 @@ class EventParticipantsController
       final participants = await _getEventParticipants(_eventId);
       state = AsyncValue.data(participants);
     } catch (error, stackTrace) {
-      print('❌ Error loading participants: $error');
-      state = AsyncValue.error(error, stackTrace);
+            state = AsyncValue.error(error, stackTrace);
     }
   }
 

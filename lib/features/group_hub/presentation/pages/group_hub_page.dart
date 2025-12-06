@@ -65,8 +65,7 @@ class _GroupHubPageState extends ConsumerState<GroupHubPage>
   /// This ensures events transition correctly between states
   Future<void> _updateEventStatuses() async {
     try {
-      print('\n🔄 [GROUP HUB] Updating event statuses...');
-      final statusService = EventStatusService(Supabase.instance.client);
+            final statusService = EventStatusService(Supabase.instance.client);
       
       // Get events that need updating (for logging)
       final needsUpdate = await statusService.getEventsNeedingUpdate();
@@ -75,17 +74,12 @@ class _GroupHubPageState extends ConsumerState<GroupHubPage>
       final recapToEnded = needsUpdate['recap_to_ended']!;
       
       if (confirmedToLiving.isNotEmpty || livingToRecap.isNotEmpty || recapToEnded.isNotEmpty) {
-        print('📊 [GROUP HUB] Events needing status update:');
-        print('   - Confirmed → Living: ${confirmedToLiving.length}');
-        print('   - Living → Recap: ${livingToRecap.length}');
-        print('   - Recap → Ended: ${recapToEnded.length}');
-        
+                                        
         // Update all event statuses
         final updatedCount = await statusService.updateEventStatuses();
         
         if (updatedCount > 0) {
-          print('✅ [GROUP HUB] Updated $updatedCount events');
-          
+                    
           // Refresh providers to show updated data
           if (mounted) {
             ref.invalidate(groupEventsProvider(widget.groupId));
@@ -93,10 +87,10 @@ class _GroupHubPageState extends ConsumerState<GroupHubPage>
           }
         }
       } else {
-        print('ℹ️ [GROUP HUB] All events have correct status');
+        // No refresh indicator to show
       }
     } catch (e) {
-      print('❌ [GROUP HUB] Error updating event statuses: $e');
+      // Failed to restore scroll - start from top
     }
   }
 
@@ -193,16 +187,14 @@ class _GroupHubPageState extends ConsumerState<GroupHubPage>
   }
 
   Future<void> _handleRefresh() async {
-    print('🔄 [GROUP HUB] Pull-to-refresh triggered');
-    
+        
     // Refresh events
     await ref.read(groupEventsProvider(widget.groupId).notifier).refresh();
     
     // Refresh memories
     await ref.read(groupMemoriesProvider(widget.groupId).notifier).refresh();
     
-    print('✅ [GROUP HUB] Refresh completed');
-  }
+      }
 
   PreferredSizeWidget _buildAppBar() {
     return CommonAppBar(
@@ -577,8 +569,7 @@ class _GroupHubPageState extends ConsumerState<GroupHubPage>
                   );
                   currentUserAvatar = userVote.userAvatar;
                 } catch (e) {
-                  print(
-                      '⚠️ [PAGE] Current user not found in votes, using fallback');
+                  // User vote not found - will use fallback avatar
                 }
               }
               // Fallback to userMetadata if not found in votes
@@ -626,9 +617,7 @@ class _GroupHubPageState extends ConsumerState<GroupHubPage>
                 event: displayEvent,
                 state: cardState,
                 onTap: () async {
-                  print('\n🚀 [NAVIGATION] Opening event page: ${event.id}');
-                  print('   📊 Current status: ${event.status}');
-
+                                    
                   // Navigate to event detail page and refresh on return
                   await Navigator.pushNamed(
                     context,
@@ -636,23 +625,16 @@ class _GroupHubPageState extends ConsumerState<GroupHubPage>
                     arguments: {'eventId': event.id},
                   );
 
-                  print('⬅️ [NAVIGATION] Returned from event page');
-                  print(
-                      '🔄 [NAVIGATION] Refreshing event ${event.id} to check for status/vote changes...');
-
+                                    
                   // Refresh only this specific event instead of entire list
                   // This will fetch updated status, votes, and participant counts
                   await ref
                       .read(groupEventsProvider(widget.groupId).notifier)
                       .refreshSingleEvent(event.id);
 
-                  print('✅ [NAVIGATION] Event refresh complete');
-                },
+                                  },
                 onVoteChanged: (eventId, vote) async {
-                  print('\n🗳️ [VOTE SHORTCUT] Vote changed on card');
-                  print('   📍 Event ID: $eventId');
-                  print('   ✅ Vote: $vote');
-
+                                                      
                   // Persist RSVP to Supabase
                   try {
                     final rsvpRepo = ref.read(rsvpRepositoryProvider);
@@ -660,8 +642,7 @@ class _GroupHubPageState extends ConsumerState<GroupHubPage>
                         Supabase.instance.client.auth.currentUser?.id;
 
                     if (userId == null) {
-                      print('❌ [VOTE SHORTCUT] User not authenticated');
-                      return;
+                                            return;
                     }
 
                     // Convert vote to RsvpStatus
@@ -669,17 +650,12 @@ class _GroupHubPageState extends ConsumerState<GroupHubPage>
                         ? RsvpStatus.pending
                         : (vote ? RsvpStatus.going : RsvpStatus.notGoing);
 
-                    print('📤 [VOTE SHORTCUT] Submitting RSVP to Supabase...');
-                    print('   👤 User ID: $userId');
-                    print('   📊 Status: $status');
-
+                                                            
                     await rsvpRepo.submitRsvp(eventId, userId, status);
 
-                    print('✅ [VOTE SHORTCUT] RSVP submitted successfully');
-
+                    
                     // Refresh ONLY this specific event (no full page reload)
-                    print('🔄 [VOTE SHORTCUT] Refreshing only this event...');
-                    await ref
+                                        await ref
                         .read(groupEventsProvider(widget.groupId).notifier)
                         .refreshSingleEvent(eventId);
 
@@ -687,11 +663,8 @@ class _GroupHubPageState extends ConsumerState<GroupHubPage>
                     ref.invalidate(eventRsvpsProvider(eventId));
                     ref.invalidate(userRsvpProvider(eventId));
 
-                    print(
-                        '✅ [VOTE SHORTCUT] Event refreshed without full reload');
-                  } catch (e, stackTrace) {
-                    print('❌ [VOTE SHORTCUT] Error submitting RSVP: $e');
-                    print('   Stack: $stackTrace');
+                  } catch (e) {
+                    // Failed to invalidate providers - UI will update on next load
                   }
                 },
               );
@@ -705,21 +678,16 @@ class _GroupHubPageState extends ConsumerState<GroupHubPage>
   }
 
   Widget _buildMemoriesSection() {
-    print('\n🎨 [PAGE] Building memories section for groupId: ${widget.groupId}');
-    final memoriesAsync = ref.watch(groupMemoriesProvider(widget.groupId));
-    print('📊 [PAGE] Provider state: ${memoriesAsync.runtimeType}');
-
+        final memoriesAsync = ref.watch(groupMemoriesProvider(widget.groupId));
+    
     return memoriesAsync.when(
       loading: () {
-        print('⏳ [PAGE] Memories are loading...');
-        return const Center(
+                return const Center(
           child: CircularProgressIndicator(color: BrandColors.planning),
         );
       },
       error: (error, stackTrace) {
-        print('❌ [PAGE] Error in memories section: $error');
-        print('   Stack: $stackTrace');
-        return Center(
+                        return Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -747,25 +715,18 @@ class _GroupHubPageState extends ConsumerState<GroupHubPage>
         );
       },
       data: (memories) {
-        print('✅ [PAGE] Memories data received: ${memories.length} items');
-        if (memories.isNotEmpty) {
-          print('📝 [PAGE] First memory:');
-          print('   - ID: ${memories.first.id}');
-          print('   - Title: ${memories.first.title}');
-          print('   - Cover: ${memories.first.coverImageUrl}');
-        }
+                if (memories.isNotEmpty) {
+                                                }
         
         if (memories.isEmpty) {
-          print('ℹ️ [PAGE] No memories to display (empty list)');
-          return _buildEmptyState(
+                    return _buildEmptyState(
             icon: Icons.photo_library_outlined,
             title: 'No memories yet',
             subtitle: 'Group memories will appear here',
           );
         }
 
-        print('🎨 [PAGE] Rendering ${memories.length} memories in grid');
-        return SingleChildScrollView(
+                return SingleChildScrollView(
           controller: _memoriesScrollController,
           physics: _isSnapped
               ? const BouncingScrollPhysics(

@@ -54,8 +54,7 @@ class EventDataSource {
     if (status == 'confirmed' || status == 'living' || status == 'recap') {
       finalStatus = _calculateEventStatus(startDateTime, endDateTime, status);
       if (finalStatus != status) {
-        print('🔄 [EVENT DATA SOURCE] Status auto-corrected on create: $status → $finalStatus');
-      }
+              }
     }
     
     final response = await _client.from('events').insert({
@@ -104,8 +103,7 @@ class EventDataSource {
     if (status == 'confirmed' || status == 'living' || status == 'recap') {
       finalStatus = _calculateEventStatus(startDateTime, endDateTime, status);
       if (finalStatus != status) {
-        print('🔄 [EVENT DATA SOURCE] Status auto-corrected: $status → $finalStatus');
-      }
+              }
     }
     
     // Build update data - include ALL fields to allow clearing nullable ones

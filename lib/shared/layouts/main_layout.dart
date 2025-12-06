@@ -73,17 +73,15 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
         );
       } else if (nextEventStatus == HomeEventStatus.recap) {
         // First, update event statuses to ensure recap events are correctly marked
-        print('\n🔄 [MAIN LAYOUT] Updating event statuses before loading recap mode...');
-        try {
+                try {
           final statusService = EventStatusService(Supabase.instance.client);
           final updatedCount = await statusService.updateEventStatuses();
           if (updatedCount > 0) {
-            print('✅ [MAIN LAYOUT] Updated $updatedCount events');
-            // Refresh next event provider to get updated status
+                        // Refresh next event provider to get updated status
             ref.invalidate(nextEventControllerProvider);
           }
         } catch (e) {
-          print('❌ [MAIN LAYOUT] Error updating statuses: $e');
+          // Failed to update event status - will retry on next load
         }
         
         // Recap mode: Get memoryId from next event (event in recap = memory)

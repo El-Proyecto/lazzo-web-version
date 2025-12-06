@@ -27,10 +27,7 @@ final getUnreadMessageCountProvider = Provider<GetUnreadMessageCount>((ref) {
 /// ```
 final eventUnreadCountProvider = FutureProvider.autoDispose
     .family<int, ({String eventId, String currentUserId})>((ref, params) async {
-  print('[eventUnreadCountProvider] Fetching unread count');
-  print('  Event ID: ${params.eventId}');
-  print('  User ID: ${params.currentUserId}');
-
+      
   final useCase = ref.watch(getUnreadMessageCountProvider);
 
   final count = await useCase(
@@ -38,6 +35,5 @@ final eventUnreadCountProvider = FutureProvider.autoDispose
     currentUserId: params.currentUserId,
   );
 
-  print('[eventUnreadCountProvider] Result: $count unread messages');
-  return count;
+    return count;
 });

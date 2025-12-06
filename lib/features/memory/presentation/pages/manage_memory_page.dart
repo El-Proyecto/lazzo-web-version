@@ -121,11 +121,8 @@ class _ManageMemoryPageState extends ConsumerState<ManageMemoryPage> {
                     else
                       Builder(
                         builder: (context) {
-                          print('\n🎯 [MANAGE MEMORY PAGE] Rendering CoverSelectionCard:');
-                          print('   selectedCover: ${state.selectedCover?.id.substring(0, 8) ?? "null"}');
-                          if (state.selectedCover != null) {
-                            print('   URL: ${state.selectedCover!.url.substring(0, 60)}...');
-                          }
+                                                                              if (state.selectedCover != null) {
+                                                      }
                           
                           return Center(
                             child: CoverSelectionCard(

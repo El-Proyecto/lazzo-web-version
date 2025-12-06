@@ -130,32 +130,22 @@ class _AddExpenseBottomSheetState extends State<AddExpenseBottomSheet> {
   }
 
   Future<void> _handleAddExpense() async {
-    print('💳 [AddExpenseBottomSheet] _handleAddExpense called');
-    print('   isValid: $_isValid');
-    print('   title: ${_titleController.text.trim()}');
-    print('   paidBy: $_selectedPaidBy');
-    print(
-        '   participants: $_selectedParticipants (${_selectedParticipants.length})');
-    print('   amount: $_totalAmount');
-
+                        
     if (!_isValid) {
-      print('   ⚠️ Validation failed, showing errors');
-      _validateFields();
+            _validateFields();
       setState(() {
         _showErrors = true;
       });
       return;
     }
 
-    print('   ✅ Validation passed, calling callback...');
-    await widget.onAddExpense(
+        await widget.onAddExpense(
       _titleController.text.trim(),
       _selectedPaidBy!,
       _selectedParticipants,
       _totalAmount,
     );
-    print('   ✅ Callback completed, closing bottom sheet');
-
+    
     if (mounted) {
       Navigator.of(context).pop();
     }

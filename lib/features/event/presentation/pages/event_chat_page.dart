@@ -167,18 +167,16 @@ class _EventChatPageState extends ConsumerState<EventChatPage> {
 
           if (success) {
           } else {
-            print('[EventChatPage] ⚠️ Failed to mark messages as read');
-          }
+                      }
         },
         loading: () {
         },
         error: (error, stack) {
-          print('[EventChatPage] ❌ Error loading messages: $error');
+          // Error already handled in AsyncValue
         },
       );
-    } catch (e, stackTrace) {
-      print('[EventChatPage] ❌ Error in _markMessagesAsRead: $e');
-      print('  Stack trace: $stackTrace');
+    } catch (e) {
+      // Silently ignore scroll errors - non-critical UI operation
     }
   }
 
@@ -257,8 +255,7 @@ class _EventChatPageState extends ConsumerState<EventChatPage> {
         // Pending message will be automatically removed when real message arrives
         // (filtered in the build method when matching content is found in stream)
       } catch (e) {
-        print('[EventChatPage] ❌ Error sending message: $e');
-        // Keep pending message visible so user knows it failed
+                // Keep pending message visible so user knows it failed
         // Could show a retry button here
       }
     }

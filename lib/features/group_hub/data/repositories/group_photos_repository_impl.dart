@@ -14,24 +14,18 @@ class GroupPhotosRepositoryImpl implements GroupPhotosRepository {
   @override
   Future<List<GroupPhotoEntity>> getMemoryPhotos(String memoryId) async {
     try {
-      print('\n📸 [GROUP PHOTOS REPO] Getting photos for memory: $memoryId');
-      final photosData = await _dataSource.getEventPhotos(memoryId);
+            final photosData = await _dataSource.getEventPhotos(memoryId);
       
-      print('📸 [GROUP PHOTOS REPO] Received ${photosData.length} photos from data source');
-      
+            
       if (photosData.isEmpty) {
         return [];
       }
 
       final entities = <GroupPhotoEntity>[];
       for (final json in photosData) {
-        print('   - Photo: ${json['id']}');
-        print('     uploader_id: ${json['uploader_id']}');
-        print('     users: ${json['users']}');
-        
+                                
         final model = GroupPhotoModel.fromJson(json);
-        print('     → uploaderName after parsing: "${model.uploaderName}"');
-        
+                
         // Generate signed URL for avatar if path exists
         String? profileImageUrl;
         if (model.profileImageUrl != null && model.profileImageUrl!.isNotEmpty) {
@@ -41,8 +35,7 @@ class GroupPhotosRepositoryImpl implements GroupPhotosRepository {
               bucket: 'users-profile-pic',
             );
           } catch (e) {
-            print('     ⚠️ Failed to get avatar signed URL: $e');
-            profileImageUrl = null;
+                        profileImageUrl = null;
           }
         }
         
@@ -57,15 +50,13 @@ class GroupPhotosRepositoryImpl implements GroupPhotosRepository {
         ));
       }
       
-      print('✅ [GROUP PHOTOS REPO] Returning ${entities.length} entities');
-      return entities;
+            return entities;
     } on Exception catch (e) {
       // Network/auth errors - rethrow
       throw Exception('Failed to load event photos: $e');
     } catch (e) {
       // Parsing errors - log and return empty
-      print('❌ Error parsing photo data: $e');
-      return [];
+            return [];
     }
   }
 

@@ -49,8 +49,7 @@ class _CreateGroupPageState extends ConsumerState<CreateGroupPage> {
         ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
     if (arguments != null && arguments['fromCreateEvent'] == true) {
       _fromCreateEvent = true;
-      print('🎯 [CreateGroup] Opened from CreateEvent page');
-    }
+          }
   }
 
   @override
@@ -61,13 +60,11 @@ class _CreateGroupPageState extends ConsumerState<CreateGroupPage> {
   }
 
   void _handlePhotoSelection() async {
-    print('📸 [CreateGroup] Starting photo selection from gallery...');
-    await _selectPhoto(ImageSource.gallery);
+        await _selectPhoto(ImageSource.gallery);
   }
 
   void _handleCameraPhoto() async {
-    print('📸 [CreateGroup] Starting photo capture from camera...');
-    await _selectPhoto(ImageSource.camera);
+        await _selectPhoto(ImageSource.camera);
   }
 
   Future<void> _selectPhoto(ImageSource source) async {
@@ -81,16 +78,13 @@ class _CreateGroupPageState extends ConsumerState<CreateGroupPage> {
       );
 
       if (image != null) {
-        print('   ✅ Photo selected: ${image.path}');
-        setState(() {
+                setState(() {
           _selectedPhotoPath = image.path;
         });
       } else {
-        print('   ❌ No photo selected');
-      }
+              }
     } catch (e) {
-      print('   ❌ Photo selection failed: $e');
-      // Show error to user
+            // Show error to user
       if (mounted) {
         TopBanner.showError(
           context,
@@ -202,9 +196,7 @@ class _CreateGroupPageState extends ConsumerState<CreateGroupPage> {
           if (createdGroup != null) {
             // If coming from create event, return group data
             if (_fromCreateEvent) {
-              print(
-                  '✅ [CreateGroup] Returning group to CreateEvent: ${createdGroup.id}');
-
+              
               // Get the group cover URL if available
               String? imageUrl;
               if (createdGroup.photoUrl != null &&
@@ -214,7 +206,7 @@ class _CreateGroupPageState extends ConsumerState<CreateGroupPage> {
                       groupCoverUrlProvider((createdGroup.photoUrl, null))
                           .future);
                 } catch (e) {
-                  print('⚠️ [CreateGroup] Failed to get cover URL: $e');
+                  // Failed to load cover image - continue without it
                 }
               }
               // Store navigator before async gap

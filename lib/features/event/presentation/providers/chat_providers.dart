@@ -17,9 +17,6 @@ final chatMessagesProvider = StreamProvider.family<List<ChatMessage>, String>(
 /// Listens to chat_messages and message_reads changes and invalidates unreadMessagesCountProvider
 final unreadCountRealtimeProvider = StreamProvider.family<void, String>(
   (ref, eventId) {
-    print(
-        '[unreadCountRealtimeProvider] Setting up Realtime for event: $eventId');
-
     final supabase = Supabase.instance.client;
 
     // Create a stream controller to merge both table subscriptions
@@ -30,8 +27,6 @@ final unreadCountRealtimeProvider = StreamProvider.family<void, String>(
           .stream(primaryKey: ['id'])
           .eq('event_id', eventId)
           .listen((data) {
-            print(
-                '[unreadCountRealtimeProvider] chat_messages changed (${data.length} rows)');
             // Invalidate the unread count provider to trigger refetch
             ref.invalidate(unreadMessagesCountProvider(eventId));
             controller.add(null);
@@ -43,8 +38,6 @@ final unreadCountRealtimeProvider = StreamProvider.family<void, String>(
           .stream(primaryKey: ['id'])
           .eq('event_id', eventId)
           .listen((data) {
-            print(
-                '[unreadCountRealtimeProvider] message_reads changed (${data.length} rows)');
             // Invalidate the unread count provider to trigger refetch
             ref.invalidate(unreadMessagesCountProvider(eventId));
             controller.add(null);
@@ -52,7 +45,6 @@ final unreadCountRealtimeProvider = StreamProvider.family<void, String>(
 
       // Cleanup on stream cancel
       controller.onCancel = () {
-        print('[unreadCountRealtimeProvider] Canceling Realtime subscriptions');
         messagesSubscription.cancel();
         readsSubscription.cancel();
       };
@@ -69,25 +61,18 @@ final unreadMessagesCountProvider = FutureProvider.family<int, String>(
     final currentUserId = Supabase.instance.client.auth.currentUser?.id;
 
     if (currentUserId == null) {
-      print('[unreadMessagesCountProvider] No authenticated user');
       return 0;
     }
 
     try {
-      print(
-          '[unreadMessagesCountProvider] Fetching unread count for event: $eventId');
-
       final repository = ref.watch(chatRepositoryProvider);
       final count = await repository.getUnreadMessageCount(
         eventId: eventId,
         currentUserId: currentUserId,
       );
 
-      print('[unreadMessagesCountProvider] Unread count: $count');
       return count;
-    } catch (e, stackTrace) {
-      print('[unreadMessagesCountProvider] Error: $e');
-      print('  Stack trace: $stackTrace');
+    } catch (e) {
       return 0;
     }
   },

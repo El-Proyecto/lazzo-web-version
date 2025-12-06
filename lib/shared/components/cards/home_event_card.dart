@@ -611,16 +611,7 @@ class _HomeEventCardState extends ConsumerState<HomeEventCard> {
                         onAddExpense: (title, paidById, participantsOwe,
                             totalAmount) async {
                           try {
-                            print(
-                                '🎯 [HomeEventCard] Expense button callback triggered');
-                            print('   Event ID: $eventId');
-                            print('   Title: $title');
-                            print('   PaidBy: $paidById');
-                            print('   ParticipantsOwe: $participantsOwe');
-                            print('   TotalAmount: €$totalAmount');
-
                             // ✅ Create expense in Supabase
-                            print('🎯 [HomeEventCard] Calling provider...');
                             await ref
                                 .read(eventExpensesProvider(eventId).notifier)
                                 .addExpense(
@@ -630,7 +621,6 @@ class _HomeEventCardState extends ConsumerState<HomeEventCard> {
                               participantsOwe: participantsOwe,
                               participantsPaid: [],
                             );
-                            print('🎯 [HomeEventCard] Provider call completed');
 
                             // ✅ Invalidate payments to refresh home page
                             ref.invalidate(paymentsOwedToUserProvider);
@@ -647,9 +637,7 @@ class _HomeEventCardState extends ConsumerState<HomeEventCard> {
                             }
 
                             widget.onExpensePressed?.call();
-                          } catch (e, stack) {
-                            print('❌ [HomeEventCard] Error in callback: $e');
-                            print('Stack: $stack');
+                          } catch (e) {
                             // Show error message
                             if (mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
@@ -727,16 +715,7 @@ class _HomeEventCardState extends ConsumerState<HomeEventCard> {
                     onAddExpense:
                         (title, paidById, participantsOwe, totalAmount) async {
                       try {
-                        print(
-                            '🔴 [HomeEventCard] Expense button callback triggered');
-                        print('   Event ID: $eventId');
-                        print('   Title: $title');
-                        print('   PaidBy: $paidById');
-                        print('   ParticipantsOwe: $participantsOwe');
-                        print('   TotalAmount: €$totalAmount');
-
                         // ✅ Create expense in Supabase
-                        print('🔴 [HomeEventCard] Calling provider...');
                         await ref
                             .read(eventExpensesProvider(eventId).notifier)
                             .addExpense(
@@ -746,7 +725,6 @@ class _HomeEventCardState extends ConsumerState<HomeEventCard> {
                           participantsOwe: participantsOwe,
                           participantsPaid: [],
                         );
-                        print('🔴 [HomeEventCard] Provider call completed');
 
                         // Show success message
                         if (mounted) {
@@ -759,9 +737,7 @@ class _HomeEventCardState extends ConsumerState<HomeEventCard> {
                         }
 
                         widget.onExpensePressed?.call();
-                      } catch (e, stack) {
-                        print('❌ [HomeEventCard] Error in callback: $e');
-                        print('Stack: $stack');
+                      } catch (e) {
                         // Show error message
                         if (mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
@@ -784,9 +760,9 @@ class _HomeEventCardState extends ConsumerState<HomeEventCard> {
                   );
                   return;
                 }
-              } catch (e, stack) {
+              } catch (e, stackTrace) {
                 debugPrint(
-                    '❌ [HomeEventCard] Error opening expense sheet: $e\n$stack');
+                    '❌ [HomeEventCard] Error opening expense sheet: $e\n$stackTrace');
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(content: Text('Error: $e')),

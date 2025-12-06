@@ -40,11 +40,9 @@ class ProfileModel {
         final match = RegExp(r'/object/public/users-profile-pic/(.+)$').firstMatch(url);
         if (match != null) {
           storagePathOnly = match.group(1);
-          print('🔧 [ProfileModel.toMap] Extracted storage path: $storagePathOnly');
-        } else {
+                  } else {
           storagePathOnly = avatarUrl;
-          print('⚠️ [ProfileModel.toMap] Could not extract path from URL: $url');
-        }
+                  }
       } else {
         storagePathOnly = avatarUrl;
       }

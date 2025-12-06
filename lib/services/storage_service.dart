@@ -29,20 +29,17 @@ class StorageService {
       // Storage path following convention
       final storagePath = '$groupId/$memoryId/$userId/$fileName';
       
-      print('📤 Uploading photo to: $storagePath');
-      
+            
       // Upload to Supabase Storage (private bucket)
       await _client.storage
           .from('memory_groups')
           .upload(storagePath, file);
       
-      print('✅ Photo uploaded successfully to: $storagePath');
-      
+            
       // Return storage path (not URL - we'll generate signed URLs on-demand)
       return storagePath;
     } catch (e) {
-      print('❌ Failed to upload photo: $e');
-      rethrow;
+            rethrow;
     }
   }
 
@@ -56,8 +53,7 @@ class StorageService {
       
       return signedUrl;
     } catch (e) {
-      print('❌ Failed to generate signed URL for $bucket/$storagePath: $e');
-      rethrow;
+            rethrow;
     }
   }
 
@@ -75,10 +71,8 @@ class StorageService {
           .from('memory_groups')
           .remove([storagePath]);
       
-      print('🗑️ Photo deleted: $storagePath');
-    } catch (e) {
-      print('❌ Failed to delete photo: $e');
-      rethrow;
+          } catch (e) {
+            rethrow;
     }
   }
 

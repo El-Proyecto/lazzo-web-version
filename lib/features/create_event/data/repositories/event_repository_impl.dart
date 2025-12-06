@@ -25,12 +25,6 @@ class EventRepositoryImpl implements EventRepository {
   Future<Event> createEvent(Event event) async {
     try {
       final userId = _currentUserId;
-      final user = _client.auth.currentUser;
-
-      print('🔐 DEBUG: Current user: $user');
-      print('🔐 DEBUG: User ID: $userId');
-      print('🔐 DEBUG: User null? ${user == null}');
-      print('🔐 DEBUG: Session: ${_client.auth.currentSession}');
 
       if (userId == null || userId.isEmpty) {
         throw Exception('User must be authenticated to create events');
@@ -43,8 +37,6 @@ class EventRepositoryImpl implements EventRepository {
       final uuidRegex = RegExp(
           r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$');
       if (!uuidRegex.hasMatch(event.groupId)) {
-        print(
-            '⚠️ DEBUG: Invalid groupId format: ${event.groupId}, using development fallback');
         effectiveGroupId = Env.devDefaultGroupId;
 
         // Validate the fallback too
@@ -55,12 +47,9 @@ class EventRepositoryImpl implements EventRepository {
         }
       }
 
-      print('� DEBUG: Using groupId: $effectiveGroupId');
-
       // Create location if needed
       String? locationId;
       if (event.location != null) {
-        print('📍 DEBUG: Creating location...');
         try {
           final locationData = await _dataSource.createLocation(
             displayName: event.location!.displayName,
@@ -70,12 +59,8 @@ class EventRepositoryImpl implements EventRepository {
             createdBy: userId,
           );
           locationId = locationData['id'] as String;
-          print('📍 DEBUG: Location created with ID: $locationId');
         } catch (e) {
           if (e.toString().contains('row-level security policy')) {
-            print(
-                '❌ RLS ERROR: Cannot create location. Check that locations table has created_by column and INSERT policy allows created_by = auth.uid()');
-            print('❌ Continuing without location for now...');
             locationId = null;
           } else {
             rethrow;
@@ -84,17 +69,9 @@ class EventRepositoryImpl implements EventRepository {
       }
 
       // Convert domain entity to DTO with location ID
-      print('📝 DEBUG: Creating event with data:');
-      print('📝 DEBUG: - name: ${event.name}');
-      print('📝 DEBUG: - groupId: $effectiveGroupId');
-      print('📝 DEBUG: - createdBy: $userId');
-      print('📝 DEBUG: - locationId: $locationId');
-      print('📝 DEBUG: - startDateTime: ${event.startDateTime}');
-      print('📝 DEBUG: - status: ${event.status.toString().split('.').last}');
 
       Map<String, dynamic> response;
       try {
-        print('🔄 Calling _dataSource.createEvent...');
         response = await _dataSource.createEvent(
           name: event.name,
           emoji: event.emoji,
@@ -105,9 +82,7 @@ class EventRepositoryImpl implements EventRepository {
           status: event.status.toString().split('.').last,
           createdBy: userId,
         );
-        print('📝 SUCCESS: Event created with ID: ${response['id']}');
       } catch (e) {
-        print('❌ FAILED to create event in Supabase!');
         rethrow;
       }
 
@@ -118,14 +93,11 @@ class EventRepositoryImpl implements EventRepository {
       // all group members as participants with rsvp='pending'.
       // We need to UPDATE the creator's RSVP from 'pending' to 'yes'.
 
-      print(
-          '👤 DEBUG: Updating creator RSVP to "yes" (from trigger default "pending")');
-
       try {
         // Wait a tiny bit for trigger to complete (triggers run async)
         await Future.delayed(const Duration(milliseconds: 100));
 
-        final updateResponse = await _client
+        await _client
             .from('event_participants')
             .update({
               'rsvp': 'yes',
@@ -134,13 +106,7 @@ class EventRepositoryImpl implements EventRepository {
             .eq('pevent_id', eventId)
             .eq('user_id', userId)
             .select();
-
-        print('✅ DEBUG: Creator RSVP updated to "yes"');
-        print('📥 DEBUG: Updated row: $updateResponse');
       } catch (e) {
-        print('❌ DEBUG: Failed to update creator RSVP to "yes"');
-        print('❌ DEBUG: Error: $e');
-        print('❌ SOLUTION: Check RLS UPDATE policy on event_participants');
         // Don't fail event creation if RSVP update fails
       }
 
@@ -233,10 +199,8 @@ class EventRepositoryImpl implements EventRepository {
         if (uuidRegex.hasMatch(existingId)) {
           // Location already exists, just use its ID
           locationId = existingId;
-          print('📍 Using existing location: $locationId');
         } else {
           // New location - create it first
-          print('📍 Creating new location for update...');
           try {
             final locationData = await _dataSource.createLocation(
               displayName: event.location!.displayName,
@@ -246,9 +210,7 @@ class EventRepositoryImpl implements EventRepository {
               createdBy: userId,
             );
             locationId = locationData['id'] as String;
-            print('📍 Location created with ID: $locationId');
           } catch (e) {
-            print('❌ Failed to create location: $e');
             // Don't fail the entire update, just log it
             locationId = null;
           }
@@ -287,7 +249,6 @@ class EventRepositoryImpl implements EventRepository {
             'starts_at': event.startDateTime!.toIso8601String(),
             'ends_at': event.endDateTime?.toIso8601String(),
           }).eq('id', suggestionId);
-          print('✅ Updated initial date suggestion to match edited event');
         } else if (initialSuggestions.isNotEmpty &&
             event.startDateTime == null) {
           // Event changed to "Decide Later" - delete the suggestion
@@ -296,11 +257,9 @@ class EventRepositoryImpl implements EventRepository {
               .from('event_date_options')
               .delete()
               .eq('id', suggestionId);
-          print('✅ Deleted date suggestion (event changed to Decide Later)');
         }
       } catch (e) {
         // Don't fail the update if suggestion sync fails
-        print('⚠️ Failed to sync date suggestion: $e');
       }
 
       // CRITICAL: Sync the initial location suggestion created by host/admin
@@ -325,7 +284,6 @@ class EventRepositoryImpl implements EventRepository {
             'latitude': event.location!.latitude,
             'longitude': event.location!.longitude,
           }).eq('id', suggestionId);
-          print('✅ Updated initial location suggestion to match edited event');
         } else if (initialLocationSuggestions.isNotEmpty &&
             event.location == null) {
           // Event changed to "Decide Later" for location - delete the suggestion
@@ -334,12 +292,9 @@ class EventRepositoryImpl implements EventRepository {
               .from('location_suggestions')
               .delete()
               .eq('id', suggestionId);
-          print(
-              '✅ Deleted location suggestion (event changed to Decide Later)');
         }
       } catch (e) {
         // Don't fail the update if location suggestion sync fails
-        print('⚠️ Failed to sync location suggestion: $e');
       }
 
       // Fetch location if present in updated event
@@ -355,7 +310,6 @@ class EventRepositoryImpl implements EventRepository {
       return EventModel.fromJson(response).toEntity(location: location);
     } on Exception catch (e) {
       // Re-throw with better context
-      print('❌ Update event error: $e');
       throw Exception('Failed to update event: ${e.toString()}');
     }
   }

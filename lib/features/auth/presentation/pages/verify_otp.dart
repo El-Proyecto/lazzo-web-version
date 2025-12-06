@@ -68,7 +68,7 @@ class _OtpVerificationPageState extends ConsumerState<OtpVerificationPage> {
     });
 
     try {
-      print('📱 Iniciando verificação OTP com email: ${widget.email}, name: ${widget.name}'); // Debug
+       // Debug
       
       // Pass name directly to verifyOtp method
       await _authDatasource.verifyOtp(
@@ -77,15 +77,15 @@ class _OtpVerificationPageState extends ConsumerState<OtpVerificationPage> {
         name: widget.name?.trim(),
       );
 
-      print('📱 OTP verificado com sucesso, navegando para /main'); // Debug
+       // Debug
 
       if (!mounted) return;
       Navigator.pushNamedAndRemoveUntil(context, '/main', (_) => false);
     } on AuthException catch (e) {
-      print('📱 Erro AuthException: ${e.message}'); // Debug
+       // Debug
       setState(() => _bannerMessage = e.message);
     } catch (e) {
-      print('📱 Erro geral: $e'); // Debug
+       // Debug
       setState(() => _bannerMessage = 'Erro ao verificar: $e');
     } finally {
       if (mounted) setState(() => _busy = false);

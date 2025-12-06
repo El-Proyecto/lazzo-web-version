@@ -300,7 +300,6 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
     if (result != null && mounted) {
       // Check if user wants to remove the birthday
       if (result['remove'] == true) {
-        print('🗑️ [EditProfilePage] Removing birthday');
         await _updateProfile(
           profile.copyWith(birthday: null, clearBirthday: true),
           'birthday',
@@ -310,11 +309,8 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
 
       // Save the new birthday
       final date = result['date'] as DateTime?;
-      final allowNotifications = result['allowNotifications'] as bool? ?? false;
 
       if (date != null) {
-        print(
-            '📅 [EditProfilePage] Saving birthday: $date, notifications: $allowNotifications');
         await _updateProfile(profile.copyWith(birthday: date), 'birthday');
       }
     }
@@ -323,16 +319,13 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
   Future<void> _updateProfile(
       ProfileEntity updatedProfile, String fieldName) async {
     try {
-      print('💾 [EditProfilePage] Updating $fieldName');
       final controller = ref.read(editProfileControllerProvider);
       await controller.updateProfile(updatedProfile);
 
       if (mounted) {
-        print('✅ [EditProfilePage] $fieldName updated successfully');
         TopBanner.showSuccess(context, message: 'Profile updated successfully');
       }
     } catch (e) {
-      print('❌ [EditProfilePage] Failed to update $fieldName: $e');
       if (mounted) {
         TopBanner.showError(context, message: 'Failed to update $fieldName');
       }
@@ -370,8 +363,6 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
     PhotoSourceAction action,
     ProfileEntity profile,
   ) async {
-    print('📸 [EditProfilePage] Photo action: $action');
-
     switch (action) {
       case PhotoSourceAction.gallery:
         await _pickImageFromGallery(profile);
@@ -399,7 +390,6 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
         await _uploadProfilePicture(image, profile);
       }
     } catch (e) {
-      print('❌ [EditProfilePage] Gallery picker failed: $e');
       if (mounted) {
         TopBanner.showError(context,
             message: 'Failed to pick image from gallery');
@@ -421,7 +411,6 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
         await _uploadProfilePicture(image, profile);
       }
     } catch (e) {
-      print('❌ [EditProfilePage] Camera picker failed: $e');
       if (mounted) {
         TopBanner.showError(context, message: 'Failed to take photo');
       }
@@ -430,8 +419,6 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
 
   Future<void> _uploadProfilePicture(XFile image, ProfileEntity profile) async {
     try {
-      print('📤 [EditProfilePage] Uploading profile picture...');
-
       // Show info banner
       if (mounted) {
         TopBanner.showInfo(context, message: 'Uploading photo...');
@@ -443,18 +430,14 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
       final imagePath =
           await ref.read(profileRepositoryProvider).uploadProfilePicture(image);
 
-      print('✅ [EditProfilePage] Image uploaded to: $imagePath');
-
       // Update profile with new image path
       final updatedProfile = profile.copyWith(profileImageUrl: imagePath);
       await controller.updateProfile(updatedProfile);
 
-      print('✅ [EditProfilePage] Profile updated with new photo');
       if (mounted) {
         TopBanner.showSuccess(context, message: 'Photo updated successfully');
       }
     } catch (e) {
-      print('❌ [EditProfilePage] Photo upload failed: $e');
       if (mounted) {
         TopBanner.showError(context, message: 'Failed to upload photo');
       }
@@ -463,8 +446,6 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
 
   Future<void> _removePhoto(ProfileEntity profile) async {
     try {
-      print('🗑️ [EditProfilePage] Removing profile photo...');
-
       final controller = ref.read(editProfileControllerProvider);
 
       // Delete the image from storage if it exists
@@ -477,12 +458,10 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
       final updatedProfile = profile.copyWith(profileImageUrl: null);
       await controller.updateProfile(updatedProfile);
 
-      print('✅ [EditProfilePage] Photo removed successfully');
       if (mounted) {
         TopBanner.showSuccess(context, message: 'Photo removed successfully');
       }
     } catch (e) {
-      print('❌ [EditProfilePage] Photo removal failed: $e');
       if (mounted) {
         TopBanner.showError(context, message: 'Failed to remove photo');
       }

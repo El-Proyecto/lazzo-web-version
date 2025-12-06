@@ -147,7 +147,7 @@ lib/
 - Feature has complete DI setup (fake repo, real repo, provider override).
 - `const` constructors added where possible for performance.
 - Empty or TODO-only files are removed or implemented.
-- **All `print()` debug statements removed** - run `./scripts/remove_debug_prints.sh` before merge.
+- **All `print()` debug statements removed** - run `./scripts/clean_prints.sh` before merge.
 
 ---
 
@@ -339,7 +339,7 @@ print('here');
 - Keep messages concise and actionable
 
 **Before PR/Merge to Main:**
-1. Run cleanup script: `./scripts/remove_debug_prints.sh`
+1. Run cleanup script: `./scripts/clean_prints.sh`
 2. Manually review any remaining prints that should stay (rare edge cases)
 3. Verify with: `git grep -n "print(" lib/`
 4. Zero prints in `lib/` folder = ready to merge

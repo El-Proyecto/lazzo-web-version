@@ -155,10 +155,8 @@ class ChatRepositoryImpl implements ChatRepository {
       final success = response['success'] == true;
 
       return success;
-    } catch (e, stackTrace) {
-      print('[ChatRepositoryImpl] Error updating last read message: $e');
-      print('  Stack trace: $stackTrace');
-      throw Exception('Failed to update last read message: $e');
+    } catch (e) {
+                  throw Exception('Failed to update last read message: $e');
     }
   }
 
@@ -175,10 +173,8 @@ class ChatRepositoryImpl implements ChatRepository {
       );
 
       return count;
-    } catch (e, stackTrace) {
-      print('[ChatRepositoryImpl] Error getting unread count: $e');
-      print('  Stack trace: $stackTrace');
-      throw Exception('Failed to get unread message count: $e');
+    } catch (e) {
+                  throw Exception('Failed to get unread message count: $e');
     }
   }
 
@@ -217,10 +213,8 @@ class ChatRepositoryImpl implements ChatRepository {
       }
 
       return messagesWithReplies;
-    } catch (e, stackTrace) {
-      print('[ChatRepositoryImpl] Error getting messages with read status: $e');
-      print('  Stack trace: $stackTrace');
-      throw Exception('Failed to get messages with read status: $e');
+    } catch (e) {
+                  throw Exception('Failed to get messages with read status: $e');
     }
   }
 }

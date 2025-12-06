@@ -286,14 +286,9 @@ class EventRemoteDataSource {
 
       return updatedEvent;
     } on PostgrestException catch (e) {
-      print('❌ [DATA SOURCE] PostgrestException: ${e.message}');
-      print('   Code: ${e.code}');
-      print('   Details: ${e.details}');
-      throw Exception('Failed to update event status: ${e.message}');
-    } catch (e, stackTrace) {
-      print('❌ [DATA SOURCE] Exception: $e');
-      print('   Stack trace: $stackTrace');
-      throw Exception('Failed to update event status: $e');
+                        throw Exception('Failed to update event status: ${e.message}');
+    } catch (e) {
+                  throw Exception('Failed to update event status: $e');
     }
   }
 
@@ -329,20 +324,17 @@ class EventRemoteDataSource {
           user['id'] as String: user as Map<String, dynamic>,
       };
 
-      print('🗺️ [EventRemoteDataSource] Users map: ${usersMap.keys}');
-
+      
       // Combine participants with their user data
       final participants = (participantsResponse as List).map((participant) {
         final userId = participant['user_id'] as String;
         final userData = usersMap[userId];
 
         if (userData == null) {
-          print('⚠️ [EventRemoteDataSource] No user found for id: $userId');
-        }
+                  }
 
         final displayName = userData?['name'] as String? ?? 'Unknown User';
-        print('   Processing participant: $displayName ($userId)');
-
+        
         return EventParticipantEntity(
           userId: userId,
           displayName: displayName,
@@ -351,18 +343,11 @@ class EventRemoteDataSource {
         );
       }).toList();
 
-      print(
-          '✅ [EventRemoteDataSource] Successfully parsed ${participants.length} participants');
-      return participants;
+            return participants;
     } on PostgrestException catch (e) {
-      print('❌ [EventRemoteDataSource] PostgrestException: ${e.message}');
-      print('❌ [EventRemoteDataSource] Details: ${e.details}');
-      print('❌ [EventRemoteDataSource] Hint: ${e.hint}');
-      throw Exception('Failed to get event participants: ${e.message}');
+                        throw Exception('Failed to get event participants: ${e.message}');
     } catch (e) {
-      print('❌ [EventRemoteDataSource] Generic error: $e');
-      print('❌ [EventRemoteDataSource] Stack: ${StackTrace.current}');
-      throw Exception('Failed to get event participants: $e');
+                  throw Exception('Failed to get event participants: $e');
     }
   }
 }

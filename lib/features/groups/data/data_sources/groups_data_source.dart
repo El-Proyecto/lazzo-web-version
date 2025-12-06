@@ -73,8 +73,7 @@ class SupabaseGroupsDataSource implements GroupsDataSource {
 
       return response;
     } catch (e) {
-      print('❌ [DataSource] Failed to create group: $e');
-      throw Exception('Failed to create group: $e');
+            throw Exception('Failed to create group: $e');
     }
   }
 
@@ -93,8 +92,7 @@ class SupabaseGroupsDataSource implements GroupsDataSource {
       
       return fileName; // Retorna apenas o path, não a URL completa
     } catch (e) {
-      print('❌ [DataSource] Failed to upload group cover photo: $e');
-      throw Exception('Failed to upload group cover photo: $e');
+            throw Exception('Failed to upload group cover photo: $e');
     }
   }
 
@@ -104,8 +102,7 @@ class SupabaseGroupsDataSource implements GroupsDataSource {
       
       // Validate that it's a storage path, not a local path
       if (photoPath.startsWith('/') || photoPath.contains('cache') || photoPath.contains('data/user')) {
-        print('   ❌ Invalid path detected (local path instead of storage path): $photoPath');
-        throw Exception('Invalid photo path - local paths are not supported');
+                throw Exception('Invalid photo path - local paths are not supported');
       }
       
       final signedUrl = await _client.storage
@@ -114,8 +111,7 @@ class SupabaseGroupsDataSource implements GroupsDataSource {
       
       return signedUrl;
     } catch (e) {
-      print('   ❌ Failed to create signed URL: $e');
-      throw Exception('Failed to get signed URL: $e');
+            throw Exception('Failed to get signed URL: $e');
     }
   }
 
@@ -201,8 +197,7 @@ class SupabaseGroupsDataSource implements GroupsDataSource {
               .update({'qr_code': qrCodeData})
               .eq('id', groupId);
         } catch (e2) {
-          print('   ❌ Failed to save even qr_code: $e2');
-          throw Exception('Failed to save QR code: $e2');
+                    throw Exception('Failed to save QR code: $e2');
         }
       } else {
         throw Exception('Failed to save QR code: $e');
@@ -223,8 +218,7 @@ class SupabaseGroupsDataSource implements GroupsDataSource {
           .eq('id', groupId);
       
     } catch (e) {
-      print('   ❌ Failed to update group photo: $e');
-      throw Exception('Failed to update group photo: $e');
+            throw Exception('Failed to update group photo: $e');
     }
   }
 
@@ -422,8 +416,7 @@ class SupabaseGroupsDataSource implements GroupsDataSource {
 
       return List<Map<String, dynamic>>.from(processedGroups);
     } catch (e) {
-      print('   ❌ Failed to fetch archived groups: $e');
-      throw Exception('Failed to fetch archived groups: $e');
+            throw Exception('Failed to fetch archived groups: $e');
     }
   }
 
@@ -489,8 +482,7 @@ class SupabaseGroupsDataSource implements GroupsDataSource {
               } else {
               }
             } catch (e) {
-              print('   ⚠️ Failed to delete group folder: $e (continuing with group deletion)');
-              // Continue mesmo se falhar a remoção da imagem
+                            // Continue mesmo se falhar a remoção da imagem
             }
           }
         }

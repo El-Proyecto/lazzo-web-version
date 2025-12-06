@@ -25,10 +25,8 @@ class UpdateLastReadMessage {
       );
 
       return success;
-    } catch (e, stackTrace) {
-      print('[UpdateLastReadMessage] Error updating last read message: $e');
-      print('  Stack trace: $stackTrace');
-      return false;
+    } catch (e) {
+                  return false;
     }
   }
 }

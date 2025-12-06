@@ -77,12 +77,7 @@ class PaymentDebtDto {
   /// - fromUserId = person who OWES money (debtor)
   /// - toUserId = person who is OWED money (creditor)
   PaymentEntity toEntity({required String currentUserId}) {
-    print('🔍 [PaymentDebtDto.toEntity] Converting:');
-    print('   expense: $expenseTitle, amount: €$debtAmount');
-    print('   paidBy: $paidByUserName ($paidByUserId) ← CREDITOR');
-    print('   debtor: $debtorUserName ($debtorUserId) ← DEBTOR');
-    print('   currentUser: $currentUserId');
-
+                    
     // View semantics are clear: paid_by is creditor, debtor is debtor
     // So in PaymentEntity: fromUserId = debtor, toUserId = creditor (paid_by)
     final entity = PaymentEntity(
@@ -104,7 +99,6 @@ class PaymentDebtDto {
       eventName: eventName,
     );
 
-    print('   → Entity: from $debtorUserName TO $paidByUserName');
-    return entity;
+        return entity;
   }
 }
