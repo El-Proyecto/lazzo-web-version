@@ -88,26 +88,18 @@ class EventDetailModel {
 
   /// Convert to domain entity
   EventDetail toEntity() {
-    print('🔄 [MODEL] Converting to entity');
-    print('   📝 Status string from model: "$status"');
-
     // Parse status enum
     EventStatus statusEnum;
     switch (status.toLowerCase()) {
       case 'confirmed':
-        print('   ✅ [MODEL] Matched "confirmed" -> EventStatus.confirmed');
         statusEnum = EventStatus.confirmed;
         break;
       case 'ended':
-        print('   🏁 [MODEL] Matched "ended" -> EventStatus.ended');
         statusEnum = EventStatus.ended;
         break;
       default:
-        print('   ⚠️ [MODEL] No match, defaulting to EventStatus.pending');
         statusEnum = EventStatus.pending;
     }
-
-    print('   🎯 [MODEL] Final statusEnum: $statusEnum');
 
     // Create location if all fields present
     EventLocation? location;

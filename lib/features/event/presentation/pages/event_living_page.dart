@@ -25,16 +25,30 @@ String _getUserDisplayName(
 
 /// Event page for Living mode
 /// Displays event in progress with photo upload, chat, and host controls
-class EventLivingPage extends ConsumerWidget {
+class EventLivingPage extends ConsumerStatefulWidget {
   final String eventId;
 
   const EventLivingPage({super.key, required this.eventId});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<EventLivingPage> createState() => _EventLivingPageState();
+}
+
+class _EventLivingPageState extends ConsumerState<EventLivingPage> {
+  @override
+  void initState() {
+    super.initState();
+    // Setup Realtime subscription for unread count badge updates
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(unreadCountRealtimeProvider(widget.eventId));
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final currentUserId = ref.watch(currentUserIdProvider);
-    final eventAsync = ref.watch(eventDetailProvider(eventId));
-    final messagesAsync = ref.watch(chatMessagesProvider(eventId));
+    final eventAsync = ref.watch(eventDetailProvider(widget.eventId));
+    final messagesAsync = ref.watch(chatMessagesProvider(widget.eventId));
 
     return Scaffold(
       backgroundColor: BrandColors.bg1,
@@ -99,18 +113,18 @@ class EventLivingPage extends ConsumerWidget {
                   onTakePhoto: () async {
                     // Get photo upload notifier
                     final photoNotifier = ref.read(
-                      eventPhotoUploadNotifierProvider(eventId).notifier,
+                      eventPhotoUploadNotifierProvider(widget.eventId).notifier,
                     );
 
                     // Take photo and upload
                     await photoNotifier.takePhoto(
-                      eventId: eventId,
+                      eventId: widget.eventId,
                       groupId: event.groupId,
                     );
 
                     // Show result
                     final uploadState = ref.read(
-                      eventPhotoUploadNotifierProvider(eventId),
+                      eventPhotoUploadNotifierProvider(widget.eventId),
                     );
 
                     uploadState.when(
@@ -121,7 +135,7 @@ class EventLivingPage extends ConsumerWidget {
                             message: '✅ Photo uploaded successfully!',
                           );
                           // Refresh event to update photo count
-                          ref.invalidate(eventDetailProvider(eventId));
+                          ref.invalidate(eventDetailProvider(widget.eventId));
                         }
                       },
                       loading: () {},
@@ -142,9 +156,16 @@ class EventLivingPage extends ConsumerWidget {
                 // Chat preview (purple accent)
                 messagesAsync.when(
                   data: (messages) {
-                    final unreadCount = ref.watch(
-                      unreadMessagesCountProvider(eventId),
+                    // Get unread count (now returns AsyncValue)
+                    final unreadCountAsync = ref.watch(
+                      unreadMessagesCountProvider(widget.eventId),
                     );
+
+                    final unreadCount = unreadCountAsync.maybeWhen(
+                      data: (count) => count,
+                      orElse: () => 0,
+                    );
+
                     return ChatPreviewWidget(
                       newMessagesCount: unreadCount,
                       currentUserId: currentUserId ?? 'current-user',
@@ -157,7 +178,9 @@ class EventLivingPage extends ConsumerWidget {
                               userAvatar: m.userAvatar,
                               content: m.content,
                               timestamp: m.createdAt,
-                              read: m.read,
+                              isReadBySomeone: m.isReadBySomeone,
+                              isDeleted: m.isDeleted,
+                              isPending: m.isPending,
                             ),
                           )
                           .toList(),
@@ -183,7 +206,7 @@ class EventLivingPage extends ConsumerWidget {
                         }
 
                         await ref
-                            .read(chatActionsProvider(eventId))
+                            .read(chatActionsProvider(widget.eventId))
                             .sendMessage(content, replyTo: replyToMessage);
                       },
                       mode: ChatMode.living,
@@ -197,7 +220,7 @@ class EventLivingPage extends ConsumerWidget {
 
                 // Expenses widget
                 EventExpensesWidget(
-                  eventId: eventId,
+                  eventId: widget.eventId,
                   mode: ChatMode.living,
                   participants: const [], // TODO: Get event participants
                   onAddExpense: (title, paidByIds, payerIds, amount) async {

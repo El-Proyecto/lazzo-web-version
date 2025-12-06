@@ -217,19 +217,21 @@ class EventRemoteDataSource {
   }
 
   /// Calculate correct event status based on current time
-  String _calculateEventStatus(DateTime? startDateTime, DateTime? endDateTime, String currentStatus) {
+  String _calculateEventStatus(
+      DateTime? startDateTime, DateTime? endDateTime, String currentStatus) {
     if (startDateTime == null || endDateTime == null) {
       return currentStatus;
     }
-    
+
     final now = DateTime.now().toUtc();
     final startUtc = startDateTime.toUtc();
     final endUtc = endDateTime.toUtc();
-    
+
     if (now.isAfter(endUtc)) return 'recap';
     if (now.isAfter(startUtc) && now.isBefore(endUtc)) return 'living';
-    if (currentStatus == 'draft' || currentStatus == 'pending') return currentStatus;
-    
+    if (currentStatus == 'draft' || currentStatus == 'pending')
+      return currentStatus;
+
     return 'confirmed';
   }
 
@@ -239,70 +241,47 @@ class EventRemoteDataSource {
     String status,
   ) async {
     try {
-      print('🔧 [DATA SOURCE] Updating event $eventId in Supabase');
-      print('   🎯 Requested status: "$status"');
-      
       // Get event dates to calculate correct status
       final event = await _supabaseClient
           .from('events')
           .select('start_datetime, end_datetime')
           .eq('id', eventId)
           .single();
-      
-      final startDateTime = event['start_datetime'] != null 
+
+      final startDateTime = event['start_datetime'] != null
           ? DateTime.parse(event['start_datetime'] as String)
           : null;
-      final endDateTime = event['end_datetime'] != null 
+      final endDateTime = event['end_datetime'] != null
           ? DateTime.parse(event['end_datetime'] as String)
           : null;
-      
+
       // Calculate correct status based on time
       String finalStatus = status;
       if (status == 'confirmed' || status == 'living' || status == 'recap') {
         finalStatus = _calculateEventStatus(startDateTime, endDateTime, status);
-        if (finalStatus != status) {
-          print('🔄 [DATA SOURCE] Status auto-corrected: $status → $finalStatus');
-        }
       }
-      
-      print('   📊 Building update payload: {status: $finalStatus}');
-      
+
       // Execute update without select to avoid issues
-      print('   🚀 Executing UPDATE query on events table...');
       await _supabaseClient
           .from('events')
-          .update({'status': finalStatus})
-          .eq('id', eventId);
-
-      print('✅ [DATA SOURCE] Supabase UPDATE command executed');
+          .update({'status': finalStatus}).eq('id', eventId);
 
       // Verify the update by fetching the event directly with a small delay
       await Future.delayed(const Duration(milliseconds: 100));
 
-      print('🔍 [DATA SOURCE] Verifying update by fetching event...');
       final verifyResponse = await _supabaseClient
           .from('events')
           .select('id, name, status')
           .eq('id', eventId)
           .single();
 
-      print('📊 [DATA SOURCE] Verification result:');
-      print('   📌 Event ID: ${verifyResponse['id']}');
-      print('   📝 Event Name: ${verifyResponse['name']}');
-      print('   🎯 Current status in DB: "${verifyResponse['status']}"');
-
       if (verifyResponse['status'] != finalStatus) {
-        print('⚠️ [DATA SOURCE] WARNING: Status mismatch!');
-        print('   Expected: "$finalStatus"');
-        print('   Got: "${verifyResponse['status']}"');
-        throw Exception('Status update failed: expected $finalStatus but got ${verifyResponse['status']}');
+        throw Exception(
+            'Status update failed: expected $finalStatus but got ${verifyResponse['status']}');
       }
 
       // Return updated event detail
-      print('📦 [DATA SOURCE] Fetching full event detail...');
       final updatedEvent = await getEventDetail(eventId);
-      print(
-          '✅ [DATA SOURCE] Full event detail model status: "${updatedEvent.status}"');
 
       return updatedEvent;
     } on PostgrestException catch (e) {
@@ -344,11 +323,10 @@ class EventRemoteDataSource {
           .inFilter('id', userIds);
 
       // Create a map of userId -> user data
-      final usersMap = Map<String, Map<String, dynamic>>.fromIterable(
-        usersResponse as List,
-        key: (user) => user['id'] as String,
-        value: (user) => user as Map<String, dynamic>,
-      );
+      final usersMap = {
+        for (var user in usersResponse as List)
+          user['id'] as String: user as Map<String, dynamic>,
+      };
 
       print('🗺️ [EventRemoteDataSource] Users map: ${usersMap.keys}');
 

@@ -19,7 +19,6 @@ import '../widgets/no_upcoming_events_card.dart';
 import '../providers/home_event_providers.dart';
 import '../../domain/entities/home_event.dart';
 import '../../../../routes/app_router.dart';
-import 'dart:async';
 
 /// Home page - main screen showing next event, confirmed/pending events, todos, payments, and memories
 ///
@@ -50,70 +49,16 @@ class HomePage extends ConsumerStatefulWidget {
 }
 
 class _HomePageState extends ConsumerState<HomePage> {
-  Timer? _autoRefreshTimer;
   bool _isNoEventsCardDismissed = false;
 
   @override
   void initState() {
     super.initState();
-    _startAutoRefresh(); // ✅ Start auto-refresh timer
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-
-    // ✅ Listen to tab changes and refresh when coming back to home
-    final currentTab = ref.watch(mainLayoutTabProvider);
-    if (currentTab == 0 && mounted) {
-      // We're on home tab - refresh data
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) {
-          _refreshAllData();
-        }
-      });
-    }
-  }
-
-  void _refreshAllData() {
-    // ✅ Invalidate all providers to fetch fresh data
-    print('🔄 Refreshing home data...');
-    ref.invalidate(nextEventControllerProvider);
-    ref.invalidate(confirmedEventsControllerProvider);
-    ref.invalidate(homeEventsControllerProvider);
-    ref.invalidate(todosControllerProvider);
-    ref.invalidate(paymentSummariesControllerProvider);
-    ref.invalidate(totalBalanceControllerProvider);
-    ref.invalidate(recentMemoriesControllerProvider);
-    ref.invalidate(groupsProvider);
-
-    // Invalidate base payment providers (source data for payment summaries)
-    ref.invalidate(paymentsOwedToUserProvider);
-    ref.invalidate(paymentsUserOwesProvider);
-
-    // Force rebuild to pick up new provider data
-    if (mounted) {
-      setState(() {});
-    }
   }
 
   @override
   void dispose() {
-    _autoRefreshTimer?.cancel(); // ✅ ADD cleanup
     super.dispose();
-  }
-
-  void _startAutoRefresh() {
-    // ✅ Refresh a cada 1 minuto para capturar mudanças de estado
-    _autoRefreshTimer = Timer.periodic(
-      const Duration(minutes: 1),
-      (_) {
-        // Apenas invalidar se ainda estiver montado
-        if (mounted) {
-          _refreshAllData();
-        }
-      },
-    );
   }
 
   String _formatEventDate(DateTime? date) {
@@ -244,7 +189,7 @@ class _HomePageState extends ConsumerState<HomePage> {
       body: SafeArea(
         child: RefreshIndicator(
           onRefresh: () async {
-            _refreshAllData();
+            // Refresh is handled by provider invalidation
           },
           color: BrandColors.planning,
           backgroundColor: BrandColors.bg2,
@@ -372,10 +317,6 @@ class _HomePageState extends ConsumerState<HomePage> {
                                 AppRouter.event,
                                 arguments: {'eventId': event.id},
                               );
-                              // ✅ Refresh data when returning from event page
-                              if (mounted) {
-                                _refreshAllData();
-                              }
                             },
                             onChatPressed: () {
                               // TODO: Navigate to event chat
@@ -444,10 +385,6 @@ class _HomePageState extends ConsumerState<HomePage> {
                                         AppRouter.event,
                                         arguments: {'eventId': event.id},
                                       );
-                                      // ✅ Refresh data when returning
-                                      if (mounted) {
-                                        _refreshAllData();
-                                      }
                                     },
                                   ),
                                   if (index < events.length - 1)
@@ -503,10 +440,6 @@ class _HomePageState extends ConsumerState<HomePage> {
                                         AppRouter.event,
                                         arguments: {'eventId': event.id},
                                       );
-                                      // ✅ Refresh data when returning
-                                      if (mounted) {
-                                        _refreshAllData();
-                                      }
                                     },
                                   ),
                                   if (index < events.length - 1)

@@ -182,19 +182,23 @@ class _PhotoPreviewPageState extends ConsumerState<PhotoPreviewPage> {
                   print('\n👤 [PHOTO PREVIEW] Uploader info:');
                   print('   - uploaderId: ${photo.uploaderId}');
                   print('   - uploaderName: "${photo.uploaderName}"');
-                  print('   - isUploadedByCurrentUser: ${photo.isUploadedByCurrentUser}');
-                  print('   - Display: ${photo.isUploadedByCurrentUser ? "You" : photo.uploaderName}');
-                  
+                  print(
+                      '   - isUploadedByCurrentUser: ${photo.isUploadedByCurrentUser}');
+                  print(
+                      '   - Display: ${photo.isUploadedByCurrentUser ? "You" : photo.uploaderName}');
+
                   return Row(
                     children: [
                       // Profile photo with fallback to initials
                       CircleAvatar(
                         radius: 16,
                         backgroundColor: BrandColors.bg3,
-                        foregroundImage: photo.profileImageUrl != null && photo.profileImageUrl!.isNotEmpty
+                        foregroundImage: photo.profileImageUrl != null &&
+                                photo.profileImageUrl!.isNotEmpty
                             ? NetworkImage(photo.profileImageUrl!)
                             : null,
-                        child: photo.profileImageUrl == null || photo.profileImageUrl!.isEmpty
+                        child: photo.profileImageUrl == null ||
+                                photo.profileImageUrl!.isEmpty
                             ? Text(
                                 photo.uploaderName.isNotEmpty
                                     ? photo.uploaderName[0].toUpperCase()
@@ -208,7 +212,9 @@ class _PhotoPreviewPageState extends ConsumerState<PhotoPreviewPage> {
                       const SizedBox(width: Gaps.sm),
                       // Uploader name
                       Text(
-                        photo.isUploadedByCurrentUser ? 'You' : photo.uploaderName,
+                        photo.isUploadedByCurrentUser
+                            ? 'You'
+                            : photo.uploaderName,
                         style: AppText.bodyMedium.copyWith(
                           color: BrandColors.text1,
                         ),
@@ -276,11 +282,7 @@ class _PhotoPreviewPageState extends ConsumerState<PhotoPreviewPage> {
         // Bottom section - Promote to Cover button (recap color)
         Padding(
           padding: const EdgeInsets.fromLTRB(
-            Insets.screenH,
-            Gaps.sm,
-            Insets.screenH,
-            Insets.screenH
-          ),
+              Insets.screenH, Gaps.sm, Insets.screenH, Insets.screenH),
           child: SizedBox(
             width: double.infinity,
             child: ElevatedButton(
@@ -351,16 +353,22 @@ class _PhotoPreviewPageState extends ConsumerState<PhotoPreviewPage> {
     }
   }
 
-  Future<void> _handlePromoteToCover(BuildContext context, ManagePhotoItem photo) async {
-    print('\n🎯 [PHOTO PREVIEW] Promoting photo ${photo.id.substring(0, 8)}... to cover');
-    
+  Future<void> _handlePromoteToCover(
+      BuildContext context, ManagePhotoItem photo) async {
+    print(
+        '\n🎯 [PHOTO PREVIEW] Promoting photo ${photo.id.substring(0, 8)}... to cover');
+
     // Promote to cover (will persist to Supabase)
-    await ref.read(manageMemoryProvider(widget.memoryId).notifier).selectCover(photo);
+    await ref
+        .read(manageMemoryProvider(widget.memoryId).notifier)
+        .selectCover(photo);
 
     if (!mounted) return;
 
     // Navigate back to Manage Photos
-    Navigator.of(context).pop();
+    if (context.mounted) {
+      Navigator.of(context).pop();
+    }
 
     // Show success banner on Manage Photos page
     WidgetsBinding.instance.addPostFrameCallback((_) {

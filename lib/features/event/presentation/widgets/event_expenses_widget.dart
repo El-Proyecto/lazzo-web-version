@@ -101,19 +101,19 @@ class EventExpensesWidget extends ConsumerWidget {
                       Supabase.instance.client.auth.currentUser?.id;
 
                   // Find payer name from participants
-                  final payerParticipant = participants.firstWhere(
-                    (p) => p.id == expense.paidBy,
-                    orElse: () => ExpenseParticipantOption(
-                      id: expense.paidBy,
-                      name: 'Unknown',
-                      avatarUrl: null,
-                    ),
-                  );
+                  // final payerParticipant = participants.firstWhere(
+                  //   (p) => p.id == expense.paidBy,
+                  //   orElse: () => ExpenseParticipantOption(
+                  //     id: expense.paidBy,
+                  //     name: 'Unknown',
+                  //     avatarUrl: null,
+                  //   ),
+                  // );
 
                   // Show "You" if current user is payer, otherwise show name
-                  final payerName = expense.paidBy == currentUserId
-                      ? 'You'
-                      : payerParticipant.name;
+                  // final payerName = expense.paidBy == currentUserId
+                  //     ? 'You'
+                  //     : payerParticipant.name;
 
                   final isUserRelated = _isUserRelated(expense);
 

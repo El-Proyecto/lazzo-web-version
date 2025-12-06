@@ -102,8 +102,8 @@ class _PaymentsSectionState extends ConsumerState<PaymentsSection> {
       );
     }
 
-    final hasOwedToUser = widget.owedToUser.isNotEmpty;
-    final hasUserOwes = widget.userOwes.isNotEmpty;
+    // final hasOwedToUser = widget.owedToUser.isNotEmpty;
+    // final hasUserOwes = widget.userOwes.isNotEmpty;
 
     // Group payments by user (pass all payments for net calculation)
     final currentUserId = Supabase.instance.client.auth.currentUser?.id ?? '';

@@ -15,8 +15,6 @@ class SuggestionRemoteDataSource {
   /// Get all datetime suggestions for an event
   Future<List<SuggestionModel>> getEventSuggestions(String eventId) async {
     try {
-      print('🔍 [SuggestionDataSource.getEventSuggestions] Fetching suggestions for event: $eventId');
-      
       final response = await _supabaseClient
           .from('event_date_options') // Table: event_date_options
           .select('''
@@ -31,21 +29,14 @@ class SuggestionRemoteDataSource {
           .eq('event_id', eventId)
           .order('created_at', ascending: false);
 
-      print('📊 [SuggestionDataSource.getEventSuggestions] Found ${(response as List).length} suggestions');
-      
-      final suggestions = (response as List)
-          .map((json) {
-            print('   📅 Suggestion: ${json['id']} - ${json['starts_at']} to ${json['ends_at']}');
-            return SuggestionModel.fromJson(json);
-          })
-          .toList();
-      
+      final suggestions = (response as List).map((json) {
+        return SuggestionModel.fromJson(json);
+      }).toList();
+
       return suggestions;
     } on PostgrestException catch (e) {
-      print('❌ [SuggestionDataSource.getEventSuggestions] Postgrest error: ${e.message}');
       throw Exception('Failed to get event suggestions: ${e.message}');
     } catch (e) {
-      print('❌ [SuggestionDataSource.getEventSuggestions] Error: $e');
       throw Exception('Failed to get event suggestions: $e');
     }
   }
@@ -65,17 +56,16 @@ class SuggestionRemoteDataSource {
       // This caused issues where editing event date would appear to create a "new suggestion"
       // The event's initial date suggestion should ONLY be created during event creation,
       // not when users add additional suggestions
-      
+
       // Create the new suggestion
       final response = await _supabaseClient
           .from('event_date_options') // Table: event_date_options
           .insert({
-            'event_id': eventId,
-            'created_by': userId, // Field: created_by
-            'starts_at': startDateTime.toIso8601String(), // Field: starts_at
-            'ends_at': endDateTime?.toIso8601String(), // Field: ends_at
-          })
-          .select('''
+        'event_id': eventId,
+        'created_by': userId, // Field: created_by
+        'starts_at': startDateTime.toIso8601String(), // Field: starts_at
+        'ends_at': endDateTime?.toIso8601String(), // Field: ends_at
+      }).select('''
             id,
             event_id,
             created_by,
@@ -83,8 +73,7 @@ class SuggestionRemoteDataSource {
             ends_at,
             created_at,
             user:created_by(id, name, avatar_url)
-          ''')
-          .single();
+          ''').single();
 
       return SuggestionModel.fromJson(response);
     } on PostgrestException catch (e) {
@@ -107,8 +96,7 @@ class SuggestionRemoteDataSource {
             voted_at,
             event_id,
             user:user_id(id, name, avatar_url)
-          ''')
-          .eq('event_id', eventId);
+          ''').eq('event_id', eventId);
 
       return (response as List)
           .map((json) => SuggestionVoteModel.fromJson(json))
@@ -130,18 +118,16 @@ class SuggestionRemoteDataSource {
       final response = await _supabaseClient
           .from('event_date_votes') // Table: event_date_votes
           .insert({
-            'option_id': suggestionId, // Field: option_id
-            'user_id': userId,
-            'event_id': eventId,
-          })
-          .select('''
+        'option_id': suggestionId, // Field: option_id
+        'user_id': userId,
+        'event_id': eventId,
+      }).select('''
             option_id,
             user_id,
             voted_at,
             event_id,
             user:user_id(id, name, avatar_url)
-          ''')
-          .single();
+          ''').single();
 
       return SuggestionVoteModel.fromJson(response);
     } on PostgrestException catch (e) {
@@ -222,9 +208,8 @@ class SuggestionRemoteDataSource {
     String eventId,
   ) async {
     try {
-      final response = await _supabaseClient
-          .from('location_suggestions')
-          .select('''
+      final response =
+          await _supabaseClient.from('location_suggestions').select('''
             id,
             event_id,
             user_id,
@@ -234,9 +219,7 @@ class SuggestionRemoteDataSource {
             longitude,
             created_at,
             user:user_id(id, name, avatar_url)
-          ''')
-          .eq('event_id', eventId)
-          .order('created_at', ascending: false);
+          ''').eq('event_id', eventId).order('created_at', ascending: false);
 
       return (response as List)
           .map((json) => LocationSuggestionModel.fromJson(json))
@@ -265,19 +248,17 @@ class SuggestionRemoteDataSource {
       // This caused issues where editing event location would appear to create a "new suggestion"
       // The event's initial location suggestion should ONLY be created during event creation,
       // not when users add additional suggestions
-      
+
       // Create the new location suggestion
-      final response = await _supabaseClient
-          .from('location_suggestions')
-          .insert({
-            'event_id': eventId,
-            'user_id': userId,
-            'location_name': locationName,
-            'address': address,
-            'latitude': latitude,
-            'longitude': longitude,
-          })
-          .select('''
+      final response =
+          await _supabaseClient.from('location_suggestions').insert({
+        'event_id': eventId,
+        'user_id': userId,
+        'location_name': locationName,
+        'address': address,
+        'latitude': latitude,
+        'longitude': longitude,
+      }).select('''
             id,
             event_id,
             user_id,
@@ -287,8 +268,7 @@ class SuggestionRemoteDataSource {
             longitude,
             created_at,
             user:user_id(id, name, avatar_url)
-          ''')
-          .single();
+          ''').single();
 
       return LocationSuggestionModel.fromJson(response);
     } on PostgrestException catch (e) {
@@ -308,27 +288,24 @@ class SuggestionRemoteDataSource {
           .from('location_suggestions')
           .select('id')
           .eq('event_id', eventId);
-      
-      final suggestionIds = (suggestionsResponse as List)
-          .map((s) => s['id'] as String)
-          .toList();
-      
+
+      final suggestionIds =
+          (suggestionsResponse as List).map((s) => s['id'] as String).toList();
+
       // If no suggestions, return empty list
       if (suggestionIds.isEmpty) {
         return [];
       }
-      
+
       // Then get votes for those suggestions
-      final response = await _supabaseClient
-          .from('location_suggestion_votes')
-          .select('''
+      final response =
+          await _supabaseClient.from('location_suggestion_votes').select('''
             id,
             suggestion_id,
             user_id,
             created_at,
             user:user_id(id, name, avatar_url)
-          ''')
-          .inFilter('suggestion_id', suggestionIds);
+          ''').inFilter('suggestion_id', suggestionIds);
 
       // Map location vote fields to match SuggestionVoteModel expectations
       return (response as List).map((json) {
@@ -360,24 +337,21 @@ class SuggestionRemoteDataSource {
           .select('event_id')
           .eq('id', suggestionId)
           .single();
-      
+
       final eventId = suggestionResponse['event_id'] as String;
-      
+
       // Then create the vote
-      final response = await _supabaseClient
-          .from('location_suggestion_votes')
-          .insert({
-            'suggestion_id': suggestionId,
-            'user_id': userId,
-          })
-          .select('''
+      final response =
+          await _supabaseClient.from('location_suggestion_votes').insert({
+        'suggestion_id': suggestionId,
+        'user_id': userId,
+      }).select('''
             id,
             suggestion_id,
             user_id,
             created_at,
             user:user_id(id, name, avatar_url)
-          ''')
-          .single();
+          ''').single();
 
       // Map location vote fields to match SuggestionVoteModel expectations
       final mappedResponse = {
@@ -432,17 +406,14 @@ class SuggestionRemoteDataSource {
       if (suggestionIds.isEmpty) return [];
 
       // Get user votes for these location suggestions
-      final response = await _supabaseClient
-          .from('location_suggestion_votes')
-          .select('''
+      final response =
+          await _supabaseClient.from('location_suggestion_votes').select('''
             id,
             suggestion_id,
             user_id,
             created_at,
             user:user_id(id, name, avatar_url)
-          ''')
-          .inFilter('suggestion_id', suggestionIds)
-          .eq('user_id', userId);
+          ''').inFilter('suggestion_id', suggestionIds).eq('user_id', userId);
 
       // Map location vote fields to match SuggestionVoteModel expectations
       return (response as List).map((json) {

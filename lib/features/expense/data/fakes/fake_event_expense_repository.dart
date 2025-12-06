@@ -53,7 +53,7 @@ class FakeEventExpenseRepository implements EventExpenseRepository {
     required List<String> participantsPaid,
   }) async {
     await Future.delayed(const Duration(milliseconds: 500));
-    
+
     final newExpense = EventExpenseEntity(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       eventId: eventId,
@@ -65,7 +65,7 @@ class FakeEventExpenseRepository implements EventExpenseRepository {
       date: DateTime.now(),
       isSettled: false,
     );
-    
+
     _expenses.insert(0, newExpense);
     return newExpense;
   }
@@ -76,7 +76,7 @@ class FakeEventExpenseRepository implements EventExpenseRepository {
     required String userId,
   }) async {
     // Simular delay
-    await Future.delayed(Duration(milliseconds: 500));
+    await Future.delayed(const Duration(milliseconds: 500));
     // Mock implementation para testes
   }
 }

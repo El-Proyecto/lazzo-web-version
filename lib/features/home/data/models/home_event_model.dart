@@ -47,16 +47,9 @@ class _HomeEventModel {
     final backendStatus = _asString(map['event_status']) ?? 'pending';
     final eventId = _asString(map['event_id']) ?? '';
 
-    print(
-        '📊 Event: ${map['event_name']} | DB status: $backendStatus | Start: $startDate');
-    print(
-        '   🏷️ Group: ${_asString(map['group_name']) ?? 'No group'} (ID: ${_asString(map['group_id']) ?? 'null'})');
-
     // ✅ CALCULAR estado baseado em datas e status da DB
     final calculatedStatus =
         _calculateStatusFromDates(startDate, endDate, backendStatus);
-
-    print('   → Calculated status: $calculatedStatus');
     
     // ✅ Se status calculado difere do DB, notifica para atualizar
     if (calculatedStatus != backendStatus && onStatusMismatch != null) {

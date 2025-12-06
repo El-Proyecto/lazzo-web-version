@@ -54,18 +54,15 @@ final isUserGroupAdminProvider =
           return currentUserMember.isAdmin;
         } catch (e) {
           // User not found in group members
-          print('⚠️ [IS_ADMIN_CHECK] User not found in group members');
           return false;
         }
       },
       loading: () => false, // Not admin while loading
       error: (error, stack) {
-        print('❌ [IS_ADMIN_CHECK] Error loading members: $error');
         return false;
       },
     );
   } catch (e) {
-    print('❌ [IS_ADMIN_CHECK] Error checking admin status: $e');
     return false;
   }
 });
@@ -85,7 +82,6 @@ final canManageEventProvider =
     final isHost = event.hostId == currentUserId;
 
     if (isHost) {
-      print('✅ [CAN_MANAGE] User is event host');
       return true;
     }
 
@@ -99,7 +95,6 @@ final canManageEventProvider =
 
     return isAdmin;
   } catch (e) {
-    print('❌ [CAN_MANAGE] Error checking manage permission: $e');
     return false;
   }
 });
@@ -184,16 +179,12 @@ class EventStatusNotifier extends StateNotifier<AsyncValue<EventDetail?>> {
     state = const AsyncValue.loading();
 
     try {
-      print('🔄 [STATUS UPDATE] Updating event $eventId to status: $newStatus');
       final updatedEvent = await _updateEventStatus(eventId, newStatus);
       state = AsyncValue.data(updatedEvent);
-      print('✅ [STATUS UPDATE] Event status updated successfully');
 
       // Invalidate the event detail provider to refresh the UI
       _ref.invalidate(eventDetailProvider(eventId));
-      print('🔄 [STATUS UPDATE] Event detail provider invalidated');
     } catch (error, stackTrace) {
-      print('❌ [STATUS UPDATE] Error updating status: $error');
       state = AsyncValue.error(error, stackTrace);
     }
   }
@@ -364,7 +355,6 @@ class UserRsvpNotifier extends StateNotifier<AsyncValue<Rsvp?>> {
       // Check auto-confirmation after RSVP submission
       await _checkAutoConfirmation();
     } catch (error, stackTrace) {
-      print('🔴 DEBUG submitVote: ERROR - $error');
       state = AsyncValue.error(error, stackTrace);
       _loadUserRsvp();
     }
@@ -398,7 +388,6 @@ class UserRsvpNotifier extends StateNotifier<AsyncValue<Rsvp?>> {
       }
     } catch (e) {
       // Log error but don't fail the RSVP submission
-      print('Failed to check auto-confirmation: $e');
     }
   }
 
@@ -419,7 +408,7 @@ class UserRsvpNotifier extends StateNotifier<AsyncValue<Rsvp?>> {
       ref.invalidate(locationSuggestionVotesProvider(eventId));
       ref.invalidate(userLocationSuggestionVotesProvider(eventId));
     } catch (e) {
-      print('❌ Error in provider sync: $e');
+      // Silent fail - don't break RSVP flow
     }
   }
 }
