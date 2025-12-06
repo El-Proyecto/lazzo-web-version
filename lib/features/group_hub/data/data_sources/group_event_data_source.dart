@@ -18,7 +18,7 @@ class SupabaseGroupEventDataSource implements GroupEventDataSource {
   static const String _avatarBucketName = 'users-profile-pic';
 
   SupabaseGroupEventDataSource(this._client);
-  
+
   /// Convert storage path to authenticated URL for private bucket
   /// Returns empty string if path is null/empty
   /// Uses createSignedUrl for private bucket access with 1 hour expiry
@@ -26,12 +26,13 @@ class SupabaseGroupEventDataSource implements GroupEventDataSource {
     if (storagePath == null || storagePath.isEmpty) {
       return '';
     }
-    
+
     // Already a full URL, return as is
-    if (storagePath.startsWith('http://') || storagePath.startsWith('https://')) {
+    if (storagePath.startsWith('http://') ||
+        storagePath.startsWith('https://')) {
       return storagePath;
     }
-    
+
     try {
       // Storage path - convert to signed URL for private bucket
       // Valid for 1 hour (3600 seconds)
@@ -47,9 +48,6 @@ class SupabaseGroupEventDataSource implements GroupEventDataSource {
   @override
   Future<List<Map<String, dynamic>>> getGroupEvents(String groupId) async {
     try {
-      print('\n🔍 [GROUP EVENTS DATA SOURCE] Fetching events for group: $groupId');
-      print('   📋 Query: group_id = $groupId AND computed_status != "ended"');
-      
       final response = await _client
           .from('group_hub_events_view')
           .select()
@@ -59,39 +57,17 @@ class SupabaseGroupEventDataSource implements GroupEventDataSource {
           .order('start_datetime', ascending: true);
 
       final events = List<Map<String, dynamic>>.from(response as List);
-      print('✅ [GROUP EVENTS DATA SOURCE] Query returned ${events.length} events');
-      
-      if (events.isEmpty) {
-        print('⚠️ [GROUP EVENTS DATA SOURCE] No events found! Checking if there are ANY events for this group...');
-        
-        // Debug query without filters to see what's in the view
-        final debugResponse = await _client
-            .from('group_hub_events_view')
-            .select('event_id, title, computed_status, group_id')
-            .eq('group_id', groupId)
-            .limit(5);
-        
-        print('   🔍 Debug: Found ${debugResponse.length} total events in view for this group:');
-        for (final event in debugResponse) {
-          print('      - ${event['title']}: status=${event['computed_status']}, group_id=${event['group_id']}');
-        }
-      } else {
-        // Show events that passed the filter
-        for (final event in events) {
-          print('   ✅ Event: ${event['title']} (computed_status: ${event['computed_status']})');
-        }
-      }
-      
+
       // Get current user ID to determine their vote status
       final currentUserId = _client.auth.currentUser?.id;
-      
+
       // Enrich each event with current_user_rsvp field and convert avatar URLs
       for (final event in events) {
         if (currentUserId != null) {
-          event['current_user_rsvp'] = _getCurrentUserRsvp(event, currentUserId);
-          print('🔍 Event ${event['title']}: current_user_rsvp = ${event['current_user_rsvp']}');
+          event['current_user_rsvp'] =
+              _getCurrentUserRsvp(event, currentUserId);
         }
-        
+
         // Convert avatar URLs in all user arrays
         await _convertAvatarUrlsInUserArray(event, 'going_users');
         await _convertAvatarUrlsInUserArray(event, 'not_going_users');
@@ -100,23 +76,24 @@ class SupabaseGroupEventDataSource implements GroupEventDataSource {
 
       return events;
     } catch (e) {
-      print('❌ Error fetching group events: $e');
       return [];
     }
   }
-  
+
   /// Helper to convert avatar URLs in a user array within an event
-  Future<void> _convertAvatarUrlsInUserArray(Map<String, dynamic> event, String arrayKey) async {
+  Future<void> _convertAvatarUrlsInUserArray(
+      Map<String, dynamic> event, String arrayKey) async {
     final users = event[arrayKey] as List?;
     if (users == null) return;
-    
+
     for (final user in users) {
       if (user is Map<String, dynamic> && user['avatar_url'] != null) {
-        user['avatar_url'] = await _getAuthenticatedAvatarUrl(user['avatar_url']);
+        user['avatar_url'] =
+            await _getAuthenticatedAvatarUrl(user['avatar_url']);
       }
     }
   }
-  
+
   /// Helper to determine current user's RSVP status from event arrays
   String _getCurrentUserRsvp(Map<String, dynamic> event, String userId) {
     // Check going_users
@@ -126,7 +103,7 @@ class SupabaseGroupEventDataSource implements GroupEventDataSource {
         return 'going';
       }
     }
-    
+
     // Check not_going_users
     final notGoingUsers = event['not_going_users'] as List? ?? [];
     for (final user in notGoingUsers) {
@@ -134,7 +111,7 @@ class SupabaseGroupEventDataSource implements GroupEventDataSource {
         return 'not_going';
       }
     }
-    
+
     // Check no_response_users
     final noResponseUsers = event['no_response_users'] as List? ?? [];
     for (final user in noResponseUsers) {
@@ -142,11 +119,11 @@ class SupabaseGroupEventDataSource implements GroupEventDataSource {
         return 'pending';
       }
     }
-    
+
     // User not found in any array
     return 'pending';
   }
-  
+
   /// Helper to get current user's avatar URL from event arrays
   String? getCurrentUserAvatar(Map<String, dynamic> event, String userId) {
     // Check all user arrays for current user's avatar
@@ -155,7 +132,7 @@ class SupabaseGroupEventDataSource implements GroupEventDataSource {
       event['not_going_users'] as List? ?? [],
       event['no_response_users'] as List? ?? [],
     ];
-    
+
     for (final users in allUserArrays) {
       for (final user in users) {
         if (user['user_id'] == userId) {
@@ -163,7 +140,7 @@ class SupabaseGroupEventDataSource implements GroupEventDataSource {
         }
       }
     }
-    
+
     return null;
   }
 
@@ -180,9 +157,10 @@ class SupabaseGroupEventDataSource implements GroupEventDataSource {
         // Get current user ID to determine their vote status
         final currentUserId = _client.auth.currentUser?.id;
         if (currentUserId != null) {
-          response['current_user_rsvp'] = _getCurrentUserRsvp(response, currentUserId);
+          response['current_user_rsvp'] =
+              _getCurrentUserRsvp(response, currentUserId);
         }
-        
+
         // Convert avatar URLs in all user arrays (same as getGroupEvents)
         await _convertAvatarUrlsInUserArray(response, 'going_users');
         await _convertAvatarUrlsInUserArray(response, 'not_going_users');
@@ -191,7 +169,6 @@ class SupabaseGroupEventDataSource implements GroupEventDataSource {
 
       return response;
     } catch (e) {
-      print('❌ Error fetching event by ID: $e');
       return null;
     }
   }
@@ -212,12 +189,13 @@ class SupabaseGroupEventDataSource implements GroupEventDataSource {
       // Add going votes
       for (final user in goingUsers) {
         final userId = user['user_id'];
-        final userName = user['name'] ?? user['full_name'] ?? user['display_name'] ?? 'User';
+        final userName =
+            user['name'] ?? user['full_name'] ?? user['display_name'] ?? 'User';
         final rawAvatar = user['avatar_url'];
-        
+
         // Convert storage path to authenticated URL
         final userAvatar = await _getAuthenticatedAvatarUrl(rawAvatar);
-        
+
         allVotes.add({
           'user_id': userId,
           'user_name': userName,
@@ -229,10 +207,11 @@ class SupabaseGroupEventDataSource implements GroupEventDataSource {
 
       // Add not going votes
       for (final user in notGoingUsers) {
-        final userName = user['name'] ?? user['full_name'] ?? user['display_name'] ?? 'User';
+        final userName =
+            user['name'] ?? user['full_name'] ?? user['display_name'] ?? 'User';
         final rawAvatar = user['avatar_url'];
         final userAvatar = await _getAuthenticatedAvatarUrl(rawAvatar);
-        
+
         allVotes.add({
           'user_id': user['user_id'],
           'user_name': userName,
@@ -244,10 +223,11 @@ class SupabaseGroupEventDataSource implements GroupEventDataSource {
 
       // Add pending votes
       for (final user in noResponseUsers) {
-        final userName = user['name'] ?? user['full_name'] ?? user['display_name'] ?? 'User';
+        final userName =
+            user['name'] ?? user['full_name'] ?? user['display_name'] ?? 'User';
         final rawAvatar = user['avatar_url'];
         final userAvatar = await _getAuthenticatedAvatarUrl(rawAvatar);
-        
+
         allVotes.add({
           'user_id': user['user_id'],
           'user_name': userName,
@@ -259,7 +239,6 @@ class SupabaseGroupEventDataSource implements GroupEventDataSource {
 
       return allVotes;
     } catch (e) {
-      print('❌ Error fetching event RSVPs: $e');
       return [];
     }
   }

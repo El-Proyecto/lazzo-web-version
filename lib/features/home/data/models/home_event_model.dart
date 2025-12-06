@@ -53,8 +53,7 @@ class _HomeEventModel {
     
     // ✅ Se status calculado difere do DB, notifica para atualizar
     if (calculatedStatus != backendStatus && onStatusMismatch != null) {
-      print('   ⚠️ Status mismatch detected! Updating DB: $backendStatus → $calculatedStatus');
-      onStatusMismatch(eventId, calculatedStatus);
+            onStatusMismatch(eventId, calculatedStatus);
     }
 
     return _HomeEventModel(

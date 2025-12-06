@@ -243,8 +243,7 @@ class FakeEventRepository implements EventRepository {
   @override
   Future<List<EventParticipantEntity>> getEventParticipants(
       String eventId) async {
-    print('🎭 [FakeEventRepository] Getting participants for event: $eventId');
-    await Future.delayed(const Duration(milliseconds: 300));
+        await Future.delayed(const Duration(milliseconds: 300));
 
     // Mock participants para teste
     final participants = [
@@ -268,8 +267,6 @@ class FakeEventRepository implements EventRepository {
       ),
     ];
 
-    print(
-        '✅ [FakeEventRepository] Returning ${participants.length} mock participants');
-    return participants;
+        return participants;
   }
 }

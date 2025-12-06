@@ -260,12 +260,7 @@ class FakeGroupRepository implements GroupRepository {
 
     // Simula remoção do grupo da lista do usuário
     // (no fake, assumimos que o usuário sempre deixa o grupo, e o grupo é removido da sua lista)
-    final removedCount =
-        _mockGroups.where((group) => group.id == groupId).length;
     _mockGroups.removeWhere((group) => group.id == groupId);
-
-    print(
-        '🎭 [Fake] User left group $groupId - removed from user\'s list ($removedCount groups removed)');
   }
 
   @override
@@ -361,9 +356,10 @@ class FakeGroupRepository implements GroupRepository {
   }
 
   @override
-  Future<List<GroupMemberEntity>> getGroupMembersEntities(String groupId) async {
+  Future<List<GroupMemberEntity>> getGroupMembersEntities(
+      String groupId) async {
     await Future.delayed(const Duration(milliseconds: 300));
-    
+
     // Mock members para teste
     return [
       const GroupMemberEntity(
@@ -420,6 +416,5 @@ class FakeGroupRepository implements GroupRepository {
   Future<void> saveGroupQrCode(String groupId, String qrCodeData) async {
     // Simulate QR code save
     await Future.delayed(const Duration(milliseconds: 200));
-    print('Mock: QR code saved for group $groupId: $qrCodeData');
   }
 }

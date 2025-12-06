@@ -32,8 +32,7 @@ class ChatRemoteDataSource {
           .createSignedUrl(avatarPath, 3600); // 1 hour validity
     } catch (e) {
       if (kDebugMode) {
-        print('⚠️ [ChatDataSource] Failed to create signed URL: $e');
-      }
+              }
       return null;
     }
   }
@@ -109,8 +108,7 @@ class ChatRemoteDataSource {
         _messageStreams[eventId]?.add(models);
       } catch (e) {
         if (kDebugMode) {
-          print('❌ [ChatDataSource] Error fetching messages: $e');
-        }
+                  }
         _messageStreams[eventId]?.addError(e);
       }
     });
@@ -285,10 +283,7 @@ class ChatRemoteDataSource {
   }) async {
     try {
       if (kDebugMode) {
-        print('📤 [ChatDataSource] Calling update_last_read_message RPC');
-        print('   Event ID: $eventId');
-        print('   Message ID: $messageId');
-      }
+                              }
 
       final response = await _supabaseClient.rpc(
         'update_last_read_message',
@@ -299,19 +294,16 @@ class ChatRemoteDataSource {
       );
 
       if (kDebugMode) {
-        print('✅ [ChatDataSource] RPC response: $response');
-      }
+              }
 
       return response as Map<String, dynamic>;
     } on PostgrestException catch (e) {
       if (kDebugMode) {
-        print('❌ [ChatDataSource] PostgrestException: ${e.message}');
-      }
+              }
       throw Exception('Failed to update last read message: ${e.message}');
     } catch (e) {
       if (kDebugMode) {
-        print('❌ [ChatDataSource] Error: $e');
-      }
+              }
       throw Exception('Failed to update last read message: $e');
     }
   }
@@ -323,10 +315,7 @@ class ChatRemoteDataSource {
   }) async {
     try {
       if (kDebugMode) {
-        print('📤 [ChatDataSource] Calling get_unread_message_count RPC');
-        print('   Event ID: $eventId');
-        print('   User ID: $currentUserId');
-      }
+                              }
 
       final count = await _supabaseClient.rpc(
         'get_unread_message_count',
@@ -337,19 +326,16 @@ class ChatRemoteDataSource {
       );
 
       if (kDebugMode) {
-        print('✅ [ChatDataSource] Unread count: $count');
-      }
+              }
 
       return count as int;
     } on PostgrestException catch (e) {
       if (kDebugMode) {
-        print('❌ [ChatDataSource] PostgrestException: ${e.message}');
-      }
+              }
       throw Exception('Failed to get unread message count: ${e.message}');
     } catch (e) {
       if (kDebugMode) {
-        print('❌ [ChatDataSource] Error: $e');
-      }
+              }
       throw Exception('Failed to get unread message count: $e');
     }
   }
@@ -363,11 +349,7 @@ class ChatRemoteDataSource {
   }) async {
     try {
       if (kDebugMode) {
-        print('📤 [ChatDataSource] Calling get_messages_with_read_status RPC');
-        print('   Event ID: $eventId');
-        print('   User ID: $currentUserId');
-        print('   Limit: $limit');
-      }
+                                      }
 
       final response = await _supabaseClient.rpc(
         'get_messages_with_read_status',
@@ -379,9 +361,7 @@ class ChatRemoteDataSource {
       );
 
       if (kDebugMode) {
-        print(
-            '✅ [ChatDataSource] Fetched ${(response as List).length} messages with read status');
-      }
+              }
 
       // Convert storage paths to signed URLs for avatar_url
       final messages = response as List;
@@ -395,13 +375,11 @@ class ChatRemoteDataSource {
       return messages.map((json) => ChatMessageModel.fromJson(json)).toList();
     } on PostgrestException catch (e) {
       if (kDebugMode) {
-        print('❌ [ChatDataSource] PostgrestException: ${e.message}');
-      }
+              }
       throw Exception('Failed to get messages with read status: ${e.message}');
     } catch (e) {
       if (kDebugMode) {
-        print('❌ [ChatDataSource] Error: $e');
-      }
+              }
       throw Exception('Failed to get messages with read status: $e');
     }
   }

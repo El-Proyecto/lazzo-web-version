@@ -30,11 +30,9 @@ final updateProfileUseCaseProvider = Provider<UpdateProfile>((ref) {
 
 /// Provider for current user profile data (shared between all profile screens)
 final currentUserProfileProvider = FutureProvider<ProfileEntity>((ref) async {
-  print('🔄 [currentUserProfileProvider] Fetching profile data...');
-  final getCurrentUserProfile = ref.watch(getCurrentUserProfileUseCaseProvider);
+    final getCurrentUserProfile = ref.watch(getCurrentUserProfileUseCaseProvider);
   final profile = await getCurrentUserProfile.call();
-  print('✅ [currentUserProfileProvider] Profile loaded: ${profile.name}');
-  return profile;
+    return profile;
 });
 
 /// Edit Profile Controller provider for managing form operations
@@ -50,22 +48,19 @@ class EditProfileController {
 
   /// Update profile and sync UI automatically
   Future<ProfileEntity> updateProfile(ProfileEntity profile) async {
-    print('🔄 [EditProfileController] Updating profile: ${profile.name}');
-    
+        
     try {
       // Update via use case
       final updateUseCase = _ref.read(updateProfileUseCaseProvider);
       final updatedProfile = await updateUseCase.call(profile);
       
-      print('✅ [EditProfileController] Profile updated: ${updatedProfile.name}');
-      
+            
       // Invalidate to trigger UI refresh
       _ref.invalidate(currentUserProfileProvider);
       
       return updatedProfile;
     } catch (error) {
-      print('❌ [EditProfileController] Update failed: $error');
-      rethrow;
+            rethrow;
     }
   }
 }

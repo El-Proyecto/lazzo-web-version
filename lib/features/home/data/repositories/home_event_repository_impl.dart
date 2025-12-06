@@ -19,8 +19,7 @@ class HomeEventRepositoryImpl implements HomeEventRepository {
       final authState = ref.read(authProvider);
       return authState.valueOrNull?.id;
     } catch (e) {
-      print('❌ Error getting current user ID: $e');
-      return null;
+            return null;
     }
   }
 
@@ -28,8 +27,7 @@ class HomeEventRepositoryImpl implements HomeEventRepository {
   Future<HomeEventEntity?> getNextEvent() async {
     final userId = _currentUserId;
     if (userId == null) {
-      print('❌ Cannot fetch next event: user not authenticated');
-      return null;
+            return null;
     }
     return await dataSource.fetchNextEvent(userId);
   }
@@ -38,8 +36,7 @@ class HomeEventRepositoryImpl implements HomeEventRepository {
   Future<List<HomeEventEntity>> getConfirmedEvents() async {
     final userId = _currentUserId;
     if (userId == null) {
-      print('❌ Cannot fetch confirmed events: user not authenticated');
-      return [];
+            return [];
     }
     return await dataSource.fetchConfirmedEvents(userId);
   }
@@ -48,8 +45,7 @@ class HomeEventRepositoryImpl implements HomeEventRepository {
   Future<List<HomeEventEntity>> getPendingEvents() async {
     final userId = _currentUserId;
     if (userId == null) {
-      print('❌ Cannot fetch pending events: user not authenticated');
-      return [];
+            return [];
     }
     return await dataSource.fetchPendingEvents(userId);
   }

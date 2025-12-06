@@ -45,8 +45,7 @@ class HomeEventRemoteDataSource {
         onStatusMismatch: (eventId, newStatus) {
           // Persist status change asynchronously (fire and forget)
           updateEventStatus(eventId, newStatus).catchError((error) {
-            print('❌ Failed to persist status for event $eventId: $error');
-            return false;
+                        return false;
           });
         },
       )).toList();
@@ -68,8 +67,7 @@ class HomeEventRemoteDataSource {
       final nextEvent = events.first;
       return nextEvent;
     } catch (e) {
-      print('❌ Error fetching next event: $e');
-      return null;
+            return null;
     }
   }
 
@@ -101,8 +99,7 @@ class HomeEventRemoteDataSource {
         e as Map<String, dynamic>,
         onStatusMismatch: (eventId, newStatus) {
           updateEventStatus(eventId, newStatus).catchError((error) {
-            print('❌ Failed to persist status for event $eventId: $error');
-            return false;
+                        return false;
           });
         },
       )).toList();
@@ -127,8 +124,7 @@ class HomeEventRemoteDataSource {
 
       return filteredEvents.take(10).toList();
     } catch (e) {
-      print('❌ Error fetching confirmed events: $e');
-      return [];
+            return [];
     }
   }
 
@@ -159,8 +155,7 @@ class HomeEventRemoteDataSource {
         e as Map<String, dynamic>,
         onStatusMismatch: (eventId, newStatus) {
           updateEventStatus(eventId, newStatus).catchError((error) {
-            print('❌ Failed to persist status for event $eventId: $error');
-            return false;
+                        return false;
           });
         },
       )).toList();
@@ -175,8 +170,7 @@ class HomeEventRemoteDataSource {
 
       return events.take(10).toList();
     } catch (e) {
-      print('❌ Error fetching pending events: $e');
-      return [];
+            return [];
     }
   }
 
@@ -196,8 +190,7 @@ class HomeEventRemoteDataSource {
 
       return true;
     } catch (e) {
-      print('❌ Vote error: $e');
-      return false;
+            return false;
     }
   }
 
@@ -213,8 +206,7 @@ class HomeEventRemoteDataSource {
       
       return true;
     } catch (e) {
-      print('❌ [STATUS UPDATE] Error updating event status: $e');
-      return false;
+            return false;
     }
   }
 }

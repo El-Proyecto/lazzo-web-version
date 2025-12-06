@@ -67,8 +67,7 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
             groupCoverUrlProvider((group.photoPath, group.photoUpdatedAt))
                 .future);
       } catch (e) {
-        print('Error loading image URL for group ${group.id}: $e');
-        imageUrl = null;
+                imageUrl = null;
       }
     }
 
@@ -130,8 +129,7 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
         },
         error: (error, stackTrace) {
           // Handle error if needed
-          print('Error loading groups: $error');
-        },
+                  },
       );
     }
   }

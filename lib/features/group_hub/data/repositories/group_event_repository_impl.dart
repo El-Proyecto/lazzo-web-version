@@ -12,12 +12,10 @@ class GroupEventRepositoryImpl implements GroupEventRepository {
   @override
   Future<List<GroupEventEntity>> getGroupEvents(String groupId) async {
     try {
-      print('📋 Fetching group events for group: $groupId');
-      
+            
       final jsonList = await _dataSource.getGroupEvents(groupId);
       
-      print('✅ Fetched ${jsonList.length} events from Supabase');
-      
+            
       // Fetch RSVPs for each event to populate allVotes
       final events = <GroupEventEntity>[];
       for (final json in jsonList) {
@@ -31,34 +29,27 @@ class GroupEventRepositoryImpl implements GroupEventRepository {
       }
       
       return events;
-    } catch (e, stackTrace) {
-      print('❌ Error fetching group events: $e');
-      print(stackTrace);
-      return [];
+    } catch (e) {
+                  return [];
     }
   }
 
   @override
   Future<GroupEventEntity?> getEventById(String eventId) async {
     try {
-      print('📋 Fetching event by ID: $eventId');
-      
+            
       final json = await _dataSource.getEventById(eventId);
       if (json == null) {
-        print('⚠️ Event not found: $eventId');
-        return null;
+                return null;
       }
       
       // Fetch RSVPs separately and merge
       final rsvps = await _dataSource.getEventRsvps(eventId);
       
-      print('✅ Fetched event with ${rsvps.length} RSVPs');
-      
+            
       return GroupEventModel.fromJson(json, rsvps: rsvps);
-    } catch (e, stackTrace) {
-      print('❌ Error fetching event by ID: $e');
-      print(stackTrace);
-      return null;
+    } catch (e) {
+                  return null;
     }
   }
 }

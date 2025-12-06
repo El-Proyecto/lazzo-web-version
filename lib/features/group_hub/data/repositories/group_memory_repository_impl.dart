@@ -20,39 +20,27 @@ class GroupMemoryRepositoryImpl implements GroupMemoryRepository {
 
   @override
   Future<List<GroupMemoryEntity>> getGroupMemories(String groupId) async {
-    print('\n🗄️ [MEMORIES REPOSITORY] getGroupMemories called for groupId: $groupId');
-    try {
-      print('📡 [MEMORIES REPOSITORY] Fetching from data source...');
-      final jsonList = await _dataSource.getGroupMemories(groupId);
-      print('✅ [MEMORIES REPOSITORY] Data source returned ${jsonList.length} items');
-      
+        try {
+            final jsonList = await _dataSource.getGroupMemories(groupId);
+            
       if (jsonList.isEmpty) {
-        print('ℹ️ [MEMORIES REPOSITORY] No memories found for this group');
-        return [];
+                return [];
       }
       
-      print('📝 [MEMORIES REPOSITORY] First raw JSON: ${jsonList.first}');
-      
+            
       // Convert to entities and generate signed URLs for covers
       final memories = <GroupMemoryEntity>[];
       for (int i = 0; i < jsonList.length; i++) {
         final json = jsonList[i];
-        print('\n🔄 [MEMORIES REPOSITORY] Processing memory ${i + 1}/${jsonList.length}');
-        final memory = GroupMemoryModel.fromJson(json);
-        print('   - ID: ${memory.id}');
-        print('   - Title: ${memory.title}');
-        print('   - Cover storage path: ${memory.coverImageUrl}');
-        print('   - Photo count: ${memory.photoCount}');
-        
+                final memory = GroupMemoryModel.fromJson(json);
+                                        
         // If memory has a cover storage path, generate signed URL
         if (memory.coverImageUrl.isNotEmpty && memory.coverImageUrl != 'placeholder') {
           try {
-            print('   🔐 Generating signed URL for cover...');
-            final signedUrl = await _storageService.getSignedUrl(
+                        final signedUrl = await _storageService.getSignedUrl(
               memory.coverImageUrl, // This is storage_path from model
             );
-            print('   ✅ Signed URL generated: ${signedUrl.substring(0, 50)}...');
-            
+                        
             // Create new entity with signed URL
             memories.add(GroupMemoryEntity(
               id: memory.id,
@@ -63,8 +51,7 @@ class GroupMemoryRepositoryImpl implements GroupMemoryRepository {
               photoCount: memory.photoCount,
             ));
           } catch (e) {
-            print('   ⚠️ Failed to generate signed URL for cover: $e');
-            // Add memory without cover (null URL)
+                        // Add memory without cover (null URL)
             memories.add(GroupMemoryEntity(
               id: memory.id,
               title: memory.title,
@@ -75,8 +62,7 @@ class GroupMemoryRepositoryImpl implements GroupMemoryRepository {
             ));
           }
         } else {
-          print('   ℹ️ No cover photo (portrait), memory will show placeholder');
-          // No cover photo, ensure we use placeholder instead of empty string
+                    // No cover photo, ensure we use placeholder instead of empty string
           memories.add(GroupMemoryEntity(
             id: memory.id,
             title: memory.title,
@@ -88,12 +74,9 @@ class GroupMemoryRepositoryImpl implements GroupMemoryRepository {
         }
       }
       
-      print('\n✅ [MEMORIES REPOSITORY] Processed ${memories.length} memories successfully');
-      return memories;
-    } catch (e, stackTrace) {
-      print('❌ [MEMORIES REPOSITORY] Error fetching group memories: $e');
-      print('   Stack trace: $stackTrace');
-      return [];
+            return memories;
+    } catch (e) {
+                  return [];
     }
   }
 
@@ -113,10 +96,8 @@ class GroupMemoryRepositoryImpl implements GroupMemoryRepository {
     //   final json = await _dataSource.getMemoryById(memoryId);
     //   if (json == null) return null;
     //   return GroupMemoryModel.fromJson(json);
-    // } catch (e, stackTrace) {
-    //   print('Error fetching memory by ID: $e');
-    //   print(stackTrace);
-    //   return null;
+    // } catch (e) {
+    //       //       //   return null;
     // }
 
     throw UnimplementedError('P2: Implement getMemoryById repository method');

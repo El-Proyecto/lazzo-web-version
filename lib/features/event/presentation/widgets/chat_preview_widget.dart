@@ -189,7 +189,6 @@ class _ChatPreviewWidgetState extends State<ChatPreviewWidget> {
         _pendingMessages.add(pendingMessage);
       });
 
-      print('[ChatPreview] 🟡 Added pending message');
 
       // Send to parent (will trigger server call)
       widget.onSendMessage!(content, replyTo: _replyingTo);
@@ -202,10 +201,8 @@ class _ChatPreviewWidgetState extends State<ChatPreviewWidget> {
       // Pending message will be automatically removed when real message arrives
       // (filtered in the build method when matching content is found in widget.recentMessages)
     } else if (widget.onSendMessage == null) {
-      print('   ⚠️ onSendMessage is null, cannot send');
-    } else {
-      print('   ⚠️ Content is empty, not sending');
-    }
+          } else {
+          }
   }
 
   @override
@@ -219,7 +216,6 @@ class _ChatPreviewWidgetState extends State<ChatPreviewWidget> {
           real.timestamp.difference(pending.timestamp).abs().inSeconds < 5);
 
       if (hasDuplicate) {
-        print('[ChatPreview] 🔄 Found real message for pending, filtering out');
         // Remove from pending list in next frame to avoid setState during build
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted) {

@@ -89,9 +89,7 @@ final canManageEventProvider =
     final isAdmin =
         await ref.watch(isUserGroupAdminProvider(event.groupId).future);
 
-    if (isAdmin) {
-      print('✅ [CAN_MANAGE] User is group admin');
-    }
+    if (isAdmin) {}
 
     return isAdmin;
   } catch (e) {
@@ -326,14 +324,8 @@ class UserRsvpNotifier extends StateNotifier<AsyncValue<Rsvp?>> {
     try {
       final currentUserId = ref.read(currentUserIdProvider);
 
-      print(
-          '🔍 DEBUG submitVote: eventId=$eventId, userId=$currentUserId, newStatus=$status');
-
       final rsvp =
           await repository.submitRsvp(eventId, currentUserId ?? '', status);
-
-      print(
-          '🔍 DEBUG submitVote: RSVP submitted successfully - ${rsvp.status}');
 
       // Sync with current event suggestion
       try {
@@ -345,9 +337,6 @@ class UserRsvpNotifier extends StateNotifier<AsyncValue<Rsvp?>> {
       // Invalidate providers using StateNotifier's ref
       ref.invalidate(eventRsvpsProvider(eventId));
       ref.invalidate(eventDetailProvider(eventId));
-
-      print(
-          '🔍 DEBUG submitVote: Providers invalidated, UI will refresh automatically');
 
       // Update local state - this triggers UI rebuild
       state = AsyncValue.data(rsvp);
@@ -569,7 +558,6 @@ class ToggleSuggestionVoteNotifier extends StateNotifier<AsyncValue<void>> {
           }
         } catch (e) {
           // Log error but don't fail suggestion vote
-          // print('Failed to sync suggestion vote with RSVP: $e');
         }
       }
 

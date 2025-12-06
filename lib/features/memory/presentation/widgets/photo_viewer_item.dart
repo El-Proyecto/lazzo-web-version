@@ -151,14 +151,7 @@ class _PhotoViewerItemState extends State<PhotoViewerItem> {
                                 ? widget.photo.uploaderName[0].toUpperCase()
                                 : '?';
                             
-                            print('\n👤 [PHOTO VIEWER] Uploader overlay:');
-                            print('   - uploaderId: ${widget.photo.uploaderId}');
-                            print('   - currentUserId: $currentUserId');
-                            print('   - isCurrentUser: $isCurrentUser');
-                            print('   - uploaderName: "${widget.photo.uploaderName}"');
-                            print('   - profileImageUrl: ${widget.photo.profileImageUrl ?? "null"}');
-                            print('   - Display: $displayName');
-                            
+                                                                                                                                                                                                                                
                             return Row(
                               children: [
                                 CircleAvatar(

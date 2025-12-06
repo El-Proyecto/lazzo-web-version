@@ -64,15 +64,10 @@ class PaymentsOwedToUserControllerProvider
       if (userId == null) {
         throw Exception('User not authenticated');
       }
-      print(
-          '🔍 [PaymentsOwedToUserController] Loading payments owed to user: $userId');
-      final payments = await _getPaymentsOwedToUser(userId);
-      print(
-          '✅ [PaymentsOwedToUserController] Got ${payments.length} payments owed to user');
-      state = AsyncValue.data(payments);
+            final payments = await _getPaymentsOwedToUser(userId);
+            state = AsyncValue.data(payments);
     } catch (error, stackTrace) {
-      print('❌ [PaymentsOwedToUserController] Error: $error');
-      state = AsyncValue.error(error, stackTrace);
+            state = AsyncValue.error(error, stackTrace);
     }
   }
 
@@ -97,15 +92,10 @@ class PaymentsUserOwesControllerProvider
       if (userId == null) {
         throw Exception('User not authenticated');
       }
-      print(
-          '🔍 [PaymentsUserOwesController] Loading payments user owes: $userId');
-      final payments = await _getPaymentsUserOwes(userId);
-      print(
-          '✅ [PaymentsUserOwesController] Got ${payments.length} payments user owes');
-      state = AsyncValue.data(payments);
+            final payments = await _getPaymentsUserOwes(userId);
+            state = AsyncValue.data(payments);
     } catch (error, stackTrace) {
-      print('❌ [PaymentsUserOwesController] Error: $error');
-      state = AsyncValue.error(error, stackTrace);
+            state = AsyncValue.error(error, stackTrace);
     }
   }
 

@@ -17,13 +17,6 @@ class FakeUpdateGroupRepository implements UpdateGroupRepository {
     // Simulate network delay
     await Future.delayed(const Duration(milliseconds: 800));
 
-    print('✏️ [FakeUpdateGroup] Updating group $groupId');
-    print('   Name: $name');
-    print('   Description: ${description ?? "none"}');
-    print('   Photo: ${photoPath != null ? "changed" : "unchanged"}');
-    print(
-        '   Permissions: invite=$canEditSettings, add=$canAddMembers, events=$canSendMessages');
-
     // Return updated group entity
     return GroupEntity(
       id: groupId,

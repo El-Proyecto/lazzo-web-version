@@ -302,8 +302,7 @@ class GroupDetailsPage extends ConsumerWidget {
                 isCurrentUserAdmin: isCurrentUserAdmin,
                 onTap: () {
                   // TODO: Navigate to member profile
-                  print('Navigate to profile: ${member.id}');
-                },
+                                  },
                 onPromoteToAdmin: () {
                   _showPromoteDialog(context, ref, member);
                 },
@@ -424,8 +423,7 @@ class GroupDetailsPage extends ConsumerWidget {
         isDestructive: true,
         onConfirm: () {
           // TODO: Implement leave group logic
-          print('Leave group');
-        },
+                  },
       ),
     );
   }
@@ -445,8 +443,7 @@ class GroupDetailsPage extends ConsumerWidget {
         cancelText: 'Cancel',
         onConfirm: () {
           // TODO: Implement promote logic
-          print('Promote ${member.id} to admin');
-        },
+                  },
       ),
     );
   }
@@ -467,8 +464,7 @@ class GroupDetailsPage extends ConsumerWidget {
         isDestructive: true,
         onConfirm: () {
           // TODO: Implement demote logic
-          print('Demote ${member.id} from admin');
-        },
+                  },
       ),
     );
   }
@@ -489,8 +485,7 @@ class GroupDetailsPage extends ConsumerWidget {
         isDestructive: true,
         onConfirm: () {
           // TODO: Implement remove member logic
-          print('Remove ${member.id} from group');
-        },
+                  },
       ),
     );
   }

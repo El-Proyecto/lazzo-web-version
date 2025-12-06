@@ -66,14 +66,7 @@ class _GroupPhotoViewerPageState extends State<GroupPhotoViewerPage> {
                   ? photo.uploaderName![0].toUpperCase()
                   : '?';
 
-          print('\n👤 [GROUP PHOTO VIEWER] Photo uploader info:');
-          print('   - uploaderId: ${photo.uploaderId}');
-          print('   - currentUserId: $currentUserId');
-          print('   - isCurrentUser: $isCurrentUser');
-          print('   - uploaderName: "${photo.uploaderName}"');
-          print('   - profileImageUrl: ${photo.profileImageUrl ?? "null"}');
-          print('   - Display: $displayName');
-
+                                                                      
           return Stack(
             children: [
               // Main photo (centered, interactive)

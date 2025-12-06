@@ -19,10 +19,8 @@ class EventPhotoRepositoryImpl implements EventPhotoRepository {
     DateTime? capturedAt,
   }) async {
     try {
-      print('📸 Starting photo upload for event: $eventId');
 
       // 1. Compress image before upload (reduce size for faster upload and storage)
-      print('🗜️ Compressing image...');
       final xFile = XFile(imageFile.path);
       final compressedBytes = await ImageCompressionService.compressToWebP(xFile);
 
@@ -30,8 +28,6 @@ class EventPhotoRepositoryImpl implements EventPhotoRepository {
       final tempDir = Directory.systemTemp;
       final tempFile = File('${tempDir.path}/compressed_${DateTime.now().millisecondsSinceEpoch}.jpg');
       await tempFile.writeAsBytes(compressedBytes);
-
-      print('✅ Image compressed: ${imageFile.lengthSync()} bytes → ${compressedBytes.length} bytes');
 
       // 2. Upload compressed image via data source
       final photoData = await _dataSource.uploadPhoto(
@@ -43,16 +39,11 @@ class EventPhotoRepositoryImpl implements EventPhotoRepository {
 
       // 3. Clean up temporary compressed file
       await tempFile.delete();
-      print('🧹 Cleaned up temporary compressed file');
 
       // 4. Return photo URL
       final photoUrl = photoData['url'] as String;
-      print('✅ Photo uploaded successfully: $photoUrl');
-
       return photoUrl;
-    } catch (e, stackTrace) {
-      print('❌ Error in repository uploadPhoto: $e');
-      print(stackTrace);
+    } catch (e) {
       throw Exception('Failed to upload photo: $e');
     }
   }

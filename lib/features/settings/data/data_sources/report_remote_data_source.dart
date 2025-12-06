@@ -16,9 +16,7 @@ class ReportRemoteDataSource {
       throw Exception('User not authenticated');
     }
 
-    print(
-        '📝 [ReportDataSource] Submitting report: category=$category, user=$userId');
-
+    
     try {
       final response = await _client
           .from('problem_reports')
@@ -32,11 +30,9 @@ class ReportRemoteDataSource {
               'id, user_id, category, description, status, created_at, updated_at')
           .single();
 
-      print('✅ [ReportDataSource] Report submitted: id=${response['id']}');
-      return response;
+            return response;
     } catch (e) {
-      print('❌ [ReportDataSource] Failed to submit report: $e');
-      rethrow;
+            rethrow;
     }
   }
 }

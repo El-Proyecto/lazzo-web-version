@@ -64,10 +64,8 @@ class EventPhotoDataSource {
           .single();
 
       return response;
-    } catch (e, stackTrace) {
-      print('❌ Error uploading photo: $e');
-      print(stackTrace);
-      throw Exception('Failed to upload photo: $e');
+    } catch (e) {
+                  throw Exception('Failed to upload photo: $e');
     }
   }
 
@@ -82,8 +80,7 @@ class EventPhotoDataSource {
       // 2. Delete from database
       await _client.from('group_photos').delete().eq('id', photoId);
     } catch (e) {
-      print('❌ Error deleting photo: $e');
-      throw Exception('Failed to delete photo: $e');
+            throw Exception('Failed to delete photo: $e');
     }
   }
 
@@ -127,19 +124,15 @@ class EventPhotoDataSource {
       final image = img.decodeImage(bytes);
 
       if (image == null) {
-        print('⚠️ Could not decode image, defaulting to landscape');
-        return false;
+                return false;
       }
 
       // Portrait if height > width
       final isPortrait = image.height > image.width;
-      print(
-          '📐 Image dimensions: ${image.width}x${image.height} -> ${isPortrait ? "Portrait" : "Landscape"}');
-
+      
       return isPortrait;
     } catch (e) {
-      print('⚠️ Error checking image orientation: $e, defaulting to landscape');
-      return false;
+            return false;
     }
   }
 }

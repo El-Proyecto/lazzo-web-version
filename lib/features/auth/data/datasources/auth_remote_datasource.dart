@@ -102,7 +102,7 @@ class AuthRemoteDatasource {
     String? name,
   }) async {
     try {
-      print('🔐 verifyOtp iniciado com email: $email, name: $name'); // Debug
+       // Debug
 
       // 1) Verificar estado atual
       //final currentUser = client.auth.currentUser;
@@ -114,7 +114,7 @@ class AuthRemoteDatasource {
         type: OtpType.email, // Mudado para signup pois é um novo registro
       );
 
-      print('🔐 OTP verificado com sucesso'); // Debug
+       // Debug
 
       // 3) Verificar se temos usuário e sessão
       final u = response.user;
@@ -122,19 +122,19 @@ class AuthRemoteDatasource {
         throw Exception('Falha na autenticação: usuário ou sessão inválidos');
       }
 
-      print('🔐 Criando/atualizando usuário na tabela users...'); // Debug
+       // Debug
       final row = await _upsertUsersRow(id: u.id, email: email, name: name);
-      print('🔐 Usuário salvo na tabela users: ${row['name']}'); // Debug
+       // Debug
 
       return UserModel.fromUsersRow(row);
     } on AuthException catch (e) {
-      print('❌ Erro AuthException: ${e.message}'); // Debug
+       // Debug
       throw Exception('Falha na verificação OTP: ${e.message}');
     } on PostgrestException catch (e) {
-      print('❌ Erro PostgrestException: ${e.message}'); // Debug
+       // Debug
       throw Exception('Falha na verificação OTP (DB): ${e.message}');
     } catch (e) {
-      print('❌ Erro geral: $e'); // Debug
+       // Debug
       throw Exception('Falha na verificação OTP: $e');
     }
   }
@@ -173,7 +173,7 @@ class AuthRemoteDatasource {
     required String email,
     String? name,
   }) async {
-    print('💾 _upsertUsersRow chamado com id: $id, email: $email, name: $name'); // Debug
+     // Debug
     
     final patch = <String, dynamic>{
       'id': id,
@@ -184,12 +184,12 @@ class AuthRemoteDatasource {
     // Only add name if it's provided, not null and not empty
     if (name != null && name.trim().isNotEmpty) {
       patch['name'] = name.trim();
-      print('💾 Nome adicionado ao patch: ${name.trim()}'); // Debug
+       // Debug
     } else {
-      print('💾 Nome não fornecido ou vazio - mantendo valor existente'); // Debug
+       // Debug
     }
 
-    print('💾 Patch a ser enviado: $patch'); // Debug
+     // Debug
 
     try {
       final row = await client
@@ -199,11 +199,11 @@ class AuthRemoteDatasource {
           .single();
 
       final result = Map<String, dynamic>.from(row as Map);
-      print('💾 Resultado do upsert: $result'); // Debug
+       // Debug
       
       return result;
     } catch (e) {
-      print('❌ Erro no upsert: $e'); // Debug
+       // Debug
       rethrow;
     }
   }

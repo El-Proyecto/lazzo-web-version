@@ -1346,9 +1346,7 @@ class _EventPageState extends ConsumerState<EventPage> {
                       participants: participantOptions, // ✅ Participantes reais
                       onAddExpense:
                           (title, paidById, participantsOwe, amount) async {
-                        print(
-                            '💸 [EventPage] Adding expense: $title, €$amount');
-                        ref
+                                                ref
                             .read(eventExpensesProvider(eventId).notifier)
                             .addExpense(
                           description: title,
@@ -1361,14 +1359,10 @@ class _EventPageState extends ConsumerState<EventPage> {
                     );
                   },
                   loading: () {
-                    print(
-                        '⏳ [EventPage] Expenses widget loading participants...');
-                    return const SizedBox.shrink();
+                                        return const SizedBox.shrink();
                   },
                   error: (error, stack) {
-                    print(
-                        '❌ [EventPage] Error loading participants for expenses: $error');
-                    return const SizedBox.shrink();
+                                        return const SizedBox.shrink();
                   },
                 ),
                 const SizedBox(height: Gaps.lg),

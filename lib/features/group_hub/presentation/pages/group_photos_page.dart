@@ -48,13 +48,11 @@ class _GroupPhotosPageState extends ConsumerState<GroupPhotosPage> {
 
   void _handleShare() {
     // TODO: Implement share functionality
-    print('Sharing ${_selectedPhotoIds.length} photos');
-  }
+      }
 
   void _handleDownload() {
     // TODO: Implement download functionality
-    print('Downloading ${_selectedPhotoIds.length} photos');
-  }
+      }
 
   @override
   Widget build(BuildContext context) {

@@ -2,7 +2,7 @@
 
 **Audience:** engineering agents & copilots. **Goal:** ship features fast without breaking architecture. This repo follows **Clean Architecture (Presentation / Domain / Data)** + **Supabase** + **Riverpod**.
 
-> **Key rule:** We do **not** keep `figma_raw/`. Copy UI from Figma and **immediately tokenize** into `shared/components/`. If a piece is **not reusable**, place it under the feature’s `presentation/widgets/`.
+> **Key rule:** Create UI designs and **immediately tokenize** into the feature's `presentation/widgets`. If a piece is **reusable**, place it under `shared/components/`.
 
 ---
 
@@ -147,6 +147,7 @@ lib/
 - Feature has complete DI setup (fake repo, real repo, provider override).
 - `const` constructors added where possible for performance.
 - Empty or TODO-only files are removed or implemented.
+- **All `print()` debug statements removed** - run `./scripts/clean_prints.sh` before merge.
 
 ---
 
@@ -306,6 +307,215 @@ If widgets are missing or imports broken:
 - **Replacement strategy**: Create generic first, migrate consumers, remove specifics
 - **Import consistency**: Use absolute paths from lib/ root for clarity
 - **Export management**: Keep `shared/components/components.dart` updated with only shared exports
+
+---
+
+## 16) Logging & Debugging Guidelines
+
+**CRITICAL: Never merge `print()` statements to main branch.**
+
+**Purpose:** Rapid debugging during feature development without infrastructure overhead.
+
+**Allowed in feature branches:**
+```dart
+// ✅ OK - Prefixed with feature name
+print('[EventChat] Sending message: ${message.content}');
+print('[Profile] Loading user $userId');
+print('[SupabaseClient] Query took ${duration}ms');
+
+// ✅ OK - Important state transitions
+print('[EventProvider] State: loading → loaded (${events.length} events)');
+
+// ❌ NEVER - No prefix, unclear context
+print('Debug: $someVar');
+print(response);
+print('here');
+```
+
+**Naming Convention:**
+- Format: `print('[FeatureName] description')`
+- Feature names: `EventChat`, `Profile`, `Groups`, `CreateEvent`, `SupabaseClient`, `Repository`
+- Include relevant IDs: `userId`, `eventId`, `groupId`
+- Keep messages concise and actionable
+
+**Before PR/Merge to Main:**
+1. Run cleanup script: `./scripts/clean_prints.sh`
+2. Manually review any remaining prints that should stay (rare edge cases)
+3. Verify with: `git grep -n "print(" lib/`
+4. Zero prints in `lib/` folder = ready to merge
+
+**Sensitive Data - NEVER LOG:**
+- ❌ Passwords, tokens, API keys
+- ❌ Full email addresses (use `email.substring(0, 3)...`)
+- ❌ Phone numbers
+- ❌ Complete user profiles
+- ❌ Payment information
+
+**Production Logging:** See `FUTURE_IMPROVEMENTS.md` for structured logging strategy (Logger package, Firebase Crashlytics).
+
+---
+
+## 17) Critical Changes Documentation
+
+**When to create IMPLEMENTATION or MIGRATION markdown files:**
+
+### IMPLEMENTATION Files
+
+Use for **new features** or **major architecture changes** that require coordination between Supabase (P2 team) and codebase (agents/P1).
+
+**Location:** `IMPLEMENTATION/<FEATURE>_IMPLEMENTATION.md`
+**Structure:**
+```markdown
+# Feature Name Implementation
+
+## Overview
+Brief description of what's being implemented
+
+## Part 1: Supabase Changes (P2 Developer)
+### Database Schema
+- [ ] Create tables with exact DDL
+- [ ] Add indexes
+- [ ] Configure RLS policies
+- [ ] Create triggers/functions if needed
+
+### Storage Setup
+- [ ] Create buckets
+- [ ] Configure policies
+
+### Testing
+- [ ] Verify schema with test queries
+- [ ] Test RLS with different user contexts
+- [ ] Validate triggers/functions
+
+## Part 2: Codebase Changes (Agent/P1)
+### Domain Layer
+- [ ] Create entities
+- [ ] Define repository interfaces
+- [ ] Add use cases
+
+### Data Layer
+- [ ] Implement data sources
+- [ ] Create DTOs/models
+- [ ] Implement repositories
+- [ ] Add fake repositories
+
+### Presentation Layer
+- [ ] Create pages
+- [ ] Add providers
+- [ ] Build widgets
+
+### Integration
+- [ ] Wire DI in main.dart
+- [ ] Add routes
+
+### Testing
+- [ ] Unit tests for use cases
+- [ ] Widget tests for UI
+- [ ] Integration test for full flow
+- [ ] Manual testing checklist
+
+## Acceptance Criteria
+- [ ] All tests pass
+- [ ] No prints in code
+- [ ] Architecture rules followed
+- [ ] Performance acceptable
+```
+
+**Example:** `CHAT_READ_RECEIPTS_IMPLEMENTATION.md` document the chat read receipts feature with Supabase `message_reads` table + Flutter optimistic UI.
+
+### MIGRATION Files
+
+Use for **breaking changes** or **refactoring** that affects multiple features and requires careful coordination.
+
+**Location:** `MIGRATIONS/<CHANGE>_MIGRATION.md`
+
+**Structure:**
+```markdown
+# Migration Name
+
+## Context
+Why this migration is needed
+
+## Breaking Changes
+List all breaking changes and their impact
+
+## Migration Steps
+
+### Phase 1: Preparation
+- [ ] Identify all affected files
+- [ ] Create feature flags if needed
+- [ ] Backup critical data
+
+### Phase 2: Database Migration (if applicable)
+- [ ] Write migration script
+- [ ] Test in staging
+- [ ] Plan rollback strategy
+
+### Phase 3: Code Migration
+- [ ] Update domain layer
+- [ ] Update data layer
+- [ ] Update presentation layer
+- [ ] Update tests
+
+### Phase 4: Validation
+- [ ] Run full test suite
+- [ ] Manual testing
+- [ ] Performance testing
+- [ ] Rollback plan validated
+
+## Rollback Plan
+Exact steps to revert if issues arise
+
+## Post-Migration Cleanup
+- [ ] Remove deprecated code
+- [ ] Update documentation
+- [ ] Remove feature flags
+```
+
+
+### HANDOFF Files
+
+Use for **role transitions** from P1 (planning/UI) to P2 (implementation/integration).
+
+**Location:** `HANDOFFS_TODO/<FEATURE>_P1_P2_HANDOFF.md` (before) → `HANDOFFS_DONE/<FEATURE>_P1_P2_HANDOFF.md` (after)
+
+**Structure:**
+```markdown
+# Feature Name - P1 to P2 Handoff
+
+## P1 Deliverables (Planning & UI)
+- [x] Feature specification
+- [x] UI mockups/designs
+- [x] User flows documented
+- [x] Edge cases identified
+
+## P2 Tasks (Implementation)
+- [ ] Supabase schema design
+- [ ] Backend logic implementation
+- [ ] API integration
+- [ ] Testing & validation
+
+## Acceptance Criteria
+How to verify feature is complete
+
+## Notes & Considerations
+Important context for P2 team
+```
+
+**Key Differences:**
+| File Type | When to Use | Who Creates | Who Consumes |
+|-----------|-------------|-------------|--------------|
+| IMPLEMENTATION | New features with DB + code changes | P1/Agent (template) | P2 (DB) → Agent (code) |
+| MIGRATION | Breaking changes, refactoring | Agent/P1 | All developers |
+| HANDOFF | Role transition P1→P2 | P1 | P2 team |
+
+**Benefits:**
+- ✅ Single source of truth for complex changes
+- ✅ Reduces back-and-forth in prompts
+- ✅ Clear testing checkpoints
+- ✅ Easier rollback if issues arise
+- ✅ Knowledge preservation for team
+
 
 ---
 

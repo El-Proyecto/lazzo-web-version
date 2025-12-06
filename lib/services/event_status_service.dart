@@ -1,15 +1,15 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 /// Service to handle event status transitions
-/// 
+///
 /// Event Status Flow:
 /// pending → confirmed → living → recap → ended
-/// 
+///
 /// Transitions:
 /// - confirmed → living: when event start_datetime is reached
 /// - living → recap: when event end_datetime is reached
 /// - recap → ended: 24 hours after event end_datetime
-/// 
+///
 /// This service should ideally be replaced by:
 /// 1. Supabase Edge Function (cron job every minute)
 /// 2. Database trigger on events table
@@ -20,20 +20,17 @@ class EventStatusService {
   EventStatusService(this._client);
 
   /// Update event statuses based on current time
-  /// 
+  ///
   /// This method checks all confirmed and living events and updates their
   /// status based on start/end times.
-  /// 
+  ///
   /// Returns: number of events updated
   Future<int> updateEventStatuses() async {
-    print('\n🔄 [EVENT STATUS SERVICE] Checking for status transitions...');
-    
     try {
       final now = DateTime.now().toUtc();
       int updatedCount = 0;
 
       // 1. Find confirmed events that should be living (start_datetime has passed)
-      print('🔍 [STATUS] Checking confirmed events that should be living...');
       final confirmedToLiving = await _client
           .from('events')
           .select('id, name, start_datetime')
@@ -41,20 +38,15 @@ class EventStatusService {
           .lte('start_datetime', now.toIso8601String());
 
       if (confirmedToLiving.isNotEmpty) {
-        print('✅ [STATUS] Found ${confirmedToLiving.length} confirmed events that should be living');
-        
         for (final event in confirmedToLiving) {
-          print('   🔄 Transitioning: ${event['name']} (${event['id']}) → living');
           await _client
               .from('events')
-              .update({'status': 'living'})
-              .eq('id', event['id']);
+              .update({'status': 'living'}).eq('id', event['id']);
           updatedCount++;
         }
       }
 
       // 2. Find living events that should be recap (end_datetime has passed)
-      print('🔍 [STATUS] Checking living events that should be recap...');
       final livingToRecap = await _client
           .from('events')
           .select('id, name, end_datetime')
@@ -62,25 +54,17 @@ class EventStatusService {
           .lte('end_datetime', now.toIso8601String());
 
       if (livingToRecap.isNotEmpty) {
-        print('✅ [STATUS] Found ${livingToRecap.length} living events that should be recap');
-        
         for (final event in livingToRecap) {
-          print('   🔄 Transitioning: ${event['name']} (${event['id']}) → recap');
           await _client
               .from('events')
-              .update({'status': 'recap'})
-              .eq('id', event['id']);
+              .update({'status': 'recap'}).eq('id', event['id']);
           updatedCount++;
         }
       }
 
       // 3. Find recap events that should be ended (24h after end_datetime)
-      print('🔍 [STATUS] Checking recap events that should be ended...');
-      print('   ⏰ Current time (now): ${now.toIso8601String()}');
       final recapDeadline = now.subtract(const Duration(hours: 24));
-      print('   ⏰ Recap deadline (now - 24h): ${recapDeadline.toIso8601String()}');
-      print('   📋 Query: end_datetime <= $recapDeadline (events that ended MORE than 24h ago)');
-      
+
       final recapToEnded = await _client
           .from('events')
           .select('id, name, end_datetime')
@@ -88,33 +72,19 @@ class EventStatusService {
           .lte('end_datetime', recapDeadline.toIso8601String());
 
       if (recapToEnded.isNotEmpty) {
-        print('✅ [STATUS] Found ${recapToEnded.length} recap events that should be ended');
-        
         for (final event in recapToEnded) {
-          final endTime = DateTime.parse(event['end_datetime'] as String);
-          final hoursSinceEnd = now.difference(endTime).inHours;
-          print('   🔄 Transitioning: ${event['name']} (${event['id']}) → ended');
-          print('      ⏱️  Ended ${hoursSinceEnd}h ago (threshold: 24h)');
           await _client
               .from('events')
-              .update({'status': 'ended'})
-              .eq('id', event['id']);
+              .update({'status': 'ended'}).eq('id', event['id']);
           updatedCount++;
         }
-      } else {
-        print('ℹ️ [STATUS] No recap events ready to be ended');
-      }
+      } else {}
 
       if (updatedCount > 0) {
-        print('✅ [EVENT STATUS SERVICE] Updated $updatedCount events');
-      } else {
-        print('ℹ️ [EVENT STATUS SERVICE] No events need status updates');
-      }
+      } else {}
 
       return updatedCount;
-    } catch (e, stackTrace) {
-      print('❌ [EVENT STATUS SERVICE] Error updating statuses: $e');
-      print('   Stack: $stackTrace');
+    } catch (e) {
       return 0;
     }
   }
@@ -123,8 +93,6 @@ class EventStatusService {
   /// Useful when you know an event needs updating
   Future<bool> updateEventStatus(String eventId) async {
     try {
-      print('\n🔄 [EVENT STATUS SERVICE] Updating event: $eventId');
-      
       final event = await _client
           .from('events')
           .select('id, name, status, start_datetime, end_datetime')
@@ -151,24 +119,21 @@ class EventStatusService {
       }
 
       if (newStatus != currentStatus) {
-        print('✅ [STATUS] Transitioning: ${event['name']} → $newStatus');
         await _client
             .from('events')
-            .update({'status': newStatus})
-            .eq('id', eventId);
+            .update({'status': newStatus}).eq('id', eventId);
         return true;
       } else {
-        print('ℹ️ [STATUS] Event already has correct status: $currentStatus');
         return false;
       }
     } catch (e) {
-      print('❌ [EVENT STATUS SERVICE] Error updating event $eventId: $e');
       return false;
     }
   }
 
   /// Get events that need status updates (for debugging)
-  Future<Map<String, List<Map<String, dynamic>>>> getEventsNeedingUpdate() async {
+  Future<Map<String, List<Map<String, dynamic>>>>
+      getEventsNeedingUpdate() async {
     try {
       final now = DateTime.now().toUtc();
       final recapDeadline = now.subtract(const Duration(hours: 24));
@@ -192,12 +157,12 @@ class EventStatusService {
           .lte('end_datetime', recapDeadline.toIso8601String());
 
       return {
-        'confirmed_to_living': List<Map<String, dynamic>>.from(confirmedToLiving),
+        'confirmed_to_living':
+            List<Map<String, dynamic>>.from(confirmedToLiving),
         'living_to_recap': List<Map<String, dynamic>>.from(livingToRecap),
         'recap_to_ended': List<Map<String, dynamic>>.from(recapToEnded),
       };
     } catch (e) {
-      print('❌ [EVENT STATUS SERVICE] Error checking events: $e');
       return {
         'confirmed_to_living': [],
         'living_to_recap': [],

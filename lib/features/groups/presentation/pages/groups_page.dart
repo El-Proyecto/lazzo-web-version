@@ -345,27 +345,23 @@ class _GroupsPageState extends ConsumerState<GroupsPage>
   }
 
   void _handleCreateEvent(String groupId) {
-    print('Create event for group: $groupId');
-    Navigator.of(
+        Navigator.of(
       context,
     ).pushNamed('/create-event', arguments: {'groupId': groupId});
   }
 
   void _handleInvite(String groupId) {
-    print('Invite to group: $groupId');
-  }
+      }
 
   void _handleOpenActions(String groupId) {
-    print('Open actions for group: $groupId');
-    // Navegar para o filtro de actions
+        // Navegar para o filtro de actions
     setState(() {
       _selectedFilter = GroupFilter.actions;
     });
   }
 
   void _handleMute(String groupId) {
-    print('Toggle mute for group: $groupId');
-    final controller = ref.read(groupsControllerProvider);
+        final controller = ref.read(groupsControllerProvider);
 
     // Busca o grupo na lista atual (baseado no filtro selecionado)
     final groupsAsync = _selectedFilter == GroupFilter.archived
@@ -424,8 +420,7 @@ class _GroupsPageState extends ConsumerState<GroupsPage>
             TextButton(
               onPressed: () {
                 Navigator.of(context).pop();
-                print('Leave group confirmed: $groupId');
-                final controller = ref.read(groupsControllerProvider);
+                                final controller = ref.read(groupsControllerProvider);
                 controller.leaveGroup(groupId);
               },
               child: const Text(
@@ -440,16 +435,14 @@ class _GroupsPageState extends ConsumerState<GroupsPage>
   }
 
   void _handleArchive(String groupId) {
-    print('Toggle archive for group: $groupId');
-    final controller = ref.read(groupsControllerProvider);
+        final controller = ref.read(groupsControllerProvider);
     controller.toggleArchive(groupId);
 
     // Não redirecionar automaticamente - deixar user escolher quando ver
   }
 
   void _handlePin(String groupId) {
-    print('Toggle pin for group: $groupId');
-    final controller = ref.read(groupsControllerProvider);
+        final controller = ref.read(groupsControllerProvider);
     controller.togglePin(groupId);
   }
 

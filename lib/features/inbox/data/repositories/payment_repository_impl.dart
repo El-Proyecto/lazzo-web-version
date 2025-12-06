@@ -25,25 +25,17 @@ class PaymentRepositoryImpl implements PaymentRepository {
     String? groupId,
     String? eventId,
   }) async {
-    print(
-        '🔍 [PaymentRepositoryImpl] getPayments called - currentUserId: $_currentUserId');
 
     // Get all debts for current user
     final debts = await _remoteDataSource.getAllUserDebts(_currentUserId);
-    print(
-        '✅ [PaymentRepositoryImpl] Got ${debts.length} debts from data source');
 
     // Filter by groupId or eventId if provided
     var filtered = debts;
     if (groupId != null) {
       filtered = filtered.where((d) => d.groupId == groupId).toList();
-      print(
-          '🔍 [PaymentRepositoryImpl] Filtered by groupId: ${filtered.length} debts');
     }
     if (eventId != null) {
       filtered = filtered.where((d) => d.eventId == eventId).toList();
-      print(
-          '🔍 [PaymentRepositoryImpl] Filtered by eventId: ${filtered.length} debts');
     }
 
     // Apply pagination
@@ -53,31 +45,22 @@ class PaymentRepositoryImpl implements PaymentRepository {
     final entities = paginated
         .map((dto) => dto.toEntity(currentUserId: _currentUserId))
         .toList();
-    print(
-        '✅ [PaymentRepositoryImpl] Returning ${entities.length} payment entities');
     return entities;
   }
 
   @override
   Future<List<PaymentEntity>> getPaymentsOwedToUser(String userId) async {
-    print(
-        '🔍 [PaymentRepositoryImpl] getPaymentsOwedToUser for userId: $userId');
     final debts = await _remoteDataSource.getDebtsOwedToUser(userId);
-    print('✅ [PaymentRepositoryImpl] Got ${debts.length} debts owed to user');
     final entities =
         debts.map((dto) => dto.toEntity(currentUserId: userId)).toList();
-    print('✅ [PaymentRepositoryImpl] Returning ${entities.length} entities');
     return entities;
   }
 
   @override
   Future<List<PaymentEntity>> getPaymentsUserOwes(String userId) async {
-    print('🔍 [PaymentRepositoryImpl] getPaymentsUserOwes for userId: $userId');
     final debts = await _remoteDataSource.getDebtsUserOwes(userId);
-    print('✅ [PaymentRepositoryImpl] Got ${debts.length} debts user owes');
     final entities =
         debts.map((dto) => dto.toEntity(currentUserId: userId)).toList();
-    print('✅ [PaymentRepositoryImpl] Returning ${entities.length} entities');
     return entities;
   }
 

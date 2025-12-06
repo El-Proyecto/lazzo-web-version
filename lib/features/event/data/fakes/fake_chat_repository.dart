@@ -315,9 +315,6 @@ class FakeChatRepository implements ChatRepository {
     required String messageId,
   }) async {
     await Future.delayed(const Duration(milliseconds: 200));
-    print('[FakeChatRepository] Updating last read message (fake)');
-    print('  Event ID: $eventId');
-    print('  Message ID: $messageId');
 
     // In fake mode, always return success
     return true;
@@ -338,7 +335,6 @@ class FakeChatRepository implements ChatRepository {
             m.userId != currentUserId)
         .length;
 
-    print('[FakeChatRepository] Unread count (fake): $unreadCount');
     return unreadCount;
   }
 
@@ -361,8 +357,6 @@ class FakeChatRepository implements ChatRepository {
       return m.copyWith(isReadBySomeone: m.isReadBySomeone);
     }).toList();
 
-    print(
-        '[FakeChatRepository] Fetched ${messagesWithStatus.length} messages with read status (fake)');
     return messagesWithStatus;
   }
 }

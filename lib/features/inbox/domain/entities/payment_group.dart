@@ -42,9 +42,7 @@ class PaymentGroup {
     String currentUserId,
     Function(String) getUserName,
   ) {
-    print(
-        '🔍 [PaymentGroup] groupByUser called with ${allPayments.length} payments, isOwedToUser: $isOwedToUser, currentUserId: $currentUserId');
-    final Map<String, PaymentGroup> groups = {};
+        final Map<String, PaymentGroup> groups = {};
 
     // Get all unique user IDs that have any payment relationship
     final Set<String> allUserIds = {};
@@ -56,13 +54,10 @@ class PaymentGroup {
         allUserIds.add(payment.toUserId!);
       }
     }
-    print(
-        '🔍 [PaymentGroup] Found ${allUserIds.length} unique other users: $allUserIds');
-
+    
     // For each user, calculate net amounts
     for (final userId in allUserIds) {
-      print('🔍 [PaymentGroup] Processing userId: $userId');
-
+      
       final owedToUs = allPayments
           .where(
             (p) =>
@@ -81,9 +76,7 @@ class PaymentGroup {
           )
           .toList();
 
-      print(
-          '  → owedToUs: ${owedToUs.length} payments, weOwe: ${weOwe.length} payments');
-
+      
       final owedToUsTotal = owedToUs.fold(0.0, (sum, p) => sum + p.amount);
       final weOweTotal = weOwe.fold(0.0, (sum, p) => sum + p.amount);
 
@@ -91,11 +84,7 @@ class PaymentGroup {
       final netIsOwedToUser = netAmount > 0;
       final netAbsAmount = netAmount.abs();
 
-      print(
-          '  → owedToUsTotal: €$owedToUsTotal, weOweTotal: €$weOweTotal, netAmount: €$netAmount');
-      print(
-          '  → netIsOwedToUser: $netIsOwedToUser, requested: $isOwedToUser, match: ${netIsOwedToUser == isOwedToUser}');
-
+            
       // Only include if there's a net amount and it matches the requested direction
       if (netAbsAmount > 0 && netIsOwedToUser == isOwedToUser) {
         final allUserPayments = [...owedToUs, ...weOwe];
@@ -107,14 +96,10 @@ class PaymentGroup {
           totalAmount: netAbsAmount,
           isOwedToUser: netIsOwedToUser,
         );
-        print('  ✅ Added group for $userId with €$netAbsAmount');
-      } else {
-        print(
-            '  ❌ Skipped (netAmount: €$netAbsAmount, match: ${netIsOwedToUser == isOwedToUser})');
-      }
+              } else {
+              }
     }
 
-    print('✅ [PaymentGroup] Returning ${groups.length} groups');
-    return groups.values.toList();
+        return groups.values.toList();
   }
 }
