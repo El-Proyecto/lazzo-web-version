@@ -124,23 +124,12 @@ class _ChatMessageBubbleState extends State<ChatMessageBubble> {
               borderRadius: _getBubbleRadius(),
             ),
             child: widget.message.isDeleted
-                ? Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        Icons.delete_outline,
-                        size: 16,
-                        color: BrandColors.text2.withValues(alpha: 0.6),
-                      ),
-                      const SizedBox(width: Gaps.xs),
-                      Text(
-                        'Message Deleted',
-                        style: AppText.bodyMedium.copyWith(
-                          color: BrandColors.text2.withValues(alpha: 0.6),
-                          fontStyle: FontStyle.italic,
-                        ),
-                      ),
-                    ],
+                ? Text(
+                    'Message Deleted',
+                    style: AppText.bodyMedium.copyWith(
+                      color: BrandColors.text2.withValues(alpha: 0.6),
+                      fontStyle: FontStyle.italic,
+                    ),
                   )
                 : Text(
                     widget.message.content,
@@ -176,17 +165,24 @@ class _ChatMessageBubbleState extends State<ChatMessageBubble> {
                     fontSize: 12,
                   ),
                 ),
-                // Read indicator for current user messages (✓ = sent, ✓✓ = read by someone)
+                // Status indicator for current user messages
+                // 🕐 = pending (not yet sent)
+                // ✓ = sent (delivered to server)
+                // ✓✓ = read by someone
                 if (widget.isCurrentUser) ...[
                   const SizedBox(width: 4),
                   Icon(
-                    widget.message.isReadBySomeone
-                        ? Icons.done_all
-                        : Icons.done,
+                    widget.message.isPending
+                        ? Icons.access_time
+                        : (widget.message.isReadBySomeone
+                            ? Icons.done_all
+                            : Icons.done),
                     size: 14,
-                    color: widget.message.isReadBySomeone
-                        ? BrandColors.planning
-                        : BrandColors.text2,
+                    color: widget.message.isPending
+                        ? BrandColors.text2.withValues(alpha: 0.5)
+                        : (widget.message.isReadBySomeone
+                            ? BrandColors.planning
+                            : BrandColors.text2),
                   ),
                 ],
               ],

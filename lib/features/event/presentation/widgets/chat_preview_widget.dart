@@ -21,6 +21,8 @@ class ChatMessagePreview {
   final DateTime timestamp;
   final bool read;
   final bool isPinned;
+  final bool isDeleted;
+  final bool isPending;
   final ChatMessagePreview? replyTo;
 
   const ChatMessagePreview({
@@ -31,6 +33,8 @@ class ChatMessagePreview {
     required this.timestamp,
     required this.read,
     this.isPinned = false,
+    this.isDeleted = false,
+    this.isPending = false,
     this.replyTo,
   });
 }
@@ -70,6 +74,9 @@ class _ChatPreviewWidgetState extends State<ChatPreviewWidget> {
   final TextEditingController _controller = TextEditingController();
   final FocusNode _focusNode = FocusNode();
   ChatMessagePreview? _replyingTo;
+
+  // Optimistic UI: pending messages waiting to be confirmed
+  final List<ChatMessagePreview> _pendingMessages = [];
 
   @override
   void initState() {
@@ -167,11 +174,33 @@ class _ChatPreviewWidgetState extends State<ChatPreviewWidget> {
   void _sendMessage() {
     final content = _controller.text.trim();
     if (content.isNotEmpty && widget.onSendMessage != null) {
+      // Create optimistic pending message
+      final pendingMessage = ChatMessagePreview(
+        userId: widget.currentUserId,
+        userName: 'You',
+        content: content,
+        timestamp: DateTime.now(),
+        read: false,
+        isPending: true,
+        replyTo: _replyingTo,
+      );
+
+      setState(() {
+        _pendingMessages.add(pendingMessage);
+      });
+
+      print('[ChatPreview] 🟡 Added pending message');
+
+      // Send to parent (will trigger server call)
       widget.onSendMessage!(content, replyTo: _replyingTo);
+
       _controller.clear();
       setState(() {
         _replyingTo = null;
       });
+
+      // Pending message will be automatically removed when real message arrives
+      // (filtered in the build method when matching content is found in widget.recentMessages)
     } else if (widget.onSendMessage == null) {
       print('   ⚠️ onSendMessage is null, cannot send');
     } else {
@@ -181,31 +210,36 @@ class _ChatPreviewWidgetState extends State<ChatPreviewWidget> {
 
   @override
   Widget build(BuildContext context) {
+    // Filter out pending messages that already exist in real messages
+    // Match by content, userId, and approximate timestamp (within 5 seconds)
+    final filteredPendingMessages = _pendingMessages.where((pending) {
+      final hasDuplicate = widget.recentMessages.any((real) =>
+          real.content == pending.content &&
+          real.userId == pending.userId &&
+          real.timestamp.difference(pending.timestamp).abs().inSeconds < 5);
+
+      if (hasDuplicate) {
+        print('[ChatPreview] 🔄 Found real message for pending, filtering out');
+        // Remove from pending list in next frame to avoid setState during build
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            setState(() {
+              _pendingMessages.removeWhere((p) =>
+                  p.content == pending.content && p.userId == pending.userId);
+            });
+          }
+        });
+      }
+
+      return !hasDuplicate;
+    }).toList();
+
+    // Combine filtered pending messages with real messages
+    final allMessages = [...filteredPendingMessages, ...widget.recentMessages];
+
     // Sort messages by timestamp DESCENDING (newest first for easier slicing)
-    final sortedMessages = [...widget.recentMessages]
+    final sortedMessages = [...allMessages]
       ..sort((a, b) => b.timestamp.compareTo(a.timestamp));
-
-    print('[ChatPreview] Total messages: ${sortedMessages.length}');
-    if (sortedMessages.isNotEmpty) {
-      final newestContent = sortedMessages.first.content.length > 20
-          ? '${sortedMessages.first.content.substring(0, 20)}...'
-          : sortedMessages.first.content;
-      final oldestContent = sortedMessages.last.content.length > 20
-          ? '${sortedMessages.last.content.substring(0, 20)}...'
-          : sortedMessages.last.content;
-      print(
-          '[ChatPreview] Newest message: $newestContent at ${sortedMessages.first.timestamp}');
-      print(
-          '[ChatPreview] Oldest message: $oldestContent at ${sortedMessages.last.timestamp}');
-    }
-
-    // Get unread count from other users
-    final unreadMessages = sortedMessages
-        .where((m) => !m.read && m.userId != widget.currentUserId)
-        .toList();
-
-    print(
-        '[ChatPreview] Unread messages from others: ${unreadMessages.length}');
 
     // ALWAYS show last 10 messages (most recent)
     // This ensures preview shows the latest conversation context
@@ -214,20 +248,6 @@ class _ChatPreviewWidgetState extends State<ChatPreviewWidget> {
     List<ChatMessagePreview> messagesToShow = sortedMessages.length <= 10
         ? sortedMessages
         : sortedMessages.take(10).toList();
-
-    print('[ChatPreview] Showing ${messagesToShow.length} messages');
-    if (messagesToShow.isNotEmpty) {
-      final firstContent = messagesToShow.first.content.length > 20
-          ? '${messagesToShow.first.content.substring(0, 20)}...'
-          : messagesToShow.first.content;
-      final lastContent = messagesToShow.last.content.length > 20
-          ? '${messagesToShow.last.content.substring(0, 20)}...'
-          : messagesToShow.last.content;
-      print(
-          '[ChatPreview] First in list (will be at TOP): $firstContent at ${messagesToShow.first.timestamp}');
-      print(
-          '[ChatPreview] Last in list (will be at BOTTOM): $lastContent at ${messagesToShow.last.timestamp}');
-    }
 
     // Calculate height constraints
     final screenHeight = MediaQuery.of(context).size.height;
@@ -601,8 +621,9 @@ ChatMessage _adaptPreviewToMessage(ChatMessagePreview preview) {
     userAvatar: preview.userAvatar,
     content: preview.content,
     createdAt: preview.timestamp,
-    isPinned: false,
-    isDeleted: false,
+    isPinned: preview.isPinned,
+    isDeleted: preview.isDeleted,
+    isPending: preview.isPending,
     replyTo: preview.replyTo != null
         ? ChatMessage(
             id: '${preview.replyTo!.userId}_${preview.replyTo!.timestamp.millisecondsSinceEpoch}',

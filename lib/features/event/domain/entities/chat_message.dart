@@ -20,6 +20,9 @@ class ChatMessage {
   /// True if at least one participant (other than sender) has read this message
   final bool isReadBySomeone;
 
+  /// True if message is still being sent (optimistic UI)
+  final bool isPending;
+
   const ChatMessage({
     required this.id,
     required this.eventId,
@@ -33,6 +36,7 @@ class ChatMessage {
     this.isDeleted = false,
     this.replyTo,
     this.isReadBySomeone = false,
+    this.isPending = false,
   });
 
   ChatMessage copyWith({
@@ -48,6 +52,7 @@ class ChatMessage {
     bool? isDeleted,
     ChatMessage? replyTo,
     bool? isReadBySomeone,
+    bool? isPending,
   }) {
     return ChatMessage(
       id: id ?? this.id,
@@ -62,6 +67,7 @@ class ChatMessage {
       isDeleted: isDeleted ?? this.isDeleted,
       replyTo: replyTo ?? this.replyTo,
       isReadBySomeone: isReadBySomeone ?? this.isReadBySomeone,
+      isPending: isPending ?? this.isPending,
     );
   }
 }

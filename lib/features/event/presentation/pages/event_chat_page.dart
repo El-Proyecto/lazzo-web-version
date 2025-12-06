@@ -38,6 +38,13 @@ class _EventChatPageState extends ConsumerState<EventChatPage> {
   ChatMessage? _replyingTo;
   String? _scrollToMessageId;
 
+  // Track if we should mark as read on dispose
+  bool _shouldMarkAsReadOnDispose = false;
+  bool _isDisposing = false;
+
+  // Optimistic UI: pending messages waiting to be confirmed
+  final List<ChatMessage> _pendingMessages = [];
+
   /// Get current user ID from Supabase auth
   String? get _currentUserId => Supabase.instance.client.auth.currentUser?.id;
 
@@ -57,8 +64,14 @@ class _EventChatPageState extends ConsumerState<EventChatPage> {
   @override
   void initState() {
     super.initState();
+
+    print('[EventChatPage] 🟢 initState - eventId: ${widget.eventId}');
+
     _scrollController.addListener(_onScroll);
     _messageController.addListener(_onTextChanged);
+
+    // Mark that we should update read status when leaving
+    _shouldMarkAsReadOnDispose = true;
 
     // Extract scrollToMessageId from navigation arguments after first frame
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -70,13 +83,32 @@ class _EventChatPageState extends ConsumerState<EventChatPage> {
         });
       }
 
-      // Mark messages as read after page loads
-      _markMessagesAsRead();
+      // Note: Messages are marked as read on dispose (when leaving page)
+      // or when user sends a message
     });
   }
 
   @override
+  void deactivate() {
+    print(
+        '[EventChatPage] 🟡 deactivate called - shouldMarkAsRead: $_shouldMarkAsReadOnDispose');
+
+    // Mark messages as read when leaving the page
+    // Use deactivate instead of dispose because ref is still available here
+    if (_shouldMarkAsReadOnDispose && !_isDisposing) {
+      print('[EventChatPage] 🟡 Calling _markMessagesAsRead from deactivate');
+      _markMessagesAsRead();
+      _shouldMarkAsReadOnDispose = false; // Only mark once
+    }
+
+    super.deactivate();
+  }
+
+  @override
   void dispose() {
+    print('[EventChatPage] 🔴 dispose called');
+    _isDisposing = true;
+
     _scrollController.removeListener(_onScroll);
     _messageController.removeListener(_onTextChanged);
     _messageController.dispose();
@@ -113,8 +145,14 @@ class _EventChatPageState extends ConsumerState<EventChatPage> {
   /// Mark all visible messages as read when page opens
   /// This updates the last_read_message_id for the current user
   Future<void> _markMessagesAsRead() async {
+    if (_isDisposing) {
+      print('[EventChatPage] ⚠️ Skipping mark as read - widget is disposing');
+      return;
+    }
+
     try {
-      print('[EventChatPage] Marking messages as read');
+      print(
+          '[EventChatPage] 📖 Marking messages as read (shouldMarkOnDispose: $_shouldMarkAsReadOnDispose)');
 
       // Get latest messages from stream
       final messagesAsync = ref.read(chatMessagesProvider(widget.eventId));
@@ -181,14 +219,41 @@ class _EventChatPageState extends ConsumerState<EventChatPage> {
     }
   }
 
-  void _sendMessage() {
+  void _sendMessage() async {
     final content = _messageController.text.trim();
     if (content.isNotEmpty) {
-      ref.read(chatActionsProvider(widget.eventId)).sendMessage(
-            content,
-            replyTo: _replyingTo,
-          );
+      print('[EventChatPage] 📤 Sending message...');
+
+      // Mark all previous messages as read when user sends a message
+      _markMessagesAsRead();
+
+      // Don't mark again on dispose since we just marked
+      _shouldMarkAsReadOnDispose = false;
+
+      // Create optimistic pending message
+      final currentUser = Supabase.instance.client.auth.currentUser;
+      if (currentUser != null) {
+        final pendingMessage = ChatMessage(
+          id: 'pending_${DateTime.now().millisecondsSinceEpoch}',
+          eventId: widget.eventId,
+          userId: currentUser.id,
+          userName: currentUser.userMetadata?['username'] ?? 'You',
+          userAvatar: currentUser.userMetadata?['avatar_url'],
+          content: content,
+          createdAt: DateTime.now(),
+          isPending: true,
+          replyTo: _replyingTo,
+        );
+
+        setState(() {
+          _pendingMessages.add(pendingMessage);
+        });
+
+        print('[EventChatPage] 🟡 Added pending message: ${pendingMessage.id}');
+      }
+
       _messageController.clear();
+      final replyToMessage = _replyingTo;
       setState(() {
         _replyingTo = null;
       });
@@ -199,6 +264,22 @@ class _EventChatPageState extends ConsumerState<EventChatPage> {
             _scrollController.jumpTo(0);
           }
         });
+      }
+
+      // Send message to server
+      try {
+        await ref.read(chatActionsProvider(widget.eventId)).sendMessage(
+              content,
+              replyTo: replyToMessage,
+            );
+        print('[EventChatPage] ✅ Message sent successfully');
+
+        // Pending message will be automatically removed when real message arrives
+        // (filtered in the build method when matching content is found in stream)
+      } catch (e) {
+        print('[EventChatPage] ❌ Error sending message: $e');
+        // Keep pending message visible so user knows it failed
+        // Could show a retry button here
       }
     }
   }
@@ -412,7 +493,41 @@ class _EventChatPageState extends ConsumerState<EventChatPage> {
           Expanded(
             child: messagesAsync.when(
               data: (messages) {
-                if (messages.isEmpty) {
+                // Filter out pending messages that already exist in real messages
+                // Match by content, userId, and approximate timestamp (within 5 seconds)
+                final filteredPendingMessages =
+                    _pendingMessages.where((pending) {
+                  final hasDuplicate = messages.any((real) =>
+                      real.content == pending.content &&
+                      real.userId == pending.userId &&
+                      real.createdAt
+                              .difference(pending.createdAt)
+                              .abs()
+                              .inSeconds <
+                          5);
+
+                  if (hasDuplicate) {
+                    print(
+                        '[EventChatPage] 🔄 Found real message for pending, filtering out pending');
+                    // Remove from pending list in next frame to avoid setState during build
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      if (mounted) {
+                        setState(() {
+                          _pendingMessages.removeWhere((p) =>
+                              p.content == pending.content &&
+                              p.userId == pending.userId);
+                        });
+                      }
+                    });
+                  }
+
+                  return !hasDuplicate;
+                }).toList();
+
+                // Combine filtered pending messages with real messages
+                final allMessages = [...filteredPendingMessages, ...messages];
+
+                if (allMessages.isEmpty) {
                   return Center(
                     child: Text(
                       'No messages yet.\nBe the first to start the conversation!',
@@ -443,7 +558,7 @@ class _EventChatPageState extends ConsumerState<EventChatPage> {
 
                 // Build list with date separators and unread indicator
                 return ChatMessagesList(
-                  messages: messages,
+                  messages: allMessages,
                   scrollController: _scrollController,
                   onMessageLongPress: _onMessageLongPress,
                   onMessageTap: _scrollToMessage,

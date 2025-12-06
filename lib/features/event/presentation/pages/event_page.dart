@@ -1141,6 +1141,8 @@ class _EventPageState extends ConsumerState<EventPage> {
                             timestamp: m.createdAt,
                             read: m.read,
                             isPinned: m.isPinned,
+                            isDeleted: m.isDeleted,
+                            isPending: m.isPending,
                             replyTo: m.replyTo != null
                                 ? ChatMessagePreview(
                                     userId: m.replyTo!.userId,
@@ -1153,6 +1155,8 @@ class _EventPageState extends ConsumerState<EventPage> {
                                     timestamp: m.replyTo!.createdAt,
                                     read: m.replyTo!.read,
                                     isPinned: m.replyTo!.isPinned,
+                                    isDeleted: m.replyTo!.isDeleted,
+                                    isPending: m.replyTo!.isPending,
                                   )
                                 : null,
                           ),

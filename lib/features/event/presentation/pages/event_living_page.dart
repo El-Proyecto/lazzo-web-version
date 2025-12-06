@@ -179,6 +179,8 @@ class _EventLivingPageState extends ConsumerState<EventLivingPage> {
                               content: m.content,
                               timestamp: m.createdAt,
                               read: m.read,
+                              isDeleted: m.isDeleted,
+                              isPending: m.isPending,
                             ),
                           )
                           .toList(),
