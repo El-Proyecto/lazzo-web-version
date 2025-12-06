@@ -56,30 +56,30 @@ class _GroupHubPageState extends ConsumerState<GroupHubPage>
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
     _initializeScrollControllers();
-    
+
     // Update event statuses before loading data
     _updateEventStatuses();
   }
-  
+
   /// Update event statuses on page load
   /// This ensures events transition correctly between states
   Future<void> _updateEventStatuses() async {
     try {
-            final statusService = EventStatusService(Supabase.instance.client);
-      
+      final statusService = EventStatusService(Supabase.instance.client);
+
       // Get events that need updating (for logging)
       final needsUpdate = await statusService.getEventsNeedingUpdate();
       final confirmedToLiving = needsUpdate['confirmed_to_living']!;
       final livingToRecap = needsUpdate['living_to_recap']!;
       final recapToEnded = needsUpdate['recap_to_ended']!;
-      
-      if (confirmedToLiving.isNotEmpty || livingToRecap.isNotEmpty || recapToEnded.isNotEmpty) {
-                                        
+
+      if (confirmedToLiving.isNotEmpty ||
+          livingToRecap.isNotEmpty ||
+          recapToEnded.isNotEmpty) {
         // Update all event statuses
         final updatedCount = await statusService.updateEventStatuses();
-        
+
         if (updatedCount > 0) {
-                    
           // Refresh providers to show updated data
           if (mounted) {
             ref.invalidate(groupEventsProvider(widget.groupId));
@@ -187,14 +187,12 @@ class _GroupHubPageState extends ConsumerState<GroupHubPage>
   }
 
   Future<void> _handleRefresh() async {
-        
     // Refresh events
     await ref.read(groupEventsProvider(widget.groupId).notifier).refresh();
-    
+
     // Refresh memories
     await ref.read(groupMemoriesProvider(widget.groupId).notifier).refresh();
-    
-      }
+  }
 
   PreferredSizeWidget _buildAppBar() {
     return CommonAppBar(
@@ -617,7 +615,6 @@ class _GroupHubPageState extends ConsumerState<GroupHubPage>
                 event: displayEvent,
                 state: cardState,
                 onTap: () async {
-                                    
                   // Navigate to event detail page and refresh on return
                   await Navigator.pushNamed(
                     context,
@@ -625,16 +622,13 @@ class _GroupHubPageState extends ConsumerState<GroupHubPage>
                     arguments: {'eventId': event.id},
                   );
 
-                                    
                   // Refresh only this specific event instead of entire list
                   // This will fetch updated status, votes, and participant counts
                   await ref
                       .read(groupEventsProvider(widget.groupId).notifier)
                       .refreshSingleEvent(event.id);
-
-                                  },
+                },
                 onVoteChanged: (eventId, vote) async {
-                                                      
                   // Persist RSVP to Supabase
                   try {
                     final rsvpRepo = ref.read(rsvpRepositoryProvider);
@@ -642,7 +636,7 @@ class _GroupHubPageState extends ConsumerState<GroupHubPage>
                         Supabase.instance.client.auth.currentUser?.id;
 
                     if (userId == null) {
-                                            return;
+                      return;
                     }
 
                     // Convert vote to RsvpStatus
@@ -650,19 +644,16 @@ class _GroupHubPageState extends ConsumerState<GroupHubPage>
                         ? RsvpStatus.pending
                         : (vote ? RsvpStatus.going : RsvpStatus.notGoing);
 
-                                                            
                     await rsvpRepo.submitRsvp(eventId, userId, status);
 
-                    
                     // Refresh ONLY this specific event (no full page reload)
-                                        await ref
+                    await ref
                         .read(groupEventsProvider(widget.groupId).notifier)
                         .refreshSingleEvent(eventId);
 
                     // Also invalidate event-specific providers for consistency
                     ref.invalidate(eventRsvpsProvider(eventId));
                     ref.invalidate(userRsvpProvider(eventId));
-
                   } catch (e) {
                     // Failed to invalidate providers - UI will update on next load
                   }
@@ -678,16 +669,16 @@ class _GroupHubPageState extends ConsumerState<GroupHubPage>
   }
 
   Widget _buildMemoriesSection() {
-        final memoriesAsync = ref.watch(groupMemoriesProvider(widget.groupId));
-    
+    final memoriesAsync = ref.watch(groupMemoriesProvider(widget.groupId));
+
     return memoriesAsync.when(
       loading: () {
-                return const Center(
+        return const Center(
           child: CircularProgressIndicator(color: BrandColors.planning),
         );
       },
       error: (error, stackTrace) {
-                        return Center(
+        return Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -715,18 +706,17 @@ class _GroupHubPageState extends ConsumerState<GroupHubPage>
         );
       },
       data: (memories) {
-                if (memories.isNotEmpty) {
-                                                }
-        
+        if (memories.isNotEmpty) {}
+
         if (memories.isEmpty) {
-                    return _buildEmptyState(
+          return _buildEmptyState(
             icon: Icons.photo_library_outlined,
             title: 'No memories yet',
             subtitle: 'Group memories will appear here',
           );
         }
 
-                return SingleChildScrollView(
+        return SingleChildScrollView(
           controller: _memoriesScrollController,
           physics: _isSnapped
               ? const BouncingScrollPhysics(

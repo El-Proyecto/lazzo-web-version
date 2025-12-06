@@ -143,7 +143,6 @@ class _EventChatPageState extends ConsumerState<EventChatPage> {
     }
 
     try {
-
       // Get latest messages from stream
       final messagesAsync = ref.read(chatMessagesProvider(widget.eventId));
 
@@ -157,7 +156,6 @@ class _EventChatPageState extends ConsumerState<EventChatPage> {
           // Get the most recent message (first in list, since sorted DESC)
           final latestMessage = messages.first;
 
-
           // Call repository method to update last read message
           final repository = ref.read(chatRepositoryProvider);
           final success = await repository.updateLastReadMessage(
@@ -166,11 +164,9 @@ class _EventChatPageState extends ConsumerState<EventChatPage> {
           );
 
           if (success) {
-          } else {
-                      }
+          } else {}
         },
-        loading: () {
-        },
+        loading: () {},
         error: (error, stack) {
           // Error already handled in AsyncValue
         },
@@ -203,7 +199,6 @@ class _EventChatPageState extends ConsumerState<EventChatPage> {
   void _sendMessage() async {
     final content = _messageController.text.trim();
     if (content.isNotEmpty) {
-
       // Mark all previous messages as read when user sends a message
       _markMessagesAsRead();
 
@@ -228,7 +223,6 @@ class _EventChatPageState extends ConsumerState<EventChatPage> {
         setState(() {
           _pendingMessages.add(pendingMessage);
         });
-
       }
 
       _messageController.clear();
@@ -255,7 +249,7 @@ class _EventChatPageState extends ConsumerState<EventChatPage> {
         // Pending message will be automatically removed when real message arrives
         // (filtered in the build method when matching content is found in stream)
       } catch (e) {
-                // Keep pending message visible so user knows it failed
+        // Keep pending message visible so user knows it failed
         // Could show a retry button here
       }
     }

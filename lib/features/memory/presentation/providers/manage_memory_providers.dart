@@ -93,23 +93,21 @@ class ManageMemoryNotifier
 
   Future<void> _initialize() async {
     try {
-            final memoryAsync = await ref.read(memoryDetailProvider(memoryId).future);
+      final memoryAsync = await ref.read(memoryDetailProvider(memoryId).future);
 
       if (memoryAsync == null) {
-                state = AsyncValue.error('Memory not found', StackTrace.current);
+        state = AsyncValue.error('Memory not found', StackTrace.current);
         return;
       }
 
-            
       // Get current authenticated user ID from Supabase
       final currentUserId = Supabase.instance.client.auth.currentUser?.id;
-      
+
       if (currentUserId == null) {
-                state = AsyncValue.error('User not authenticated', StackTrace.current);
+        state = AsyncValue.error('User not authenticated', StackTrace.current);
         return;
       }
 
-      
       // Get isHost from fake config (toggle for testing)
       final isHost = FakeMemoryConfig.isHost;
 
@@ -123,27 +121,24 @@ class ManageMemoryNotifier
           return a.capturedAt.compareTo(b.capturedAt);
         });
 
-            final photoItems = sortedPhotos
-          .map((p) {
-            final isCurrentUser = p.uploaderId == currentUserId;
-                                                            
-            return ManagePhotoItem(
-              id: p.id,
-              url: p.url,
-              thumbnailUrl: p.thumbnailUrl,
-              isPortrait: p.isPortrait,
-              uploaderId: p.uploaderId,
-              uploaderName: p.uploaderName,
-              profileImageUrl: p.profileImageUrl,
-              isUploadedByCurrentUser: isCurrentUser,
-            );
-          })
-          .toList();
+      final photoItems = sortedPhotos.map((p) {
+        final isCurrentUser = p.uploaderId == currentUserId;
+
+        return ManagePhotoItem(
+          id: p.id,
+          url: p.url,
+          thumbnailUrl: p.thumbnailUrl,
+          isPortrait: p.isPortrait,
+          uploaderId: p.uploaderId,
+          uploaderName: p.uploaderName,
+          profileImageUrl: p.profileImageUrl,
+          isUploadedByCurrentUser: isCurrentUser,
+        );
+      }).toList();
 
       // Upload selected photos from gallery (if provided)
       final selectedPhotoPaths = ref.read(selectedPhotoPathsProvider);
       if (selectedPhotoPaths != null && selectedPhotoPaths.isNotEmpty) {
-                
         // Get current user's profile photo
         String? currentUserProfileUrl;
         try {
@@ -152,7 +147,7 @@ class ManageMemoryNotifier
               .select('avatar_url')
               .eq('id', currentUserId)
               .maybeSingle();
-          
+
           if (userResponse != null && userResponse['avatar_url'] != null) {
             final avatarPath = userResponse['avatar_url'] as String;
             final storageService = StorageService(Supabase.instance.client);
@@ -164,33 +159,33 @@ class ManageMemoryNotifier
         } catch (e) {
           // Failed to delete old avatar - not critical
         }
-        
+
         // Get real eventId from next event
         final nextEvent = await ref.read(nextEventControllerProvider.future);
         if (nextEvent == null) {
-                    state = AsyncValue.error('No active event to upload photos', StackTrace.current);
+          state = AsyncValue.error(
+              'No active event to upload photos', StackTrace.current);
           return;
         }
-        
+
         final eventId = nextEvent.id;
-        
+
         // Get groupId from events table (since HomeEventEntity doesn't expose it)
         final eventData = await Supabase.instance.client
             .from('events')
             .select('group_id')
             .eq('id', eventId)
             .single();
-        
+
         final groupId = eventData['group_id'] as String;
-                
+
         final dataSource = MemoryPhotoDataSource(Supabase.instance.client);
-        
+
         for (int i = 0; i < selectedPhotoPaths.length; i++) {
           try {
             final filePath = selectedPhotoPaths[i];
             final file = File(filePath);
-            
-                        
+
             // Detect image orientation
             bool isPortrait = false;
             try {
@@ -202,7 +197,7 @@ class ManageMemoryNotifier
             } catch (e) {
               // Failed to detect orientation - defaults to non-portrait
             }
-            
+
             // Upload photo to Supabase
             final uploadResult = await dataSource.uploadPhoto(
               groupId: groupId,
@@ -211,12 +206,12 @@ class ManageMemoryNotifier
               file: file,
               isPortrait: isPortrait,
             );
-            
+
             // Generate signed URL for display (storage path was returned)
             final storagePath = uploadResult['storage_path'] as String;
             final storageService = StorageService(Supabase.instance.client);
             final signedUrl = await storageService.getSignedUrl(storagePath);
-            
+
             // Add uploaded photo to the beginning of the list
             photoItems.insert(
               0,
@@ -231,30 +226,28 @@ class ManageMemoryNotifier
                 isUploadedByCurrentUser: true,
               ),
             );
-            
-                      } catch (e) {
-                        // Continue with other photos even if one fails
+          } catch (e) {
+            // Continue with other photos even if one fails
           }
         }
-        
+
         // Clear the selected photos provider after upload
         ref.read(selectedPhotoPathsProvider.notifier).state = null;
       }
 
       // Find cover photo from memory (cover photos have isCover = true)
-                  
-      final coverPhoto = memoryAsync.coverPhotos.isNotEmpty 
-          ? memoryAsync.coverPhotos.first 
+
+      final coverPhoto = memoryAsync.coverPhotos.isNotEmpty
+          ? memoryAsync.coverPhotos.first
           : null;
-      
+
       ManagePhotoItem? currentCover;
       if (coverPhoto != null) {
-                                        
         // Find matching photo in photoItems list
         currentCover = photoItems.firstWhere(
           (item) => item.id == coverPhoto.id,
           orElse: () {
-                        return ManagePhotoItem(
+            return ManagePhotoItem(
               id: coverPhoto.id,
               url: coverPhoto.url,
               thumbnailUrl: coverPhoto.thumbnailUrl,
@@ -266,17 +259,16 @@ class ManageMemoryNotifier
             );
           },
         );
-              } else {
+      } else {
         // No cover defined - keep it null until user explicitly selects one
         currentCover = null;
-              }
+      }
 
       // Calculate max photos: max(20, 5 * N people)
       // TODO: Get actual participant count from event
       const participantCount = 4; // Placeholder
       final maxPhotos = (20 > 5 * participantCount) ? 20 : 5 * participantCount;
 
-                              
       state = AsyncValue.data(ManageMemoryState(
         memoryId: memoryId,
         allPhotos: photoItems,
@@ -286,22 +278,21 @@ class ManageMemoryNotifier
         currentUserId: currentUserId,
       ));
     } catch (error, stackTrace) {
-            state = AsyncValue.error(error, stackTrace);
+      state = AsyncValue.error(error, stackTrace);
     }
   }
 
   /// Select a photo as cover and persist to Supabase
   Future<void> selectCover(ManagePhotoItem photo) async {
-        
     state.whenData((currentState) async {
       // Update state immediately for UI responsiveness
       state = AsyncValue.data(currentState.copyWith(selectedCover: photo));
-      
+
       // Persist to Supabase
       try {
         final updateUseCase = ref.read(updateMemoryCoverUseCaseProvider);
         final success = await updateUseCase(memoryId, photo.id);
-        
+
         if (success) {
           // Cover photo set successfully
         } else {
@@ -315,16 +306,15 @@ class ManageMemoryNotifier
 
   /// Remove cover selection and persist to Supabase
   Future<void> removeCover() async {
-        
     state.whenData((currentState) async {
       // Update state immediately
       state = AsyncValue.data(currentState.copyWith(clearCover: true));
-      
+
       // Persist to Supabase (null = no cover)
       try {
         final updateUseCase = ref.read(updateMemoryCoverUseCaseProvider);
         final success = await updateUseCase(memoryId, null);
-        
+
         if (success) {
           // Cover photo unselected successfully
         } else {
@@ -371,17 +361,14 @@ class ManageMemoryNotifier
   Future<void> saveChanges() async {
     state.whenData((currentState) async {
       try {
-                        
         // Call use case to update cover
         final updateUseCase = ref.read(updateMemoryCoverUseCaseProvider);
         await updateUseCase(memoryId, currentState.selectedCover?.id);
-        
-                        
+
         // Invalidate the memory detail provider so it refetches with updated cover
         ref.invalidate(memoryDetailProvider(memoryId));
-        
-              } catch (error, stackTrace) {
-                state = AsyncValue.error(error, stackTrace);
+      } catch (error, stackTrace) {
+        state = AsyncValue.error(error, stackTrace);
       }
     });
   }
