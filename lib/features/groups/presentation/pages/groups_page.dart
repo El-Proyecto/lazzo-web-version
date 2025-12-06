@@ -275,7 +275,6 @@ class _GroupsPageState extends ConsumerState<GroupsPage>
             'groupId': group.id,
             'groupName': group.name,
             'groupPhotoUrl': groupPhotoUrl,
-            'memberCount': group.memberCount,
           },
         );
       }

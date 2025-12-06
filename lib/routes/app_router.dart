@@ -127,7 +127,6 @@ class AppRouter {
         groupId: args?['groupId'] ?? 'group-1',
         groupName: args?['groupName'] ?? 'Group Name',
         groupPhotoUrl: args?['groupPhotoUrl'],
-        memberCount: args?['memberCount'] ?? 3,
       );
     },
     groupDetails: (context) {

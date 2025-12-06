@@ -93,28 +93,20 @@ class ManageMemoryNotifier
 
   Future<void> _initialize() async {
     try {
-      print('\n🔄 [MANAGE MEMORY] Initializing for memoryId: $memoryId');
       final memoryAsync = await ref.read(memoryDetailProvider(memoryId).future);
 
       if (memoryAsync == null) {
-        print('❌ [MANAGE MEMORY] Memory not found');
         state = AsyncValue.error('Memory not found', StackTrace.current);
         return;
       }
-
-      print('✅ [MANAGE MEMORY] Memory loaded: ${memoryAsync.title}');
-      print('   📸 Total photos: ${memoryAsync.photos.length}');
 
       // Get current authenticated user ID from Supabase
       final currentUserId = Supabase.instance.client.auth.currentUser?.id;
       
       if (currentUserId == null) {
-        print('❌ [MANAGE MEMORY] User not authenticated');
         state = AsyncValue.error('User not authenticated', StackTrace.current);
         return;
       }
-
-      print('   👤 Current user ID: $currentUserId');
 
       // Get isHost from fake config (toggle for testing)
       final isHost = FakeMemoryConfig.isHost;
@@ -129,14 +121,9 @@ class ManageMemoryNotifier
           return a.capturedAt.compareTo(b.capturedAt);
         });
 
-      print('\n📋 [MANAGE MEMORY] Converting ${sortedPhotos.length} photos to ManagePhotoItems:');
       final photoItems = sortedPhotos
           .map((p) {
             final isCurrentUser = p.uploaderId == currentUserId;
-            print('   📸 Photo ${p.id.substring(0, 8)}...:');
-            print('      - URL: ${p.url.substring(0, 60)}...');
-            print('      - Uploader: ${p.uploaderId.substring(0, 8)}... (${isCurrentUser ? "YOU" : "OTHER"})');
-            print('      - Name: ${p.uploaderName}');
             
             return ManagePhotoItem(
               id: p.id,
@@ -154,8 +141,6 @@ class ManageMemoryNotifier
       // Upload selected photos from gallery (if provided)
       final selectedPhotoPaths = ref.read(selectedPhotoPathsProvider);
       if (selectedPhotoPaths != null && selectedPhotoPaths.isNotEmpty) {
-        print('📸 Found ${selectedPhotoPaths.length} photos to upload');
-        
         // Get current user's profile photo
         String? currentUserProfileUrl;
         try {
@@ -172,16 +157,14 @@ class ManageMemoryNotifier
               avatarPath,
               bucket: 'users-profile-pic',
             );
-            print('   👤 Current user profile URL fetched: ${currentUserProfileUrl.substring(0, 60)}...');
           }
         } catch (e) {
-          print('   ⚠️ Failed to fetch current user profile photo: $e');
+          // Failed to fetch current user profile photo
         }
         
         // Get real eventId from next event
         final nextEvent = await ref.read(nextEventControllerProvider.future);
         if (nextEvent == null) {
-          print('❌ No next event found, cannot upload photos');
           state = AsyncValue.error('No active event to upload photos', StackTrace.current);
           return;
         }
@@ -196,7 +179,6 @@ class ManageMemoryNotifier
             .single();
         
         final groupId = eventData['group_id'] as String;
-        print('🎯 Using real IDs - eventId: $eventId, groupId: $groupId');
         
         final dataSource = MemoryPhotoDataSource(Supabase.instance.client);
         
@@ -205,8 +187,6 @@ class ManageMemoryNotifier
             final filePath = selectedPhotoPaths[i];
             final file = File(filePath);
             
-            print('📤 Uploading photo ${i + 1}/${selectedPhotoPaths.length}...');
-            
             // Detect image orientation
             bool isPortrait = false;
             try {
@@ -214,10 +194,9 @@ class ManageMemoryNotifier
               final image = img.decodeImage(bytes);
               if (image != null) {
                 isPortrait = image.height > image.width;
-                print('📐 Image dimensions: ${image.width}x${image.height} -> ${isPortrait ? "Portrait" : "Landscape"}');
               }
             } catch (e) {
-              print('⚠️ Could not detect orientation: $e');
+              // Could not detect orientation
             }
             
             // Upload photo to Supabase
@@ -248,10 +227,7 @@ class ManageMemoryNotifier
                 isUploadedByCurrentUser: true,
               ),
             );
-            
-            print('✅ Photo ${i + 1} uploaded successfully');
           } catch (e) {
-            print('❌ Failed to upload photo ${i + 1}: $e');
             // Continue with other photos even if one fails
           }
         }
@@ -261,25 +237,16 @@ class ManageMemoryNotifier
       }
 
       // Find cover photo from memory (cover photos have isCover = true)
-      print('\n🎯 [MANAGE MEMORY] Looking for cover photo...');
-      print('   📸 Total cover photos: ${memoryAsync.coverPhotos.length}');
-      
       final coverPhoto = memoryAsync.coverPhotos.isNotEmpty 
           ? memoryAsync.coverPhotos.first 
           : null;
       
       ManagePhotoItem? currentCover;
       if (coverPhoto != null) {
-        print('   ✅ Found cover photo in memory:');
-        print('      - ID: ${coverPhoto.id}');
-        print('      - URL: ${coverPhoto.url.substring(0, 60)}...');
-        print('      - isCover: ${coverPhoto.isCover}');
-        
         // Find matching photo in photoItems list
         currentCover = photoItems.firstWhere(
           (item) => item.id == coverPhoto.id,
           orElse: () {
-            print('   ⚠️ Cover photo not found in photoItems, creating new item');
             return ManagePhotoItem(
               id: coverPhoto.id,
               url: coverPhoto.url,
@@ -292,23 +259,15 @@ class ManageMemoryNotifier
             );
           },
         );
-        print('   ✅ Cover photo set in state: ${currentCover.id.substring(0, 8)}...');
       } else {
         // No cover defined - keep it null until user explicitly selects one
         currentCover = null;
-        print('   ℹ️ No cover photo selected - user must choose one');
       }
 
       // Calculate max photos: max(20, 5 * N people)
       // TODO: Get actual participant count from event
       const participantCount = 4; // Placeholder
       final maxPhotos = (20 > 5 * participantCount) ? 20 : 5 * participantCount;
-
-      print('\n✅ [MANAGE MEMORY] State created successfully:');
-      print('   📸 Total photos: ${photoItems.length}');
-      print('   🎯 Cover photo: ${currentCover != null ? '${currentCover.id.substring(0, 8)}...' : "null"}');
-      print('   👤 Is host: $isHost');
-      print('   📊 Max photos: $maxPhotos\n');
 
       state = AsyncValue.data(ManageMemoryState(
         memoryId: memoryId,
@@ -319,7 +278,6 @@ class ManageMemoryNotifier
         currentUserId: currentUserId,
       ));
     } catch (error, stackTrace) {
-      print('❌ [MANAGE MEMORY] Error initializing: $error');
       state = AsyncValue.error(error, stackTrace);
     }
   }
@@ -335,15 +293,9 @@ class ManageMemoryNotifier
       // Persist to Supabase
       try {
         final updateUseCase = ref.read(updateMemoryCoverUseCaseProvider);
-        final success = await updateUseCase(memoryId, photo.id);
-        
-        if (success) {
-          print('✅ [MANAGE MEMORY] Cover updated in DB successfully');
-        } else {
-          print('❌ [MANAGE MEMORY] Failed to update cover in DB');
-        }
+        await updateUseCase(memoryId, photo.id);
       } catch (e) {
-        print('❌ [MANAGE MEMORY] Error updating cover: $e');
+        // Error updating cover
       }
     });
   }
@@ -359,15 +311,9 @@ class ManageMemoryNotifier
       // Persist to Supabase (null = no cover)
       try {
         final updateUseCase = ref.read(updateMemoryCoverUseCaseProvider);
-        final success = await updateUseCase(memoryId, null);
-        
-        if (success) {
-          print('✅ [MANAGE MEMORY] Cover removed from DB successfully');
-        } else {
-          print('❌ [MANAGE MEMORY] Failed to remove cover from DB');
-        }
+        await updateUseCase(memoryId, null);
       } catch (e) {
-        print('❌ [MANAGE MEMORY] Error removing cover: $e');
+        // Error removing cover
       }
     });
   }
@@ -412,14 +358,9 @@ class ManageMemoryNotifier
         final updateUseCase = ref.read(updateMemoryCoverUseCaseProvider);
         await updateUseCase(memoryId, currentState.selectedCover?.id);
         
-        
-        
         // Invalidate the memory detail provider so it refetches with updated cover
         ref.invalidate(memoryDetailProvider(memoryId));
-        
-        print('✅ [MANAGE MEMORY] Provider invalidated - next access will fetch fresh data');
       } catch (error, stackTrace) {
-        print('❌ [MANAGE MEMORY] Error saving cover: $error');
         state = AsyncValue.error(error, stackTrace);
       }
     });

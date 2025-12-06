@@ -22,14 +22,12 @@ class GroupHubPage extends ConsumerStatefulWidget {
   final String groupId;
   final String groupName;
   final String? groupPhotoUrl;
-  final int memberCount;
 
   const GroupHubPage({
     super.key,
     required this.groupId,
     required this.groupName,
     this.groupPhotoUrl,
-    required this.memberCount,
   });
 
   @override
@@ -65,7 +63,6 @@ class _GroupHubPageState extends ConsumerState<GroupHubPage>
   /// This ensures events transition correctly between states
   Future<void> _updateEventStatuses() async {
     try {
-      print('\n🔄 [GROUP HUB] Updating event statuses...');
       final statusService = EventStatusService(Supabase.instance.client);
       
       // Get events that need updating (for logging)
@@ -75,28 +72,20 @@ class _GroupHubPageState extends ConsumerState<GroupHubPage>
       final recapToEnded = needsUpdate['recap_to_ended']!;
       
       if (confirmedToLiving.isNotEmpty || livingToRecap.isNotEmpty || recapToEnded.isNotEmpty) {
-        print('📊 [GROUP HUB] Events needing status update:');
-        print('   - Confirmed → Living: ${confirmedToLiving.length}');
-        print('   - Living → Recap: ${livingToRecap.length}');
-        print('   - Recap → Ended: ${recapToEnded.length}');
         
         // Update all event statuses
         final updatedCount = await statusService.updateEventStatuses();
         
         if (updatedCount > 0) {
-          print('✅ [GROUP HUB] Updated $updatedCount events');
-          
           // Refresh providers to show updated data
           if (mounted) {
             ref.invalidate(groupEventsProvider(widget.groupId));
             ref.invalidate(groupMemoriesProvider(widget.groupId));
           }
         }
-      } else {
-        print('ℹ️ [GROUP HUB] All events have correct status');
       }
     } catch (e) {
-      print('❌ [GROUP HUB] Error updating event statuses: $e');
+      // Error updating event statuses
     }
   }
 
@@ -193,15 +182,11 @@ class _GroupHubPageState extends ConsumerState<GroupHubPage>
   }
 
   Future<void> _handleRefresh() async {
-    print('🔄 [GROUP HUB] Pull-to-refresh triggered');
-    
     // Refresh events
     await ref.read(groupEventsProvider(widget.groupId).notifier).refresh();
     
     // Refresh memories
     await ref.read(groupMemoriesProvider(widget.groupId).notifier).refresh();
-    
-    print('✅ [GROUP HUB] Refresh completed');
   }
 
   PreferredSizeWidget _buildAppBar() {
@@ -457,12 +442,18 @@ class _GroupHubPageState extends ConsumerState<GroupHubPage>
           ),
           const SizedBox(height: Gaps.xs),
 
-          // Member count
-          Text(
-            '${widget.memberCount} Members',
-            style: AppText.bodyMediumEmph.copyWith(
-              color: BrandColors.text2,
-            ),
+          // Member count (dynamic from groupDetailsProvider)
+          Consumer(
+            builder: (context, ref, child) {
+              final detailsAsync = ref.watch(groupDetailsProvider(widget.groupId));
+              final memberCount = detailsAsync.value?.memberCount ?? 0;
+              return Text(
+                '$memberCount Members',
+                style: AppText.bodyMediumEmph.copyWith(
+                  color: BrandColors.text2,
+                ),
+              );
+            },
           ),
         ],
       ),
@@ -723,20 +714,15 @@ class _GroupHubPageState extends ConsumerState<GroupHubPage>
   }
 
   Widget _buildMemoriesSection() {
-    print('\n🎨 [PAGE] Building memories section for groupId: ${widget.groupId}');
     final memoriesAsync = ref.watch(groupMemoriesProvider(widget.groupId));
-    print('📊 [PAGE] Provider state: ${memoriesAsync.runtimeType}');
 
     return memoriesAsync.when(
       loading: () {
-        print('⏳ [PAGE] Memories are loading...');
         return const Center(
           child: CircularProgressIndicator(color: BrandColors.planning),
         );
       },
       error: (error, stackTrace) {
-        print('❌ [PAGE] Error in memories section: $error');
-        print('   Stack: $stackTrace');
         return Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -765,16 +751,7 @@ class _GroupHubPageState extends ConsumerState<GroupHubPage>
         );
       },
       data: (memories) {
-        print('✅ [PAGE] Memories data received: ${memories.length} items');
-        if (memories.isNotEmpty) {
-          print('📝 [PAGE] First memory:');
-          print('   - ID: ${memories.first.id}');
-          print('   - Title: ${memories.first.title}');
-          print('   - Cover: ${memories.first.coverImageUrl}');
-        }
-        
         if (memories.isEmpty) {
-          print('ℹ️ [PAGE] No memories to display (empty list)');
           return _buildEmptyState(
             icon: Icons.photo_library_outlined,
             title: 'No memories yet',
@@ -782,7 +759,7 @@ class _GroupHubPageState extends ConsumerState<GroupHubPage>
           );
         }
 
-        print('🎨 [PAGE] Rendering ${memories.length} memories in grid');
+
         return SingleChildScrollView(
           controller: _memoriesScrollController,
           physics: _isSnapped

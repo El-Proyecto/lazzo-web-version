@@ -25,21 +25,16 @@ class MemoryRepositoryImpl implements MemoryRepository {
   @override
   Future<MemoryEntity?> getMemoryByEventId(String eventId) async {
     try {
-      print('\n🔍 [MEMORY REPO] Getting memory by eventId: $eventId');
-      
       // Get memory data (event)
       final memoryData = await _memoryDataSource.getMemoryByEventId(eventId);
       if (memoryData == null) {
-        print('❌ [MEMORY REPO] Memory not found');
         return null;
       }
 
       final coverPhotoId = memoryData['cover_photo_id'] as String?;
-      print('   🎯 Cover photo ID from DB: ${coverPhotoId ?? "null"}');
 
       // Get photos for this memory
       final photosData = await _memoryDataSource.getMemoryPhotos(eventId);
-      print('   📸 Found ${photosData.length} photos');
 
       // Convert photos to entities with signed URLs
       final photos = <MemoryPhoto>[];
@@ -52,8 +47,6 @@ class MemoryRepositoryImpl implements MemoryRepository {
         final isCoverPhoto = coverPhotoId != null 
             ? (photoId == coverPhotoId)
             : (i == 0);  // If no cover selected, first photo is the cover
-        
-        print('   📷 Photo ${photoId.substring(0, 8)}...: isCover=$isCoverPhoto (coverPhotoId=${coverPhotoId ?? "null"})');
         
         // Generate signed URL (with caching in StorageService)
         final signedUrl = await _storageService.getSignedUrl(storagePath);
@@ -74,7 +67,6 @@ class MemoryRepositoryImpl implements MemoryRepository {
               try {
                 profileImageUrl = await _storageService.getSignedUrl(avatarPath, bucket: 'users-profile-pic');
               } catch (e) {
-                print('   ⚠️ Failed to get avatar signed URL: $e');
                 profileImageUrl = null;
               }
             }
@@ -87,14 +79,11 @@ class MemoryRepositoryImpl implements MemoryRepository {
               try {
                 profileImageUrl = await _storageService.getSignedUrl(avatarPath, bucket: 'users-profile-pic');
               } catch (e) {
-                print('   ⚠️ Failed to get avatar signed URL: $e');
                 profileImageUrl = null;
               }
             }
           }
         }
-        
-        print('   👤 Uploader: id=$uploaderId, name="${uploaderName ?? "Unknown"}", profileUrl=${profileImageUrl ?? "null"}');
         
         photos.add(MemoryPhoto(
           id: photoId,
@@ -112,8 +101,6 @@ class MemoryRepositoryImpl implements MemoryRepository {
         ));
       }
 
-      print('   ✅ Converted ${photos.length} photos, ${photos.where((p) => p.isCover).length} marked as cover');
-
       // Extract location from nested JSON
       final locationsData = memoryData['locations'];
       final locationName = locationsData != null 
@@ -129,7 +116,6 @@ class MemoryRepositoryImpl implements MemoryRepository {
         photos: photos,
       );
     } catch (e) {
-      print('❌ Error in MemoryRepositoryImpl.getMemoryByEventId: $e');
       return null;
     }
   }

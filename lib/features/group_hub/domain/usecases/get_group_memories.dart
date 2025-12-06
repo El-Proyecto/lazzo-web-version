@@ -8,10 +8,7 @@ class GetGroupMemories {
   GetGroupMemories(this._repository);
 
   Future<List<GroupMemoryEntity>> call(String groupId) async {
-    print('\n📦 [MEMORIES USE CASE] Called with groupId: $groupId');
-    print('🔗 [MEMORIES USE CASE] Repository: ${_repository.runtimeType}');
     final result = await _repository.getGroupMemories(groupId);
-    print('✅ [MEMORIES USE CASE] Repository returned ${result.length} memories');
     return result;
   }
 }

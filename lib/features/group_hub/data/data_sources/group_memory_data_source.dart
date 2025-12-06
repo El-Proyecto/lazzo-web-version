@@ -43,12 +43,8 @@ class SupabaseGroupMemoryDataSource implements GroupMemoryDataSource {
 
   @override
   Future<List<Map<String, dynamic>>> getGroupMemories(String groupId) async {
-    print('\n🔍 [MEMORIES DATA SOURCE] getGroupMemories called');
-    print('   📍 Group ID: $groupId');
     try {
       // Query events with cover photo JOIN
-      print('\n📡 [MEMORIES DATA SOURCE] Querying events table...');
-      print('   🔎 Filter: group_id = $groupId (all statuses - will filter by photos later)');
       final eventsResponse = await _client
           .from('events')
           .select('''
@@ -64,14 +60,11 @@ class SupabaseGroupMemoryDataSource implements GroupMemoryDataSource {
           .order('start_datetime', ascending: false)
           .limit(50);
 
-      print('✅ [MEMORIES DATA SOURCE] Events query returned ${eventsResponse.length} results');
       if (eventsResponse.isEmpty) {
-        print('ℹ️ [MEMORIES DATA SOURCE] No recap events found for this group');
         return [];
       }
 
       final events = List<Map<String, dynamic>>.from(eventsResponse);
-      print('📝 [MEMORIES DATA SOURCE] First event: ${events.first}');
       
       // For each event, get cover photo or fallback to first photo
       for (int i = 0; i < events.length; i++) {
@@ -79,25 +72,19 @@ class SupabaseGroupMemoryDataSource implements GroupMemoryDataSource {
         final eventId = event['id'] as String;
         final coverPhotoId = event['cover_photo_id'] as String?;
         
-        print('\n🔄 [MEMORIES DATA SOURCE] Processing event ${i + 1}/${events.length}: $eventId');
-        print('   📸 Cover photo ID: ${coverPhotoId ?? "null"}');
-        
         // Get photo count for this event
-        print('   🔢 Counting photos...');
         final photosResponse = await _client
             .from('group_photos')
             .select('id')
             .eq('event_id', eventId);
         
         event['photo_count'] = photosResponse.length;
-        print('   ✅ Found ${photosResponse.length} photos');
         
         // Get cover photo
         String? coverStoragePath;
         
         if (coverPhotoId != null) {
           // Try to get the manually selected cover photo (user choice takes priority)
-          print('   🔍 Fetching manually selected cover photo...');
           try {
             final coverPhoto = await _client
                 .from('group_photos')
@@ -107,18 +94,14 @@ class SupabaseGroupMemoryDataSource implements GroupMemoryDataSource {
             
             if (coverPhoto != null) {
               coverStoragePath = coverPhoto['storage_path'] as String?;
-              print('   ✅ Manual cover photo found: $coverStoragePath');
-            } else {
-              print('   ⚠️ Cover photo ID exists but photo not found in DB');
             }
           } catch (e) {
-            print('   ⚠️ Cover photo not found: $coverPhotoId - $e');
+            // Cover photo not found
           }
         }
         
         // Fallback to first PORTRAIT photo if no cover selected or cover not found
         if (coverStoragePath == null) {
-          print('   🔄 No cover selected, searching for first PORTRAIT photo...');
           try {
             final firstPortraitPhoto = await _client
                 .from('group_photos')
@@ -131,9 +114,7 @@ class SupabaseGroupMemoryDataSource implements GroupMemoryDataSource {
             
             if (firstPortraitPhoto != null) {
               coverStoragePath = firstPortraitPhoto['storage_path'] as String?;
-              print('   ✅ First portrait photo found: $coverStoragePath');
             } else {
-              print('   ℹ️ No portrait photos found, searching for ANY first photo...');
               // Final fallback: if no portrait photos, get any first photo
               try {
                 final firstAnyPhoto = await _client
@@ -146,21 +127,17 @@ class SupabaseGroupMemoryDataSource implements GroupMemoryDataSource {
                 
                 if (firstAnyPhoto != null) {
                   coverStoragePath = firstAnyPhoto['storage_path'] as String?;
-                  print('   ✅ First photo (any orientation) found: $coverStoragePath');
-                } else {
-                  print('   ℹ️ No photos found for this event - cover will be empty');
                 }
               } catch (e) {
-                print('   ⚠️ Error searching for any photo: $eventId - $e');
+                // Error searching for any photo
               }
             }
           } catch (e) {
-            print('   ⚠️ Error searching for portrait photos: $eventId - $e');
+            // Error searching for portrait photos
           }
         }
         
         event['cover_storage_path'] = coverStoragePath;
-        print('   📦 Final cover_storage_path: ${coverStoragePath ?? "null"}');
       }
 
       // Filter out memories with no photos
@@ -169,13 +146,8 @@ class SupabaseGroupMemoryDataSource implements GroupMemoryDataSource {
         return photoCount > 0;
       }).toList();
       
-      print('\n✅ [MEMORIES DATA SOURCE] Successfully processed ${events.length} memories for group $groupId');
-      print('   📸 Memories with photos: ${memoriesWithPhotos.length}/${events.length}');
-      
       return memoriesWithPhotos;
-    } catch (e, stackTrace) {
-      print('❌ [MEMORIES DATA SOURCE] Error fetching group memories: $e');
-      print('   Stack trace: $stackTrace');
+    } catch (e) {
       return [];
     }
   }

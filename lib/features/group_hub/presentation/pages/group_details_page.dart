@@ -575,6 +575,9 @@ class GroupDetailsPage extends ConsumerWidget {
             if (context.mounted) {
               await ref.read(groupMembersProvider(groupId).notifier).refresh();
               
+              // Refresh group details to update member count
+              ref.invalidate(groupDetailsProvider(groupId));
+              
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text('${member.name} has been removed'),
