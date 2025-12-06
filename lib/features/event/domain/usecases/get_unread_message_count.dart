@@ -17,16 +17,12 @@ class GetUnreadMessageCount {
     required String currentUserId,
   }) async {
     try {
-      print('[GetUnreadMessageCount] Getting unread count');
-      print('  Event ID: $eventId');
-      print('  User ID: $currentUserId');
 
       final count = await repository.getUnreadMessageCount(
         eventId: eventId,
         currentUserId: currentUserId,
       );
 
-      print('[GetUnreadMessageCount] Unread count: $count');
       return count;
     } catch (e, stackTrace) {
       print('[GetUnreadMessageCount] Error getting unread count: $e');

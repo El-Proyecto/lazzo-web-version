@@ -146,9 +146,6 @@ class ChatRepositoryImpl implements ChatRepository {
     required String messageId,
   }) async {
     try {
-      print('[ChatRepositoryImpl] Updating last read message');
-      print('  Event ID: $eventId');
-      print('  Message ID: $messageId');
 
       final response = await _remoteDataSource.updateLastReadMessage(
         eventId: eventId,
@@ -156,7 +153,6 @@ class ChatRepositoryImpl implements ChatRepository {
       );
 
       final success = response['success'] == true;
-      print('[ChatRepositoryImpl] Update success: $success');
 
       return success;
     } catch (e, stackTrace) {
@@ -172,16 +168,12 @@ class ChatRepositoryImpl implements ChatRepository {
     required String currentUserId,
   }) async {
     try {
-      print('[ChatRepositoryImpl] Getting unread message count');
-      print('  Event ID: $eventId');
-      print('  User ID: $currentUserId');
 
       final count = await _remoteDataSource.getUnreadMessageCount(
         eventId: eventId,
         currentUserId: currentUserId,
       );
 
-      print('[ChatRepositoryImpl] Unread count: $count');
       return count;
     } catch (e, stackTrace) {
       print('[ChatRepositoryImpl] Error getting unread count: $e');
@@ -197,10 +189,6 @@ class ChatRepositoryImpl implements ChatRepository {
     int limit = 50,
   }) async {
     try {
-      print('[ChatRepositoryImpl] Getting messages with read status');
-      print('  Event ID: $eventId');
-      print('  User ID: $currentUserId');
-      print('  Limit: $limit');
 
       final models = await _remoteDataSource.getMessagesWithReadStatus(
         eventId: eventId,
@@ -228,8 +216,6 @@ class ChatRepositoryImpl implements ChatRepository {
         messagesWithReplies.add(baseMessage.copyWith(replyTo: replyTo));
       }
 
-      print(
-          '[ChatRepositoryImpl] Fetched ${messagesWithReplies.length} messages');
       return messagesWithReplies;
     } catch (e, stackTrace) {
       print('[ChatRepositoryImpl] Error getting messages with read status: $e');

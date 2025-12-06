@@ -18,16 +18,12 @@ class UpdateLastReadMessage {
     required String messageId,
   }) async {
     try {
-      print('[UpdateLastReadMessage] Updating last read message');
-      print('  Event ID: $eventId');
-      print('  Message ID: $messageId');
 
       final success = await repository.updateLastReadMessage(
         eventId: eventId,
         messageId: messageId,
       );
 
-      print('[UpdateLastReadMessage] Update result: $success');
       return success;
     } catch (e, stackTrace) {
       print('[UpdateLastReadMessage] Error updating last read message: $e');

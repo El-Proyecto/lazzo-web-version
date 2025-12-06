@@ -229,8 +229,9 @@ class EventRemoteDataSource {
 
     if (now.isAfter(endUtc)) return 'recap';
     if (now.isAfter(startUtc) && now.isBefore(endUtc)) return 'living';
-    if (currentStatus == 'draft' || currentStatus == 'pending')
+    if (currentStatus == 'draft' || currentStatus == 'pending') {
       return currentStatus;
+    }
 
     return 'confirmed';
   }

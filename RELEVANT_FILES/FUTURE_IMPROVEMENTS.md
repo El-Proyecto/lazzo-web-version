@@ -148,6 +148,186 @@ Improve user experience with advanced Flutter features and design patterns.
 
 ---
 
+## Production Logging & Observability
+
+### 🎯 Goal
+Replace development print() statements with production-grade structured logging system.
+
+### 📅 Timeline
+**Target:** Q1 2026 (before v1.0 launch)
+
+### 🔗 Dependencies
+- Core architecture stable
+- All feature development complete
+- Testing infrastructure in place
+
+### 📋 Implementation Plan
+
+#### Phase 1: Logger Infrastructure (1 week)
+- [ ] Add `logger` package to `pubspec.yaml` (v2.0+)
+- [ ] Create `lib/core/logging/app_logger.dart` central configuration
+- [ ] Define log levels and filtering rules
+- [ ] Create feature-specific logger instances
+
+**Example Configuration:**
+```dart
+// lib/core/logging/app_logger.dart
+import 'package:logger/logger.dart';
+
+class AppLogger {
+  static final Logger _logger = Logger(
+    filter: ProductionFilter(), // Only ERROR+ in release
+    printer: PrettyPrinter(
+      methodCount: 0,
+      errorMethodCount: 5,
+      lineLength: 100,
+      colors: true,
+      printEmojis: true,
+      printTime: true,
+    ),
+    output: MultiOutput([
+      ConsoleOutput(),
+      FirebaseOutput(), // Custom implementation
+    ]),
+  );
+
+  static Logger getLogger(String feature) {
+    return Logger(
+      filter: _logger.filter,
+      printer: PrefixPrinter(_logger.printer, feature),
+      output: _logger.output,
+    );
+  }
+}
+
+// Usage in features
+final logger = AppLogger.getLogger('EventChat');
+```
+
+#### Phase 2: Firebase Integration (1 week)
+- [ ] Add Firebase Crashlytics dependency
+- [ ] Configure crash reporting for errors
+- [ ] Create custom FirebaseOutput for Logger
+- [ ] Set up error grouping and filtering
+
+**Integration Points:**
+```dart
+// Log ERROR and above to Crashlytics
+logger.e('Failed to load event', error, stackTrace);
+// → Automatically sent to Firebase Crashlytics
+
+// Custom events for analytics
+FirebaseAnalytics.instance.logEvent(
+  name: 'message_sent',
+  parameters: {'event_id': eventId, 'feature': 'EventChat'},
+);
+```
+
+#### Phase 3: Migration from print() (2 weeks)
+- [ ] Create migration guide for team
+- [ ] Convert all print() statements per feature:
+  - `print('[Feature]...')` → `logger.d()`
+  - Important state transitions → `logger.i()`
+  - Warnings/validation fails → `logger.w()`
+  - Errors/exceptions → `logger.e()`
+- [ ] Test each feature after migration
+- [ ] Verify logs in Firebase Console
+
+**Migration Examples:**
+```dart
+// Before (Development)
+print('[EventChat] Sending message: $content');
+
+// After (Production)
+logger.i('Sending message', {'content_length': content.length, 'event_id': eventId});
+
+// Before (Development)
+print('[SupabaseClient] Query error: $error');
+
+// After (Production)
+logger.e('Query error', error, stackTrace);
+```
+
+#### Phase 4: Log Level Strategy (1 week)
+- [ ] Define log levels per environment:
+  - **DEBUG:** Development only (verbose traces)
+  - **INFO:** Staging + Production (important flows)
+  - **WARNING:** Staging + Production (recoverable issues)
+  - **ERROR:** Staging + Production (needs investigation)
+  - **FATAL:** Production (app-breaking issues)
+- [ ] Configure filters per build flavor
+- [ ] Test log volume in staging
+
+**Log Level Guidelines:**
+| Level | When to Use | Example |
+|-------|-------------|---------|
+| DEBUG | Developer traces only | "Provider rebuilding with 10 items" |
+| INFO | Important user actions | "User logged in", "Event created" |
+| WARNING | Recoverable failures | "Cache miss", "Retry attempt 2/3" |
+| ERROR | Unexpected failures | "API timeout", "Invalid data received" |
+| FATAL | App crashes | "Null pointer in critical path" |
+
+#### Phase 5: Monitoring Dashboard (2 weeks)
+- [ ] Set up Firebase Console dashboards
+- [ ] Create alerts for error spikes
+- [ ] Configure weekly error reports
+- [ ] Document troubleshooting runbooks
+
+**Key Metrics to Monitor:**
+- Error rate per feature (< 1% target)
+- Crash-free sessions (> 99.5% target)
+- Top errors by frequency
+- User impact of errors
+
+### ✅ Success Criteria
+- [ ] Zero `print()` statements in production builds
+- [ ] All errors automatically reported to Firebase
+- [ ] Log search and filtering works efficiently
+- [ ] Team can debug production issues from logs
+- [ ] No PII (Personally Identifiable Information) in logs
+
+### 🔒 Privacy & Compliance
+- [ ] Audit all log messages for PII
+- [ ] Implement log sanitization for sensitive data
+- [ ] Configure log retention policies (90 days)
+- [ ] Document what data is logged and why
+
+**PII Handling Rules:**
+```dart
+// ❌ NEVER log full PII
+logger.i('User logged in: john.doe@example.com');
+
+// ✅ Log anonymized/hashed identifiers only
+logger.i('User logged in', {'user_id': userId.hashCode});
+
+// ✅ Partial data for debugging
+logger.d('Email validation', {'domain': email.split('@').last});
+```
+
+### 📊 Log Volume Estimation
+**Expected Daily Volume (10K active users):**
+- DEBUG: 0 logs (disabled in production)
+- INFO: ~50K logs (5 per user session)
+- WARNING: ~1K logs (0.1 per user)
+- ERROR: ~100 logs (0.01 per user, 1% error rate)
+- FATAL: ~10 logs (0.001 per user)
+
+**Storage:** ~5MB/day text logs (retained 90 days = 450MB)
+
+### 💰 Cost Estimation
+- **Firebase Crashlytics:** Free tier (sufficient for MVP)
+- **Logger Package:** Free (open source)
+- **Firebase Analytics:** Free tier (sufficient for MVP)
+- **Upgrade Trigger:** > 100K monthly active users
+
+### 🎓 Team Training
+- [ ] Create logging best practices guide
+- [ ] Workshop: Reading Firebase Crashlytics reports
+- [ ] Document: When to use each log level
+- [ ] Code review checklist for logging
+
+---
+
 ## Performance & Reliability
 
 ### 🎯 Goal

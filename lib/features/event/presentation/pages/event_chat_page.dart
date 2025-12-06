@@ -65,8 +65,6 @@ class _EventChatPageState extends ConsumerState<EventChatPage> {
   void initState() {
     super.initState();
 
-    print('[EventChatPage] 🟢 initState - eventId: ${widget.eventId}');
-
     _scrollController.addListener(_onScroll);
     _messageController.addListener(_onTextChanged);
 
@@ -90,13 +88,9 @@ class _EventChatPageState extends ConsumerState<EventChatPage> {
 
   @override
   void deactivate() {
-    print(
-        '[EventChatPage] 🟡 deactivate called - shouldMarkAsRead: $_shouldMarkAsReadOnDispose');
-
     // Mark messages as read when leaving the page
     // Use deactivate instead of dispose because ref is still available here
     if (_shouldMarkAsReadOnDispose && !_isDisposing) {
-      print('[EventChatPage] 🟡 Calling _markMessagesAsRead from deactivate');
       _markMessagesAsRead();
       _shouldMarkAsReadOnDispose = false; // Only mark once
     }
@@ -106,7 +100,6 @@ class _EventChatPageState extends ConsumerState<EventChatPage> {
 
   @override
   void dispose() {
-    print('[EventChatPage] 🔴 dispose called');
     _isDisposing = true;
 
     _scrollController.removeListener(_onScroll);
@@ -146,13 +139,10 @@ class _EventChatPageState extends ConsumerState<EventChatPage> {
   /// This updates the last_read_message_id for the current user
   Future<void> _markMessagesAsRead() async {
     if (_isDisposing) {
-      print('[EventChatPage] ⚠️ Skipping mark as read - widget is disposing');
       return;
     }
 
     try {
-      print(
-          '[EventChatPage] 📖 Marking messages as read (shouldMarkOnDispose: $_shouldMarkAsReadOnDispose)');
 
       // Get latest messages from stream
       final messagesAsync = ref.read(chatMessagesProvider(widget.eventId));
@@ -161,16 +151,12 @@ class _EventChatPageState extends ConsumerState<EventChatPage> {
       await messagesAsync.when(
         data: (messages) async {
           if (messages.isEmpty) {
-            print('[EventChatPage] No messages to mark as read');
             return;
           }
 
           // Get the most recent message (first in list, since sorted DESC)
           final latestMessage = messages.first;
 
-          print('[EventChatPage] Latest message: ${latestMessage.id}');
-          print('[EventChatPage] Content: ${latestMessage.content}');
-          print('[EventChatPage] Created at: ${latestMessage.createdAt}');
 
           // Call repository method to update last read message
           final repository = ref.read(chatRepositoryProvider);
@@ -180,14 +166,11 @@ class _EventChatPageState extends ConsumerState<EventChatPage> {
           );
 
           if (success) {
-            print('[EventChatPage] ✅ Successfully marked messages as read');
           } else {
             print('[EventChatPage] ⚠️ Failed to mark messages as read');
           }
         },
         loading: () {
-          print(
-              '[EventChatPage] Messages still loading, skipping mark as read');
         },
         error: (error, stack) {
           print('[EventChatPage] ❌ Error loading messages: $error');
@@ -222,7 +205,6 @@ class _EventChatPageState extends ConsumerState<EventChatPage> {
   void _sendMessage() async {
     final content = _messageController.text.trim();
     if (content.isNotEmpty) {
-      print('[EventChatPage] 📤 Sending message...');
 
       // Mark all previous messages as read when user sends a message
       _markMessagesAsRead();
@@ -249,7 +231,6 @@ class _EventChatPageState extends ConsumerState<EventChatPage> {
           _pendingMessages.add(pendingMessage);
         });
 
-        print('[EventChatPage] 🟡 Added pending message: ${pendingMessage.id}');
       }
 
       _messageController.clear();
@@ -272,7 +253,6 @@ class _EventChatPageState extends ConsumerState<EventChatPage> {
               content,
               replyTo: replyToMessage,
             );
-        print('[EventChatPage] ✅ Message sent successfully');
 
         // Pending message will be automatically removed when real message arrives
         // (filtered in the build method when matching content is found in stream)
@@ -507,8 +487,6 @@ class _EventChatPageState extends ConsumerState<EventChatPage> {
                           5);
 
                   if (hasDuplicate) {
-                    print(
-                        '[EventChatPage] 🔄 Found real message for pending, filtering out pending');
                     // Remove from pending list in next frame to avoid setState during build
                     WidgetsBinding.instance.addPostFrameCallback((_) {
                       if (mounted) {
@@ -546,12 +524,10 @@ class _EventChatPageState extends ConsumerState<EventChatPage> {
 
                 final unreadCount = unreadCountAsync.when(
                   data: (count) {
-                    print('[EventChatPage] Unread count for UI: $count');
                     return count;
                   },
                   loading: () => 0,
                   error: (e, stack) {
-                    print('[EventChatPage] Error loading unread count: $e');
                     return 0;
                   },
                 );

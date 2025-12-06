@@ -77,13 +77,6 @@ class EventExpensesController
     required List<String> participantsPaid,
   }) async {
     try {
-      print('💸 [Controller] Adding expense:');
-      print('   Event: $_eventId');
-      print('   Description: $description');
-      print('   Amount: €$amount');
-      print('   PaidBy: $paidBy');
-      print('   ParticipantsOwe: $participantsOwe');
-      print('   ParticipantsPaid: $participantsPaid');
 
       await _createEventExpense(
         eventId: _eventId,
@@ -94,7 +87,6 @@ class EventExpensesController
         participantsPaid: participantsPaid,
       );
 
-      print('   ✅ Expense created successfully!');
       await loadExpenses();
     } catch (error, stackTrace) {
       state = AsyncValue.error(error, stackTrace);
