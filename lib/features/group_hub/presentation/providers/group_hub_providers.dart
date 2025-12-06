@@ -300,6 +300,26 @@ class GroupMembersController
   Future<void> refresh() async {
     await loadMembers();
   }
+
+  /// Optimistic update: immediately updates UI before server confirms
+  void updateMemberRoleOptimistically(String userId, bool isAdmin) {
+    state.whenData((members) {
+      final updatedMembers = members.map((member) {
+        if (member.id == userId) {
+          return GroupMemberEntity(
+            id: member.id,
+            name: member.name,
+            profileImageUrl: member.profileImageUrl,
+            isAdmin: isAdmin,
+            isCurrentUser: member.isCurrentUser,
+          );
+        }
+        return member;
+      }).toList();
+      
+      state = AsyncValue.data(updatedMembers);
+    });
+  }
 }
 
 class GroupPhotosController
