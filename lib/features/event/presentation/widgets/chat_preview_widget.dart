@@ -3,7 +3,9 @@ import 'package:flutter/services.dart';
 import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/constants/text_styles.dart';
 import '../../../../shared/themes/colors.dart';
+import '../../../../shared/components/dialogs/message_actions_sheet.dart';
 import '../../../../shared/components/widgets/chat_messages_list.dart';
+import '../../../../shared/components/widgets/message_suggestions.dart';
 import '../../domain/entities/chat_message.dart';
 
 /// Mode for chat preview widget
@@ -93,81 +95,27 @@ class _ChatPreviewWidgetState extends State<ChatPreviewWidget> {
   void _showMessageActions(ChatMessagePreview message) {
     final isCurrentUser = message.userId == widget.currentUserId;
 
-    showModalBottomSheet(
+    MessageActionsSheet.show(
       context: context,
-      backgroundColor: BrandColors.bg2,
-      isDismissible: true,
-      enableDrag: true,
-      builder: (context) => Container(
-        padding: const EdgeInsets.symmetric(
-          horizontal: Insets.screenH,
-          vertical: Gaps.lg,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Pin/Unpin
-            if (widget.onPinMessage != null)
-              _ActionButton(
-                icon:
-                    message.isPinned ? Icons.push_pin : Icons.push_pin_outlined,
-                label: message.isPinned ? 'Unpin message' : 'Pin message',
-                onTap: () {
-                  Navigator.pop(context);
-                  widget.onPinMessage!(message);
-                },
-              ),
-
-            // Reply
-            if (widget.onReplyMessage != null)
-              _ActionButton(
-                icon: Icons.reply,
-                label: 'Reply',
-                onTap: () {
-                  Navigator.pop(context);
-                  setState(() {
-                    _replyingTo = message;
-                    _focusNode.requestFocus();
-                  });
-                },
-              ),
-
-            // Delete (only for current user)
-            if (isCurrentUser && widget.onDeleteMessage != null)
-              _ActionButton(
-                icon: Icons.delete_outline,
-                label: 'Delete message',
-                onTap: () {
-                  Navigator.pop(context);
-                  widget.onDeleteMessage!(message);
-                },
-                isDestructive: true,
-              ),
-
-            const SizedBox(height: Gaps.sm),
-
-            // Cancel
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              style: TextButton.styleFrom(
-                backgroundColor: BrandColors.bg3,
-                padding: const EdgeInsets.symmetric(vertical: Pads.ctlV),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(Radii.md),
-                ),
-              ),
-              child: Text(
-                'Cancel',
-                style: AppText.bodyMedium.copyWith(
-                  color: BrandColors.text1,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
+      messageTimestamp: message.timestamp,
+      isPinned: message.isPinned,
+      showDelete: isCurrentUser,
+      onPin: () {
+        if (widget.onPinMessage != null) {
+          widget.onPinMessage!(message);
+        }
+      },
+      onReply: () {
+        if (widget.onReplyMessage != null) {
+          setState(() {
+            _replyingTo = message;
+            _focusNode.requestFocus();
+          });
+        }
+      },
+      onDelete: isCurrentUser && widget.onDeleteMessage != null
+          ? () => widget.onDeleteMessage!(message)
+          : null,
     );
   }
 
@@ -189,7 +137,6 @@ class _ChatPreviewWidgetState extends State<ChatPreviewWidget> {
         _pendingMessages.add(pendingMessage);
       });
 
-
       // Send to parent (will trigger server call)
       widget.onSendMessage!(content, replyTo: _replyingTo);
 
@@ -201,8 +148,7 @@ class _ChatPreviewWidgetState extends State<ChatPreviewWidget> {
       // Pending message will be automatically removed when real message arrives
       // (filtered in the build method when matching content is found in widget.recentMessages)
     } else if (widget.onSendMessage == null) {
-          } else {
-          }
+    } else {}
   }
 
   @override
@@ -251,9 +197,11 @@ class _ChatPreviewWidgetState extends State<ChatPreviewWidget> {
 
     // Estimate height per message (avatar + bubble + spacing + name + timestamp)
     const double messageBubbleHeight = 72.0;
-    final double neededHeight = messagesToShow.length * messageBubbleHeight;
+    final double neededHeight =
+        messagesToShow.length * messageBubbleHeight + 8.0; // +8 for padding
+    final double minChatHeight = 160.0 > neededHeight ? 160.0 : neededHeight;
     final bool needsScroll = neededHeight > maxChatHeight;
-    final double chatHeight = needsScroll ? maxChatHeight : neededHeight;
+    final double chatHeight = needsScroll ? maxChatHeight : minChatHeight;
     return Hero(
       tag: 'chat-widget',
       child: Material(
@@ -470,9 +418,17 @@ class _ChatPreviewWidgetState extends State<ChatPreviewWidget> {
                               ),
                           ],
                         ),
-                      ),
+                      )
+                    else
+                      const SizedBox(height: Gaps.xs),
 
-                    const SizedBox(height: Gaps.xs),
+                    // Message suggestions (empty state)
+                    if (messagesToShow.isEmpty)
+                      MessageSuggestionsList(
+                        onSuggestionTap: (suggestion) {
+                          _controller.text = suggestion;
+                        },
+                      ),
 
                     // Reply indicator (when replying to a message - same style as event_chat_page)
                     if (_replyingTo != null)
@@ -537,6 +493,7 @@ class _ChatPreviewWidgetState extends State<ChatPreviewWidget> {
 
                     // Message input
                     Container(
+                      margin: const EdgeInsets.only(top: Gaps.xs),
                       decoration: BoxDecoration(
                         color: BrandColors.bg3,
                         borderRadius: BorderRadius.circular(Radii.pill),
@@ -635,59 +592,3 @@ ChatMessage _adaptPreviewToMessage(ChatMessagePreview preview) {
 }
 
 /// Action button for message actions bottom sheet
-class _ActionButton extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-  final bool isDestructive;
-
-  const _ActionButton({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-    this.isDestructive = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(Radii.md),
-        child: Container(
-          padding: const EdgeInsets.symmetric(
-            horizontal: Pads.ctlH,
-            vertical: Pads.ctlV + 4,
-          ),
-          decoration: const BoxDecoration(
-            border: Border(
-              bottom: BorderSide(
-                color: BrandColors.border,
-                width: 1,
-              ),
-            ),
-          ),
-          child: Row(
-            children: [
-              Icon(
-                icon,
-                color: isDestructive ? BrandColors.cantVote : BrandColors.text1,
-                size: IconSizes.md,
-              ),
-              const SizedBox(width: Gaps.md),
-              Text(
-                label,
-                style: AppText.bodyMedium.copyWith(
-                  color:
-                      isDestructive ? BrandColors.cantVote : BrandColors.text1,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}

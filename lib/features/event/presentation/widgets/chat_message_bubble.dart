@@ -75,10 +75,11 @@ class _ChatMessageBubbleState extends State<ChatMessageBubble> {
             : BrandColors.bg3.withValues(alpha: 0.5))
         : widget.bubbleColor;
 
-    // The actual bubble content (without avatar)
-    final bubbleContent = GestureDetector(
+    // Only the bubble content (without metadata)
+    final messageBubble = GestureDetector(
       onLongPress: widget.onLongPress,
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: widget.isCurrentUser
             ? CrossAxisAlignment.end
             : CrossAxisAlignment.start,
@@ -138,61 +139,11 @@ class _ChatMessageBubbleState extends State<ChatMessageBubble> {
                     ),
                   ),
           ),
-
-          // Metadata (only on last message in group)
-          if (widget.isLastInGroup) ...[
-            const SizedBox(height: Gaps.xxs),
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (!widget.isCurrentUser) ...[
-                  Text(
-                    widget.message.userName,
-                    style: AppText.bodyMedium.copyWith(
-                      color: BrandColors.text2,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  const SizedBox(width: Gaps.xs),
-                ],
-                Text(
-                  widget.formatTimestamp != null
-                      ? widget.formatTimestamp!(widget.message.createdAt)
-                      : _formatTimestamp(widget.message.createdAt),
-                  style: AppText.bodyMedium.copyWith(
-                    color: BrandColors.text2,
-                    fontSize: 12,
-                  ),
-                ),
-                // Status indicator for current user messages
-                // 🕐 = pending (not yet sent)
-                // ✓ = sent (delivered to server)
-                // ✓✓ = read by someone
-                if (widget.isCurrentUser) ...[
-                  const SizedBox(width: 4),
-                  Icon(
-                    widget.message.isPending
-                        ? Icons.access_time
-                        : (widget.message.isReadBySomeone
-                            ? Icons.done_all
-                            : Icons.done),
-                    size: 14,
-                    color: widget.message.isPending
-                        ? BrandColors.text2.withValues(alpha: 0.5)
-                        : (widget.message.isReadBySomeone
-                            ? BrandColors.planning
-                            : BrandColors.text2),
-                  ),
-                ],
-              ],
-            ),
-          ],
         ],
       ),
     );
 
-    // Wrap bubble content with swipe gesture if enabled
+    // Wrap bubble with swipe gesture and transform
     final swipeableBubble =
         widget.enableSwipeToReply && widget.onSwipeReply != null
             ? RawGestureDetector(
@@ -218,7 +169,7 @@ class _ChatMessageBubbleState extends State<ChatMessageBubble> {
                         ..onEnd = (details) {
                           // Current user messages: detect LEFT swipe (negative distance)
                           // Other user messages: detect RIGHT swipe (positive distance)
-                          final threshold = 30.0; // pixels
+                          final threshold = 34.0; // pixels
                           final isValidSwipe = widget.isCurrentUser
                               ? _dragDistance < -threshold // Swipe left
                               : _dragDistance > threshold; // Swipe right
@@ -242,11 +193,93 @@ class _ChatMessageBubbleState extends State<ChatMessageBubble> {
                     },
                   ),
                 },
-                child: bubbleContent,
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  alignment: widget.isCurrentUser
+                      ? Alignment.centerRight
+                      : Alignment.centerLeft,
+                  children: [
+                    // Transform to move bubble during swipe
+                    Transform.translate(
+                      offset: Offset(
+                        widget.isCurrentUser
+                            ? _dragDistance.clamp(-34.0, 0.0)
+                            : _dragDistance.clamp(0.0, 34.0),
+                        0,
+                      ),
+                      child: messageBubble,
+                    ),
+                    // Reply icon animation - appears as bubble moves away
+                    if (_dragDistance.abs() > 5)
+                      Positioned(
+                        right: widget.isCurrentUser ? 0 : null,
+                        left: widget.isCurrentUser ? null : 0,
+                        child: _ReplySwipeIndicator(
+                          progress: (_dragDistance.abs() / 34).clamp(0.0, 1.0),
+                        ),
+                      ),
+                  ],
+                ),
               )
-            : bubbleContent;
+            : messageBubble;
 
-    // Final Row with avatar + swipeable bubble
+    // Complete bubble content with metadata
+    final bubbleContent = Column(
+      crossAxisAlignment: widget.isCurrentUser
+          ? CrossAxisAlignment.end
+          : CrossAxisAlignment.start,
+      children: [
+        swipeableBubble,
+        // Metadata (only on last message in group) - stays fixed during swipe
+        if (widget.isLastInGroup) ...[
+          const SizedBox(height: Gaps.xxs),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (!widget.isCurrentUser) ...[
+                Text(
+                  widget.message.userName,
+                  style: AppText.bodyMedium.copyWith(
+                    color: BrandColors.text2,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(width: Gaps.xs),
+              ],
+              Text(
+                widget.formatTimestamp != null
+                    ? widget.formatTimestamp!(widget.message.createdAt)
+                    : _formatTimestamp(widget.message.createdAt),
+                style: AppText.bodyMedium.copyWith(
+                  color: BrandColors.text2,
+                  fontSize: 12,
+                ),
+              ),
+              // Status indicator for current user messages
+              if (widget.isCurrentUser) ...[
+                const SizedBox(width: 4),
+                Icon(
+                  widget.message.isPending
+                      ? Icons.access_time
+                      : (widget.message.isReadBySomeone
+                          ? Icons.done_all
+                          : Icons.done),
+                  size: 14,
+                  color: widget.message.isPending
+                      ? BrandColors.text2.withValues(alpha: 0.5)
+                      : (widget.message.isReadBySomeone
+                          ? BrandColors.planning
+                          : BrandColors.text2),
+                ),
+              ],
+            ],
+          ),
+        ],
+      ],
+    );
+
+    // Final Row with avatar + bubble content
     return Row(
       mainAxisAlignment: widget.isCurrentUser
           ? MainAxisAlignment.end
@@ -277,8 +310,28 @@ class _ChatMessageBubbleState extends State<ChatMessageBubble> {
             const SizedBox(width: 32),
           const SizedBox(width: Gaps.xs),
         ],
-        Flexible(child: swipeableBubble),
+        Flexible(child: bubbleContent),
       ],
+    );
+  }
+}
+
+/// Reply swipe indicator (simple icon, no circular progress)
+class _ReplySwipeIndicator extends StatelessWidget {
+  final double progress; // 0.0 to 1.0
+
+  const _ReplySwipeIndicator({required this.progress});
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedOpacity(
+      opacity: progress.clamp(0.3, 1.0),
+      duration: const Duration(milliseconds: 50),
+      child: Icon(
+        Icons.reply,
+        size: IconSizes.md,
+        color: progress >= 1.0 ? BrandColors.planning : BrandColors.text2,
+      ),
     );
   }
 }

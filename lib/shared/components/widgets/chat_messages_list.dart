@@ -179,8 +179,8 @@ class ChatMessagesList extends StatelessWidget {
             Padding(
               key: messageKey,
               padding: EdgeInsets.only(
-                top: isLastInGroup ? Gaps.xs : 2,
-                bottom: isLastInGroup ? Gaps.xs : 2,
+                top: isFirstInGroup ? Gaps.xs : 2,
+                bottom: 2,
               ),
               child: ChatMessageBubble(
                 message: message,

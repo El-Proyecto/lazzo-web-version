@@ -5,8 +5,10 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../../routes/app_router.dart';
 import '../../../../shared/components/dialogs/add_expense_bottom_sheet.dart';
+import '../../../../shared/components/dialogs/message_actions_sheet.dart';
 import '../../../../shared/components/common/top_banner.dart';
 import '../../../../shared/components/widgets/chat_messages_list.dart';
+import '../../../../shared/components/widgets/message_suggestions.dart';
 import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/constants/text_styles.dart';
 import '../../../../shared/themes/colors.dart';
@@ -271,18 +273,14 @@ class _EventChatPageState extends ConsumerState<EventChatPage> {
       FocusScope.of(context).unfocus();
     }
 
-    showModalBottomSheet(
+    MessageActionsSheet.show(
       context: context,
-      backgroundColor: BrandColors.bg2,
-      isDismissible: true,
-      enableDrag: true,
-      builder: (context) => _MessageActionMenu(
-        message: message,
-        isCurrentUser: isCurrentUser,
-        onPin: () => _togglePin(message),
-        onReply: () => _replyToMessage(message),
-        onDelete: isCurrentUser ? () => _deleteMessage(message) : null,
-      ),
+      messageTimestamp: message.createdAt,
+      isPinned: message.isPinned,
+      showDelete: isCurrentUser,
+      onPin: () => _togglePin(message),
+      onReply: () => _replyToMessage(message),
+      onDelete: isCurrentUser ? () => _deleteMessage(message) : null,
     ).whenComplete(() {
       // Ensure keyboard stays closed when modal is dismissed without action
       Future.delayed(const Duration(milliseconds: 0), () {
@@ -324,22 +322,76 @@ class _EventChatPageState extends ConsumerState<EventChatPage> {
   }
 
   void _scrollToMessage(ChatMessage message) {
-    final messageKey = _messageKeys[message.id];
-    if (messageKey?.currentContext != null) {
-      // Delay to ensure widget is rendered and list is settled
-      Future.delayed(const Duration(milliseconds: 300), () {
-        if (!mounted) return;
+    if (!_scrollController.hasClients) return;
 
-        final context = messageKey?.currentContext;
-        if (context != null && context.mounted) {
-          Scrollable.ensureVisible(
-            context,
-            duration: const Duration(milliseconds: 500),
-            curve: Curves.easeInOutCubic,
-            alignment: 0.3,
-          );
-          HapticFeedback.lightImpact();
-        }
+    // Get all messages to find the index
+    final messagesAsync = ref.read(chatMessagesProvider(widget.eventId));
+    messagesAsync.whenData((messages) {
+      final messageIndex = messages.indexWhere((m) => m.id == message.id);
+      if (messageIndex == -1) return;
+
+      // Average message height (estimate): ~80px for bubble + padding + potential date separator
+      const double estimatedMessageHeight = 80.0;
+      const double dateIntervalHeight = 50.0; // Date separator
+
+      // Calculate estimated scroll position
+      // List is reversed, so index 0 is at bottom (offset 0)
+      // We need to scroll from bottom to top
+      double estimatedPosition = messageIndex * estimatedMessageHeight;
+
+      // Add extra height for date separators (rough estimate: one every 5 messages)
+      estimatedPosition += (messageIndex / 5).floor() * dateIntervalHeight;
+
+      // Get max scroll extent
+      final maxScroll = _scrollController.position.maxScrollExtent;
+
+      // Clamp position to valid range
+      final targetPosition = estimatedPosition.clamp(0.0, maxScroll);
+
+      // Animate to estimated position first (fast scroll)
+      _scrollController
+          .animateTo(
+        targetPosition,
+        duration: const Duration(milliseconds: 400),
+        curve: Curves.easeInOut,
+      )
+          .then((_) {
+        // After reaching estimated position, use ensureVisible for fine-tuning
+        if (!mounted) return;
+        _attemptScrollToMessage(message, attempts: 0, maxAttempts: 8);
+      });
+    });
+
+    HapticFeedback.lightImpact();
+  }
+
+  void _attemptScrollToMessage(
+    ChatMessage message, {
+    required int attempts,
+    required int maxAttempts,
+  }) {
+    if (!mounted || attempts >= maxAttempts) return;
+
+    final messageKey = _messageKeys[message.id];
+    final context = messageKey?.currentContext;
+
+    if (context != null && context.mounted) {
+      // Fine-tune scroll position to exact message location
+      Scrollable.ensureVisible(
+        context,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOutCubic,
+        alignment: 0.3,
+      );
+    } else {
+      // Context not ready yet, try again
+      final delay = Duration(milliseconds: 50 + (attempts * 30));
+      Future.delayed(delay, () {
+        _attemptScrollToMessage(
+          message,
+          attempts: attempts + 1,
+          maxAttempts: maxAttempts,
+        );
       });
     }
   }
@@ -386,13 +438,15 @@ class _EventChatPageState extends ConsumerState<EventChatPage> {
     // Auto-scroll to message if scrollToMessageId is set
     messagesAsync.whenData((messages) {
       if (_scrollToMessageId != null) {
-        // Find message by generated ID (userId_timestamp)
+        // Find message by actual ID or generated ID (userId_timestamp)
         final targetMessage = messages.cast<ChatMessage?>().firstWhere(
           (m) {
             if (m == null) return false;
+            // Check both actual ID and generated ID format
             final messageId =
                 '${m.userId}_${m.createdAt.millisecondsSinceEpoch}';
-            return messageId == _scrollToMessageId;
+            return m.id == _scrollToMessageId ||
+                messageId == _scrollToMessageId;
           },
           orElse: () => null,
         );
@@ -498,12 +552,22 @@ class _EventChatPageState extends ConsumerState<EventChatPage> {
 
                 if (allMessages.isEmpty) {
                   return Center(
-                    child: Text(
-                      'No messages yet.\nBe the first to start the conversation!',
-                      style: AppText.bodyMedium.copyWith(
-                        color: BrandColors.text2,
-                      ),
-                      textAlign: TextAlign.center,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.message_outlined,
+                          size: 64,
+                          color: BrandColors.text2.withValues(alpha: 0.3),
+                        ),
+                        const SizedBox(height: Gaps.sm),
+                        Text(
+                          'No messages yet.',
+                          style: AppText.bodyMedium.copyWith(
+                            color: BrandColors.text2,
+                          ),
+                        ),
+                      ],
                     ),
                   );
                 }
@@ -557,17 +621,52 @@ class _EventChatPageState extends ConsumerState<EventChatPage> {
           ),
 
           // Message input
-          _ChatInput(
-            controller: _messageController,
-            focusNode: _focusNode,
-            onSend: _sendMessage,
-            replyingTo: _replyingTo,
-            onCancelReply: () {
-              setState(() {
-                _replyingTo = null;
-              });
+          messagesAsync.when(
+            data: (messages) {
+              final allMessages = [
+                ..._pendingMessages,
+                ...messages,
+              ];
+              return _ChatInput(
+                controller: _messageController,
+                focusNode: _focusNode,
+                onSend: _sendMessage,
+                replyingTo: _replyingTo,
+                onCancelReply: () {
+                  setState(() {
+                    _replyingTo = null;
+                  });
+                },
+                eventStateColor: _eventStateColor,
+                showSuggestions: allMessages.isEmpty,
+              );
             },
-            eventStateColor: _eventStateColor,
+            loading: () => _ChatInput(
+              controller: _messageController,
+              focusNode: _focusNode,
+              onSend: _sendMessage,
+              replyingTo: _replyingTo,
+              onCancelReply: () {
+                setState(() {
+                  _replyingTo = null;
+                });
+              },
+              eventStateColor: _eventStateColor,
+              showSuggestions: false,
+            ),
+            error: (_, __) => _ChatInput(
+              controller: _messageController,
+              focusNode: _focusNode,
+              onSend: _sendMessage,
+              replyingTo: _replyingTo,
+              onCancelReply: () {
+                setState(() {
+                  _replyingTo = null;
+                });
+              },
+              eventStateColor: _eventStateColor,
+              showSuggestions: false,
+            ),
           ),
         ],
       ),
@@ -780,6 +879,7 @@ class _ChatInput extends StatelessWidget {
   final ChatMessage? replyingTo;
   final VoidCallback? onCancelReply;
   final Color eventStateColor;
+  final bool showSuggestions;
 
   const _ChatInput({
     required this.controller,
@@ -788,6 +888,7 @@ class _ChatInput extends StatelessWidget {
     this.replyingTo,
     this.onCancelReply,
     required this.eventStateColor,
+    this.showSuggestions = false,
   });
 
   void _showAddExpenseBottomSheet(BuildContext context) {
@@ -835,6 +936,22 @@ class _ChatInput extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            // Message suggestions (empty state)
+            if (showSuggestions)
+              Align(
+              alignment: Alignment.centerLeft,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                horizontal: Pads.sectionH,
+                ),
+                child: MessageSuggestionsList(
+                onSuggestionTap: (suggestion) {
+                  controller.text = suggestion;
+                },
+                ),
+              ),
+              ),
+
             // Reply banner
             if (replyingTo != null)
               Container(
@@ -1091,108 +1208,3 @@ class _ChatInput extends StatelessWidget {
 }
 
 /// Message action menu (bottom sheet)
-class _MessageActionMenu extends StatelessWidget {
-  final ChatMessage message;
-  final bool isCurrentUser;
-  final VoidCallback onPin;
-  final VoidCallback onReply;
-  final VoidCallback? onDelete;
-
-  const _MessageActionMenu({
-    required this.message,
-    required this.isCurrentUser,
-    required this.onPin,
-    required this.onReply,
-    this.onDelete,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: Pads.sectionV),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Pin/Unpin option
-            _MenuOption(
-              icon: message.isPinned ? Icons.push_pin : Icons.push_pin_outlined,
-              label: message.isPinned ? 'Unpin' : 'Pin',
-              onTap: onPin,
-            ),
-
-            // Reply option
-            _MenuOption(
-              icon: Icons.reply,
-              label: 'Reply',
-              onTap: onReply,
-            ),
-
-            // Delete option (only for current user)
-            if (onDelete != null) ...[
-              const Divider(color: BrandColors.border, height: 1),
-              _MenuOption(
-                icon: Icons.delete_outline,
-                label: 'Delete Message',
-                onTap: onDelete!,
-                isDestructive: true,
-              ),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// Individual menu option
-class _MenuOption extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-  final bool isDestructive;
-
-  const _MenuOption({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-    this.isDestructive = false,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: BrandColors.bg2,
-      child: InkWell(
-        onTap: () {
-          // Close bottom sheet first, then execute callback
-          Navigator.of(context).pop();
-          onTap();
-        },
-        child: Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: Pads.sectionH,
-            vertical: Pads.ctlV,
-          ),
-          child: Row(
-            children: [
-              Icon(
-                icon,
-                size: IconSizes.sm,
-                color: isDestructive ? BrandColors.cantVote : BrandColors.text1,
-              ),
-              const SizedBox(width: Gaps.md),
-              Text(
-                label,
-                style: AppText.bodyMedium.copyWith(
-                  color:
-                      isDestructive ? BrandColors.cantVote : BrandColors.text1,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
