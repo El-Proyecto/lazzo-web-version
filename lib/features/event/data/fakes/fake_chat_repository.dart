@@ -53,7 +53,7 @@ class FakeChatRepository implements ChatRepository {
       userAvatar: null,
       content: 'Mal posso esperar! 🔥',
       createdAt: DateTime.now().subtract(const Duration(hours: 2)),
-      read: true,
+      isReadBySomeone: true,
     );
 
     // Message that will be pinned
@@ -65,7 +65,7 @@ class FakeChatRepository implements ChatRepository {
       userAvatar: null,
       content: 'IMPORTANTE: Encontro às 14h no parque!',
       createdAt: DateTime.now().subtract(const Duration(minutes: 90)),
-      read: true,
+      isReadBySomeone: true,
       isPinned: true, // This message is pinned
     );
 
@@ -80,7 +80,7 @@ class FakeChatRepository implements ChatRepository {
         userAvatar: null,
         content: 'Preciso de boleia, alguém passa pela Amadora?',
         createdAt: DateTime.now().subtract(const Duration(minutes: 45)),
-        read: true,
+        isReadBySomeone: true,
         replyTo: msg1, // Reply to Maria's message
       ),
       ChatMessage(
@@ -91,7 +91,7 @@ class FakeChatRepository implements ChatRepository {
         userAvatar: null,
         content: 'Eu passo! Mando mensagem quando sair.',
         createdAt: DateTime.now().subtract(const Duration(minutes: 30)),
-        read: true,
+        isReadBySomeone: true,
       ),
       ChatMessage(
         id: 'msg-5',
@@ -101,7 +101,7 @@ class FakeChatRepository implements ChatRepository {
         userAvatar: null,
         content: 'Levo cerveja artesanal para toda a gente 🍺',
         createdAt: DateTime.now().subtract(const Duration(minutes: 15)),
-        read: false,
+        isReadBySomeone: false,
       ),
       ChatMessage(
         id: 'msg-6',
@@ -111,7 +111,7 @@ class FakeChatRepository implements ChatRepository {
         userAvatar: null,
         content: 'Perfeito! Levo as sobremesas então 🍰',
         createdAt: DateTime.now().subtract(const Duration(minutes: 5)),
-        read: false,
+        isReadBySomeone: false,
       ),
       // Deleted message example
       ChatMessage(
@@ -122,7 +122,7 @@ class FakeChatRepository implements ChatRepository {
         userAvatar: null,
         content: 'Message Deleted',
         createdAt: DateTime.now().subtract(const Duration(minutes: 3)),
-        read: false,
+        isReadBySomeone: false,
         isDeleted: true, // This message was deleted
       ),
       ChatMessage(
@@ -133,7 +133,7 @@ class FakeChatRepository implements ChatRepository {
         userAvatar: null,
         content: 'Não há problema! Para a próxima 👍',
         createdAt: DateTime.now().subtract(const Duration(minutes: 2)),
-        read: false,
+        isReadBySomeone: false,
       ),
       ChatMessage(
         id: 'msg-9',
@@ -143,7 +143,7 @@ class FakeChatRepository implements ChatRepository {
         userAvatar: null,
         content: 'Também não consigo... talvez podíamos mudar a data?',
         createdAt: DateTime.now().subtract(const Duration(minutes: 1)),
-        read: false,
+        isReadBySomeone: false,
       ),
       // Consecutive messages from same user
       ChatMessage(
@@ -154,7 +154,7 @@ class FakeChatRepository implements ChatRepository {
         userAvatar: null,
         content: 'Ei pessoal!',
         createdAt: DateTime.now().subtract(const Duration(seconds: 50)),
-        read: false,
+        isReadBySomeone: false,
       ),
       ChatMessage(
         id: 'msg-11',
@@ -164,7 +164,7 @@ class FakeChatRepository implements ChatRepository {
         userAvatar: null,
         content: 'Esqueci de dizer',
         createdAt: DateTime.now().subtract(const Duration(seconds: 48)),
-        read: false,
+        isReadBySomeone: false,
       ),
       ChatMessage(
         id: 'msg-12',
@@ -174,7 +174,7 @@ class FakeChatRepository implements ChatRepository {
         userAvatar: null,
         content: 'Vou levar saladas também!',
         createdAt: DateTime.now().subtract(const Duration(seconds: 46)),
-        read: false,
+        isReadBySomeone: false,
       ),
       // Reply with multiple messages
       ChatMessage(
@@ -185,7 +185,7 @@ class FakeChatRepository implements ChatRepository {
         userAvatar: null,
         content: 'Ótimo!',
         createdAt: DateTime.now().subtract(const Duration(seconds: 40)),
-        read: true,
+        isReadBySomeone: true,
         replyTo: ChatMessage(
           id: 'msg-12',
           eventId: 'event-1',
@@ -194,7 +194,7 @@ class FakeChatRepository implements ChatRepository {
           userAvatar: null,
           content: 'Vou levar saladas também!',
           createdAt: DateTime.now().subtract(const Duration(seconds: 46)),
-          read: false,
+          isReadBySomeone: false,
         ),
       ),
       ChatMessage(
@@ -205,7 +205,7 @@ class FakeChatRepository implements ChatRepository {
         userAvatar: null,
         content: 'Assim temos variedade',
         createdAt: DateTime.now().subtract(const Duration(seconds: 38)),
-        read: true,
+        isReadBySomeone: true,
       ),
     ]);
   }
@@ -248,7 +248,7 @@ class FakeChatRepository implements ChatRepository {
       userName: 'Current User',
       content: content,
       createdAt: DateTime.now(),
-      read: true,
+      isReadBySomeone: true,
       replyTo: replyTo,
     );
 
@@ -330,10 +330,12 @@ class FakeChatRepository implements ChatRepository {
   }) async {
     await Future.delayed(const Duration(milliseconds: 200));
 
-    // In fake mode, count messages where read = false and userId != currentUserId
+    // In fake mode, count messages where isReadBySomeone = false and userId != currentUserId
     final unreadCount = _messages
-        .where(
-            (m) => m.eventId == eventId && !m.read && m.userId != currentUserId)
+        .where((m) =>
+            m.eventId == eventId &&
+            !m.isReadBySomeone &&
+            m.userId != currentUserId)
         .length;
 
     print('[FakeChatRepository] Unread count (fake): $unreadCount');
@@ -354,9 +356,9 @@ class FakeChatRepository implements ChatRepository {
     // Sort DESCENDING (newest first)
     eventMessages.sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
-    // Map to include isReadBySomeone (use read field as fallback)
+    // Map to include isReadBySomeone (use isReadBySomeone field)
     final messagesWithStatus = eventMessages.take(limit).map((m) {
-      return m.copyWith(isReadBySomeone: m.read);
+      return m.copyWith(isReadBySomeone: m.isReadBySomeone);
     }).toList();
 
     print(

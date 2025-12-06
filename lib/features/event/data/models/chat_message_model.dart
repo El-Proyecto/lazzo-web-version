@@ -47,11 +47,10 @@ class ChatMessageModel {
       userAvatar: userData?['avatar_url'] as String?,
       content: json['content'] as String,
       createdAt: DateTime.parse(json['created_at'] as String),
-      read: json['read'] as bool? ?? false,
+      isReadBySomeone: json['read'] as bool? ?? false,
       isPinned: json['is_pinned'] as bool? ?? false,
       isDeleted: json['is_deleted'] as bool? ?? false,
       replyToId: json['reply_to_id'] as String?,
-      isReadBySomeone: json['is_read_by_someone'] as bool? ?? false,
     );
   }
 
@@ -63,7 +62,7 @@ class ChatMessageModel {
       'user_id': userId,
       'content': content,
       'created_at': createdAt.toIso8601String(),
-      'read': read,
+      'read': isReadBySomeone,
       'is_pinned': isPinned,
       'is_deleted': isDeleted,
       if (replyToId != null) 'reply_to_id': replyToId,
@@ -80,11 +79,10 @@ class ChatMessageModel {
       userAvatar: userAvatar,
       content: content,
       createdAt: createdAt,
-      read: read,
+      isReadBySomeone: isReadBySomeone,
       isPinned: isPinned,
       isDeleted: isDeleted,
       replyTo: null, // Will be populated by repository if needed
-      isReadBySomeone: isReadBySomeone,
     );
   }
 
@@ -98,11 +96,10 @@ class ChatMessageModel {
       userAvatar: entity.userAvatar,
       content: entity.content,
       createdAt: entity.createdAt,
-      read: entity.read,
+      isReadBySomeone: entity.isReadBySomeone,
       isPinned: entity.isPinned,
       isDeleted: entity.isDeleted,
       replyToId: entity.replyTo?.id,
-      isReadBySomeone: entity.isReadBySomeone,
     );
   }
 }

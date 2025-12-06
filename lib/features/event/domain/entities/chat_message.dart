@@ -62,11 +62,10 @@ class ChatMessage {
       userAvatar: userAvatar ?? this.userAvatar,
       content: content ?? this.content,
       createdAt: createdAt ?? this.createdAt,
-      read: read ?? this.read,
+      isReadBySomeone: isReadBySomeone ?? this.isReadBySomeone,
       isPinned: isPinned ?? this.isPinned,
       isDeleted: isDeleted ?? this.isDeleted,
       replyTo: replyTo ?? this.replyTo,
-      isReadBySomeone: isReadBySomeone ?? this.isReadBySomeone,
       isPending: isPending ?? this.isPending,
     );
   }

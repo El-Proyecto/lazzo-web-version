@@ -178,7 +178,7 @@ class _EventLivingPageState extends ConsumerState<EventLivingPage> {
                               userAvatar: m.userAvatar,
                               content: m.content,
                               timestamp: m.createdAt,
-                              read: m.read,
+                              isReadBySomeone: m.isReadBySomeone,
                               isDeleted: m.isDeleted,
                               isPending: m.isPending,
                             ),

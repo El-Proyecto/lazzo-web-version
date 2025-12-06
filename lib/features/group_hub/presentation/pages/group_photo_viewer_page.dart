@@ -51,17 +51,21 @@ class _GroupPhotoViewerPageState extends State<GroupPhotoViewerPage> {
         itemCount: widget.photos.length,
         itemBuilder: (context, index) {
           final photo = widget.photos[index];
-          
+
           // Check if current user is the uploader
           final currentUserId = Supabase.instance.client.auth.currentUser?.id;
-          final isCurrentUser = currentUserId != null && photo.uploaderId == currentUserId;
-          final displayName = isCurrentUser ? 'You' : (photo.uploaderName ?? 'Unknown');
-          
-          final hasProfilePhoto = photo.profileImageUrl != null && photo.profileImageUrl!.isNotEmpty;
-          final uploaderInitial = photo.uploaderName != null && photo.uploaderName!.isNotEmpty
-              ? photo.uploaderName![0].toUpperCase()
-              : '?';
-          
+          final isCurrentUser =
+              currentUserId != null && photo.uploaderId == currentUserId;
+          final displayName =
+              isCurrentUser ? 'You' : (photo.uploaderName ?? 'Unknown');
+
+          final hasProfilePhoto = photo.profileImageUrl != null &&
+              photo.profileImageUrl!.isNotEmpty;
+          final uploaderInitial =
+              photo.uploaderName != null && photo.uploaderName!.isNotEmpty
+                  ? photo.uploaderName![0].toUpperCase()
+                  : '?';
+
           print('\n👤 [GROUP PHOTO VIEWER] Photo uploader info:');
           print('   - uploaderId: ${photo.uploaderId}');
           print('   - currentUserId: $currentUserId');
@@ -69,7 +73,7 @@ class _GroupPhotoViewerPageState extends State<GroupPhotoViewerPage> {
           print('   - uploaderName: "${photo.uploaderName}"');
           print('   - profileImageUrl: ${photo.profileImageUrl ?? "null"}');
           print('   - Display: $displayName');
-          
+
           return Stack(
             children: [
               // Main photo (centered, interactive)
@@ -100,9 +104,10 @@ class _GroupPhotoViewerPageState extends State<GroupPhotoViewerPage> {
                 bottom: 16,
                 left: 16,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   decoration: BoxDecoration(
-                    color: BrandColors.bg1.withOpacity(0.8),
+                    color: BrandColors.bg1.withValues(alpha: 0.8),
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Row(

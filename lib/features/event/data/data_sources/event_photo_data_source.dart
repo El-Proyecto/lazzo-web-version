@@ -10,10 +10,10 @@ class EventPhotoDataSource {
   EventPhotoDataSource(this._client);
 
   /// Upload a photo to Supabase Storage and create database record
-  /// 
+  ///
   /// Storage path: /{groupId}/{eventId}/{userId}/{timestamp}.jpg
   /// Bucket: memory_groups (private, requires auth)
-  /// 
+  ///
   /// Returns the uploaded photo data including URL and storage path
   Future<Map<String, dynamic>> uploadPhoto({
     required String eventId,
@@ -33,9 +33,7 @@ class EventPhotoDataSource {
       final storagePath = '$groupId/$eventId/$userId/$timestamp.$extension';
 
       // 2. Upload to Supabase Storage
-      final uploadPath = await _client.storage
-          .from('memory_groups')
-          .upload(
+      await _client.storage.from('memory_groups').upload(
             storagePath,
             imageFile,
             fileOptions: FileOptions(
@@ -45,9 +43,8 @@ class EventPhotoDataSource {
           );
 
       // 3. Get public URL (will require signed URL for private bucket)
-      final publicUrl = _client.storage
-          .from('memory_groups')
-          .getPublicUrl(storagePath);
+      final publicUrl =
+          _client.storage.from('memory_groups').getPublicUrl(storagePath);
 
       // 4. Create database record in group_photos table
       final photoData = {
@@ -62,7 +59,8 @@ class EventPhotoDataSource {
       final response = await _client
           .from('group_photos')
           .insert(photoData)
-          .select('id, url, storage_path, captured_at, uploader_id, is_portrait')
+          .select(
+              'id, url, storage_path, captured_at, uploader_id, is_portrait')
           .single();
 
       return response;
@@ -90,7 +88,8 @@ class EventPhotoDataSource {
   }
 
   /// Get signed URL for authenticated access to private bucket
-  Future<String> getSignedUrl(String storagePath, {int expiresIn = 3600}) async {
+  Future<String> getSignedUrl(String storagePath,
+      {int expiresIn = 3600}) async {
     try {
       return await _client.storage
           .from('memory_groups')
@@ -123,19 +122,20 @@ class EventPhotoDataSource {
     try {
       // Read image file bytes
       final bytes = await imageFile.readAsBytes();
-      
+
       // Decode image to get dimensions
       final image = img.decodeImage(bytes);
-      
+
       if (image == null) {
         print('⚠️ Could not decode image, defaulting to landscape');
         return false;
       }
-      
+
       // Portrait if height > width
       final isPortrait = image.height > image.width;
-      print('📐 Image dimensions: ${image.width}x${image.height} -> ${isPortrait ? "Portrait" : "Landscape"}');
-      
+      print(
+          '📐 Image dimensions: ${image.width}x${image.height} -> ${isPortrait ? "Portrait" : "Landscape"}');
+
       return isPortrait;
     } catch (e) {
       print('⚠️ Error checking image orientation: $e, defaulting to landscape');

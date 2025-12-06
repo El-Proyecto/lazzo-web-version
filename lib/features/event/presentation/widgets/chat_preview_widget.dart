@@ -19,7 +19,7 @@ class ChatMessagePreview {
   final String? userAvatar;
   final String content;
   final DateTime timestamp;
-  final bool read;
+  final bool isReadBySomeone;
   final bool isPinned;
   final bool isDeleted;
   final bool isPending;
@@ -31,7 +31,7 @@ class ChatMessagePreview {
     this.userAvatar,
     required this.content,
     required this.timestamp,
-    required this.read,
+    required this.isReadBySomeone,
     this.isPinned = false,
     this.isDeleted = false,
     this.isPending = false,
@@ -180,7 +180,7 @@ class _ChatPreviewWidgetState extends State<ChatPreviewWidget> {
         userName: 'You',
         content: content,
         timestamp: DateTime.now(),
-        read: false,
+        isReadBySomeone: false,
         isPending: true,
         replyTo: _replyingTo,
       );
@@ -417,7 +417,7 @@ class _ChatPreviewWidgetState extends State<ChatPreviewWidget> {
                                     userName: message.userName,
                                     content: message.content,
                                     timestamp: message.createdAt,
-                                    read: false,
+                                    isReadBySomeone: false,
                                   ),
                                 );
                                 setState(() {
@@ -436,7 +436,7 @@ class _ChatPreviewWidgetState extends State<ChatPreviewWidget> {
                                     userName: message.userName,
                                     content: message.content,
                                     timestamp: message.createdAt,
-                                    read: false,
+                                    isReadBySomeone: false,
                                   ),
                                 );
                                 _showMessageActions(preview);
