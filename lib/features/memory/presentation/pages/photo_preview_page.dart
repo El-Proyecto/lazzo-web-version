@@ -187,25 +187,23 @@ class _PhotoPreviewPageState extends ConsumerState<PhotoPreviewPage> {
                   
                   return Row(
                     children: [
-                      // Profile photo - Show initials for now
-                      // TODO: Fetch real profile photo from ProfileEntity
-                      Container(
-                        width: 32,
-                        height: 32,
-                        decoration: const BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: BrandColors.bg3,
-                        ),
-                        child: Center(
-                          child: Text(
-                            photo.uploaderName.isNotEmpty
-                                ? photo.uploaderName[0].toUpperCase()
-                                : '?',
-                            style: AppText.labelLarge.copyWith(
-                              color: BrandColors.text1,
-                            ),
-                          ),
-                        ),
+                      // Profile photo with fallback to initials
+                      CircleAvatar(
+                        radius: 16,
+                        backgroundColor: BrandColors.bg3,
+                        foregroundImage: photo.profileImageUrl != null && photo.profileImageUrl!.isNotEmpty
+                            ? NetworkImage(photo.profileImageUrl!)
+                            : null,
+                        child: photo.profileImageUrl == null || photo.profileImageUrl!.isEmpty
+                            ? Text(
+                                photo.uploaderName.isNotEmpty
+                                    ? photo.uploaderName[0].toUpperCase()
+                                    : '?',
+                                style: AppText.labelLarge.copyWith(
+                                  color: BrandColors.text1,
+                                ),
+                              )
+                            : null,
                       ),
                       const SizedBox(width: Gaps.sm),
                       // Uploader name

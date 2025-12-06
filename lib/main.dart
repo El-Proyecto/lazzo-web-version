@@ -22,10 +22,10 @@ import 'features/home/data/data_sources/home_event_remote_data_source.dart';
 import 'features/home/data/repositories/home_event_repository_impl.dart';
 import 'features/home/presentation/providers/home_event_providers.dart';
 
-// INBOX PAYMENTS - TODO: Add real implementation imports when available
-// import '../features/inbox/data/data_sources/payment_remote_data_source.dart';
-// import '../features/inbox/data/repositories/payment_repository_impl.dart';
-// import '../features/inbox/presentation/providers/payments_provider.dart';
+// INBOX PAYMENTS - Real implementation
+import 'features/inbox/data/data_source/payments_remote_data_source.dart';
+import 'features/inbox/data/repositories/payment_repository_impl.dart';
+import 'features/inbox/presentation/providers/payments_provider.dart';
 
 // INBOX NOTIFICATIONS - TODO: Add real implementation imports when available
 // import '../features/inbox/data/data_sources/notification_remote_data_source.dart';
@@ -41,6 +41,14 @@ import 'features/home/presentation/providers/home_event_providers.dart';
 import '../features/groups/presentation/providers/groups_provider.dart';
 import '../features/groups/data/data_sources/groups_data_source.dart';
 import '../features/groups/data/repositories/group_repository_impl.dart';
+// import '../features/groups/presentation/providers/groups_provider.dart';
+// import '../features/groups/data/data_sources/groups_data_source.dart';
+// import '../features/groups/data/repositories/group_repository_impl.dart';
+
+// EXPENSES
+import 'features/expense/presentation/providers/event_expense_providers.dart';
+import 'features/expense/data/data_sources/event_expense_remote_data_source.dart';
+import 'features/expense/data/repositories/event_expense_repository_impl.dart';
 
 // GROUP HUB - Real implementation
 import '../features/group_hub/presentation/providers/group_hub_providers.dart'
@@ -145,12 +153,17 @@ void main() async {
           ),
         ),
 
-        // Payment repo -> TODO: Add when PaymentRepositoryImpl exists
-        // paymentRepositoryProvider.overrideWith(
-        //   (ref) => PaymentRepositoryImpl(
-        //     PaymentRemoteDataSource(Supabase.instance.client),
-        //   ),
-        // ),
+        // Note: HOME PAYMENT SUMMARIES reuses inbox payment data directly
+        // No separate repository needed - see paymentSummariesControllerProvider
+
+        // ✅ INBOX PAYMENTS repo -> real (Supabase) via DI
+        paymentRepositoryProvider.overrideWith(
+          (ref) {
+            final client = Supabase.instance.client;
+            final dataSource = PaymentsRemoteDataSource(client);
+            return PaymentRepositoryImpl(dataSource, client);
+          },
+        ),
 
         // Notification repo -> TODO: Add when NotificationRepositoryImpl exists
         // notificationRepositoryProvider.overrideWith(
@@ -193,7 +206,8 @@ void main() async {
         group_hub.groupPhotosRepositoryProvider.overrideWith((ref) {
           final client = Supabase.instance.client;
           final dataSource = GroupPhotosDataSource(client);
-          return GroupPhotosRepositoryImpl(dataSource);
+          final storageService = StorageService(client);
+          return GroupPhotosRepositoryImpl(dataSource, storageService);
         }),
 
         // ✅ MEMORY MANAGEMENT repo -> real (Supabase) via DI (Nov 27, 2025)
@@ -227,6 +241,12 @@ void main() async {
         usersRepositoryProvider.overrideWith((ref) {
           final client = Supabase.instance.client;
           return UsersRepository(UsersRemoteDatasource(client));
+        }),
+
+        eventExpenseRepositoryProvider.overrideWith((ref) {
+          final client = Supabase.instance.client;
+          final dataSource = EventExpenseRemoteDataSource(client);
+          return EventExpenseRepositoryImpl(dataSource);
         }),
 
         // ✅ CREATE EVENT repo -> real (Supabase) via DI

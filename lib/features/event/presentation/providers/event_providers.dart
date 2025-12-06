@@ -5,18 +5,15 @@ import '../../data/fakes/fake_rsvp_repository.dart';
 import '../../data/fakes/fake_poll_repository.dart';
 import '../../data/fakes/fake_chat_repository.dart';
 import '../../data/fakes/fake_suggestion_repository.dart';
-import '../../data/fakes/fake_group_expense_repository.dart';
 import '../../domain/entities/event_detail.dart';
 import '../../domain/entities/rsvp.dart';
 import '../../domain/entities/poll.dart';
 import '../../domain/entities/suggestion.dart';
-import '../../domain/entities/group_expense_entity.dart';
 import '../../domain/repositories/event_repository.dart';
 import '../../domain/repositories/rsvp_repository.dart';
 import '../../domain/repositories/poll_repository.dart';
 import '../../domain/repositories/chat_repository.dart';
 import '../../domain/repositories/suggestion_repository.dart';
-import '../../domain/repositories/group_expense_repository.dart';
 import '../../domain/repositories/event_photo_repository.dart';
 import '../../domain/usecases/get_event_detail.dart';
 import '../../domain/usecases/get_event_rsvps.dart';
@@ -27,7 +24,6 @@ import '../../domain/usecases/create_suggestion.dart';
 import '../../domain/usecases/create_location_suggestion.dart';
 import '../../domain/usecases/toggle_suggestion_vote.dart';
 import '../../domain/usecases/update_event_status.dart';
-import '../../domain/usecases/get_group_expenses.dart';
 import '../../../group_hub/presentation/providers/group_hub_providers.dart';
 
 // Current user ID provider
@@ -93,6 +89,10 @@ final canManageEventProvider =
     final isAdmin =
         await ref.watch(isUserGroupAdminProvider(event.groupId).future);
 
+    if (isAdmin) {
+      print('✅ [CAN_MANAGE] User is group admin');
+    }
+
     return isAdmin;
   } catch (e) {
     return false;
@@ -118,10 +118,6 @@ final chatRepositoryProvider = Provider<ChatRepository>((ref) {
 
 final suggestionRepositoryProvider = Provider<SuggestionRepository>((ref) {
   return FakeSuggestionRepository();
-});
-
-final groupExpenseRepositoryProvider = Provider<GroupExpenseRepository>((ref) {
-  return FakeGroupExpenseRepository();
 });
 
 // Event photo repository provider (default to fake, override in main.dart)
@@ -245,22 +241,6 @@ final eventPollsProvider = FutureProvider.family<List<Poll>, String>((
 // REMOVED: recentMessagesProvider, MessagesNotifier, unreadMessagesCountProvider
 // These are now handled by chatMessagesProvider (stream-based) in chat_providers.dart
 
-// Group expenses provider (for event expenses)
-final getGroupExpensesUseCaseProvider = Provider<GetGroupExpenses>((ref) {
-  return GetGroupExpenses(ref.watch(groupExpenseRepositoryProvider));
-});
-
-final groupExpensesProvider = StateNotifierProvider.family<
-    GroupExpensesController, AsyncValue<List<GroupExpenseEntity>>, String>((
-  ref,
-  groupId,
-) {
-  return GroupExpensesController(
-    ref.watch(getGroupExpensesUseCaseProvider),
-    groupId,
-  );
-});
-
 // Event suggestions state provider
 final eventSuggestionsProvider =
     FutureProvider.family<List<Suggestion>, String>((ref, eventId) async {
@@ -346,8 +326,14 @@ class UserRsvpNotifier extends StateNotifier<AsyncValue<Rsvp?>> {
     try {
       final currentUserId = ref.read(currentUserIdProvider);
 
+      print(
+          '🔍 DEBUG submitVote: eventId=$eventId, userId=$currentUserId, newStatus=$status');
+
       final rsvp =
           await repository.submitRsvp(eventId, currentUserId ?? '', status);
+
+      print(
+          '🔍 DEBUG submitVote: RSVP submitted successfully - ${rsvp.status}');
 
       // Sync with current event suggestion
       try {
@@ -359,6 +345,9 @@ class UserRsvpNotifier extends StateNotifier<AsyncValue<Rsvp?>> {
       // Invalidate providers using StateNotifier's ref
       ref.invalidate(eventRsvpsProvider(eventId));
       ref.invalidate(eventDetailProvider(eventId));
+
+      print(
+          '🔍 DEBUG submitVote: Providers invalidated, UI will refresh automatically');
 
       // Update local state - this triggers UI rebuild
       state = AsyncValue.data(rsvp);
@@ -722,31 +711,5 @@ class ToggleLocationSuggestionVoteNotifier
     } catch (error, stackTrace) {
       state = AsyncValue.error(error, stackTrace);
     }
-  }
-}
-
-// Group expenses controller
-class GroupExpensesController
-    extends StateNotifier<AsyncValue<List<GroupExpenseEntity>>> {
-  final GetGroupExpenses _getGroupExpenses;
-  final String _groupId;
-
-  GroupExpensesController(this._getGroupExpenses, this._groupId)
-      : super(const AsyncValue.loading()) {
-    loadExpenses();
-  }
-
-  Future<void> loadExpenses() async {
-    state = const AsyncValue.loading();
-    try {
-      final expenses = await _getGroupExpenses(_groupId);
-      state = AsyncValue.data(expenses);
-    } catch (error, stackTrace) {
-      state = AsyncValue.error(error, stackTrace);
-    }
-  }
-
-  Future<void> refresh() async {
-    await loadExpenses();
   }
 }

@@ -50,6 +50,7 @@ final getGroupEventsUseCaseProvider = Provider<GetGroupEvents>((ref) {
   return GetGroupEvents(ref.watch(groupEventRepositoryProvider));
 });
 
+
 final getGroupMemoriesUseCaseProvider = Provider<GetGroupMemories>((ref) {
   return GetGroupMemories(ref.watch(groupMemoryRepositoryProvider));
 });

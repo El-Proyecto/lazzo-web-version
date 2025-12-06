@@ -43,32 +43,58 @@ class MemoryRepositoryImpl implements MemoryRepository {
 
       // Convert photos to entities with signed URLs
       final photos = <MemoryPhoto>[];
-      for (final photoData in photosData) {
+      for (int i = 0; i < photosData.length; i++) {
+        final photoData = photosData[i];
         final photoId = photoData['id'] as String;
         final storagePath = photoData['storage_path'] as String;
-        final isCoverPhoto = photoId == coverPhotoId;
         
-        print('   📷 Photo ${photoId.substring(0, 8)}...: isCover=$isCoverPhoto');
+        // Mark as cover: either the manually selected cover, or the first photo as fallback
+        final isCoverPhoto = coverPhotoId != null 
+            ? (photoId == coverPhotoId)
+            : (i == 0);  // If no cover selected, first photo is the cover
+        
+        print('   📷 Photo ${photoId.substring(0, 8)}...: isCover=$isCoverPhoto (coverPhotoId=${coverPhotoId ?? "null"})');
         
         // Generate signed URL (with caching in StorageService)
         final signedUrl = await _storageService.getSignedUrl(storagePath);
 
         final isPortrait = photoData['is_portrait'] as bool? ?? false;
         
-        // Extract uploader name from profiles join
+        // Extract uploader name and profile photo from users join
         final uploaderId = photoData['uploader_id'] as String;
         String? uploaderName;
-        final profiles = photoData['profiles'];
-        if (profiles != null) {
-          if (profiles is Map<String, dynamic>) {
-            uploaderName = profiles['name'] as String?;
-          } else if (profiles is List && profiles.isNotEmpty) {
-            final firstProfile = profiles[0] as Map<String, dynamic>;
-            uploaderName = firstProfile['name'] as String?;
+        String? profileImageUrl;
+        final users = photoData['users'];
+        if (users != null) {
+          if (users is Map<String, dynamic>) {
+            uploaderName = users['name'] as String?;
+            final avatarPath = users['avatar_url'] as String?;
+            // Generate signed URL for avatar if path exists
+            if (avatarPath != null && avatarPath.isNotEmpty) {
+              try {
+                profileImageUrl = await _storageService.getSignedUrl(avatarPath, bucket: 'users-profile-pic');
+              } catch (e) {
+                print('   ⚠️ Failed to get avatar signed URL: $e');
+                profileImageUrl = null;
+              }
+            }
+          } else if (users is List && users.isNotEmpty) {
+            final firstUser = users[0] as Map<String, dynamic>;
+            uploaderName = firstUser['name'] as String?;
+            final avatarPath = firstUser['avatar_url'] as String?;
+            // Generate signed URL for avatar if path exists
+            if (avatarPath != null && avatarPath.isNotEmpty) {
+              try {
+                profileImageUrl = await _storageService.getSignedUrl(avatarPath, bucket: 'users-profile-pic');
+              } catch (e) {
+                print('   ⚠️ Failed to get avatar signed URL: $e');
+                profileImageUrl = null;
+              }
+            }
           }
         }
         
-        print('   👤 Uploader: id=$uploaderId, name="${uploaderName ?? "Unknown"}"');
+        print('   👤 Uploader: id=$uploaderId, name="${uploaderName ?? "Unknown"}", profileUrl=${profileImageUrl ?? "null"}');
         
         photos.add(MemoryPhoto(
           id: photoId,
@@ -81,6 +107,7 @@ class MemoryRepositoryImpl implements MemoryRepository {
           aspectRatio: isPortrait ? 0.75 : 1.33, // Portrait ~3:4, Landscape ~4:3
           uploaderId: uploaderId,
           uploaderName: uploaderName ?? 'Unknown', // Actual name from profiles join
+          profileImageUrl: profileImageUrl,
           isCover: isCoverPhoto,
         ));
       }

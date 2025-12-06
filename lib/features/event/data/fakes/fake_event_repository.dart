@@ -1,5 +1,6 @@
 import '../../domain/entities/event_detail.dart';
 import '../../domain/repositories/event_repository.dart';
+import '../../domain/entities/event_participant_entity.dart';
 
 /// Fake event repository for development
 class FakeEventRepository implements EventRepository {
@@ -237,5 +238,38 @@ class FakeEventRepository implements EventRepository {
     _events[eventId] = updatedEvent;
 
     return updatedEvent;
+  }
+
+  @override
+  Future<List<EventParticipantEntity>> getEventParticipants(
+      String eventId) async {
+    print('🎭 [FakeEventRepository] Getting participants for event: $eventId');
+    await Future.delayed(const Duration(milliseconds: 300));
+
+    // Mock participants para teste
+    final participants = [
+      const EventParticipantEntity(
+        userId: 'current_user',
+        displayName: 'You',
+        avatarUrl: null,
+        status: 'confirmed',
+      ),
+      const EventParticipantEntity(
+        userId: 'user-1',
+        displayName: 'Marco Silva',
+        avatarUrl: 'https://i.pravatar.cc/150?u=marco',
+        status: 'confirmed',
+      ),
+      const EventParticipantEntity(
+        userId: 'user-2',
+        displayName: 'Ana Costa',
+        avatarUrl: 'https://i.pravatar.cc/150?u=ana',
+        status: 'confirmed',
+      ),
+    ];
+
+    print(
+        '✅ [FakeEventRepository] Returning ${participants.length} mock participants');
+    return participants;
   }
 }

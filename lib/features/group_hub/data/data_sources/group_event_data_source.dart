@@ -47,14 +47,40 @@ class SupabaseGroupEventDataSource implements GroupEventDataSource {
   @override
   Future<List<Map<String, dynamic>>> getGroupEvents(String groupId) async {
     try {
+      print('\n🔍 [GROUP EVENTS DATA SOURCE] Fetching events for group: $groupId');
+      print('   📋 Query: group_id = $groupId AND computed_status != "ended"');
+      
       final response = await _client
           .from('group_hub_events_view')
           .select()
           .eq('group_id', groupId)
+          .neq('computed_status', 'ended')
           .order('priority', ascending: false)
           .order('start_datetime', ascending: true);
 
       final events = List<Map<String, dynamic>>.from(response as List);
+      print('✅ [GROUP EVENTS DATA SOURCE] Query returned ${events.length} events');
+      
+      if (events.isEmpty) {
+        print('⚠️ [GROUP EVENTS DATA SOURCE] No events found! Checking if there are ANY events for this group...');
+        
+        // Debug query without filters to see what's in the view
+        final debugResponse = await _client
+            .from('group_hub_events_view')
+            .select('event_id, title, computed_status, group_id')
+            .eq('group_id', groupId)
+            .limit(5);
+        
+        print('   🔍 Debug: Found ${debugResponse.length} total events in view for this group:');
+        for (final event in debugResponse) {
+          print('      - ${event['title']}: status=${event['computed_status']}, group_id=${event['group_id']}');
+        }
+      } else {
+        // Show events that passed the filter
+        for (final event in events) {
+          print('   ✅ Event: ${event['title']} (computed_status: ${event['computed_status']})');
+        }
+      }
       
       // Get current user ID to determine their vote status
       final currentUserId = _client.auth.currentUser?.id;

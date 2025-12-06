@@ -70,8 +70,9 @@ class MemoryDataSource {
             is_portrait,
             captured_at,
             created_at,
-            profiles:uploader_id (
-              name
+            users:uploader_id (
+              name,
+              avatar_url
             )
           ''')
           .eq('event_id', eventId)
@@ -82,7 +83,7 @@ class MemoryDataSource {
       if (response.isNotEmpty) {
         final sample = response.first;
         print('   - uploader_id: ${sample['uploader_id']}');
-        print('   - profiles: ${sample['profiles']}');
+        print('   - users: ${sample['users']}');
       }
       
       return List<Map<String, dynamic>>.from(response);

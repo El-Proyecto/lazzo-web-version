@@ -1,5 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../features/home/domain/entities/home_event.dart';
+import '../../../features/event/presentation/providers/event_participants_provider.dart';
+import '../../../features/expense/presentation/providers/event_expense_providers.dart';
+import '../../../features/inbox/presentation/providers/payments_provider.dart';
 import '../../constants/spacing.dart';
 import '../../constants/text_styles.dart';
 import '../../themes/colors.dart';
@@ -17,7 +22,7 @@ enum HomeEventCardState { pending, confirmed, living, recap }
 /// Large event card for Home page "Next Event" section
 /// Shows event details with state-specific border/chip colors
 /// Includes Chat and Expense action buttons at bottom
-class HomeEventCard extends StatefulWidget {
+class HomeEventCard extends ConsumerStatefulWidget {
   final HomeEventEntity event;
   final HomeEventCardState state;
   final VoidCallback? onTap;
@@ -36,10 +41,10 @@ class HomeEventCard extends StatefulWidget {
   });
 
   @override
-  State<HomeEventCard> createState() => _HomeEventCardState();
+  ConsumerState<HomeEventCard> createState() => _HomeEventCardState();
 }
 
-class _HomeEventCardState extends State<HomeEventCard> {
+class _HomeEventCardState extends ConsumerState<HomeEventCard> {
   late HomeEventEntity _currentEvent;
 
   @override
@@ -250,62 +255,62 @@ class _HomeEventCardState extends State<HomeEventCard> {
         // Event name, group, and location
         Expanded(
           child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            _currentEvent.name,
-            style: AppText.titleMediumEmph.copyWith(
-          color: BrandColors.text1,
-            ),
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-          ),
-          const SizedBox(height: 4),
-          // Location with icon
-          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-          const Icon(
-            Icons.location_on,
-            size: 14,
-            color: BrandColors.text2,
-          ),
-          const SizedBox(width: 4),
-          Expanded(
-            child: Text(
-              _currentEvent.location ?? 'To be decided',
-              style: AppText.bodyMedium.copyWith(
-            color: BrandColors.text2,
+              Text(
+                _currentEvent.name,
+                style: AppText.titleMediumEmph.copyWith(
+                  color: BrandColors.text1,
+                ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
               ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
+              const SizedBox(height: 4),
+              // Location with icon
+              Row(
+                children: [
+                  const Icon(
+                    Icons.location_on,
+                    size: 14,
+                    color: BrandColors.text2,
+                  ),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Text(
+                      _currentEvent.location ?? 'To be decided',
+                      style: AppText.bodyMedium.copyWith(
+                        color: BrandColors.text2,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+              if (_currentEvent.groupName != null) const SizedBox(height: 2),
+              // Group with icon
+              if (_currentEvent.groupName != null)
+                Row(
+                  children: [
+                    const Icon(
+                      Icons.group,
+                      size: 14,
+                      color: BrandColors.text2,
+                    ),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: Text(
+                        _currentEvent.groupName!,
+                        style: AppText.bodyMedium.copyWith(
+                          color: BrandColors.text2,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
             ],
-          ),
-          if (_currentEvent.groupName != null) const SizedBox(height: 2),
-          // Group with icon
-          if (_currentEvent.groupName != null)
-            Row(
-          children: [
-            const Icon(
-              Icons.group,
-              size: 14,
-              color: BrandColors.text2,
-            ),
-            const SizedBox(width: 4),
-            Expanded(
-              child: Text(
-            _currentEvent.groupName!,
-            style: AppText.bodyMedium.copyWith(
-              color: BrandColors.text2,
-            ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          ],
-            ),
-        ],
           ),
         ),
       ],
@@ -540,21 +545,254 @@ class _HomeEventCardState extends State<HomeEventCard> {
         // Expense button
         Expanded(
           child: GestureDetector(
-            onTap: () {
-              // Open add expense bottom sheet
-              AddExpenseBottomSheet.show(
-                context: context,
-                participants: const [], // TODO P2: Load real participants
-                onAddExpense: (title, paidByIds, payerIds, totalAmount) {
-                  // TODO P2: Save expense to backend
-                  debugPrint(
-                    'Expense added: $title, \$${totalAmount.toStringAsFixed(2)}',
+            onTap: () async {
+              try {
+                final currentState =
+                    ref.read(eventParticipantsProvider(_currentEvent.id));
+
+                // If loading, wait for it to complete
+                if (currentState is AsyncLoading) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Loading participants...'),
+                      duration: Duration(seconds: 1),
+                    ),
                   );
-                  Navigator.of(context).pop();
-                },
-              );
-              // Also call the callback if provided
-              widget.onExpensePressed?.call();
+
+                  // Wait a bit and try again
+                  await Future.delayed(const Duration(milliseconds: 1500));
+
+                  final newState =
+                      ref.read(eventParticipantsProvider(_currentEvent.id));
+
+                  if (newState is AsyncData) {
+                    final participants = newState.value ?? [];
+
+                    if (participants.isEmpty) {
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                              content:
+                                  Text('No participants found for this event')),
+                        );
+                      }
+                      return;
+                    }
+
+                    // Get current user ID
+                    final currentUserId =
+                        Supabase.instance.client.auth.currentUser?.id;
+
+                    // Convert participants - replace current user name with "You"
+                    final participantOptions = participants
+                        .map((p) => ExpenseParticipantOption(
+                              id: p.userId,
+                              name: p.userId == currentUserId
+                                  ? 'You'
+                                  : p.displayName,
+                              avatarUrl: p.avatarUrl,
+                            ))
+                        .toList();
+
+                    // Sort: "You" first, then alphabetically by name
+                    participantOptions.sort((a, b) {
+                      if (a.name == 'You') return -1;
+                      if (b.name == 'You') return 1;
+                      return a.name.compareTo(b.name);
+                    });
+
+                    // Capture eventId before async callback
+                    final eventId = _currentEvent.id;
+
+                    if (mounted) {
+                      AddExpenseBottomSheet.show(
+                        context: context,
+                        participants: participantOptions,
+                        onAddExpense: (title, paidById, participantsOwe,
+                            totalAmount) async {
+                          try {
+                            print(
+                                '🎯 [HomeEventCard] Expense button callback triggered');
+                            print('   Event ID: $eventId');
+                            print('   Title: $title');
+                            print('   PaidBy: $paidById');
+                            print('   ParticipantsOwe: $participantsOwe');
+                            print('   TotalAmount: €$totalAmount');
+
+                            // ✅ Create expense in Supabase
+                            print('🎯 [HomeEventCard] Calling provider...');
+                            await ref
+                                .read(eventExpensesProvider(eventId).notifier)
+                                .addExpense(
+                              description: title,
+                              amount: totalAmount,
+                              paidBy: paidById,
+                              participantsOwe: participantsOwe,
+                              participantsPaid: [],
+                            );
+                            print('🎯 [HomeEventCard] Provider call completed');
+
+                            // ✅ Invalidate payments to refresh home page
+                            ref.invalidate(paymentsOwedToUserProvider);
+                            ref.invalidate(paymentsUserOwesProvider);
+
+                            // Show success message
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Expense "$title" created!'),
+                                  backgroundColor: BrandColors.planning,
+                                ),
+                              );
+                            }
+
+                            widget.onExpensePressed?.call();
+                          } catch (e, stack) {
+                            print('❌ [HomeEventCard] Error in callback: $e');
+                            print('Stack: $stack');
+                            // Show error message
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Error creating expense: $e'),
+                                  backgroundColor: BrandColors.cantVote,
+                                ),
+                              );
+                            }
+                          }
+                        },
+                      );
+                    }
+                  } else if (newState is AsyncError) {
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                            content: Text(
+                                'Error loading participants: ${newState.error}')),
+                      );
+                    }
+                  } else {
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                            content: Text('Still loading, please try again')),
+                      );
+                    }
+                  }
+                  return;
+                }
+
+                // If already loaded, use data directly
+                if (currentState is AsyncData) {
+                  final participants = currentState.value ?? [];
+
+                  if (participants.isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                          content:
+                              Text('No participants found for this event')),
+                    );
+                    return;
+                  }
+
+                  // Get current user ID
+                  final currentUserId =
+                      Supabase.instance.client.auth.currentUser?.id;
+
+                  // Convert participants - replace current user name with "You"
+                  final participantOptions = participants
+                      .map((p) => ExpenseParticipantOption(
+                            id: p.userId,
+                            name: p.userId == currentUserId
+                                ? 'You'
+                                : p.displayName,
+                            avatarUrl: p.avatarUrl,
+                          ))
+                      .toList();
+
+                  // Sort: "You" first, then alphabetically by name
+                  participantOptions.sort((a, b) {
+                    if (a.name == 'You') return -1;
+                    if (b.name == 'You') return 1;
+                    return a.name.compareTo(b.name);
+                  });
+
+                  // Capture event ID before async callback
+                  final eventId = _currentEvent.id;
+
+                  // Show the bottom sheet
+                  AddExpenseBottomSheet.show(
+                    context: context,
+                    participants: participantOptions,
+                    onAddExpense:
+                        (title, paidById, participantsOwe, totalAmount) async {
+                      try {
+                        print(
+                            '🔴 [HomeEventCard] Expense button callback triggered');
+                        print('   Event ID: $eventId');
+                        print('   Title: $title');
+                        print('   PaidBy: $paidById');
+                        print('   ParticipantsOwe: $participantsOwe');
+                        print('   TotalAmount: €$totalAmount');
+
+                        // ✅ Create expense in Supabase
+                        print('🔴 [HomeEventCard] Calling provider...');
+                        await ref
+                            .read(eventExpensesProvider(eventId).notifier)
+                            .addExpense(
+                          description: title,
+                          amount: totalAmount,
+                          paidBy: paidById,
+                          participantsOwe: participantsOwe,
+                          participantsPaid: [],
+                        );
+                        print('🔴 [HomeEventCard] Provider call completed');
+
+                        // Show success message
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Expense "$title" created!'),
+                              backgroundColor: BrandColors.planning,
+                            ),
+                          );
+                        }
+
+                        widget.onExpensePressed?.call();
+                      } catch (e, stack) {
+                        print('❌ [HomeEventCard] Error in callback: $e');
+                        print('Stack: $stack');
+                        // Show error message
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Error creating expense: $e'),
+                              backgroundColor: BrandColors.cantVote,
+                            ),
+                          );
+                        }
+                      }
+                    },
+                  );
+                  return;
+                }
+
+                // If error state
+                if (currentState is AsyncError) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Error: ${currentState.error}')),
+                  );
+                  return;
+                }
+              } catch (e, stack) {
+                debugPrint(
+                    '❌ [HomeEventCard] Error opening expense sheet: $e\n$stack');
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Error: $e')),
+                  );
+                }
+              }
             },
             child: Container(
               height: 44,

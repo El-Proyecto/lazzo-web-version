@@ -13,6 +13,7 @@ import '../../../../shared/constants/text_styles.dart';
 import '../../../../shared/themes/colors.dart';
 import '../../../../shared/layouts/main_layout_providers.dart';
 import '../../../groups/presentation/providers/groups_provider.dart';
+import '../../../inbox/presentation/providers/payments_provider.dart';
 import '../widgets/no_groups_yet_card.dart';
 import '../widgets/no_upcoming_events_card.dart';
 import '../providers/home_event_providers.dart';
@@ -115,7 +116,7 @@ class _HomePageState extends ConsumerState<HomePage> {
   Widget build(BuildContext context) {
     final nextEventAsync = ref.watch(nextEventControllerProvider);
     final confirmedEventsAsync = ref.watch(confirmedEventsControllerProvider);
-    final pendingEventsAsync = ref.watch(homePendingEventsControllerProvider);
+    final pendingEventsAsync = ref.watch(homeEventsControllerProvider);
     final todosAsync = ref.watch(todosControllerProvider);
     final paymentsAsync = ref.watch(paymentSummariesControllerProvider);
     final totalBalanceAsync = ref.watch(totalBalanceControllerProvider);
@@ -321,7 +322,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                               // TODO: Navigate to event chat
                             },
                             onExpensePressed: () {
-                              // TODO: Open add expense bottom sheet
+                              // Handled inside HomeEventCard
                             },
                             onVoteChanged: (eventId, vote) {
                               // TODO: Update vote in backend
@@ -525,8 +526,8 @@ class _HomePageState extends ConsumerState<HomePage> {
                               data: (balance) {
                                 return Text(
                                   balance >= 0
-                                      ? '+€${balance.toStringAsFixed(0)}'
-                                      : '-€${balance.abs().toStringAsFixed(0)}',
+                                      ? '+€${balance.toStringAsFixed(2)}'
+                                      : '-€${balance.abs().toStringAsFixed(2)}',
                                   style: AppText.titleMediumEmph.copyWith(
                                     color: balance >= 0
                                         ? BrandColors.planning // Green
@@ -559,11 +560,18 @@ class _HomePageState extends ConsumerState<HomePage> {
                               child: PaymentSummaryCard(
                                 payment: payment,
                                 onTap: () {
-                                  // Set inbox tab to Payments (index 2)
+                                  // Store selected payment user ID
+                                  ref
+                                      .read(selectedPaymentUserIdProvider
+                                          .notifier)
+                                      .state = payment.userId;
+
+                                  // Set inbox internal tab to Payments (index 2) FIRST
                                   ref
                                       .read(inboxTabIndexProvider.notifier)
                                       .state = 2;
-                                  // Navigate to Inbox tab (index 2)
+
+                                  // Navigate to Inbox main tab (index 2)
                                   ref
                                       .read(mainLayoutTabProvider.notifier)
                                       .state = 2;

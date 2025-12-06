@@ -15,7 +15,7 @@ import '../widgets/living_time_left_pill.dart';
 import '../widgets/living_action_row.dart';
 import '../widgets/chat_preview_widget.dart';
 import '../widgets/host_time_controls.dart';
-import '../widgets/living_expenses_widget.dart';
+import '../widgets/event_expenses_widget.dart';
 
 /// Helper function to display "You" for current user, otherwise their name
 String _getUserDisplayName(
@@ -105,7 +105,7 @@ class _EventLivingPageState extends ConsumerState<EventLivingPage> {
                     AddExpenseBottomSheet.show(
                       context: context,
                       participants: [], // TODO: Get event participants
-                      onAddExpense: (title, paidByIds, payerIds, amount) {
+                      onAddExpense: (title, paidByIds, payerIds, amount) async {
                         // TODO: Implement add expense
                       },
                     );
@@ -223,7 +223,7 @@ class _EventLivingPageState extends ConsumerState<EventLivingPage> {
                   eventId: widget.eventId,
                   mode: ChatMode.living,
                   participants: const [], // TODO: Get event participants
-                  onAddExpense: (title, paidByIds, payerIds, amount) {
+                  onAddExpense: (title, paidByIds, payerIds, amount) async {
                     // TODO: Implement add expense
                   },
                 ),

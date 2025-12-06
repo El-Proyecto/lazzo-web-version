@@ -1,5 +1,6 @@
 import '../entities/group.dart';
 import '../entities/group_entity.dart';
+import '../entities/group_member_entity.dart';
 import 'package:image_picker/image_picker.dart';
 
 /// Interface do repositório de grupos
@@ -54,4 +55,6 @@ abstract class GroupRepository {
 
   /// Obtém membros do grupo
   Future<List<String>> getGroupMembers(String groupId);
+
+  Future<List<GroupMemberEntity>> getGroupMembersEntities(String groupId);
 }

@@ -1,19 +1,20 @@
 import 'package:flutter/material.dart';
-import '../../domain/entities/group_expense_entity.dart';
+import '../../../expense/domain/entities/event_expense_entity.dart';
 import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/constants/text_styles.dart';
 import '../../../../shared/themes/colors.dart';
 
-class GroupExpenseCard extends StatelessWidget {
-  final GroupExpenseEntity expense;
+class EventExpenseCard extends StatelessWidget {
+  final EventExpenseEntity expense;
   final String eventName;
   final double userAmount;
   final double totalAmount;
   final bool isOwedToUser;
   final String paymentStatus; // "Paid", "Settled", or empty
+  final bool isUserRelated; // Whether user is part of this expense
   final VoidCallback? onTap;
 
-  const GroupExpenseCard({
+  const EventExpenseCard({
     super.key,
     required this.expense,
     required this.eventName,
@@ -21,6 +22,7 @@ class GroupExpenseCard extends StatelessWidget {
     required this.totalAmount,
     required this.isOwedToUser,
     required this.paymentStatus,
+    required this.isUserRelated,
     this.onTap,
   });
 
@@ -51,17 +53,21 @@ class GroupExpenseCard extends StatelessWidget {
                     ),
                   ),
                 ),
-                // Show status (Settled/Paid) or amount
+                // Show status (Settled/Paid/Not related) or amount
                 Text(
-                  paymentStatus.isNotEmpty
-                      ? paymentStatus
-                      : '${isOwedToUser ? '+' : '-'}€${userAmount.toStringAsFixed(2)}',
+                  !isUserRelated
+                      ? 'Not related'
+                      : (paymentStatus.isNotEmpty
+                          ? paymentStatus
+                          : '${isOwedToUser ? '' : '-'}${userAmount.toStringAsFixed(2)} €'),
                   style: AppText.bodyMediumEmph.copyWith(
-                    color: paymentStatus.isNotEmpty
-                        ? BrandColors.text1
-                        : (isOwedToUser
-                            ? BrandColors.planning
-                            : BrandColors.cantVote),
+                    color: !isUserRelated
+                        ? BrandColors.text2
+                        : (paymentStatus.isNotEmpty
+                            ? BrandColors.text1
+                            : (isOwedToUser
+                                ? BrandColors.planning
+                                : BrandColors.cantVote)),
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -107,7 +113,14 @@ class GroupExpenseCard extends StatelessWidget {
     final difference = now.difference(date);
 
     if (difference.inDays == 0) {
-      return 'Today';
+      // Today: show hours ago
+      if (difference.inHours > 0) {
+        return '${difference.inHours}h ago';
+      } else if (difference.inMinutes > 0) {
+        return '${difference.inMinutes}m ago';
+      } else {
+        return 'Just now';
+      }
     } else if (difference.inDays == 1) {
       return 'Yesterday';
     } else if (difference.inDays < 7) {

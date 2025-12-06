@@ -847,7 +847,7 @@ class _ChatInput extends StatelessWidget {
     AddExpenseBottomSheet.show(
       context: context,
       participants: participants,
-      onAddExpense: (title, paidByIds, payerIds, totalAmount) {
+      onAddExpense: (title, paidByIds, payerIds, totalAmount) async {
         // TODO: Implement add expense logic with repository
       },
     );

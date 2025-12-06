@@ -10,6 +10,8 @@ import '../../domain/usecases/toggle_group_mute.dart';
 import '../../domain/usecases/toggle_group_pin.dart';
 import '../../domain/usecases/toggle_group_archive.dart';
 import '../../data/fakes/fake_group_repository.dart';
+import '../../domain/usecases/get_group_members.dart';
+import '../../domain/entities/group_member_entity.dart';
 
 // Repository provider - por padrão usa fake
 final groupRepositoryProvider = Provider<GroupRepository>((ref) {
@@ -49,12 +51,27 @@ final toggleGroupArchiveProvider = Provider<ToggleGroupArchive>((ref) {
   return ToggleGroupArchive(ref.watch(groupRepositoryProvider));
 });
 
+// ✅ ADICIONAR: Use case provider para membros (NÍVEL GLOBAL)
+final getGroupMembersUseCaseProvider = Provider<GetGroupMembers>((ref) {
+  return GetGroupMembers(ref.watch(groupRepositoryProvider));
+});
+
+// ✅ ADICIONAR: State provider para membros (NÍVEL GLOBAL)
+final groupMembersProvider = StateNotifierProvider.family<
+    GroupMembersController, AsyncValue<List<GroupMemberEntity>>, String>((
+  ref,
+  groupId,
+) {
+  return GroupMembersController(
+    ref.watch(getGroupMembersUseCaseProvider),
+    groupId,
+  );
+});
+
 // QR Code save provider
 final saveGroupQrCodeProvider = Provider<Future<void> Function(String, String)>((ref) {
   final repository = ref.watch(groupRepositoryProvider);
-  print('🔧 [Provider] Creating saveGroupQrCode function with repository: ${repository.runtimeType}');
   return (String groupId, String qrCodeData) async {
-    print('📞 [Provider] saveGroupQrCode called with groupId: $groupId, qrCodeData: $qrCodeData');
     return await repository.saveGroupQrCode(groupId, qrCodeData);
   };
 });
@@ -97,6 +114,32 @@ final groupsControllerProvider = Provider<GroupsController>((ref) {
   return GroupsController(ref);
 });
 
+// ✅ ADICIONAR: Controller para membros (NÍVEL GLOBAL)
+class GroupMembersController
+    extends StateNotifier<AsyncValue<List<GroupMemberEntity>>> {
+  final GetGroupMembers _getGroupMembers;
+  final String _groupId;
+
+  GroupMembersController(this._getGroupMembers, this._groupId)
+      : super(const AsyncValue.loading()) {
+    loadMembers();
+  }
+
+  Future<void> loadMembers() async {
+    state = const AsyncValue.loading();
+    try {
+      final members = await _getGroupMembers(_groupId);
+      state = AsyncValue.data(members);
+    } catch (error, stackTrace) {
+      state = AsyncValue.error(error, stackTrace);
+    }
+  }
+
+  Future<void> refresh() async {
+    await loadMembers();
+  }
+}
+
 class GroupsController {
   final Ref _ref;
 
@@ -105,7 +148,6 @@ class GroupsController {
   Future<void> leaveGroup(String groupId) async {
     final leaveGroup = _ref.read(leaveGroupProvider);
     await leaveGroup.call(groupId);
-    // Refresh de ambas as listas após sair do grupo (grupo pode estar em qualquer uma)
     _ref.invalidate(groupsProvider);
     _ref.invalidate(archivedGroupsProvider);
   }
@@ -113,7 +155,6 @@ class GroupsController {
   Future<void> archiveGroup(String groupId) async {
     final archiveGroup = _ref.read(archiveGroupProvider);
     await archiveGroup.call(groupId);
-    // Refresh das listas após arquivar
     _ref.invalidate(groupsProvider);
     _ref.invalidate(archivedGroupsProvider);
   }
@@ -121,7 +162,6 @@ class GroupsController {
   Future<void> toggleMute(String groupId, bool isMuted) async {
     final toggleMute = _ref.read(toggleGroupMuteProvider);
     await toggleMute.call(groupId, isMuted);
-    // Refresh de ambas as listas (grupo pode estar em qualquer uma)
     _ref.invalidate(groupsProvider);
     _ref.invalidate(archivedGroupsProvider);
   }
@@ -129,7 +169,6 @@ class GroupsController {
   Future<void> togglePin(String groupId) async {
     final togglePin = _ref.read(toggleGroupPinProvider);
     await togglePin.call(groupId);
-    // Refresh de ambas as listas (grupo pode estar em qualquer uma)
     _ref.invalidate(groupsProvider);
     _ref.invalidate(archivedGroupsProvider);
   }
@@ -137,7 +176,6 @@ class GroupsController {
   Future<void> toggleArchive(String groupId) async {
     final toggleArchive = _ref.read(toggleGroupArchiveProvider);
     await toggleArchive.call(groupId);
-    // Refresh de ambas as listas após alternar arquivo (grupo pode mudar de lista)
     _ref.invalidate(groupsProvider);
     _ref.invalidate(archivedGroupsProvider);
   }

@@ -89,8 +89,8 @@ class PaymentSummaryCard extends StatelessWidget {
             // Amount
             Text(
               payment.youOwe
-                  ? '-€${payment.amount.abs().toStringAsFixed(0)}'
-                  : '+€${payment.amount.abs().toStringAsFixed(0)}',
+                  ? '-€${payment.amount.abs().toStringAsFixed(2)}'
+                  : '+€${payment.amount.abs().toStringAsFixed(2)}',
               style: AppText.bodyLarge.copyWith(
                 color: payment.isOwedToYou
                     ? BrandColors.planning // Green if they owe you

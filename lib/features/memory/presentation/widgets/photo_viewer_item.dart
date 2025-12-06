@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/constants/text_styles.dart';
 import '../../../../shared/themes/colors.dart';
@@ -142,30 +143,44 @@ class _PhotoViewerItemState extends State<PhotoViewerItem> {
                         left: Insets.screenH,
                         child: Builder(
                           builder: (context) {
+                            final currentUserId = Supabase.instance.client.auth.currentUser?.id;
+                            final isCurrentUser = currentUserId != null && widget.photo.uploaderId == currentUserId;
+                            final displayName = isCurrentUser ? 'You' : widget.photo.uploaderName;
+                            final hasProfilePhoto = widget.photo.profileImageUrl != null && widget.photo.profileImageUrl!.isNotEmpty;
+                            final uploaderInitial = widget.photo.uploaderName.isNotEmpty
+                                ? widget.photo.uploaderName[0].toUpperCase()
+                                : '?';
+                            
                             print('\n👤 [PHOTO VIEWER] Uploader overlay:');
                             print('   - uploaderId: ${widget.photo.uploaderId}');
+                            print('   - currentUserId: $currentUserId');
+                            print('   - isCurrentUser: $isCurrentUser');
                             print('   - uploaderName: "${widget.photo.uploaderName}"');
-                            print('   - Display initial: ${widget.photo.uploaderName.isNotEmpty ? widget.photo.uploaderName[0].toUpperCase() : "?"}');
+                            print('   - profileImageUrl: ${widget.photo.profileImageUrl ?? "null"}');
+                            print('   - Display: $displayName');
                             
                             return Row(
                               children: [
                                 CircleAvatar(
                                   radius: 16,
                                   backgroundColor: BrandColors.bg3,
-                                  child: Text(
-                                    widget.photo.uploaderName.isNotEmpty
-                                        ? widget.photo.uploaderName[0].toUpperCase()
-                                        : '?',
-                                    style: AppText.bodyMedium.copyWith(
-                                      color: BrandColors.text1,
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
+                                  foregroundImage: hasProfilePhoto
+                                      ? NetworkImage(widget.photo.profileImageUrl!)
+                                      : null,
+                                  child: !hasProfilePhoto
+                                      ? Text(
+                                          uploaderInitial,
+                                          style: AppText.bodyMedium.copyWith(
+                                            color: BrandColors.text1,
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        )
+                                      : null,
                                 ),
                                 const SizedBox(width: Gaps.xs),
                                 Text(
-                                  widget.photo.uploaderName,
+                                  displayName,
                                   style: AppText.bodyMedium.copyWith(
                                     color: BrandColors.text1,
                                     fontWeight: FontWeight.w500,

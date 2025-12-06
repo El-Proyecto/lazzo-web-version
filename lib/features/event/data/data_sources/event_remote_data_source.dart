@@ -1,5 +1,6 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/event_detail_model.dart';
+import '../../domain/entities/event_participant_entity.dart';
 
 /// Remote data source for event operations
 /// Handles all Supabase queries related to events
@@ -293,6 +294,76 @@ class EventRemoteDataSource {
       print('❌ [DATA SOURCE] Exception: $e');
       print('   Stack trace: $stackTrace');
       throw Exception('Failed to update event status: $e');
+    }
+  }
+
+  /// Get event participants (only those with rsvp='yes')
+  Future<List<EventParticipantEntity>> getEventParticipants(
+      String eventId) async {
+    try {
+      // Get participant user_ids - ONLY those with rsvp = 'yes'
+      final participantsResponse = await _supabaseClient
+          .from('event_participants')
+          .select('user_id, rsvp')
+          .eq('pevent_id', eventId)
+          .eq('rsvp', 'yes');
+
+      if (participantsResponse.isEmpty) {
+        return [];
+      }
+
+      // Get user_ids
+      final userIds = (participantsResponse as List)
+          .map((p) => p['user_id'] as String)
+          .toList();
+
+      // Get users for those user_ids
+      final usersResponse = await _supabaseClient
+          .from('users')
+          .select('id, name, avatar_url')
+          .inFilter('id', userIds);
+
+      // Create a map of userId -> user data
+      final usersMap = Map<String, Map<String, dynamic>>.fromIterable(
+        usersResponse as List,
+        key: (user) => user['id'] as String,
+        value: (user) => user as Map<String, dynamic>,
+      );
+
+      print('🗺️ [EventRemoteDataSource] Users map: ${usersMap.keys}');
+
+      // Combine participants with their user data
+      final participants = (participantsResponse as List).map((participant) {
+        final userId = participant['user_id'] as String;
+        final userData = usersMap[userId];
+
+        if (userData == null) {
+          print('⚠️ [EventRemoteDataSource] No user found for id: $userId');
+        }
+
+        final displayName = userData?['name'] as String? ?? 'Unknown User';
+        print('   Processing participant: $displayName ($userId)');
+
+        return EventParticipantEntity(
+          userId: userId,
+          displayName: displayName,
+          avatarUrl: userData?['avatar_url'] as String?,
+          status: participant['rsvp'] as String? ?? 'pending',
+        );
+      }).toList();
+
+      print(
+          '✅ [EventRemoteDataSource] Successfully parsed ${participants.length} participants');
+      return participants;
+    } on PostgrestException catch (e) {
+      print('❌ [EventRemoteDataSource] PostgrestException: ${e.message}');
+      print('❌ [EventRemoteDataSource] Details: ${e.details}');
+      print('❌ [EventRemoteDataSource] Hint: ${e.hint}');
+      throw Exception('Failed to get event participants: ${e.message}');
+    } catch (e) {
+      print('❌ [EventRemoteDataSource] Generic error: $e');
+      print('❌ [EventRemoteDataSource] Stack: ${StackTrace.current}');
+      throw Exception('Failed to get event participants: $e');
     }
   }
 }
