@@ -302,4 +302,90 @@ class GroupDetailsRepositoryImpl implements GroupDetailsRepository {
       throw Exception('Failed to update member role: $e');
     }
   }
+
+  @override
+  Future<void> removeMember(String groupId, String userId) async {
+    try {
+      final currentUserId = _supabase.auth.currentUser?.id;
+      if (currentUserId == null) {
+        throw Exception('User not authenticated');
+      }
+      
+      print('🗑️ [REMOVE MEMBER] Starting removal...');
+      print('   Group ID: $groupId');
+      print('   User ID to remove: $userId');
+      print('   Current user ID: $currentUserId');
+      
+      // Validate: cannot remove yourself
+      if (userId == currentUserId) {
+        throw Exception('Cannot remove yourself from the group. Use "Leave Group" instead.');
+      }
+      
+      // Check if current user is admin
+      print('   🔍 Checking current user permissions...');
+      final currentUserMembership = await _supabase
+          .from('group_members')
+          .select('role')
+          .eq('group_id', groupId)
+          .eq('user_id', currentUserId)
+          .single();
+      
+      final currentUserRole = currentUserMembership['role'] as String;
+      print('   Current user role: $currentUserRole');
+      
+      if (currentUserRole != 'admin') {
+        throw Exception('Only admins can remove members');
+      }
+      
+      // Check if user to remove is admin
+      final targetUserMembership = await _supabase
+          .from('group_members')
+          .select('role')
+          .eq('group_id', groupId)
+          .eq('user_id', userId)
+          .single();
+      
+      final targetUserRole = targetUserMembership['role'] as String;
+      print('   Target user role: $targetUserRole');
+      
+      // If removing an admin, check if at least one other admin will remain
+      if (targetUserRole == 'admin') {
+        print('   🔍 Checking if other admins exist...');
+        final members = await getGroupMembers(groupId);
+        final adminCount = members.where((m) => m.isAdmin).length;
+        print('   Current admin count: $adminCount');
+        
+        if (adminCount <= 1) {
+          throw Exception('Cannot remove the last admin. Promote another member first.');
+        }
+      }
+      
+      print('   📝 Executing DELETE via RPC...');
+      
+      // Try using RPC function first (bypasses RLS policies)
+      try {
+        await _supabase.rpc('remove_group_member', params: {
+          'p_group_id': groupId,
+          'p_user_id': userId,
+        });
+        print('   ✅ Delete via RPC completed');
+      } catch (rpcError) {
+        print('   ⚠️ RPC not available, trying direct delete: $rpcError');
+        
+        // Fallback to direct delete (will likely fail due to RLS)
+        await _supabase
+            .from('group_members')
+            .delete()
+            .eq('group_id', groupId)
+            .eq('user_id', userId);
+        
+        print('   ✅ Direct delete completed');
+      }
+      
+      print('✅ [REMOVE MEMBER] Member successfully removed');
+    } catch (e) {
+      print('❌ [REMOVE MEMBER] Failed: $e');
+      throw Exception('Failed to remove member: $e');
+    }
+  }
 }

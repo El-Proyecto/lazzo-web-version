@@ -555,14 +555,46 @@ class GroupDetailsPage extends ConsumerWidget {
       context: context,
       builder: (context) => ConfirmationDialog(
         title: 'Remove Member?',
-        message:
-            'Remove ${member.name} from this group? They can rejoin with an invite.',
+        message: member.isAdmin
+            ? 'Remove ${member.name} (admin) from this group? They can rejoin with an invite.'
+            : 'Remove ${member.name} from this group? They can rejoin with an invite.',
         confirmText: 'Remove',
         cancelText: 'Cancel',
         isDestructive: true,
-        onConfirm: () {
-          // TODO: Implement remove member logic
-          print('Remove ${member.id} from group');
+        onConfirm: () async {
+          // 1. OPTIMISTIC UPDATE - UI responds immediately
+          ref.read(groupMembersProvider(groupId).notifier)
+              .removeMemberOptimistically(member.id);
+          
+          try {
+            // 2. SERVER UPDATE - execute in background
+            final removeMember = ref.read(removeMemberUseCaseProvider);
+            await removeMember(groupId, member.id);
+            
+            // 3. CONFIRM - refresh from server to ensure consistency
+            if (context.mounted) {
+              await ref.read(groupMembersProvider(groupId).notifier).refresh();
+              
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('${member.name} has been removed'),
+                  backgroundColor: BrandColors.planning,
+                ),
+              );
+            }
+          } catch (e) {
+            // 4. ROLLBACK - revert optimistic update on error
+            if (context.mounted) {
+              await ref.read(groupMembersProvider(groupId).notifier).refresh();
+              
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Failed to remove: ${e.toString().replaceAll('Exception: ', '')}'),
+                  backgroundColor: BrandColors.cantVote,
+                ),
+              );
+            }
+          }
         },
       ),
     );

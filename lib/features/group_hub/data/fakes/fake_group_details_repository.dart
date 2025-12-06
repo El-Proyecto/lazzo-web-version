@@ -114,4 +114,14 @@ class FakeGroupDetailsRepository implements GroupDetailsRepository {
     
     // In real implementation, this would update the backend
   }
+
+  @override
+  Future<void> removeMember(String groupId, String userId) async {
+    // Simulate network delay
+    await Future.delayed(const Duration(milliseconds: 300));
+    
+    print('🗑️ [FAKE] Removing user $userId from group $groupId');
+    
+    // In real implementation, this would delete from backend
+  }
 }

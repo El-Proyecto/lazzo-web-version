@@ -14,6 +14,7 @@ import '../../domain/usecases/get_group_details.dart';
 import '../../domain/usecases/get_group_members.dart';
 import '../../domain/usecases/toggle_group_mute.dart';
 import '../../domain/usecases/update_member_role.dart';
+import '../../domain/usecases/remove_member.dart';
 import '../../data/fakes/fake_group_event_repository.dart';
 import '../../data/fakes/fake_group_memory_repository.dart';
 import '../../data/fakes/fake_group_details_repository.dart';
@@ -69,6 +70,10 @@ final toggleGroupMuteUseCaseProvider = Provider<ToggleGroupMute>((ref) {
 
 final updateMemberRoleUseCaseProvider = Provider<UpdateMemberRole>((ref) {
   return UpdateMemberRole(ref.watch(groupDetailsRepositoryProvider));
+});
+
+final removeMemberUseCaseProvider = Provider<RemoveMember>((ref) {
+  return RemoveMember(ref.watch(groupDetailsRepositoryProvider));
 });
 
 // State providers
@@ -317,6 +322,14 @@ class GroupMembersController
         return member;
       }).toList();
       
+      state = AsyncValue.data(updatedMembers);
+    });
+  }
+
+  /// Optimistic remove: immediately removes member from UI before server confirms
+  void removeMemberOptimistically(String userId) {
+    state.whenData((members) {
+      final updatedMembers = members.where((member) => member.id != userId).toList();
       state = AsyncValue.data(updatedMembers);
     });
   }
