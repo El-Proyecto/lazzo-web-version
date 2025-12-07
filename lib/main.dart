@@ -22,6 +22,10 @@ import 'features/home/data/data_sources/home_event_remote_data_source.dart';
 import 'features/home/data/repositories/home_event_repository_impl.dart';
 import 'features/home/presentation/providers/home_event_providers.dart';
 
+// HOME RECENT MEMORIES - Real implementation
+import 'features/home/data/data_sources/recent_memory_data_source.dart';
+import 'features/home/data/repositories/recent_memory_repository_impl.dart';
+
 // INBOX PAYMENTS - Real implementation
 import 'features/inbox/data/data_source/payments_remote_data_source.dart';
 import 'features/inbox/data/repositories/payment_repository_impl.dart';
@@ -70,6 +74,7 @@ import '../features/groups/data/repositories/supabase_update_group_repository.da
 
 // PROFILE - Real implementation
 import '../features/profile/data/data_sources/profile_remote_data_source.dart';
+import '../features/profile/data/data_sources/profile_memory_data_source.dart';
 import '../features/profile/data/repositories/profile_repository_impl.dart';
 import '../features/profile/presentation/providers/profile_providers.dart';
 
@@ -159,6 +164,23 @@ void main() async {
           ),
         ),
 
+        // ✅ HOME RECENT MEMORIES repo -> real (Supabase) - queries events from last 30 days
+        recentMemoryRepositoryProvider.overrideWith((ref) {
+          final client = Supabase.instance.client;
+          // Get user ID from auth state
+          final userId = client.auth.currentUser?.id;
+          if (userId == null) {
+            throw Exception('User must be authenticated to fetch recent memories');
+          }
+          final dataSource = RecentMemoryDataSource(client);
+          final storageService = StorageService(client);
+          return RecentMemoryRepositoryImpl(
+            dataSource: dataSource,
+            storageService: storageService,
+            userId: userId,
+          );
+        }),
+
         // Note: HOME PAYMENT SUMMARIES reuses inbox payment data directly
         // No separate repository needed - see paymentSummariesControllerProvider
 
@@ -242,12 +264,18 @@ void main() async {
           );
         }),
 
-        // Profile repo -> real (Supabase)
-        profileRepositoryProvider.overrideWith(
-          (ref) => ProfileRepositoryImpl(
-            ProfileRemoteDataSource(Supabase.instance.client),
-          ),
-        ),
+        // ✅ PROFILE repo -> real (Supabase) with memories from events table
+        profileRepositoryProvider.overrideWith((ref) {
+          final client = Supabase.instance.client;
+          final remoteDataSource = ProfileRemoteDataSource(client);
+          final memoryDataSource = ProfileMemoryDataSource(client);
+          final storageService = StorageService(client);
+          return ProfileRepositoryImpl(
+            remoteDataSource,
+            memoryDataSource,
+            storageService,
+          );
+        }),
 
         // authRepositoryProvider.overrideWith(...),
         // ✅ AUTH repo -> real (Supabase) via DI
