@@ -25,6 +25,7 @@ import '../../domain/usecases/create_location_suggestion.dart';
 import '../../domain/usecases/toggle_suggestion_vote.dart';
 import '../../domain/usecases/update_event_status.dart';
 import '../../../group_hub/presentation/providers/group_hub_providers.dart';
+import 'chat_providers.dart';
 
 // Current user ID provider
 final currentUserIdProvider = Provider<String?>((ref) {
@@ -701,3 +702,88 @@ class ToggleLocationSuggestionVoteNotifier
     }
   }
 }
+
+// ===== COMBINED DATA PROVIDERS =====
+// These providers combine multiple async dependencies into single data models
+// Reduces nesting in UI from 3-4 levels to 1 level
+
+/// Combined provider for date/time suggestions with all dependencies
+/// Combines: suggestions, votes, user votes, and RSVP going count
+final dateTimeSuggestionsDataProvider =
+    FutureProvider.autoDispose.family<Map<String, dynamic>, String>(
+  (ref, eventId) async {
+    // Fetch all dependencies in parallel
+    final results = await Future.wait([
+      ref.watch(eventSuggestionsProvider(eventId).future),
+      ref.watch(suggestionVotesProvider(eventId).future),
+      ref.watch(userSuggestionVotesProvider(eventId).future),
+      ref.watch(eventRsvpsProvider(eventId).future),
+    ]);
+
+    final suggestions = results[0] as List<Suggestion>;
+    final allVotes = results[1] as List<SuggestionVote>;
+    final userVotes = results[2] as List<SuggestionVote>;
+    final rsvps = results[3] as List<Rsvp>;
+
+    // Calculate going count for current event option
+    final goingCount = rsvps.where((r) => r.status == RsvpStatus.going).length;
+
+    final userVoteIds = userVotes.map((vote) => vote.suggestionId).toSet();
+
+    return {
+      'suggestions': suggestions,
+      'allVotes': allVotes,
+      'userVoteIds': userVoteIds,
+      'goingCount': goingCount,
+    };
+  },
+);
+
+/// Combined provider for location suggestions with all dependencies
+/// Combines: location suggestions, votes, user votes, and RSVP going count
+final locationSuggestionsDataProvider =
+    FutureProvider.autoDispose.family<Map<String, dynamic>, String>(
+  (ref, eventId) async {
+    // Fetch all dependencies in parallel
+    final results = await Future.wait([
+      ref.watch(eventLocationSuggestionsProvider(eventId).future),
+      ref.watch(locationSuggestionVotesProvider(eventId).future),
+      ref.watch(userLocationSuggestionVotesProvider(eventId).future),
+      ref.watch(eventRsvpsProvider(eventId).future),
+    ]);
+
+    final locationSuggestions = results[0] as List<LocationSuggestion>;
+    final locationVotes = results[1] as List<SuggestionVote>;
+    final userLocationVotes = results[2] as List<SuggestionVote>;
+    final rsvps = results[3] as List<Rsvp>;
+
+    // Calculate going count for current event location
+    final goingCount = rsvps.where((r) => r.status == RsvpStatus.going).length;
+
+    final userVoteIds =
+        userLocationVotes.map((vote) => vote.suggestionId).toSet();
+
+    return {
+      'locationSuggestions': locationSuggestions,
+      'locationVotes': locationVotes,
+      'userVoteIds': userVoteIds,
+      'goingCount': goingCount,
+    };
+  },
+);
+
+/// Combined provider for chat preview with unread count
+/// No need to combine multiple providers - just watches chat and unread
+/// Kept for consistency and future expansion (e.g., typing indicators)
+final chatPreviewDataProvider =
+    Provider.autoDispose.family<Map<String, dynamic>, String>(
+  (ref, eventId) {
+    final messagesAsync = ref.watch(chatMessagesProvider(eventId));
+    final unreadCountAsync = ref.watch(unreadMessagesCountProvider(eventId));
+
+    return {
+      'messagesAsync': messagesAsync,
+      'unreadCountAsync': unreadCountAsync,
+    };
+  },
+);

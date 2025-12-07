@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -30,6 +29,7 @@ import '../widgets/date_time_suggestions_widget.dart' as datetime_widget;
 import '../widgets/location_suggestions_widget.dart';
 import '../widgets/add_suggestion_bottom_sheet.dart';
 import '../providers/event_participants_provider.dart';
+import 'event_page_models.dart';
 
 import '../../../../shared/components/dialogs/add_expense_bottom_sheet.dart';
 import '../../../expense/presentation/providers/event_expense_providers.dart';
@@ -191,15 +191,11 @@ class _EventPageState extends ConsumerState<EventPage> {
   Widget build(BuildContext context) {
     final currentUserId = ref.watch(currentUserIdProvider);
     final eventAsync = ref.watch(eventDetailProvider(eventId));
-    final rsvpsAsync = ref.watch(eventRsvpsProvider(eventId));
-    // Note: userRsvpAsync is now watched inside _buildRsvpSection()
+    // Note: rsvpsAsync, userRsvpAsync watched inside _buildRsvpSection()
+    // Note: suggestionsAsync, suggestionVotesAsync, userSuggestionVotesAsync now in dateTimeSuggestionsDataProvider
+    // Note: locationSuggestionsAsync, locationVotesAsync, userLocationVotesAsync now in locationSuggestionsDataProvider
+    // Note: messagesAsync, unreadCountAsync now in chatPreviewDataProvider
     final pollsAsync = ref.watch(eventPollsProvider(eventId));
-    final messagesAsync = ref.watch(chatMessagesProvider(eventId));
-    final suggestionsAsync = ref.watch(eventSuggestionsProvider(eventId));
-    final suggestionVotesAsync = ref.watch(suggestionVotesProvider(eventId));
-    final userSuggestionVotesAsync = ref.watch(
-      userSuggestionVotesProvider(eventId),
-    );
     final participantsAsync = ref.watch(eventParticipantsProvider(eventId));
 
     // Helper to refresh all event data
@@ -369,294 +365,79 @@ class _EventPageState extends ConsumerState<EventPage> {
 
                 const SizedBox(height: Gaps.lg),
 
-                // Date & Time Suggestions Widget
-                // ONLY SHOWS when there are alternative date suggestions (not just event's current date)
-                suggestionsAsync.when(
-                  data: (suggestions) {
-                    // Filter suggestions that are DIFFERENT from current event date
-                    final alternateSuggestions = suggestions.where((s) {
-                      if (event.startDateTime == null ||
-                          event.endDateTime == null) {
-                        return true;
-                      }
-
-                      // Keep only suggestions with DIFFERENT dates
-                      final isDifferent = !s.startDateTime
-                              .isAtSameMomentAs(event.startDateTime!) ||
-                          !(s.endDateTime
-                                  ?.isAtSameMomentAs(event.endDateTime!) ??
-                              false);
-                      return isDifferent;
-                    }).toList();
-
-                    // ONLY show widget if there are ALTERNATIVE suggestions (different from current date)
-                    if (alternateSuggestions.isEmpty) {
-                      return const SizedBox.shrink();
-                    }
-
-                    return suggestionVotesAsync.when(
-                      data: (allVotes) {
-                        return userSuggestionVotesAsync.when(
-                          data: (userVotes) {
-                            final List<DateTimeSuggestion> dateTimeSuggestions =
-                                [];
-
-                            // Calculate going count from RSVP votes
-                            final goingCount = rsvpsAsync.maybeWhen(
-                              data: (rsvps) => rsvps
-                                  .where((r) => r.status == RsvpStatus.going)
-                                  .length,
-                              orElse: () => 0,
-                            );
-
-                            // Always add current event date as FIRST option (for comparison)
-                            if (event.startDateTime != null &&
-                                event.endDateTime != null) {
-                              dateTimeSuggestions.add(DateTimeSuggestion(
-                                id: 'current_event_date',
-                                startDateTime: event.startDateTime!,
-                                endDateTime: event.endDateTime!,
-                                voteCount:
-                                    goingCount, // Show number of 'Can' votes from RSVP
-                                hasUserVoted: false,
-                                votes: [],
-                              ));
-                            }
-
-                            // Add all ALTERNATIVE suggestions (different from current date)
-                            dateTimeSuggestions
-                                .addAll(alternateSuggestions.map((
-                              suggestion,
-                            ) {
-                              final suggestionVotes = allVotes
-                                  .where(
-                                    (vote) =>
-                                        vote.suggestionId == suggestion.id,
-                                  )
-                                  .map(
-                                    (vote) => datetime_widget.SuggestionVote(
-                                      id: vote.id,
-                                      userId: vote.userId,
-                                      userName: _getUserDisplayName(vote.userId,
-                                          vote.userName, currentUserId),
-                                      userAvatar: vote.userAvatar,
-                                      votedAt: vote.createdAt,
-                                    ),
-                                  )
-                                  .toList();
-
-                              return DateTimeSuggestion(
-                                id: suggestion.id,
-                                startDateTime: suggestion.startDateTime,
-                                endDateTime: suggestion.endDateTime,
-                                voteCount: suggestionVotes.length,
-                                hasUserVoted: userVotes.any(
-                                  (vote) => vote.suggestionId == suggestion.id,
-                                ),
-                                votes: suggestionVotes,
-                              );
-                            }));
-
-                            final userVoteIds = userVotes
-                                .map((vote) => vote.suggestionId)
-                                .toSet();
-
-                            return Column(
-                              children: [
-                                DateTimeSuggestionsWidget(
-                                  suggestions: dateTimeSuggestions,
-                                  userVotes: userVoteIds,
-                                  currentEventStartDateTime:
-                                      event.startDateTime,
-                                  currentEventEndDateTime: event.endDateTime,
-                                  onVote: (suggestionId) {
-                                    ref
-                                        .read(
-                                          toggleSuggestionVoteNotifierProvider
-                                              .notifier,
-                                        )
-                                        .toggleVote_(eventId, suggestionId);
-                                  },
-                                  isHost: event.hostId == currentUserId,
-                                  onAddSuggestion: () {
-                                    if (event.startDateTime == null ||
-                                        event.endDateTime == null) {
-                                      TopBanner.showError(
-                                        context,
-                                        message:
-                                            'Event dates must be set before adding suggestions',
-                                      );
-                                      return;
-                                    }
-                                    showAddSuggestionBottomSheet(
-                                      context,
-                                      eventId: eventId,
-                                      eventStartDate: event.startDateTime!,
-                                      eventStartTime: TimeOfDay.fromDateTime(
-                                        event.startDateTime!,
-                                      ),
-                                      eventEndDate: event.endDateTime!,
-                                      eventEndTime: TimeOfDay.fromDateTime(
-                                        event.endDateTime!,
-                                      ),
-                                    );
-                                  },
-                                  onSetDate: (selectedSuggestion) async {
-                                    await _setEventDate(
-                                      context,
-                                      ref,
-                                      selectedSuggestion,
-                                    );
-                                  },
-                                ),
-                                const SizedBox(height: Gaps.lg),
-                              ],
-                            );
-                          },
-                          loading: () =>
-                              const Center(child: CircularProgressIndicator()),
-                          error: (error, stack) => const SizedBox.shrink(),
-                        );
-                      },
-                      loading: () =>
-                          const Center(child: CircularProgressIndicator()),
-                      error: (error, stack) => const SizedBox.shrink(),
-                    );
-                  },
-                  loading: () => const SizedBox.shrink(),
-                  error: (error, stack) => const SizedBox.shrink(),
-                ),
-
-                // Location suggestions widget (independent of datetime suggestions)
+                // Date & Time Suggestions Widget (OPTIMIZED)
+                // Combined provider reduces nesting from 4 levels to 1
                 Consumer(
-                  builder: (context, consumerRef, child) {
-                    final locationSuggestionsAsync = consumerRef.watch(
-                      eventLocationSuggestionsProvider(eventId),
-                    );
-                    final locationVotesAsync = consumerRef.watch(
-                      locationSuggestionVotesProvider(eventId),
-                    );
-                    final userLocationVotesAsync = consumerRef.watch(
-                      userLocationSuggestionVotesProvider(eventId),
-                    );
+                  builder: (context, ref, child) {
+                    final dataAsync =
+                        ref.watch(dateTimeSuggestionsDataProvider(eventId));
 
-                    return locationSuggestionsAsync.when(
-                      data: (locationSuggestions) {
-                        // Hide if no suggestions
-                        if (locationSuggestions.isEmpty) {
+                    return dataAsync.when(
+                      data: (data) {
+                        // Process raw data into UI models
+                        final processedData = _processDateTimeSuggestions(
+                          suggestions: data['suggestions'] as List<Suggestion>,
+                          allVotes: data['allVotes'] as List<SuggestionVote>,
+                          userVoteIds: data['userVoteIds'] as Set<String>,
+                          event: event,
+                          goingCount: data['goingCount'] as int,
+                          currentUserId: currentUserId,
+                        );
+
+                        // Hide if no alternatives
+                        if (!processedData.hasAlternatives) {
                           return const SizedBox.shrink();
                         }
 
-                        // Filter suggestions DIFFERENT from current event location (if exists)
-                        final alternateLocationSuggestions =
-                            locationSuggestions.where((s) {
-                          if (event.location == null) return true;
-
-                          // Check if suggestion is different from current location
-                          final isDifferent =
-                              s.locationName != event.location!.displayName ||
-                                  (s.address ?? '') !=
-                                      event.location!.formattedAddress;
-                          return isDifferent;
-                        }).toList();
-
-                        // Hide if no suggestions at all (should never happen, but safety check)
-                        if (locationSuggestions.isEmpty) {
-                          return const SizedBox.shrink();
-                        }
-
-                        // Hide if event has location but no alternative suggestions
-                        if (event.location != null &&
-                            alternateLocationSuggestions.isEmpty) {
-                          return const SizedBox.shrink();
-                        }
-
-                        return locationVotesAsync.when(
-                          data: (locationVotes) {
-                            return userLocationVotesAsync.when(
-                              data: (userLocationVotes) {
-                                final userLocationVoteIds = userLocationVotes
-                                    .map((vote) => vote.suggestionId)
-                                    .toSet();
-
-                                // Calculate going count from RSVP votes
-                                final locationGoingCount = rsvpsAsync.maybeWhen(
-                                  data: (rsvps) => rsvps
-                                      .where(
-                                          (r) => r.status == RsvpStatus.going)
-                                      .length,
-                                  orElse: () => 0,
-                                );
-
-                                return Padding(
-                                  padding: const EdgeInsets.only(
-                                    bottom: Gaps.lg, //TODO: Fix spaces
+                        return Column(
+                          children: [
+                            DateTimeSuggestionsWidget(
+                              suggestions: processedData.suggestions,
+                              userVotes: data['userVoteIds'] as Set<String>,
+                              currentEventStartDateTime: event.startDateTime,
+                              currentEventEndDateTime: event.endDateTime,
+                              onVote: (suggestionId) {
+                                ref
+                                    .read(
+                                      toggleSuggestionVoteNotifierProvider
+                                          .notifier,
+                                    )
+                                    .toggleVote_(eventId, suggestionId);
+                              },
+                              isHost: event.hostId == currentUserId,
+                              onAddSuggestion: () {
+                                if (event.startDateTime == null ||
+                                    event.endDateTime == null) {
+                                  TopBanner.showError(
+                                    context,
+                                    message:
+                                        'Event dates must be set before adding suggestions',
+                                  );
+                                  return;
+                                }
+                                showAddSuggestionBottomSheet(
+                                  context,
+                                  eventId: eventId,
+                                  eventStartDate: event.startDateTime!,
+                                  eventStartTime: TimeOfDay.fromDateTime(
+                                    event.startDateTime!,
                                   ),
-                                  child: LocationSuggestionsWidget(
-                                    suggestions: locationSuggestions,
-                                    allVotes: locationVotes,
-                                    userVotes: userLocationVoteIds,
-                                    onVote: (suggestionId) {
-                                      ref
-                                          .read(
-                                            toggleLocationSuggestionVoteNotifierProvider
-                                                .notifier,
-                                          )
-                                          .toggleVote(eventId, suggestionId);
-                                    },
-                                    isHost: event.hostId == currentUserId,
-                                    currentEventGoingCount: locationGoingCount,
-                                    onAddSuggestion: () {
-                                      showAddSuggestionBottomSheet(
-                                        context,
-                                        eventId: eventId,
-                                        eventStartDate: event.startDateTime!,
-                                        eventStartTime: TimeOfDay.fromDateTime(
-                                          event.startDateTime!,
-                                        ),
-                                        eventEndDate: event.endDateTime!,
-                                        eventEndTime: TimeOfDay.fromDateTime(
-                                          event.endDateTime!,
-                                        ),
-                                        type: SuggestionType.location,
-                                        currentEventLocationName:
-                                            event.location?.displayName,
-                                        currentEventAddress:
-                                            event.location?.formattedAddress,
-                                      );
-                                    },
-                                    onPickLocation: (selectedLocation) async {
-                                      await _setEventLocation(
-                                        context,
-                                        ref,
-                                        selectedLocation,
-                                      );
-                                    },
-                                    currentEventLocationName:
-                                        event.location?.displayName,
-                                    currentEventAddress:
-                                        event.location?.formattedAddress,
+                                  eventEndDate: event.endDateTime!,
+                                  eventEndTime: TimeOfDay.fromDateTime(
+                                    event.endDateTime!,
                                   ),
                                 );
                               },
-                              loading: () {
-                                if (kDebugMode) {}
-                                return const SizedBox.shrink();
+                              onSetDate: (selectedSuggestion) async {
+                                await _setEventDate(
+                                  context,
+                                  ref,
+                                  selectedSuggestion,
+                                );
                               },
-                              error: (error, stack) {
-                                if (kDebugMode) {}
-                                return const SizedBox.shrink();
-                              },
-                            );
-                          },
-                          loading: () {
-                            if (kDebugMode) {}
-                            return const SizedBox.shrink();
-                          },
-                          error: (error, stack) {
-                            if (kDebugMode) {}
-                            return const SizedBox.shrink();
-                          },
+                            ),
+                            const SizedBox(height: Gaps.lg),
+                          ],
                         );
                       },
                       loading: () => const SizedBox.shrink(),
@@ -665,188 +446,243 @@ class _EventPageState extends ConsumerState<EventPage> {
                   },
                 ),
 
-                // Chat Preview
-                messagesAsync.when(
-                  data: (messages) {
-                    if (kDebugMode) {
-                      if (messages.isNotEmpty) {}
-                    }
+                // Location Suggestions Widget (OPTIMIZED)
+                // Combined provider reduces nesting from 3 levels to 1
+                Consumer(
+                  builder: (context, ref, child) {
+                    final dataAsync =
+                        ref.watch(locationSuggestionsDataProvider(eventId));
 
-                    // Get unread count (now returns AsyncValue)
-                    final unreadCountAsync = ref.watch(
-                      unreadMessagesCountProvider(eventId),
-                    );
+                    return dataAsync.when(
+                      data: (data) {
+                        final locationSuggestions = data['locationSuggestions']
+                            as List<LocationSuggestion>;
 
-                    final unreadCount = unreadCountAsync.maybeWhen(
-                      data: (count) => count,
-                      orElse: () => 0,
-                    );
+                        // Hide if no suggestions
+                        if (locationSuggestions.isEmpty) {
+                          return const SizedBox.shrink();
+                        }
 
-                    final previewMessages = messages
-                        .map(
-                          (m) => ChatMessagePreview(
-                            userId: m.userId,
-                            userName: _getUserDisplayName(
-                                m.userId, m.userName, currentUserId),
-                            userAvatar: m.userAvatar,
-                            content: m.content,
-                            timestamp: m.createdAt,
-                            isReadBySomeone: m.isReadBySomeone,
-                            isPinned: m.isPinned,
-                            isDeleted: m.isDeleted,
-                            isPending: m.isPending,
-                            replyTo: m.replyTo != null
-                                ? ChatMessagePreview(
-                                    userId: m.replyTo!.userId,
-                                    userName: _getUserDisplayName(
-                                        m.replyTo!.userId,
-                                        m.replyTo!.userName,
-                                        currentUserId),
-                                    userAvatar: m.replyTo!.userAvatar,
-                                    content: m.replyTo!.content,
-                                    timestamp: m.replyTo!.createdAt,
-                                    isReadBySomeone: m.replyTo!.isReadBySomeone,
-                                    isPinned: m.replyTo!.isPinned,
-                                    isDeleted: m.replyTo!.isDeleted,
-                                    isPending: m.replyTo!.isPending,
+                        // Process data to check for alternatives
+                        final processedData = _processLocationSuggestions(
+                          suggestions: locationSuggestions,
+                          allVotes:
+                              data['locationVotes'] as List<SuggestionVote>,
+                          event: event,
+                          goingCount: data['goingCount'] as int,
+                        );
+
+                        // Hide if no alternatives
+                        if (!processedData.hasAlternatives) {
+                          return const SizedBox.shrink();
+                        }
+
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: Gaps.lg),
+                          child: LocationSuggestionsWidget(
+                            suggestions: locationSuggestions,
+                            allVotes:
+                                data['locationVotes'] as List<SuggestionVote>,
+                            userVotes: data['userVoteIds'] as Set<String>,
+                            onVote: (suggestionId) {
+                              ref
+                                  .read(
+                                    toggleLocationSuggestionVoteNotifierProvider
+                                        .notifier,
                                   )
-                                : null,
+                                  .toggleVote(eventId, suggestionId);
+                            },
+                            isHost: event.hostId == currentUserId,
+                            currentEventGoingCount:
+                                processedData.currentEventGoingCount,
+                            onAddSuggestion: () {
+                              showAddSuggestionBottomSheet(
+                                context,
+                                eventId: eventId,
+                                eventStartDate: event.startDateTime!,
+                                eventStartTime: TimeOfDay.fromDateTime(
+                                  event.startDateTime!,
+                                ),
+                                eventEndDate: event.endDateTime!,
+                                eventEndTime: TimeOfDay.fromDateTime(
+                                  event.endDateTime!,
+                                ),
+                                type: SuggestionType.location,
+                                currentEventLocationName:
+                                    event.location?.displayName,
+                                currentEventAddress:
+                                    event.location?.formattedAddress,
+                              );
+                            },
+                            onPickLocation: (selectedLocation) async {
+                              await _setEventLocation(
+                                context,
+                                ref,
+                                selectedLocation,
+                              );
+                            },
+                            currentEventLocationName:
+                                event.location?.displayName,
+                            currentEventAddress:
+                                event.location?.formattedAddress,
                           ),
-                        )
-                        .toList();
-
-                    return ChatPreviewWidget(
-                      newMessagesCount: unreadCount,
-                      currentUserId: currentUserId ?? '',
-                      recentMessages: previewMessages,
-                      onOpenChat: () {
-                        Navigator.pushNamed(
-                          context,
-                          AppRouter.eventChat,
-                          arguments: {'eventId': eventId},
                         );
                       },
-                      onOpenChatWithMessage: (messageId) {
-                        Navigator.pushNamed(
-                          context,
-                          AppRouter.eventChat,
-                          arguments: {
-                            'eventId': eventId,
-                            'scrollToMessageId': messageId,
+                      loading: () => const SizedBox.shrink(),
+                      error: (error, stack) => const SizedBox.shrink(),
+                    );
+                  },
+                ),
+
+                // Chat Preview (OPTIMIZED)
+                // Data processing moved to pure function
+                Consumer(
+                  builder: (context, ref, child) {
+                    final data = ref.watch(chatPreviewDataProvider(eventId));
+                    final messagesAsync =
+                        data['messagesAsync'] as AsyncValue<List<ChatMessage>>;
+                    final unreadCountAsync =
+                        data['unreadCountAsync'] as AsyncValue<int>;
+
+                    return messagesAsync.when(
+                      data: (messages) {
+                        final unreadCount = unreadCountAsync.maybeWhen(
+                          data: (count) => count,
+                          orElse: () => 0,
+                        );
+
+                        // Process messages using pure function
+                        final chatData = _processChatMessages(
+                          messages: messages,
+                          unreadCount: unreadCount,
+                          currentUserId: currentUserId,
+                        );
+
+                        return ChatPreviewWidget(
+                          newMessagesCount: chatData.unreadCount,
+                          currentUserId: currentUserId ?? '',
+                          recentMessages: chatData.previews,
+                          onOpenChat: () {
+                            Navigator.pushNamed(
+                              context,
+                              AppRouter.eventChat,
+                              arguments: {'eventId': eventId},
+                            );
+                          },
+                          onOpenChatWithMessage: (messageId) {
+                            Navigator.pushNamed(
+                              context,
+                              AppRouter.eventChat,
+                              arguments: {
+                                'eventId': eventId,
+                                'scrollToMessageId': messageId,
+                              },
+                            );
+                          },
+                          onSendMessage: (content,
+                              {ChatMessagePreview? replyTo}) async {
+                            // Use message map for faster lookup
+                            ChatMessage? replyToMessage;
+                            if (replyTo != null) {
+                              try {
+                                replyToMessage = messages.firstWhere(
+                                  (m) =>
+                                      m.userId == replyTo.userId &&
+                                      m.content == replyTo.content &&
+                                      m.createdAt == replyTo.timestamp,
+                                );
+                              } catch (e) {
+                                // Ignore if message not found
+                              }
+                            }
+
+                            await ref
+                                .read(chatActionsProvider(eventId))
+                                .sendMessage(
+                                  content,
+                                  replyTo: replyToMessage,
+                                );
+                          },
+                          onPinMessage: (message) async {
+                            final originalMessage = messages.firstWhere(
+                              (m) =>
+                                  m.content == message.content &&
+                                  m.userId == message.userId,
+                            );
+                            await ref
+                                .read(chatActionsProvider(eventId))
+                                .togglePin(
+                                  originalMessage.id,
+                                  !originalMessage.isPinned,
+                                );
+                            // Navigate to chat and scroll to pinned message
+                            if (context.mounted) {
+                              Navigator.pushNamed(
+                                context,
+                                AppRouter.eventChat,
+                                arguments: {
+                                  'eventId': eventId,
+                                  'scrollToMessageId': originalMessage.id,
+                                },
+                              );
+                            }
+                          },
+                          onDeleteMessage: (message) async {
+                            final originalMessage = messages.firstWhere(
+                              (m) =>
+                                  m.content == message.content &&
+                                  m.userId == message.userId,
+                            );
+                            await ref
+                                .read(chatActionsProvider(eventId))
+                                .deleteMessage(originalMessage.id);
+                          },
+                          onReplyMessage: (message) {
+                            Navigator.pushNamed(
+                              context,
+                              AppRouter.eventChat,
+                              arguments: {'eventId': eventId},
+                            );
                           },
                         );
                       },
-                      onSendMessage: (content,
-                          {ChatMessagePreview? replyTo}) async {
-                        if (kDebugMode) {}
-
-                        // Convert ChatMessagePreview to ChatMessage if replying
-                        ChatMessage? replyToMessage;
-                        if (replyTo != null) {
-                          // Find the original ChatMessage from messages list
-                          try {
-                            replyToMessage = messages.firstWhere(
-                              (m) =>
-                                  m.userId == replyTo.userId &&
-                                  m.content == replyTo.content &&
-                                  m.createdAt == replyTo.timestamp,
-                            );
-                            if (kDebugMode) {}
-                          } catch (e) {
-                            if (kDebugMode) {}
-                          }
-                        }
-
-                        await ref
-                            .read(chatActionsProvider(eventId))
-                            .sendMessage(
-                              content,
-                              replyTo: replyToMessage,
-                            );
-                        if (kDebugMode) {}
-                      },
-                      onPinMessage: (message) async {
-                        final originalMessage = messages.firstWhere(
-                          (m) =>
-                              m.content == message.content &&
-                              m.userId == message.userId,
+                      loading: () => const ChatPreviewWidget(
+                        newMessagesCount: 0,
+                        currentUserId: '',
+                        recentMessages: [],
+                        onOpenChat: null,
+                        onSendMessage: null,
+                      ),
+                      error: (error, stack) {
+                        return ChatPreviewWidget(
+                          newMessagesCount: 0,
+                          currentUserId: currentUserId ?? '',
+                          recentMessages: const [],
+                          onOpenChat: () {},
+                          onSendMessage: (content,
+                              {ChatMessagePreview? replyTo}) async {
+                            await ref
+                                .read(chatActionsProvider(eventId))
+                                .sendMessage(content);
+                          },
+                          onPinMessage: (message) async {
+                            await ref
+                                .read(chatActionsProvider(eventId))
+                                .togglePin('', false);
+                            if (context.mounted) {
+                              Navigator.pushNamed(
+                                context,
+                                AppRouter.eventChat,
+                                arguments: {'eventId': eventId},
+                              );
+                            }
+                          },
+                          onDeleteMessage: (message) async {
+                            await ref
+                                .read(chatActionsProvider(eventId))
+                                .deleteMessage('');
+                          },
                         );
-                        await ref.read(chatActionsProvider(eventId)).togglePin(
-                              originalMessage.id,
-                              !originalMessage.isPinned,
-                            );
-                        // Navigate to chat and scroll to pinned message
-                        if (context.mounted) {
-                          Navigator.pushNamed(
-                            context,
-                            AppRouter.eventChat,
-                            arguments: {
-                              'eventId': eventId,
-                              'scrollToMessageId': originalMessage.id,
-                            },
-                          );
-                        }
-                      },
-                      onDeleteMessage: (message) async {
-                        final originalMessage = messages.firstWhere(
-                          (m) =>
-                              m.content == message.content &&
-                              m.userId == message.userId,
-                        );
-                        await ref
-                            .read(chatActionsProvider(eventId))
-                            .deleteMessage(originalMessage.id);
-                      },
-                      onReplyMessage: (message) {
-                        // Navigate to chat page with reply context (future enhancement)
-                        Navigator.pushNamed(
-                          context,
-                          AppRouter.eventChat,
-                          arguments: {'eventId': eventId},
-                        );
-                      },
-                    );
-                  },
-                  loading: () => const ChatPreviewWidget(
-                    newMessagesCount: 0,
-                    currentUserId: '',
-                    recentMessages: [],
-                    onOpenChat: null,
-                    onSendMessage: null,
-                  ),
-                  error: (error, stack) {
-                    // Show empty chat widget on error so users can still try to send messages
-                    return ChatPreviewWidget(
-                      newMessagesCount: 0,
-                      currentUserId: currentUserId ?? '',
-                      recentMessages: const [],
-                      onOpenChat: () {},
-                      onSendMessage: (content,
-                          {ChatMessagePreview? replyTo}) async {
-                        if (kDebugMode) {}
-                        await ref
-                            .read(chatActionsProvider(eventId))
-                            .sendMessage(content);
-                        if (kDebugMode) {}
-                      },
-                      onPinMessage: (message) async {
-                        // Try to send action even in error state
-                        await ref
-                            .read(chatActionsProvider(eventId))
-                            .togglePin('', false);
-                        // Navigate to chat
-                        if (context.mounted) {
-                          Navigator.pushNamed(
-                            context,
-                            AppRouter.eventChat,
-                            arguments: {'eventId': eventId},
-                          );
-                        }
-                      },
-                      onDeleteMessage: (message) async {
-                        await ref
-                            .read(chatActionsProvider(eventId))
-                            .deleteMessage('');
                       },
                     );
                   },
@@ -1467,6 +1303,153 @@ class _EventPageState extends ConsumerState<EventPage> {
         ),
         const SizedBox(height: Gaps.lg),
       ],
+    );
+  }
+
+  // ===== DATA PROCESSING METHODS =====
+  // Pure functions that transform raw data into UI-ready models
+  // No refs, no side effects, easily testable
+
+  /// Process date/time suggestions with votes and filters
+  /// Returns data ready for UI consumption
+  DateTimeSuggestionsData _processDateTimeSuggestions({
+    required List<Suggestion> suggestions,
+    required List<SuggestionVote> allVotes,
+    required Set<String> userVoteIds,
+    required EventDetail event,
+    required int goingCount,
+    required String? currentUserId,
+  }) {
+    // Filter suggestions that are DIFFERENT from current event date
+    final alternateSuggestions = suggestions.where((s) {
+      if (event.startDateTime == null || event.endDateTime == null) {
+        return true;
+      }
+      final isDifferent =
+          !s.startDateTime.isAtSameMomentAs(event.startDateTime!) ||
+              !(s.endDateTime?.isAtSameMomentAs(event.endDateTime!) ?? false);
+      return isDifferent;
+    }).toList();
+
+    final List<DateTimeSuggestion> dateTimeSuggestions = [];
+
+    // Always add current event date as FIRST option (for comparison)
+    DateTimeSuggestion? currentEventOption;
+    if (event.startDateTime != null && event.endDateTime != null) {
+      currentEventOption = DateTimeSuggestion(
+        id: 'current_event_date',
+        startDateTime: event.startDateTime!,
+        endDateTime: event.endDateTime!,
+        voteCount: goingCount, // Show number of 'Can' votes from RSVP
+        hasUserVoted: false,
+        votes: [],
+      );
+      dateTimeSuggestions.add(currentEventOption);
+    }
+
+    // Add all ALTERNATIVE suggestions (different from current date)
+    dateTimeSuggestions.addAll(alternateSuggestions.map((suggestion) {
+      final suggestionVotes = allVotes
+          .where((vote) => vote.suggestionId == suggestion.id)
+          .map((vote) => datetime_widget.SuggestionVote(
+                id: vote.id,
+                userId: vote.userId,
+                userName: _getUserDisplayName(
+                    vote.userId, vote.userName, currentUserId),
+                userAvatar: vote.userAvatar,
+                votedAt: vote.createdAt,
+              ))
+          .toList();
+
+      return DateTimeSuggestion(
+        id: suggestion.id,
+        startDateTime: suggestion.startDateTime,
+        endDateTime: suggestion.endDateTime,
+        voteCount: suggestionVotes.length,
+        hasUserVoted: userVoteIds.contains(suggestion.id),
+        votes: suggestionVotes,
+      );
+    }));
+
+    return DateTimeSuggestionsData(
+      suggestions: dateTimeSuggestions,
+      hasAlternatives: alternateSuggestions.isNotEmpty,
+      currentEventOption: currentEventOption,
+    );
+  }
+
+  /// Process location suggestions with votes and filters
+  /// Returns data ready for UI consumption
+  LocationSuggestionsData _processLocationSuggestions({
+    required List<LocationSuggestion> suggestions,
+    required List<SuggestionVote> allVotes,
+    required EventDetail event,
+    required int goingCount,
+  }) {
+    // Filter suggestions DIFFERENT from current event location (if exists)
+    final alternateLocationSuggestions = suggestions.where((s) {
+      if (event.location == null) return true;
+
+      final isDifferent = s.locationName != event.location!.displayName ||
+          (s.address ?? '') != event.location!.formattedAddress;
+      return isDifferent;
+    }).toList();
+
+    return LocationSuggestionsData(
+      suggestions: suggestions,
+      allVotes: allVotes,
+      hasAlternatives: event.location != null
+          ? alternateLocationSuggestions.isNotEmpty
+          : suggestions.isNotEmpty,
+      currentEventGoingCount: goingCount,
+    );
+  }
+
+  /// Process chat messages into preview models
+  /// Returns data ready for UI consumption with message lookup map
+  ChatPreviewData _processChatMessages({
+    required List<ChatMessage> messages,
+    required int unreadCount,
+    required String? currentUserId,
+  }) {
+    // Create message lookup map for faster access (used in reply/pin/delete)
+    final messageMap = <String, ChatMessage>{};
+    for (final message in messages) {
+      messageMap[message.id] = message;
+    }
+
+    final previewMessages = messages.map((m) {
+      return ChatMessagePreview(
+        userId: m.userId,
+        userName: _getUserDisplayName(m.userId, m.userName, currentUserId),
+        userAvatar: m.userAvatar,
+        content: m.content,
+        timestamp: m.createdAt,
+        isReadBySomeone: m.isReadBySomeone,
+        isPinned: m.isPinned,
+        isDeleted: m.isDeleted,
+        isPending: m.isPending,
+        replyTo: m.replyTo != null
+            ? ChatMessagePreview(
+                userId: m.replyTo!.userId,
+                userName: _getUserDisplayName(
+                    m.replyTo!.userId, m.replyTo!.userName, currentUserId),
+                userAvatar: m.replyTo!.userAvatar,
+                content: m.replyTo!.content,
+                timestamp: m.replyTo!.createdAt,
+                isReadBySomeone: m.replyTo!.isReadBySomeone,
+                isPinned: m.replyTo!.isPinned,
+                isDeleted: m.replyTo!.isDeleted,
+                isPending: m.replyTo!.isPending,
+              )
+            : null,
+      );
+    }).toList();
+
+    return ChatPreviewData(
+      previews: previewMessages,
+      messageMap: messageMap,
+      unreadCount: unreadCount,
     );
   }
 }
