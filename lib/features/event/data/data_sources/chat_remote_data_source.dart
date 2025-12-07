@@ -31,8 +31,7 @@ class ChatRemoteDataSource {
           .from(_profileBucket)
           .createSignedUrl(avatarPath, 3600); // 1 hour validity
     } catch (e) {
-      if (kDebugMode) {
-              }
+      if (kDebugMode) {}
       return null;
     }
   }
@@ -47,7 +46,7 @@ class ChatRemoteDataSource {
       // Initial fetch
       _fetchAndEmitMessages(eventId);
 
-      // Subscribe to realtime updates
+      // Subscribe to realtime updates for chat_messages
       _supabaseClient
           .channel('chat_messages_$eventId')
           .onPostgresChanges(
@@ -64,6 +63,24 @@ class ChatRemoteDataSource {
             },
           )
           .subscribe();
+
+      // Subscribe to realtime updates for message_reads
+      _supabaseClient
+          .channel('message_reads_$eventId')
+          .onPostgresChanges(
+            event: PostgresChangeEvent.all,
+            schema: 'public',
+            table: 'message_reads',
+            filter: PostgresChangeFilter(
+                type: PostgresChangeFilterType.eq,
+                column: 'event_id',
+                value: eventId),
+            callback: (payload) {
+              // Refetch all messages when read status changes
+              _fetchAndEmitMessages(eventId);
+            },
+          )
+          .subscribe();
     }
 
     yield* _messageStreams[eventId]!.stream;
@@ -76,30 +93,58 @@ class ChatRemoteDataSource {
     _debounceTimers[eventId] =
         Timer(const Duration(milliseconds: 150), () async {
       try {
-        final response = await _supabaseClient
-            .from('chat_messages')
-            .select('''
-              id,
-              event_id,
-              user_id,
-              content,
-              read,
-              reply_to_id,
-              is_pinned,
-              is_deleted,
-              created_at,
-              user:user_id(id, name, avatar_url)
-            ''')
-            .eq('event_id', eventId)
-            .order('created_at', ascending: false)
-            .limit(50); // ⚡ LIMIT to 50 messages for performance
+        final currentUserId = _supabaseClient.auth.currentUser?.id;
+
+        if (currentUserId == null) {
+          // Fallback to simple query if no user
+          final response = await _supabaseClient
+              .from('chat_messages')
+              .select('''
+                id,
+                event_id,
+                user_id,
+                content,
+                read,
+                reply_to_id,
+                is_pinned,
+                is_deleted,
+                created_at,
+                user:user_id(id, name, avatar_url)
+              ''')
+              .eq('event_id', eventId)
+              .order('created_at', ascending: false)
+              .limit(50);
+
+          final messages = response as List;
+          for (var json in messages) {
+            if (json['user'] != null && json['user']['avatar_url'] != null) {
+              json['user']['avatar_url'] =
+                  await _getSignedUrlForAvatar(json['user']['avatar_url']);
+            }
+          }
+
+          final models =
+              messages.map((json) => ChatMessageModel.fromJson(json)).toList();
+          _messageStreams[eventId]?.add(models);
+          return;
+        }
+
+        // Use RPC to get messages with correct isReadBySomeone status
+        final response = await _supabaseClient.rpc(
+          'get_messages_with_read_status',
+          params: {
+            'p_event_id': eventId,
+            'p_current_user_id': currentUserId,
+            'p_limit': 50,
+          },
+        );
 
         // Convert storage paths to signed URLs for avatar_url
         final messages = response as List;
         for (var json in messages) {
-          if (json['user'] != null && json['user']['avatar_url'] != null) {
-            json['user']['avatar_url'] =
-                await _getSignedUrlForAvatar(json['user']['avatar_url']);
+          if (json['user_avatar'] != null) {
+            json['user_avatar'] =
+                await _getSignedUrlForAvatar(json['user_avatar']);
           }
         }
 
@@ -107,8 +152,7 @@ class ChatRemoteDataSource {
             messages.map((json) => ChatMessageModel.fromJson(json)).toList();
         _messageStreams[eventId]?.add(models);
       } catch (e) {
-        if (kDebugMode) {
-                  }
+        if (kDebugMode) {}
         _messageStreams[eventId]?.addError(e);
       }
     });
@@ -282,8 +326,7 @@ class ChatRemoteDataSource {
     required String messageId,
   }) async {
     try {
-      if (kDebugMode) {
-                              }
+      if (kDebugMode) {}
 
       final response = await _supabaseClient.rpc(
         'update_last_read_message',
@@ -293,17 +336,14 @@ class ChatRemoteDataSource {
         },
       );
 
-      if (kDebugMode) {
-              }
+      if (kDebugMode) {}
 
       return response as Map<String, dynamic>;
     } on PostgrestException catch (e) {
-      if (kDebugMode) {
-              }
+      if (kDebugMode) {}
       throw Exception('Failed to update last read message: ${e.message}');
     } catch (e) {
-      if (kDebugMode) {
-              }
+      if (kDebugMode) {}
       throw Exception('Failed to update last read message: $e');
     }
   }
@@ -314,8 +354,7 @@ class ChatRemoteDataSource {
     required String currentUserId,
   }) async {
     try {
-      if (kDebugMode) {
-                              }
+      if (kDebugMode) {}
 
       final count = await _supabaseClient.rpc(
         'get_unread_message_count',
@@ -325,17 +364,14 @@ class ChatRemoteDataSource {
         },
       );
 
-      if (kDebugMode) {
-              }
+      if (kDebugMode) {}
 
       return count as int;
     } on PostgrestException catch (e) {
-      if (kDebugMode) {
-              }
+      if (kDebugMode) {}
       throw Exception('Failed to get unread message count: ${e.message}');
     } catch (e) {
-      if (kDebugMode) {
-              }
+      if (kDebugMode) {}
       throw Exception('Failed to get unread message count: $e');
     }
   }
@@ -348,8 +384,7 @@ class ChatRemoteDataSource {
     int limit = 50,
   }) async {
     try {
-      if (kDebugMode) {
-                                      }
+      if (kDebugMode) {}
 
       final response = await _supabaseClient.rpc(
         'get_messages_with_read_status',
@@ -360,8 +395,7 @@ class ChatRemoteDataSource {
         },
       );
 
-      if (kDebugMode) {
-              }
+      if (kDebugMode) {}
 
       // Convert storage paths to signed URLs for avatar_url
       final messages = response as List;
@@ -374,12 +408,10 @@ class ChatRemoteDataSource {
 
       return messages.map((json) => ChatMessageModel.fromJson(json)).toList();
     } on PostgrestException catch (e) {
-      if (kDebugMode) {
-              }
+      if (kDebugMode) {}
       throw Exception('Failed to get messages with read status: ${e.message}');
     } catch (e) {
-      if (kDebugMode) {
-              }
+      if (kDebugMode) {}
       throw Exception('Failed to get messages with read status: $e');
     }
   }

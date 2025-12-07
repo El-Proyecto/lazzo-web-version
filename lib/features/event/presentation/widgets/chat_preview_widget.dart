@@ -119,7 +119,7 @@ class _ChatPreviewWidgetState extends State<ChatPreviewWidget> {
     );
   }
 
-  void _sendMessage() {
+  void _sendMessage() async {
     final content = _controller.text.trim();
     if (content.isNotEmpty && widget.onSendMessage != null) {
       // Create optimistic pending message

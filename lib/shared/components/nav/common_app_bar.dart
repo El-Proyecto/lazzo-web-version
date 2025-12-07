@@ -135,10 +135,12 @@ class CommonAppBar extends StatelessWidget implements PreferredSizeWidget {
               title,
               style: AppText.dropdownTitle.copyWith(
                 color: BrandColors.text1,
-                fontSize: 22,
+                fontSize: 18,
                 fontWeight: FontWeight.w500,
               ),
               textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
           ),
 

@@ -50,6 +50,15 @@ class _EventPageState extends ConsumerState<EventPage> {
   // Track events that have been added to calendar
   final Set<String> _addedToCalendar = {};
 
+  // Scroll controller to detect when header is scrolled off screen
+  final ScrollController _scrollController = ScrollController();
+
+  // Track if title should be shown in app bar
+  bool _showTitleInAppBar = false;
+
+  // Cache isHost status to prevent flicker during operations
+  bool? _cachedIsHost;
+
   String get eventId => widget.eventId;
 
   @override
@@ -59,6 +68,27 @@ class _EventPageState extends ConsumerState<EventPage> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(unreadCountRealtimeProvider(eventId));
     });
+
+    // Listen to scroll to show/hide title in app bar
+    _scrollController.addListener(_onScroll);
+  }
+
+  @override
+  void dispose() {
+    _scrollController.removeListener(_onScroll);
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    // Show title when scrolled past ~150px (approximate header height)
+    final shouldShow =
+        _scrollController.hasClients && _scrollController.offset > 150;
+    if (shouldShow != _showTitleInAppBar) {
+      setState(() {
+        _showTitleInAppBar = shouldShow;
+      });
+    }
   }
 
   /// Helper to replace current user's name with "You"
@@ -198,10 +228,12 @@ class _EventPageState extends ConsumerState<EventPage> {
       }
     }
 
+    final eventName = eventAsync.value?.name ?? '';
+
     return Scaffold(
       backgroundColor: BrandColors.bg1,
       appBar: CommonAppBar(
-        title: '',
+        title: _showTitleInAppBar ? eventName : '',
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: BrandColors.text1),
           onPressed: () => Navigator.of(context).pop(),
@@ -214,6 +246,9 @@ class _EventPageState extends ConsumerState<EventPage> {
 
             return canManageAsync.when(
               data: (canManage) {
+                // Cache the isHost status
+                _cachedIsHost = canManage;
+
                 // Only show settings icon for host or group admins
                 if (!canManage) {
                   return const SizedBox.shrink();
@@ -256,7 +291,45 @@ class _EventPageState extends ConsumerState<EventPage> {
                   },
                 );
               },
-              loading: () => const SizedBox.shrink(),
+              loading: () {
+                // Use cached state during loading to prevent flicker
+                if (_cachedIsHost == true) {
+                  final eventData = eventAsync.value;
+                  if (eventData != null) {
+                    return IconButton(
+                      icon: const Icon(Icons.edit, color: BrandColors.text1),
+                      onPressed: () {
+                        final editEvent = create_event.Event(
+                          id: eventData.id,
+                          name: eventData.name,
+                          emoji: eventData.emoji,
+                          groupId: eventData.groupId,
+                          startDateTime: eventData.startDateTime,
+                          endDateTime: eventData.endDateTime,
+                          location: eventData.location != null
+                              ? create_event.EventLocation(
+                                  id: eventData.location!.id,
+                                  displayName: eventData.location!.displayName,
+                                  formattedAddress:
+                                      eventData.location!.formattedAddress,
+                                  latitude: eventData.location!.latitude,
+                                  longitude: eventData.location!.longitude,
+                                )
+                              : null,
+                          status: create_event.EventStatus.confirmed,
+                          createdAt: eventData.createdAt,
+                        );
+                        Navigator.pushNamed(
+                          context,
+                          AppRouter.editEvent,
+                          arguments: {'event': editEvent},
+                        );
+                      },
+                    );
+                  }
+                }
+                return const SizedBox.shrink();
+              },
               error: (_, __) => const SizedBox.shrink(),
             );
           },
@@ -268,9 +341,12 @@ class _EventPageState extends ConsumerState<EventPage> {
           color: BrandColors.planning,
           backgroundColor: BrandColors.bg2,
           child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(
-              horizontal: Insets.screenH,
-              vertical: Gaps.lg,
+            controller: _scrollController,
+            padding: const EdgeInsets.only(
+              left: Insets.screenH,
+              right: Insets.screenH,
+              top: Gaps.sm,
+              bottom: Gaps.lg,
             ),
             child: Column(
               children: [
@@ -285,7 +361,7 @@ class _EventPageState extends ConsumerState<EventPage> {
                 ),
                 const SizedBox(height: Gaps.md),
 
-                // Event status chip - visible for event host OR group admins
+                // Event status chip - always visible
                 Consumer(
                   builder: (context, consumerRef, _) {
                     final canManageAsync = consumerRef.watch(
@@ -294,28 +370,61 @@ class _EventPageState extends ConsumerState<EventPage> {
 
                     return canManageAsync.when(
                       data: (canManage) {
-                        if (!canManage) {
-                          return const SizedBox.shrink();
-                        }
+                        // Cache the isHost status
+                        _cachedIsHost = canManage;
 
                         return Column(
                           children: [
                             EventStatusChip(
                               status: event.status,
-                              isHost: true,
-                              onTap: () => _showStatusChangeDialog(
-                                context,
-                                ref,
-                                eventId,
-                                event.status,
-                              ),
+                              isHost: canManage,
+                              onTap: canManage
+                                  ? () => _showStatusChangeDialog(
+                                        context,
+                                        ref,
+                                        eventId,
+                                        event.status,
+                                      )
+                                  : () {},
                             ),
                             const SizedBox(height: Gaps.lg),
                           ],
                         );
                       },
-                      loading: () => const SizedBox.shrink(),
-                      error: (_, __) => const SizedBox.shrink(),
+                      loading: () => Column(
+                        children: [
+                          EventStatusChip(
+                            status: event.status,
+                            isHost: _cachedIsHost ?? false,
+                            onTap: (_cachedIsHost ?? false)
+                                ? () => _showStatusChangeDialog(
+                                      context,
+                                      ref,
+                                      eventId,
+                                      event.status,
+                                    )
+                                : () {},
+                          ),
+                          const SizedBox(height: Gaps.lg),
+                        ],
+                      ),
+                      error: (_, __) => Column(
+                        children: [
+                          EventStatusChip(
+                            status: event.status,
+                            isHost: _cachedIsHost ?? false,
+                            onTap: (_cachedIsHost ?? false)
+                                ? () => _showStatusChangeDialog(
+                                      context,
+                                      ref,
+                                      eventId,
+                                      event.status,
+                                    )
+                                : () {},
+                          ),
+                          const SizedBox(height: Gaps.lg),
+                        ],
+                      ),
                     );
                   },
                 ),
@@ -443,36 +552,40 @@ class _EventPageState extends ConsumerState<EventPage> {
                                                   userRsvp) ==
                                               false
                                           ? () {
-                                              if (event.startDateTime != null &&
-                                                  event.endDateTime != null) {
-                                                showAddSuggestionBottomSheet(
+                                              if (event.startDateTime == null ||
+                                                  event.endDateTime == null) {
+                                                TopBanner.showError(
                                                   context,
-                                                  eventId: eventId,
-                                                  eventStartDate:
-                                                      event.startDateTime!,
-                                                  eventStartTime:
-                                                      TimeOfDay.fromDateTime(
-                                                    event.startDateTime!,
-                                                  ),
-                                                  eventEndDate:
-                                                      event.endDateTime!,
-                                                  eventEndTime:
-                                                      TimeOfDay.fromDateTime(
-                                                    event.endDateTime!,
-                                                  ),
-                                                  type: locationSuggestions
-                                                          .isNotEmpty
-                                                      ? SuggestionType.location
-                                                      : SuggestionType
-                                                          .dateTime, // Start with Location tab if location suggestions exist
-                                                  currentEventLocationName:
-                                                      event.location
-                                                          ?.displayName,
-                                                  currentEventAddress: event
-                                                      .location
-                                                      ?.formattedAddress,
+                                                  message:
+                                                      'Event dates must be set before adding suggestions',
                                                 );
+                                                return;
                                               }
+                                              showAddSuggestionBottomSheet(
+                                                context,
+                                                eventId: eventId,
+                                                eventStartDate:
+                                                    event.startDateTime!,
+                                                eventStartTime:
+                                                    TimeOfDay.fromDateTime(
+                                                  event.startDateTime!,
+                                                ),
+                                                eventEndDate:
+                                                    event.endDateTime!,
+                                                eventEndTime:
+                                                    TimeOfDay.fromDateTime(
+                                                  event.endDateTime!,
+                                                ),
+                                                type: locationSuggestions
+                                                        .isNotEmpty
+                                                    ? SuggestionType.location
+                                                    : SuggestionType
+                                                        .dateTime, // Start with Location tab if location suggestions exist
+                                                currentEventLocationName:
+                                                    event.location?.displayName,
+                                                currentEventAddress: event
+                                                    .location?.formattedAddress,
+                                              );
                                             }
                                           : null,
                                       eventStartDateTime: event.startDateTime,
@@ -718,21 +831,27 @@ class _EventPageState extends ConsumerState<EventPage> {
                             onAddSuggestion: _getUserVoteStatus(userRsvp) ==
                                     false
                                 ? () {
-                                    if (event.startDateTime != null &&
-                                        event.endDateTime != null) {
-                                      showAddSuggestionBottomSheet(
+                                    if (event.startDateTime == null ||
+                                        event.endDateTime == null) {
+                                      TopBanner.showError(
                                         context,
-                                        eventId: eventId,
-                                        eventStartDate: event.startDateTime!,
-                                        eventStartTime: TimeOfDay.fromDateTime(
-                                          event.startDateTime!,
-                                        ),
-                                        eventEndDate: event.endDateTime!,
-                                        eventEndTime: TimeOfDay.fromDateTime(
-                                          event.endDateTime!,
-                                        ),
+                                        message:
+                                            'Event dates must be set before adding suggestions',
                                       );
+                                      return;
                                     }
+                                    showAddSuggestionBottomSheet(
+                                      context,
+                                      eventId: eventId,
+                                      eventStartDate: event.startDateTime!,
+                                      eventStartTime: TimeOfDay.fromDateTime(
+                                        event.startDateTime!,
+                                      ),
+                                      eventEndDate: event.endDateTime!,
+                                      eventEndTime: TimeOfDay.fromDateTime(
+                                        event.endDateTime!,
+                                      ),
+                                    );
                                   }
                                 : null,
                             eventStartDateTime: event.startDateTime,
@@ -792,21 +911,27 @@ class _EventPageState extends ConsumerState<EventPage> {
                             onAddSuggestion: _getUserVoteStatus(userRsvp) ==
                                     false
                                 ? () {
-                                    if (event.startDateTime != null &&
-                                        event.endDateTime != null) {
-                                      showAddSuggestionBottomSheet(
+                                    if (event.startDateTime == null ||
+                                        event.endDateTime == null) {
+                                      TopBanner.showError(
                                         context,
-                                        eventId: eventId,
-                                        eventStartDate: event.startDateTime!,
-                                        eventStartTime: TimeOfDay.fromDateTime(
-                                          event.startDateTime!,
-                                        ),
-                                        eventEndDate: event.endDateTime!,
-                                        eventEndTime: TimeOfDay.fromDateTime(
-                                          event.endDateTime!,
-                                        ),
+                                        message:
+                                            'Event dates must be set before adding suggestions',
                                       );
+                                      return;
                                     }
+                                    showAddSuggestionBottomSheet(
+                                      context,
+                                      eventId: eventId,
+                                      eventStartDate: event.startDateTime!,
+                                      eventStartTime: TimeOfDay.fromDateTime(
+                                        event.startDateTime!,
+                                      ),
+                                      eventEndDate: event.endDateTime!,
+                                      eventEndTime: TimeOfDay.fromDateTime(
+                                        event.endDateTime!,
+                                      ),
+                                    );
                                   }
                                 : null,
                             eventStartDateTime: event.startDateTime,
@@ -891,6 +1016,14 @@ class _EventPageState extends ConsumerState<EventPage> {
                             final List<DateTimeSuggestion> dateTimeSuggestions =
                                 [];
 
+                            // Calculate going count from RSVP votes
+                            final goingCount = rsvpsAsync.maybeWhen(
+                              data: (rsvps) => rsvps
+                                  .where((r) => r.status == RsvpStatus.going)
+                                  .length,
+                              orElse: () => 0,
+                            );
+
                             // Always add current event date as FIRST option (for comparison)
                             if (event.startDateTime != null &&
                                 event.endDateTime != null) {
@@ -899,7 +1032,7 @@ class _EventPageState extends ConsumerState<EventPage> {
                                 startDateTime: event.startDateTime!,
                                 endDateTime: event.endDateTime!,
                                 voteCount:
-                                    0, // Current date has no votes (it's the default)
+                                    goingCount, // Show number of 'Can' votes from RSVP
                                 hasUserVoted: false,
                                 votes: [],
                               ));
@@ -961,21 +1094,27 @@ class _EventPageState extends ConsumerState<EventPage> {
                                   },
                                   isHost: event.hostId == currentUserId,
                                   onAddSuggestion: () {
-                                    if (event.startDateTime != null &&
-                                        event.endDateTime != null) {
-                                      showAddSuggestionBottomSheet(
+                                    if (event.startDateTime == null ||
+                                        event.endDateTime == null) {
+                                      TopBanner.showError(
                                         context,
-                                        eventId: eventId,
-                                        eventStartDate: event.startDateTime!,
-                                        eventStartTime: TimeOfDay.fromDateTime(
-                                          event.startDateTime!,
-                                        ),
-                                        eventEndDate: event.endDateTime!,
-                                        eventEndTime: TimeOfDay.fromDateTime(
-                                          event.endDateTime!,
-                                        ),
+                                        message:
+                                            'Event dates must be set before adding suggestions',
                                       );
+                                      return;
                                     }
+                                    showAddSuggestionBottomSheet(
+                                      context,
+                                      eventId: eventId,
+                                      eventStartDate: event.startDateTime!,
+                                      eventStartTime: TimeOfDay.fromDateTime(
+                                        event.startDateTime!,
+                                      ),
+                                      eventEndDate: event.endDateTime!,
+                                      eventEndTime: TimeOfDay.fromDateTime(
+                                        event.endDateTime!,
+                                      ),
+                                    );
                                   },
                                   onSetDate: (selectedSuggestion) async {
                                     await _setEventDate(
@@ -1055,6 +1194,15 @@ class _EventPageState extends ConsumerState<EventPage> {
                                     .map((vote) => vote.suggestionId)
                                     .toSet();
 
+                                // Calculate going count from RSVP votes
+                                final locationGoingCount = rsvpsAsync.maybeWhen(
+                                  data: (rsvps) => rsvps
+                                      .where(
+                                          (r) => r.status == RsvpStatus.going)
+                                      .length,
+                                  orElse: () => 0,
+                                );
+
                                 return Padding(
                                   padding: const EdgeInsets.only(
                                     bottom: Gaps.lg, //TODO: Fix spaces
@@ -1072,6 +1220,7 @@ class _EventPageState extends ConsumerState<EventPage> {
                                           .toggleVote(eventId, suggestionId);
                                     },
                                     isHost: event.hostId == currentUserId,
+                                    currentEventGoingCount: locationGoingCount,
                                     onAddSuggestion: () {
                                       showAddSuggestionBottomSheet(
                                         context,
@@ -1346,7 +1495,7 @@ class _EventPageState extends ConsumerState<EventPage> {
                       participants: participantOptions, // ✅ Participantes reais
                       onAddExpense:
                           (title, paidById, participantsOwe, amount) async {
-                                                ref
+                        ref
                             .read(eventExpensesProvider(eventId).notifier)
                             .addExpense(
                           description: title,
@@ -1359,10 +1508,10 @@ class _EventPageState extends ConsumerState<EventPage> {
                     );
                   },
                   loading: () {
-                                        return const SizedBox.shrink();
+                    return const SizedBox.shrink();
                   },
                   error: (error, stack) {
-                                        return const SizedBox.shrink();
+                    return const SizedBox.shrink();
                   },
                 ),
                 const SizedBox(height: Gaps.lg),
