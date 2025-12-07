@@ -115,13 +115,18 @@ class RecentMemoryDataSource {
           }
         }
 
-        // Set the cover if we found one
+        // Only add event if we found a valid cover photo
         if (coverStoragePath != null) {
           event['cover_storage_path'] = coverStoragePath;
         }
       }
 
-      return userEvents;
+      // Filter out events without cover photos
+      final memoriesWithCovers = userEvents
+          .where((event) => event['cover_storage_path'] != null)
+          .toList();
+
+      return memoriesWithCovers;
     } catch (e) {
       return [];
     }

@@ -111,9 +111,11 @@ class ProfileMemoryDataSource {
           }
         }
 
-        // Add cover storage path to event data (can be null if event has no photos)
-        eventMap['cover_storage_path'] = coverStoragePath;
-        memoriesWithCovers.add(eventMap);
+        // Only add event if we found a valid cover photo
+        if (coverStoragePath != null) {
+          eventMap['cover_storage_path'] = coverStoragePath;
+          memoriesWithCovers.add(eventMap);
+        }
       }
 
       return memoriesWithCovers;
