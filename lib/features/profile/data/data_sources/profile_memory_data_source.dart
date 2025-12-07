@@ -55,36 +55,63 @@ class ProfileMemoryDataSource {
         final eventId = eventMap['id'] as String;
         final coverPhotoId = eventMap['cover_photo_id'] as String?;
 
-        // Try to get cover photo using cover_photo_id first
+        // Try 1: Use cover_photo_id if set
         if (coverPhotoId != null) {
-          final coverResponse = await client
-              .from('group_photos')
-              .select('storage_path')
-              .eq('id', coverPhotoId)
-              .maybeSingle();
+          try {
+            final coverResponse = await client
+                .from('group_photos')
+                .select('storage_path')
+                .eq('id', coverPhotoId)
+                .maybeSingle();
 
-          if (coverResponse != null) {
-            coverStoragePath = coverResponse['storage_path'] as String?;
+            if (coverResponse != null) {
+              coverStoragePath = coverResponse['storage_path'] as String?;
+            }
+          } catch (e) {
+            // Cover photo not found, will try fallback
           }
         }
 
-        // Fallback: get first portrait photo if no cover_photo_id
+        // Try 2: Get first portrait photo if no cover set
         if (coverStoragePath == null) {
-          final portraitResponse = await client
-              .from('group_photos')
-              .select('storage_path')
-              .eq('event_id', eventId)
-              .eq('is_portrait', true)
-              .order('uploaded_at', ascending: true)
-              .limit(1)
-              .maybeSingle();
+          try {
+            final portraitResponse = await client
+                .from('group_photos')
+                .select('storage_path')
+                .eq('event_id', eventId)
+                .eq('is_portrait', true)
+                .order('captured_at', ascending: true)
+                .limit(1)
+                .maybeSingle();
 
-          if (portraitResponse != null) {
-            coverStoragePath = portraitResponse['storage_path'] as String?;
+            if (portraitResponse != null) {
+              coverStoragePath = portraitResponse['storage_path'] as String?;
+            }
+          } catch (e) {
+            // No portrait photos found
           }
         }
 
-        // Add cover storage path to event data
+        // Try 3: Get any photo if still no cover found
+        if (coverStoragePath == null) {
+          try {
+            final anyPhoto = await client
+                .from('group_photos')
+                .select('storage_path')
+                .eq('event_id', eventId)
+                .order('captured_at', ascending: true)
+                .limit(1)
+                .maybeSingle();
+
+            if (anyPhoto != null) {
+              coverStoragePath = anyPhoto['storage_path'] as String?;
+            }
+          } catch (e) {
+            // No photos found at all
+          }
+        }
+
+        // Add cover storage path to event data (can be null if event has no photos)
         eventMap['cover_storage_path'] = coverStoragePath;
         memoriesWithCovers.add(eventMap);
       }

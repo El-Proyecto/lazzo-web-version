@@ -56,8 +56,10 @@ class RecentMemoryDataSource {
 
       // For each event, get cover photo if available
       for (final event in userEvents) {
+        String? coverStoragePath;
         final coverPhotoId = event['cover_photo_id'] as String?;
 
+        // Try 1: Use cover_photo_id if set
         if (coverPhotoId != null) {
           try {
             final photoResponse = await _client
@@ -67,29 +69,55 @@ class RecentMemoryDataSource {
                 .maybeSingle();
 
             if (photoResponse != null) {
-              event['cover_storage_path'] = photoResponse['storage_path'];
+              coverStoragePath = photoResponse['storage_path'] as String?;
             }
           } catch (e) {
-            // Cover photo not found, continue without it
+            // Cover photo not found, will try fallback
           }
-        } else {
-          // No cover selected, try to get first portrait photo
+        }
+
+        // Try 2: Get first portrait photo if no cover set
+        if (coverStoragePath == null) {
           try {
             final firstPhoto = await _client
                 .from('group_photos')
                 .select('storage_path')
                 .eq('event_id', event['id'])
                 .eq('is_portrait', true)
-                .order('created_at', ascending: true)
+                .order('captured_at', ascending: true)
                 .limit(1)
                 .maybeSingle();
 
             if (firstPhoto != null) {
-              event['cover_storage_path'] = firstPhoto['storage_path'];
+              coverStoragePath = firstPhoto['storage_path'] as String?;
             }
           } catch (e) {
-            // No photos found
+            // No portrait photos found
           }
+        }
+
+        // Try 3: Get any photo if still no cover found
+        if (coverStoragePath == null) {
+          try {
+            final anyPhoto = await _client
+                .from('group_photos')
+                .select('storage_path')
+                .eq('event_id', event['id'])
+                .order('captured_at', ascending: true)
+                .limit(1)
+                .maybeSingle();
+
+            if (anyPhoto != null) {
+              coverStoragePath = anyPhoto['storage_path'] as String?;
+            }
+          } catch (e) {
+            // No photos found at all
+          }
+        }
+
+        // Set the cover if we found one
+        if (coverStoragePath != null) {
+          event['cover_storage_path'] = coverStoragePath;
         }
       }
 
