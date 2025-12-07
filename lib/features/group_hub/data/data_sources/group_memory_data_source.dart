@@ -121,7 +121,6 @@ class SupabaseGroupMemoryDataSource implements GroupMemoryDataSource {
       
       return memoriesWithPhotos;
     } catch (e) {
-    } catch (e) {
       return [];
     }
   }
