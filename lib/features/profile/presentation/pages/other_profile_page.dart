@@ -8,6 +8,7 @@ import '../widgets/invite_to_group_bottom_sheet.dart';
 import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/themes/colors.dart';
 import '../../../../shared/components/common/top_banner.dart';
+import '../../../../routes/app_router.dart';
 import '../providers/other_profile_providers.dart';
 import '../../../group_hub/domain/entities/group_event_entity.dart';
 import '../../domain/entities/profile_entity.dart';
@@ -226,10 +227,9 @@ class OtherProfilePage extends ConsumerWidget {
   }
 
   void _onMemoryTap(BuildContext context, MemoryEntity memory) {
-    // TODO: Navigate to memory detail page
-    TopBanner.showInfo(
-      context,
-      message: 'Memory detail - Coming soon!',
+    Navigator.of(context).pushNamed(
+      AppRouter.memoryViewer,
+      arguments: {'memoryId': memory.id},
     );
   }
 }
