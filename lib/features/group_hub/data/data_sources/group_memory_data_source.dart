@@ -50,12 +50,12 @@ class SupabaseGroupMemoryDataSource implements GroupMemoryDataSource {
             .from('group_photos')
             .select('id')
             .eq('event_id', eventId);
-        
+
         event['photo_count'] = photosResponse.length;
         
         // Get cover photo
         String? coverStoragePath;
-        
+
         if (coverPhotoId != null) {
           // Try to get the manually selected cover photo (user choice takes priority)
           try {
@@ -64,7 +64,7 @@ class SupabaseGroupMemoryDataSource implements GroupMemoryDataSource {
                 .select('storage_path')
                 .eq('id', coverPhotoId)
                 .maybeSingle();
-            
+
             if (coverPhoto != null) {
               coverStoragePath = coverPhoto['storage_path'] as String?;
             }
@@ -72,7 +72,7 @@ class SupabaseGroupMemoryDataSource implements GroupMemoryDataSource {
             // Cover photo not found
           }
         }
-        
+
         // Fallback to first PORTRAIT photo if no cover selected or cover not found
         if (coverStoragePath == null) {
           try {
@@ -84,7 +84,7 @@ class SupabaseGroupMemoryDataSource implements GroupMemoryDataSource {
                 .order('created_at', ascending: true)
                 .limit(1)
                 .maybeSingle();
-            
+
             if (firstPortraitPhoto != null) {
               coverStoragePath = firstPortraitPhoto['storage_path'] as String?;
             } else {
@@ -97,7 +97,7 @@ class SupabaseGroupMemoryDataSource implements GroupMemoryDataSource {
                     .order('created_at', ascending: true)
                     .limit(1)
                     .maybeSingle();
-                
+
                 if (firstAnyPhoto != null) {
                   coverStoragePath = firstAnyPhoto['storage_path'] as String?;
                 }
@@ -109,7 +109,7 @@ class SupabaseGroupMemoryDataSource implements GroupMemoryDataSource {
             // Error searching for portrait photos
           }
         }
-        
+
         event['cover_storage_path'] = coverStoragePath;
       }
 
@@ -121,6 +121,7 @@ class SupabaseGroupMemoryDataSource implements GroupMemoryDataSource {
       
       return memoriesWithPhotos;
     } catch (e) {
+    } catch (e) {
       return [];
     }
   }
@@ -128,9 +129,7 @@ class SupabaseGroupMemoryDataSource implements GroupMemoryDataSource {
   @override
   Future<Map<String, dynamic>?> getMemoryById(String memoryId) async {
     try {
-      final response = await _client
-          .from('events')
-          .select('''
+      final response = await _client.from('events').select('''
             id,
             name,
             start_datetime,
@@ -138,14 +137,10 @@ class SupabaseGroupMemoryDataSource implements GroupMemoryDataSource {
             emoji,
             status,
             locations:location_id(name)
-          ''')
-          .eq('id', memoryId)
-          .eq('status', 'completed')
-          .single();
+          ''').eq('id', memoryId).eq('status', 'completed').single();
 
       return response;
     } catch (e) {
-      print('❌ Error fetching memory by ID: $e');
       return null;
     }
   }

@@ -45,8 +45,8 @@ class SettingsController extends StateNotifier<AsyncValue<SettingsEntity>> {
       final getSettings = ref.read(getSettingsUseCaseProvider);
       final settings = await getSettings();
       state = AsyncValue.data(settings);
-    } catch (e, stack) {
-      state = AsyncValue.error(e, stack);
+    } catch (e, stackTrace) {
+      state = AsyncValue.error(e, stackTrace);
     }
   }
 

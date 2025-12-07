@@ -15,8 +15,28 @@ abstract class ChatRepository {
   });
 
   /// Pin or unpin a message
-  Future<ChatMessage> pinMessage(String eventId, String messageId, bool isPinned);
+  Future<ChatMessage> pinMessage(
+      String eventId, String messageId, bool isPinned);
 
   /// Delete a message (marks as deleted, doesn't remove)
   Future<ChatMessage> deleteMessage(String eventId, String messageId);
+
+  /// Update the last message read by current user in an event
+  Future<bool> updateLastReadMessage({
+    required String eventId,
+    required String messageId,
+  });
+
+  /// Get count of unread messages for current user in an event
+  Future<int> getUnreadMessageCount({
+    required String eventId,
+    required String currentUserId,
+  });
+
+  /// Get messages with read status computed (batch query)
+  Future<List<ChatMessage>> getMessagesWithReadStatus({
+    required String eventId,
+    required String currentUserId,
+    int limit = 50,
+  });
 }

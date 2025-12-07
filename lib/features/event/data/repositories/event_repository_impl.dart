@@ -1,4 +1,5 @@
 import '../../domain/entities/event_detail.dart';
+import '../../domain/entities/event_participant_entity.dart';
 import '../../domain/repositories/event_repository.dart';
 import '../data_sources/event_remote_data_source.dart';
 
@@ -70,16 +71,17 @@ class EventRepositoryImpl implements EventRepository {
         break;
     }
 
-    print('📝 [REPOSITORY] Updating event $eventId status to: $statusString');
-
     final model = await _remoteDataSource.updateEventStatus(
       eventId,
       statusString,
     );
     
-    print('✅ [REPOSITORY] Event status updated in Supabase');
-    print('   📊 New status from DB: ${model.status}');
-    
     return model.toEntity();
+  }
+
+  @override
+  Future<List<EventParticipantEntity>> getEventParticipants(
+      String eventId) async {
+    return await _remoteDataSource.getEventParticipants(eventId);
   }
 }

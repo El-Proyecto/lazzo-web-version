@@ -15,8 +15,6 @@ class HomeEventRemoteDataSource {
   /// Priority: living (4) > recap (3) > confirmed (2) > pending (1)
   Future<HomeEventEntity?> fetchNextEvent(String userId) async {
     try {
-      print('🔍 Fetching next event for userId: $userId');
-
       // ✅ Fetch multiple events and choose highest priority on frontend
       // This allows proper priority calculation: living > recap > confirmed
       final response = await client
@@ -37,7 +35,6 @@ class HomeEventRemoteDataSource {
 
       final data = response as List<dynamic>;
       if (data.isEmpty) {
-        print('ℹ️ No events found for user $userId');
         return null;
       }
 
@@ -48,8 +45,7 @@ class HomeEventRemoteDataSource {
         onStatusMismatch: (eventId, newStatus) {
           // Persist status change asynchronously (fire and forget)
           updateEventStatus(eventId, newStatus).catchError((error) {
-            print('❌ Failed to persist status for event $eventId: $error');
-            return false;
+                        return false;
           });
         },
       )).toList();
@@ -69,22 +65,16 @@ class HomeEventRemoteDataSource {
       });
 
       final nextEvent = events.first;
-      print(
-          '✅ Next event selected: ${nextEvent.name} (status: ${nextEvent.status})');
-      print(
-          '   📍 Group: ${nextEvent.groupName ?? 'No group'} (ID: ${nextEvent.groupId ?? 'null'})');
-      print('   📍 Location: ${nextEvent.location ?? 'No location'}');
       return nextEvent;
     } catch (e) {
-      print('❌ Error fetching next event: $e');
-      return null;
+            return null;
     }
   }
 
   /// Fetch confirmed events (user voted yes, not next event)
   Future<List<HomeEventEntity>> fetchConfirmedEvents(String userId) async {
     try {
-      print('🔍 Fetching confirmed events for userId: $userId');
+
 
       final response = await client
           .from(_eventsView)
@@ -103,50 +93,26 @@ class HomeEventRemoteDataSource {
           .limit(20); // Increased to get both dated and null dated events
 
       final data = response as List<dynamic>;
-      print('📦 [CONFIRMED] Raw data from Supabase: ${data.length} events');
 
-      // Debug each raw event
-      for (var i = 0; i < data.length; i++) {
-        final event = data[i] as Map<String, dynamic>;
-        print(
-            '   [$i] ${event['event_name']} | start_datetime: ${event['start_datetime']} | location: ${event['location_name']}');
-      }
 
-      // Convert to entities with status persistence
-      print(
-          '🔄 [CONFIRMED] Converting ${data.length} raw events to entities...');
       final events = data.map((e) => homeEventFromMap(
         e as Map<String, dynamic>,
         onStatusMismatch: (eventId, newStatus) {
           updateEventStatus(eventId, newStatus).catchError((error) {
-            print('❌ Failed to persist status for event $eventId: $error');
-            return false;
+                        return false;
           });
         },
       )).toList();
-      print('✅ [CONFIRMED] Converted to ${events.length} entities');
-
-      // Debug entities before filtering
-      for (var i = 0; i < events.length; i++) {
-        print(
-            '   Entity[$i]: ${events[i].name} | date: ${events[i].date} | status: ${events[i].status}');
-      }
 
       // Filter out past events (keep future and null dates)
       final now = DateTime.now();
-      print('⏰ [CONFIRMED] Current time: $now');
       final filteredEvents = events.where((event) {
         if (event.date == null) {
-          print('   ✅ Keeping ${event.name} (null date)');
           return true; // Keep events without date
         }
         final isFuture = event.date!.isAfter(now);
-        print(
-            '   ${isFuture ? "✅" : "❌"} ${event.name} (date: ${event.date}, future: $isFuture)');
         return isFuture; // Keep future events
       }).toList();
-
-      print('🔍 [CONFIRMED] After filtering: ${filteredEvents.length} events');
 
       // Sort: future dates first (ascending), null dates last
       filteredEvents.sort((a, b) {
@@ -156,26 +122,15 @@ class HomeEventRemoteDataSource {
         return a.date!.compareTo(b.date!); // Normal date comparison
       });
 
-      print('📊 [CONFIRMED] After sorting:');
-      for (var i = 0; i < filteredEvents.length; i++) {
-        print(
-            '   [$i] ${filteredEvents[i].name} | date: ${filteredEvents[i].date}');
-      }
-
-      print(
-          '✅ [CONFIRMED] Final result: ${filteredEvents.length} events (taking max 10)');
-
       return filteredEvents.take(10).toList();
     } catch (e) {
-      print('❌ Error fetching confirmed events: $e');
-      return [];
+            return [];
     }
   }
 
   /// Fetch pending events (awaiting user vote or date confirmation)
   Future<List<HomeEventEntity>> fetchPendingEvents(String userId) async {
     try {
-      print('🔍 Fetching pending events for userId: $userId');
 
       final response = await client
           .from(_eventsView)
@@ -194,33 +149,16 @@ class HomeEventRemoteDataSource {
           .limit(20); // Increased to get both dated and null dated events
 
       final data = response as List<dynamic>;
-      print('📦 [PENDING] Raw data from Supabase: ${data.length} events');
-
-      // Debug each raw event
-      for (var i = 0; i < data.length; i++) {
-        final event = data[i] as Map<String, dynamic>;
-        print(
-            '   [$i] ${event['event_name']} | start_datetime: ${event['start_datetime']} | location: ${event['location_name']}');
-      }
 
       // Convert to entities with status persistence
-      print('🔄 [PENDING] Converting ${data.length} raw events to entities...');
       final events = data.map((e) => homeEventFromMap(
         e as Map<String, dynamic>,
         onStatusMismatch: (eventId, newStatus) {
           updateEventStatus(eventId, newStatus).catchError((error) {
-            print('❌ Failed to persist status for event $eventId: $error');
-            return false;
+                        return false;
           });
         },
       )).toList();
-      print('✅ [PENDING] Converted to ${events.length} entities');
-
-      // Debug entities before sorting
-      for (var i = 0; i < events.length; i++) {
-        print(
-            '   Entity[$i]: ${events[i].name} | date: ${events[i].date} | status: ${events[i].status}');
-      }
 
       // Sort: future dates first (ascending), null dates last
       events.sort((a, b) {
@@ -230,26 +168,15 @@ class HomeEventRemoteDataSource {
         return a.date!.compareTo(b.date!); // Normal date comparison
       });
 
-      print('📊 [PENDING] After sorting:');
-      for (var i = 0; i < events.length; i++) {
-        print('   [$i] ${events[i].name} | date: ${events[i].date}');
-      }
-
-      print(
-          '✅ [PENDING] Final result: ${events.length} events (taking max 10)');
-
       return events.take(10).toList();
     } catch (e) {
-      print('❌ Error fetching pending events: $e');
-      return [];
+            return [];
     }
   }
 
   /// Vote on event RSVP
   Future<bool> voteOnEvent(String eventId, String userId, bool isGoing) async {
     try {
-      print(
-          '🗳️ Voting on event: eventId=$eventId, userId=$userId, isGoing=$isGoing');
 
       await client.from('event_participants').upsert(
         {
@@ -261,11 +188,9 @@ class HomeEventRemoteDataSource {
         onConflict: 'pevent_id,user_id',
       );
 
-      print('✅ Vote successful');
       return true;
     } catch (e) {
-      print('❌ Vote error: $e');
-      return false;
+            return false;
     }
   }
 
@@ -273,18 +198,15 @@ class HomeEventRemoteDataSource {
   /// Called when calculated status differs from DB status
   Future<bool> updateEventStatus(String eventId, String newStatus) async {
     try {
-      print('🔄 [STATUS UPDATE] Updating event $eventId to status: $newStatus');
       
       await client
           .from('events')
           .update({'status': newStatus})
           .eq('id', eventId);
       
-      print('✅ [STATUS UPDATE] Event status updated successfully in DB');
       return true;
     } catch (e) {
-      print('❌ [STATUS UPDATE] Error updating event status: $e');
-      return false;
+            return false;
     }
   }
 }

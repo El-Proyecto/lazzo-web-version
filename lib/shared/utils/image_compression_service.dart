@@ -13,12 +13,8 @@ class ImageCompressionService {
   /// Corrige orientação EXIF, redimensiona preservando proporção, exporta imagem otimizada ≤1MB
   static Future<Uint8List> compressToWebP(XFile input) async {
     try {
-      print('🖼️ Starting image compression for: ${input.path}');
-
       // 1) Ler bytes originais
       final originalBytes = await input.readAsBytes();
-      final originalSize = originalBytes.length;
-      print('   📊 Original size: ${_formatBytes(originalSize)}');
 
       // 2) Decodificar imagem com correção automática de EXIF
       final image = img.decodeImage(originalBytes);
@@ -26,12 +22,8 @@ class ImageCompressionService {
         throw Exception('Unable to decode image');
       }
 
-      print('   📐 Original dimensions: ${image.width}x${image.height}');
-
       // 3) Redimensionar preservando proporção
       final resizedImage = _resizeImage(image);
-      print(
-          '   📐 Resized dimensions: ${resizedImage.width}x${resizedImage.height}');
 
       // 4) Comprimir para formato otimizado com qualidade inicial
       Uint8List compressedBytes = _encodeOptimized(resizedImage, quality);
@@ -40,28 +32,15 @@ class ImageCompressionService {
       // 5) Reduzir qualidade em passos até ≤1MB
       while (compressedBytes.length > maxBytes && currentQuality > minQuality) {
         currentQuality -= 5;
-        print(
-            '   🔄 Reducing quality to $currentQuality% (current: ${_formatBytes(compressedBytes.length)})');
         compressedBytes = _encodeOptimized(resizedImage, currentQuality);
       }
 
       final finalSize = compressedBytes.length;
-      final compressionRatio =
-          ((originalSize - finalSize) / originalSize * 100).toStringAsFixed(1);
 
-      print('   ✅ Image compression completed:');
-      print('      📦 Final size: ${_formatBytes(finalSize)}');
-      print('      📉 Compression: $compressionRatio%');
-      print('      🎚️ Final quality: $currentQuality%');
-
-      if (finalSize > maxBytes) {
-        print(
-            '   ⚠️ Warning: Unable to compress below ${_formatBytes(maxBytes)}');
-      }
+      if (finalSize > maxBytes) {}
 
       return compressedBytes;
     } catch (e) {
-      print('   ❌ Image compression failed: $e');
       throw Exception('Failed to compress image: $e');
     }
   }
@@ -105,13 +84,6 @@ class ImageCompressionService {
     // Para simplificar, vamos usar JPEG de alta qualidade por enquanto
     final jpegBytes = img.encodeJpg(image, quality: quality);
     return Uint8List.fromList(jpegBytes);
-  }
-
-  /// Formata tamanho em bytes para leitura humana
-  static String _formatBytes(int bytes) {
-    if (bytes < 1024) return '${bytes}B';
-    if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)}KB';
-    return '${(bytes / (1024 * 1024)).toStringAsFixed(1)}MB';
   }
 
   /// Valida se arquivo é uma imagem suportada

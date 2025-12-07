@@ -104,9 +104,14 @@ class PaymentDetailsBottomSheet extends StatelessWidget {
   }
 
   Widget _buildPaymentItem(PaymentEntity payment) {
-    // Determine if this specific payment is owed to user or we owe
-    final paymentIsOwedToUser = payment.fromUserId != 'current_user' &&
-        payment.toUserId == 'current_user';
+    // Each individual payment has its own direction
+    // Check if current user is the creditor (toUserId) = they owe us = green/+
+    // Or if current user is the debtor (fromUserId) = we owe them = red/-
+    final currentUserId = paymentGroup.userId; // This is the OTHER person's ID
+
+    // If payment.fromUserId == other person → they owe us (green, +)
+    // If payment.toUserId == other person → we owe them (red, -)
+    final paymentIsOwedToUser = payment.fromUserId == currentUserId;
 
     return GestureDetector(
       onTap: () => onPaymentTap?.call(payment),
@@ -153,7 +158,7 @@ class PaymentDetailsBottomSheet extends StatelessWidget {
                 const Icon(Icons.event, size: 14, color: BrandColors.text2),
                 const SizedBox(width: Gaps.xs / 2),
                 Text(
-                  _getEventName(payment.eventId ?? ''),
+                  payment.eventName ?? 'Event',
                   style: AppText.bodyMedium.copyWith(
                     color: BrandColors.text2,
                   ),
@@ -162,7 +167,7 @@ class PaymentDetailsBottomSheet extends StatelessWidget {
                 const Icon(Icons.group, size: 14, color: BrandColors.text2),
                 const SizedBox(width: Gaps.xs / 2),
                 Text(
-                  _getGroupName(payment.groupId ?? ''),
+                  payment.groupName ?? 'Group',
                   style: AppText.bodyMedium.copyWith(
                     color: BrandColors.text2,
                   ),
@@ -194,34 +199,6 @@ class PaymentDetailsBottomSheet extends StatelessWidget {
       return '${difference.inDays} days ago';
     } else {
       return '${date.day}/${date.month}/${date.year}';
-    }
-  }
-
-  String _getEventName(String eventId) {
-    // In a real app, this would come from an Event entity
-    switch (eventId) {
-      case 'event1':
-        return 'Friday Dinner';
-      case 'event2':
-        return 'Concert Night';
-      case 'event3':
-        return 'Beach BBQ';
-      default:
-        return 'Event';
-    }
-  }
-
-  String _getGroupName(String groupId) {
-    // In a realwd app, this would come from a Group entity
-    switch (groupId) {
-      case 'group1':
-        return 'Dinner Group';
-      case 'group2':
-        return 'Beach Friends';
-      case 'group3':
-        return 'Weekend Hikers';
-      default:
-        return 'Group';
     }
   }
 }

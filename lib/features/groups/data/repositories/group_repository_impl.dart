@@ -2,10 +2,12 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../domain/entities/group.dart';
 import '../../domain/entities/group_entity.dart';
+import '../../domain/entities/group_member_entity.dart';
 import '../../domain/entities/group_permissions.dart';
 import '../../domain/repositories/group_repository.dart';
 import '../data_sources/groups_data_source.dart';
 import '../models/group_entity_model.dart';
+import '../models/group_member_entity_model.dart';
 import '../../../../shared/models/group_enums.dart';
 
 class GroupRepositoryImpl implements GroupRepository {
@@ -32,25 +34,21 @@ class GroupRepositoryImpl implements GroupRepository {
       groupData['qr_code'] = qrCodeData;
       groupData['group_url'] = qrCodeData;
       
-      print('🎯 Creating group with initial QR code: $qrCodeData');
-      
+            
       // Handle photo upload BEFORE creating group in database
       String? uploadedPhotoPath;
       if (group.photoUrl != null && group.photoUrl!.isNotEmpty) {
         // If it's a local path, upload it first
         if (!group.photoUrl!.startsWith('http')) {
-          print('📸 [Repository] Uploading photo before group creation...');
-          try {
+                    try {
             // Upload photo to storage and get storage path
             uploadedPhotoPath = await _dataSource.ensureStoragePath(
               input: group.photoUrl!,
               groupId: 'temp_${DateTime.now().millisecondsSinceEpoch}', // temporary ID for upload
               bucket: 'group-photos',
             );
-            print('   ✅ Photo uploaded to storage: $uploadedPhotoPath');
-          } catch (e) {
-            print('   ❌ Photo upload failed: $e');
-            // Continue without photo if upload fails
+                      } catch (e) {
+                        // Continue without photo if upload fails
             uploadedPhotoPath = null;
           }
         } else {
@@ -70,13 +68,11 @@ class GroupRepositoryImpl implements GroupRepository {
       final realGroupId = createdGroupData['id'].toString();
       final realQrCodeData = 'https://lazzo.app/groups/$realGroupId';
       
-      print('🔄 Updating QR code with real group ID: $realGroupId');
-      await _dataSource.saveGroupQrCode(realGroupId, realQrCodeData);
+            await _dataSource.saveGroupQrCode(realGroupId, realQrCodeData);
       
       // If we uploaded a photo with temporary ID, we need to move it to the correct group folder
       if (uploadedPhotoPath != null && uploadedPhotoPath.contains('temp_')) {
-        print('📸 [Repository] Moving photo to correct group folder...');
-        try {
+                try {
           // Re-upload with correct group ID
           final finalStoragePath = await _dataSource.ensureStoragePath(
             input: group.photoUrl!, // original local path
@@ -87,14 +83,12 @@ class GroupRepositoryImpl implements GroupRepository {
           // Update database with final storage path
           await _dataSource.updateGroupPhoto(realGroupId, finalStoragePath);
           
-          print('   ✅ Photo moved to final location: $finalStoragePath');
-          
+                    
           // Update the created group data with final photo path
           createdGroupData['photo_url'] = finalStoragePath;
           createdGroupData['photo_updated_at'] = DateTime.now().toIso8601String();
         } catch (e) {
-          print('   ❌ Failed to move photo to final location: $e');
-          // Keep the temporary upload path
+                    // Keep the temporary upload path
         }
       }
 
@@ -112,8 +106,7 @@ class GroupRepositoryImpl implements GroupRepository {
   @override
   Future<String> uploadGroupCoverPhoto(XFile imageFile, String groupId) async {
     try {
-      print('🚀 Starting group cover photo upload process');
-      
+            
       // Use ensureStoragePath to handle local files properly
       final storagePath = await _dataSource.ensureStoragePath(
         input: imageFile.path,
@@ -124,11 +117,9 @@ class GroupRepositoryImpl implements GroupRepository {
       // Update database with the storage path
       await _dataSource.updateGroupPhoto(groupId, storagePath);
       
-      print('✅ Group cover photo upload completed: $storagePath');
-      return storagePath;
+            return storagePath;
     } catch (e) {
-      print('❌ Group cover photo upload failed: $e');
-      throw Exception('Failed to upload group cover photo: $e');
+            throw Exception('Failed to upload group cover photo: $e');
     }
   }
 
@@ -142,8 +133,7 @@ class GroupRepositoryImpl implements GroupRepository {
       // If it's a local path, we can't generate a signed URL
       // This indicates the photo hasn't been properly uploaded to storage
       if (photoPath.startsWith('/') || photoPath.contains('cache') || photoPath.contains('data/user')) {
-        print('⚠️ Cannot get URL for local path: $photoPath');
-        return null;
+                return null;
       }
       
       // Generate signed URL for storage path
@@ -157,20 +147,16 @@ class GroupRepositoryImpl implements GroupRepository {
       
       return urlWithCacheBuster;
     } catch (e) {
-      print('⚠️ Failed to get group cover URL: $e');
-      return null;
+            return null;
     }
   }
 
   @override
   Future<void> saveGroupQrCode(String groupId, String qrCodeData) async {
     try {
-      print('📋 [Repository] Saving QR code for group: $groupId');
-      await _dataSource.saveGroupQrCode(groupId, qrCodeData);
-      print('   ✅ [Repository] QR code save completed');
-    } catch (e) {
-      print('   ❌ [Repository] Failed to save QR code: $e');
-      throw Exception('Failed to save QR code: $e');
+            await _dataSource.saveGroupQrCode(groupId, qrCodeData);
+          } catch (e) {
+            throw Exception('Failed to save QR code: $e');
     }
   }
 
@@ -195,8 +181,7 @@ class GroupRepositoryImpl implements GroupRepository {
         // Clean photo path - if it's a local path, set it to null
         String? cleanPhotoPath = data['photo_url'] as String?;
         if (cleanPhotoPath != null && _isLocalPath(cleanPhotoPath)) {
-          print('⚠️ Filtering out local path in getUserGroups: $cleanPhotoPath');
-          cleanPhotoPath = null;
+                    cleanPhotoPath = null;
           photoUpdatedAt = null; // Also clear the timestamp for invalid paths
         }
 
@@ -246,8 +231,7 @@ class GroupRepositoryImpl implements GroupRepository {
         // Clean photo path - if it's a local path, set it to null
         String? cleanPhotoPath = data['photo_url'] as String?;
         if (cleanPhotoPath != null && _isLocalPath(cleanPhotoPath)) {
-          print('⚠️ Filtering out local path in getArchivedGroups: $cleanPhotoPath');
-          cleanPhotoPath = null;
+                    cleanPhotoPath = null;
           photoUpdatedAt = null; // Also clear the timestamp for invalid paths
         }
 
@@ -365,10 +349,8 @@ class GroupRepositoryImpl implements GroupRepository {
         throw Exception('User not authenticated');
       }
 
-      print('🔇 [Repository] ${isMuted ? 'Muting' : 'Unmuting'} group: $groupId');
-      await _dataSource.toggleMute(groupId, user.id, isMuted);
-      print('   ✅ Group ${isMuted ? 'muted' : 'unmuted'} successfully');
-    } catch (e) {
+            await _dataSource.toggleMute(groupId, user.id, isMuted);
+          } catch (e) {
       throw Exception('Failed to toggle mute: $e');
     }
   }
@@ -391,10 +373,8 @@ class GroupRepositoryImpl implements GroupRepository {
 
       final newPinnedState = !currentGroup.isPinned;
       
-      print('📌 [Repository] ${newPinnedState ? 'Pinning' : 'Unpinning'} group: $groupId');
-      await _dataSource.togglePin(groupId, user.id, newPinnedState);
-      print('   ✅ Group ${newPinnedState ? 'pinned' : 'unpinned'} successfully');
-    } catch (e) {
+            await _dataSource.togglePin(groupId, user.id, newPinnedState);
+          } catch (e) {
       throw Exception('Failed to toggle pin: $e');
     }
   }
@@ -407,10 +387,8 @@ class GroupRepositoryImpl implements GroupRepository {
         throw Exception('User not authenticated');
       }
 
-      print('👋 [Repository] User leaving group: $groupId');
-      await _dataSource.leaveGroup(groupId, user.id);
-      print('   ✅ Successfully left group');
-    } catch (e) {
+            await _dataSource.leaveGroup(groupId, user.id);
+          } catch (e) {
       throw Exception('Failed to leave group: $e');
     }
   }
@@ -423,14 +401,12 @@ class GroupRepositoryImpl implements GroupRepository {
         throw Exception('User not authenticated');
       }
 
-      print('🗄️ [Repository] Toggling archive for group: $groupId');
-      await _dataSource.toggleArchive(groupId, user.id);
-      print('   ✅ Group archive toggled successfully');
-    } catch (e) {
+            await _dataSource.toggleArchive(groupId, user.id);
+          } catch (e) {
       throw Exception('Failed to toggle archive: $e');
     }
   }
-
+  
   @override
   Future<List<String>> getGroupMembers(String groupId) async {
     try {
@@ -444,6 +420,22 @@ class GroupRepositoryImpl implements GroupRepository {
       throw Exception('Failed to get group members: $e');
     }
   }
+
+  @override
+  Future<List<GroupMemberEntity>> getGroupMembersEntities(String groupId) async {
+    try {
+      // Usa data source existente
+      final data = await _dataSource.getGroupMembers(groupId);
+      
+      // Converte JSON → DTO → Entity
+      return data
+          .map((json) => GroupMemberDto.fromJson(json).toEntity())
+          .toList();
+    } catch (e) {
+      throw Exception('Failed to get group members: $e');
+    }
+  }
+
 
   /// Helper method to detect if a path is a local device path
   bool _isLocalPath(String path) {

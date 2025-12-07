@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../domain/entities/chat_message.dart';
@@ -14,19 +13,68 @@ final chatMessagesProvider = StreamProvider.family<List<ChatMessage>, String>(
   },
 );
 
-/// Helper provider to get unread messages count
-final unreadMessagesCountProvider = Provider.family<int, String>(
+/// Realtime subscription for unread count updates
+/// Listens to chat_messages and message_reads changes and invalidates unreadMessagesCountProvider
+final unreadCountRealtimeProvider = StreamProvider.family<void, String>(
   (ref, eventId) {
-    final messagesAsync = ref.watch(chatMessagesProvider(eventId));
+    final supabase = Supabase.instance.client;
+
+    // Create a stream controller to merge both table subscriptions
+    final controller = Stream.multi((controller) {
+      // Subscribe to chat_messages changes for this event
+      final messagesSubscription = supabase
+          .from('chat_messages')
+          .stream(primaryKey: ['id'])
+          .eq('event_id', eventId)
+          .listen((data) {
+            // Invalidate the unread count provider to trigger refetch
+            ref.invalidate(unreadMessagesCountProvider(eventId));
+            controller.add(null);
+          });
+
+      // Subscribe to message_reads changes for this event
+      final readsSubscription = supabase
+          .from('message_reads')
+          .stream(primaryKey: ['id'])
+          .eq('event_id', eventId)
+          .listen((data) {
+            // Invalidate the unread count provider to trigger refetch
+            ref.invalidate(unreadMessagesCountProvider(eventId));
+            controller.add(null);
+          });
+
+      // Cleanup on stream cancel
+      controller.onCancel = () {
+        messagesSubscription.cancel();
+        readsSubscription.cancel();
+      };
+    });
+
+    return controller;
+  },
+);
+
+/// Helper provider to get unread messages count using new read receipts system
+/// This uses the message_reads table to accurately track per-user read status
+final unreadMessagesCountProvider = FutureProvider.family<int, String>(
+  (ref, eventId) async {
     final currentUserId = Supabase.instance.client.auth.currentUser?.id;
-    
-    return messagesAsync.when(
-      data: (messages) => messages
-          .where((m) => !m.read && m.userId != currentUserId)
-          .length,
-      loading: () => 0,
-      error: (_, __) => 0,
-    );
+
+    if (currentUserId == null) {
+      return 0;
+    }
+
+    try {
+      final repository = ref.watch(chatRepositoryProvider);
+      final count = await repository.getUnreadMessageCount(
+        eventId: eventId,
+        currentUserId: currentUserId,
+      );
+
+      return count;
+    } catch (e) {
+      return 0;
+    }
   },
 );
 
@@ -51,34 +99,18 @@ class ChatActions {
 
   /// Send a new message
   Future<void> sendMessage(String content, {ChatMessage? replyTo}) async {
-    if (kDebugMode) {
-      print('📝 [ChatActions] sendMessage called');
-      print('   - Event ID: $eventId');
-      print('   - Content: "$content"');
-      print('   - Reply To: ${replyTo?.id}');
-    }
-    
     final userId = Supabase.instance.client.auth.currentUser?.id;
-    
+
     if (userId == null) {
-      if (kDebugMode) {
-        print('❌ [ChatActions] User not authenticated!');
-      }
       throw Exception('User not authenticated');
     }
-    
-    if (kDebugMode) {
-      print('👤 [ChatActions] Sending as user: $userId');
-    }
+
     await repository.sendMessage(
       eventId,
       userId,
       content,
       replyTo: replyTo,
     );
-    if (kDebugMode) {
-      print('✅ [ChatActions] sendMessage completed, waiting for stream update...');
-    }
     // No need to refresh - stream will auto-update
   }
 

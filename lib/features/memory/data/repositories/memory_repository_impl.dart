@@ -135,8 +135,7 @@ class MemoryRepositoryImpl implements MemoryRepository {
       );
       return true;
     } catch (e) {
-      print('❌ Error updating cover: $e');
-      return false;
+            return false;
     }
   }
 
@@ -147,8 +146,7 @@ class MemoryRepositoryImpl implements MemoryRepository {
       await _photoDataSource.deletePhoto(photoId);
       return true;
     } catch (e) {
-      print('❌ Error removing photo: $e');
-      return false;
+            return false;
     }
   }
 }

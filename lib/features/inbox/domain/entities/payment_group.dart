@@ -39,28 +39,30 @@ class PaymentGroup {
   static List<PaymentGroup> groupByUser(
     List<PaymentEntity> allPayments,
     bool isOwedToUser,
+    String currentUserId,
     Function(String) getUserName,
   ) {
-    final Map<String, PaymentGroup> groups = {};
+        final Map<String, PaymentGroup> groups = {};
 
     // Get all unique user IDs that have any payment relationship
     final Set<String> allUserIds = {};
     for (final payment in allPayments) {
-      if (payment.fromUserId != null && payment.fromUserId != 'current_user') {
+      if (payment.fromUserId != null && payment.fromUserId != currentUserId) {
         allUserIds.add(payment.fromUserId!);
       }
-      if (payment.toUserId != null && payment.toUserId != 'current_user') {
+      if (payment.toUserId != null && payment.toUserId != currentUserId) {
         allUserIds.add(payment.toUserId!);
       }
     }
-
+    
     // For each user, calculate net amounts
     for (final userId in allUserIds) {
+      
       final owedToUs = allPayments
           .where(
             (p) =>
                 p.fromUserId == userId &&
-                p.toUserId == 'current_user' &&
+                p.toUserId == currentUserId &&
                 p.status != PaymentStatus.paid,
           )
           .toList();
@@ -68,12 +70,13 @@ class PaymentGroup {
       final weOwe = allPayments
           .where(
             (p) =>
-                p.fromUserId == 'current_user' &&
+                p.fromUserId == currentUserId &&
                 p.toUserId == userId &&
                 p.status != PaymentStatus.paid,
           )
           .toList();
 
+      
       final owedToUsTotal = owedToUs.fold(0.0, (sum, p) => sum + p.amount);
       final weOweTotal = weOwe.fold(0.0, (sum, p) => sum + p.amount);
 
@@ -81,6 +84,7 @@ class PaymentGroup {
       final netIsOwedToUser = netAmount > 0;
       final netAbsAmount = netAmount.abs();
 
+            
       // Only include if there's a net amount and it matches the requested direction
       if (netAbsAmount > 0 && netIsOwedToUser == isOwedToUser) {
         final allUserPayments = [...owedToUs, ...weOwe];
@@ -92,9 +96,10 @@ class PaymentGroup {
           totalAmount: netAbsAmount,
           isOwedToUser: netIsOwedToUser,
         );
-      }
+              } else {
+              }
     }
 
-    return groups.values.toList();
+        return groups.values.toList();
   }
 }

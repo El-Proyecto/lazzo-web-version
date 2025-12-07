@@ -313,8 +313,7 @@ class GroupDetailsPage extends ConsumerWidget {
                 isCurrentUserAdmin: isCurrentUserAdmin,
                 onTap: () {
                   // TODO: Navigate to member profile
-                  print('Navigate to profile: ${member.id}');
-                },
+                                  },
                 onPromoteToAdmin: () {
                   _showPromoteDialog(context, ref, member);
                 },
@@ -435,8 +434,7 @@ class GroupDetailsPage extends ConsumerWidget {
         isDestructive: true,
         onConfirm: () {
           // TODO: Implement leave group logic
-          print('Leave group');
-        },
+                  },
       ),
     );
   }

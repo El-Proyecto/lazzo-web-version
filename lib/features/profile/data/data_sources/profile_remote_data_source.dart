@@ -59,8 +59,7 @@ class ProfileRemoteDataSource {
       if (user == null) throw Exception('No authenticated user');
 
       final profileData = profile.toMap();
-      print('🔄 [ProfileDataSource.updateProfile] Updating with data: ${profileData['avatar_url']}');
-
+      
       final response = await client
           .from('users')
           .update(profileData)
@@ -68,13 +67,11 @@ class ProfileRemoteDataSource {
           .select('id, name, email, avatar_url, city, birth_date')
           .single();
 
-      print('✅ [ProfileDataSource.updateProfile] Database returned: ${response['avatar_url']}');
-
+      
       // Convert storage path to signed URL (private bucket)
       if (response['avatar_url'] != null) {
         response['avatar_url'] = await getProfilePictureSignedUrl(response['avatar_url'] as String);
-        print('🔗 [ProfileDataSource.updateProfile] Converted to signed URL: ${response['avatar_url']}');
-      }
+              }
       
       return ProfileModel.fromMap(response);
     } catch (e) {
@@ -102,8 +99,7 @@ class ProfileRemoteDataSource {
       final user = client.auth.currentUser;
       if (user == null) throw Exception('No authenticated user');
 
-      print('🚀 [ProfileDataSource] Starting profile picture upload for user: ${user.id}');
-      
+            
       // Use ensureStoragePath to handle local files properly
       final storagePath = await ensureStoragePath(
         input: imageFile.path,
@@ -119,11 +115,9 @@ class ProfileRemoteDataSource {
           })
           .eq('id', user.id);
       
-      print('✅ [ProfileDataSource] Profile picture upload completed: $storagePath');
-      return storagePath;
+            return storagePath;
     } catch (e) {
-      print('❌ [ProfileDataSource] Profile picture upload failed: $e');
-      throw Exception('Failed to upload profile picture: $e');
+            throw Exception('Failed to upload profile picture: $e');
     }
   }
 
@@ -134,18 +128,15 @@ class ProfileRemoteDataSource {
     }
 
     try {
-      print('🔗 [ProfileDataSource] Getting signed URL for: $avatarUrl');
-      
+            
       // If it's a local path, we can't generate a signed URL
       if (avatarUrl.startsWith('/') || avatarUrl.contains('cache') || avatarUrl.contains('data/user')) {
-        print('   ❌ Invalid path detected (local path instead of storage path): $avatarUrl');
-        throw Exception('Invalid photo path - local paths are not supported');
+                throw Exception('Invalid photo path - local paths are not supported');
       }
       
       // If it's already a full URL (signed URL from previous call), just return it
       if (avatarUrl.startsWith('http://') || avatarUrl.startsWith('https://')) {
-        print('   ℹ️ Already a full URL, returning as is');
-        return avatarUrl;
+                return avatarUrl;
       }
       
       // Generate signed URL for storage path (private bucket - 1 hour validity)
@@ -153,11 +144,9 @@ class ProfileRemoteDataSource {
           .from(_bucketName)
           .createSignedUrl(avatarUrl, 3600); // 1 hour validity
       
-      print('   ✅ Signed URL created successfully');
-      return signedUrl;
+            return signedUrl;
     } catch (e) {
-      print('   ❌ Failed to create signed URL: $e');
-      return null;
+            return null;
     }
   }
 
@@ -179,8 +168,7 @@ class ProfileRemoteDataSource {
                     input.contains('cache');
     
     if (isLocal) {
-      print('📤 [ProfileDataSource] Converting local path to storage path: $input');
-      
+            
       // Check if file exists
       final file = File(input.replaceFirst('file://', ''));
       if (!await file.exists()) {
@@ -207,8 +195,7 @@ class ProfileRemoteDataSource {
         ),
       );
       
-      print('✅ [ProfileDataSource] Local file uploaded to storage: $objectPath');
-      return objectPath; // Return just the object path
+            return objectPath; // Return just the object path
     }
 
     // 3) Looks like storage path (bucket/object or just object)
@@ -229,8 +216,7 @@ class ProfileRemoteDataSource {
       final user = client.auth.currentUser;
       if (user == null) throw Exception('No authenticated user');
 
-      print('🗑️ [ProfileDataSource] Deleting all profile pictures for user: ${user.id}');
-
+      
       // Delete ALL files in the user's folder, not just the current avatar
       // This ensures cleanup of old/orphaned profile pictures
       try {
@@ -250,13 +236,10 @@ class ProfileRemoteDataSource {
               .from(_bucketName)
               .remove(filePaths);
           
-          print('   ✅ Deleted ${filePaths.length} file(s) from user folder');
-        } else {
-          print('   ℹ️ No files found in user folder');
-        }
+                  } else {
+                  }
       } catch (e) {
-        print('   ⚠️ Failed to delete files from storage: $e (continuing with DB update)');
-        // Continue with database update even if storage deletion fails
+                // Continue with database update even if storage deletion fails
       }
 
       // Update database to remove avatar_url
@@ -268,10 +251,8 @@ class ProfileRemoteDataSource {
           })
           .eq('id', user.id);
 
-      print('   ✅ Profile picture reference removed from database');
-    } catch (e) {
-      print('   ❌ Failed to delete profile picture: $e');
-      throw Exception('Failed to delete profile picture: $e');
+          } catch (e) {
+            throw Exception('Failed to delete profile picture: $e');
     }
   }
 }

@@ -33,8 +33,7 @@ class CalendarService {
       return result;
     } catch (e) {
       // Log error but don't crash the app
-      print('❌ Error adding event to calendar: $e');
-      return false;
+            return false;
     }
   }
 }

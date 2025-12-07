@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../routes/app_router.dart';
 import '../../../create_event/domain/entities/event.dart' as create_event;
 import '../../../../shared/components/nav/common_app_bar.dart';
@@ -22,12 +23,17 @@ import '../../domain/entities/chat_message.dart';
 import '../providers/event_providers.dart';
 import '../providers/chat_providers.dart';
 import '../widgets/chat_preview_widget.dart';
-import '../widgets/living_expenses_widget.dart';
+import '../widgets/event_expenses_widget.dart';
 import '../widgets/date_time_suggestions_widget.dart'
     show DateTimeSuggestionsWidget, DateTimeSuggestion;
 import '../widgets/date_time_suggestions_widget.dart' as datetime_widget;
 import '../widgets/location_suggestions_widget.dart';
 import '../widgets/add_suggestion_bottom_sheet.dart';
+import '../providers/event_participants_provider.dart';
+
+import '../../../../shared/components/dialogs/add_expense_bottom_sheet.dart';
+import '../../../expense/presentation/providers/event_expense_providers.dart';
+import '../../../inbox/presentation/providers/payments_provider.dart';
 
 /// Event detail page
 /// Displays all event information and interactions
@@ -45,6 +51,15 @@ class _EventPageState extends ConsumerState<EventPage> {
   final Set<String> _addedToCalendar = {};
 
   String get eventId => widget.eventId;
+
+  @override
+  void initState() {
+    super.initState();
+    // Setup Realtime subscription for unread count badge updates
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(unreadCountRealtimeProvider(eventId));
+    });
+  }
 
   /// Helper to replace current user's name with "You"
   String _getUserDisplayName(
@@ -74,11 +89,6 @@ class _EventPageState extends ConsumerState<EventPage> {
         onConfirm: () async {
           final newStatus =
               isConfirmed ? EventStatus.pending : EventStatus.confirmed;
-
-          print('📢 [DIALOG] User confirmed status change');
-          print('   📄 Current status: $currentStatus');
-          print('   ➡️ New status: $newStatus');
-          print('   🎯 Is confirmed: $isConfirmed');
 
           await ref
               .read(eventStatusNotifierProvider(eventId).notifier)
@@ -160,6 +170,7 @@ class _EventPageState extends ConsumerState<EventPage> {
     final userSuggestionVotesAsync = ref.watch(
       userSuggestionVotesProvider(eventId),
     );
+    final participantsAsync = ref.watch(eventParticipantsProvider(eventId));
 
     // Helper to refresh all event data
     Future<void> refreshEventData() async {
@@ -174,6 +185,17 @@ class _EventPageState extends ConsumerState<EventPage> {
       ref.invalidate(eventLocationSuggestionsProvider(eventId));
       ref.invalidate(locationSuggestionVotesProvider(eventId));
       ref.invalidate(userLocationSuggestionVotesProvider(eventId));
+      ref.invalidate(eventParticipantsProvider(eventId));
+
+      // Invalidate expenses for this event
+      ref.invalidate(eventExpensesProvider(eventId));
+
+      // Invalidate base payment providers (affects all events)
+      final currentUserId = Supabase.instance.client.auth.currentUser?.id;
+      if (currentUserId != null) {
+        ref.invalidate(paymentsOwedToUserProvider);
+        ref.invalidate(paymentsUserOwesProvider);
+      }
     }
 
     return Scaffold(
@@ -194,12 +216,9 @@ class _EventPageState extends ConsumerState<EventPage> {
               data: (canManage) {
                 // Only show settings icon for host or group admins
                 if (!canManage) {
-                  print(
-                      '⚙️ [SETTINGS] User cannot manage event - settings hidden');
                   return const SizedBox.shrink();
                 }
 
-                print('⚙️ [SETTINGS] User can manage event - settings visible');
                 return IconButton(
                   icon: const Icon(Icons.edit, color: BrandColors.text1),
                   onPressed: () {
@@ -276,18 +295,8 @@ class _EventPageState extends ConsumerState<EventPage> {
                     return canManageAsync.when(
                       data: (canManage) {
                         if (!canManage) {
-                          print(
-                              '🎯 [STATUS CHIP] User cannot manage event - chip hidden');
                           return const SizedBox.shrink();
                         }
-
-                        final isHost = event.hostId == currentUserId;
-                        print('🎯 [STATUS CHIP] Permission check:');
-                        print('   Event host ID: ${event.hostId}');
-                        print('   Current user ID: $currentUserId');
-                        print('   Is host: $isHost');
-                        print('   Can manage: $canManage');
-                        print('   Chip visible: true');
 
                         return Column(
                           children: [
@@ -1097,32 +1106,21 @@ class _EventPageState extends ConsumerState<EventPage> {
                                 );
                               },
                               loading: () {
-                                if (kDebugMode) {
-                                  print(
-                                      '⏳ [EventPage] Loading user location votes...');
-                                }
+                                if (kDebugMode) {}
                                 return const SizedBox.shrink();
                               },
                               error: (error, stack) {
-                                if (kDebugMode) {
-                                  print(
-                                      '❌ [EventPage] Error loading user location votes: $error');
-                                }
+                                if (kDebugMode) {}
                                 return const SizedBox.shrink();
                               },
                             );
                           },
                           loading: () {
-                            if (kDebugMode) {
-                              print('⏳ [EventPage] Loading location votes...');
-                            }
+                            if (kDebugMode) {}
                             return const SizedBox.shrink();
                           },
                           error: (error, stack) {
-                            if (kDebugMode) {
-                              print(
-                                  '❌ [EventPage] Error loading location votes: $error');
-                            }
+                            if (kDebugMode) {}
                             return const SizedBox.shrink();
                           },
                         );
@@ -1137,21 +1135,17 @@ class _EventPageState extends ConsumerState<EventPage> {
                 messagesAsync.when(
                   data: (messages) {
                     if (kDebugMode) {
-                      print('\n═══════════════════════════════════════');
-                      print('💬 [EventPage] PREVIEW - New data received!');
-                      print('   - Event ID: $eventId');
-                      print('   - Total messages: ${messages.length}');
-                      if (messages.isNotEmpty) {
-                        print(
-                            '   - First: "${messages.first.content.substring(0, messages.first.content.length > 30 ? 30 : messages.first.content.length)}..." (read=${messages.first.read})');
-                        print(
-                            '   - Last: "${messages.last.content.substring(0, messages.last.content.length > 30 ? 30 : messages.last.content.length)}..."');
-                      }
-                      print('═══════════════════════════════════════\n');
+                      if (messages.isNotEmpty) {}
                     }
 
-                    final unreadCount = ref.watch(
+                    // Get unread count (now returns AsyncValue)
+                    final unreadCountAsync = ref.watch(
                       unreadMessagesCountProvider(eventId),
+                    );
+
+                    final unreadCount = unreadCountAsync.maybeWhen(
+                      data: (count) => count,
+                      orElse: () => 0,
                     );
 
                     final previewMessages = messages
@@ -1163,8 +1157,10 @@ class _EventPageState extends ConsumerState<EventPage> {
                             userAvatar: m.userAvatar,
                             content: m.content,
                             timestamp: m.createdAt,
-                            read: m.read,
+                            isReadBySomeone: m.isReadBySomeone,
                             isPinned: m.isPinned,
+                            isDeleted: m.isDeleted,
+                            isPending: m.isPending,
                             replyTo: m.replyTo != null
                                 ? ChatMessagePreview(
                                     userId: m.replyTo!.userId,
@@ -1175,40 +1171,15 @@ class _EventPageState extends ConsumerState<EventPage> {
                                     userAvatar: m.replyTo!.userAvatar,
                                     content: m.replyTo!.content,
                                     timestamp: m.replyTo!.createdAt,
-                                    read: m.replyTo!.read,
+                                    isReadBySomeone: m.replyTo!.isReadBySomeone,
                                     isPinned: m.replyTo!.isPinned,
+                                    isDeleted: m.replyTo!.isDeleted,
+                                    isPending: m.replyTo!.isPending,
                                   )
                                 : null,
                           ),
                         )
                         .toList();
-
-                    if (kDebugMode) {
-                      print(
-                          '💬 [EventPage] Passing ${previewMessages.length} messages to ChatPreviewWidget');
-                      print(
-                          '💬 [EventPage] Unread count: $unreadCount, currentUserId: $currentUserId');
-
-                      // Check for messages with replyTo
-                      final messagesWithReply = previewMessages
-                          .where((m) => m.replyTo != null)
-                          .length;
-                      print(
-                          '📨 [EventPage] Messages with replyTo: $messagesWithReply/${previewMessages.length}');
-
-                      if (previewMessages.isNotEmpty) {
-                        print('💬 [EventPage] Preview messages details:');
-                        for (var i = 0;
-                            i < previewMessages.length && i < 3;
-                            i++) {
-                          final hasReply = previewMessages[i].replyTo != null
-                              ? ' (replying to: "${previewMessages[i].replyTo!.content.substring(0, previewMessages[i].replyTo!.content.length > 15 ? 15 : previewMessages[i].replyTo!.content.length)}...")'
-                              : '';
-                          print(
-                              '   $i: "${previewMessages[i].content}" (user: ${previewMessages[i].userName}, read: ${previewMessages[i].read})$hasReply');
-                        }
-                      }
-                    }
 
                     return ChatPreviewWidget(
                       newMessagesCount: unreadCount,
@@ -1233,13 +1204,7 @@ class _EventPageState extends ConsumerState<EventPage> {
                       },
                       onSendMessage: (content,
                           {ChatMessagePreview? replyTo}) async {
-                        if (kDebugMode) {
-                          print(
-                              '\n🚀 [EventPage] PREVIEW sending message (DATA state):');
-                          print('   - Content: "$content"');
-                          print('   - Event ID: $eventId');
-                          print('   - ReplyTo: ${replyTo?.content}');
-                        }
+                        if (kDebugMode) {}
 
                         // Convert ChatMessagePreview to ChatMessage if replying
                         ChatMessage? replyToMessage;
@@ -1252,15 +1217,9 @@ class _EventPageState extends ConsumerState<EventPage> {
                                   m.content == replyTo.content &&
                                   m.createdAt == replyTo.timestamp,
                             );
-                            if (kDebugMode) {
-                              print(
-                                  '   ✅ Found original message to reply to: ${replyToMessage.id}');
-                            }
+                            if (kDebugMode) {}
                           } catch (e) {
-                            if (kDebugMode) {
-                              print(
-                                  '   ⚠️ Could not find original message for reply');
-                            }
+                            if (kDebugMode) {}
                           }
                         }
 
@@ -1270,9 +1229,7 @@ class _EventPageState extends ConsumerState<EventPage> {
                               content,
                               replyTo: replyToMessage,
                             );
-                        if (kDebugMode) {
-                          print('✅ [EventPage] PREVIEW sendMessage completed');
-                        }
+                        if (kDebugMode) {}
                       },
                       onPinMessage: (message) async {
                         final originalMessage = messages.firstWhere(
@@ -1332,18 +1289,11 @@ class _EventPageState extends ConsumerState<EventPage> {
                       onOpenChat: () {},
                       onSendMessage: (content,
                           {ChatMessagePreview? replyTo}) async {
-                        if (kDebugMode) {
-                          print(
-                              '\n🚀 [EventPage] PREVIEW sending message (ERROR state):');
-                          print('   - Content: "$content"');
-                          print('   - ReplyTo: ${replyTo?.content}');
-                        }
+                        if (kDebugMode) {}
                         await ref
                             .read(chatActionsProvider(eventId))
                             .sendMessage(content);
-                        if (kDebugMode) {
-                          print('✅ [EventPage] PREVIEW sendMessage completed');
-                        }
+                        if (kDebugMode) {}
                       },
                       onPinMessage: (message) async {
                         // Try to send action even in error state
@@ -1370,12 +1320,49 @@ class _EventPageState extends ConsumerState<EventPage> {
                 const SizedBox(height: Gaps.lg),
 
                 // Expenses widget
-                EventExpensesWidget(
-                  eventId: eventId,
-                  mode: ChatMode.planning,
-                  participants: const [], // TODO: Get event participants
-                  onAddExpense: (title, paidByIds, payerIds, amount) {
-                    // TODO: Implement add expense
+                participantsAsync.when(
+                  data: (participants) {
+                    final currentUserId =
+                        Supabase.instance.client.auth.currentUser?.id;
+                    final participantOptions = participants.map((p) {
+                      return ExpenseParticipantOption(
+                        id: p.userId,
+                        name: _getUserDisplayName(
+                            p.userId, p.displayName, currentUserId),
+                        avatarUrl: p.avatarUrl,
+                      );
+                    }).toList();
+
+                    // Sort: "You" first, then alphabetically by name
+                    participantOptions.sort((a, b) {
+                      if (a.name == 'You') return -1;
+                      if (b.name == 'You') return 1;
+                      return a.name.compareTo(b.name);
+                    });
+
+                    return EventExpensesWidget(
+                      eventId: eventId,
+                      mode: ChatMode.planning,
+                      participants: participantOptions, // ✅ Participantes reais
+                      onAddExpense:
+                          (title, paidById, participantsOwe, amount) async {
+                                                ref
+                            .read(eventExpensesProvider(eventId).notifier)
+                            .addExpense(
+                          description: title,
+                          amount: amount,
+                          paidBy: paidById,
+                          participantsOwe: participantsOwe,
+                          participantsPaid: [],
+                        );
+                      },
+                    );
+                  },
+                  loading: () {
+                                        return const SizedBox.shrink();
+                  },
+                  error: (error, stack) {
+                                        return const SizedBox.shrink();
                   },
                 ),
                 const SizedBox(height: Gaps.lg),

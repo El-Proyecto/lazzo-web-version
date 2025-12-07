@@ -64,9 +64,7 @@ class FakeGroupMemoryRepository implements GroupMemoryRepository {
 
   @override
   Future<List<GroupMemoryEntity>> getGroupMemories(String groupId) async {
-    print('🎭 [FAKE REPOSITORY] getGroupMemories called - USING FAKE DATA!');
-    print('   ⚠️ This should NOT be called if DI override is working correctly');
-    // Simulate network delay
+            // Simulate network delay
     await Future.delayed(const Duration(milliseconds: 500));
     // Return all memories for any group (mock data)
     return _memories;

@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
-import '../widgets/ios_birthday_picker_card.dart';
 import '../widgets/editable_profile_photo.dart';
-import '../widgets/editable_info_card.dart';
 import '../widgets/photo_change_bottom_sheet.dart';
 import '../../../auth/presentation/widgets/email_info_card.dart';
 import '../../../../shared/constants/spacing.dart';
+import '../../../../shared/constants/text_styles.dart';
 import '../../../../shared/themes/colors.dart';
 import '../../../../shared/components/common/top_banner.dart';
+import '../../../../shared/components/common/edit_field_bottom_sheet.dart';
+import '../../../../shared/components/common/birthday_picker_bottom_sheet.dart';
 import '../../domain/entities/profile_entity.dart';
 import '../providers/profile_providers.dart';
 
@@ -22,19 +23,6 @@ class EditProfilePage extends ConsumerStatefulWidget {
 }
 
 class _EditProfilePageState extends ConsumerState<EditProfilePage> {
-  final Map<String, bool> _editingStates = {
-    'name': false,
-    'location': false,
-    'birthday': false,
-  };
-
-  // Error state management
-  String? _nameError;
-  String? _locationError;
-  String? _birthdayError;
-
-  bool _allowBirthdayNotifications = false;
-
   @override
   Widget build(BuildContext context) {
     final editProfileState = ref.watch(currentUserProfileProvider);
@@ -158,49 +146,33 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
             const SizedBox(height: Gaps.md),
 
             // Name field (required)
-            EditableInfoCard(
+            _buildInfoRow(
               label: 'Name',
               value: profile.name,
-              placeholder: 'Enter your name',
               isRequired: true,
-              isEditing: _editingStates['name'] ?? false,
-              errorMessage: _nameError,
-              onEdit: () => _toggleEditing('name'),
-              onSave: (value) => _saveField('name', value, profile),
-              onCancel: () => _cancelEditing('name'),
+              onTap: () => _showEditNameSheet(profile),
             ),
 
             const SizedBox(height: Gaps.md),
 
             // Location field (optional)
-            EditableInfoCard(
+            _buildInfoRow(
               label: 'Location',
               value: profile.location,
-              placeholder: 'Enter your location',
-              isEditing: _editingStates['location'] ?? false,
-              errorMessage: _locationError,
-              onEdit: () => _toggleEditing('location'),
-              onSave: (value) => _saveField('location', value, profile),
-              onCancel: () => _cancelEditing('location'),
-              onRemove: () => _removeField('location', profile),
+              placeholder: 'Tap to add',
+              onTap: () => _showEditLocationSheet(profile),
             ),
 
             const SizedBox(height: Gaps.md),
 
-            // Birthday field (optional) with notification checkbox
-            IosBirthdayPickerCard(
-              birthday: profile.birthday,
-              isEditing: _editingStates['birthday'] ?? false,
-              allowNotifications: _allowBirthdayNotifications,
-              errorMessage: _birthdayError,
-              onEdit: () => _toggleEditing('birthday'),
-              onSave: (date) => _saveBirthday(date, profile),
-              onCancel: () => _cancelEditing('birthday'),
-              onNotificationChanged: (allow) =>
-                  setState(() => _allowBirthdayNotifications = allow),
-              onRemove: profile.birthday != null
-                  ? () => _removeField('birthday', profile)
+            // Birthday field (optional)
+            _buildInfoRow(
+              label: 'Birthday',
+              value: profile.birthday != null
+                  ? _formatDate(profile.birthday!)
                   : null,
+              placeholder: 'Tap to add',
+              onTap: () => _showEditBirthdaySheet(profile),
             ),
 
             const SizedBox(height: Gaps.xl),
@@ -210,149 +182,172 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
     );
   }
 
-  void _toggleEditing(String field) {
-    setState(() {
-      // Close other editing states
-      _editingStates.forEach((key, value) {
-        if (key != field) _editingStates[key] = false;
-      });
+  Widget _buildInfoRow({
+    required String label,
+    String? value,
+    String? placeholder,
+    bool isRequired = false,
+    required VoidCallback onTap,
+  }) {
+    final hasValue = value != null && value.isNotEmpty;
+    final showEmptyState = !hasValue;
 
-      // Toggle current field
-      _editingStates[field] = !(_editingStates[field] ?? false);
-    });
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(
+          horizontal: Pads.ctlH,
+          vertical: Pads.ctlV,
+        ),
+        decoration: ShapeDecoration(
+          color: showEmptyState ? BrandColors.bg3 : BrandColors.bg2,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(Radii.md),
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            // Left side: Label with required indicator
+            Row(
+              children: [
+                Text(
+                  label,
+                  style: AppText.bodyMediumEmph.copyWith(
+                    color: BrandColors.text1,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                if (isRequired) ...[
+                  const SizedBox(width: Gaps.xs),
+                  Text(
+                    '*',
+                    style: AppText.bodyMedium.copyWith(
+                      color: BrandColors.cantVote,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+
+            // Right side: Value and edit icon
+            Row(
+              children: [
+                Text(
+                  hasValue ? value : (placeholder ?? 'Tap to add'),
+                  style: AppText.bodyMedium.copyWith(
+                    color: BrandColors.text2,
+                    fontSize: 14,
+                  ),
+                ),
+                const SizedBox(width: Gaps.xs),
+                Icon(
+                  hasValue ? Icons.edit_outlined : Icons.add,
+                  size: 16,
+                  color: BrandColors.text2,
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
-  void _cancelEditing(String field) {
-    setState(() {
-      _editingStates[field] = false;
-      // Clear any validation errors when canceling
-      if (field == 'name') _nameError = null;
-      if (field == 'location') _locationError = null;
-      if (field == 'birthday') _birthdayError = null;
-    });
-  }
+  Future<void> _showEditNameSheet(ProfileEntity profile) async {
+    final result = await EditFieldBottomSheet.show(
+      context: context,
+      title: 'Name',
+      initialValue: profile.name,
+      placeholder: 'Enter your name',
+      isRequired: true,
+    );
 
-  Future<void> _removeField(String field, ProfileEntity profile) async {
-    print('🗑️ [EditProfilePage] Removing field: $field');
-
-    try {
-      ProfileEntity updatedProfile;
-      switch (field) {
-        case 'location':
-          updatedProfile = profile.copyWith(clearLocation: true);
-          break;
-        case 'birthday':
-          updatedProfile = profile.copyWith(clearBirthday: true);
-          break;
-        default:
-          return;
-      }
-
-      // 🎯 SIMPLE: Use controller to update and sync UI
-      final controller = ref.read(editProfileControllerProvider);
-      await controller.updateProfile(updatedProfile);
-
-      if (mounted) {
-        setState(() {
-          if (field == 'location') _locationError = null;
-          if (field == 'birthday') _birthdayError = null;
-          // Exit edit mode after successful removal
-          _editingStates[field] = false;
-        });
-
-        print('✅ [EditProfilePage] Field removed successfully');
-      }
-    } catch (e) {
-      print('❌ [EditProfilePage] Failed to remove field: $e');
-      if (mounted) {
-        setState(() {
-          if (field == 'location') _locationError = 'Failed to remove location';
-          if (field == 'birthday') _birthdayError = 'Failed to remove birthday';
-        });
-      }
+    if (result != null && mounted) {
+      await _updateProfile(profile.copyWith(name: result), 'name');
     }
   }
 
-  Future<void> _saveField(
-    String field,
-    String value,
-    ProfileEntity profile,
-  ) async {
-    print('💾 [EditProfilePage] Saving field: $field = "$value"');
+  Future<void> _showEditLocationSheet(ProfileEntity profile) async {
+    final result = await EditFieldBottomSheet.show(
+      context: context,
+      title: 'Location',
+      initialValue: profile.location,
+      placeholder: 'Enter your location',
+    );
 
-    if (field == 'name' && value.trim().isEmpty) {
-      setState(() {
-        _nameError = 'Name is required';
-      });
-      return;
+    if (result != null && mounted) {
+      // Empty string means user wants to clear the field
+      final newLocation = result.trim().isEmpty ? null : result.trim();
+      await _updateProfile(
+        profile.copyWith(
+            location: newLocation, clearLocation: newLocation == null),
+        'location',
+      );
     }
+  }
 
-    ProfileEntity updatedProfile;
-    switch (field) {
-      case 'name':
-        updatedProfile = profile.copyWith(name: value.trim());
-        break;
-      case 'location':
-        updatedProfile = profile.copyWith(
-          location: value.trim().isEmpty ? null : value.trim(),
+  Future<void> _showEditBirthdaySheet(ProfileEntity profile) async {
+    final result = await BirthdayPickerBottomSheet.show(
+      context: context,
+      initialDate: profile.birthday,
+      allowNotifications: false, // TODO: get from profile if stored
+    );
+
+    if (result != null && mounted) {
+      // Check if user wants to remove the birthday
+      if (result['remove'] == true) {
+        await _updateProfile(
+          profile.copyWith(birthday: null, clearBirthday: true),
+          'birthday',
         );
-        break;
-      default:
         return;
-    }
-
-    try {
-      // 🎯 SIMPLE: Use controller to update and sync UI
-      final controller = ref.read(editProfileControllerProvider);
-      await controller.updateProfile(updatedProfile);
-
-      if (mounted) {
-        setState(() {
-          _editingStates[field] = false;
-          // Clear any existing errors on successful save
-          if (field == 'name') _nameError = null;
-          if (field == 'location') _locationError = null;
-        });
-
-        print('✅ [EditProfilePage] Field saved successfully');
       }
-    } catch (e) {
-      print('❌ [EditProfilePage] Save failed: $e');
-      if (mounted) {
-        setState(() {
-          if (field == 'name') _nameError = 'Failed to update name';
-          if (field == 'location') _locationError = 'Failed to update location';
-        });
+
+      // Save the new birthday
+      final date = result['date'] as DateTime?;
+
+      if (date != null) {
+        await _updateProfile(profile.copyWith(birthday: date), 'birthday');
       }
     }
   }
 
-  Future<void> _saveBirthday(DateTime? date, ProfileEntity profile) async {
-    print('📅 [EditProfilePage] Saving birthday: $date');
-
-    final updatedProfile = profile.copyWith(birthday: date);
-
+  Future<void> _updateProfile(
+      ProfileEntity updatedProfile, String fieldName) async {
     try {
-      // 🎯 SIMPLE: Use controller to update and sync UI
       final controller = ref.read(editProfileControllerProvider);
       await controller.updateProfile(updatedProfile);
 
       if (mounted) {
-        setState(() {
-          _editingStates['birthday'] = false;
-          _birthdayError = null;
-        });
-
-        print('✅ [EditProfilePage] Birthday saved successfully');
+        TopBanner.showSuccess(context, message: 'Profile updated successfully');
       }
     } catch (e) {
-      print('❌ [EditProfilePage] Birthday save failed: $e');
       if (mounted) {
-        setState(() {
-          _birthdayError = 'Failed to update birthday';
-        });
+        TopBanner.showError(context, message: 'Failed to update $fieldName');
       }
     }
+  }
+
+  String _formatDate(DateTime date) {
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
+    return '${date.day.toString().padLeft(2, '0')}/${months[date.month - 1]}/${date.year}';
   }
 
   void _showPhotoChangeSheet(ProfileEntity profile) {
@@ -368,8 +363,6 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
     PhotoSourceAction action,
     ProfileEntity profile,
   ) async {
-    print('📸 [EditProfilePage] Photo action: $action');
-
     switch (action) {
       case PhotoSourceAction.gallery:
         await _pickImageFromGallery(profile);
@@ -397,7 +390,6 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
         await _uploadProfilePicture(image, profile);
       }
     } catch (e) {
-      print('❌ [EditProfilePage] Gallery picker failed: $e');
       if (mounted) {
         TopBanner.showError(context,
             message: 'Failed to pick image from gallery');
@@ -419,7 +411,6 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
         await _uploadProfilePicture(image, profile);
       }
     } catch (e) {
-      print('❌ [EditProfilePage] Camera picker failed: $e');
       if (mounted) {
         TopBanner.showError(context, message: 'Failed to take photo');
       }
@@ -428,8 +419,6 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
 
   Future<void> _uploadProfilePicture(XFile image, ProfileEntity profile) async {
     try {
-      print('📤 [EditProfilePage] Uploading profile picture...');
-
       // Show info banner
       if (mounted) {
         TopBanner.showInfo(context, message: 'Uploading photo...');
@@ -441,18 +430,14 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
       final imagePath =
           await ref.read(profileRepositoryProvider).uploadProfilePicture(image);
 
-      print('✅ [EditProfilePage] Image uploaded to: $imagePath');
-
       // Update profile with new image path
       final updatedProfile = profile.copyWith(profileImageUrl: imagePath);
       await controller.updateProfile(updatedProfile);
 
-      print('✅ [EditProfilePage] Profile updated with new photo');
       if (mounted) {
         TopBanner.showSuccess(context, message: 'Photo updated successfully');
       }
     } catch (e) {
-      print('❌ [EditProfilePage] Photo upload failed: $e');
       if (mounted) {
         TopBanner.showError(context, message: 'Failed to upload photo');
       }
@@ -461,8 +446,6 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
 
   Future<void> _removePhoto(ProfileEntity profile) async {
     try {
-      print('🗑️ [EditProfilePage] Removing profile photo...');
-
       final controller = ref.read(editProfileControllerProvider);
 
       // Delete the image from storage if it exists
@@ -475,12 +458,10 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
       final updatedProfile = profile.copyWith(profileImageUrl: null);
       await controller.updateProfile(updatedProfile);
 
-      print('✅ [EditProfilePage] Photo removed successfully');
       if (mounted) {
         TopBanner.showSuccess(context, message: 'Photo removed successfully');
       }
     } catch (e) {
-      print('❌ [EditProfilePage] Photo removal failed: $e');
       if (mounted) {
         TopBanner.showError(context, message: 'Failed to remove photo');
       }

@@ -19,8 +19,7 @@ class DraftService {
       await prefs.setString(_draftKey, draftJson);
     } catch (e) {
       // Log error but don't throw - drafts are not critical
-      print('Error saving draft: $e');
-    }
+          }
   }
 
   /// Carrega o rascunho salvo
@@ -35,8 +34,7 @@ class DraftService {
       return EventDraft.fromJson(draftMap);
     } catch (e) {
       // Log error but don't throw - drafts are not critical
-      print('Error loading draft: $e');
-      return null;
+            return null;
     }
   }
 
@@ -47,8 +45,7 @@ class DraftService {
       await prefs.remove(_draftKey);
     } catch (e) {
       // Log error but don't throw - drafts are not critical
-      print('Error clearing draft: $e');
-    }
+          }
   }
 
   /// Verifica se existe um rascunho salvo

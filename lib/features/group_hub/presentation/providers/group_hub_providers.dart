@@ -21,7 +21,7 @@ import '../../data/fakes/fake_group_details_repository.dart';
 import '../../data/fakes/fake_group_photos_repository.dart';
 
 // Repository providers - defaults to fake
-// 
+//
 // P2 TODO: Override these providers in main.dart with real implementations:
 // ```dart
 // groupEventRepositoryProvider.overrideWith((ref) {
@@ -165,45 +165,30 @@ class GroupEventsController
   /// Refresh only a specific event without reloading the entire list
   /// This maintains scroll position and improves UX
   Future<void> refreshSingleEvent(String eventId) async {
-    print('🔄 [REFRESH] Starting refresh for single event: $eventId');
-    
     final currentState = state;
     if (!currentState.hasValue) {
-      print('⚠️ [REFRESH] No current state, skipping refresh');
       return;
     }
 
     try {
-      print('📡 [REFRESH] Fetching updated data for event $eventId...');
-      
       // Fetch ONLY this specific event (much faster than getting all)
       final updatedEvent = await _repository.getEventById(eventId);
-      
+
       if (updatedEvent == null) {
-        print('⚠️ [REFRESH] Event not found: $eventId');
         return;
       }
-
-      print('✅ [REFRESH] Event fetched successfully');
-      print('   📊 Going count: ${updatedEvent.goingCount}');
-      print('   🎯 User vote: ${updatedEvent.userVote}');
-      print('   👥 Total votes: ${updatedEvent.allVotes.length}');
 
       // Update only the specific event in the list
       final updatedList = currentState.value!.map((event) {
         if (event.id == eventId) {
-          print('🔄 [REFRESH] Replacing event in list');
           return updatedEvent;
         }
         return event;
       }).toList();
 
       state = AsyncValue.data(updatedList);
-      print('✅ [REFRESH] State updated successfully without full reload');
-    } catch (error, stackTrace) {
+    } catch (error) {
       // On error, keep current state instead of showing error
-      print('❌ [REFRESH] Failed to refresh single event: $error');
-      print('   Stack: $stackTrace');
     }
   }
 }

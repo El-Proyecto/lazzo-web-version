@@ -15,8 +15,7 @@ class SuggestionRemoteDataSource {
       throw Exception('User not authenticated');
     }
 
-    print('💡 [SuggestionDataSource] Submitting suggestion: user=$userId');
-
+    
     try {
       final response = await _client
           .from('user_suggestions')
@@ -28,12 +27,9 @@ class SuggestionRemoteDataSource {
           .select('id, user_id, description, status, created_at, updated_at')
           .single();
 
-      print(
-          '✅ [SuggestionDataSource] Suggestion submitted: id=${response['id']}');
-      return response;
+            return response;
     } catch (e) {
-      print('❌ [SuggestionDataSource] Failed to submit suggestion: $e');
-      rethrow;
+            rethrow;
     }
   }
 }

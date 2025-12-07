@@ -213,12 +213,15 @@ CREATE TABLE public.memories (
   CONSTRAINT memories_photo_id_fkey FOREIGN KEY (photo_id) REFERENCES public.photos(photo_id)
 );
 CREATE TABLE public.message_reads (
-  message_id uuid NOT NULL,
   user_id uuid NOT NULL,
-  read_at timestamp with time zone NOT NULL DEFAULT now(),
-  CONSTRAINT message_reads_pkey PRIMARY KEY (message_id, user_id),
-  CONSTRAINT message_reads_message_id_fkey FOREIGN KEY (message_id) REFERENCES public.group_messages(id),
-  CONSTRAINT message_reads_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
+  event_id uuid NOT NULL,
+  last_read_message_id uuid,
+  last_read_at timestamp with time zone DEFAULT now(),
+  updated_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT message_reads_pkey PRIMARY KEY (user_id, event_id),
+  CONSTRAINT message_reads_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id),
+  CONSTRAINT message_reads_event_id_fkey FOREIGN KEY (event_id) REFERENCES public.events(id),
+  CONSTRAINT message_reads_last_read_message_id_fkey FOREIGN KEY (last_read_message_id) REFERENCES public.chat_messages(id)
 );
 CREATE TABLE public.notifications (
   id uuid NOT NULL DEFAULT gen_random_uuid(),

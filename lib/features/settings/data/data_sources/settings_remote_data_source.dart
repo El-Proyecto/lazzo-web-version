@@ -15,8 +15,7 @@ class SettingsRemoteDataSource {
       throw Exception('User not authenticated');
     }
 
-    print('🔍 [SettingsDataSource] Getting settings for user: $userId');
-
+    
     try {
       // Try to get existing settings
       final response = await _client
@@ -27,13 +26,11 @@ class SettingsRemoteDataSource {
           .maybeSingle(); // Use maybeSingle() instead of single() to handle 0 rows
 
       if (response != null) {
-        print('✅ [SettingsDataSource] Got existing settings: $response');
-        return response;
+                return response;
       }
 
       // Settings don't exist, create default ones
-      print('⚠️ [SettingsDataSource] No settings found, creating defaults...');
-
+      
       final newSettings = await _client
           .from('user_settings')
           .insert({
@@ -46,11 +43,9 @@ class SettingsRemoteDataSource {
               'user_id, notifications_enabled, language, early_access_invites')
           .single();
 
-      print('✅ [SettingsDataSource] Created default settings: $newSettings');
-      return newSettings;
+            return newSettings;
     } catch (e) {
-      print('❌ [SettingsDataSource] Error getting/creating settings: $e');
-      rethrow;
+            rethrow;
     }
   }
 

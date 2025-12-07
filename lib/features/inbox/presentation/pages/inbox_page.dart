@@ -29,12 +29,30 @@ class _InboxPageState extends ConsumerState<InboxPage>
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
+
+    // Check for pending tab change after frame
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkPendingTabChange();
+    });
   }
 
   @override
   void dispose() {
     _tabController.dispose();
     super.dispose();
+  }
+
+  void _checkPendingTabChange() {
+    final pendingTab = ref.read(inboxTabIndexProvider);
+    if (pendingTab != null && _tabController.index != pendingTab) {
+      _tabController.animateTo(pendingTab);
+      // Reset after applying
+      Future.delayed(const Duration(milliseconds: 100), () {
+        if (mounted) {
+          ref.read(inboxTabIndexProvider.notifier).state = null;
+        }
+      });
+    }
   }
 
   @override

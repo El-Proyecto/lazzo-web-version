@@ -4,7 +4,6 @@ import 'package:mocktail/mocktail.dart';
 import 'package:app/features/auth/domain/repositories/auth_repository.dart';
 
 // Home Feature Mocks
-import 'package:app/features/home/domain/repositories/pending_event_repository.dart';
 import 'package:app/features/home/domain/repositories/memory_repository.dart';
 
 // Create Event Feature Mocks
@@ -25,9 +24,6 @@ import 'package:app/features/profile/domain/repositories/profile_repository.dart
 /// ```
 
 class MockAuthRepository extends Mock implements AuthRepository {}
-
-class MockPendingEventRepository extends Mock
-    implements PendingEventRepository {}
 
 class MockMemoryRepository extends Mock implements MemoryRepository {}
 

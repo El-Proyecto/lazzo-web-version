@@ -73,22 +73,20 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
         );
       } else if (nextEventStatus == HomeEventStatus.recap) {
         // First, update event statuses to ensure recap events are correctly marked
-        print('\n🔄 [MAIN LAYOUT] Updating event statuses before loading recap mode...');
         try {
           final statusService = EventStatusService(Supabase.instance.client);
           final updatedCount = await statusService.updateEventStatuses();
           if (updatedCount > 0) {
-            print('✅ [MAIN LAYOUT] Updated $updatedCount events');
             // Refresh next event provider to get updated status
             ref.invalidate(nextEventControllerProvider);
           }
         } catch (e) {
-          print('❌ [MAIN LAYOUT] Error updating statuses: $e');
+          // Failed to update event status - will retry on next load
         }
-        
+
         // Recap mode: Get memoryId from next event (event in recap = memory)
         final nextEvent = await ref.read(nextEventControllerProvider.future);
-        
+
         if (nextEvent == null) {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
@@ -100,13 +98,14 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
           }
           return;
         }
-        
+
         final memoryId = nextEvent.id; // eventId = memoryId for recap events
-        
+
         // Get memory to check if user has already uploaded photos
-        final memoryAsync = await ref.read(memoryDetailProvider(memoryId).future);
+        final memoryAsync =
+            await ref.read(memoryDetailProvider(memoryId).future);
         final hasPhotos = memoryAsync != null && memoryAsync.photos.isNotEmpty;
-        
+
         if (hasPhotos && mounted) {
           // User already has photos → go directly to manage memory page
           Navigator.pushNamed(
@@ -126,7 +125,7 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
           if (selectedImages.isNotEmpty && mounted) {
             // Limit to 5 photos
             final limitedImages = selectedImages.take(5).toList();
-            
+
             if (limitedImages.length < selectedImages.length) {
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
@@ -143,7 +142,8 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
                 AppRouter.manageMemory,
                 arguments: {
                   'memoryId': memoryId,
-                  'selectedPhotos': limitedImages.map((img) => img.path).toList(),
+                  'selectedPhotos':
+                      limitedImages.map((img) => img.path).toList(),
                 },
               );
             }

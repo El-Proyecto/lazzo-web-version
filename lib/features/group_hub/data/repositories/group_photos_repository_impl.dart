@@ -14,7 +14,7 @@ class GroupPhotosRepositoryImpl implements GroupPhotosRepository {
   @override
   Future<List<GroupPhotoEntity>> getGroupPhotos(String groupId) async {
     try {
-      print('\n📸 [GROUP PHOTOS REPO] Getting photos for group: $groupId');
+      
       
       List<Map<String, dynamic>> photosData;
       try {
@@ -25,8 +25,7 @@ class GroupPhotosRepositoryImpl implements GroupPhotosRepository {
         throw Exception('Data source failed: $e');
       }
       
-      print('📸 [GROUP PHOTOS REPO] Received ${photosData.length} photos from data source');
-      
+            
       if (photosData.isEmpty) {
         print('ℹ️ [GROUP PHOTOS REPO] No photos found for group');
         return [];
@@ -51,8 +50,7 @@ class GroupPhotosRepositoryImpl implements GroupPhotosRepository {
         }
         
         final model = GroupPhotoModel.fromJson(json);
-        print('     → uploaderName after parsing: "${model.uploaderName}"');
-        
+                
         // Generate signed URL for avatar if path exists
         String? profileImageUrl;
         if (model.profileImageUrl != null && model.profileImageUrl!.isNotEmpty) {
@@ -63,8 +61,7 @@ class GroupPhotosRepositoryImpl implements GroupPhotosRepository {
             );
             print('     ✅ Generated signed URL for avatar');
           } catch (e) {
-            print('     ⚠️ Failed to get avatar signed URL: $e');
-            profileImageUrl = null;
+                        profileImageUrl = null;
           }
         }
         

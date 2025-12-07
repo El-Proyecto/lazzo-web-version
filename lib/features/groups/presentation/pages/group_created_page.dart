@@ -31,11 +31,7 @@ class _GroupCreatedPageState extends ConsumerState<GroupCreatedPage> {
     super.initState();
     qrCodeData = 'https://lazzo.app/groups/${widget.group.id}';
 
-    print('🎯 [GroupCreatedPage] Initialized with group: ${widget.group.id}');
-    print('   📱 Generated QR code: $qrCodeData');
-    print('   🔍 Group has qrCode field: ${widget.group.qrCode}');
-    print('   🔍 Group has groupUrl field: ${widget.group.groupUrl}');
-
+                
     // Salvar QR code no Supabase (funciona como backup se não foi salvo na criação)
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _saveQrCode();
@@ -44,33 +40,23 @@ class _GroupCreatedPageState extends ConsumerState<GroupCreatedPage> {
 
   Future<void> _saveQrCode() async {
     try {
-      print(
-          '🔄 Iniciando salvamento do QR code para o grupo ${widget.group.id}');
-      print('   📱 QR Code Data: $qrCodeData');
-
+            
       // Validar se o grupo tem ID
       if (widget.group.id == null || widget.group.id!.isEmpty) {
-        print('❌ Erro: Grupo não tem ID válido!');
-        print('   🔍 Group: ${widget.group.toString()}');
-        return;
+                        return;
       }
 
       // Se o grupo já tem QR code, não precisamos salvar novamente
       if (widget.group.qrCode != null && widget.group.qrCode!.isNotEmpty) {
-        print('✅ Grupo já tem QR code salvo: ${widget.group.qrCode}');
-        return;
+                return;
       }
 
       final saveQrCode = ref.read(saveGroupQrCodeProvider);
 
-      print('   💾 Chamando saveGroupQrCode...');
-      await saveQrCode(widget.group.id!, qrCodeData);
+            await saveQrCode(widget.group.id!, qrCodeData);
 
-      print('✅ QR code salvo com sucesso para o grupo ${widget.group.id}');
-    } catch (e) {
-      print('❌ Erro ao salvar QR code: $e');
-      print('   Stack trace: ${StackTrace.current}');
-
+          } catch (e) {
+            
       // Não mostrar erro ao usuário, pois o QR code visual ainda funciona
       // O importante é que a funcionalidade visual esteja ok
     }

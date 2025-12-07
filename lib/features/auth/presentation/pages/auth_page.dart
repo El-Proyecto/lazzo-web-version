@@ -74,7 +74,7 @@ class _AuthPageState extends ConsumerState<AuthPage> {
         );
       }
 
-      print('🔄 Navegando para OTP com email: $email, name: $name'); // Debug
+       // Debug
 
       Navigator.push(
         context,

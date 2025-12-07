@@ -47,9 +47,7 @@ class GroupEventModel {
         status: _parseRsvpStatus(r['status'] ?? 'pending'),
         votedAt: r['voted_at'] != null ? DateTime.parse(r['voted_at']) : null,
       );
-      print('🔍 [MODEL] Parsed vote for ${vote.userName}:');
-      print('   🎨 Avatar after DTO: ${vote.userAvatar}');
-      return vote;
+                  return vote;
     }).toList() ?? [];
 
     // Calculate participant count from GOING users only (not all votes)
@@ -62,14 +60,7 @@ class GroupEventModel {
         ? goingVotes
         : goingCount;
     
-    print('📊 [MODEL] Event ${json['event_id']}:');
-    print('   🎯 Going count from DB: $goingCount');
-    print('   ✅ Going votes parsed: $goingVotes');
-    print('   👥 Participant count from DB: ${json['participant_count']}');
-    print('   🧮 Calculated participant count: $calculatedParticipantCount');
-    print('   📋 Total votes (all statuses): ${allVotes.length}');
-    print('   👤 Attendee avatars from going_users: ${attendeeAvatars.length}');
-
+                            
     return GroupEventEntity(
       id: json['event_id'] ?? '',
       name: json['title'] ?? '',

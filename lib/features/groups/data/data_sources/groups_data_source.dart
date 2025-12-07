@@ -19,6 +19,7 @@ abstract class GroupsDataSource {
   Future<void> togglePin(String groupId, String userId, bool isPinned);
   Future<void> toggleArchive(String groupId, String userId);
   Future<String> ensureStoragePath({required String input, required String groupId, String bucket});
+  Future<List<Map<String, dynamic>>> getGroupMembers(String groupId);
 }
 
 class SupabaseGroupsDataSource implements GroupsDataSource {
@@ -70,11 +71,9 @@ class SupabaseGroupsDataSource implements GroupsDataSource {
             'group_state': 'active',
           });
 
-      print('✅ [DataSource] Group created successfully: ${response['id']}');
       return response;
     } catch (e) {
-      print('❌ [DataSource] Failed to create group: $e');
-      throw Exception('Failed to create group: $e');
+            throw Exception('Failed to create group: $e');
     }
   }
 
@@ -91,18 +90,15 @@ class SupabaseGroupsDataSource implements GroupsDataSource {
             upsert: true, // Permitir substituir foto existente
           ));
       
-      print('✅ [DataSource] Group cover photo uploaded: $fileName');
       return fileName; // Retorna apenas o path, não a URL completa
     } catch (e) {
-      print('❌ [DataSource] Failed to upload group cover photo: $e');
-      throw Exception('Failed to upload group cover photo: $e');
+            throw Exception('Failed to upload group cover photo: $e');
     }
   }
 
   @override
   Future<String> getGroupCoverSignedUrl(String photoPath) async {
     try {
-      print('🔗 [DataSource] Getting signed URL for: $photoPath');
       
       // Validate that it's a storage path, not a local path
       if (photoPath.contains('cache') || photoPath.contains('data/user')) {
@@ -117,11 +113,9 @@ class SupabaseGroupsDataSource implements GroupsDataSource {
           .from(_bucketName)
           .createSignedUrl(normalizedPath, 3600); // 1 hora de validade
       
-      print('   ✅ Signed URL created successfully');
       return signedUrl;
     } catch (e) {
-      print('   ❌ Failed to create signed URL: $e');
-      throw Exception('Failed to get signed URL: $e');
+            throw Exception('Failed to get signed URL: $e');
     }
   }
 
@@ -145,7 +139,6 @@ class SupabaseGroupsDataSource implements GroupsDataSource {
                     input.contains('cache');
     
     if (isLocal) {
-      print('📤 Converting local path to storage path: $input');
       
       // Check if file exists
       final file = File(input.replaceFirst('file://', ''));
@@ -171,7 +164,6 @@ class SupabaseGroupsDataSource implements GroupsDataSource {
         ),
       );
       
-      print('✅ Local file uploaded to storage: $objectPath');
       return objectPath; // Return just the object path
     }
 
@@ -190,7 +182,6 @@ class SupabaseGroupsDataSource implements GroupsDataSource {
   @override
   Future<void> saveGroupQrCode(String groupId, String qrCodeData) async {
     try {
-      print('🔖 [DataSource] Saving QR code for group: $groupId');
       
       // Primeiro, tenta salvar qr_code e group_url
       await _client
@@ -201,20 +192,16 @@ class SupabaseGroupsDataSource implements GroupsDataSource {
           })
           .eq('id', groupId);
       
-      print('   ✅ QR code and group URL saved successfully');
     } catch (e) {
       // Se falhar, tenta salvar apenas o qr_code (para compatibilidade)
       if (e.toString().contains('group_url')) {
-        print('   🔄 Tentando salvar apenas qr_code...');
         try {
           await _client
               .from('groups')
               .update({'qr_code': qrCodeData})
               .eq('id', groupId);
-          print('   ✅ QR code saved (without group_url)');
         } catch (e2) {
-          print('   ❌ Failed to save even qr_code: $e2');
-          throw Exception('Failed to save QR code: $e2');
+                    throw Exception('Failed to save QR code: $e2');
         }
       } else {
         throw Exception('Failed to save QR code: $e');
@@ -225,7 +212,6 @@ class SupabaseGroupsDataSource implements GroupsDataSource {
   @override
   Future<void> updateGroupPhoto(String groupId, String photoPath) async {
     try {
-      print('📸 [DataSource] Updating group photo: $groupId -> $photoPath');
       
       await _client
           .from('groups')
@@ -235,10 +221,8 @@ class SupabaseGroupsDataSource implements GroupsDataSource {
           })
           .eq('id', groupId);
       
-      print('   ✅ Group photo updated successfully');
     } catch (e) {
-      print('   ❌ Failed to update group photo: $e');
-      throw Exception('Failed to update group photo: $e');
+            throw Exception('Failed to update group photo: $e');
     }
   }
 
@@ -334,7 +318,6 @@ class SupabaseGroupsDataSource implements GroupsDataSource {
   @override
   Future<List<Map<String, dynamic>>> getArchivedGroups(String userId) async {
     try {
-      print('🗄️ Fetching archived groups for: $userId');
 
       // STEP 1: Busca os IDs dos grupos onde o usuário é membro
       final memberResponse = await _client
@@ -367,7 +350,6 @@ class SupabaseGroupsDataSource implements GroupsDataSource {
       }
       
       if (archivedGroupIds.isEmpty) {
-        print('   ✅ Found 0 archived groups');
         return [];
       }
       
@@ -436,18 +418,15 @@ class SupabaseGroupsDataSource implements GroupsDataSource {
         return group;
       }).toList();
 
-      print('   ✅ Found ${processedGroups.length} archived groups');
       return List<Map<String, dynamic>>.from(processedGroups);
     } catch (e) {
-      print('   ❌ Failed to fetch archived groups: $e');
-      throw Exception('Failed to fetch archived groups: $e');
+            throw Exception('Failed to fetch archived groups: $e');
     }
   }
 
   @override
   Future<void> leaveGroup(String groupId, String userId) async {
     try {
-      print('👋 [DataSource] User leaving group: $groupId');
       
       // STEP 1: Verificar quantos membros tem o grupo
       final membersCount = await _client
@@ -456,7 +435,6 @@ class SupabaseGroupsDataSource implements GroupsDataSource {
           .eq('group_id', groupId)
           .count();
       
-      print('   📊 Group has ${membersCount.count} members');
       
       // STEP 2: Remove o usuário da tabela group_members
       await _client
@@ -465,7 +443,6 @@ class SupabaseGroupsDataSource implements GroupsDataSource {
           .eq('group_id', groupId)
           .eq('user_id', userId);
       
-      print('   ✅ User removed from group_members');
       
       // STEP 3: Remove configurações do usuário para este grupo
       await _client
@@ -474,11 +451,9 @@ class SupabaseGroupsDataSource implements GroupsDataSource {
           .eq('group_id', groupId)
           .eq('user_id', userId);
       
-      print('   ✅ User settings removed from group_user_settings');
       
       // STEP 4: Se era o último membro, apagar o grupo completamente
       if (membersCount.count <= 1) {
-        print('   🗑️ Last member leaving - deleting group');
         
         // STEP 4.1: Buscar dados do grupo para verificar se tem imagem
         final groupData = await _client
@@ -492,7 +467,6 @@ class SupabaseGroupsDataSource implements GroupsDataSource {
           final photoPath = groupData['photo_url'] as String;
           if (photoPath.isNotEmpty) {
             try {
-              print('   📸 Deleting entire group folder from storage: groups/$groupId/');
               
               // List all files in the group's folder
               final filesList = await _client.storage
@@ -509,13 +483,10 @@ class SupabaseGroupsDataSource implements GroupsDataSource {
                 await _client.storage
                     .from(_bucketName)
                     .remove(filePaths);
-                print('   ✅ Deleted ${filePaths.length} file(s) from group folder');
               } else {
-                print('   ℹ️ No files found in group folder');
               }
             } catch (e) {
-              print('   ⚠️ Failed to delete group folder: $e (continuing with group deletion)');
-              // Continue mesmo se falhar a remoção da imagem
+                            // Continue mesmo se falhar a remoção da imagem
             }
           }
         }
@@ -532,12 +503,9 @@ class SupabaseGroupsDataSource implements GroupsDataSource {
             .delete()
             .eq('id', groupId);
         
-        print('   ✅ Group deleted completely (was last member)');
       }
       
-      print('   ✅ Leave group process completed');
     } catch (e) {
-      print('   ❌ Failed to leave group: $e');
       throw Exception('Failed to leave group: $e');
     }
   }
@@ -545,7 +513,6 @@ class SupabaseGroupsDataSource implements GroupsDataSource {
   @override
   Future<void> updateGroupMemberState(String groupId, String userId, String state) async {
     try {
-      print('📁 [DataSource] Updating group state: $state for group: $groupId');
       
       // Upsert na tabela group_user_settings
       await _client
@@ -557,9 +524,7 @@ class SupabaseGroupsDataSource implements GroupsDataSource {
             'updated_at': DateTime.now().toIso8601String(),
           });
       
-      print('   ✅ Group state updated to: $state');
     } catch (e) {
-      print('   ❌ Failed to update group state: $e');
       throw Exception('Failed to update group state: $e');
     }
   }
@@ -567,7 +532,6 @@ class SupabaseGroupsDataSource implements GroupsDataSource {
   @override
   Future<void> toggleMute(String groupId, String userId, bool isMuted) async {
     try {
-      print('🔇 [DataSource] ${isMuted ? 'Muting' : 'Unmuting'} group: $groupId for user: $userId');
       
       // Upsert na tabela group_user_settings
       await _client
@@ -579,9 +543,7 @@ class SupabaseGroupsDataSource implements GroupsDataSource {
             'updated_at': DateTime.now().toIso8601String(),
           });
       
-      print('   ✅ Group ${isMuted ? 'muted' : 'unmuted'} successfully');
     } catch (e) {
-      print('   ❌ Failed to toggle mute: $e');
       throw Exception('Failed to toggle mute: $e');
     }
   }
@@ -589,7 +551,6 @@ class SupabaseGroupsDataSource implements GroupsDataSource {
   @override
   Future<void> togglePin(String groupId, String userId, bool isPinned) async {
     try {
-      print('📌 [DataSource] ${isPinned ? 'Pinning' : 'Unpinning'} group: $groupId for user: $userId');
       
       // Upsert na tabela group_user_settings
       await _client
@@ -601,9 +562,7 @@ class SupabaseGroupsDataSource implements GroupsDataSource {
             'updated_at': DateTime.now().toIso8601String(),
           });
       
-      print('   ✅ Group ${isPinned ? 'pinned' : 'unpinned'} successfully');
     } catch (e) {
-      print('   ❌ Failed to toggle pin: $e');
       throw Exception('Failed to toggle pin: $e');
     }
   }
@@ -611,7 +570,6 @@ class SupabaseGroupsDataSource implements GroupsDataSource {
   @override
   Future<void> toggleArchive(String groupId, String userId) async {
     try {
-      print('🗄️ [DataSource] Toggling archive for group: $groupId, user: $userId');
       
       // Primeiro, busca o estado atual do grupo para o usuário
       final currentSettings = await _client
@@ -625,7 +583,6 @@ class SupabaseGroupsDataSource implements GroupsDataSource {
       final currentState = currentSettings?['group_state'] ?? 'active';
       final newState = currentState == 'archived' ? 'active' : 'archived';
       
-      print('   Current state: $currentState -> New state: $newState');
       
       // Upsert na tabela group_user_settings
       await _client
@@ -637,10 +594,33 @@ class SupabaseGroupsDataSource implements GroupsDataSource {
             'updated_at': DateTime.now().toIso8601String(),
           });
       
-      print('   ✅ Group ${newState == 'archived' ? 'archived' : 'unarchived'} successfully');
     } catch (e) {
-      print('   ❌ Failed to toggle archive: $e');
       throw Exception('Failed to toggle archive: $e');
+    }
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> getGroupMembers(String groupId) async {
+    try {
+      
+      final response = await _client
+          .from('group_members')
+          .select('''
+            user_id,
+            role,
+            joined_at,
+            users:user_id (
+              id,
+              name,
+              avatar_url
+            )
+          ''')
+          .eq('group_id', groupId)
+          .order('role', ascending: false); // Admins first
+
+      return List<Map<String, dynamic>>.from(response);
+    } catch (e) {
+      throw Exception('Failed to get group members: $e');
     }
   }
 }

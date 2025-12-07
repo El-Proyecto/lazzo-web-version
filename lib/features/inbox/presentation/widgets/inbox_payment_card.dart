@@ -96,11 +96,11 @@ class _InboxPaymentCardState extends State<InboxPaymentCard> {
                             ),
                             TextSpan(
                               text:
-                                  '\$${widget.payment.amount.toStringAsFixed(2)}',
+                                  '€${widget.payment.amount.toStringAsFixed(2)}',
                               style: TextStyle(
                                 color: widget.isOwedToUser
                                     ? BrandColors
-                                          .planning // Green for "owed to you"
+                                        .planning // Green for "owed to you"
                                     : BrandColors.cantVote, // Red for "you owe"
                                 fontWeight: FontWeight.w600,
                               ),
@@ -273,13 +273,13 @@ class _InboxPaymentCardState extends State<InboxPaymentCard> {
   }
 
   String _getUserName() {
-    // For demo purposes, we'll use the title or create a mock name
-    if (widget.payment.title.contains('from')) {
-      return widget.payment.title.split('from').last.trim();
-    } else if (widget.payment.title.contains('to')) {
-      return widget.payment.title.split('to').last.trim();
+    // Get the name of the other person involved in the payment
+    if (widget.isOwedToUser) {
+      // They owe us - get the debtor name (fromUser)
+      return widget.payment.fromUserName ?? 'Someone';
     } else {
-      return 'Friend';
+      // We owe them - get the creditor name (toUser)
+      return widget.payment.toUserName ?? 'Someone';
     }
   }
 }

@@ -102,7 +102,7 @@ class ManageMemoryNotifier
 
       // Get current authenticated user ID from Supabase
       final currentUserId = Supabase.instance.client.auth.currentUser?.id;
-      
+
       if (currentUserId == null) {
         state = AsyncValue.error('User not authenticated', StackTrace.current);
         return;
@@ -149,7 +149,7 @@ class ManageMemoryNotifier
               .select('avatar_url')
               .eq('id', currentUserId)
               .maybeSingle();
-          
+
           if (userResponse != null && userResponse['avatar_url'] != null) {
             final avatarPath = userResponse['avatar_url'] as String;
             final storageService = StorageService(Supabase.instance.client);
@@ -161,27 +161,27 @@ class ManageMemoryNotifier
         } catch (e) {
           // Failed to fetch current user profile photo
         }
-        
+
         // Get real eventId from next event
         final nextEvent = await ref.read(nextEventControllerProvider.future);
         if (nextEvent == null) {
           state = AsyncValue.error('No active event to upload photos', StackTrace.current);
           return;
         }
-        
+
         final eventId = nextEvent.id;
-        
+
         // Get groupId from events table (since HomeEventEntity doesn't expose it)
         final eventData = await Supabase.instance.client
             .from('events')
             .select('group_id')
             .eq('id', eventId)
             .single();
-        
+
         final groupId = eventData['group_id'] as String;
         
         final dataSource = MemoryPhotoDataSource(Supabase.instance.client);
-        
+
         for (int i = 0; i < selectedPhotoPaths.length; i++) {
           try {
             final filePath = selectedPhotoPaths[i];
@@ -198,7 +198,7 @@ class ManageMemoryNotifier
             } catch (e) {
               // Could not detect orientation
             }
-            
+
             // Upload photo to Supabase
             final uploadResult = await dataSource.uploadPhoto(
               groupId: groupId,
@@ -207,12 +207,12 @@ class ManageMemoryNotifier
               file: file,
               isPortrait: isPortrait,
             );
-            
+
             // Generate signed URL for display (storage path was returned)
             final storagePath = uploadResult['storage_path'] as String;
             final storageService = StorageService(Supabase.instance.client);
             final signedUrl = await storageService.getSignedUrl(storagePath);
-            
+
             // Add uploaded photo to the beginning of the list
             photoItems.insert(
               0,
@@ -231,7 +231,7 @@ class ManageMemoryNotifier
             // Continue with other photos even if one fails
           }
         }
-        
+
         // Clear the selected photos provider after upload
         ref.read(selectedPhotoPathsProvider.notifier).state = null;
       }
@@ -240,7 +240,7 @@ class ManageMemoryNotifier
       final coverPhoto = memoryAsync.coverPhotos.isNotEmpty 
           ? memoryAsync.coverPhotos.first 
           : null;
-      
+
       ManagePhotoItem? currentCover;
       if (coverPhoto != null) {
         // Find matching photo in photoItems list
@@ -289,7 +289,7 @@ class ManageMemoryNotifier
     state.whenData((currentState) async {
       // Update state immediately for UI responsiveness
       state = AsyncValue.data(currentState.copyWith(selectedCover: photo));
-      
+
       // Persist to Supabase
       try {
         final updateUseCase = ref.read(updateMemoryCoverUseCaseProvider);
@@ -307,7 +307,7 @@ class ManageMemoryNotifier
     state.whenData((currentState) async {
       // Update state immediately
       state = AsyncValue.data(currentState.copyWith(clearCover: true));
-      
+
       // Persist to Supabase (null = no cover)
       try {
         final updateUseCase = ref.read(updateMemoryCoverUseCaseProvider);

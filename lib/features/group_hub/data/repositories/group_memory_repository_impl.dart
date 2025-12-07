@@ -95,10 +95,8 @@ class GroupMemoryRepositoryImpl implements GroupMemoryRepository {
     //   final json = await _dataSource.getMemoryById(memoryId);
     //   if (json == null) return null;
     //   return GroupMemoryModel.fromJson(json);
-    // } catch (e, stackTrace) {
-    //   print('Error fetching memory by ID: $e');
-    //   print(stackTrace);
-    //   return null;
+    // } catch (e) {
+    //       //       //   return null;
     // }
 
     throw UnimplementedError('P2: Implement getMemoryById repository method');
