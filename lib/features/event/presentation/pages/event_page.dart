@@ -192,7 +192,7 @@ class _EventPageState extends ConsumerState<EventPage> {
     final currentUserId = ref.watch(currentUserIdProvider);
     final eventAsync = ref.watch(eventDetailProvider(eventId));
     final rsvpsAsync = ref.watch(eventRsvpsProvider(eventId));
-    final userRsvpAsync = ref.watch(userRsvpProvider(eventId));
+    // Note: userRsvpAsync is now watched inside _buildRsvpSection()
     final pollsAsync = ref.watch(eventPollsProvider(eventId));
     final messagesAsync = ref.watch(chatMessagesProvider(eventId));
     final suggestionsAsync = ref.watch(eventSuggestionsProvider(eventId));
@@ -362,626 +362,11 @@ class _EventPageState extends ConsumerState<EventPage> {
                 const SizedBox(height: Gaps.md),
 
                 // Event status chip - always visible
-                Consumer(
-                  builder: (context, consumerRef, _) {
-                    final canManageAsync = consumerRef.watch(
-                      canManageEventProvider(eventId),
-                    );
-
-                    return canManageAsync.when(
-                      data: (canManage) {
-                        // Cache the isHost status
-                        _cachedIsHost = canManage;
-
-                        return Column(
-                          children: [
-                            EventStatusChip(
-                              status: event.status,
-                              isHost: canManage,
-                              onTap: canManage
-                                  ? () => _showStatusChangeDialog(
-                                        context,
-                                        ref,
-                                        eventId,
-                                        event.status,
-                                      )
-                                  : () {},
-                            ),
-                            const SizedBox(height: Gaps.lg),
-                          ],
-                        );
-                      },
-                      loading: () => Column(
-                        children: [
-                          EventStatusChip(
-                            status: event.status,
-                            isHost: _cachedIsHost ?? false,
-                            onTap: (_cachedIsHost ?? false)
-                                ? () => _showStatusChangeDialog(
-                                      context,
-                                      ref,
-                                      eventId,
-                                      event.status,
-                                    )
-                                : () {},
-                          ),
-                          const SizedBox(height: Gaps.lg),
-                        ],
-                      ),
-                      error: (_, __) => Column(
-                        children: [
-                          EventStatusChip(
-                            status: event.status,
-                            isHost: _cachedIsHost ?? false,
-                            onTap: (_cachedIsHost ?? false)
-                                ? () => _showStatusChangeDialog(
-                                      context,
-                                      ref,
-                                      eventId,
-                                      event.status,
-                                    )
-                                : () {},
-                          ),
-                          const SizedBox(height: Gaps.lg),
-                        ],
-                      ),
-                    );
-                  },
-                ),
+                _buildEventStatusSection(event),
 
                 // RSVP Widget
-                rsvpsAsync.when(
-                  data: (rsvps) {
-                    return userRsvpAsync.when(
-                      data: (userRsvp) {
-                        return suggestionsAsync.when(
-                          data: (suggestions) {
-                            // Filter suggestions that are DIFFERENT from current event date
-                            // (for "Add Suggestion" button visibility)
-                            final alternateDateSuggestions =
-                                suggestions.where((s) {
-                              if (event.startDateTime == null ||
-                                  event.endDateTime == null) {
-                                return true;
-                              }
-                              final isDifferent = !s.startDateTime
-                                      .isAtSameMomentAs(event.startDateTime!) ||
-                                  !(s.endDateTime?.isAtSameMomentAs(
-                                          event.endDateTime!) ??
-                                      false);
-                              return isDifferent;
-                            }).toList();
+                _buildRsvpSection(event, currentUserId),
 
-                            // Also check location suggestions for hasSuggestions flag
-                            return Consumer(
-                              builder: (context, consumerRef, child) {
-                                final locationSuggestionsAsync =
-                                    consumerRef.watch(
-                                  eventLocationSuggestionsProvider(eventId),
-                                );
-
-                                return locationSuggestionsAsync.when(
-                                  data: (locationSuggestions) {
-                                    // Filter location suggestions DIFFERENT from current event location
-                                    final alternateLocationSuggestions =
-                                        locationSuggestions.where((s) {
-                                      if (event.location == null) return true;
-                                      final isDifferent = s.locationName !=
-                                              event.location!.displayName ||
-                                          (s.address ?? '') !=
-                                              event.location!.formattedAddress;
-                                      return isDifferent;
-                                    }).toList();
-
-                                    // Calculate dynamic counts from actual RSVP data
-                                    final goingCount = rsvps
-                                        .where(
-                                          (r) => r.status == RsvpStatus.going,
-                                        )
-                                        .length;
-                                    final notGoingCount = rsvps
-                                        .where(
-                                          (r) =>
-                                              r.status == RsvpStatus.notGoing,
-                                        )
-                                        .length;
-                                    final pendingCount = rsvps
-                                        .where(
-                                          (r) => r.status == RsvpStatus.pending,
-                                        )
-                                        .length;
-
-                                    return rsvp_widget.RsvpWidget(
-                                      goingCount: goingCount,
-                                      notGoingCount: notGoingCount,
-                                      pendingCount: pendingCount,
-                                      userVote: _getUserVoteStatus(userRsvp),
-                                      onGoingPressed: () async {
-                                        final currentStatus =
-                                            userRsvp?.status ??
-                                                RsvpStatus.pending;
-                                        final newStatus =
-                                            currentStatus == RsvpStatus.going
-                                                ? RsvpStatus.pending
-                                                : RsvpStatus.going;
-                                        await ref
-                                            .read(userRsvpProvider(eventId)
-                                                .notifier)
-                                            .submitVote(newStatus);
-                                      },
-                                      onNotGoingPressed: () async {
-                                        final currentStatus =
-                                            userRsvp?.status ??
-                                                RsvpStatus.pending;
-                                        final newStatus =
-                                            currentStatus == RsvpStatus.notGoing
-                                                ? RsvpStatus.pending
-                                                : RsvpStatus.notGoing;
-                                        await ref
-                                            .read(userRsvpProvider(eventId)
-                                                .notifier)
-                                            .submitVote(newStatus);
-                                      },
-                                      allVotes: rsvps
-                                          .map(
-                                            (r) => rsvp_widget.RsvpVote(
-                                              id: r.id,
-                                              userId: r.userId,
-                                              userName: _getUserDisplayName(
-                                                  r.userId,
-                                                  r.userName,
-                                                  currentUserId),
-                                              userAvatar: r.userAvatar,
-                                              status: r.status ==
-                                                      RsvpStatus.going
-                                                  ? rsvp_widget
-                                                      .RsvpVoteStatus.going
-                                                  : r.status ==
-                                                          RsvpStatus.notGoing
-                                                      ? rsvp_widget
-                                                          .RsvpVoteStatus
-                                                          .notGoing
-                                                      : rsvp_widget
-                                                          .RsvpVoteStatus
-                                                          .pending,
-                                              votedAt: r.createdAt,
-                                            ),
-                                          )
-                                          .toList(),
-                                      onAddSuggestion: _getUserVoteStatus(
-                                                  userRsvp) ==
-                                              false
-                                          ? () {
-                                              if (event.startDateTime == null ||
-                                                  event.endDateTime == null) {
-                                                TopBanner.showError(
-                                                  context,
-                                                  message:
-                                                      'Event dates must be set before adding suggestions',
-                                                );
-                                                return;
-                                              }
-                                              showAddSuggestionBottomSheet(
-                                                context,
-                                                eventId: eventId,
-                                                eventStartDate:
-                                                    event.startDateTime!,
-                                                eventStartTime:
-                                                    TimeOfDay.fromDateTime(
-                                                  event.startDateTime!,
-                                                ),
-                                                eventEndDate:
-                                                    event.endDateTime!,
-                                                eventEndTime:
-                                                    TimeOfDay.fromDateTime(
-                                                  event.endDateTime!,
-                                                ),
-                                                type: locationSuggestions
-                                                        .isNotEmpty
-                                                    ? SuggestionType.location
-                                                    : SuggestionType
-                                                        .dateTime, // Start with Location tab if location suggestions exist
-                                                currentEventLocationName:
-                                                    event.location?.displayName,
-                                                currentEventAddress: event
-                                                    .location?.formattedAddress,
-                                              );
-                                            }
-                                          : null,
-                                      eventStartDateTime: event.startDateTime,
-                                      eventEndDateTime: event.endDateTime,
-                                      isHost: event.hostId == currentUserId,
-                                      hasSuggestions:
-                                          alternateDateSuggestions.isNotEmpty ||
-                                              alternateLocationSuggestions
-                                                  .isNotEmpty,
-                                    );
-                                  },
-                                  loading: () => rsvp_widget.RsvpWidget(
-                                    goingCount: event.goingCount,
-                                    notGoingCount: event.notGoingCount,
-                                    pendingCount: rsvps
-                                        .where(
-                                          (r) => r.status == RsvpStatus.pending,
-                                        )
-                                        .length,
-                                    userVote: _getUserVoteStatus(userRsvp),
-                                    onGoingPressed: () {
-                                      final currentStatus = userRsvp?.status ??
-                                          RsvpStatus.pending;
-                                      final newStatus =
-                                          currentStatus == RsvpStatus.going
-                                              ? RsvpStatus.pending
-                                              : RsvpStatus.going;
-                                      ref
-                                          .read(
-                                            userRsvpProvider(eventId).notifier,
-                                          )
-                                          .submitVote(newStatus);
-                                    },
-                                    onNotGoingPressed: () {
-                                      final currentStatus = userRsvp?.status ??
-                                          RsvpStatus.pending;
-                                      final newStatus =
-                                          currentStatus == RsvpStatus.notGoing
-                                              ? RsvpStatus.pending
-                                              : RsvpStatus.notGoing;
-                                      ref
-                                          .read(
-                                            userRsvpProvider(eventId).notifier,
-                                          )
-                                          .submitVote(newStatus);
-                                    },
-                                    allVotes: rsvps
-                                        .map(
-                                          (r) => rsvp_widget.RsvpVote(
-                                            id: r.id,
-                                            userId: r.userId,
-                                            userName: _getUserDisplayName(
-                                                r.userId,
-                                                r.userName,
-                                                currentUserId),
-                                            userAvatar: r.userAvatar,
-                                            status: r.status == RsvpStatus.going
-                                                ? rsvp_widget
-                                                    .RsvpVoteStatus.going
-                                                : r.status ==
-                                                        RsvpStatus.notGoing
-                                                    ? rsvp_widget
-                                                        .RsvpVoteStatus.notGoing
-                                                    : rsvp_widget
-                                                        .RsvpVoteStatus.pending,
-                                            votedAt: r.createdAt,
-                                          ),
-                                        )
-                                        .toList(),
-                                    onAddSuggestion:
-                                        _getUserVoteStatus(userRsvp) == false
-                                            ? () {
-                                                if (event.startDateTime !=
-                                                        null &&
-                                                    event.endDateTime != null) {
-                                                  showAddSuggestionBottomSheet(
-                                                    context,
-                                                    eventId: eventId,
-                                                    eventStartDate:
-                                                        event.startDateTime!,
-                                                    eventStartTime:
-                                                        TimeOfDay.fromDateTime(
-                                                      event.startDateTime!,
-                                                    ),
-                                                    eventEndDate:
-                                                        event.endDateTime!,
-                                                    eventEndTime:
-                                                        TimeOfDay.fromDateTime(
-                                                      event.endDateTime!,
-                                                    ),
-                                                  );
-                                                }
-                                              }
-                                            : null,
-                                    eventStartDateTime: event.startDateTime,
-                                    eventEndDateTime: event.endDateTime,
-                                    isHost: event.hostId == currentUserId,
-                                    hasSuggestions:
-                                        false, // Default to false when loading
-                                  ),
-                                  error: (error, stack) =>
-                                      rsvp_widget.RsvpWidget(
-                                    goingCount: event.goingCount,
-                                    notGoingCount: event.notGoingCount,
-                                    pendingCount: rsvps
-                                        .where(
-                                          (r) => r.status == RsvpStatus.pending,
-                                        )
-                                        .length,
-                                    userVote: _getUserVoteStatus(userRsvp),
-                                    onGoingPressed: () {
-                                      final currentStatus = userRsvp?.status ??
-                                          RsvpStatus.pending;
-                                      final newStatus =
-                                          currentStatus == RsvpStatus.going
-                                              ? RsvpStatus.pending
-                                              : RsvpStatus.going;
-                                      ref
-                                          .read(
-                                            userRsvpProvider(eventId).notifier,
-                                          )
-                                          .submitVote(newStatus);
-                                    },
-                                    onNotGoingPressed: () {
-                                      final currentStatus = userRsvp?.status ??
-                                          RsvpStatus.pending;
-                                      final newStatus =
-                                          currentStatus == RsvpStatus.notGoing
-                                              ? RsvpStatus.pending
-                                              : RsvpStatus.notGoing;
-                                      ref
-                                          .read(
-                                            userRsvpProvider(eventId).notifier,
-                                          )
-                                          .submitVote(newStatus);
-                                    },
-                                    allVotes: rsvps
-                                        .map(
-                                          (r) => rsvp_widget.RsvpVote(
-                                            id: r.id,
-                                            userId: r.userId,
-                                            userName: _getUserDisplayName(
-                                                r.userId,
-                                                r.userName,
-                                                currentUserId),
-                                            userAvatar: r.userAvatar,
-                                            status: r.status == RsvpStatus.going
-                                                ? rsvp_widget
-                                                    .RsvpVoteStatus.going
-                                                : r.status ==
-                                                        RsvpStatus.notGoing
-                                                    ? rsvp_widget
-                                                        .RsvpVoteStatus.notGoing
-                                                    : rsvp_widget
-                                                        .RsvpVoteStatus.pending,
-                                            votedAt: r.createdAt,
-                                          ),
-                                        )
-                                        .toList(),
-                                    onAddSuggestion:
-                                        _getUserVoteStatus(userRsvp) == false
-                                            ? () {
-                                                if (event.startDateTime !=
-                                                        null &&
-                                                    event.endDateTime != null) {
-                                                  showAddSuggestionBottomSheet(
-                                                    context,
-                                                    eventId: eventId,
-                                                    eventStartDate:
-                                                        event.startDateTime!,
-                                                    eventStartTime:
-                                                        TimeOfDay.fromDateTime(
-                                                      event.startDateTime!,
-                                                    ),
-                                                    eventEndDate:
-                                                        event.endDateTime!,
-                                                    eventEndTime:
-                                                        TimeOfDay.fromDateTime(
-                                                      event.endDateTime!,
-                                                    ),
-                                                  );
-                                                }
-                                              }
-                                            : null,
-                                    eventStartDateTime: event.startDateTime,
-                                    eventEndDateTime: event.endDateTime,
-                                    isHost: event.hostId == currentUserId,
-                                    hasSuggestions:
-                                        false, // Default to false on error
-                                  ),
-                                );
-                              },
-                            );
-                          },
-                          loading: () => rsvp_widget.RsvpWidget(
-                            goingCount: event.goingCount,
-                            notGoingCount: event.notGoingCount,
-                            pendingCount: rsvps
-                                .where((r) => r.status == RsvpStatus.pending)
-                                .length,
-                            userVote: _getUserVoteStatus(userRsvp),
-                            onGoingPressed: () {
-                              final currentStatus =
-                                  userRsvp?.status ?? RsvpStatus.pending;
-                              final newStatus =
-                                  currentStatus == RsvpStatus.going
-                                      ? RsvpStatus.pending
-                                      : RsvpStatus.going;
-                              ref
-                                  .read(userRsvpProvider(eventId).notifier)
-                                  .submitVote(newStatus);
-                            },
-                            onNotGoingPressed: () {
-                              final currentStatus =
-                                  userRsvp?.status ?? RsvpStatus.pending;
-                              final newStatus =
-                                  currentStatus == RsvpStatus.notGoing
-                                      ? RsvpStatus.pending
-                                      : RsvpStatus.notGoing;
-                              ref
-                                  .read(userRsvpProvider(eventId).notifier)
-                                  .submitVote(newStatus);
-                            },
-                            allVotes: rsvps
-                                .map(
-                                  (r) => rsvp_widget.RsvpVote(
-                                    id: r.id,
-                                    userId: r.userId,
-                                    userName: _getUserDisplayName(
-                                        r.userId, r.userName, currentUserId),
-                                    userAvatar: r.userAvatar,
-                                    status: r.status == RsvpStatus.going
-                                        ? rsvp_widget.RsvpVoteStatus.going
-                                        : r.status == RsvpStatus.notGoing
-                                            ? rsvp_widget
-                                                .RsvpVoteStatus.notGoing
-                                            : rsvp_widget
-                                                .RsvpVoteStatus.pending,
-                                    votedAt: r.createdAt,
-                                  ),
-                                )
-                                .toList(),
-                            onAddSuggestion: _getUserVoteStatus(userRsvp) ==
-                                    false
-                                ? () {
-                                    if (event.startDateTime == null ||
-                                        event.endDateTime == null) {
-                                      TopBanner.showError(
-                                        context,
-                                        message:
-                                            'Event dates must be set before adding suggestions',
-                                      );
-                                      return;
-                                    }
-                                    showAddSuggestionBottomSheet(
-                                      context,
-                                      eventId: eventId,
-                                      eventStartDate: event.startDateTime!,
-                                      eventStartTime: TimeOfDay.fromDateTime(
-                                        event.startDateTime!,
-                                      ),
-                                      eventEndDate: event.endDateTime!,
-                                      eventEndTime: TimeOfDay.fromDateTime(
-                                        event.endDateTime!,
-                                      ),
-                                    );
-                                  }
-                                : null,
-                            eventStartDateTime: event.startDateTime,
-                            eventEndDateTime: event.endDateTime,
-                            isHost: event.hostId == currentUserId,
-                            hasSuggestions:
-                                false, // Default to false when loading
-                          ),
-                          error: (error, stack) => rsvp_widget.RsvpWidget(
-                            goingCount: event.goingCount,
-                            notGoingCount: event.notGoingCount,
-                            pendingCount: rsvps
-                                .where((r) => r.status == RsvpStatus.pending)
-                                .length,
-                            userVote: _getUserVoteStatus(userRsvp),
-                            onGoingPressed: () {
-                              final currentStatus =
-                                  userRsvp?.status ?? RsvpStatus.pending;
-                              final newStatus =
-                                  currentStatus == RsvpStatus.going
-                                      ? RsvpStatus.pending
-                                      : RsvpStatus.going;
-                              ref
-                                  .read(userRsvpProvider(eventId).notifier)
-                                  .submitVote(newStatus);
-                            },
-                            onNotGoingPressed: () {
-                              final currentStatus =
-                                  userRsvp?.status ?? RsvpStatus.pending;
-                              final newStatus =
-                                  currentStatus == RsvpStatus.notGoing
-                                      ? RsvpStatus.pending
-                                      : RsvpStatus.notGoing;
-                              ref
-                                  .read(userRsvpProvider(eventId).notifier)
-                                  .submitVote(newStatus);
-                            },
-                            allVotes: rsvps
-                                .map(
-                                  (r) => rsvp_widget.RsvpVote(
-                                    id: r.id,
-                                    userId: r.userId,
-                                    userName: _getUserDisplayName(
-                                        r.userId, r.userName, currentUserId),
-                                    userAvatar: r.userAvatar,
-                                    status: r.status == RsvpStatus.going
-                                        ? rsvp_widget.RsvpVoteStatus.going
-                                        : r.status == RsvpStatus.notGoing
-                                            ? rsvp_widget
-                                                .RsvpVoteStatus.notGoing
-                                            : rsvp_widget
-                                                .RsvpVoteStatus.pending,
-                                    votedAt: r.createdAt,
-                                  ),
-                                )
-                                .toList(),
-                            onAddSuggestion: _getUserVoteStatus(userRsvp) ==
-                                    false
-                                ? () {
-                                    if (event.startDateTime == null ||
-                                        event.endDateTime == null) {
-                                      TopBanner.showError(
-                                        context,
-                                        message:
-                                            'Event dates must be set before adding suggestions',
-                                      );
-                                      return;
-                                    }
-                                    showAddSuggestionBottomSheet(
-                                      context,
-                                      eventId: eventId,
-                                      eventStartDate: event.startDateTime!,
-                                      eventStartTime: TimeOfDay.fromDateTime(
-                                        event.startDateTime!,
-                                      ),
-                                      eventEndDate: event.endDateTime!,
-                                      eventEndTime: TimeOfDay.fromDateTime(
-                                        event.endDateTime!,
-                                      ),
-                                    );
-                                  }
-                                : null,
-                            eventStartDateTime: event.startDateTime,
-                            eventEndDateTime: event.endDateTime,
-                            isHost: event.hostId == currentUserId,
-                            hasSuggestions: false, // Default to false on error
-                          ),
-                        );
-                      },
-                      loading: () =>
-                          const Center(child: CircularProgressIndicator()),
-                      error: (error, stack) {
-                        // Show RSVP widget with empty votes on error
-                        return rsvp_widget.RsvpWidget(
-                          goingCount: 0,
-                          notGoingCount: 0,
-                          pendingCount: 0,
-                          userVote: null,
-                          onGoingPressed: () {},
-                          onNotGoingPressed: () {},
-                          allVotes: const [],
-                          onAddSuggestion: null,
-                          eventStartDateTime: event.startDateTime,
-                          eventEndDateTime: event.endDateTime,
-                          isHost: event.hostId == currentUserId,
-                          hasSuggestions: false,
-                        );
-                      },
-                    );
-                  },
-                  loading: () =>
-                      const Center(child: CircularProgressIndicator()),
-                  error: (error, stack) {
-                    // Show RSVP widget with empty votes on error
-                    return rsvp_widget.RsvpWidget(
-                      goingCount: 0,
-                      notGoingCount: 0,
-                      pendingCount: 0,
-                      userVote: null,
-                      onGoingPressed: () {},
-                      onNotGoingPressed: () {},
-                      allVotes: const [],
-                      onAddSuggestion: null,
-                      eventStartDateTime: event.startDateTime,
-                      eventEndDateTime: event.endDateTime,
-                      isHost: event.hostId == currentUserId,
-                      hasSuggestions: false,
-                    );
-                  },
-                ),
                 const SizedBox(height: Gaps.lg),
 
                 // Date & Time Suggestions Widget
@@ -1731,5 +1116,357 @@ class _EventPageState extends ConsumerState<EventPage> {
         );
       }
     }
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // SECTION BUILDER METHODS
+  // These methods extract complex widget trees from build() for better organization
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  /// Builds the event status chip section
+  /// Shows status for all users, with management actions for hosts
+  Widget _buildEventStatusSection(EventDetail event) {
+    return Consumer(
+      builder: (context, consumerRef, _) {
+        final canManageAsync = consumerRef.watch(
+          canManageEventProvider(eventId),
+        );
+
+        return canManageAsync.when(
+          data: (canManage) {
+            // Cache the isHost status
+            _cachedIsHost = canManage;
+
+            return Column(
+              children: [
+                EventStatusChip(
+                  status: event.status,
+                  isHost: canManage,
+                  onTap: canManage
+                      ? () => _showStatusChangeDialog(
+                            context,
+                            ref,
+                            eventId,
+                            event.status,
+                          )
+                      : () {},
+                ),
+                const SizedBox(height: Gaps.lg),
+              ],
+            );
+          },
+          loading: () => Column(
+            children: [
+              EventStatusChip(
+                status: event.status,
+                isHost: _cachedIsHost ?? false,
+                onTap: (_cachedIsHost ?? false)
+                    ? () => _showStatusChangeDialog(
+                          context,
+                          ref,
+                          eventId,
+                          event.status,
+                        )
+                    : () {},
+              ),
+              const SizedBox(height: Gaps.lg),
+            ],
+          ),
+          error: (_, __) => Column(
+            children: [
+              EventStatusChip(
+                status: event.status,
+                isHost: _cachedIsHost ?? false,
+                onTap: (_cachedIsHost ?? false)
+                    ? () => _showStatusChangeDialog(
+                          context,
+                          ref,
+                          eventId,
+                          event.status,
+                        )
+                    : () {},
+              ),
+              const SizedBox(height: Gaps.lg),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  /// Builds the RSVP section with voting functionality
+  /// This is one of the most complex sections with nested AsyncValues
+  Widget _buildRsvpSection(EventDetail event, String? currentUserId) {
+    final rsvpsAsync = ref.watch(eventRsvpsProvider(eventId));
+    final userRsvpAsync = ref.watch(userRsvpProvider(eventId));
+    final suggestionsAsync = ref.watch(eventSuggestionsProvider(eventId));
+
+    return rsvpsAsync.when(
+      data: (rsvps) {
+        return userRsvpAsync.when(
+          data: (userRsvp) {
+            return suggestionsAsync.when(
+              data: (suggestions) => _buildRsvpWidget(
+                event,
+                currentUserId,
+                rsvps,
+                userRsvp,
+                suggestions,
+              ),
+              loading: () => _buildRsvpLoadingState(
+                event,
+                currentUserId,
+                rsvps,
+                userRsvp,
+              ),
+              error: (error, stack) => _buildRsvpLoadingState(
+                event,
+                currentUserId,
+                rsvps,
+                userRsvp,
+              ),
+            );
+          },
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (error, stack) => _buildRsvpErrorState(event, currentUserId),
+        );
+      },
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (error, stack) => _buildRsvpErrorState(event, currentUserId),
+    );
+  }
+
+  /// Helper: Builds the actual RSVP widget with all data loaded
+  Widget _buildRsvpWidget(
+    EventDetail event,
+    String? currentUserId,
+    List<Rsvp> rsvps,
+    Rsvp? userRsvp,
+    List<Suggestion> suggestions,
+  ) {
+    // Filter suggestions DIFFERENT from current event date
+    final alternateDateSuggestions = suggestions.where((s) {
+      if (event.startDateTime == null || event.endDateTime == null) {
+        return true;
+      }
+      final isDifferent =
+          !s.startDateTime.isAtSameMomentAs(event.startDateTime!) ||
+              !(s.endDateTime?.isAtSameMomentAs(event.endDateTime!) ?? false);
+      return isDifferent;
+    }).toList();
+
+    return Consumer(
+      builder: (context, consumerRef, child) {
+        final locationSuggestionsAsync = consumerRef.watch(
+          eventLocationSuggestionsProvider(eventId),
+        );
+
+        return locationSuggestionsAsync.when(
+          data: (locationSuggestions) {
+            // Filter location suggestions DIFFERENT from current event location
+            final alternateLocationSuggestions = locationSuggestions.where((s) {
+              if (event.location == null) return true;
+              final isDifferent =
+                  s.locationName != event.location!.displayName ||
+                      (s.address ?? '') != event.location!.formattedAddress;
+              return isDifferent;
+            }).toList();
+
+            // Calculate dynamic counts
+            final goingCount =
+                rsvps.where((r) => r.status == RsvpStatus.going).length;
+            final notGoingCount =
+                rsvps.where((r) => r.status == RsvpStatus.notGoing).length;
+            final pendingCount =
+                rsvps.where((r) => r.status == RsvpStatus.pending).length;
+
+            return Column(
+              children: [
+                rsvp_widget.RsvpWidget(
+                  goingCount: goingCount,
+                  notGoingCount: notGoingCount,
+                  pendingCount: pendingCount,
+                  userVote: _getUserVoteStatus(userRsvp),
+                  onGoingPressed: () async {
+                    final currentStatus =
+                        userRsvp?.status ?? RsvpStatus.pending;
+                    final newStatus = currentStatus == RsvpStatus.going
+                        ? RsvpStatus.pending
+                        : RsvpStatus.going;
+                    await ref
+                        .read(userRsvpProvider(eventId).notifier)
+                        .submitVote(newStatus);
+                  },
+                  onNotGoingPressed: () async {
+                    final currentStatus =
+                        userRsvp?.status ?? RsvpStatus.pending;
+                    final newStatus = currentStatus == RsvpStatus.notGoing
+                        ? RsvpStatus.pending
+                        : RsvpStatus.notGoing;
+                    await ref
+                        .read(userRsvpProvider(eventId).notifier)
+                        .submitVote(newStatus);
+                  },
+                  allVotes: rsvps
+                      .map(
+                        (r) => rsvp_widget.RsvpVote(
+                          id: r.id,
+                          userId: r.userId,
+                          userName: _getUserDisplayName(
+                              r.userId, r.userName, currentUserId),
+                          userAvatar: r.userAvatar,
+                          status: r.status == RsvpStatus.going
+                              ? rsvp_widget.RsvpVoteStatus.going
+                              : r.status == RsvpStatus.notGoing
+                                  ? rsvp_widget.RsvpVoteStatus.notGoing
+                                  : rsvp_widget.RsvpVoteStatus.pending,
+                          votedAt: r.createdAt,
+                        ),
+                      )
+                      .toList(),
+                  onAddSuggestion: _getUserVoteStatus(userRsvp) == false
+                      ? () {
+                          if (event.startDateTime == null ||
+                              event.endDateTime == null) {
+                            TopBanner.showError(
+                              context,
+                              message:
+                                  'Event dates must be set before adding suggestions',
+                            );
+                            return;
+                          }
+                          showAddSuggestionBottomSheet(
+                            context,
+                            eventId: eventId,
+                            eventStartDate: event.startDateTime!,
+                            eventStartTime:
+                                TimeOfDay.fromDateTime(event.startDateTime!),
+                            eventEndDate: event.endDateTime!,
+                            eventEndTime:
+                                TimeOfDay.fromDateTime(event.endDateTime!),
+                            type: locationSuggestions.isNotEmpty
+                                ? SuggestionType.location
+                                : SuggestionType.dateTime,
+                            currentEventLocationName:
+                                event.location?.displayName,
+                            currentEventAddress:
+                                event.location?.formattedAddress,
+                          );
+                        }
+                      : null,
+                  eventStartDateTime: event.startDateTime,
+                  eventEndDateTime: event.endDateTime,
+                  isHost: event.hostId == currentUserId,
+                  hasSuggestions: alternateDateSuggestions.isNotEmpty ||
+                      alternateLocationSuggestions.isNotEmpty,
+                ),
+                const SizedBox(height: Gaps.lg),
+              ],
+            );
+          },
+          loading: () => _buildRsvpLoadingState(
+            event,
+            currentUserId,
+            rsvps,
+            userRsvp,
+          ),
+          error: (error, stack) => _buildRsvpLoadingState(
+            event,
+            currentUserId,
+            rsvps,
+            userRsvp,
+          ),
+        );
+      },
+    );
+  }
+
+  /// Helper: Builds RSVP widget in loading state
+  Widget _buildRsvpLoadingState(
+    EventDetail event,
+    String? currentUserId,
+    List<Rsvp> rsvps,
+    Rsvp? userRsvp,
+  ) {
+    final goingCount = rsvps.where((r) => r.status == RsvpStatus.going).length;
+    final notGoingCount =
+        rsvps.where((r) => r.status == RsvpStatus.notGoing).length;
+    final pendingCount =
+        rsvps.where((r) => r.status == RsvpStatus.pending).length;
+
+    return Column(
+      children: [
+        rsvp_widget.RsvpWidget(
+          goingCount: goingCount,
+          notGoingCount: notGoingCount,
+          pendingCount: pendingCount,
+          userVote: _getUserVoteStatus(userRsvp),
+          onGoingPressed: () async {
+            final currentStatus = userRsvp?.status ?? RsvpStatus.pending;
+            final newStatus = currentStatus == RsvpStatus.going
+                ? RsvpStatus.pending
+                : RsvpStatus.going;
+            await ref
+                .read(userRsvpProvider(eventId).notifier)
+                .submitVote(newStatus);
+          },
+          onNotGoingPressed: () async {
+            final currentStatus = userRsvp?.status ?? RsvpStatus.pending;
+            final newStatus = currentStatus == RsvpStatus.notGoing
+                ? RsvpStatus.pending
+                : RsvpStatus.notGoing;
+            await ref
+                .read(userRsvpProvider(eventId).notifier)
+                .submitVote(newStatus);
+          },
+          allVotes: rsvps
+              .map(
+                (r) => rsvp_widget.RsvpVote(
+                  id: r.id,
+                  userId: r.userId,
+                  userName:
+                      _getUserDisplayName(r.userId, r.userName, currentUserId),
+                  userAvatar: r.userAvatar,
+                  status: r.status == RsvpStatus.going
+                      ? rsvp_widget.RsvpVoteStatus.going
+                      : r.status == RsvpStatus.notGoing
+                          ? rsvp_widget.RsvpVoteStatus.notGoing
+                          : rsvp_widget.RsvpVoteStatus.pending,
+                  votedAt: r.createdAt,
+                ),
+              )
+              .toList(),
+          onAddSuggestion: null,
+          eventStartDateTime: event.startDateTime,
+          eventEndDateTime: event.endDateTime,
+          isHost: event.hostId == currentUserId,
+          hasSuggestions: false,
+        ),
+        const SizedBox(height: Gaps.lg),
+      ],
+    );
+  }
+
+  /// Helper: Builds RSVP widget in error state
+  Widget _buildRsvpErrorState(EventDetail event, String? currentUserId) {
+    return Column(
+      children: [
+        rsvp_widget.RsvpWidget(
+          goingCount: 0,
+          notGoingCount: 0,
+          pendingCount: 0,
+          userVote: null,
+          onGoingPressed: () {},
+          onNotGoingPressed: () {},
+          allVotes: const [],
+          onAddSuggestion: null,
+          eventStartDateTime: event.startDateTime,
+          eventEndDateTime: event.endDateTime,
+          isHost: event.hostId == currentUserId,
+          hasSuggestions: false,
+        ),
+        const SizedBox(height: Gaps.lg),
+      ],
+    );
   }
 }
