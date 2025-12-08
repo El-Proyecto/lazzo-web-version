@@ -24,9 +24,15 @@ class OtherProfileRepositoryImpl implements OtherProfileRepository {
 
   @override
   Future<OtherProfileEntity> getOtherUserProfile(String userId) async {
+    print('\n🟡 [OtherProfileRepo] ====== REPOSITORY CALLED ======');
+    print('🟡 [OtherProfileRepo] Target userId: $userId');
+    print('🟡 [OtherProfileRepo] Current userId: $_currentUserId');
+    
     try {
-      // Fetch user profile data
+      // Fetch basic profile data
+      print('🟡 [OtherProfileRepo] Fetching basic profile data...');
       final profileData = await _dataSource.getOtherUserProfile(userId);
+      print('🟡 [OtherProfileRepo] Profile data received: ${profileData['name']}');
       final profileModel = OtherProfileModel.fromMap(profileData);
 
       // Generate signed URL for avatar if exists
@@ -45,27 +51,37 @@ class OtherProfileRepositoryImpl implements OtherProfileRepository {
       }
 
       // Fetch shared memories data
+      print('[OtherProfileRepo] Fetching shared memories...');
       final sharedMemoriesData = await _dataSource.getSharedMemories(
         currentUserId: _currentUserId,
         targetUserId: userId,
       );
+      print('[OtherProfileRepo] Data source returned ${sharedMemoriesData.length} memories');
 
       // Convert shared memories to entities with signed URLs
       final memoriesList = <MemoryEntity>[];
+      
       for (final memoryData in sharedMemoriesData) {
         String? signedCoverUrl;
         final coverPath = memoryData['cover_storage_path'] as String?;
         
         if (coverPath != null && coverPath.isNotEmpty) {
+          print('[OtherProfileRepo] Generating signed URL for path: $coverPath');
           try {
+            // Note: photos are stored in 'memory_groups' bucket, not 'group_photos'
+            // The table name is group_photos but the storage bucket is memory_groups
             signedCoverUrl = await _storageService.getSignedUrl(
               coverPath,
-              bucket: 'group_photos',
+              bucket: 'memory_groups',
               expiresInSeconds: 3600,
             );
+            print('[OtherProfileRepo] ✅ Signed URL generated successfully');
           } catch (e) {
+            print('[OtherProfileRepo] ❌ Signed URL error for ${memoryData['title']}: $e');
             signedCoverUrl = null;
           }
+        } else {
+          print('[OtherProfileRepo] ⚠️ No storage path for ${memoryData['title']}');
         }
 
         memoriesList.add(MemoryEntity(
@@ -78,6 +94,8 @@ class OtherProfileRepositoryImpl implements OtherProfileRepository {
           location: memoryData['location'] as String?,
         ));
       }
+      
+      print('[OtherProfileRepo] Final memories with signed URLs: ${memoriesList.length}');
 
       // Fetch upcoming events data
       final upcomingEventsData = await _dataSource.getSharedUpcomingEvents(

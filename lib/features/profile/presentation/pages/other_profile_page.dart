@@ -25,7 +25,9 @@ class OtherProfilePage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    print('🟢 [OtherProfilePage] Building page for userId: $userId');
     final profileAsync = ref.watch(otherUserProfileProvider(userId));
+    print('🟢 [OtherProfilePage] AsyncValue state: ${profileAsync.runtimeType}');
 
     return Scaffold(
       backgroundColor: BrandColors.bg1,

@@ -7,7 +7,10 @@ class GetOtherUserProfile {
 
   const GetOtherUserProfile(this.repository);
 
-  Future<OtherProfileEntity> call(String userId) {
-    return repository.getOtherUserProfile(userId);
+  Future<OtherProfileEntity> call(String userId) async {
+    print('🔵 [GetOtherUserProfile] USE CASE called for userId: $userId');
+    final result = await repository.getOtherUserProfile(userId);
+    print('🔵 [GetOtherUserProfile] Result: ${result.memoriesTogether.length} memories');
+    return result;
   }
 }

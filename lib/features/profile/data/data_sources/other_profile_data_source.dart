@@ -28,56 +28,157 @@ class OtherProfileDataSource {
     required String currentUserId,
     required String targetUserId,
   }) async {
-    // Step 1: Get groups where current user is member
-    final currentUserGroups = await _client
-        .from('group_members')
-        .select('group_id')
-        .eq('user_id', currentUserId);
+    print('\n🔴 [OtherProfileDataSource] ====== DATA SOURCE CALLED ======');
+    print('🔴 [OtherProfileDataSource] Current user: $currentUserId');
+    print('🔴 [OtherProfileDataSource] Target user: $targetUserId');
+    
+    try {
+      // Step 1: Get groups where current user is member
+      final currentUserGroups = await _client
+          .from('group_members')
+          .select('group_id')
+          .eq('user_id', currentUserId);
 
-    final currentGroupIds = (currentUserGroups as List)
-        .map((g) => g['group_id'] as String)
-        .toSet();
+      if ((currentUserGroups as List).isEmpty) {
+        print('[OtherProfile] Current user has no groups');
+        return [];
+      }
 
-    if (currentGroupIds.isEmpty) {
-      return [];
+      final currentGroupIds = currentUserGroups
+          .map((g) => g['group_id'] as String)
+          .toList();
+
+      print('[OtherProfile] Current user is in ${currentGroupIds.length} groups');
+
+      // Step 2: Get groups where target user is also member (intersection)
+      final targetUserGroups = await _client
+          .from('group_members')
+          .select('group_id')
+          .eq('user_id', targetUserId)
+          .inFilter('group_id', currentGroupIds);
+
+      final sharedGroupIds = (targetUserGroups as List)
+          .map((g) => g['group_id'] as String)
+          .toList();
+
+      if (sharedGroupIds.isEmpty) {
+        print('[OtherProfile] No shared groups found');
+        return [];
+      }
+
+      print('[OtherProfile] Found ${sharedGroupIds.length} shared groups');
+
+      // Step 3: Query events for shared groups with status 'recap' or 'ended'
+      // Following EXACT same logic as profile_memory_data_source.dart
+      final eventsResponse = await _client
+          .from('events')
+          .select('''
+            id,
+            name,
+            end_datetime,
+            locations (
+              display_name
+            ),
+            cover_photo_id
+          ''')
+          .inFilter('group_id', sharedGroupIds)
+          .inFilter('status', ['recap', 'ended'])
+          .order('end_datetime', ascending: false);
+
+      if ((eventsResponse as List).isEmpty) {
+        print('[OtherProfile] No recap/ended events found in shared groups');
+        return [];
+      }
+
+      print('[OtherProfile] Found ${eventsResponse.length} recap/ended events');
+
+      // Step 4: Process each event to add cover photo (same logic as profile)
+      final List<Map<String, dynamic>> memoriesWithCovers = [];
+      
+      for (final event in eventsResponse) {
+        final eventMap = Map<String, dynamic>.from(event);
+        String? coverStoragePath;
+
+        final eventId = eventMap['id'] as String;
+        final coverPhotoId = eventMap['cover_photo_id'] as String?;
+
+        // Try 1: Use cover_photo_id if set
+        if (coverPhotoId != null) {
+          try {
+            final coverResponse = await _client
+                .from('group_photos')
+                .select('storage_path')
+                .eq('id', coverPhotoId)
+                .maybeSingle();
+
+            if (coverResponse != null) {
+              coverStoragePath = coverResponse['storage_path'] as String?;
+            }
+          } catch (e) {
+            // Cover photo not found, will try fallback
+          }
+        }
+
+        // Try 2: Get first portrait photo if no cover set
+        if (coverStoragePath == null) {
+          try {
+            final portraitResponse = await _client
+                .from('group_photos')
+                .select('storage_path')
+                .eq('event_id', eventId)
+                .eq('is_portrait', true)
+                .order('captured_at', ascending: true)
+                .limit(1)
+                .maybeSingle();
+
+            if (portraitResponse != null) {
+              coverStoragePath = portraitResponse['storage_path'] as String?;
+            }
+          } catch (e) {
+            // No portrait photos found
+          }
+        }
+
+        // Try 3: Get any photo if still no cover found
+        if (coverStoragePath == null) {
+          try {
+            final anyPhoto = await _client
+                .from('group_photos')
+                .select('storage_path')
+                .eq('event_id', eventId)
+                .order('captured_at', ascending: true)
+                .limit(1)
+                .maybeSingle();
+
+            if (anyPhoto != null) {
+              coverStoragePath = anyPhoto['storage_path'] as String?;
+            }
+          } catch (e) {
+            // No photos found at all
+          }
+        }
+
+        // Only add event if we found a valid cover photo
+        if (coverStoragePath != null) {
+          print('  ✅ Event: ${eventMap['name']}, path: $coverStoragePath');
+          memoriesWithCovers.add({
+            'id': eventId,
+            'title': eventMap['name'] as String? ?? 'Untitled',
+            'date': eventMap['end_datetime'],
+            'location': (eventMap['locations'] as Map?)?['display_name'] as String?,
+            'cover_storage_path': coverStoragePath,
+          });
+        } else {
+          print('  ❌ Event: ${eventMap['name']}, no cover photo found');
+        }
+      }
+
+      print('[OtherProfile] Returning ${memoriesWithCovers.length} memories with covers\n');
+      return memoriesWithCovers;
+    } catch (e) {
+      print('[OtherProfile] ERROR: $e');
+      rethrow;
     }
-
-    // Step 2: Get groups where target user is also member (intersection)
-    final targetUserGroups = await _client
-        .from('group_members')
-        .select('group_id')
-        .eq('user_id', targetUserId)
-        .inFilter('group_id', currentGroupIds.toList());
-
-    final sharedGroupIds = (targetUserGroups as List)
-        .map((g) => g['group_id'] as String)
-        .toList();
-
-    if (sharedGroupIds.isEmpty) {
-      return [];
-    }
-
-    // Step 3: Get recap events from shared groups with cover photos
-    final events = await _client
-        .from('events')
-        .select('id, name, emoji, end_datetime, cover_photo_id, locations!inner(display_name), group_photos!cover_photo_id(storage_path)')
-        .inFilter('group_id', sharedGroupIds)
-        .eq('status', 'recap')
-        .not('cover_photo_id', 'is', null)
-        .order('end_datetime', ascending: false)
-        .limit(50);
-
-    // Map to include storage path for cover photos
-    return (events as List).map((event) {
-      return {
-        'id': event['id'],
-        'title': event['name'],
-        'emoji': event['emoji'],
-        'date': event['end_datetime'],
-        'location': event['locations']?['display_name'],
-        'cover_storage_path': event['group_photos']?['storage_path'],
-      };
-    }).toList();
   }
 
   /// Get upcoming events in shared groups
