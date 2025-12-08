@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../routes/app_router.dart';
 import '../../constants/spacing.dart';
 import '../../constants/text_styles.dart';
 import '../../themes/colors.dart';
@@ -572,43 +573,65 @@ class _VoteItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final bool isCurrentUser = vote.userId == currentUserId;
             
-    return Padding(
-      padding: const EdgeInsets.only(bottom: Gaps.sm),
-      child: Row(
-        children: [
-          // Avatar
-          CircleAvatar(
-            radius: 16,
-            backgroundColor: BrandColors.bg3,
-            child: vote.userAvatar != null
-                ? ClipOval(
-                    child: Image.network(
-                      vote.userAvatar!,
-                      width: 32,
-                      height: 32,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                                                return _buildDefaultAvatar();
-                      },
-                    ),
-                  )
-                : _buildDefaultAvatar(),
-          ),
-          const SizedBox(width: Gaps.sm),
-
-          // Name
-          Expanded(child: Text(_displayName, style: AppText.bodyMedium)),
-
-          // Date (if voted and should show date)
-          if (showDate && vote.votedAt != null)
-            Text(
-              _formatVoteTime(vote.votedAt!),
-              style: AppText.bodyMedium.copyWith(
-                color: BrandColors.text2,
-              ),
+    return InkWell(
+      onTap: isCurrentUser ? null : () {
+        // Close bottom sheet
+        Navigator.pop(context);
+        // Navigate to other user profile
+        Navigator.pushNamed(
+          context,
+          AppRouter.otherProfile,
+          arguments: {'userId': vote.userId},
+        );
+      },
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: Gaps.sm),
+        child: Row(
+          children: [
+            // Avatar
+            CircleAvatar(
+              radius: 16,
+              backgroundColor: BrandColors.bg3,
+              child: vote.userAvatar != null
+                  ? ClipOval(
+                      child: Image.network(
+                        vote.userAvatar!,
+                        width: 32,
+                        height: 32,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) {
+                                                  return _buildDefaultAvatar();
+                        },
+                      ),
+                    )
+                  : _buildDefaultAvatar(),
             ),
-        ],
+            const SizedBox(width: Gaps.sm),
+
+            // Name
+            Expanded(child: Text(_displayName, style: AppText.bodyMedium)),
+
+            // Date (if voted and should show date)
+            if (showDate && vote.votedAt != null)
+              Text(
+                _formatVoteTime(vote.votedAt!),
+                style: AppText.bodyMedium.copyWith(
+                  color: BrandColors.text2,
+                ),
+              ),
+            
+            // Chevron indicator (only if not current user)
+            if (!isCurrentUser) ...[              const SizedBox(width: Gaps.xs),
+              const Icon(
+                Icons.chevron_right_rounded,
+                color: BrandColors.text2,
+                size: 16,
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }

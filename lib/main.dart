@@ -78,6 +78,11 @@ import '../features/profile/data/data_sources/profile_memory_data_source.dart';
 import '../features/profile/data/repositories/profile_repository_impl.dart';
 import '../features/profile/presentation/providers/profile_providers.dart';
 
+// OTHER PROFILE - Real implementation (P2)
+import '../features/profile/data/data_sources/other_profile_data_source.dart';
+import '../features/profile/data/repositories/other_profile_repository_impl.dart';
+import '../features/profile/presentation/providers/other_profile_providers.dart';
+
 // CREATE EVENT - Real implementation
 import '../features/create_event/presentation/providers/event_providers.dart'
     as create_event;
@@ -274,6 +279,19 @@ void main() async {
             remoteDataSource,
             memoryDataSource,
             storageService,
+          );
+        }),
+
+        // ✅ OTHER PROFILE repo -> real (Supabase) with shared memories (P2 Implementation)
+        otherProfileRepositoryProvider.overrideWith((ref) {
+          final client = Supabase.instance.client;
+          final currentUserId = client.auth.currentUser?.id ?? '';
+          final dataSource = OtherProfileDataSource(client);
+          final storageService = StorageService(client);
+          return OtherProfileRepositoryImpl(
+            dataSource: dataSource,
+            storageService: storageService,
+            currentUserId: currentUserId,
           );
         }),
 

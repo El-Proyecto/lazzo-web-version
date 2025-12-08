@@ -4,8 +4,6 @@ import '../../constants/spacing.dart';
 import '../../constants/text_styles.dart';
 import '../../themes/colors.dart';
 import '../widgets/votes_bottom_sheet.dart';
-import '../widgets/photos_bottom_sheet.dart';
-import '../widgets/rsvp_widget.dart';
 
 /// Event full card state for group hub
 /// Planning phase: pending (chip bg3) or confirmed (green chip)
@@ -41,55 +39,6 @@ class _EventFullCardState extends State<EventFullCard> {
   void initState() {
     super.initState();
     _currentEvent = widget.event;
-  }
-
-  void _updateVote(bool? vote) {
-    setState(() {
-      // Update the vote and recalculate going count and attendee data
-      final updatedVotes = List<RsvpVote>.from(_currentEvent.allVotes);
-
-      // Remove existing user vote if any
-      updatedVotes.removeWhere((v) => v.userId == 'current_user');
-
-      // Add new vote if not null
-      if (vote != null) {
-        final newVote = RsvpVote(
-          id: 'vote_current_user_${DateTime.now().millisecondsSinceEpoch}',
-          userId: 'current_user',
-          userName: 'You',
-          userAvatar: null,
-          status: vote ? RsvpVoteStatus.going : RsvpVoteStatus.notGoing,
-          votedAt: DateTime.now(),
-        );
-        updatedVotes.add(newVote);
-      }
-
-      // Recalculate going count and attendee lists
-      final goingVotes =
-          updatedVotes.where((v) => v.status == RsvpVoteStatus.going).toList();
-      final newGoingCount = goingVotes.length;
-
-      // Sort votes to prioritize user first if they voted "Can"
-      goingVotes.sort((a, b) {
-        if (a.userId == 'current_user') return -1;
-        if (b.userId == 'current_user') return 1;
-        return 0;
-      });
-
-      final newAttendeeNames = goingVotes.map((v) => v.userName).toList();
-      final newAttendeeAvatars =
-          goingVotes.map((v) => v.userAvatar ?? '').toList();
-
-      _currentEvent = _currentEvent.copyWith(
-        userVote: vote,
-        allVotes: updatedVotes,
-        goingCount: newGoingCount,
-        attendeeNames: newAttendeeNames,
-        attendeeAvatars: newAttendeeAvatars,
-        updateUserVote: true, // Allow explicit null setting
-      );
-    });
-    widget.onVoteChanged?.call(_currentEvent.id, vote);
   }
 
   @override
@@ -288,15 +237,9 @@ class _EventFullCardState extends State<EventFullCard> {
   }
 
   Widget _buildAttendeeInfo(BuildContext context) {
-    // For Living/Recap: show photos bottom sheet
-    // For Pending/Confirmed: show votes bottom sheet
-    final onTap = (widget.state == EventFullCardState.living ||
-            widget.state == EventFullCardState.recap)
-        ? () => _showPhotosBottomSheet(context)
-        : () => _showVotesBottomSheet(context);
-
+    // Show votes bottom sheet when tapping on attendee info
     return InkWell(
-      onTap: onTap,
+      onTap: () => _showVotesBottomSheet(context),
       borderRadius: BorderRadius.circular(Radii.sm),
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: Gaps.xxs),
@@ -335,16 +278,9 @@ class _EventFullCardState extends State<EventFullCard> {
           : null,
       eventLocation: _currentEvent.location,
       userVote: _currentEvent.userVote,
-      onVoteChanged: (vote) => _updateVote(vote),
-    );
-  }
-
-  void _showPhotosBottomSheet(BuildContext context) {
-    PhotosBottomSheet.show(
-      context: context,
-      participants: _currentEvent.participantPhotos,
-      totalPhotos: _currentEvent.photoCount,
-      maxPhotos: _currentEvent.maxPhotos,
+      onVoteChanged: widget.onVoteChanged != null
+          ? (vote) => widget.onVoteChanged!(_currentEvent.id, vote)
+          : null,
     );
   }
 
