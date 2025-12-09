@@ -333,7 +333,7 @@ class _GroupsPageState extends ConsumerState<GroupsPage>
   }
 
   void _handleCreateEvent(String groupId) {
-        Navigator.of(
+    Navigator.of(
       context,
     ).pushNamed('/create-event', arguments: {'groupId': groupId});
   }
@@ -351,7 +351,7 @@ class _GroupsPageState extends ConsumerState<GroupsPage>
   // }
 
   void _handleMute(String groupId) {
-        final controller = ref.read(groupsControllerProvider);
+    final controller = ref.read(groupsControllerProvider);
 
     // Busca o grupo na lista atual (baseado no filtro selecionado)
     final groupsAsync = _selectedFilter == GroupFilter.archived
@@ -410,7 +410,7 @@ class _GroupsPageState extends ConsumerState<GroupsPage>
             TextButton(
               onPressed: () {
                 Navigator.of(context).pop();
-                                final controller = ref.read(groupsControllerProvider);
+                final controller = ref.read(groupsControllerProvider);
                 controller.leaveGroup(groupId);
               },
               child: const Text(
@@ -425,14 +425,14 @@ class _GroupsPageState extends ConsumerState<GroupsPage>
   }
 
   void _handleArchive(String groupId) {
-        final controller = ref.read(groupsControllerProvider);
+    final controller = ref.read(groupsControllerProvider);
     controller.toggleArchive(groupId);
 
     // Não redirecionar automaticamente - deixar user escolher quando ver
   }
 
   void _handlePin(String groupId) {
-        final controller = ref.read(groupsControllerProvider);
+    final controller = ref.read(groupsControllerProvider);
     controller.togglePin(groupId);
   }
 

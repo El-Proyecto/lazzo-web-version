@@ -28,7 +28,8 @@ class _InboxPageState extends ConsumerState<InboxPage>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this); // MVP: 2 tabs (removed Actions)
+    _tabController =
+        TabController(length: 2, vsync: this); // MVP: 2 tabs (removed Actions)
 
     // Check for pending tab change after frame
     WidgetsBinding.instance.addPostFrameCallback((_) {
