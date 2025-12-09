@@ -38,16 +38,20 @@ class OtherProfileRepositoryImpl implements OtherProfileRepository {
       // Generate signed URL for avatar if exists
       String? signedAvatarUrl;
       if (profileModel.avatarUrl != null && profileModel.avatarUrl!.isNotEmpty) {
+        print('[OtherProfileRepo] Generating signed URL for avatar: ${profileModel.avatarUrl}');
         try {
           signedAvatarUrl = await _storageService.getSignedUrl(
             profileModel.avatarUrl!,
             bucket: 'users-profile-pic',
             expiresInSeconds: 3600, // 1 hour
           );
+          print('[OtherProfileRepo] ✅ Avatar signed URL generated');
         } catch (e) {
-          // Avatar URL generation failed - continue without it
+          print('[OtherProfileRepo] ❌ Avatar signed URL error: $e');
           signedAvatarUrl = null;
         }
+      } else {
+        print('[OtherProfileRepo] ⚠️ No avatar URL in profile');
       }
 
       // Fetch shared memories data
@@ -125,6 +129,11 @@ class OtherProfileRepositoryImpl implements OtherProfileRepository {
       }).toList();
 
       // Convert to entity with lists
+      print('[OtherProfileRepo] Creating entity with:');
+      print('  - Avatar URL: ${signedAvatarUrl != null ? "✅ Present" : "❌ Missing"}');
+      print('  - Memories: ${memoriesList.length}');
+      print('  - Upcoming events: ${upcomingList.length}');
+      
       return profileModel.toEntity(
         signedAvatarUrl: signedAvatarUrl,
         memoriesTogether: memoriesList,
@@ -173,13 +182,17 @@ class OtherProfileRepositoryImpl implements OtherProfileRepository {
         final photoUrl = groupData['photo_url'] as String?;
         
         if (photoUrl != null && photoUrl.isNotEmpty) {
+          print('[InvitableGroups] Generating signed URL for group photo: $photoUrl');
           try {
+            // Note: group photos are stored in 'group-photos' bucket (with hyphen)
             signedPhotoUrl = await _storageService.getSignedUrl(
               photoUrl,
-              bucket: 'group_photos',
+              bucket: 'group-photos',
               expiresInSeconds: 3600,
             );
+            print('[InvitableGroups] ✅ Group photo signed URL generated');
           } catch (e) {
+            print('[InvitableGroups] ❌ Group photo signed URL error: $e');
             signedPhotoUrl = null;
           }
         }
@@ -188,7 +201,7 @@ class OtherProfileRepositoryImpl implements OtherProfileRepository {
           id: groupData['id'] as String,
           name: groupData['name'] as String? ?? 'Unnamed Group',
           groupPhotoUrl: signedPhotoUrl,
-          memberCount: 0, // TODO: query member count if needed for UI
+          memberCount: groupData['member_count'] as int? ?? 0,
         ));
       }
 

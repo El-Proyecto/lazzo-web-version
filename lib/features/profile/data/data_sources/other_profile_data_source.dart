@@ -237,6 +237,8 @@ class OtherProfileDataSource {
     required String currentUserId,
     required String targetUserId,
   }) async {
+    print('\n[InvitableGroups] Finding groups where $currentUserId can invite $targetUserId');
+    
     // Get groups where current user is member
     final currentUserGroups = await _client
         .from('group_members')
@@ -277,16 +279,31 @@ class OtherProfileDataSource {
         .select('id, name, photo_url, members_can_invite')
         .inFilter('id', eligibleGroupIds);
 
+    // Get member counts for all eligible groups
+    final memberCounts = <String, int>{};
+    for (final groupId in eligibleGroupIds) {
+      final membersResponse = await _client
+          .from('group_members')
+          .select('user_id')
+          .eq('group_id', groupId);
+      memberCounts[groupId] = (membersResponse as List).length;
+    }
+
     // Filter based on permissions
+    print('[InvitableGroups] Checking permissions for ${(groups as List).length} eligible groups');
     final invitableGroups = <Map<String, dynamic>>[];
-    for (final group in groups as List) {
+    for (final group in groups) {
       final groupId = group['id'] as String;
+      final groupName = group['name'] as String;
       
       // Check if members can invite or current user is admin
       final membersCanInvite = group['members_can_invite'] as bool? ?? false;
       
       if (membersCanInvite) {
-        invitableGroups.add(group);
+        print('  ✅ $groupName - members_can_invite=true');
+        final groupWithCount = Map<String, dynamic>.from(group);
+        groupWithCount['member_count'] = memberCounts[groupId] ?? 0;
+        invitableGroups.add(groupWithCount);
       } else {
         // Check if current user is admin
         final membership = currentUserGroups.firstWhere(
@@ -295,11 +312,17 @@ class OtherProfileDataSource {
         );
         
         if (membership['role'] == 'admin') {
-          invitableGroups.add(group);
+          print('  ✅ $groupName - user is admin');
+          final groupWithCount = Map<String, dynamic>.from(group);
+          groupWithCount['member_count'] = memberCounts[groupId] ?? 0;
+          invitableGroups.add(groupWithCount);
+        } else {
+          print('  ❌ $groupName - no permission');
         }
       }
     }
 
+    print('[InvitableGroups] Found ${invitableGroups.length} invitable groups\n');
     return invitableGroups;
   }
 
@@ -310,11 +333,18 @@ class OtherProfileDataSource {
     required String groupId,
     required String invitedBy,
   }) async {
-    await _client.from('group_invites').insert({
-      'group_id': groupId,
-      'invited_id': userId,
-      'invited_by': invitedBy,
-      'created_at': DateTime.now().toIso8601String(),
-    });
+    print('[InviteToGroup] Sending invite: user=$userId, group=$groupId, by=$invitedBy');
+    try {
+      await _client.from('group_invites').insert({
+        'group_id': groupId,
+        'invited_id': userId,
+        'invited_by': invitedBy,
+        'created_at': DateTime.now().toIso8601String(),
+      });
+      print('[InviteToGroup] ✅ Invite sent successfully');
+    } catch (e) {
+      print('[InviteToGroup] ❌ Error: $e');
+      rethrow;
+    }
   }
 }
