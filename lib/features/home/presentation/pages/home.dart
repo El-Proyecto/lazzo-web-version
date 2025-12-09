@@ -51,6 +51,7 @@ class HomePage extends ConsumerStatefulWidget {
 class _HomePageState extends ConsumerState<HomePage> {
   bool _isNoEventsCardDismissed = false;
   bool _isInitialized = false;
+  final ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
@@ -80,6 +81,7 @@ class _HomePageState extends ConsumerState<HomePage> {
 
   @override
   void dispose() {
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -136,6 +138,19 @@ class _HomePageState extends ConsumerState<HomePage> {
 
   @override
   Widget build(BuildContext context) {
+    // Listen for scroll-to-top trigger (when tapping active NavBar tab)
+    ref.listen<int>(scrollToTopProvider, (previous, next) {
+      if (previous != next && _scrollController.hasClients) {
+        _scrollController.animateTo(
+          0,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+        // Also refresh data when scrolling to top
+        _refreshData();
+      }
+    });
+
     final nextEventAsync = ref.watch(nextEventControllerProvider);
     final confirmedEventsAsync = ref.watch(confirmedEventsControllerProvider);
     final pendingEventsAsync = ref.watch(homeEventsControllerProvider);
@@ -226,6 +241,7 @@ class _HomePageState extends ConsumerState<HomePage> {
           color: BrandColors.planning,
           backgroundColor: BrandColors.bg2,
           child: ListView(
+            controller: _scrollController,
             padding: EdgeInsets.zero,
             children: [
               const SizedBox(height: Gaps.xs),

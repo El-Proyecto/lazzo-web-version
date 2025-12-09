@@ -20,6 +20,7 @@ import '../../../groups/presentation/providers/groups_provider.dart';
 import '../../../groups/domain/entities/group.dart';
 import '../../../event/presentation/providers/event_providers.dart';
 import '../providers/event_history_provider.dart';
+import '../../../home/presentation/providers/home_event_providers.dart';
 
 /// Página principal para criação de eventos
 /// Usa todos os widgets tokenizados e reutilizáveis
@@ -881,6 +882,12 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
 
     // Also invalidate event detail provider to refresh counts
     ref.invalidate(eventDetailProvider(eventId));
+
+    // Invalidate Home providers to show new event immediately
+    ref.invalidate(nextEventControllerProvider);
+    ref.invalidate(confirmedEventsControllerProvider);
+    ref.invalidate(homeEventsControllerProvider);
+    ref.invalidate(todosControllerProvider);
 
     // Navigate to event detail page with the created event ID
     // Use pushReplacementNamed to replace CreateEvent with Event page
