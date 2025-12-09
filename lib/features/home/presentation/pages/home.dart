@@ -50,10 +50,32 @@ class HomePage extends ConsumerStatefulWidget {
 
 class _HomePageState extends ConsumerState<HomePage> {
   bool _isNoEventsCardDismissed = false;
+  bool _isInitialized = false;
 
   @override
   void initState() {
     super.initState();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Refresh providers when navigating back to Home (e.g., after creating/editing event)
+    // Skip first call (initState already loads data)
+    if (_isInitialized) {
+      _refreshData();
+    }
+    _isInitialized = true;
+  }
+
+  /// Refresh all home data providers
+  void _refreshData() {
+    ref.invalidate(nextEventControllerProvider);
+    ref.invalidate(confirmedEventsControllerProvider);
+    ref.invalidate(homeEventsControllerProvider);
+    ref.invalidate(todosControllerProvider);
+    ref.invalidate(recentMemoriesControllerProvider);
+    ref.invalidate(paymentSummariesControllerProvider);
   }
 
   @override
@@ -189,7 +211,17 @@ class _HomePageState extends ConsumerState<HomePage> {
       body: SafeArea(
         child: RefreshIndicator(
           onRefresh: () async {
-            // Refresh is handled by provider invalidation
+            // Invalidate all providers to trigger refetch
+            _refreshData();
+            // Wait for providers to refetch
+            await Future.wait([
+              ref.read(nextEventControllerProvider.future),
+              ref.read(confirmedEventsControllerProvider.future),
+              ref.read(homeEventsControllerProvider.future),
+              ref.read(todosControllerProvider.future),
+              ref.read(recentMemoriesControllerProvider.future),
+              ref.read(paymentSummariesControllerProvider.future),
+            ]);
           },
           color: BrandColors.planning,
           backgroundColor: BrandColors.bg2,

@@ -13,9 +13,9 @@ CREATE TABLE public.chat_messages (
   reply_to_id uuid,
   updated_at timestamp with time zone DEFAULT now(),
   CONSTRAINT chat_messages_pkey PRIMARY KEY (id),
-  CONSTRAINT chat_messages_event_id_fkey FOREIGN KEY (event_id) REFERENCES public.events(id),
   CONSTRAINT chat_messages_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id),
-  CONSTRAINT chat_messages_reply_to_id_fkey FOREIGN KEY (reply_to_id) REFERENCES public.chat_messages(id)
+  CONSTRAINT chat_messages_reply_to_id_fkey FOREIGN KEY (reply_to_id) REFERENCES public.chat_messages(id),
+  CONSTRAINT chat_messages_event_id_fkey FOREIGN KEY (event_id) REFERENCES public.events(id)
 );
 CREATE TABLE public.event_date_options (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -25,8 +25,8 @@ CREATE TABLE public.event_date_options (
   created_by uuid,
   created_at timestamp with time zone DEFAULT now(),
   CONSTRAINT event_date_options_pkey PRIMARY KEY (id),
-  CONSTRAINT event_date_options_event_id_fkey FOREIGN KEY (event_id) REFERENCES public.events(id),
-  CONSTRAINT event_date_options_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.users(id)
+  CONSTRAINT event_date_options_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.users(id),
+  CONSTRAINT event_date_options_event_id_fkey FOREIGN KEY (event_id) REFERENCES public.events(id)
 );
 CREATE TABLE public.event_date_votes (
   option_id uuid NOT NULL,
@@ -58,8 +58,8 @@ CREATE TABLE public.event_participants (
   confirmed_at timestamp with time zone NOT NULL DEFAULT now(),
   notif_time timestamp with time zone,
   CONSTRAINT event_participants_pkey PRIMARY KEY (pevent_id, user_id),
-  CONSTRAINT event_participants_pevent_id_fkey FOREIGN KEY (pevent_id) REFERENCES public.events(id),
-  CONSTRAINT event_participants_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
+  CONSTRAINT event_participants_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id),
+  CONSTRAINT event_participants_pevent_id_fkey FOREIGN KEY (pevent_id) REFERENCES public.events(id)
 );
 CREATE TABLE public.events (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -186,8 +186,8 @@ CREATE TABLE public.location_suggestions (
   longitude double precision,
   created_at timestamp with time zone DEFAULT now(),
   CONSTRAINT location_suggestions_pkey PRIMARY KEY (id),
-  CONSTRAINT location_suggestions_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id),
-  CONSTRAINT location_suggestions_event_id_fkey FOREIGN KEY (event_id) REFERENCES public.events(id)
+  CONSTRAINT location_suggestions_event_id_fkey FOREIGN KEY (event_id) REFERENCES public.events(id),
+  CONSTRAINT location_suggestions_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
 );
 CREATE TABLE public.locations (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -220,8 +220,8 @@ CREATE TABLE public.message_reads (
   updated_at timestamp with time zone DEFAULT now(),
   CONSTRAINT message_reads_pkey PRIMARY KEY (user_id, event_id),
   CONSTRAINT message_reads_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id),
-  CONSTRAINT message_reads_event_id_fkey FOREIGN KEY (event_id) REFERENCES public.events(id),
-  CONSTRAINT message_reads_last_read_message_id_fkey FOREIGN KEY (last_read_message_id) REFERENCES public.chat_messages(id)
+  CONSTRAINT message_reads_last_read_message_id_fkey FOREIGN KEY (last_read_message_id) REFERENCES public.chat_messages(id),
+  CONSTRAINT message_reads_event_id_fkey FOREIGN KEY (event_id) REFERENCES public.events(id)
 );
 CREATE TABLE public.notifications (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -244,8 +244,8 @@ CREATE TABLE public.photos (
   height bigint,
   date text NOT NULL,
   CONSTRAINT photos_pkey PRIMARY KEY (photo_id),
-  CONSTRAINT photos_event_id_fkey FOREIGN KEY (event_id) REFERENCES public.events(id),
-  CONSTRAINT photos_uploaded_by_fkey FOREIGN KEY (uploaded_by) REFERENCES public.users(id)
+  CONSTRAINT photos_uploaded_by_fkey FOREIGN KEY (uploaded_by) REFERENCES public.users(id),
+  CONSTRAINT photos_event_id_fkey FOREIGN KEY (event_id) REFERENCES public.events(id)
 );
 CREATE TABLE public.problem_reports (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
