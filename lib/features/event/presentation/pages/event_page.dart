@@ -827,15 +827,16 @@ class _EventPageState extends ConsumerState<EventPage> {
     DateTimeSuggestion selectedSuggestion,
   ) async {
     try {
-      // Step 1: Update the event's date and time
-      final eventRepository = ref.read(eventRepositoryProvider);
-      await eventRepository.updateEventDateTime(
-        eventId,
-        selectedSuggestion.startDateTime,
-        selectedSuggestion.endDateTime,
-      );
+      // OPTIMISTIC UI: Invalidate providers FIRST for instant UI update
+      // Providers will refetch and show loading state immediately
+      ref.invalidate(eventDetailProvider(eventId));
+      ref.invalidate(eventSuggestionsProvider(eventId));
+      ref.invalidate(suggestionVotesProvider(eventId));
+      ref.invalidate(userSuggestionVotesProvider(eventId));
+      ref.invalidate(eventRsvpsProvider(eventId));
+      ref.invalidate(userRsvpProvider(eventId));
 
-      // Step 2: Get all users who voted on the selected suggestion
+      // Get suggestion votes before clearing (needed for Step 2)
       final suggestionVotesAsync = ref.read(suggestionVotesProvider(eventId));
       final suggestionVotes = suggestionVotesAsync.value ?? [];
 
@@ -844,6 +845,15 @@ class _EventPageState extends ConsumerState<EventPage> {
           .map((vote) => vote.userId)
           .toList();
 
+      // Step 1: Update the event's date and time
+      final eventRepository = ref.read(eventRepositoryProvider);
+      await eventRepository.updateEventDateTime(
+        eventId,
+        selectedSuggestion.startDateTime,
+        selectedSuggestion.endDateTime,
+      );
+
+      // Step 2: Reset RSVP votes for suggestion voters
       final rsvpRepository = ref.read(rsvpRepositoryProvider);
       await rsvpRepository.resetRsvpVotesFromSuggestion(
         eventId,
@@ -854,15 +864,7 @@ class _EventPageState extends ConsumerState<EventPage> {
       final suggestionRepository = ref.read(suggestionRepositoryProvider);
       await suggestionRepository.clearEventSuggestions(eventId);
 
-      // Step 4: Invalidate providers to refresh the UI
-      ref.invalidate(eventDetailProvider(eventId));
-      ref.invalidate(eventRsvpsProvider(eventId));
-      ref.invalidate(userRsvpProvider(eventId));
-      ref.invalidate(eventSuggestionsProvider(eventId));
-      ref.invalidate(suggestionVotesProvider(eventId));
-      ref.invalidate(userSuggestionVotesProvider(eventId));
-
-      // Step 5: Show success feedback
+      // Step 4: Show success feedback
       if (context.mounted) {
         TopBanner.showSuccess(
           context,
@@ -889,20 +891,19 @@ class _EventPageState extends ConsumerState<EventPage> {
     WidgetRef ref,
     LocationSuggestion selectedSuggestion,
   ) async {
-                
     try {
-      // Step 1: Update the event's location
-            final eventRepository = ref.read(eventRepositoryProvider);
-      await eventRepository.updateEventLocation(
-        eventId,
-        selectedSuggestion.locationName,
-        selectedSuggestion.address ?? '',
-        selectedSuggestion.latitude ?? 0.0,
-        selectedSuggestion.longitude ?? 0.0,
-      );
-      
-      // Step 2: Get all users who voted on the selected suggestion
-            final locationVotesAsync = ref.read(
+      // OPTIMISTIC UI: Invalidate providers FIRST for instant UI update
+      // Providers will refetch and show loading state immediately
+      ref.invalidate(eventDetailProvider(eventId));
+      ref.invalidate(eventLocationSuggestionsProvider(eventId));
+      ref.invalidate(locationSuggestionVotesProvider(eventId));
+      ref.invalidate(userLocationSuggestionVotesProvider(eventId));
+      ref.invalidate(locationSuggestionsDataProvider(eventId));
+      ref.invalidate(eventRsvpsProvider(eventId));
+      ref.invalidate(userRsvpProvider(eventId));
+
+      // Get location votes before clearing (needed for Step 2)
+      final locationVotesAsync = ref.read(
         locationSuggestionVotesProvider(eventId),
       );
       final locationVotes = locationVotesAsync.value ?? [];
@@ -912,43 +913,40 @@ class _EventPageState extends ConsumerState<EventPage> {
           .map((vote) => vote.userId)
           .toList();
 
+      // Step 1: Update the event's location
+      final eventRepository = ref.read(eventRepositoryProvider);
+      await eventRepository.updateEventLocation(
+        eventId,
+        selectedSuggestion.locationName,
+        selectedSuggestion.address ?? '',
+        selectedSuggestion.latitude ?? 0.0,
+        selectedSuggestion.longitude ?? 0.0,
+      );
+
+      // Step 2: Reset RSVP votes for suggestion voters
       final rsvpRepository = ref.read(rsvpRepositoryProvider);
       await rsvpRepository.resetRsvpVotesFromSuggestion(
         eventId,
         suggestionVoters,
       );
-      
+
       // Step 3: Clear all location suggestions for this event
-            final suggestionRepository = ref.read(suggestionRepositoryProvider);
+      final suggestionRepository = ref.read(suggestionRepositoryProvider);
       await suggestionRepository.clearEventLocationSuggestions(eventId);
-      
-      // Step 3.5: Wait for DB transaction to complete and any triggers to finish
-      // This prevents race conditions where providers refetch before DELETE is fully committed
-            await Future.delayed(const Duration(milliseconds: 500));
-      
+
+      // Step 3.5: Wait for DB transaction to complete
+      await Future.delayed(const Duration(milliseconds: 300));
+
       // Note: We don't create a suggestion for the new current location.
       // Current location comes from event.location and displays with a star (not votable).
 
-      // Step 4: Invalidate providers to refresh the UI
-      // CRITICAL: Invalidate eventDetailProvider FIRST and wait for it to update
-      // This ensures the new event.location is available before other providers refetch
-            ref.invalidate(eventDetailProvider(eventId));
+      // Step 4: Get updated event for verification
+      final updatedEvent = await ref.read(eventDetailProvider(eventId).future);
 
-      // Wait for event detail to update
-            final updatedEvent = await ref.read(eventDetailProvider(eventId).future);
-                  
-      // Now invalidate the rest - they will see the updated event.location
-            ref.invalidate(eventLocationSuggestionsProvider(eventId));
-      ref.invalidate(locationSuggestionVotesProvider(eventId));
-      ref.invalidate(userLocationSuggestionVotesProvider(eventId));
-      ref.invalidate(locationSuggestionsDataProvider(eventId));
-      ref.invalidate(eventRsvpsProvider(eventId));
-      ref.invalidate(userRsvpProvider(eventId));
-      
       // Step 4d: Verify deletion worked and re-delete if alternatives remain
       // Note: The current location suggestion is expected and correct.
       // We only care about ALTERNATIVE suggestions (different from current location).
-            final remainingSuggestions = await ref.read(
+      final remainingSuggestions = await ref.read(
         eventLocationSuggestionsProvider(eventId).future,
       );
 
@@ -963,10 +961,7 @@ class _EventPageState extends ConsumerState<EventPage> {
         return !isCurrentLocation; // Only count alternatives
       }).toList();
 
-                  
       if (alternatives.isNotEmpty) {
-                for (var s in alternatives) {
-                  }
         // Delete ALL suggestions again (including current location)
         await suggestionRepository.clearEventLocationSuggestions(eventId);
         // Wait again
@@ -976,12 +971,8 @@ class _EventPageState extends ConsumerState<EventPage> {
         ref.invalidate(locationSuggestionVotesProvider(eventId));
         ref.invalidate(userLocationSuggestionVotesProvider(eventId));
         ref.invalidate(locationSuggestionsDataProvider(eventId));
-              } else {
-                if (remainingSuggestions.length == 1) {
-                  }
       }
 
-      
       // Step 5: Show success feedback
       if (context.mounted) {
         TopBanner.showSuccess(
@@ -1432,7 +1423,6 @@ class _EventPageState extends ConsumerState<EventPage> {
     required EventDetail event,
     required int goingCount,
   }) {
-                    
     // Separate current location from alternatives
     final currentLocationSuggestions = <LocationSuggestion>[];
     final alternateLocationSuggestions = <LocationSuggestion>[];
@@ -1441,9 +1431,8 @@ class _EventPageState extends ConsumerState<EventPage> {
     bool foundCurrentLocationInDB = false;
 
     for (final suggestion in suggestions) {
-                  
       if (event.location == null) {
-                alternateLocationSuggestions.add(suggestion);
+        alternateLocationSuggestions.add(suggestion);
         continue;
       }
 
@@ -1454,9 +1443,8 @@ class _EventPageState extends ConsumerState<EventPage> {
       final eventAddr = event.location!.formattedAddress;
       final addressMatches = suggestionAddr == eventAddr;
 
-                                                
       final isCurrentLocation = nameMatches && addressMatches;
-      
+
       if (isCurrentLocation) {
         currentLocationSuggestions.add(suggestion);
         foundCurrentLocationInDB = true;
@@ -1470,7 +1458,7 @@ class _EventPageState extends ConsumerState<EventPage> {
     if (event.location != null &&
         !foundCurrentLocationInDB &&
         alternateLocationSuggestions.isNotEmpty) {
-            final syntheticCurrentLocation = LocationSuggestion(
+      final syntheticCurrentLocation = LocationSuggestion(
         id: 'synthetic_current_location',
         eventId: event.id,
         userId: event.hostId,
@@ -1485,7 +1473,7 @@ class _EventPageState extends ConsumerState<EventPage> {
         userAvatar: null, // Not needed for display
       );
       currentLocationSuggestions.add(syntheticCurrentLocation);
-          }
+    }
 
     // Sort: current location first (with star at top), then alternatives
     // Note: Supabase returns suggestions in DESC order (newest first)
@@ -1502,7 +1490,6 @@ class _EventPageState extends ConsumerState<EventPage> {
         ? alternateLocationSuggestions.isNotEmpty
         : suggestions.isNotEmpty;
 
-                        
     return LocationSuggestionsData(
       suggestions: sortedSuggestions,
       allVotes: allVotes,
