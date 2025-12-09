@@ -81,4 +81,15 @@ abstract class SuggestionRepository {
 
   /// Clear all location suggestions and votes for an event
   Future<void> clearEventLocationSuggestions(String eventId);
+
+  /// Create a location suggestion for the current event location
+  /// Used after "Set Location" to ensure the selected location appears as a votable option
+  Future<LocationSuggestion> createCurrentLocationSuggestion({
+    required String eventId,
+    required String userId,
+    required String locationName,
+    String? address,
+    double? latitude,
+    double? longitude,
+  });
 }

@@ -744,7 +744,7 @@ final dateTimeSuggestionsDataProvider =
 final locationSuggestionsDataProvider =
     FutureProvider.autoDispose.family<Map<String, dynamic>, String>(
   (ref, eventId) async {
-    // Fetch all dependencies in parallel
+        // Fetch all dependencies in parallel
     final results = await Future.wait([
       ref.watch(eventLocationSuggestionsProvider(eventId).future),
       ref.watch(locationSuggestionVotesProvider(eventId).future),
@@ -756,6 +756,8 @@ final locationSuggestionsDataProvider =
     final locationVotes = results[1] as List<SuggestionVote>;
     final userLocationVotes = results[2] as List<SuggestionVote>;
     final rsvps = results[3] as List<Rsvp>;
+
+    for (var i = 0; i < locationSuggestions.length; i++) {}
 
     // Calculate going count for current event location
     final goingCount = rsvps.where((r) => r.status == RsvpStatus.going).length;

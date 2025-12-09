@@ -121,12 +121,19 @@ class _LocationSuggestionsWidgetState extends State<LocationSuggestionsWidget> {
       return false;
     }
 
+    // Normalize addresses: treat empty string as null for comparison
+    final suggestionAddr =
+        suggestion.address?.isEmpty ?? true ? null : suggestion.address;
+    final eventAddr = widget.currentEventAddress?.isEmpty ?? true
+        ? null
+        : widget.currentEventAddress;
+
     // Compare address (both must be null or both must match)
-    if (suggestion.address != widget.currentEventAddress) {
+    if (suggestionAddr != eventAddr) {
       return false;
     }
 
-    return true;
+        return true;
   }
 
   // Helper method to get vote count for a specific suggestion
@@ -139,13 +146,14 @@ class _LocationSuggestionsWidgetState extends State<LocationSuggestionsWidget> {
 
     // If this is the current event location, return going count from RSVP
     if (_isCurrentEventSuggestion(suggestion)) {
-      return widget.currentEventGoingCount;
+            return widget.currentEventGoingCount;
     }
 
     // Otherwise return vote count from suggestion votes
-    return widget.allVotes
+    final voteCount = widget.allVotes
         .where((vote) => vote.suggestionId == suggestionId)
         .length;
+        return voteCount;
   }
 
   // Helper method to get votes for a specific suggestion

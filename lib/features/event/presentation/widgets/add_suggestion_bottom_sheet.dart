@@ -134,10 +134,9 @@ class _AddSuggestionBottomSheetState
           endDate != widget.eventEndDate ||
           endTime != widget.eventEndTime;
     } else {
-      // Location type
+      // Location type - Custom name alone is sufficient
       return _selectedLocation != null ||
-          _locationNameController.text.trim().isNotEmpty ||
-          _addressSearchController.text.trim().isNotEmpty;
+          _locationNameController.text.trim().isNotEmpty;
     }
   }
 
@@ -161,10 +160,9 @@ class _AddSuggestionBottomSheetState
 
       return endDateTime.isAfter(startDateTime);
     } else {
-      // For location type, we need at least one field filled
+      // For location type, Custom name alone is sufficient
       return _selectedLocation != null ||
-          _locationNameController.text.trim().isNotEmpty ||
-          _addressSearchController.text.trim().isNotEmpty;
+          _locationNameController.text.trim().isNotEmpty;
     }
   }
 
@@ -755,7 +753,12 @@ class _AddSuggestionBottomSheetState
       controller: controller,
       readOnly: readOnly,
       onTap: onTap,
-      onChanged: onChanged,
+      onChanged: (value) {
+                        // Call the provided onChanged callback if exists
+        onChanged?.call(value);
+        // Force setState to update button color
+        setState(() {});
+      },
       onSubmitted: onSubmitted,
       style: AppText.bodyMedium.copyWith(color: BrandColors.text1),
       decoration: InputDecoration(

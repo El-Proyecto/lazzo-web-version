@@ -483,7 +483,7 @@ class _EventPageState extends ConsumerState<EventPage> {
                     return Padding(
                       padding: const EdgeInsets.only(bottom: Gaps.lg),
                       child: LocationSuggestionsWidget(
-                        suggestions: locationSuggestions,
+                        suggestions: processedData.suggestions,
                         allVotes: data['locationVotes'] as List<SuggestionVote>,
                         userVotes: data['userVoteIds'] as Set<String>,
                         onVote: (suggestionId) {
@@ -889,9 +889,10 @@ class _EventPageState extends ConsumerState<EventPage> {
     WidgetRef ref,
     LocationSuggestion selectedSuggestion,
   ) async {
+                
     try {
       // Step 1: Update the event's location
-      final eventRepository = ref.read(eventRepositoryProvider);
+            final eventRepository = ref.read(eventRepositoryProvider);
       await eventRepository.updateEventLocation(
         eventId,
         selectedSuggestion.locationName,
@@ -899,9 +900,9 @@ class _EventPageState extends ConsumerState<EventPage> {
         selectedSuggestion.latitude ?? 0.0,
         selectedSuggestion.longitude ?? 0.0,
       );
-
+      
       // Step 2: Get all users who voted on the selected suggestion
-      final locationVotesAsync = ref.read(
+            final locationVotesAsync = ref.read(
         locationSuggestionVotesProvider(eventId),
       );
       final locationVotes = locationVotesAsync.value ?? [];
@@ -916,19 +917,71 @@ class _EventPageState extends ConsumerState<EventPage> {
         eventId,
         suggestionVoters,
       );
-
+      
       // Step 3: Clear all location suggestions for this event
-      final suggestionRepository = ref.read(suggestionRepositoryProvider);
+            final suggestionRepository = ref.read(suggestionRepositoryProvider);
       await suggestionRepository.clearEventLocationSuggestions(eventId);
+      
+      // Step 3.5: Wait for DB transaction to complete and any triggers to finish
+      // This prevents race conditions where providers refetch before DELETE is fully committed
+            await Future.delayed(const Duration(milliseconds: 500));
+      
+      // Note: We don't create a suggestion for the new current location.
+      // Current location comes from event.location and displays with a star (not votable).
 
       // Step 4: Invalidate providers to refresh the UI
-      ref.invalidate(eventDetailProvider(eventId));
-      ref.invalidate(eventRsvpsProvider(eventId));
-      ref.invalidate(userRsvpProvider(eventId));
-      ref.invalidate(eventLocationSuggestionsProvider(eventId));
+      // CRITICAL: Invalidate eventDetailProvider FIRST and wait for it to update
+      // This ensures the new event.location is available before other providers refetch
+            ref.invalidate(eventDetailProvider(eventId));
+
+      // Wait for event detail to update
+            final updatedEvent = await ref.read(eventDetailProvider(eventId).future);
+                  
+      // Now invalidate the rest - they will see the updated event.location
+            ref.invalidate(eventLocationSuggestionsProvider(eventId));
       ref.invalidate(locationSuggestionVotesProvider(eventId));
       ref.invalidate(userLocationSuggestionVotesProvider(eventId));
+      ref.invalidate(locationSuggestionsDataProvider(eventId));
+      ref.invalidate(eventRsvpsProvider(eventId));
+      ref.invalidate(userRsvpProvider(eventId));
+      
+      // Step 4d: Verify deletion worked and re-delete if alternatives remain
+      // Note: The current location suggestion is expected and correct.
+      // We only care about ALTERNATIVE suggestions (different from current location).
+            final remainingSuggestions = await ref.read(
+        eventLocationSuggestionsProvider(eventId).future,
+      );
 
+      // Count alternatives (suggestions that DON'T match current location)
+      final alternatives = remainingSuggestions.where((s) {
+        // Check if suggestion matches current event location
+        final nameMatches =
+            s.locationName == updatedEvent.location?.displayName;
+        final addressMatches = (s.address ?? '') ==
+            (updatedEvent.location?.formattedAddress ?? '');
+        final isCurrentLocation = nameMatches && addressMatches;
+        return !isCurrentLocation; // Only count alternatives
+      }).toList();
+
+                  
+      if (alternatives.isNotEmpty) {
+                for (var s in alternatives) {
+                  }
+        // Delete ALL suggestions again (including current location)
+        await suggestionRepository.clearEventLocationSuggestions(eventId);
+        // Wait again
+        await Future.delayed(const Duration(milliseconds: 300));
+        // Invalidate again
+        ref.invalidate(eventLocationSuggestionsProvider(eventId));
+        ref.invalidate(locationSuggestionVotesProvider(eventId));
+        ref.invalidate(userLocationSuggestionVotesProvider(eventId));
+        ref.invalidate(locationSuggestionsDataProvider(eventId));
+              } else {
+                if (remainingSuggestions.length == 1) {
+                  }
+      }
+
+      
       // Step 5: Show success feedback
       if (context.mounted) {
         TopBanner.showSuccess(
@@ -1379,74 +1432,81 @@ class _EventPageState extends ConsumerState<EventPage> {
     required EventDetail event,
     required int goingCount,
   }) {
-    print(
-        '[ProcessLocationSuggestions] INICIO - Total suggestions: ${suggestions.length}');
-    print(
-        '[ProcessLocationSuggestions] Event location: ${event.location?.displayName ?? "null"}');
-
-    // Log original order
-    for (var i = 0; i < suggestions.length; i++) {
-      print(
-          '[ProcessLocationSuggestions] Original[$i]: ${suggestions[i].locationName} (created: ${suggestions[i].createdAt})');
-    }
-
+                    
     // Separate current location from alternatives
     final currentLocationSuggestions = <LocationSuggestion>[];
     final alternateLocationSuggestions = <LocationSuggestion>[];
 
+    // Track if we found the current location in the DB suggestions
+    bool foundCurrentLocationInDB = false;
+
     for (final suggestion in suggestions) {
+                  
       if (event.location == null) {
-        alternateLocationSuggestions.add(suggestion);
+                alternateLocationSuggestions.add(suggestion);
         continue;
       }
 
-      final isCurrentLocation =
-          suggestion.locationName == event.location!.displayName &&
-              (suggestion.address ?? '') == event.location!.formattedAddress;
+      // Detailed comparison
+      final nameMatches =
+          suggestion.locationName == event.location!.displayName;
+      final suggestionAddr = suggestion.address ?? '';
+      final eventAddr = event.location!.formattedAddress;
+      final addressMatches = suggestionAddr == eventAddr;
 
-      print(
-          '[ProcessLocationSuggestions] Checking "${suggestion.locationName}": isCurrentLocation=$isCurrentLocation');
-
+                                                
+      final isCurrentLocation = nameMatches && addressMatches;
+      
       if (isCurrentLocation) {
         currentLocationSuggestions.add(suggestion);
+        foundCurrentLocationInDB = true;
       } else {
         alternateLocationSuggestions.add(suggestion);
       }
     }
 
-    print(
-        '[ProcessLocationSuggestions] Current location suggestions: ${currentLocationSuggestions.length}');
-    print(
-        '[ProcessLocationSuggestions] Alternative suggestions: ${alternateLocationSuggestions.length}');
+    // CRITICAL: If event has a location but we didn't find it in DB suggestions,
+    // create a synthetic suggestion for it (happens after "Set Location" deletes all suggestions)
+    if (event.location != null &&
+        !foundCurrentLocationInDB &&
+        alternateLocationSuggestions.isNotEmpty) {
+            final syntheticCurrentLocation = LocationSuggestion(
+        id: 'synthetic_current_location',
+        eventId: event.id,
+        userId: event.hostId,
+        locationName: event.location!.displayName,
+        address: event.location!.formattedAddress.isEmpty
+            ? null
+            : event.location!.formattedAddress,
+        latitude: event.location!.latitude,
+        longitude: event.location!.longitude,
+        createdAt: event.createdAt,
+        userName: '', // Not needed for display
+        userAvatar: null, // Not needed for display
+      );
+      currentLocationSuggestions.add(syntheticCurrentLocation);
+          }
 
-    // Reverse alternatives so newest suggestions appear at the bottom
-    final reversedAlternatives = alternateLocationSuggestions.reversed.toList();
+    // Sort: current location first (with star at top), then alternatives
+    // Note: Supabase returns suggestions in DESC order (newest first)
+    // We want: current location at top, then alternatives with oldest at top (newest at bottom)
+    // So we need to reverse the alternatives list from DB
+    final sortedAlternatives = alternateLocationSuggestions.reversed.toList();
 
-    print('[ProcessLocationSuggestions] After reversing alternatives:');
-    for (var i = 0; i < reversedAlternatives.length; i++) {
-      print(
-          '[ProcessLocationSuggestions] Reversed[$i]: ${reversedAlternatives[i].locationName}');
-    }
-
-    // Sort: alternatives first (newest to oldest from Supabase), then current location at bottom
     final sortedSuggestions = [
-      ...alternateLocationSuggestions, // Keep original order (newest first from DB)
-      ...currentLocationSuggestions // Current location at the bottom
+      ...currentLocationSuggestions, // Current location with star at THE TOP
+      ...sortedAlternatives // Alternative suggestions (oldest first, newest last)
     ];
 
-    print(
-        '[ProcessLocationSuggestions] FINAL ORDER (newest at top, current at bottom):');
-    for (var i = 0; i < sortedSuggestions.length; i++) {
-      print(
-          '[ProcessLocationSuggestions] Final[$i]: ${sortedSuggestions[i].locationName}');
-    }
+    final hasAlternatives = event.location != null
+        ? alternateLocationSuggestions.isNotEmpty
+        : suggestions.isNotEmpty;
 
+                        
     return LocationSuggestionsData(
       suggestions: sortedSuggestions,
       allVotes: allVotes,
-      hasAlternatives: event.location != null
-          ? alternateLocationSuggestions.isNotEmpty
-          : suggestions.isNotEmpty,
+      hasAlternatives: hasAlternatives,
       currentEventGoingCount: goingCount,
     );
   }

@@ -94,8 +94,7 @@ class SuggestionRepositoryImpl implements SuggestionRepository {
   Future<List<LocationSuggestion>> getEventLocationSuggestions(
     String eventId,
   ) async {
-    final models =
-        await _remoteDataSource.getEventLocationSuggestions(eventId);
+    final models = await _remoteDataSource.getEventLocationSuggestions(eventId);
     return models.map((model) => model.toEntity()).toList();
   }
 
@@ -170,5 +169,25 @@ class SuggestionRepositoryImpl implements SuggestionRepository {
   @override
   Future<void> clearEventLocationSuggestions(String eventId) async {
     await _remoteDataSource.clearEventLocationSuggestions(eventId);
+  }
+
+  @override
+  Future<LocationSuggestion> createCurrentLocationSuggestion({
+    required String eventId,
+    required String userId,
+    required String locationName,
+    String? address,
+    double? latitude,
+    double? longitude,
+  }) async {
+    final model = await _remoteDataSource.createCurrentLocationSuggestion(
+      eventId: eventId,
+      userId: userId,
+      locationName: locationName,
+      address: address,
+      latitude: latitude,
+      longitude: longitude,
+    );
+    return model.toEntity();
   }
 }
