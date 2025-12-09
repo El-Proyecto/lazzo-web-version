@@ -5,7 +5,7 @@ import '../../../../shared/components/inputs/search_bar.dart' as custom;
 import '../../../../shared/components/sections/section_block.dart';
 import '../../../../shared/components/cards/home_event_card.dart';
 import '../../../../shared/components/cards/event_small_card.dart';
-import '../../../../shared/components/cards/todo_card.dart';
+// import '../../../../shared/components/cards/todo_card.dart'; // MVP: Actions removed, preserved for P2
 import '../../../../shared/components/cards/payment_summary_card.dart';
 import '../../../../shared/components/cards/recent_memory_card.dart';
 import '../../../../shared/constants/spacing.dart';
@@ -154,7 +154,7 @@ class _HomePageState extends ConsumerState<HomePage> {
     final nextEventAsync = ref.watch(nextEventControllerProvider);
     final confirmedEventsAsync = ref.watch(confirmedEventsControllerProvider);
     final pendingEventsAsync = ref.watch(homeEventsControllerProvider);
-    final todosAsync = ref.watch(todosControllerProvider);
+    // final todosAsync = ref.watch(todosControllerProvider); // MVP: Actions removed, preserved for P2
     final paymentsAsync = ref.watch(paymentSummariesControllerProvider);
     final totalBalanceAsync = ref.watch(totalBalanceControllerProvider);
     final recentMemoriesAsync = ref.watch(recentMemoriesControllerProvider);
@@ -510,42 +510,9 @@ class _HomePageState extends ConsumerState<HomePage> {
                   error: (error, stackTrace) => const SizedBox.shrink(),
                 ),
 
-                // To Dos Section (only show if there are events)
-                todosAsync.when(
-                  data: (todos) {
-                    if (todos.isEmpty) {
-                      return const SizedBox.shrink();
-                    }
-                    return Column(
-                      children: [
-                        SectionBlock(
-                          title: 'To Dos',
-                          child: Column(
-                            children: todos.asMap().entries.map((entry) {
-                              final index = entry.key;
-                              final todo = entry.value;
-                              return Column(
-                                children: [
-                                  TodoCard(
-                                    todo: todo,
-                                    onTap: () {
-                                      // TODO P2: Navigate to event details
-                                    },
-                                  ),
-                                  if (index < todos.length - 1)
-                                    const SizedBox(height: Gaps.sm),
-                                ],
-                              );
-                            }).toList(),
-                          ),
-                        ),
-                        const SizedBox(height: Gaps.lg),
-                      ],
-                    );
-                  },
-                  loading: () => const SizedBox.shrink(),
-                  error: (error, stackTrace) => const SizedBox.shrink(),
-                ),
+                // To Dos Section removed from MVP (P1 only - awaiting P2 backend)
+                // Component preserved: TodoCard in shared/components/cards/
+                // Provider preserved: todosControllerProvider (inactive)
               ], // End of EVENT SECTIONS
 
               // Payments Section (shows even without events)

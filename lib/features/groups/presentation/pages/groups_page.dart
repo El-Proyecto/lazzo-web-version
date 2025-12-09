@@ -95,14 +95,7 @@ class _GroupsPageState extends ConsumerState<GroupsPage>
                   ),
                 ),
                 const SizedBox(width: Gaps.sm),
-                CustomFilterChip(
-                  label: 'Actions',
-                  isSelected: _selectedFilter == GroupFilter.actions,
-                  onTap: () => setState(
-                    () => _selectedFilter = GroupFilter.actions,
-                  ),
-                ),
-                const SizedBox(width: Gaps.sm),
+                // Actions filter removed from MVP (P1 only - awaiting P2 backend)
                 CustomFilterChip(
                   label: 'Archived',
                   isSelected: _selectedFilter == GroupFilter.archived,
@@ -304,13 +297,8 @@ class _GroupsPageState extends ConsumerState<GroupsPage>
         onTap: () => _handleInvite(groupId),
       ),
 
-      // Open Actions - só aparece se o grupo tem ações abertas
-      if (group.openActionsCount != null && group.openActionsCount! > 0)
-        GroupMenuAction(
-          title: 'Open Actions',
-          icon: Icons.bolt, // Ícone de raio para Open Actions
-          onTap: () => _handleOpenActions(groupId),
-        ),
+      // Open Actions removed from MVP (P1 only - awaiting P2 backend)
+      // openActionsCount preserved in Group entity for future use
 
       // Mute/Unmute - não aparece em grupos arquivados
       if (group.status != GroupStatus.archived)
@@ -351,14 +339,16 @@ class _GroupsPageState extends ConsumerState<GroupsPage>
   }
 
   void _handleInvite(String groupId) {
-      }
-
-  void _handleOpenActions(String groupId) {
-        // Navegar para o filtro de actions
-    setState(() {
-      _selectedFilter = GroupFilter.actions;
-    });
+    // TODO: Implement invite functionality
   }
+
+  // MVP: Actions removed, preserved for P2 implementation
+  // void _handleOpenActions(String groupId) {
+  //   // Navegar para o filtro de actions
+  //   setState(() {
+  //     _selectedFilter = GroupFilter.actions;
+  //   });
+  // }
 
   void _handleMute(String groupId) {
         final controller = ref.read(groupsControllerProvider);

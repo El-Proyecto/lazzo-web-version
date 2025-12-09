@@ -68,7 +68,7 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
             groupCoverUrlProvider((group.photoPath, group.photoUpdatedAt))
                 .future);
       } catch (e) {
-                imageUrl = null;
+        imageUrl = null;
       }
     }
 
@@ -130,7 +130,7 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
         },
         error: (error, stackTrace) {
           // Handle error if needed
-                  },
+        },
       );
     }
   }
