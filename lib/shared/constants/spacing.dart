@@ -1,5 +1,5 @@
 class Insets {
-  static const screenH = 16.0, screenTop = 24.0, screenBottom = 16.0;
+  static const screenH = 16.0, screenTop = 24.0, screenBottom = 24.0;
 }
 
 class Gaps {

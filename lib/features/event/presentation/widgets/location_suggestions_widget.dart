@@ -3,6 +3,7 @@ import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/constants/text_styles.dart';
 import '../../../../shared/themes/colors.dart';
 import '../../../../shared/components/common/common_bottom_sheet.dart';
+import '../../../../shared/components/common/top_banner.dart';
 import '../../domain/entities/suggestion.dart';
 
 /// Widget that displays location suggestions as votable polls
@@ -18,6 +19,8 @@ class LocationSuggestionsWidget extends StatefulWidget {
       onPickLocation; // Callback for pick location
   final String? currentEventLocationName; // Current event location name
   final String? currentEventAddress; // Current event address
+  final int
+      currentEventGoingCount; // Number of 'Can' votes from RSVP for current event
 
   const LocationSuggestionsWidget({
     super.key,
@@ -30,6 +33,7 @@ class LocationSuggestionsWidget extends StatefulWidget {
     required this.onPickLocation,
     this.currentEventLocationName,
     this.currentEventAddress,
+    this.currentEventGoingCount = 0,
   });
 
   @override
@@ -117,19 +121,39 @@ class _LocationSuggestionsWidgetState extends State<LocationSuggestionsWidget> {
       return false;
     }
 
+    // Normalize addresses: treat empty string as null for comparison
+    final suggestionAddr =
+        suggestion.address?.isEmpty ?? true ? null : suggestion.address;
+    final eventAddr = widget.currentEventAddress?.isEmpty ?? true
+        ? null
+        : widget.currentEventAddress;
+
     // Compare address (both must be null or both must match)
-    if (suggestion.address != widget.currentEventAddress) {
+    if (suggestionAddr != eventAddr) {
       return false;
     }
 
-    return true;
+        return true;
   }
 
   // Helper method to get vote count for a specific suggestion
   int _getVoteCount(String suggestionId) {
-    return widget.allVotes
+    // Find the suggestion to check if it's the current event
+    final suggestion = widget.suggestions.firstWhere(
+      (s) => s.id == suggestionId,
+      orElse: () => widget.suggestions.first,
+    );
+
+    // If this is the current event location, return going count from RSVP
+    if (_isCurrentEventSuggestion(suggestion)) {
+            return widget.currentEventGoingCount;
+    }
+
+    // Otherwise return vote count from suggestion votes
+    final voteCount = widget.allVotes
         .where((vote) => vote.suggestionId == suggestionId)
         .length;
+        return voteCount;
   }
 
   // Helper method to get votes for a specific suggestion
@@ -161,31 +185,32 @@ class _LocationSuggestionsWidgetState extends State<LocationSuggestionsWidget> {
               Expanded(
                 child: Text('Location Suggestions', style: AppText.labelLarge),
               ),
-              // Only show view votes if there are any votes
-              if (widget.suggestions.any((s) => _getVoteCount(s.id) > 0)) ...[
-                InkWell(
-                  onTap: () => _showViewVotesBottomSheet(context),
-                  borderRadius: BorderRadius.circular(10),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: Gaps.xxs),
-                    child: Row(
-                      children: [
-                        Text(
-                          'View votes',
-                          style: AppText.bodyMedium.copyWith(
-                            color: BrandColors.text2,
-                          ),
+              // Fixed width container to prevent expansion when View votes appears
+              SizedBox(
+                width: 100,
+                child: widget.suggestions.any((s) => _getVoteCount(s.id) > 0)
+                    ? InkWell(
+                        onTap: () => _showViewVotesBottomSheet(context),
+                        borderRadius: BorderRadius.circular(10),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              'View votes',
+                              style: AppText.bodyMedium.copyWith(
+                                color: BrandColors.text2,
+                              ),
+                            ),
+                            const Icon(
+                              Icons.chevron_right,
+                              size: IconSizes.sm,
+                              color: BrandColors.text2,
+                            ),
+                          ],
                         ),
-                        const Icon(
-                          Icons.chevron_right,
-                          size: IconSizes.sm,
-                          color: BrandColors.text2,
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
+                      )
+                    : const SizedBox.shrink(),
+              ),
             ],
           ),
           const SizedBox(height: Gaps.md),
@@ -204,7 +229,7 @@ class _LocationSuggestionsWidgetState extends State<LocationSuggestionsWidget> {
           }),
 
           // Action buttons
-          const SizedBox(height: Gaps.lg),
+          const SizedBox(height: Gaps.md),
           Row(
             children: [
               if (_isSelectionMode) ...[
@@ -310,169 +335,201 @@ class _LocationSuggestionsWidgetState extends State<LocationSuggestionsWidget> {
     final isCurrentEvent = _isCurrentEventSuggestion(suggestion);
     final isSelected =
         _isSelectionMode && _selectedSuggestionId == suggestion.id;
+    final shouldShowBorder =
+        _isSelectionMode ? isSelected : !isCurrentEvent && hasUserVoted;
 
     return AnimatedScale(
       scale: hasUserVoted ? 1.02 : 1.0,
       duration: const Duration(milliseconds: 200),
       curve: Curves.easeOutCubic,
       child: InkWell(
-        onTap: isCurrentEvent ? null : () => _handleVote(suggestion.id),
+        onTap: isCurrentEvent
+            ? () {
+                TopBanner.showInfo(
+                  context,
+                  message:
+                      'This is the current event location. You cannot vote on it.',
+                );
+              }
+            : () => _handleVote(suggestion.id),
         borderRadius: BorderRadius.circular(10),
-        child: Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(Pads.ctlH),
-          decoration: BoxDecoration(
-            color: _isSelectionMode
-                ? (isSelected
-                    ? BrandColors.planning.withValues(alpha: 0.1)
-                    : BrandColors.bg3)
-                : isCurrentEvent
-                    ? BrandColors.bg3
-                    : hasUserVoted
+        child: Stack(
+          children: [
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(Pads.ctlH),
+              decoration: BoxDecoration(
+                color: _isSelectionMode
+                    ? (isSelected
                         ? BrandColors.planning.withValues(alpha: 0.1)
-                        : BrandColors.bg3,
-            borderRadius: BorderRadius.circular(10),
-            border: _isSelectionMode
-                ? (isSelected
-                    ? Border.all(color: BrandColors.planning, width: 1)
-                    : null)
-                : isCurrentEvent
-                    ? null
-                    : hasUserVoted
-                        ? Border.all(color: BrandColors.planning, width: 1)
-                        : null,
-          ),
-          child: Row(
-            children: [
-              // Vote indicator, star for current event, or selection indicator
-              if (isCurrentEvent) ...[
-                const Icon(Icons.star, size: 20, color: BrandColors.text2),
-              ] else if (_isSelectionMode) ...[
-                AnimatedContainer(
-                  duration: const Duration(milliseconds: 150),
-                  width: 20,
-                  height: 20,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color:
-                        isSelected ? BrandColors.planning : Colors.transparent,
-                    border: Border.all(
-                      color:
-                          isSelected ? BrandColors.planning : BrandColors.text2,
-                      width: isSelected ? 2.2 : 1.5,
-                    ),
-                  ),
-                  child: Center(
-                    child: AnimatedContainer(
+                        : BrandColors.bg3)
+                    : isCurrentEvent
+                        ? BrandColors.bg3
+                        : hasUserVoted
+                            ? BrandColors.planning.withValues(alpha: 0.1)
+                            : BrandColors.bg3,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Row(
+                children: [
+                  // Vote indicator, star for current event, or selection indicator
+                  if (isCurrentEvent) ...[
+                    const Icon(Icons.star, size: 20, color: BrandColors.text2),
+                  ] else if (_isSelectionMode) ...[
+                    AnimatedContainer(
                       duration: const Duration(milliseconds: 150),
-                      width: isSelected ? 8 : 0,
-                      height: isSelected ? 8 : 0,
+                      width: 20,
+                      height: 20,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: isSelected ? Colors.white : Colors.transparent,
+                        color: isSelected
+                            ? BrandColors.planning
+                            : Colors.transparent,
+                        border: Border.all(
+                          color: isSelected
+                              ? BrandColors.planning
+                              : BrandColors.text2,
+                          width: isSelected ? 2.2 : 1.5,
+                        ),
+                      ),
+                      child: Center(
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 150),
+                          width: isSelected ? 8 : 0,
+                          height: isSelected ? 8 : 0,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color:
+                                isSelected ? Colors.white : Colors.transparent,
+                          ),
+                        ),
                       ),
                     ),
-                  ),
-                ),
-              ] else ...[
-                AnimatedContainer(
-                  duration: const Duration(milliseconds: 150),
-                  width: 20,
-                  height: 20,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: hasUserVoted
-                        ? BrandColors.planning
-                        : Colors.transparent,
-                    border: Border.all(
-                      color: hasUserVoted
-                          ? BrandColors.planning
-                          : BrandColors.text2,
-                      width: 1.5,
-                    ),
-                  ),
-                  child: hasUserVoted
-                      ? const Icon(Icons.check, size: 12, color: Colors.white)
-                      : null,
-                ),
-              ],
-              const SizedBox(width: Gaps.sm),
-
-              // Location info
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Location name
-                    AnimatedDefaultTextStyle(
+                  ] else ...[
+                    AnimatedContainer(
                       duration: const Duration(milliseconds: 150),
-                      style: AppText.bodyMedium.copyWith(
-                        color: _isSelectionMode
-                            ? (isSelected
-                                ? BrandColors.text1
-                                : BrandColors.text1)
-                            : isCurrentEvent
-                                ? BrandColors.text2
-                                : hasUserVoted
-                                    ? BrandColors.text1
-                                    : BrandColors.text1,
-                        fontWeight: _isSelectionMode
-                            ? (isSelected ? FontWeight.w600 : FontWeight.normal)
-                            : isCurrentEvent
-                                ? FontWeight.normal
-                                : hasUserVoted
-                                    ? FontWeight.w600
-                                    : FontWeight.normal,
+                      width: 20,
+                      height: 20,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: hasUserVoted
+                            ? BrandColors.planning
+                            : Colors.transparent,
+                        border: Border.all(
+                          color: hasUserVoted
+                              ? BrandColors.planning
+                              : BrandColors.text2,
+                          width: 1.5,
+                        ),
                       ),
-                      child: Text(suggestion.locationName),
-                    ),
-                    const SizedBox(height: Gaps.xxs),
-                    // Address
-                    Text(
-                      suggestion.address ?? 'address not defined',
-                      style: AppText.bodyMedium.copyWith(
-                        color: BrandColors.text2,
-                        fontSize: 12,
-                      ),
+                      child: hasUserVoted
+                          ? const Icon(Icons.check,
+                              size: 12, color: Colors.white)
+                          : null,
                     ),
                   ],
-                ),
-              ),
+                  const SizedBox(width: Gaps.sm),
 
-              // Vote count
-              AnimatedContainer(
-                duration: const Duration(milliseconds: 150),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: Gaps.xs,
-                  vertical: Gaps.xxs,
-                ),
-                decoration: BoxDecoration(
-                  color: _isSelectionMode
-                      ? (isSelected ? BrandColors.planning : BrandColors.border)
-                      : isCurrentEvent
-                          ? BrandColors.border
-                          : hasUserVoted
+                  // Location info
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Location name
+                        AnimatedDefaultTextStyle(
+                          duration: const Duration(milliseconds: 150),
+                          style: AppText.bodyMedium.copyWith(
+                            color: _isSelectionMode
+                                ? (isSelected
+                                    ? BrandColors.text1
+                                    : BrandColors.text1)
+                                : isCurrentEvent
+                                    ? BrandColors.text2
+                                    : hasUserVoted
+                                        ? BrandColors.text1
+                                        : BrandColors.text1,
+                            fontWeight: _isSelectionMode
+                                ? (isSelected
+                                    ? FontWeight.w600
+                                    : FontWeight.normal)
+                                : isCurrentEvent
+                                    ? FontWeight.normal
+                                    : hasUserVoted
+                                        ? FontWeight.w600
+                                        : FontWeight.normal,
+                          ),
+                          child: Text(suggestion.locationName),
+                        ),
+                        const SizedBox(height: Gaps.xxs),
+                        // Address
+                        Text(
+                          suggestion.address ?? 'address not defined',
+                          style: AppText.bodyMedium.copyWith(
+                            color: BrandColors.text2,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // Vote count - perfect circle
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 150),
+                    constraints: const BoxConstraints(
+                      minWidth: 24,
+                      minHeight: 24,
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: _isSelectionMode
+                          ? (isSelected
                               ? BrandColors.planning
-                              : BrandColors.border,
-                  borderRadius: BorderRadius.circular(Radii.pill),
-                ),
-                child: Text(
-                  '${_getVoteCount(suggestion.id)}',
-                  style: AppText.bodyMedium.copyWith(
-                    color: _isSelectionMode
-                        ? (isSelected ? Colors.white : BrandColors.text2)
-                        : isCurrentEvent
-                            ? BrandColors.text2
-                            : hasUserVoted
-                                ? Colors.white
-                                : BrandColors.text2,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 12,
+                              : BrandColors.border)
+                          : isCurrentEvent
+                              ? BrandColors.border
+                              : hasUserVoted
+                                  ? BrandColors.planning
+                                  : BrandColors.border,
+                    ),
+                    child: Center(
+                      child: Text(
+                        '${_getVoteCount(suggestion.id)}',
+                        style: AppText.bodyMedium.copyWith(
+                          color: _isSelectionMode
+                              ? (isSelected ? Colors.white : BrandColors.text2)
+                              : isCurrentEvent
+                                  ? BrandColors.text2
+                                  : hasUserVoted
+                                      ? Colors.white
+                                      : BrandColors.text2,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            // Internal border overlay to prevent size expansion
+            if (shouldShowBorder)
+              Positioned.fill(
+                child: Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: BrandColors.planning,
+                      width: 1,
+                    ),
                   ),
                 ),
               ),
-            ],
-          ),
+          ],
         ),
       ),
     );

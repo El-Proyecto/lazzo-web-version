@@ -208,6 +208,7 @@ class SuggestionRemoteDataSource {
     String eventId,
   ) async {
     try {
+      
       final response =
           await _supabaseClient.from('location_suggestions').select('''
             id,
@@ -221,9 +222,14 @@ class SuggestionRemoteDataSource {
             user:user_id(id, name, avatar_url)
           ''').eq('event_id', eventId).order('created_at', ascending: false);
 
-      return (response as List)
+      final suggestions = (response as List)
           .map((json) => LocationSuggestionModel.fromJson(json))
           .toList();
+
+            for (var i = 0; i < suggestions.length; i++) {
+              }
+
+      return suggestions;
     } on PostgrestException catch (e) {
       throw Exception('Failed to get location suggestions: ${e.message}');
     } catch (e) {
@@ -244,6 +250,7 @@ class SuggestionRemoteDataSource {
     String? currentEventAddress,
   }) async {
     try {
+                                          
       // REMOVED: Auto-creating event's current location as suggestion
       // This caused issues where editing event location would appear to create a "new suggestion"
       // The event's initial location suggestion should ONLY be created during event creation,
@@ -270,6 +277,7 @@ class SuggestionRemoteDataSource {
             user:user_id(id, name, avatar_url)
           ''').single();
 
+      
       return LocationSuggestionModel.fromJson(response);
     } on PostgrestException catch (e) {
       throw Exception('Failed to create location suggestion: ${e.message}');
@@ -437,15 +445,82 @@ class SuggestionRemoteDataSource {
   /// Clear all location suggestions and votes for an event
   Future<void> clearEventLocationSuggestions(String eventId) async {
     try {
+            
+      // Get current user ID for debugging
+      final currentUser = _supabaseClient.auth.currentUser;
+      
+      // Get existing suggestions BEFORE delete
+      final existingBefore = await _supabaseClient
+          .from('location_suggestions')
+          .select('id, location_name, user_id')
+          .eq('event_id', eventId);
+            for (var s in existingBefore) {
+              }
+
       // Delete location suggestions (CASCADE will delete votes)
-      await _supabaseClient
+      final result = await _supabaseClient
           .from('location_suggestions')
           .delete()
+          .eq('event_id', eventId)
+          .select(); // Add select() to get deleted rows
+
+            for (var r in result) {
+              }
+
+      // Verify deletion
+      final existingAfter = await _supabaseClient
+          .from('location_suggestions')
+          .select('id, location_name')
           .eq('event_id', eventId);
-    } on PostgrestException catch (e) {
-      throw Exception('Failed to clear location suggestions: ${e.message}');
+            if (existingAfter.isNotEmpty) {
+                for (var s in existingAfter) {
+                  }
+      }
+
+          } on PostgrestException catch (e) {
+                              throw Exception('Failed to clear location suggestions: ${e.message}');
     } catch (e) {
-      throw Exception('Failed to clear location suggestions: $e');
+            throw Exception('Failed to clear location suggestions: $e');
+    }
+  }
+
+  /// Create a location suggestion for the current event location
+  /// Used after "Set Location" to ensure the selected location appears as a votable option
+  Future<LocationSuggestionModel> createCurrentLocationSuggestion({
+    required String eventId,
+    required String userId,
+    required String locationName,
+    String? address,
+    double? latitude,
+    double? longitude,
+  }) async {
+    try {
+      final response =
+          await _supabaseClient.from('location_suggestions').insert({
+        'event_id': eventId,
+        'user_id': userId,
+        'location_name': locationName,
+        'address': address,
+        'latitude': latitude,
+        'longitude': longitude,
+      }).select('''
+            id,
+            event_id,
+            user_id,
+            location_name,
+            address,
+            latitude,
+            longitude,
+            created_at,
+            user:user_id(id, name, avatar_url)
+          ''').single();
+
+      return LocationSuggestionModel.fromJson(response);
+    } on PostgrestException catch (e) {
+      throw Exception(
+          'Failed to create current location suggestion: ${e.message}');
+    } catch (e) {
+      throw Exception('Failed to create current location suggestion: $e');
     }
   }
 }

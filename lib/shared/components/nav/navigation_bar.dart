@@ -19,7 +19,7 @@ class NavigationBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: 90,
+      height: 82,
       padding: const EdgeInsets.only(
         left: Gaps.lg,
         right: Gaps.lg,

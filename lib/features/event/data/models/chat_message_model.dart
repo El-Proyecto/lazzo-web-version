@@ -39,15 +39,26 @@ class ChatMessageModel {
     // Handle nested user data from join
     final userData = json['user'] as Map<String, dynamic>?;
 
+    // Handle both regular query format and RPC format
+    final userName = userData?['name'] as String? ??
+        json['user_name'] as String? ??
+        'Unknown User';
+    final userAvatar =
+        userData?['avatar_url'] as String? ?? json['user_avatar'] as String?;
+
+    // RPC returns is_read_by_someone, fallback to read for backwards compatibility
+    final isReadBySomeone =
+        json['is_read_by_someone'] as bool? ?? json['read'] as bool? ?? false;
+
     return ChatMessageModel(
       id: json['id'] as String,
       eventId: json['event_id'] as String,
       userId: json['user_id'] as String,
-      userName: userData?['name'] as String? ?? 'Unknown User',
-      userAvatar: userData?['avatar_url'] as String?,
+      userName: userName,
+      userAvatar: userAvatar,
       content: json['content'] as String,
       createdAt: DateTime.parse(json['created_at'] as String),
-      isReadBySomeone: json['read'] as bool? ?? false,
+      isReadBySomeone: isReadBySomeone,
       isPinned: json['is_pinned'] as bool? ?? false,
       isDeleted: json['is_deleted'] as bool? ?? false,
       replyToId: json['reply_to_id'] as String?,

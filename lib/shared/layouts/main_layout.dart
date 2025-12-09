@@ -177,6 +177,13 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
         return;
     }
 
+    // If tapping the same tab, scroll to top and refresh
+    if (pageIndex == _currentIndex) {
+      // Notify the page to scroll to top via scrollToTopProvider
+      ref.read(scrollToTopProvider.notifier).state++;
+      return; // Don't change state if already on this page
+    }
+
     setState(() {
       _currentIndex = pageIndex;
     });

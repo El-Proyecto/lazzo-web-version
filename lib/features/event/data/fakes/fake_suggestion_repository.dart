@@ -202,9 +202,8 @@ class FakeSuggestionRepository implements SuggestionRepository {
       final existingVotes = _votes[suggestionId] ?? [];
 
       // Find all users with "going" status and auto-vote them
-      final goingUsers = rsvps
-          .where((rsvp) => rsvp.status.name == 'going')
-          .toList();
+      final goingUsers =
+          rsvps.where((rsvp) => rsvp.status.name == 'going').toList();
 
       for (final rsvp in goingUsers) {
         // Check if user already has a vote to prevent duplicates
@@ -251,9 +250,8 @@ class FakeSuggestionRepository implements SuggestionRepository {
       final rsvps = await rsvpRepository.getEventRsvps(eventId);
 
       // Find all users with "going" status
-      final goingUsers = rsvps
-          .where((rsvp) => rsvp.status.name == 'going')
-          .toList();
+      final goingUsers =
+          rsvps.where((rsvp) => rsvp.status.name == 'going').toList();
 
       // Create a temporary instance to access the _getUserName method
       final tempInstance = FakeSuggestionRepository();
@@ -295,9 +293,8 @@ class FakeSuggestionRepository implements SuggestionRepository {
       final existingVotes = _locationVotes[suggestionId] ?? [];
 
       // Find all users with "going" status and auto-vote them
-      final goingUsers = rsvps
-          .where((rsvp) => rsvp.status.name == 'going')
-          .toList();
+      final goingUsers =
+          rsvps.where((rsvp) => rsvp.status.name == 'going').toList();
 
       for (final rsvp in goingUsers) {
         // Check if user already has a vote to prevent duplicates
@@ -348,9 +345,8 @@ class FakeSuggestionRepository implements SuggestionRepository {
       final rsvps = await rsvpRepository.getEventRsvps(eventId);
 
       // Find all users with "going" status
-      final goingUsers = rsvps
-          .where((rsvp) => rsvp.status.name == 'going')
-          .toList();
+      final goingUsers =
+          rsvps.where((rsvp) => rsvp.status.name == 'going').toList();
 
       // Create a temporary instance to access the _getUserName method
       final tempInstance = FakeSuggestionRepository();
@@ -477,9 +473,8 @@ class FakeSuggestionRepository implements SuggestionRepository {
     await Future.delayed(const Duration(milliseconds: 200));
 
     final eventLocationSuggestions = _locationSuggestions[eventId] ?? [];
-    final eventLocationSuggestionIds = eventLocationSuggestions
-        .map((s) => s.id)
-        .toSet();
+    final eventLocationSuggestionIds =
+        eventLocationSuggestions.map((s) => s.id).toSet();
 
     return _locationVotes.values
         .expand((votes) => votes)
@@ -521,9 +516,8 @@ class FakeSuggestionRepository implements SuggestionRepository {
     await Future.delayed(const Duration(milliseconds: 300));
 
     final votes = _locationVotes[suggestionId] ?? [];
-    _locationVotes[suggestionId] = votes
-        .where((vote) => vote.userId != userId)
-        .toList();
+    _locationVotes[suggestionId] =
+        votes.where((vote) => vote.userId != userId).toList();
   }
 
   @override
@@ -535,9 +529,8 @@ class FakeSuggestionRepository implements SuggestionRepository {
     await Future.delayed(const Duration(milliseconds: 200));
 
     final eventLocationSuggestions = _locationSuggestions[eventId] ?? [];
-    final eventLocationSuggestionIds = eventLocationSuggestions
-        .map((s) => s.id)
-        .toSet();
+    final eventLocationSuggestionIds =
+        eventLocationSuggestions.map((s) => s.id).toSet();
 
     return _locationVotes.values
         .expand((votes) => votes)
@@ -570,6 +563,40 @@ class FakeSuggestionRepository implements SuggestionRepository {
 
     // Clean up empty vote lists
     _locationVotes.removeWhere((eventId, votes) => votes.isEmpty);
+  }
+
+  @override
+  Future<LocationSuggestion> createCurrentLocationSuggestion({
+    required String eventId,
+    required String userId,
+    required String locationName,
+    String? address,
+    double? latitude,
+    double? longitude,
+  }) async {
+    // Simulate network delay
+    await Future.delayed(const Duration(milliseconds: 300));
+
+    final suggestion = LocationSuggestion(
+      id: 'location_suggestion_${_locationSuggestionIdCounter++}',
+      eventId: eventId,
+      userId: userId,
+      locationName: locationName,
+      address: address,
+      latitude: latitude,
+      longitude: longitude,
+      createdAt: DateTime.now(),
+      userName: 'Test User',
+      userAvatar: null,
+    );
+
+    // Add to fake storage
+    if (!_locationSuggestions.containsKey(eventId)) {
+      _locationSuggestions[eventId] = [];
+    }
+    _locationSuggestions[eventId]!.add(suggestion);
+
+    return suggestion;
   }
 
   // Helper methods to generate fake user data

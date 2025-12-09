@@ -8,10 +8,10 @@ import '../../../../shared/constants/text_styles.dart';
 import '../../../../shared/layouts/main_layout_providers.dart';
 import '../../domain/entities/payment_entity.dart';
 import '../providers/notifications_provider.dart';
-import '../providers/actions_provider.dart';
+// import '../providers/actions_provider.dart'; // MVP: Actions removed, preserved for P2
 import '../providers/payments_provider.dart';
 import '../widgets/notifications_section.dart';
-import '../widgets/actions_section.dart';
+// import '../widgets/actions_section.dart'; // MVP: Actions removed, preserved for P2
 import '../widgets/payments_section.dart';
 
 class InboxPage extends ConsumerStatefulWidget {
@@ -28,7 +28,8 @@ class _InboxPageState extends ConsumerState<InboxPage>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController =
+        TabController(length: 2, vsync: this); // MVP: 2 tabs (removed Actions)
 
     // Check for pending tab change after frame
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -79,7 +80,7 @@ class _InboxPageState extends ConsumerState<InboxPage>
               controller: _tabController,
               children: [
                 _buildNotificationsTab(),
-                _buildActionsTab(),
+                // _buildActionsTab(), // MVP: Actions removed, preserved for P2
                 _buildPaymentsTab(),
               ],
             ),
@@ -92,7 +93,7 @@ class _InboxPageState extends ConsumerState<InboxPage>
   Widget _buildTabBar() {
     return PageSegmentedControl(
       controller: _tabController,
-      labels: const ['Notifications', 'Actions', 'Payments'],
+      labels: const ['Notifications', 'Payments'], // MVP: Removed Actions tab
     );
   }
 
@@ -139,41 +140,42 @@ class _InboxPageState extends ConsumerState<InboxPage>
     );
   }
 
-  Widget _buildActionsTab() {
-    final actionsState = ref.watch(actionsProvider);
-
-    return actionsState.when(
-      data: (actions) => ActionsSection(
-        actions: actions,
-        onRefresh: () => ref.read(actionsProvider.notifier).refresh(),
-        onActionTap: (action) {
-          // Handle action tap and complete it
-          ref.read(completeActionUseCaseProvider).call(action.id);
-          ref.read(actionsProvider.notifier).refresh();
-        },
-      ),
-      loading: () => const ActionsSection(actions: [], isLoading: true),
-      error: (error, stack) => Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              'Error loading actions',
-              style: AppText.titleMediumEmph.copyWith(color: BrandColors.text1),
-            ),
-            const SizedBox(height: Gaps.md),
-            TextButton(
-              onPressed: () => ref.read(actionsProvider.notifier).refresh(),
-              child: Text(
-                'Try again',
-                style: AppText.labelLarge.copyWith(color: BrandColors.planning),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+  // MVP: Actions tab removed, preserved for P2 implementation
+  // Widget _buildActionsTab() {
+  //   final actionsState = ref.watch(actionsProvider);
+  //
+  //   return actionsState.when(
+  //     data: (actions) => ActionsSection(
+  //       actions: actions,
+  //       onRefresh: () => ref.read(actionsProvider.notifier).refresh(),
+  //       onActionTap: (action) {
+  //         // Handle action tap and complete it
+  //         ref.read(completeActionUseCaseProvider).call(action.id);
+  //         ref.read(actionsProvider.notifier).refresh();
+  //       },
+  //     ),
+  //     loading: () => const ActionsSection(actions: [], isLoading: true),
+  //     error: (error, stack) => Center(
+  //       child: Column(
+  //         mainAxisAlignment: MainAxisAlignment.center,
+  //         children: [
+  //           Text(
+  //             'Error loading actions',
+  //             style: AppText.titleMediumEmph.copyWith(color: BrandColors.text1),
+  //           ),
+  //           const SizedBox(height: Gaps.md),
+  //           TextButton(
+  //             onPressed: () => ref.read(actionsProvider.notifier).refresh(),
+  //             child: Text(
+  //               'Try again',
+  //               style: AppText.labelLarge.copyWith(color: BrandColors.planning),
+  //             ),
+  //           ),
+  //         ],
+  //       ),
+  //     ),
+  //   );
+  // }
 
   Widget _buildPaymentsTab() {
     final owedToUserState = ref.watch(paymentsOwedToUserProvider);

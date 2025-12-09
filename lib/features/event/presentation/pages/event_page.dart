@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -30,6 +29,7 @@ import '../widgets/date_time_suggestions_widget.dart' as datetime_widget;
 import '../widgets/location_suggestions_widget.dart';
 import '../widgets/add_suggestion_bottom_sheet.dart';
 import '../providers/event_participants_provider.dart';
+import 'event_page_models.dart';
 
 import '../../../../shared/components/dialogs/add_expense_bottom_sheet.dart';
 import '../../../expense/presentation/providers/event_expense_providers.dart';
@@ -50,6 +50,15 @@ class _EventPageState extends ConsumerState<EventPage> {
   // Track events that have been added to calendar
   final Set<String> _addedToCalendar = {};
 
+  // Scroll controller to detect when header is scrolled off screen
+  final ScrollController _scrollController = ScrollController();
+
+  // Track if title should be shown in app bar
+  bool _showTitleInAppBar = false;
+
+  // Cache isHost status to prevent flicker during operations
+  bool? _cachedIsHost;
+
   String get eventId => widget.eventId;
 
   @override
@@ -59,6 +68,27 @@ class _EventPageState extends ConsumerState<EventPage> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(unreadCountRealtimeProvider(eventId));
     });
+
+    // Listen to scroll to show/hide title in app bar
+    _scrollController.addListener(_onScroll);
+  }
+
+  @override
+  void dispose() {
+    _scrollController.removeListener(_onScroll);
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    // Show title when scrolled past ~150px (approximate header height)
+    final shouldShow =
+        _scrollController.hasClients && _scrollController.offset > 150;
+    if (shouldShow != _showTitleInAppBar) {
+      setState(() {
+        _showTitleInAppBar = shouldShow;
+      });
+    }
   }
 
   /// Helper to replace current user's name with "You"
@@ -161,15 +191,11 @@ class _EventPageState extends ConsumerState<EventPage> {
   Widget build(BuildContext context) {
     final currentUserId = ref.watch(currentUserIdProvider);
     final eventAsync = ref.watch(eventDetailProvider(eventId));
-    final rsvpsAsync = ref.watch(eventRsvpsProvider(eventId));
-    final userRsvpAsync = ref.watch(userRsvpProvider(eventId));
+    // Note: rsvpsAsync, userRsvpAsync watched inside _buildRsvpSection()
+    // Note: suggestionsAsync, suggestionVotesAsync, userSuggestionVotesAsync now in dateTimeSuggestionsDataProvider
+    // Note: locationSuggestionsAsync, locationVotesAsync, userLocationVotesAsync now in locationSuggestionsDataProvider
+    // Note: messagesAsync, unreadCountAsync now in chatPreviewDataProvider
     final pollsAsync = ref.watch(eventPollsProvider(eventId));
-    final messagesAsync = ref.watch(chatMessagesProvider(eventId));
-    final suggestionsAsync = ref.watch(eventSuggestionsProvider(eventId));
-    final suggestionVotesAsync = ref.watch(suggestionVotesProvider(eventId));
-    final userSuggestionVotesAsync = ref.watch(
-      userSuggestionVotesProvider(eventId),
-    );
     final participantsAsync = ref.watch(eventParticipantsProvider(eventId));
 
     // Helper to refresh all event data
@@ -198,10 +224,12 @@ class _EventPageState extends ConsumerState<EventPage> {
       }
     }
 
+    final eventName = eventAsync.value?.name ?? '';
+
     return Scaffold(
       backgroundColor: BrandColors.bg1,
       appBar: CommonAppBar(
-        title: '',
+        title: _showTitleInAppBar ? eventName : '',
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: BrandColors.text1),
           onPressed: () => Navigator.of(context).pop(),
@@ -214,6 +242,9 @@ class _EventPageState extends ConsumerState<EventPage> {
 
             return canManageAsync.when(
               data: (canManage) {
+                // Cache the isHost status
+                _cachedIsHost = canManage;
+
                 // Only show settings icon for host or group admins
                 if (!canManage) {
                   return const SizedBox.shrink();
@@ -256,7 +287,45 @@ class _EventPageState extends ConsumerState<EventPage> {
                   },
                 );
               },
-              loading: () => const SizedBox.shrink(),
+              loading: () {
+                // Use cached state during loading to prevent flicker
+                if (_cachedIsHost == true) {
+                  final eventData = eventAsync.value;
+                  if (eventData != null) {
+                    return IconButton(
+                      icon: const Icon(Icons.edit, color: BrandColors.text1),
+                      onPressed: () {
+                        final editEvent = create_event.Event(
+                          id: eventData.id,
+                          name: eventData.name,
+                          emoji: eventData.emoji,
+                          groupId: eventData.groupId,
+                          startDateTime: eventData.startDateTime,
+                          endDateTime: eventData.endDateTime,
+                          location: eventData.location != null
+                              ? create_event.EventLocation(
+                                  id: eventData.location!.id,
+                                  displayName: eventData.location!.displayName,
+                                  formattedAddress:
+                                      eventData.location!.formattedAddress,
+                                  latitude: eventData.location!.latitude,
+                                  longitude: eventData.location!.longitude,
+                                )
+                              : null,
+                          status: create_event.EventStatus.confirmed,
+                          createdAt: eventData.createdAt,
+                        );
+                        Navigator.pushNamed(
+                          context,
+                          AppRouter.editEvent,
+                          arguments: {'event': editEvent},
+                        );
+                      },
+                    );
+                  }
+                }
+                return const SizedBox.shrink();
+              },
               error: (_, __) => const SizedBox.shrink(),
             );
           },
@@ -268,9 +337,12 @@ class _EventPageState extends ConsumerState<EventPage> {
           color: BrandColors.planning,
           backgroundColor: BrandColors.bg2,
           child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(
-              horizontal: Insets.screenH,
-              vertical: Gaps.lg,
+            controller: _scrollController,
+            padding: const EdgeInsets.only(
+              left: Insets.screenH,
+              right: Insets.screenH,
+              top: Gaps.sm,
+              bottom: Gaps.lg,
             ),
             child: Column(
               children: [
@@ -285,1034 +357,328 @@ class _EventPageState extends ConsumerState<EventPage> {
                 ),
                 const SizedBox(height: Gaps.md),
 
-                // Event status chip - visible for event host OR group admins
-                Consumer(
-                  builder: (context, consumerRef, _) {
-                    final canManageAsync = consumerRef.watch(
-                      canManageEventProvider(eventId),
-                    );
-
-                    return canManageAsync.when(
-                      data: (canManage) {
-                        if (!canManage) {
-                          return const SizedBox.shrink();
-                        }
-
-                        return Column(
-                          children: [
-                            EventStatusChip(
-                              status: event.status,
-                              isHost: true,
-                              onTap: () => _showStatusChangeDialog(
-                                context,
-                                ref,
-                                eventId,
-                                event.status,
-                              ),
-                            ),
-                            const SizedBox(height: Gaps.lg),
-                          ],
-                        );
-                      },
-                      loading: () => const SizedBox.shrink(),
-                      error: (_, __) => const SizedBox.shrink(),
-                    );
-                  },
-                ),
+                // Event status chip - always visible
+                _buildEventStatusSection(event),
 
                 // RSVP Widget
-                rsvpsAsync.when(
-                  data: (rsvps) {
-                    return userRsvpAsync.when(
-                      data: (userRsvp) {
-                        return suggestionsAsync.when(
-                          data: (suggestions) {
-                            // Filter suggestions that are DIFFERENT from current event date
-                            // (for "Add Suggestion" button visibility)
-                            final alternateDateSuggestions =
-                                suggestions.where((s) {
-                              if (event.startDateTime == null ||
-                                  event.endDateTime == null) {
-                                return true;
-                              }
-                              final isDifferent = !s.startDateTime
-                                      .isAtSameMomentAs(event.startDateTime!) ||
-                                  !(s.endDateTime?.isAtSameMomentAs(
-                                          event.endDateTime!) ??
-                                      false);
-                              return isDifferent;
-                            }).toList();
+                _buildRsvpSection(event, currentUserId),
 
-                            // Also check location suggestions for hasSuggestions flag
-                            return Consumer(
-                              builder: (context, consumerRef, child) {
-                                final locationSuggestionsAsync =
-                                    consumerRef.watch(
-                                  eventLocationSuggestionsProvider(eventId),
-                                );
+                // Date & Time Suggestions Widget (OPTIMIZED)
+                // Combined provider reduces nesting from 4 levels to 1
+                Consumer(
+                  builder: (context, ref, child) {
+                    final dataAsync =
+                        ref.watch(dateTimeSuggestionsDataProvider(eventId));
 
-                                return locationSuggestionsAsync.when(
-                                  data: (locationSuggestions) {
-                                    // Filter location suggestions DIFFERENT from current event location
-                                    final alternateLocationSuggestions =
-                                        locationSuggestions.where((s) {
-                                      if (event.location == null) return true;
-                                      final isDifferent = s.locationName !=
-                                              event.location!.displayName ||
-                                          (s.address ?? '') !=
-                                              event.location!.formattedAddress;
-                                      return isDifferent;
-                                    }).toList();
-
-                                    // Calculate dynamic counts from actual RSVP data
-                                    final goingCount = rsvps
-                                        .where(
-                                          (r) => r.status == RsvpStatus.going,
-                                        )
-                                        .length;
-                                    final notGoingCount = rsvps
-                                        .where(
-                                          (r) =>
-                                              r.status == RsvpStatus.notGoing,
-                                        )
-                                        .length;
-                                    final pendingCount = rsvps
-                                        .where(
-                                          (r) => r.status == RsvpStatus.pending,
-                                        )
-                                        .length;
-
-                                    return rsvp_widget.RsvpWidget(
-                                      goingCount: goingCount,
-                                      notGoingCount: notGoingCount,
-                                      pendingCount: pendingCount,
-                                      userVote: _getUserVoteStatus(userRsvp),
-                                      onGoingPressed: () async {
-                                        final currentStatus =
-                                            userRsvp?.status ??
-                                                RsvpStatus.pending;
-                                        final newStatus =
-                                            currentStatus == RsvpStatus.going
-                                                ? RsvpStatus.pending
-                                                : RsvpStatus.going;
-                                        await ref
-                                            .read(userRsvpProvider(eventId)
-                                                .notifier)
-                                            .submitVote(newStatus);
-                                      },
-                                      onNotGoingPressed: () async {
-                                        final currentStatus =
-                                            userRsvp?.status ??
-                                                RsvpStatus.pending;
-                                        final newStatus =
-                                            currentStatus == RsvpStatus.notGoing
-                                                ? RsvpStatus.pending
-                                                : RsvpStatus.notGoing;
-                                        await ref
-                                            .read(userRsvpProvider(eventId)
-                                                .notifier)
-                                            .submitVote(newStatus);
-                                      },
-                                      allVotes: rsvps
-                                          .map(
-                                            (r) => rsvp_widget.RsvpVote(
-                                              id: r.id,
-                                              userId: r.userId,
-                                              userName: _getUserDisplayName(
-                                                  r.userId,
-                                                  r.userName,
-                                                  currentUserId),
-                                              userAvatar: r.userAvatar,
-                                              status: r.status ==
-                                                      RsvpStatus.going
-                                                  ? rsvp_widget
-                                                      .RsvpVoteStatus.going
-                                                  : r.status ==
-                                                          RsvpStatus.notGoing
-                                                      ? rsvp_widget
-                                                          .RsvpVoteStatus
-                                                          .notGoing
-                                                      : rsvp_widget
-                                                          .RsvpVoteStatus
-                                                          .pending,
-                                              votedAt: r.createdAt,
-                                            ),
-                                          )
-                                          .toList(),
-                                      onAddSuggestion: _getUserVoteStatus(
-                                                  userRsvp) ==
-                                              false
-                                          ? () {
-                                              if (event.startDateTime != null &&
-                                                  event.endDateTime != null) {
-                                                showAddSuggestionBottomSheet(
-                                                  context,
-                                                  eventId: eventId,
-                                                  eventStartDate:
-                                                      event.startDateTime!,
-                                                  eventStartTime:
-                                                      TimeOfDay.fromDateTime(
-                                                    event.startDateTime!,
-                                                  ),
-                                                  eventEndDate:
-                                                      event.endDateTime!,
-                                                  eventEndTime:
-                                                      TimeOfDay.fromDateTime(
-                                                    event.endDateTime!,
-                                                  ),
-                                                  type: locationSuggestions
-                                                          .isNotEmpty
-                                                      ? SuggestionType.location
-                                                      : SuggestionType
-                                                          .dateTime, // Start with Location tab if location suggestions exist
-                                                  currentEventLocationName:
-                                                      event.location
-                                                          ?.displayName,
-                                                  currentEventAddress: event
-                                                      .location
-                                                      ?.formattedAddress,
-                                                );
-                                              }
-                                            }
-                                          : null,
-                                      eventStartDateTime: event.startDateTime,
-                                      eventEndDateTime: event.endDateTime,
-                                      isHost: event.hostId == currentUserId,
-                                      hasSuggestions:
-                                          alternateDateSuggestions.isNotEmpty ||
-                                              alternateLocationSuggestions
-                                                  .isNotEmpty,
-                                    );
-                                  },
-                                  loading: () => rsvp_widget.RsvpWidget(
-                                    goingCount: event.goingCount,
-                                    notGoingCount: event.notGoingCount,
-                                    pendingCount: rsvps
-                                        .where(
-                                          (r) => r.status == RsvpStatus.pending,
-                                        )
-                                        .length,
-                                    userVote: _getUserVoteStatus(userRsvp),
-                                    onGoingPressed: () {
-                                      final currentStatus = userRsvp?.status ??
-                                          RsvpStatus.pending;
-                                      final newStatus =
-                                          currentStatus == RsvpStatus.going
-                                              ? RsvpStatus.pending
-                                              : RsvpStatus.going;
-                                      ref
-                                          .read(
-                                            userRsvpProvider(eventId).notifier,
-                                          )
-                                          .submitVote(newStatus);
-                                    },
-                                    onNotGoingPressed: () {
-                                      final currentStatus = userRsvp?.status ??
-                                          RsvpStatus.pending;
-                                      final newStatus =
-                                          currentStatus == RsvpStatus.notGoing
-                                              ? RsvpStatus.pending
-                                              : RsvpStatus.notGoing;
-                                      ref
-                                          .read(
-                                            userRsvpProvider(eventId).notifier,
-                                          )
-                                          .submitVote(newStatus);
-                                    },
-                                    allVotes: rsvps
-                                        .map(
-                                          (r) => rsvp_widget.RsvpVote(
-                                            id: r.id,
-                                            userId: r.userId,
-                                            userName: _getUserDisplayName(
-                                                r.userId,
-                                                r.userName,
-                                                currentUserId),
-                                            userAvatar: r.userAvatar,
-                                            status: r.status == RsvpStatus.going
-                                                ? rsvp_widget
-                                                    .RsvpVoteStatus.going
-                                                : r.status ==
-                                                        RsvpStatus.notGoing
-                                                    ? rsvp_widget
-                                                        .RsvpVoteStatus.notGoing
-                                                    : rsvp_widget
-                                                        .RsvpVoteStatus.pending,
-                                            votedAt: r.createdAt,
-                                          ),
-                                        )
-                                        .toList(),
-                                    onAddSuggestion:
-                                        _getUserVoteStatus(userRsvp) == false
-                                            ? () {
-                                                if (event.startDateTime !=
-                                                        null &&
-                                                    event.endDateTime != null) {
-                                                  showAddSuggestionBottomSheet(
-                                                    context,
-                                                    eventId: eventId,
-                                                    eventStartDate:
-                                                        event.startDateTime!,
-                                                    eventStartTime:
-                                                        TimeOfDay.fromDateTime(
-                                                      event.startDateTime!,
-                                                    ),
-                                                    eventEndDate:
-                                                        event.endDateTime!,
-                                                    eventEndTime:
-                                                        TimeOfDay.fromDateTime(
-                                                      event.endDateTime!,
-                                                    ),
-                                                  );
-                                                }
-                                              }
-                                            : null,
-                                    eventStartDateTime: event.startDateTime,
-                                    eventEndDateTime: event.endDateTime,
-                                    isHost: event.hostId == currentUserId,
-                                    hasSuggestions:
-                                        false, // Default to false when loading
-                                  ),
-                                  error: (error, stack) =>
-                                      rsvp_widget.RsvpWidget(
-                                    goingCount: event.goingCount,
-                                    notGoingCount: event.notGoingCount,
-                                    pendingCount: rsvps
-                                        .where(
-                                          (r) => r.status == RsvpStatus.pending,
-                                        )
-                                        .length,
-                                    userVote: _getUserVoteStatus(userRsvp),
-                                    onGoingPressed: () {
-                                      final currentStatus = userRsvp?.status ??
-                                          RsvpStatus.pending;
-                                      final newStatus =
-                                          currentStatus == RsvpStatus.going
-                                              ? RsvpStatus.pending
-                                              : RsvpStatus.going;
-                                      ref
-                                          .read(
-                                            userRsvpProvider(eventId).notifier,
-                                          )
-                                          .submitVote(newStatus);
-                                    },
-                                    onNotGoingPressed: () {
-                                      final currentStatus = userRsvp?.status ??
-                                          RsvpStatus.pending;
-                                      final newStatus =
-                                          currentStatus == RsvpStatus.notGoing
-                                              ? RsvpStatus.pending
-                                              : RsvpStatus.notGoing;
-                                      ref
-                                          .read(
-                                            userRsvpProvider(eventId).notifier,
-                                          )
-                                          .submitVote(newStatus);
-                                    },
-                                    allVotes: rsvps
-                                        .map(
-                                          (r) => rsvp_widget.RsvpVote(
-                                            id: r.id,
-                                            userId: r.userId,
-                                            userName: _getUserDisplayName(
-                                                r.userId,
-                                                r.userName,
-                                                currentUserId),
-                                            userAvatar: r.userAvatar,
-                                            status: r.status == RsvpStatus.going
-                                                ? rsvp_widget
-                                                    .RsvpVoteStatus.going
-                                                : r.status ==
-                                                        RsvpStatus.notGoing
-                                                    ? rsvp_widget
-                                                        .RsvpVoteStatus.notGoing
-                                                    : rsvp_widget
-                                                        .RsvpVoteStatus.pending,
-                                            votedAt: r.createdAt,
-                                          ),
-                                        )
-                                        .toList(),
-                                    onAddSuggestion:
-                                        _getUserVoteStatus(userRsvp) == false
-                                            ? () {
-                                                if (event.startDateTime !=
-                                                        null &&
-                                                    event.endDateTime != null) {
-                                                  showAddSuggestionBottomSheet(
-                                                    context,
-                                                    eventId: eventId,
-                                                    eventStartDate:
-                                                        event.startDateTime!,
-                                                    eventStartTime:
-                                                        TimeOfDay.fromDateTime(
-                                                      event.startDateTime!,
-                                                    ),
-                                                    eventEndDate:
-                                                        event.endDateTime!,
-                                                    eventEndTime:
-                                                        TimeOfDay.fromDateTime(
-                                                      event.endDateTime!,
-                                                    ),
-                                                  );
-                                                }
-                                              }
-                                            : null,
-                                    eventStartDateTime: event.startDateTime,
-                                    eventEndDateTime: event.endDateTime,
-                                    isHost: event.hostId == currentUserId,
-                                    hasSuggestions:
-                                        false, // Default to false on error
-                                  ),
-                                );
-                              },
-                            );
-                          },
-                          loading: () => rsvp_widget.RsvpWidget(
-                            goingCount: event.goingCount,
-                            notGoingCount: event.notGoingCount,
-                            pendingCount: rsvps
-                                .where((r) => r.status == RsvpStatus.pending)
-                                .length,
-                            userVote: _getUserVoteStatus(userRsvp),
-                            onGoingPressed: () {
-                              final currentStatus =
-                                  userRsvp?.status ?? RsvpStatus.pending;
-                              final newStatus =
-                                  currentStatus == RsvpStatus.going
-                                      ? RsvpStatus.pending
-                                      : RsvpStatus.going;
-                              ref
-                                  .read(userRsvpProvider(eventId).notifier)
-                                  .submitVote(newStatus);
-                            },
-                            onNotGoingPressed: () {
-                              final currentStatus =
-                                  userRsvp?.status ?? RsvpStatus.pending;
-                              final newStatus =
-                                  currentStatus == RsvpStatus.notGoing
-                                      ? RsvpStatus.pending
-                                      : RsvpStatus.notGoing;
-                              ref
-                                  .read(userRsvpProvider(eventId).notifier)
-                                  .submitVote(newStatus);
-                            },
-                            allVotes: rsvps
-                                .map(
-                                  (r) => rsvp_widget.RsvpVote(
-                                    id: r.id,
-                                    userId: r.userId,
-                                    userName: _getUserDisplayName(
-                                        r.userId, r.userName, currentUserId),
-                                    userAvatar: r.userAvatar,
-                                    status: r.status == RsvpStatus.going
-                                        ? rsvp_widget.RsvpVoteStatus.going
-                                        : r.status == RsvpStatus.notGoing
-                                            ? rsvp_widget
-                                                .RsvpVoteStatus.notGoing
-                                            : rsvp_widget
-                                                .RsvpVoteStatus.pending,
-                                    votedAt: r.createdAt,
-                                  ),
-                                )
-                                .toList(),
-                            onAddSuggestion: _getUserVoteStatus(userRsvp) ==
-                                    false
-                                ? () {
-                                    if (event.startDateTime != null &&
-                                        event.endDateTime != null) {
-                                      showAddSuggestionBottomSheet(
-                                        context,
-                                        eventId: eventId,
-                                        eventStartDate: event.startDateTime!,
-                                        eventStartTime: TimeOfDay.fromDateTime(
-                                          event.startDateTime!,
-                                        ),
-                                        eventEndDate: event.endDateTime!,
-                                        eventEndTime: TimeOfDay.fromDateTime(
-                                          event.endDateTime!,
-                                        ),
-                                      );
-                                    }
-                                  }
-                                : null,
-                            eventStartDateTime: event.startDateTime,
-                            eventEndDateTime: event.endDateTime,
-                            isHost: event.hostId == currentUserId,
-                            hasSuggestions:
-                                false, // Default to false when loading
-                          ),
-                          error: (error, stack) => rsvp_widget.RsvpWidget(
-                            goingCount: event.goingCount,
-                            notGoingCount: event.notGoingCount,
-                            pendingCount: rsvps
-                                .where((r) => r.status == RsvpStatus.pending)
-                                .length,
-                            userVote: _getUserVoteStatus(userRsvp),
-                            onGoingPressed: () {
-                              final currentStatus =
-                                  userRsvp?.status ?? RsvpStatus.pending;
-                              final newStatus =
-                                  currentStatus == RsvpStatus.going
-                                      ? RsvpStatus.pending
-                                      : RsvpStatus.going;
-                              ref
-                                  .read(userRsvpProvider(eventId).notifier)
-                                  .submitVote(newStatus);
-                            },
-                            onNotGoingPressed: () {
-                              final currentStatus =
-                                  userRsvp?.status ?? RsvpStatus.pending;
-                              final newStatus =
-                                  currentStatus == RsvpStatus.notGoing
-                                      ? RsvpStatus.pending
-                                      : RsvpStatus.notGoing;
-                              ref
-                                  .read(userRsvpProvider(eventId).notifier)
-                                  .submitVote(newStatus);
-                            },
-                            allVotes: rsvps
-                                .map(
-                                  (r) => rsvp_widget.RsvpVote(
-                                    id: r.id,
-                                    userId: r.userId,
-                                    userName: _getUserDisplayName(
-                                        r.userId, r.userName, currentUserId),
-                                    userAvatar: r.userAvatar,
-                                    status: r.status == RsvpStatus.going
-                                        ? rsvp_widget.RsvpVoteStatus.going
-                                        : r.status == RsvpStatus.notGoing
-                                            ? rsvp_widget
-                                                .RsvpVoteStatus.notGoing
-                                            : rsvp_widget
-                                                .RsvpVoteStatus.pending,
-                                    votedAt: r.createdAt,
-                                  ),
-                                )
-                                .toList(),
-                            onAddSuggestion: _getUserVoteStatus(userRsvp) ==
-                                    false
-                                ? () {
-                                    if (event.startDateTime != null &&
-                                        event.endDateTime != null) {
-                                      showAddSuggestionBottomSheet(
-                                        context,
-                                        eventId: eventId,
-                                        eventStartDate: event.startDateTime!,
-                                        eventStartTime: TimeOfDay.fromDateTime(
-                                          event.startDateTime!,
-                                        ),
-                                        eventEndDate: event.endDateTime!,
-                                        eventEndTime: TimeOfDay.fromDateTime(
-                                          event.endDateTime!,
-                                        ),
-                                      );
-                                    }
-                                  }
-                                : null,
-                            eventStartDateTime: event.startDateTime,
-                            eventEndDateTime: event.endDateTime,
-                            isHost: event.hostId == currentUserId,
-                            hasSuggestions: false, // Default to false on error
-                          ),
-                        );
-                      },
-                      loading: () =>
-                          const Center(child: CircularProgressIndicator()),
-                      error: (error, stack) {
-                        // Show RSVP widget with empty votes on error
-                        return rsvp_widget.RsvpWidget(
-                          goingCount: 0,
-                          notGoingCount: 0,
-                          pendingCount: 0,
-                          userVote: null,
-                          onGoingPressed: () {},
-                          onNotGoingPressed: () {},
-                          allVotes: const [],
-                          onAddSuggestion: null,
-                          eventStartDateTime: event.startDateTime,
-                          eventEndDateTime: event.endDateTime,
-                          isHost: event.hostId == currentUserId,
-                          hasSuggestions: false,
-                        );
-                      },
-                    );
-                  },
-                  loading: () =>
-                      const Center(child: CircularProgressIndicator()),
-                  error: (error, stack) {
-                    // Show RSVP widget with empty votes on error
-                    return rsvp_widget.RsvpWidget(
-                      goingCount: 0,
-                      notGoingCount: 0,
-                      pendingCount: 0,
-                      userVote: null,
-                      onGoingPressed: () {},
-                      onNotGoingPressed: () {},
-                      allVotes: const [],
-                      onAddSuggestion: null,
-                      eventStartDateTime: event.startDateTime,
-                      eventEndDateTime: event.endDateTime,
-                      isHost: event.hostId == currentUserId,
-                      hasSuggestions: false,
-                    );
-                  },
-                ),
-                const SizedBox(height: Gaps.lg),
-
-                // Date & Time Suggestions Widget
-                // ONLY SHOWS when there are alternative date suggestions (not just event's current date)
-                suggestionsAsync.when(
-                  data: (suggestions) {
-                    // Filter suggestions that are DIFFERENT from current event date
-                    final alternateSuggestions = suggestions.where((s) {
-                      if (event.startDateTime == null ||
-                          event.endDateTime == null) {
-                        return true;
-                      }
-
-                      // Keep only suggestions with DIFFERENT dates
-                      final isDifferent = !s.startDateTime
-                              .isAtSameMomentAs(event.startDateTime!) ||
-                          !(s.endDateTime
-                                  ?.isAtSameMomentAs(event.endDateTime!) ??
-                              false);
-                      return isDifferent;
-                    }).toList();
-
-                    // ONLY show widget if there are ALTERNATIVE suggestions (different from current date)
-                    if (alternateSuggestions.isEmpty) {
+                    // If no data yet (initial load), show nothing
+                    if (!dataAsync.hasValue) {
                       return const SizedBox.shrink();
                     }
 
-                    return suggestionVotesAsync.when(
-                      data: (allVotes) {
-                        return userSuggestionVotesAsync.when(
-                          data: (userVotes) {
-                            final List<DateTimeSuggestion> dateTimeSuggestions =
-                                [];
+                    // Use .value to access data even during refresh (when isLoading: true, hasValue: true)
+                    final data = dataAsync.value!;
 
-                            // Always add current event date as FIRST option (for comparison)
-                            if (event.startDateTime != null &&
-                                event.endDateTime != null) {
-                              dateTimeSuggestions.add(DateTimeSuggestion(
-                                id: 'current_event_date',
-                                startDateTime: event.startDateTime!,
-                                endDateTime: event.endDateTime!,
-                                voteCount:
-                                    0, // Current date has no votes (it's the default)
-                                hasUserVoted: false,
-                                votes: [],
-                              ));
-                            }
-
-                            // Add all ALTERNATIVE suggestions (different from current date)
-                            dateTimeSuggestions
-                                .addAll(alternateSuggestions.map((
-                              suggestion,
-                            ) {
-                              final suggestionVotes = allVotes
-                                  .where(
-                                    (vote) =>
-                                        vote.suggestionId == suggestion.id,
-                                  )
-                                  .map(
-                                    (vote) => datetime_widget.SuggestionVote(
-                                      id: vote.id,
-                                      userId: vote.userId,
-                                      userName: _getUserDisplayName(vote.userId,
-                                          vote.userName, currentUserId),
-                                      userAvatar: vote.userAvatar,
-                                      votedAt: vote.createdAt,
-                                    ),
-                                  )
-                                  .toList();
-
-                              return DateTimeSuggestion(
-                                id: suggestion.id,
-                                startDateTime: suggestion.startDateTime,
-                                endDateTime: suggestion.endDateTime,
-                                voteCount: suggestionVotes.length,
-                                hasUserVoted: userVotes.any(
-                                  (vote) => vote.suggestionId == suggestion.id,
-                                ),
-                                votes: suggestionVotes,
-                              );
-                            }));
-
-                            final userVoteIds = userVotes
-                                .map((vote) => vote.suggestionId)
-                                .toSet();
-
-                            return Column(
-                              children: [
-                                DateTimeSuggestionsWidget(
-                                  suggestions: dateTimeSuggestions,
-                                  userVotes: userVoteIds,
-                                  currentEventStartDateTime:
-                                      event.startDateTime,
-                                  currentEventEndDateTime: event.endDateTime,
-                                  onVote: (suggestionId) {
-                                    ref
-                                        .read(
-                                          toggleSuggestionVoteNotifierProvider
-                                              .notifier,
-                                        )
-                                        .toggleVote_(eventId, suggestionId);
-                                  },
-                                  isHost: event.hostId == currentUserId,
-                                  onAddSuggestion: () {
-                                    if (event.startDateTime != null &&
-                                        event.endDateTime != null) {
-                                      showAddSuggestionBottomSheet(
-                                        context,
-                                        eventId: eventId,
-                                        eventStartDate: event.startDateTime!,
-                                        eventStartTime: TimeOfDay.fromDateTime(
-                                          event.startDateTime!,
-                                        ),
-                                        eventEndDate: event.endDateTime!,
-                                        eventEndTime: TimeOfDay.fromDateTime(
-                                          event.endDateTime!,
-                                        ),
-                                      );
-                                    }
-                                  },
-                                  onSetDate: (selectedSuggestion) async {
-                                    await _setEventDate(
-                                      context,
-                                      ref,
-                                      selectedSuggestion,
-                                    );
-                                  },
-                                ),
-                                const SizedBox(height: Gaps.lg),
-                              ],
-                            );
-                          },
-                          loading: () =>
-                              const Center(child: CircularProgressIndicator()),
-                          error: (error, stack) => const SizedBox.shrink(),
-                        );
-                      },
-                      loading: () =>
-                          const Center(child: CircularProgressIndicator()),
-                      error: (error, stack) => const SizedBox.shrink(),
-                    );
-                  },
-                  loading: () => const SizedBox.shrink(),
-                  error: (error, stack) => const SizedBox.shrink(),
-                ),
-
-                // Location suggestions widget (independent of datetime suggestions)
-                Consumer(
-                  builder: (context, consumerRef, child) {
-                    final locationSuggestionsAsync = consumerRef.watch(
-                      eventLocationSuggestionsProvider(eventId),
-                    );
-                    final locationVotesAsync = consumerRef.watch(
-                      locationSuggestionVotesProvider(eventId),
-                    );
-                    final userLocationVotesAsync = consumerRef.watch(
-                      userLocationSuggestionVotesProvider(eventId),
+                    // Process raw data into UI models
+                    final processedData = _processDateTimeSuggestions(
+                      suggestions: data['suggestions'] as List<Suggestion>,
+                      allVotes: data['allVotes'] as List<SuggestionVote>,
+                      userVoteIds: data['userVoteIds'] as Set<String>,
+                      event: event,
+                      goingCount: data['goingCount'] as int,
+                      currentUserId: currentUserId,
                     );
 
-                    return locationSuggestionsAsync.when(
-                      data: (locationSuggestions) {
-                        // Hide if no suggestions
-                        if (locationSuggestions.isEmpty) {
-                          return const SizedBox.shrink();
-                        }
-
-                        // Filter suggestions DIFFERENT from current event location (if exists)
-                        final alternateLocationSuggestions =
-                            locationSuggestions.where((s) {
-                          if (event.location == null) return true;
-
-                          // Check if suggestion is different from current location
-                          final isDifferent =
-                              s.locationName != event.location!.displayName ||
-                                  (s.address ?? '') !=
-                                      event.location!.formattedAddress;
-                          return isDifferent;
-                        }).toList();
-
-                        // Hide if no suggestions at all (should never happen, but safety check)
-                        if (locationSuggestions.isEmpty) {
-                          return const SizedBox.shrink();
-                        }
-
-                        // Hide if event has location but no alternative suggestions
-                        if (event.location != null &&
-                            alternateLocationSuggestions.isEmpty) {
-                          return const SizedBox.shrink();
-                        }
-
-                        return locationVotesAsync.when(
-                          data: (locationVotes) {
-                            return userLocationVotesAsync.when(
-                              data: (userLocationVotes) {
-                                final userLocationVoteIds = userLocationVotes
-                                    .map((vote) => vote.suggestionId)
-                                    .toSet();
-
-                                return Padding(
-                                  padding: const EdgeInsets.only(
-                                    bottom: Gaps.lg, //TODO: Fix spaces
-                                  ),
-                                  child: LocationSuggestionsWidget(
-                                    suggestions: locationSuggestions,
-                                    allVotes: locationVotes,
-                                    userVotes: userLocationVoteIds,
-                                    onVote: (suggestionId) {
-                                      ref
-                                          .read(
-                                            toggleLocationSuggestionVoteNotifierProvider
-                                                .notifier,
-                                          )
-                                          .toggleVote(eventId, suggestionId);
-                                    },
-                                    isHost: event.hostId == currentUserId,
-                                    onAddSuggestion: () {
-                                      showAddSuggestionBottomSheet(
-                                        context,
-                                        eventId: eventId,
-                                        eventStartDate: event.startDateTime!,
-                                        eventStartTime: TimeOfDay.fromDateTime(
-                                          event.startDateTime!,
-                                        ),
-                                        eventEndDate: event.endDateTime!,
-                                        eventEndTime: TimeOfDay.fromDateTime(
-                                          event.endDateTime!,
-                                        ),
-                                        type: SuggestionType.location,
-                                        currentEventLocationName:
-                                            event.location?.displayName,
-                                        currentEventAddress:
-                                            event.location?.formattedAddress,
-                                      );
-                                    },
-                                    onPickLocation: (selectedLocation) async {
-                                      await _setEventLocation(
-                                        context,
-                                        ref,
-                                        selectedLocation,
-                                      );
-                                    },
-                                    currentEventLocationName:
-                                        event.location?.displayName,
-                                    currentEventAddress:
-                                        event.location?.formattedAddress,
-                                  ),
-                                );
-                              },
-                              loading: () {
-                                if (kDebugMode) {}
-                                return const SizedBox.shrink();
-                              },
-                              error: (error, stack) {
-                                if (kDebugMode) {}
-                                return const SizedBox.shrink();
-                              },
-                            );
-                          },
-                          loading: () {
-                            if (kDebugMode) {}
-                            return const SizedBox.shrink();
-                          },
-                          error: (error, stack) {
-                            if (kDebugMode) {}
-                            return const SizedBox.shrink();
-                          },
-                        );
-                      },
-                      loading: () => const SizedBox.shrink(),
-                      error: (error, stack) => const SizedBox.shrink(),
-                    );
-                  },
-                ),
-
-                // Chat Preview
-                messagesAsync.when(
-                  data: (messages) {
-                    if (kDebugMode) {
-                      if (messages.isNotEmpty) {}
+                    // Hide if no alternatives
+                    if (!processedData.hasAlternatives) {
+                      return const SizedBox.shrink();
                     }
 
-                    // Get unread count (now returns AsyncValue)
-                    final unreadCountAsync = ref.watch(
-                      unreadMessagesCountProvider(eventId),
+                    return Column(
+                      children: [
+                        DateTimeSuggestionsWidget(
+                          suggestions: processedData.suggestions,
+                          userVotes: data['userVoteIds'] as Set<String>,
+                          currentEventStartDateTime: event.startDateTime,
+                          currentEventEndDateTime: event.endDateTime,
+                          onVote: (suggestionId) {
+                            ref
+                                .read(
+                                  toggleSuggestionVoteNotifierProvider.notifier,
+                                )
+                                .toggleVote_(eventId, suggestionId);
+                          },
+                          isHost: event.hostId == currentUserId,
+                          onAddSuggestion: () {
+                            if (event.startDateTime == null ||
+                                event.endDateTime == null) {
+                              TopBanner.showError(
+                                context,
+                                message:
+                                    'Event dates must be set before adding suggestions',
+                              );
+                              return;
+                            }
+                            showAddSuggestionBottomSheet(
+                              context,
+                              eventId: eventId,
+                              eventStartDate: event.startDateTime!,
+                              eventStartTime: TimeOfDay.fromDateTime(
+                                event.startDateTime!,
+                              ),
+                              eventEndDate: event.endDateTime!,
+                              eventEndTime: TimeOfDay.fromDateTime(
+                                event.endDateTime!,
+                              ),
+                            );
+                          },
+                          onSetDate: (selectedSuggestion) async {
+                            await _setEventDate(
+                              context,
+                              ref,
+                              selectedSuggestion,
+                            );
+                          },
+                        ),
+                        const SizedBox(height: Gaps.lg),
+                      ],
+                    );
+                  },
+                ),
+
+                // Location Suggestions Widget (OPTIMIZED)
+                // Combined provider reduces nesting from 3 levels to 1
+                Consumer(
+                  builder: (context, ref, child) {
+                    final dataAsync =
+                        ref.watch(locationSuggestionsDataProvider(eventId));
+
+                    // If no data yet (initial load), show nothing
+                    if (!dataAsync.hasValue) {
+                      return const SizedBox.shrink();
+                    }
+
+                    // Use .value to access data even during refresh (when isLoading: true, hasValue: true)
+                    final data = dataAsync.value!;
+                    final locationSuggestions =
+                        data['locationSuggestions'] as List<LocationSuggestion>;
+
+                    // Hide if no suggestions
+                    if (locationSuggestions.isEmpty) {
+                      return const SizedBox.shrink();
+                    }
+
+                    // Process data to check for alternatives
+                    final processedData = _processLocationSuggestions(
+                      suggestions: locationSuggestions,
+                      allVotes: data['locationVotes'] as List<SuggestionVote>,
+                      event: event,
+                      goingCount: data['goingCount'] as int,
                     );
 
-                    final unreadCount = unreadCountAsync.maybeWhen(
-                      data: (count) => count,
-                      orElse: () => 0,
+                    // Hide if no alternatives
+                    if (!processedData.hasAlternatives) {
+                      return const SizedBox.shrink();
+                    }
+
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: Gaps.lg),
+                      child: LocationSuggestionsWidget(
+                        suggestions: processedData.suggestions,
+                        allVotes: data['locationVotes'] as List<SuggestionVote>,
+                        userVotes: data['userVoteIds'] as Set<String>,
+                        onVote: (suggestionId) {
+                          ref
+                              .read(
+                                toggleLocationSuggestionVoteNotifierProvider
+                                    .notifier,
+                              )
+                              .toggleVote(eventId, suggestionId);
+                        },
+                        isHost: event.hostId == currentUserId,
+                        currentEventGoingCount:
+                            processedData.currentEventGoingCount,
+                        onAddSuggestion: () {
+                          showAddSuggestionBottomSheet(
+                            context,
+                            eventId: eventId,
+                            eventStartDate: event.startDateTime!,
+                            eventStartTime: TimeOfDay.fromDateTime(
+                              event.startDateTime!,
+                            ),
+                            eventEndDate: event.endDateTime!,
+                            eventEndTime: TimeOfDay.fromDateTime(
+                              event.endDateTime!,
+                            ),
+                            type: SuggestionType.location,
+                            currentEventLocationName:
+                                event.location?.displayName,
+                            currentEventAddress:
+                                event.location?.formattedAddress,
+                          );
+                        },
+                        onPickLocation: (selectedLocation) async {
+                          await _setEventLocation(
+                            context,
+                            ref,
+                            selectedLocation,
+                          );
+                        },
+                        currentEventLocationName: event.location?.displayName,
+                        currentEventAddress: event.location?.formattedAddress,
+                      ),
                     );
+                  },
+                ),
 
-                    final previewMessages = messages
-                        .map(
-                          (m) => ChatMessagePreview(
-                            userId: m.userId,
-                            userName: _getUserDisplayName(
-                                m.userId, m.userName, currentUserId),
-                            userAvatar: m.userAvatar,
-                            content: m.content,
-                            timestamp: m.createdAt,
-                            isReadBySomeone: m.isReadBySomeone,
-                            isPinned: m.isPinned,
-                            isDeleted: m.isDeleted,
-                            isPending: m.isPending,
-                            replyTo: m.replyTo != null
-                                ? ChatMessagePreview(
-                                    userId: m.replyTo!.userId,
-                                    userName: _getUserDisplayName(
-                                        m.replyTo!.userId,
-                                        m.replyTo!.userName,
-                                        currentUserId),
-                                    userAvatar: m.replyTo!.userAvatar,
-                                    content: m.replyTo!.content,
-                                    timestamp: m.replyTo!.createdAt,
-                                    isReadBySomeone: m.replyTo!.isReadBySomeone,
-                                    isPinned: m.replyTo!.isPinned,
-                                    isDeleted: m.replyTo!.isDeleted,
-                                    isPending: m.replyTo!.isPending,
-                                  )
-                                : null,
-                          ),
-                        )
-                        .toList();
+                // Chat Preview (OPTIMIZED)
+                // Data processing moved to pure function
+                Consumer(
+                  builder: (context, ref, child) {
+                    final data = ref.watch(chatPreviewDataProvider(eventId));
+                    final messagesAsync =
+                        data['messagesAsync'] as AsyncValue<List<ChatMessage>>;
+                    final unreadCountAsync =
+                        data['unreadCountAsync'] as AsyncValue<int>;
 
-                    return ChatPreviewWidget(
-                      newMessagesCount: unreadCount,
-                      currentUserId: currentUserId ?? '',
-                      recentMessages: previewMessages,
-                      onOpenChat: () {
-                        Navigator.pushNamed(
-                          context,
-                          AppRouter.eventChat,
-                          arguments: {'eventId': eventId},
+                    return messagesAsync.when(
+                      data: (messages) {
+                        final unreadCount = unreadCountAsync.maybeWhen(
+                          data: (count) => count,
+                          orElse: () => 0,
                         );
-                      },
-                      onOpenChatWithMessage: (messageId) {
-                        Navigator.pushNamed(
-                          context,
-                          AppRouter.eventChat,
-                          arguments: {
-                            'eventId': eventId,
-                            'scrollToMessageId': messageId,
+
+                        // Process messages using pure function
+                        final chatData = _processChatMessages(
+                          messages: messages,
+                          unreadCount: unreadCount,
+                          currentUserId: currentUserId,
+                        );
+
+                        return ChatPreviewWidget(
+                          newMessagesCount: chatData.unreadCount,
+                          currentUserId: currentUserId ?? '',
+                          recentMessages: chatData.previews,
+                          onOpenChat: () {
+                            Navigator.pushNamed(
+                              context,
+                              AppRouter.eventChat,
+                              arguments: {'eventId': eventId},
+                            );
+                          },
+                          onOpenChatWithMessage: (messageId) {
+                            Navigator.pushNamed(
+                              context,
+                              AppRouter.eventChat,
+                              arguments: {
+                                'eventId': eventId,
+                                'scrollToMessageId': messageId,
+                              },
+                            );
+                          },
+                          onSendMessage: (content,
+                              {ChatMessagePreview? replyTo}) async {
+                            // Use message map for faster lookup
+                            ChatMessage? replyToMessage;
+                            if (replyTo != null) {
+                              try {
+                                replyToMessage = messages.firstWhere(
+                                  (m) =>
+                                      m.userId == replyTo.userId &&
+                                      m.content == replyTo.content &&
+                                      m.createdAt == replyTo.timestamp,
+                                );
+                              } catch (e) {
+                                // Ignore if message not found
+                              }
+                            }
+
+                            await ref
+                                .read(chatActionsProvider(eventId))
+                                .sendMessage(
+                                  content,
+                                  replyTo: replyToMessage,
+                                );
+                          },
+                          onPinMessage: (message) async {
+                            final originalMessage = messages.firstWhere(
+                              (m) =>
+                                  m.content == message.content &&
+                                  m.userId == message.userId,
+                            );
+                            await ref
+                                .read(chatActionsProvider(eventId))
+                                .togglePin(
+                                  originalMessage.id,
+                                  !originalMessage.isPinned,
+                                );
+                            // Navigate to chat and scroll to pinned message
+                            if (context.mounted) {
+                              Navigator.pushNamed(
+                                context,
+                                AppRouter.eventChat,
+                                arguments: {
+                                  'eventId': eventId,
+                                  'scrollToMessageId': originalMessage.id,
+                                },
+                              );
+                            }
+                          },
+                          onDeleteMessage: (message) async {
+                            final originalMessage = messages.firstWhere(
+                              (m) =>
+                                  m.content == message.content &&
+                                  m.userId == message.userId,
+                            );
+                            await ref
+                                .read(chatActionsProvider(eventId))
+                                .deleteMessage(originalMessage.id);
+                          },
+                          onReplyMessage: (message) {
+                            Navigator.pushNamed(
+                              context,
+                              AppRouter.eventChat,
+                              arguments: {'eventId': eventId},
+                            );
                           },
                         );
                       },
-                      onSendMessage: (content,
-                          {ChatMessagePreview? replyTo}) async {
-                        if (kDebugMode) {}
-
-                        // Convert ChatMessagePreview to ChatMessage if replying
-                        ChatMessage? replyToMessage;
-                        if (replyTo != null) {
-                          // Find the original ChatMessage from messages list
-                          try {
-                            replyToMessage = messages.firstWhere(
-                              (m) =>
-                                  m.userId == replyTo.userId &&
-                                  m.content == replyTo.content &&
-                                  m.createdAt == replyTo.timestamp,
-                            );
-                            if (kDebugMode) {}
-                          } catch (e) {
-                            if (kDebugMode) {}
-                          }
-                        }
-
-                        await ref
-                            .read(chatActionsProvider(eventId))
-                            .sendMessage(
-                              content,
-                              replyTo: replyToMessage,
-                            );
-                        if (kDebugMode) {}
-                      },
-                      onPinMessage: (message) async {
-                        final originalMessage = messages.firstWhere(
-                          (m) =>
-                              m.content == message.content &&
-                              m.userId == message.userId,
+                      loading: () => const ChatPreviewWidget(
+                        newMessagesCount: 0,
+                        currentUserId: '',
+                        recentMessages: [],
+                        onOpenChat: null,
+                        onSendMessage: null,
+                      ),
+                      error: (error, stack) {
+                        return ChatPreviewWidget(
+                          newMessagesCount: 0,
+                          currentUserId: currentUserId ?? '',
+                          recentMessages: const [],
+                          onOpenChat: () {},
+                          onSendMessage: (content,
+                              {ChatMessagePreview? replyTo}) async {
+                            await ref
+                                .read(chatActionsProvider(eventId))
+                                .sendMessage(content);
+                          },
+                          onPinMessage: (message) async {
+                            await ref
+                                .read(chatActionsProvider(eventId))
+                                .togglePin('', false);
+                            if (context.mounted) {
+                              Navigator.pushNamed(
+                                context,
+                                AppRouter.eventChat,
+                                arguments: {'eventId': eventId},
+                              );
+                            }
+                          },
+                          onDeleteMessage: (message) async {
+                            await ref
+                                .read(chatActionsProvider(eventId))
+                                .deleteMessage('');
+                          },
                         );
-                        await ref.read(chatActionsProvider(eventId)).togglePin(
-                              originalMessage.id,
-                              !originalMessage.isPinned,
-                            );
-                        // Navigate to chat and scroll to pinned message
-                        if (context.mounted) {
-                          Navigator.pushNamed(
-                            context,
-                            AppRouter.eventChat,
-                            arguments: {
-                              'eventId': eventId,
-                              'scrollToMessageId': originalMessage.id,
-                            },
-                          );
-                        }
-                      },
-                      onDeleteMessage: (message) async {
-                        final originalMessage = messages.firstWhere(
-                          (m) =>
-                              m.content == message.content &&
-                              m.userId == message.userId,
-                        );
-                        await ref
-                            .read(chatActionsProvider(eventId))
-                            .deleteMessage(originalMessage.id);
-                      },
-                      onReplyMessage: (message) {
-                        // Navigate to chat page with reply context (future enhancement)
-                        Navigator.pushNamed(
-                          context,
-                          AppRouter.eventChat,
-                          arguments: {'eventId': eventId},
-                        );
-                      },
-                    );
-                  },
-                  loading: () => const ChatPreviewWidget(
-                    newMessagesCount: 0,
-                    currentUserId: '',
-                    recentMessages: [],
-                    onOpenChat: null,
-                    onSendMessage: null,
-                  ),
-                  error: (error, stack) {
-                    // Show empty chat widget on error so users can still try to send messages
-                    return ChatPreviewWidget(
-                      newMessagesCount: 0,
-                      currentUserId: currentUserId ?? '',
-                      recentMessages: const [],
-                      onOpenChat: () {},
-                      onSendMessage: (content,
-                          {ChatMessagePreview? replyTo}) async {
-                        if (kDebugMode) {}
-                        await ref
-                            .read(chatActionsProvider(eventId))
-                            .sendMessage(content);
-                        if (kDebugMode) {}
-                      },
-                      onPinMessage: (message) async {
-                        // Try to send action even in error state
-                        await ref
-                            .read(chatActionsProvider(eventId))
-                            .togglePin('', false);
-                        // Navigate to chat
-                        if (context.mounted) {
-                          Navigator.pushNamed(
-                            context,
-                            AppRouter.eventChat,
-                            arguments: {'eventId': eventId},
-                          );
-                        }
-                      },
-                      onDeleteMessage: (message) async {
-                        await ref
-                            .read(chatActionsProvider(eventId))
-                            .deleteMessage('');
                       },
                     );
                   },
@@ -1320,51 +686,48 @@ class _EventPageState extends ConsumerState<EventPage> {
                 const SizedBox(height: Gaps.lg),
 
                 // Expenses widget
-                participantsAsync.when(
-                  data: (participants) {
-                    final currentUserId =
-                        Supabase.instance.client.auth.currentUser?.id;
-                    final participantOptions = participants.map((p) {
-                      return ExpenseParticipantOption(
-                        id: p.userId,
-                        name: _getUserDisplayName(
-                            p.userId, p.displayName, currentUserId),
-                        avatarUrl: p.avatarUrl,
-                      );
-                    }).toList();
+                // Use whenOrNull to keep previous expenses visible during refresh
+                participantsAsync.whenOrNull(
+                      data: (participants) {
+                        final currentUserId =
+                            Supabase.instance.client.auth.currentUser?.id;
+                        final participantOptions = participants.map((p) {
+                          return ExpenseParticipantOption(
+                            id: p.userId,
+                            name: _getUserDisplayName(
+                                p.userId, p.displayName, currentUserId),
+                            avatarUrl: p.avatarUrl,
+                          );
+                        }).toList();
 
-                    // Sort: "You" first, then alphabetically by name
-                    participantOptions.sort((a, b) {
-                      if (a.name == 'You') return -1;
-                      if (b.name == 'You') return 1;
-                      return a.name.compareTo(b.name);
-                    });
+                        // Sort: "You" first, then alphabetically by name
+                        participantOptions.sort((a, b) {
+                          if (a.name == 'You') return -1;
+                          if (b.name == 'You') return 1;
+                          return a.name.compareTo(b.name);
+                        });
 
-                    return EventExpensesWidget(
-                      eventId: eventId,
-                      mode: ChatMode.planning,
-                      participants: participantOptions, // ✅ Participantes reais
-                      onAddExpense:
-                          (title, paidById, participantsOwe, amount) async {
-                                                ref
-                            .read(eventExpensesProvider(eventId).notifier)
-                            .addExpense(
-                          description: title,
-                          amount: amount,
-                          paidBy: paidById,
-                          participantsOwe: participantsOwe,
-                          participantsPaid: [],
+                        return EventExpensesWidget(
+                          eventId: eventId,
+                          mode: ChatMode.planning,
+                          participants:
+                              participantOptions, // ✅ Participantes reais
+                          onAddExpense:
+                              (title, paidById, participantsOwe, amount) async {
+                            ref
+                                .read(eventExpensesProvider(eventId).notifier)
+                                .addExpense(
+                              description: title,
+                              amount: amount,
+                              paidBy: paidById,
+                              participantsOwe: participantsOwe,
+                              participantsPaid: [],
+                            );
+                          },
                         );
                       },
-                    );
-                  },
-                  loading: () {
-                                        return const SizedBox.shrink();
-                  },
-                  error: (error, stack) {
-                                        return const SizedBox.shrink();
-                  },
-                ),
+                    ) ??
+                    const SizedBox.shrink(), // Default when no data yet
                 const SizedBox(height: Gaps.lg),
 
                 // Location Widget (if location is set)
@@ -1392,47 +755,47 @@ class _EventPageState extends ConsumerState<EventPage> {
                 ],
 
                 // Polls (if no date/location or if there are suggestions)
-                pollsAsync.when(
-                  data: (polls) {
-                    if (polls.isEmpty &&
-                        (event.startDateTime == null ||
-                            event.location == null)) {
-                      // Show empty state for polls
-                      return const SizedBox.shrink();
-                    }
-                    return Column(
-                      children: polls.map((poll) {
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: Gaps.lg),
-                          child: PollWidget(
-                            question: poll.question,
-                            options: poll.options
-                                .map(
-                                  (opt) => PollOptionData(
-                                    id: opt.id,
-                                    label: opt.value,
-                                    voteCount: opt.voteCount,
-                                  ),
-                                )
-                                .toList(),
-                            userVotedOptionId: _getUserVotedOption(poll),
-                            isHost: event.hostId == currentUserId,
-                            onVote: (optionId) {
-                              // TODO: Implement vote on poll
-                            },
-                            onPickFinal: event.hostId == currentUserId
-                                ? (optionId) {
-                                    // TODO: Implement pick final option
-                                  }
-                                : null,
-                          ),
+                // Use whenOrNull to keep previous polls visible during refresh
+                pollsAsync.whenOrNull(
+                      data: (polls) {
+                        if (polls.isEmpty &&
+                            (event.startDateTime == null ||
+                                event.location == null)) {
+                          // Show empty state for polls
+                          return const SizedBox.shrink();
+                        }
+                        return Column(
+                          children: polls.map((poll) {
+                            return Padding(
+                              padding: const EdgeInsets.only(bottom: Gaps.lg),
+                              child: PollWidget(
+                                question: poll.question,
+                                options: poll.options
+                                    .map(
+                                      (opt) => PollOptionData(
+                                        id: opt.id,
+                                        label: opt.value,
+                                        voteCount: opt.voteCount,
+                                      ),
+                                    )
+                                    .toList(),
+                                userVotedOptionId: _getUserVotedOption(poll),
+                                isHost: event.hostId == currentUserId,
+                                onVote: (optionId) {
+                                  // TODO: Implement vote on poll
+                                },
+                                onPickFinal: event.hostId == currentUserId
+                                    ? (optionId) {
+                                        // TODO: Implement pick final option
+                                      }
+                                    : null,
+                              ),
+                            );
+                          }).toList(),
                         );
-                      }).toList(),
-                    );
-                  },
-                  loading: () => const SizedBox.shrink(),
-                  error: (error, stack) => const SizedBox.shrink(),
-                ),
+                      },
+                    ) ??
+                    const SizedBox.shrink(), // Default when no data yet
               ],
             ),
           ),
@@ -1464,15 +827,16 @@ class _EventPageState extends ConsumerState<EventPage> {
     DateTimeSuggestion selectedSuggestion,
   ) async {
     try {
-      // Step 1: Update the event's date and time
-      final eventRepository = ref.read(eventRepositoryProvider);
-      await eventRepository.updateEventDateTime(
-        eventId,
-        selectedSuggestion.startDateTime,
-        selectedSuggestion.endDateTime,
-      );
+      // OPTIMISTIC UI: Invalidate providers FIRST for instant UI update
+      // Providers will refetch and show loading state immediately
+      ref.invalidate(eventDetailProvider(eventId));
+      ref.invalidate(eventSuggestionsProvider(eventId));
+      ref.invalidate(suggestionVotesProvider(eventId));
+      ref.invalidate(userSuggestionVotesProvider(eventId));
+      ref.invalidate(eventRsvpsProvider(eventId));
+      ref.invalidate(userRsvpProvider(eventId));
 
-      // Step 2: Get all users who voted on the selected suggestion
+      // Get suggestion votes before clearing (needed for Step 2)
       final suggestionVotesAsync = ref.read(suggestionVotesProvider(eventId));
       final suggestionVotes = suggestionVotesAsync.value ?? [];
 
@@ -1481,6 +845,15 @@ class _EventPageState extends ConsumerState<EventPage> {
           .map((vote) => vote.userId)
           .toList();
 
+      // Step 1: Update the event's date and time
+      final eventRepository = ref.read(eventRepositoryProvider);
+      await eventRepository.updateEventDateTime(
+        eventId,
+        selectedSuggestion.startDateTime,
+        selectedSuggestion.endDateTime,
+      );
+
+      // Step 2: Reset RSVP votes for suggestion voters
       final rsvpRepository = ref.read(rsvpRepositoryProvider);
       await rsvpRepository.resetRsvpVotesFromSuggestion(
         eventId,
@@ -1491,15 +864,7 @@ class _EventPageState extends ConsumerState<EventPage> {
       final suggestionRepository = ref.read(suggestionRepositoryProvider);
       await suggestionRepository.clearEventSuggestions(eventId);
 
-      // Step 4: Invalidate providers to refresh the UI
-      ref.invalidate(eventDetailProvider(eventId));
-      ref.invalidate(eventRsvpsProvider(eventId));
-      ref.invalidate(userRsvpProvider(eventId));
-      ref.invalidate(eventSuggestionsProvider(eventId));
-      ref.invalidate(suggestionVotesProvider(eventId));
-      ref.invalidate(userSuggestionVotesProvider(eventId));
-
-      // Step 5: Show success feedback
+      // Step 4: Show success feedback
       if (context.mounted) {
         TopBanner.showSuccess(
           context,
@@ -1527,17 +892,17 @@ class _EventPageState extends ConsumerState<EventPage> {
     LocationSuggestion selectedSuggestion,
   ) async {
     try {
-      // Step 1: Update the event's location
-      final eventRepository = ref.read(eventRepositoryProvider);
-      await eventRepository.updateEventLocation(
-        eventId,
-        selectedSuggestion.locationName,
-        selectedSuggestion.address ?? '',
-        selectedSuggestion.latitude ?? 0.0,
-        selectedSuggestion.longitude ?? 0.0,
-      );
+      // OPTIMISTIC UI: Invalidate providers FIRST for instant UI update
+      // Providers will refetch and show loading state immediately
+      ref.invalidate(eventDetailProvider(eventId));
+      ref.invalidate(eventLocationSuggestionsProvider(eventId));
+      ref.invalidate(locationSuggestionVotesProvider(eventId));
+      ref.invalidate(userLocationSuggestionVotesProvider(eventId));
+      ref.invalidate(locationSuggestionsDataProvider(eventId));
+      ref.invalidate(eventRsvpsProvider(eventId));
+      ref.invalidate(userRsvpProvider(eventId));
 
-      // Step 2: Get all users who voted on the selected suggestion
+      // Get location votes before clearing (needed for Step 2)
       final locationVotesAsync = ref.read(
         locationSuggestionVotesProvider(eventId),
       );
@@ -1548,6 +913,17 @@ class _EventPageState extends ConsumerState<EventPage> {
           .map((vote) => vote.userId)
           .toList();
 
+      // Step 1: Update the event's location
+      final eventRepository = ref.read(eventRepositoryProvider);
+      await eventRepository.updateEventLocation(
+        eventId,
+        selectedSuggestion.locationName,
+        selectedSuggestion.address ?? '',
+        selectedSuggestion.latitude ?? 0.0,
+        selectedSuggestion.longitude ?? 0.0,
+      );
+
+      // Step 2: Reset RSVP votes for suggestion voters
       final rsvpRepository = ref.read(rsvpRepositoryProvider);
       await rsvpRepository.resetRsvpVotesFromSuggestion(
         eventId,
@@ -1558,13 +934,44 @@ class _EventPageState extends ConsumerState<EventPage> {
       final suggestionRepository = ref.read(suggestionRepositoryProvider);
       await suggestionRepository.clearEventLocationSuggestions(eventId);
 
-      // Step 4: Invalidate providers to refresh the UI
-      ref.invalidate(eventDetailProvider(eventId));
-      ref.invalidate(eventRsvpsProvider(eventId));
-      ref.invalidate(userRsvpProvider(eventId));
-      ref.invalidate(eventLocationSuggestionsProvider(eventId));
-      ref.invalidate(locationSuggestionVotesProvider(eventId));
-      ref.invalidate(userLocationSuggestionVotesProvider(eventId));
+      // Step 3.5: Wait for DB transaction to complete
+      await Future.delayed(const Duration(milliseconds: 300));
+
+      // Note: We don't create a suggestion for the new current location.
+      // Current location comes from event.location and displays with a star (not votable).
+
+      // Step 4: Get updated event for verification
+      final updatedEvent = await ref.read(eventDetailProvider(eventId).future);
+
+      // Step 4d: Verify deletion worked and re-delete if alternatives remain
+      // Note: The current location suggestion is expected and correct.
+      // We only care about ALTERNATIVE suggestions (different from current location).
+      final remainingSuggestions = await ref.read(
+        eventLocationSuggestionsProvider(eventId).future,
+      );
+
+      // Count alternatives (suggestions that DON'T match current location)
+      final alternatives = remainingSuggestions.where((s) {
+        // Check if suggestion matches current event location
+        final nameMatches =
+            s.locationName == updatedEvent.location?.displayName;
+        final addressMatches = (s.address ?? '') ==
+            (updatedEvent.location?.formattedAddress ?? '');
+        final isCurrentLocation = nameMatches && addressMatches;
+        return !isCurrentLocation; // Only count alternatives
+      }).toList();
+
+      if (alternatives.isNotEmpty) {
+        // Delete ALL suggestions again (including current location)
+        await suggestionRepository.clearEventLocationSuggestions(eventId);
+        // Wait again
+        await Future.delayed(const Duration(milliseconds: 300));
+        // Invalidate again
+        ref.invalidate(eventLocationSuggestionsProvider(eventId));
+        ref.invalidate(locationSuggestionVotesProvider(eventId));
+        ref.invalidate(userLocationSuggestionVotesProvider(eventId));
+        ref.invalidate(locationSuggestionsDataProvider(eventId));
+      }
 
       // Step 5: Show success feedback
       if (context.mounted) {
@@ -1582,5 +989,560 @@ class _EventPageState extends ConsumerState<EventPage> {
         );
       }
     }
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // SECTION BUILDER METHODS
+  // These methods extract complex widget trees from build() for better organization
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  /// Builds the event status chip section
+  /// Shows status for all users, with management actions for hosts
+  Widget _buildEventStatusSection(EventDetail event) {
+    return Consumer(
+      builder: (context, consumerRef, _) {
+        final canManageAsync = consumerRef.watch(
+          canManageEventProvider(eventId),
+        );
+
+        return canManageAsync.when(
+          data: (canManage) {
+            // Cache the isHost status
+            _cachedIsHost = canManage;
+
+            return Column(
+              children: [
+                EventStatusChip(
+                  status: event.status,
+                  isHost: canManage,
+                  onTap: canManage
+                      ? () => _showStatusChangeDialog(
+                            context,
+                            ref,
+                            eventId,
+                            event.status,
+                          )
+                      : () {},
+                ),
+                const SizedBox(height: Gaps.lg),
+              ],
+            );
+          },
+          loading: () => Column(
+            children: [
+              EventStatusChip(
+                status: event.status,
+                isHost: _cachedIsHost ?? false,
+                onTap: (_cachedIsHost ?? false)
+                    ? () => _showStatusChangeDialog(
+                          context,
+                          ref,
+                          eventId,
+                          event.status,
+                        )
+                    : () {},
+              ),
+              const SizedBox(height: Gaps.lg),
+            ],
+          ),
+          error: (_, __) => Column(
+            children: [
+              EventStatusChip(
+                status: event.status,
+                isHost: _cachedIsHost ?? false,
+                onTap: (_cachedIsHost ?? false)
+                    ? () => _showStatusChangeDialog(
+                          context,
+                          ref,
+                          eventId,
+                          event.status,
+                        )
+                    : () {},
+              ),
+              const SizedBox(height: Gaps.lg),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  /// Builds the RSVP section with voting functionality
+  /// This is one of the most complex sections with nested AsyncValues
+  Widget _buildRsvpSection(EventDetail event, String? currentUserId) {
+    final rsvpsAsync = ref.watch(eventRsvpsProvider(eventId));
+    final userRsvpAsync = ref.watch(userRsvpProvider(eventId));
+    final suggestionsAsync = ref.watch(eventSuggestionsProvider(eventId));
+
+    // Use whenOrNull to keep previous RSVP visible during refresh
+    return rsvpsAsync.whenOrNull(
+          data: (rsvps) {
+            return userRsvpAsync.whenOrNull(
+                  data: (userRsvp) {
+                    return suggestionsAsync.whenOrNull(
+                          data: (suggestions) => _buildRsvpWidget(
+                            event,
+                            currentUserId,
+                            rsvps,
+                            userRsvp,
+                            suggestions,
+                          ),
+                        ) ??
+                        _buildRsvpLoadingState(
+                          event,
+                          currentUserId,
+                          rsvps,
+                          userRsvp,
+                        );
+                  },
+                ) ??
+                _buildRsvpLoadingState(
+                  event,
+                  currentUserId,
+                  rsvps,
+                  null, // userRsvp not loaded yet
+                );
+          },
+        ) ??
+        _buildRsvpErrorState(
+            event, currentUserId); // Fallback for first load or error
+  }
+
+  /// Helper: Builds the actual RSVP widget with all data loaded
+  Widget _buildRsvpWidget(
+    EventDetail event,
+    String? currentUserId,
+    List<Rsvp> rsvps,
+    Rsvp? userRsvp,
+    List<Suggestion> suggestions,
+  ) {
+    // Filter suggestions DIFFERENT from current event date
+    final alternateDateSuggestions = suggestions.where((s) {
+      if (event.startDateTime == null || event.endDateTime == null) {
+        return true;
+      }
+      final isDifferent =
+          !s.startDateTime.isAtSameMomentAs(event.startDateTime!) ||
+              !(s.endDateTime?.isAtSameMomentAs(event.endDateTime!) ?? false);
+      return isDifferent;
+    }).toList();
+
+    return Consumer(
+      builder: (context, consumerRef, child) {
+        final locationSuggestionsAsync = consumerRef.watch(
+          eventLocationSuggestionsProvider(eventId),
+        );
+
+        return locationSuggestionsAsync.when(
+          data: (locationSuggestions) {
+            // Filter location suggestions DIFFERENT from current event location
+            final alternateLocationSuggestions = locationSuggestions.where((s) {
+              if (event.location == null) return true;
+              final isDifferent =
+                  s.locationName != event.location!.displayName ||
+                      (s.address ?? '') != event.location!.formattedAddress;
+              return isDifferent;
+            }).toList();
+
+            // Calculate dynamic counts
+            final goingCount =
+                rsvps.where((r) => r.status == RsvpStatus.going).length;
+            final notGoingCount =
+                rsvps.where((r) => r.status == RsvpStatus.notGoing).length;
+            final pendingCount =
+                rsvps.where((r) => r.status == RsvpStatus.pending).length;
+
+            return Column(
+              children: [
+                rsvp_widget.RsvpWidget(
+                  goingCount: goingCount,
+                  notGoingCount: notGoingCount,
+                  pendingCount: pendingCount,
+                  userVote: _getUserVoteStatus(userRsvp),
+                  onGoingPressed: () async {
+                    final currentStatus =
+                        userRsvp?.status ?? RsvpStatus.pending;
+                    final newStatus = currentStatus == RsvpStatus.going
+                        ? RsvpStatus.pending
+                        : RsvpStatus.going;
+                    await ref
+                        .read(userRsvpProvider(eventId).notifier)
+                        .submitVote(newStatus);
+                  },
+                  onNotGoingPressed: () async {
+                    final currentStatus =
+                        userRsvp?.status ?? RsvpStatus.pending;
+                    final newStatus = currentStatus == RsvpStatus.notGoing
+                        ? RsvpStatus.pending
+                        : RsvpStatus.notGoing;
+                    await ref
+                        .read(userRsvpProvider(eventId).notifier)
+                        .submitVote(newStatus);
+                  },
+                  allVotes: rsvps
+                      .map(
+                        (r) => rsvp_widget.RsvpVote(
+                          id: r.id,
+                          userId: r.userId,
+                          userName: _getUserDisplayName(
+                              r.userId, r.userName, currentUserId),
+                          userAvatar: r.userAvatar,
+                          status: r.status == RsvpStatus.going
+                              ? rsvp_widget.RsvpVoteStatus.going
+                              : r.status == RsvpStatus.notGoing
+                                  ? rsvp_widget.RsvpVoteStatus.notGoing
+                                  : rsvp_widget.RsvpVoteStatus.pending,
+                          votedAt: r.createdAt,
+                        ),
+                      )
+                      .toList(),
+                  onAddSuggestion: _getUserVoteStatus(userRsvp) == false
+                      ? () {
+                          if (event.startDateTime == null ||
+                              event.endDateTime == null) {
+                            TopBanner.showError(
+                              context,
+                              message:
+                                  'Event dates must be set before adding suggestions',
+                            );
+                            return;
+                          }
+                          showAddSuggestionBottomSheet(
+                            context,
+                            eventId: eventId,
+                            eventStartDate: event.startDateTime!,
+                            eventStartTime:
+                                TimeOfDay.fromDateTime(event.startDateTime!),
+                            eventEndDate: event.endDateTime!,
+                            eventEndTime:
+                                TimeOfDay.fromDateTime(event.endDateTime!),
+                            type: locationSuggestions.isNotEmpty
+                                ? SuggestionType.location
+                                : SuggestionType.dateTime,
+                            currentEventLocationName:
+                                event.location?.displayName,
+                            currentEventAddress:
+                                event.location?.formattedAddress,
+                          );
+                        }
+                      : null,
+                  eventStartDateTime: event.startDateTime,
+                  eventEndDateTime: event.endDateTime,
+                  isHost: event.hostId == currentUserId,
+                  hasSuggestions: alternateDateSuggestions.isNotEmpty ||
+                      alternateLocationSuggestions.isNotEmpty,
+                ),
+                const SizedBox(height: Gaps.lg),
+              ],
+            );
+          },
+          loading: () => _buildRsvpLoadingState(
+            event,
+            currentUserId,
+            rsvps,
+            userRsvp,
+          ),
+          error: (error, stack) => _buildRsvpLoadingState(
+            event,
+            currentUserId,
+            rsvps,
+            userRsvp,
+          ),
+        );
+      },
+    );
+  }
+
+  /// Helper: Builds RSVP widget in loading state
+  Widget _buildRsvpLoadingState(
+    EventDetail event,
+    String? currentUserId,
+    List<Rsvp> rsvps,
+    Rsvp? userRsvp,
+  ) {
+    final goingCount = rsvps.where((r) => r.status == RsvpStatus.going).length;
+    final notGoingCount =
+        rsvps.where((r) => r.status == RsvpStatus.notGoing).length;
+    final pendingCount =
+        rsvps.where((r) => r.status == RsvpStatus.pending).length;
+
+    return Column(
+      children: [
+        rsvp_widget.RsvpWidget(
+          goingCount: goingCount,
+          notGoingCount: notGoingCount,
+          pendingCount: pendingCount,
+          userVote: _getUserVoteStatus(userRsvp),
+          onGoingPressed: () async {
+            final currentStatus = userRsvp?.status ?? RsvpStatus.pending;
+            final newStatus = currentStatus == RsvpStatus.going
+                ? RsvpStatus.pending
+                : RsvpStatus.going;
+            await ref
+                .read(userRsvpProvider(eventId).notifier)
+                .submitVote(newStatus);
+          },
+          onNotGoingPressed: () async {
+            final currentStatus = userRsvp?.status ?? RsvpStatus.pending;
+            final newStatus = currentStatus == RsvpStatus.notGoing
+                ? RsvpStatus.pending
+                : RsvpStatus.notGoing;
+            await ref
+                .read(userRsvpProvider(eventId).notifier)
+                .submitVote(newStatus);
+          },
+          allVotes: rsvps
+              .map(
+                (r) => rsvp_widget.RsvpVote(
+                  id: r.id,
+                  userId: r.userId,
+                  userName:
+                      _getUserDisplayName(r.userId, r.userName, currentUserId),
+                  userAvatar: r.userAvatar,
+                  status: r.status == RsvpStatus.going
+                      ? rsvp_widget.RsvpVoteStatus.going
+                      : r.status == RsvpStatus.notGoing
+                          ? rsvp_widget.RsvpVoteStatus.notGoing
+                          : rsvp_widget.RsvpVoteStatus.pending,
+                  votedAt: r.createdAt,
+                ),
+              )
+              .toList(),
+          onAddSuggestion: null,
+          eventStartDateTime: event.startDateTime,
+          eventEndDateTime: event.endDateTime,
+          isHost: event.hostId == currentUserId,
+          hasSuggestions: false,
+        ),
+        const SizedBox(height: Gaps.lg),
+      ],
+    );
+  }
+
+  /// Helper: Builds RSVP widget in error state
+  Widget _buildRsvpErrorState(EventDetail event, String? currentUserId) {
+    return Column(
+      children: [
+        rsvp_widget.RsvpWidget(
+          goingCount: 0,
+          notGoingCount: 0,
+          pendingCount: 0,
+          userVote: null,
+          onGoingPressed: () {},
+          onNotGoingPressed: () {},
+          allVotes: const [],
+          onAddSuggestion: null,
+          eventStartDateTime: event.startDateTime,
+          eventEndDateTime: event.endDateTime,
+          isHost: event.hostId == currentUserId,
+          hasSuggestions: false,
+        ),
+        const SizedBox(height: Gaps.lg),
+      ],
+    );
+  }
+
+  // ===== DATA PROCESSING METHODS =====
+  // Pure functions that transform raw data into UI-ready models
+  // No refs, no side effects, easily testable
+
+  /// Process date/time suggestions with votes and filters
+  /// Returns data ready for UI consumption
+  DateTimeSuggestionsData _processDateTimeSuggestions({
+    required List<Suggestion> suggestions,
+    required List<SuggestionVote> allVotes,
+    required Set<String> userVoteIds,
+    required EventDetail event,
+    required int goingCount,
+    required String? currentUserId,
+  }) {
+    // Filter suggestions that are DIFFERENT from current event date
+    final alternateSuggestions = suggestions.where((s) {
+      if (event.startDateTime == null || event.endDateTime == null) {
+        return true;
+      }
+      final isDifferent =
+          !s.startDateTime.isAtSameMomentAs(event.startDateTime!) ||
+              !(s.endDateTime?.isAtSameMomentAs(event.endDateTime!) ?? false);
+      return isDifferent;
+    }).toList();
+
+    final List<DateTimeSuggestion> dateTimeSuggestions = [];
+
+    // Always add current event date as FIRST option (for comparison)
+    DateTimeSuggestion? currentEventOption;
+    if (event.startDateTime != null && event.endDateTime != null) {
+      currentEventOption = DateTimeSuggestion(
+        id: 'current_event_date',
+        startDateTime: event.startDateTime!,
+        endDateTime: event.endDateTime!,
+        voteCount: goingCount, // Show number of 'Can' votes from RSVP
+        hasUserVoted: false,
+        votes: [],
+      );
+      dateTimeSuggestions.add(currentEventOption);
+    }
+
+    // Add all ALTERNATIVE suggestions (different from current date)
+    dateTimeSuggestions.addAll(alternateSuggestions.map((suggestion) {
+      final suggestionVotes = allVotes
+          .where((vote) => vote.suggestionId == suggestion.id)
+          .map((vote) => datetime_widget.SuggestionVote(
+                id: vote.id,
+                userId: vote.userId,
+                userName: _getUserDisplayName(
+                    vote.userId, vote.userName, currentUserId),
+                userAvatar: vote.userAvatar,
+                votedAt: vote.createdAt,
+              ))
+          .toList();
+
+      return DateTimeSuggestion(
+        id: suggestion.id,
+        startDateTime: suggestion.startDateTime,
+        endDateTime: suggestion.endDateTime,
+        voteCount: suggestionVotes.length,
+        hasUserVoted: userVoteIds.contains(suggestion.id),
+        votes: suggestionVotes,
+      );
+    }));
+
+    return DateTimeSuggestionsData(
+      suggestions: dateTimeSuggestions,
+      hasAlternatives: alternateSuggestions.isNotEmpty,
+      currentEventOption: currentEventOption,
+    );
+  }
+
+  /// Process location suggestions with votes and filters
+  /// Returns data ready for UI consumption
+  /// Current location always appears first, followed by alternative suggestions
+  LocationSuggestionsData _processLocationSuggestions({
+    required List<LocationSuggestion> suggestions,
+    required List<SuggestionVote> allVotes,
+    required EventDetail event,
+    required int goingCount,
+  }) {
+    // Separate current location from alternatives
+    final currentLocationSuggestions = <LocationSuggestion>[];
+    final alternateLocationSuggestions = <LocationSuggestion>[];
+
+    // Track if we found the current location in the DB suggestions
+    bool foundCurrentLocationInDB = false;
+
+    for (final suggestion in suggestions) {
+      if (event.location == null) {
+        alternateLocationSuggestions.add(suggestion);
+        continue;
+      }
+
+      // Detailed comparison
+      final nameMatches =
+          suggestion.locationName == event.location!.displayName;
+      final suggestionAddr = suggestion.address ?? '';
+      final eventAddr = event.location!.formattedAddress;
+      final addressMatches = suggestionAddr == eventAddr;
+
+      final isCurrentLocation = nameMatches && addressMatches;
+
+      if (isCurrentLocation) {
+        currentLocationSuggestions.add(suggestion);
+        foundCurrentLocationInDB = true;
+      } else {
+        alternateLocationSuggestions.add(suggestion);
+      }
+    }
+
+    // CRITICAL: If event has a location but we didn't find it in DB suggestions,
+    // create a synthetic suggestion for it (happens after "Set Location" deletes all suggestions)
+    if (event.location != null &&
+        !foundCurrentLocationInDB &&
+        alternateLocationSuggestions.isNotEmpty) {
+      final syntheticCurrentLocation = LocationSuggestion(
+        id: 'synthetic_current_location',
+        eventId: event.id,
+        userId: event.hostId,
+        locationName: event.location!.displayName,
+        address: event.location!.formattedAddress.isEmpty
+            ? null
+            : event.location!.formattedAddress,
+        latitude: event.location!.latitude,
+        longitude: event.location!.longitude,
+        createdAt: event.createdAt,
+        userName: '', // Not needed for display
+        userAvatar: null, // Not needed for display
+      );
+      currentLocationSuggestions.add(syntheticCurrentLocation);
+    }
+
+    // Sort: current location first (with star at top), then alternatives
+    // Note: Supabase returns suggestions in DESC order (newest first)
+    // We want: current location at top, then alternatives with oldest at top (newest at bottom)
+    // So we need to reverse the alternatives list from DB
+    final sortedAlternatives = alternateLocationSuggestions.reversed.toList();
+
+    final sortedSuggestions = [
+      ...currentLocationSuggestions, // Current location with star at THE TOP
+      ...sortedAlternatives // Alternative suggestions (oldest first, newest last)
+    ];
+
+    final hasAlternatives = event.location != null
+        ? alternateLocationSuggestions.isNotEmpty
+        : suggestions.isNotEmpty;
+
+    return LocationSuggestionsData(
+      suggestions: sortedSuggestions,
+      allVotes: allVotes,
+      hasAlternatives: hasAlternatives,
+      currentEventGoingCount: goingCount,
+    );
+  }
+
+  /// Process chat messages into preview models
+  /// Returns data ready for UI consumption with message lookup map
+  ChatPreviewData _processChatMessages({
+    required List<ChatMessage> messages,
+    required int unreadCount,
+    required String? currentUserId,
+  }) {
+    // Create message lookup map for faster access (used in reply/pin/delete)
+    final messageMap = <String, ChatMessage>{};
+    for (final message in messages) {
+      messageMap[message.id] = message;
+    }
+
+    final previewMessages = messages.map((m) {
+      return ChatMessagePreview(
+        userId: m.userId,
+        userName: _getUserDisplayName(m.userId, m.userName, currentUserId),
+        userAvatar: m.userAvatar,
+        content: m.content,
+        timestamp: m.createdAt,
+        isReadBySomeone: m.isReadBySomeone,
+        isPinned: m.isPinned,
+        isDeleted: m.isDeleted,
+        isPending: m.isPending,
+        replyTo: m.replyTo != null
+            ? ChatMessagePreview(
+                userId: m.replyTo!.userId,
+                userName: _getUserDisplayName(
+                    m.replyTo!.userId, m.replyTo!.userName, currentUserId),
+                userAvatar: m.replyTo!.userAvatar,
+                content: m.replyTo!.content,
+                timestamp: m.replyTo!.createdAt,
+                isReadBySomeone: m.replyTo!.isReadBySomeone,
+                isPinned: m.replyTo!.isPinned,
+                isDeleted: m.replyTo!.isDeleted,
+                isPending: m.replyTo!.isPending,
+              )
+            : null,
+      );
+    }).toList();
+
+    return ChatPreviewData(
+      previews: previewMessages,
+      messageMap: messageMap,
+      unreadCount: unreadCount,
+    );
   }
 }

@@ -796,19 +796,27 @@ class _VoteButton extends StatelessWidget {
               if (count > 0) ...[
                 const SizedBox(width: Gaps.xs),
                 Container(
+                  constraints: const BoxConstraints(
+                    minWidth: 24,
+                    minHeight: 24,
+                  ),
                   padding: const EdgeInsets.symmetric(
                     horizontal: 6,
-                    vertical: 2,
+                    vertical: 4,
                   ),
                   decoration: BoxDecoration(
                     color: isSelected ? color : BrandColors.border,
-                    borderRadius: BorderRadius.circular(10),
+                    shape: BoxShape.circle,
                   ),
-                  child: Text(
-                    count.toString(),
-                    style: AppText.bodyMedium.copyWith(
-                      color: isSelected ? BrandColors.text1 : BrandColors.text2,
-                      fontWeight: FontWeight.w600,
+                  child: Center(
+                    child: Text(
+                      count.toString(),
+                      style: AppText.bodyMedium.copyWith(
+                        color:
+                            isSelected ? BrandColors.text1 : BrandColors.text2,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 12,
+                      ),
                     ),
                   ),
                 ),

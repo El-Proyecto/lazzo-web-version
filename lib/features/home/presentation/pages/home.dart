@@ -5,7 +5,7 @@ import '../../../../shared/components/inputs/search_bar.dart' as custom;
 import '../../../../shared/components/sections/section_block.dart';
 import '../../../../shared/components/cards/home_event_card.dart';
 import '../../../../shared/components/cards/event_small_card.dart';
-import '../../../../shared/components/cards/todo_card.dart';
+// import '../../../../shared/components/cards/todo_card.dart'; // MVP: Actions removed, preserved for P2
 import '../../../../shared/components/cards/payment_summary_card.dart';
 import '../../../../shared/components/cards/recent_memory_card.dart';
 import '../../../../shared/constants/spacing.dart';
@@ -50,6 +50,8 @@ class HomePage extends ConsumerStatefulWidget {
 
 class _HomePageState extends ConsumerState<HomePage> {
   bool _isNoEventsCardDismissed = false;
+  bool _isInitialized = false;
+  final ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
@@ -57,7 +59,29 @@ class _HomePageState extends ConsumerState<HomePage> {
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Refresh providers when navigating back to Home (e.g., after creating/editing event)
+    // Skip first call (initState already loads data)
+    if (_isInitialized) {
+      _refreshData();
+    }
+    _isInitialized = true;
+  }
+
+  /// Refresh all home data providers
+  void _refreshData() {
+    ref.invalidate(nextEventControllerProvider);
+    ref.invalidate(confirmedEventsControllerProvider);
+    ref.invalidate(homeEventsControllerProvider);
+    ref.invalidate(todosControllerProvider);
+    ref.invalidate(recentMemoriesControllerProvider);
+    ref.invalidate(paymentSummariesControllerProvider);
+  }
+
+  @override
   void dispose() {
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -114,10 +138,23 @@ class _HomePageState extends ConsumerState<HomePage> {
 
   @override
   Widget build(BuildContext context) {
+    // Listen for scroll-to-top trigger (when tapping active NavBar tab)
+    ref.listen<int>(scrollToTopProvider, (previous, next) {
+      if (previous != next && _scrollController.hasClients) {
+        _scrollController.animateTo(
+          0,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+        // Also refresh data when scrolling to top
+        _refreshData();
+      }
+    });
+
     final nextEventAsync = ref.watch(nextEventControllerProvider);
     final confirmedEventsAsync = ref.watch(confirmedEventsControllerProvider);
     final pendingEventsAsync = ref.watch(homeEventsControllerProvider);
-    final todosAsync = ref.watch(todosControllerProvider);
+    // final todosAsync = ref.watch(todosControllerProvider); // MVP: Actions removed, preserved for P2
     final paymentsAsync = ref.watch(paymentSummariesControllerProvider);
     final totalBalanceAsync = ref.watch(totalBalanceControllerProvider);
     final recentMemoriesAsync = ref.watch(recentMemoriesControllerProvider);
@@ -189,11 +226,22 @@ class _HomePageState extends ConsumerState<HomePage> {
       body: SafeArea(
         child: RefreshIndicator(
           onRefresh: () async {
-            // Refresh is handled by provider invalidation
+            // Invalidate all providers to trigger refetch
+            _refreshData();
+            // Wait for providers to refetch
+            await Future.wait([
+              ref.read(nextEventControllerProvider.future),
+              ref.read(confirmedEventsControllerProvider.future),
+              ref.read(homeEventsControllerProvider.future),
+              ref.read(todosControllerProvider.future),
+              ref.read(recentMemoriesControllerProvider.future),
+              ref.read(paymentSummariesControllerProvider.future),
+            ]);
           },
           color: BrandColors.planning,
           backgroundColor: BrandColors.bg2,
           child: ListView(
+            controller: _scrollController,
             padding: EdgeInsets.zero,
             children: [
               const SizedBox(height: Gaps.xs),
@@ -462,42 +510,9 @@ class _HomePageState extends ConsumerState<HomePage> {
                   error: (error, stackTrace) => const SizedBox.shrink(),
                 ),
 
-                // To Dos Section (only show if there are events)
-                todosAsync.when(
-                  data: (todos) {
-                    if (todos.isEmpty) {
-                      return const SizedBox.shrink();
-                    }
-                    return Column(
-                      children: [
-                        SectionBlock(
-                          title: 'To Dos',
-                          child: Column(
-                            children: todos.asMap().entries.map((entry) {
-                              final index = entry.key;
-                              final todo = entry.value;
-                              return Column(
-                                children: [
-                                  TodoCard(
-                                    todo: todo,
-                                    onTap: () {
-                                      // TODO P2: Navigate to event details
-                                    },
-                                  ),
-                                  if (index < todos.length - 1)
-                                    const SizedBox(height: Gaps.sm),
-                                ],
-                              );
-                            }).toList(),
-                          ),
-                        ),
-                        const SizedBox(height: Gaps.lg),
-                      ],
-                    );
-                  },
-                  loading: () => const SizedBox.shrink(),
-                  error: (error, stackTrace) => const SizedBox.shrink(),
-                ),
+                // To Dos Section removed from MVP (P1 only - awaiting P2 backend)
+                // Component preserved: TodoCard in shared/components/cards/
+                // Provider preserved: todosControllerProvider (inactive)
               ], // End of EVENT SECTIONS
 
               // Payments Section (shows even without events)

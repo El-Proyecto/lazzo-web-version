@@ -3,6 +3,7 @@ import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/constants/text_styles.dart';
 import '../../../../shared/themes/colors.dart';
 import '../../../../shared/components/common/common_bottom_sheet.dart';
+import '../../../../shared/components/common/top_banner.dart';
 
 /// Data model for date/time suggestion
 class DateTimeSuggestion {
@@ -183,31 +184,32 @@ class _DateTimeSuggestionsWidgetState extends State<DateTimeSuggestionsWidget> {
                   style: AppText.labelLarge,
                 ),
               ),
-              // Only show view votes if there are any votes
-              if (widget.suggestions.any((s) => s.voteCount > 0)) ...[
-                InkWell(
-                  onTap: () => _showViewVotesBottomSheet(context),
-                  borderRadius: BorderRadius.circular(10),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: Gaps.xxs),
-                    child: Row(
-                      children: [
-                        Text(
-                          'View votes',
-                          style: AppText.bodyMedium.copyWith(
-                            color: BrandColors.text2,
-                          ),
+              // Fixed width container to prevent expansion when View votes appears
+              SizedBox(
+                width: 100,
+                child: widget.suggestions.any((s) => s.voteCount > 0)
+                    ? InkWell(
+                        onTap: () => _showViewVotesBottomSheet(context),
+                        borderRadius: BorderRadius.circular(10),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              'View votes',
+                              style: AppText.bodyMedium.copyWith(
+                                color: BrandColors.text2,
+                              ),
+                            ),
+                            const Icon(
+                              Icons.chevron_right,
+                              size: IconSizes.sm,
+                              color: BrandColors.text2,
+                            ),
+                          ],
                         ),
-                        const Icon(
-                          Icons.chevron_right,
-                          size: IconSizes.sm,
-                          color: BrandColors.text2,
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
+                      )
+                    : const SizedBox.shrink(),
+              ),
             ],
           ),
           const SizedBox(height: Gaps.md),
@@ -226,7 +228,7 @@ class _DateTimeSuggestionsWidgetState extends State<DateTimeSuggestionsWidget> {
           }),
 
           // Action buttons
-          const SizedBox(height: Gaps.lg),
+          const SizedBox(height: Gaps.md),
           Row(
             children: [
               if (_isSelectionMode) ...[
@@ -329,177 +331,209 @@ class _DateTimeSuggestionsWidgetState extends State<DateTimeSuggestionsWidget> {
     final isCurrentEvent = _isCurrentEventSuggestion(suggestion);
     final isSelected =
         _isSelectionMode && _selectedSuggestionId == suggestion.id;
+    final shouldShowBorder =
+        _isSelectionMode ? isSelected : !isCurrentEvent && hasUserVoted;
 
     return AnimatedScale(
       scale: hasUserVoted ? 1.02 : 1.0,
       duration: const Duration(milliseconds: 200),
       curve: Curves.easeOutCubic,
       child: InkWell(
-        onTap: isCurrentEvent ? null : () => _handleVote(suggestion.id),
+        onTap: isCurrentEvent
+            ? () {
+                TopBanner.showInfo(
+                  context,
+                  message:
+                      'This is the current event date. You cannot vote on it.',
+                );
+              }
+            : () => _handleVote(suggestion.id),
         borderRadius: BorderRadius.circular(10),
-        child: Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(Pads.ctlH),
-          decoration: BoxDecoration(
-            color: _isSelectionMode
-                ? (isSelected
-                    ? BrandColors.planning.withValues(alpha: 0.1)
-                    : BrandColors.bg3)
-                : isCurrentEvent
-                    ? BrandColors.bg3
-                    : hasUserVoted
+        child: Stack(
+          children: [
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(Pads.ctlH),
+              decoration: BoxDecoration(
+                color: _isSelectionMode
+                    ? (isSelected
                         ? BrandColors.planning.withValues(alpha: 0.1)
-                        : BrandColors.bg3,
-            borderRadius: BorderRadius.circular(10),
-            border: _isSelectionMode
-                ? (isSelected
-                    ? Border.all(color: BrandColors.planning, width: 1)
-                    : null)
-                : isCurrentEvent
-                    ? null
-                    : hasUserVoted
-                        ? Border.all(color: BrandColors.planning, width: 1)
-                        : null,
-          ),
-          child: Row(
-            children: [
-              // Vote indicator, star for current event, or selection indicator
-              if (isCurrentEvent) ...[
-                const Icon(Icons.star, size: 20, color: BrandColors.text2),
-              ] else if (_isSelectionMode) ...[
-                AnimatedContainer(
-                  duration: const Duration(milliseconds: 150),
-                  width: 20,
-                  height: 20,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color:
-                        isSelected ? BrandColors.planning : Colors.transparent,
-                    border: Border.all(
-                      color:
-                          isSelected ? BrandColors.planning : BrandColors.text2,
-                      width: isSelected ? 2.2 : 1.5,
-                    ),
-                  ),
-                  child: Center(
-                    child: AnimatedContainer(
+                        : BrandColors.bg3)
+                    : isCurrentEvent
+                        ? BrandColors.bg3
+                        : hasUserVoted
+                            ? BrandColors.planning.withValues(alpha: 0.1)
+                            : BrandColors.bg3,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Row(
+                children: [
+                  // Vote indicator, star for current event, or selection indicator
+                  if (isCurrentEvent) ...[
+                    const Icon(Icons.star, size: 20, color: BrandColors.text2),
+                  ] else if (_isSelectionMode) ...[
+                    AnimatedContainer(
                       duration: const Duration(milliseconds: 150),
-                      width: isSelected ? 8 : 0,
-                      height: isSelected ? 8 : 0,
+                      width: 20,
+                      height: 20,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: isSelected ? Colors.white : Colors.transparent,
+                        color: isSelected
+                            ? BrandColors.planning
+                            : Colors.transparent,
+                        border: Border.all(
+                          color: isSelected
+                              ? BrandColors.planning
+                              : BrandColors.text2,
+                          width: isSelected ? 2.2 : 1.5,
+                        ),
                       ),
-                    ),
-                  ),
-                ),
-              ] else ...[
-                AnimatedContainer(
-                  duration: const Duration(milliseconds: 150),
-                  width: 20,
-                  height: 20,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: hasUserVoted
-                        ? BrandColors.planning
-                        : Colors.transparent,
-                    border: Border.all(
-                      color: hasUserVoted
-                          ? BrandColors.planning
-                          : BrandColors.text2,
-                      width: 1.5,
-                    ),
-                  ),
-                  child: hasUserVoted
-                      ? const Icon(Icons.check, size: 12, color: Colors.white)
-                      : null,
-                ),
-              ],
-              const SizedBox(width: Gaps.sm),
-
-              // Date and time info
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Date
-                    AnimatedDefaultTextStyle(
-                      duration: const Duration(milliseconds: 150),
-                      style: AppText.bodyMedium.copyWith(
-                        color: _isSelectionMode
-                            ? (isSelected
-                                ? BrandColors.text1
-                                : BrandColors.text1)
-                            : isCurrentEvent
-                                ? BrandColors.text2
-                                : hasUserVoted
-                                    ? BrandColors.text1
-                                    : BrandColors.text1,
-                        fontWeight: _isSelectionMode
-                            ? (isSelected ? FontWeight.w600 : FontWeight.normal)
-                            : isCurrentEvent
-                                ? FontWeight.normal
-                                : hasUserVoted
-                                    ? FontWeight.w600
-                                    : FontWeight.normal,
-                      ),
-                      child: Text(
-                        _formatDateRange(
-                          suggestion.startDateTime,
-                          suggestion.endDateTime,
+                      child: Center(
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 150),
+                          width: isSelected ? 8 : 0,
+                          height: isSelected ? 8 : 0,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color:
+                                isSelected ? Colors.white : Colors.transparent,
+                          ),
                         ),
                       ),
                     ),
-                    const SizedBox(height: Gaps.xxs),
-                    // Time range
-                    Text(
-                      _formatTimeRange(
-                        suggestion.startDateTime,
-                        suggestion.endDateTime,
+                  ] else ...[
+                    AnimatedContainer(
+                      duration: const Duration(milliseconds: 150),
+                      width: 20,
+                      height: 20,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: hasUserVoted
+                            ? BrandColors.planning
+                            : Colors.transparent,
+                        border: Border.all(
+                          color: hasUserVoted
+                              ? BrandColors.planning
+                              : BrandColors.text2,
+                          width: 1.5,
+                        ),
                       ),
-                      style: AppText.bodyMedium.copyWith(
-                        color: BrandColors.text2,
-                        fontSize: 12,
-                      ),
+                      child: hasUserVoted
+                          ? const Icon(Icons.check,
+                              size: 12, color: Colors.white)
+                          : null,
                     ),
                   ],
-                ),
-              ),
+                  const SizedBox(width: Gaps.sm),
 
-              // Vote count
-              AnimatedContainer(
-                duration: const Duration(milliseconds: 150),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: Gaps.xs,
-                  vertical: Gaps.xxs,
-                ),
-                decoration: BoxDecoration(
-                  color: _isSelectionMode
-                      ? (isSelected ? BrandColors.planning : BrandColors.border)
-                      : isCurrentEvent
-                          ? BrandColors.border
-                          : hasUserVoted
+                  // Date and time info
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Date
+                        AnimatedDefaultTextStyle(
+                          duration: const Duration(milliseconds: 150),
+                          style: AppText.bodyMedium.copyWith(
+                            color: _isSelectionMode
+                                ? (isSelected
+                                    ? BrandColors.text1
+                                    : BrandColors.text1)
+                                : isCurrentEvent
+                                    ? BrandColors.text2
+                                    : hasUserVoted
+                                        ? BrandColors.text1
+                                        : BrandColors.text1,
+                            fontWeight: _isSelectionMode
+                                ? (isSelected
+                                    ? FontWeight.w600
+                                    : FontWeight.normal)
+                                : isCurrentEvent
+                                    ? FontWeight.normal
+                                    : hasUserVoted
+                                        ? FontWeight.w600
+                                        : FontWeight.normal,
+                          ),
+                          child: Text(
+                            _formatDateRange(
+                              suggestion.startDateTime,
+                              suggestion.endDateTime,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: Gaps.xxs),
+                        // Time range
+                        Text(
+                          _formatTimeRange(
+                            suggestion.startDateTime,
+                            suggestion.endDateTime,
+                          ),
+                          style: AppText.bodyMedium.copyWith(
+                            color: BrandColors.text2,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // Vote count - perfect circle
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 150),
+                    constraints: const BoxConstraints(
+                      minWidth: 24,
+                      minHeight: 24,
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: _isSelectionMode
+                          ? (isSelected
                               ? BrandColors.planning
-                              : BrandColors.border,
-                  borderRadius: BorderRadius.circular(Radii.pill),
-                ),
-                child: Text(
-                  '${suggestion.voteCount}',
-                  style: AppText.bodyMedium.copyWith(
-                    color: _isSelectionMode
-                        ? (isSelected ? Colors.white : BrandColors.text2)
-                        : isCurrentEvent
-                            ? BrandColors.text2
-                            : hasUserVoted
-                                ? Colors.white
-                                : BrandColors.text2,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 12,
+                              : BrandColors.border)
+                          : isCurrentEvent
+                              ? BrandColors.border
+                              : hasUserVoted
+                                  ? BrandColors.planning
+                                  : BrandColors.border,
+                    ),
+                    child: Center(
+                      child: Text(
+                        '${suggestion.voteCount}',
+                        style: AppText.bodyMedium.copyWith(
+                          color: _isSelectionMode
+                              ? (isSelected ? Colors.white : BrandColors.text2)
+                              : isCurrentEvent
+                                  ? BrandColors.text2
+                                  : hasUserVoted
+                                      ? Colors.white
+                                      : BrandColors.text2,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            // Internal border overlay to prevent size expansion
+            if (shouldShowBorder)
+              Positioned.fill(
+                child: Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: BrandColors.planning,
+                      width: 1,
+                    ),
                   ),
                 ),
               ),
-            ],
-          ),
+          ],
         ),
       ),
     );
