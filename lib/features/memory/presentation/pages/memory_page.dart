@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../../../routes/app_router.dart';
 import '../../../../shared/components/nav/common_app_bar.dart';
 import '../../../../shared/components/nav/app_bar_with_subtitle.dart';
 import '../../../../shared/components/cards/add_photos_cta_card.dart';
+import '../../../../shared/components/common/top_banner.dart';
 import '../../../../shared/components/sections/cover_mosaic.dart';
 import '../../../../shared/components/sections/hybrid_photo_grid.dart';
 import '../../../../shared/constants/spacing.dart';
@@ -57,8 +59,11 @@ class _MemoryPageState extends ConsumerState<MemoryPage> {
   Widget build(BuildContext context) {
     final memoryAsync = ref.watch(memoryDetailProvider(widget.memoryId));
 
-    // Get event status from fake config (TODO: get from event provider in P2)
-    final eventStatus = FakeMemoryConfig.eventStatus;
+    // Get event status from route arguments or fallback to fake config
+    final args =
+        ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+    final eventStatus = args?['eventStatus'] as FakeEventStatus? ??
+        FakeMemoryConfig.eventStatus;
     final isHost = FakeMemoryConfig.isHost;
     final userHasUploadedPhotos = FakeMemoryConfig.userHasUploadedPhotos;
 
@@ -112,10 +117,10 @@ class _MemoryPageState extends ConsumerState<MemoryPage> {
                       ),
                       child: eventStatus == FakeEventStatus.living
                           ? AddPhotosCtaCard.living(
-                              onPressed: () => _navigateToManageMemory(context),
+                              onPressed: () => _handleAddPhotosFromCta(context),
                             )
                           : AddPhotosCtaCard.recap(
-                              onPressed: () => _navigateToManageMemory(context),
+                              onPressed: () => _handleAddPhotosFromCta(context),
                             ),
                     ),
 
@@ -210,14 +215,22 @@ class _MemoryPageState extends ConsumerState<MemoryPage> {
   }
 
   /// Check if CTA banner should be shown
-  /// Show for living/recap events when user hasn't uploaded photos yet
+  /// Show for living/recap events when:
+  /// - User hasn't uploaded photos yet (encourage first upload)
+  /// Logic: Host always has edit button, non-host sees CTA if no photos
   bool _shouldShowCtaBanner(
     FakeEventStatus eventStatus,
     bool userHasUploadedPhotos,
   ) {
-    return (eventStatus == FakeEventStatus.living ||
-            eventStatus == FakeEventStatus.recap) &&
-        !userHasUploadedPhotos;
+    // Only show during living or recap phases
+    if (eventStatus != FakeEventStatus.living &&
+        eventStatus != FakeEventStatus.recap) {
+      return false;
+    }
+
+    // Show CTA if user hasn't uploaded photos yet
+    // (Hosts will have edit button instead, non-hosts see CTA to encourage upload)
+    return !userHasUploadedPhotos;
   }
 
   /// Build subtitle text: "Location • Date"
@@ -315,7 +328,17 @@ class _MemoryPageState extends ConsumerState<MemoryPage> {
   ) {
     final leading = IconButton(
       icon: const Icon(Icons.arrow_back, color: BrandColors.text1),
-      onPressed: () => Navigator.of(context).pop(),
+      onPressed: () {
+        // Safe navigation: if no previous route, go to MainLayout (Home)
+        if (Navigator.of(context).canPop()) {
+          Navigator.of(context).pop();
+        } else {
+          Navigator.of(context).pushNamedAndRemoveUntil(
+            AppRouter.mainLayout,
+            (route) => false,
+          );
+        }
+      },
     );
 
     // Recap state: show countdown timer with chat button (and edit if applicable)
@@ -417,6 +440,48 @@ class _MemoryPageState extends ConsumerState<MemoryPage> {
         await ref.read(memoryDetailProvider(widget.memoryId).future);
       } catch (e) {
         // Handle error silently, provider will show error state
+      }
+    }
+  }
+
+  /// Handle add photos from CTA banner
+  /// Opens gallery first, then navigates to ManageMemory with selected photos
+  Future<void> _handleAddPhotosFromCta(BuildContext context) async {
+    final picker = ImagePicker();
+    final selectedImages = await picker.pickMultiImage(
+      maxWidth: 1920,
+      maxHeight: 1920,
+      imageQuality: 85,
+    );
+
+    if (selectedImages.isNotEmpty && mounted) {
+      // Limit to 5 photos
+      final limitedImages = selectedImages.take(5).toList();
+
+      if (limitedImages.length < selectedImages.length && mounted) {
+        TopBanner.showInfo(
+          context,
+          message: 'Maximum 5 photos selected',
+        );
+      }
+
+      // Navigate to ManageMemory with selected photos
+      final result = await Navigator.of(context).pushNamed(
+        AppRouter.manageMemory,
+        arguments: {
+          'memoryId': widget.memoryId,
+          'selectedPhotos': limitedImages.map((img) => img.path).toList(),
+        },
+      );
+
+      // Refresh if changes were made
+      if (result == true && mounted) {
+        ref.invalidate(memoryDetailProvider(widget.memoryId));
+        try {
+          await ref.read(memoryDetailProvider(widget.memoryId).future);
+        } catch (e) {
+          // Handle error silently
+        }
       }
     }
   }

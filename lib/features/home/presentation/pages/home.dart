@@ -18,6 +18,7 @@ import '../widgets/no_groups_yet_card.dart';
 import '../widgets/no_upcoming_events_card.dart';
 import '../providers/home_event_providers.dart';
 import '../../../../routes/app_router.dart';
+import '../../../memory/data/fakes/fake_memory_repository.dart';
 import '../../domain/entities/home_event.dart';
 
 /// Home page - main screen showing next event, confirmed/pending events, todos, payments, and memories
@@ -663,8 +664,11 @@ class _HomePageState extends ConsumerState<HomePage> {
                                 memory: memory,
                                 onTap: () {
                                   Navigator.of(context).pushNamed(
-                                    AppRouter.memoryViewer,
-                                    arguments: {'memoryId': memory.id},
+                                    AppRouter.memory,
+                                    arguments: {
+                                      'memoryId': memory.id,
+                                      'eventStatus': FakeEventStatus.ended,
+                                    },
                                   );
                                 },
                               ),

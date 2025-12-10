@@ -12,6 +12,7 @@ import '../../../../routes/app_router.dart';
 import '../providers/other_profile_providers.dart';
 import '../../../group_hub/domain/entities/group_event_entity.dart';
 import '../../domain/entities/profile_entity.dart';
+import '../../../memory/data/fakes/fake_memory_repository.dart';
 
 /// Other user's profile page
 /// Shows profile information, shared upcoming events, and shared memories
@@ -25,8 +26,8 @@ class OtherProfilePage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-final profileAsync = ref.watch(otherUserProfileProvider(userId));
-return Scaffold(
+    final profileAsync = ref.watch(otherUserProfileProvider(userId));
+    return Scaffold(
       backgroundColor: BrandColors.bg1,
       appBar: OtherProfileAppBar(
         onInvitePressed: () => _handleInvitePressed(context, ref),
@@ -227,8 +228,11 @@ return Scaffold(
 
   void _onMemoryTap(BuildContext context, MemoryEntity memory) {
     Navigator.of(context).pushNamed(
-      AppRouter.memoryViewer,
-      arguments: {'memoryId': memory.id},
+      AppRouter.memory,
+      arguments: {
+        'memoryId': memory.id,
+        'eventStatus': FakeEventStatus.ended,
+      },
     );
   }
 }

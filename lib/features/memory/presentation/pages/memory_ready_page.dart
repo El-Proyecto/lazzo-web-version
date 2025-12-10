@@ -452,9 +452,10 @@ class _OpenMemoryButton extends StatelessWidget {
   }
 
   void _navigateToMemory(BuildContext context) {
-    Navigator.of(context).pushNamedAndRemoveUntil(
+    // Use pushNamed to keep MainLayout in navigation stack
+    // This ensures back button returns to Home instead of empty page
+    Navigator.of(context).pushNamed(
       AppRouter.memory,
-      (route) => false,
       arguments: {'memoryId': memoryId},
     );
   }
