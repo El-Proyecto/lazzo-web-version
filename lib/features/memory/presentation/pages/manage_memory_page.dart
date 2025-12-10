@@ -262,8 +262,8 @@ class _ManageMemoryPageState extends ConsumerState<ManageMemoryPage> {
       }),
     ];
 
-    // Add "Add Photo" card if there's space
-    if (hasSpace) {
+    // Add "Add Photo" card if there's space AND not in selection mode
+    if (hasSpace && !_isSelectionMode) {
       gridItems.add(
         AddPhotoCard(
           width: itemWidth,
@@ -375,7 +375,7 @@ class _ManageMemoryPageState extends ConsumerState<ManageMemoryPage> {
     });
 
     if (context.mounted) {
-      TopBanner.show(context, message: 'Photos deleted');
+      TopBanner.showSuccess(context, message: 'Photos deleted');
     }
   }
 
@@ -415,21 +415,48 @@ class _ManageMemoryPageState extends ConsumerState<ManageMemoryPage> {
     }
   }
 
-  void _handleCloseRecap() {
-    // TODO P2: Implement actual recap close logic (call repository/use case)
-    // For now, just update fake config
-    setState(() {
-      FakeMemoryConfig.eventStatus = FakeEventStatus.ended;
-    });
+  void _handleCloseRecap() async {
+    try {
+      // Call use case to close recap
+      final closeRecapUseCase = ref.read(closeRecapUseCaseProvider);
+      final success = await closeRecapUseCase(widget.memoryId);
 
-    // Show success message
-    TopBanner.showSuccess(
-      context,
-      message: 'Recap closed. Memory is now shareable!',
-    );
+      if (!success) {
+        if (mounted) {
+          TopBanner.showError(
+            context,
+            message: 'Failed to close recap. Please try again.',
+          );
+        }
+        return;
+      }
 
-    // Navigate back to memory page
-    Navigator.of(context).pop();
+      // Update fake config for UI
+      setState(() {
+        FakeMemoryConfig.eventStatus = FakeEventStatus.ended;
+        _hasChanges = true; // Mark changes so Memory page refreshes
+      });
+
+      // Show success message
+      if (mounted) {
+        TopBanner.showSuccess(
+          context,
+          message: 'Recap closed. Memory is now shareable!',
+        );
+      }
+
+      // Navigate back to memory page
+      if (mounted) {
+        Navigator.of(context).pop(true); // Return true to trigger refresh
+      }
+    } catch (e) {
+      if (mounted) {
+        TopBanner.showError(
+          context,
+          message: 'Cannot close recap: At least one photo is required',
+        );
+      }
+    }
   }
 
   void _showPhotoSelector(

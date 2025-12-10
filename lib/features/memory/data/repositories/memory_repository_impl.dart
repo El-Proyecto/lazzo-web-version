@@ -38,21 +38,31 @@ class MemoryRepositoryImpl implements MemoryRepository {
 
       // Convert photos to entities with signed URLs
       final photos = <MemoryPhoto>[];
+
+      // Determine if we should use fallback cover (first photo)
+      // Only for ended events when no explicit cover is set
+      final eventStatus = memoryData['status'] as String?;
+      final shouldUseFallback = eventStatus == 'ended' &&
+          coverPhotoId == null &&
+          photosData.isNotEmpty;
+
       for (int i = 0; i < photosData.length; i++) {
         final photoData = photosData[i];
         final photoId = photoData['id'] as String;
         final storagePath = photoData['storage_path'] as String;
-        
-        // Mark as cover: either the manually selected cover, or the first photo as fallback
-        final isCoverPhoto = coverPhotoId != null 
+
+        // Mark as cover:
+        // 1. If explicitly selected via coverPhotoId
+        // 2. For ended events: use first photo as fallback if no cover set
+        final isCoverPhoto = coverPhotoId != null
             ? (photoId == coverPhotoId)
-            : (i == 0);  // If no cover selected, first photo is the cover
-        
+            : (shouldUseFallback && i == 0);
+
         // Generate signed URL (with caching in StorageService)
         final signedUrl = await _storageService.getSignedUrl(storagePath);
 
         final isPortrait = photoData['is_portrait'] as bool? ?? false;
-        
+
         // Extract uploader name and profile photo from users join
         final uploaderId = photoData['uploader_id'] as String;
         String? uploaderName;
@@ -65,7 +75,8 @@ class MemoryRepositoryImpl implements MemoryRepository {
             // Generate signed URL for avatar if path exists
             if (avatarPath != null && avatarPath.isNotEmpty) {
               try {
-                profileImageUrl = await _storageService.getSignedUrl(avatarPath, bucket: 'users-profile-pic');
+                profileImageUrl = await _storageService.getSignedUrl(avatarPath,
+                    bucket: 'users-profile-pic');
               } catch (e) {
                 profileImageUrl = null;
               }
@@ -77,25 +88,28 @@ class MemoryRepositoryImpl implements MemoryRepository {
             // Generate signed URL for avatar if path exists
             if (avatarPath != null && avatarPath.isNotEmpty) {
               try {
-                profileImageUrl = await _storageService.getSignedUrl(avatarPath, bucket: 'users-profile-pic');
+                profileImageUrl = await _storageService.getSignedUrl(avatarPath,
+                    bucket: 'users-profile-pic');
               } catch (e) {
                 profileImageUrl = null;
               }
             }
           }
         }
-        
+
         photos.add(MemoryPhoto(
           id: photoId,
           url: signedUrl,
           thumbnailUrl: null, // TODO: Generate thumbnails
           coverUrl: null,
           voteCount: 0, // TODO: Implement voting system
-          capturedAt: DateTime.parse(photoData['captured_at'] as String? ?? 
-                                     photoData['created_at'] as String),
-          aspectRatio: isPortrait ? 0.75 : 1.33, // Portrait ~3:4, Landscape ~4:3
+          capturedAt: DateTime.parse(photoData['captured_at'] as String? ??
+              photoData['created_at'] as String),
+          aspectRatio:
+              isPortrait ? 0.75 : 1.33, // Portrait ~3:4, Landscape ~4:3
           uploaderId: uploaderId,
-          uploaderName: uploaderName ?? 'Unknown', // Actual name from profiles join
+          uploaderName:
+              uploaderName ?? 'Unknown', // Actual name from profiles join
           profileImageUrl: profileImageUrl,
           isCover: isCoverPhoto,
         ));
@@ -103,7 +117,7 @@ class MemoryRepositoryImpl implements MemoryRepository {
 
       // Extract location from nested JSON
       final locationsData = memoryData['locations'];
-      final locationName = locationsData != null 
+      final locationName = locationsData != null
           ? (locationsData as Map<String, dynamic>)['display_name'] as String?
           : null;
 
@@ -135,7 +149,7 @@ class MemoryRepositoryImpl implements MemoryRepository {
       );
       return true;
     } catch (e) {
-            return false;
+      return false;
     }
   }
 
@@ -146,7 +160,39 @@ class MemoryRepositoryImpl implements MemoryRepository {
       await _photoDataSource.deletePhoto(photoId);
       return true;
     } catch (e) {
-            return false;
+      return false;
+    }
+  }
+
+  @override
+  Future<bool> closeRecap(String eventId) async {
+    try {
+      // Step 1: Check if event has at least one photo
+      final photosData = await _memoryDataSource.getMemoryPhotos(eventId);
+      if (photosData.isEmpty) {
+        throw Exception(
+            'Cannot close recap: At least one photo is required to create a memory');
+      }
+
+      // Step 2: Check if cover is explicitly set
+      final memoryData = await _memoryDataSource.getMemoryByEventId(eventId);
+      final coverPhotoId = memoryData?['cover_photo_id'] as String?;
+
+      // Step 3: If no cover set, use first photo as fallback
+      if (coverPhotoId == null && photosData.isNotEmpty) {
+        final firstPhotoId = photosData[0]['id'] as String;
+        await _memoryDataSource.updateEventCover(
+          eventId: eventId,
+          photoId: firstPhotoId,
+        );
+      }
+
+      // Step 4: Update event status to 'ended'
+      await _memoryDataSource.closeRecapEarly(eventId);
+
+      return true;
+    } catch (e) {
+      return false;
     }
   }
 }

@@ -99,9 +99,11 @@ class TopBanner {
 
     final overlay = Overlay.of(context);
     late OverlayEntry overlayEntry;
+    final GlobalKey<_TopBannerWidgetState> bannerKey = GlobalKey();
 
     overlayEntry = OverlayEntry(
       builder: (context) => _TopBannerWidget(
+        key: bannerKey,
         message: message,
         type: type,
         onDismiss: () {
@@ -120,8 +122,8 @@ class TopBanner {
     if (duration != null) {
       Future.delayed(duration, () {
         if (overlayEntry.mounted && _currentBanner == overlayEntry) {
-          overlayEntry.remove();
-          _currentBanner = null;
+          // Trigger upward animation before removing
+          bannerKey.currentState?._animateDismiss();
         }
       });
     }
@@ -134,6 +136,7 @@ class _TopBannerWidget extends StatefulWidget {
   final VoidCallback onDismiss;
 
   const _TopBannerWidget({
+    super.key,
     required this.message,
     required this.type,
     required this.onDismiss,
@@ -174,6 +177,18 @@ class _TopBannerWidgetState extends State<_TopBannerWidget>
     super.dispose();
   }
 
+  /// Animate banner dismissal upward
+  void _animateDismiss() {
+    setState(() {
+      _dragDistance = -200; // Move banner up off-screen
+    });
+    Future.delayed(const Duration(milliseconds: 300), () {
+      if (mounted) {
+        widget.onDismiss();
+      }
+    });
+  }
+
   void _onVerticalDragUpdate(DragUpdateDetails details) {
     setState(() {
       _dragDistance += details.delta.dy;
@@ -185,9 +200,15 @@ class _TopBannerWidgetState extends State<_TopBannerWidget>
   }
 
   void _onVerticalDragEnd(DragEndDetails details) {
-    // If dragged up more than 50 pixels, dismiss
+    // If dragged up more than 50 pixels, dismiss with upward animation
     if (_dragDistance < -50) {
-      _controller.reverse().then((_) => widget.onDismiss());
+      // Animate upward (beyond initial position) before dismissing
+      setState(() {
+        _dragDistance = -200; // Move banner up off-screen
+      });
+      Future.delayed(const Duration(milliseconds: 200), () {
+        widget.onDismiss();
+      });
     } else {
       // Reset position
       setState(() {

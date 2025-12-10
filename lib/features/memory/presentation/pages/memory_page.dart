@@ -410,9 +410,14 @@ class _MemoryPageState extends ConsumerState<MemoryPage> {
 
     // Refresh memory data if changes were made
     if (result == true && mounted) {
-      _refreshData();
-      // Wait for data to be fetched
-      await ref.read(memoryDetailProvider(widget.memoryId).future);
+      // Force complete refresh by invalidating and immediately reading the future
+      // This ensures we wait for fresh data from Supabase before rebuilding
+      ref.invalidate(memoryDetailProvider(widget.memoryId));
+      try {
+        await ref.read(memoryDetailProvider(widget.memoryId).future);
+      } catch (e) {
+        // Handle error silently, provider will show error state
+      }
     }
   }
 

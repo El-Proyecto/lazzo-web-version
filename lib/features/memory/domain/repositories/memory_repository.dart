@@ -18,4 +18,9 @@ abstract class MemoryRepository {
   /// Remove a photo from a memory
   /// Only uploader or host can remove photos
   Future<bool> removePhoto(String memoryId, String photoId);
+
+  /// Close recap phase early (host only)
+  /// Requires at least one photo to create memory
+  /// Returns true if successful, false if validation fails
+  Future<bool> closeRecap(String eventId);
 }
