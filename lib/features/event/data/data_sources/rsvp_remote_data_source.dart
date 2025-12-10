@@ -5,12 +5,12 @@ import '../models/rsvp_model.dart';
 /// Handles all Supabase queries related to RSVPs
 class RsvpRemoteDataSource {
   final SupabaseClient _supabaseClient;
-  static const String _avatarBucketName = 'avatars';
+  static const String _avatarBucketName = 'users-profile-pic';
 
   RsvpRemoteDataSource(this._supabaseClient);
 
-  /// Convert storage path to public URL
-  String _getPublicAvatarUrl(String? storagePath) {
+  /// Convert storage path to signed URL (for private buckets)
+  Future<String> _getSignedAvatarUrl(String? storagePath) async {
     if (storagePath == null || storagePath.isEmpty) {
       return '';
     }
@@ -20,16 +20,29 @@ class RsvpRemoteDataSource {
       return storagePath;
     }
     
-    // Storage path - convert to public URL
-    return _supabaseClient.storage.from(_avatarBucketName).getPublicUrl(storagePath);
+    try {
+      // Normalize path - remove leading slash if present
+      final normalizedPath = storagePath.startsWith('/') 
+          ? storagePath.substring(1) 
+          : storagePath;
+      
+      // Create signed URL (valid for 1 hour)
+      final signedUrl = await _supabaseClient.storage
+          .from(_avatarBucketName)
+          .createSignedUrl(normalizedPath, 3600);
+      
+      return signedUrl;
+    } catch (e) {
+return '';
+    }
   }
 
-  /// Helper to convert avatar_url in user data
-  void _convertAvatarUrl(Map<String, dynamic> json) {
+  /// Helper to convert avatar_url in user data to signed URL
+  Future<void> _convertAvatarUrl(Map<String, dynamic> json) async {
     if (json['user'] != null && json['user'] is Map) {
       final user = json['user'] as Map<String, dynamic>;
       if (user['avatar_url'] != null) {
-        user['avatar_url'] = _getPublicAvatarUrl(user['avatar_url'] as String);
+        user['avatar_url'] = await _getSignedAvatarUrl(user['avatar_url'] as String);
       }
     }
   }
@@ -51,9 +64,9 @@ class RsvpRemoteDataSource {
           .eq('pevent_id', eventId)
           .order('confirmed_at', ascending: false);
 
-      // Convert avatar URLs from storage paths to public URLs
+      // Convert avatar URLs from storage paths to signed URLs
       for (final json in response as List) {
-        _convertAvatarUrl(json as Map<String, dynamic>);
+        await _convertAvatarUrl(json as Map<String, dynamic>);
       }
 
       final models = (response as List)
@@ -86,8 +99,8 @@ class RsvpRemoteDataSource {
 
       if (response == null) return null;
 
-      // Convert avatar URL from storage path to public URL
-      _convertAvatarUrl(response);
+      // Convert avatar URL from storage path to signed URL
+      await _convertAvatarUrl(response);
 
       return RsvpModel.fromJson(response);
     } on PostgrestException catch (e) {
@@ -123,8 +136,8 @@ class RsvpRemoteDataSource {
           ''')
           .single();
 
-      // Convert avatar URL from storage path to public URL
-      _convertAvatarUrl(response);
+      // Convert avatar URL from storage path to signed URL
+      await _convertAvatarUrl(response);
 
       return RsvpModel.fromJson(response);
     } on PostgrestException catch (e) {

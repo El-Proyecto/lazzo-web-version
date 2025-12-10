@@ -86,7 +86,7 @@ class _GroupPhotosPageState extends ConsumerState<GroupPhotosPage> {
             files.add(XFile(filePath));
           }
         } catch (e) {
-                  }
+        }
       }
 
       if (files.isEmpty) {

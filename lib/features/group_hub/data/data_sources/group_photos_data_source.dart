@@ -59,8 +59,7 @@ class GroupPhotosDataSource {
   /// which pre-joins users and events data for 10x faster queries
   Future<List<Map<String, dynamic>>> getGroupPhotos(String groupId) async {
     try {
-            
-      // Query materialized view (data already joined)
+// Query materialized view (data already joined)
       // This is 10x faster than joining at query time
       final response = await _supabase
           .from('group_photos_with_uploader')

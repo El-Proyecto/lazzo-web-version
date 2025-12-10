@@ -4,7 +4,6 @@ import '../widgets/user_info_card.dart';
 import '../widgets/memories_section.dart';
 import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/themes/colors.dart';
-import '../../../../shared/components/common/top_banner.dart';
 import '../../../../shared/components/nav/common_app_bar.dart';
 import '../../../../routes/app_router.dart';
 import '../../domain/entities/profile_entity.dart';
@@ -13,7 +12,9 @@ import '../providers/profile_providers.dart';
 /// Profile page displaying user information and memories
 /// Uses simple provider architecture with automatic sync
 class ProfilePage extends ConsumerWidget {
-  const ProfilePage({super.key});
+  final bool showBackButton;
+  
+  const ProfilePage({super.key, this.showBackButton = false});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -23,6 +24,21 @@ class ProfilePage extends ConsumerWidget {
       backgroundColor: BrandColors.bg1,
       appBar: CommonAppBar(
         title: 'Profile',
+        leading: showBackButton
+            ? GestureDetector(
+                onTap: () => Navigator.pop(context),
+                child: Container(
+                  width: 32,
+                  height: 32,
+                  alignment: Alignment.center,
+                  child: const Icon(
+                    Icons.arrow_back_ios,
+                    color: BrandColors.text1,
+                    size: 20,
+                  ),
+                ),
+              )
+            : null,
         trailing: GestureDetector(
           onTap: () => Navigator.pushNamed(context, AppRouter.settings),
           child: Container(
@@ -101,10 +117,9 @@ class ProfilePage extends ConsumerWidget {
   }
 
   void _onMemoryTap(BuildContext context, MemoryEntity memory) {
-    // TODO: Navigate to memory detail page
-    TopBanner.showInfo(
-      context,
-      message: 'Memory detail - Coming soon!',
+    Navigator.of(context).pushNamed(
+      AppRouter.memoryViewer,
+      arguments: {'memoryId': memory.id},
     );
   }
 }

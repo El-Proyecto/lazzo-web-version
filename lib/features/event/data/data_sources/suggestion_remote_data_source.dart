@@ -5,8 +5,47 @@ import '../models/suggestion_model.dart';
 /// Handles all Supabase queries related to suggestions
 class SuggestionRemoteDataSource {
   final SupabaseClient _supabaseClient;
+  static const String _avatarBucketName = 'users-profile-pic';
 
   SuggestionRemoteDataSource(this._supabaseClient);
+
+  /// Convert storage path to signed URL (for private buckets)
+  Future<String> _getSignedAvatarUrl(String? storagePath) async {
+    if (storagePath == null || storagePath.isEmpty) {
+      return '';
+    }
+    
+    // Already a full URL
+    if (storagePath.startsWith('http://') || storagePath.startsWith('https://')) {
+      return storagePath;
+    }
+    
+    try {
+      // Normalize path - remove leading slash if present
+      final normalizedPath = storagePath.startsWith('/') 
+          ? storagePath.substring(1) 
+          : storagePath;
+      
+      // Create signed URL (valid for 1 hour)
+      final signedUrl = await _supabaseClient.storage
+          .from(_avatarBucketName)
+          .createSignedUrl(normalizedPath, 3600);
+      
+      return signedUrl;
+    } catch (e) {
+return '';
+    }
+  }
+
+  /// Helper to convert avatar_url in user data to signed URL
+  Future<void> _convertAvatarUrl(Map<String, dynamic> json) async {
+    if (json['user'] != null && json['user'] is Map) {
+      final user = json['user'] as Map<String, dynamic>;
+      if (user['avatar_url'] != null) {
+        user['avatar_url'] = await _getSignedAvatarUrl(user['avatar_url'] as String);
+      }
+    }
+  }
 
   // ============================================================================
   // DATETIME SUGGESTIONS
@@ -28,6 +67,11 @@ class SuggestionRemoteDataSource {
           ''')
           .eq('event_id', eventId)
           .order('created_at', ascending: false);
+
+      // Convert avatar URLs to signed URLs
+      for (final json in response as List) {
+        await _convertAvatarUrl(json as Map<String, dynamic>);
+      }
 
       final suggestions = (response as List).map((json) {
         return SuggestionModel.fromJson(json);
@@ -75,6 +119,7 @@ class SuggestionRemoteDataSource {
             user:created_by(id, name, avatar_url)
           ''').single();
 
+      await _convertAvatarUrl(response);
       return SuggestionModel.fromJson(response);
     } on PostgrestException catch (e) {
       throw Exception('Failed to create suggestion: ${e.message}');
@@ -97,6 +142,11 @@ class SuggestionRemoteDataSource {
             event_id,
             user:user_id(id, name, avatar_url)
           ''').eq('event_id', eventId);
+
+      // Convert avatar URLs to signed URLs
+      for (final json in response as List) {
+        await _convertAvatarUrl(json as Map<String, dynamic>);
+      }
 
       return (response as List)
           .map((json) => SuggestionVoteModel.fromJson(json))
@@ -129,6 +179,7 @@ class SuggestionRemoteDataSource {
             user:user_id(id, name, avatar_url)
           ''').single();
 
+      await _convertAvatarUrl(response);
       return SuggestionVoteModel.fromJson(response);
     } on PostgrestException catch (e) {
       throw Exception('Failed to vote on suggestion: ${e.message}');
@@ -173,6 +224,11 @@ class SuggestionRemoteDataSource {
           ''')
           .eq('event_id', eventId)
           .eq('user_id', userId);
+
+      // Convert avatar URLs to signed URLs
+      for (final json in response as List) {
+        await _convertAvatarUrl(json as Map<String, dynamic>);
+      }
 
       return (response as List)
           .map((json) => SuggestionVoteModel.fromJson(json))
@@ -222,14 +278,14 @@ class SuggestionRemoteDataSource {
             user:user_id(id, name, avatar_url)
           ''').eq('event_id', eventId).order('created_at', ascending: false);
 
-      final suggestions = (response as List)
+      // Convert avatar URLs to signed URLs
+      for (final json in response as List) {
+        await _convertAvatarUrl(json as Map<String, dynamic>);
+      }
+
+      return (response as List)
           .map((json) => LocationSuggestionModel.fromJson(json))
           .toList();
-
-            for (var i = 0; i < suggestions.length; i++) {
-              }
-
-      return suggestions;
     } on PostgrestException catch (e) {
       throw Exception('Failed to get location suggestions: ${e.message}');
     } catch (e) {
@@ -277,7 +333,7 @@ class SuggestionRemoteDataSource {
             user:user_id(id, name, avatar_url)
           ''').single();
 
-      
+      await _convertAvatarUrl(response);
       return LocationSuggestionModel.fromJson(response);
     } on PostgrestException catch (e) {
       throw Exception('Failed to create location suggestion: ${e.message}');
@@ -314,6 +370,11 @@ class SuggestionRemoteDataSource {
             created_at,
             user:user_id(id, name, avatar_url)
           ''').inFilter('suggestion_id', suggestionIds);
+
+      // Convert avatar URLs to signed URLs
+      for (final json in response as List) {
+        await _convertAvatarUrl(json as Map<String, dynamic>);
+      }
 
       // Map location vote fields to match SuggestionVoteModel expectations
       return (response as List).map((json) {
@@ -360,6 +421,8 @@ class SuggestionRemoteDataSource {
             created_at,
             user:user_id(id, name, avatar_url)
           ''').single();
+
+      await _convertAvatarUrl(response);
 
       // Map location vote fields to match SuggestionVoteModel expectations
       final mappedResponse = {
@@ -423,6 +486,11 @@ class SuggestionRemoteDataSource {
             user:user_id(id, name, avatar_url)
           ''').inFilter('suggestion_id', suggestionIds).eq('user_id', userId);
 
+      // Convert avatar URLs to signed URLs
+      for (final json in response as List) {
+        await _convertAvatarUrl(json as Map<String, dynamic>);
+      }
+
       // Map location vote fields to match SuggestionVoteModel expectations
       return (response as List).map((json) {
         final mappedJson = {
@@ -445,35 +513,11 @@ class SuggestionRemoteDataSource {
   /// Clear all location suggestions and votes for an event
   Future<void> clearEventLocationSuggestions(String eventId) async {
     try {
-            
-      
-      // Get existing suggestions BEFORE delete
-      final existingBefore = await _supabaseClient
-          .from('location_suggestions')
-          .select('id, location_name, user_id')
-          .eq('event_id', eventId);
-            for (var s in existingBefore) {
-              }
-
       // Delete location suggestions (CASCADE will delete votes)
-      final result = await _supabaseClient
+      await _supabaseClient
           .from('location_suggestions')
           .delete()
-          .eq('event_id', eventId)
-          .select(); // Add select() to get deleted rows
-
-            for (var r in result) {
-              }
-
-      // Verify deletion
-      final existingAfter = await _supabaseClient
-          .from('location_suggestions')
-          .select('id, location_name')
           .eq('event_id', eventId);
-            if (existingAfter.isNotEmpty) {
-                for (var s in existingAfter) {
-                  }
-      }
 
     } on PostgrestException catch (e) {
       throw Exception('Failed to clear location suggestions: ${e.message}');

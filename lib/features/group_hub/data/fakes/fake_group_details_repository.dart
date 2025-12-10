@@ -109,7 +109,7 @@ class FakeGroupDetailsRepository implements GroupDetailsRepository {
     if (!isAdmin) {
       // In a real scenario, this would check the actual member list
       // For fake, we just simulate the validation
-          }
+}
     
     // In real implementation, this would update the backend
   }

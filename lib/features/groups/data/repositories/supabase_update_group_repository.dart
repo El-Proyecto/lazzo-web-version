@@ -21,12 +21,10 @@ class SupabaseUpdateGroupRepository implements UpdateGroupRepository {
     required bool canSendMessages,
   }) async {
     try {
-                  
-      String? photoUrl;
+String? photoUrl;
       
       // Upload photo to storage if provided
       if (photoPath != null && photoPath.isNotEmpty) {
-                
         final file = File(photoPath);
         if (!await file.exists()) {
           throw Exception('Photo file does not exist: $photoPath');
@@ -59,7 +57,7 @@ class SupabaseUpdateGroupRepository implements UpdateGroupRepository {
         }
 
         // Upload to storage
-        final uploadPath = await _supabase.storage
+        await _supabase.storage
             .from('group-photos')
             .upload(
               fileName,
@@ -123,7 +121,7 @@ class SupabaseUpdateGroupRepository implements UpdateGroupRepository {
         createdAt: DateTime.parse(response['created_at'] as String),
       );
     } catch (e) {
-                  throw Exception('Failed to update group: $e');
+        throw Exception('Failed to update group: $e');
     }
   }
 }

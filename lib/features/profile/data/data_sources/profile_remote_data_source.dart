@@ -80,18 +80,6 @@ class ProfileRemoteDataSource {
   }
 
   /// Fetch user's memories/events
-  Future<List<MemoryModel>> fetchUserMemories(String userId) async {
-    try {
-      final response = await client
-          .from('memories')
-          .select('mem_id, mem_title, photo_id, mem_date, mem_location')
-          .order('mem_location', ascending: false);
-
-      return response.map((json) => MemoryModel.fromMap(json)).toList();
-    } catch (e) {
-      rethrow;
-    }
-  }
 
   /// Upload profile picture to storage
   Future<String> uploadProfilePicture(XFile imageFile) async {

@@ -20,23 +20,23 @@ class GroupPhotosRepositoryImpl implements GroupPhotosRepository {
       try {
         photosData = await _dataSource.getGroupPhotos(groupId);
       } catch (e) {
-                        throw Exception('Data source failed: $e');
+          throw Exception('Data source failed: $e');
       }
       
             
       if (photosData.isEmpty) {
-                return [];
+          return [];
       }
 
       final entities = <GroupPhotoEntity>[];
       for (final json in photosData) {
-                                        
+        
         // Generate signed URL for the photo (from memory_groups bucket)
         String photoUrl;
         try {
           photoUrl = await _dataSource.getSignedUrl(json['storage_path'] as String);
-                  } catch (e) {
-                    // Skip this photo if we can't get a signed URL
+        } catch (e) {
+            // Skip this photo if we can't get a signed URL
           continue;
         }
         
@@ -50,8 +50,8 @@ class GroupPhotosRepositoryImpl implements GroupPhotosRepository {
               model.profileImageUrl!,
               bucket: 'users-profile-pic',
             );
-                      } catch (e) {
-                        profileImageUrl = null;
+          } catch (e) {
+            profileImageUrl = null;
           }
         }
         
@@ -65,14 +65,13 @@ class GroupPhotosRepositoryImpl implements GroupPhotosRepository {
           isPortrait: model.isPortrait,
         ));
       }
-      
-            return entities;
+        return entities;
     } on Exception catch (e) {
       // Network/auth errors - rethrow
-                  throw Exception('Failed to load group photos: $e');
+      throw Exception('Failed to load group photos: $e');
     } catch (e) {
       // Parsing errors - log and return empty
-                  return [];
+      return [];
     }
   }
 

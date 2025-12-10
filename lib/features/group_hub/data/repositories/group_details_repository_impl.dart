@@ -89,9 +89,7 @@ class GroupDetailsRepositoryImpl implements GroupDetailsRepository {
           ''')
           .eq('group_id', groupId)
           .order('role', ascending: false); // Admins first
-
-      
-      final members = <GroupMemberEntity>[];
+final members = <GroupMemberEntity>[];
       
       for (final json in response as List) {
         final userId = json['user_id'] as String;
@@ -99,7 +97,6 @@ class GroupDetailsRepositoryImpl implements GroupDetailsRepository {
         final role = json['role'] as String;
         final isAdmin = role == 'admin';
         
-                        
         // Handle nested users join
         String? name;
         String? profileImageUrl;

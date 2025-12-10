@@ -43,6 +43,7 @@ class RsvpWidget extends StatelessWidget {
   final DateTime? eventEndDateTime;
   final bool isHost; // Whether current user is host/admin
   final bool hasSuggestions; // Whether suggestions already exist
+  final String? currentUserId; // Current user ID for profile navigation
 
   const RsvpWidget({
     super.key,
@@ -58,6 +59,7 @@ class RsvpWidget extends StatelessWidget {
     this.eventEndDateTime,
     this.isHost = false,
     this.hasSuggestions = false,
+    this.currentUserId,
   });
 
   @override
@@ -197,7 +199,12 @@ class RsvpWidget extends StatelessWidget {
         children: [
           // Can section
           if (going.isNotEmpty) ...[
-            _VoteSection(title: 'Can', count: going.length, votes: going),
+            _VoteSection(
+              title: 'Can',
+              count: going.length,
+              votes: going,
+              currentUserId: currentUserId,
+            ),
             const SizedBox(height: Gaps.lg),
           ],
 
@@ -207,6 +214,7 @@ class RsvpWidget extends StatelessWidget {
               title: 'Can\'t',
               count: notGoing.length,
               votes: notGoing,
+              currentUserId: currentUserId,
             ),
             const SizedBox(height: Gaps.lg),
           ],
@@ -217,6 +225,7 @@ class RsvpWidget extends StatelessWidget {
               title: 'No response',
               count: pending.length,
               votes: pending,
+              currentUserId: currentUserId,
             ),
           ],
         ],
@@ -613,11 +622,13 @@ class _VoteSection extends StatelessWidget {
   final String title;
   final int count;
   final List<RsvpVote> votes;
+  final String? currentUserId;
 
   const _VoteSection({
     required this.title,
     required this.count,
     required this.votes,
+    this.currentUserId,
   });
 
   Color _getTitleColor() {
@@ -662,7 +673,11 @@ class _VoteSection extends StatelessWidget {
         ),
         const SizedBox(height: Gaps.md),
         ...votes.map(
-          (vote) => _VoteItem(vote: vote, showDate: title != 'No response'),
+          (vote) => _VoteItem(
+            vote: vote,
+            showDate: title != 'No response',
+            currentUserId: currentUserId,
+          ),
         ),
       ],
     );
@@ -673,51 +688,88 @@ class _VoteSection extends StatelessWidget {
 class _VoteItem extends StatelessWidget {
   final RsvpVote vote;
   final bool showDate;
+  final String? currentUserId;
 
-  const _VoteItem({required this.vote, this.showDate = true});
+  const _VoteItem({
+    required this.vote,
+    this.showDate = true,
+    this.currentUserId,
+  });
 
   String get _displayName {
     // Show "You" for current user, otherwise show the user name
-    return vote.userId == 'current-user' ? 'You' : vote.userName;
+    return vote.userId == currentUserId ? 'You' : vote.userName;
   }
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: Gaps.sm),
-      child: Row(
-        children: [
-          // Avatar
-          CircleAvatar(
-            radius: 16,
-            backgroundColor: BrandColors.bg3,
-            child: vote.userAvatar != null
-                ? ClipOval(
-                    child: Image.network(
-                      vote.userAvatar!,
-                      width: 32,
-                      height: 32,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) =>
-                          _buildDefaultAvatar(),
-                    ),
-                  )
-                : _buildDefaultAvatar(),
-          ),
-          const SizedBox(width: Gaps.sm),
-
-          // Name
-          Expanded(child: Text(_displayName, style: AppText.bodyMedium)),
-
-          // Date (if voted and should show date)
-          if (showDate && vote.votedAt != null)
-            Text(
-              _formatDate(vote.votedAt!),
-              style: AppText.bodyMedium.copyWith(
-                color: BrandColors.text2,
-              ),
+    final bool isCurrentUser = vote.userId == currentUserId;
+    
+    return InkWell(
+      onTap: () {
+        // Close bottom sheet
+        Navigator.pop(context);
+        
+        if (isCurrentUser) {
+          // Navigate to own profile with back button
+          Navigator.pushNamed(
+            context,
+            '/profile',
+            arguments: {'showBackButton': true},
+          );
+        } else {
+          // Navigate to other user profile
+          Navigator.pushNamed(
+            context,
+            '/other-profile',
+            arguments: {'userId': vote.userId},
+          );
+        }
+      },
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: Gaps.sm),
+        child: Row(
+          children: [
+            // Avatar
+            CircleAvatar(
+              radius: 16,
+              backgroundColor: BrandColors.bg3,
+              child: vote.userAvatar != null
+                  ? ClipOval(
+                      child: Image.network(
+                        vote.userAvatar!,
+                        width: 32,
+                        height: 32,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) =>
+                            _buildDefaultAvatar(),
+                      ),
+                    )
+                  : _buildDefaultAvatar(),
             ),
-        ],
+            const SizedBox(width: Gaps.sm),
+
+            // Name
+            Expanded(child: Text(_displayName, style: AppText.bodyMedium)),
+
+            // Date (if voted and should show date)
+            if (showDate && vote.votedAt != null)
+              Text(
+                _formatDate(vote.votedAt!),
+                style: AppText.bodyMedium.copyWith(
+                  color: BrandColors.text2,
+                ),
+              ),
+            
+            // Chevron indicator (always show for navigation)
+            const SizedBox(width: Gaps.xs),
+            const Icon(
+              Icons.chevron_right_rounded,
+              color: BrandColors.text2,
+              size: 16,
+            ),
+          ],
+        ),
       ),
     );
   }

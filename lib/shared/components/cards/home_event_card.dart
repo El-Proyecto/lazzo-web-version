@@ -9,8 +9,6 @@ import '../../constants/spacing.dart';
 import '../../constants/text_styles.dart';
 import '../../themes/colors.dart';
 import '../widgets/votes_bottom_sheet.dart';
-import '../widgets/photos_bottom_sheet.dart';
-import '../widgets/rsvp_widget.dart';
 import '../dialogs/add_expense_bottom_sheet.dart';
 
 /// Home event card state
@@ -62,55 +60,6 @@ class _HomeEventCardState extends ConsumerState<HomeEventCard> {
         oldWidget.event.date != widget.event.date) {
       _currentEvent = widget.event;
     }
-  }
-
-  void _updateVote(bool? vote) {
-    setState(() {
-      // Update the vote and recalculate going count and attendee data
-      final updatedVotes = List<RsvpVote>.from(_currentEvent.allVotes);
-
-      // Remove existing user vote if any
-      updatedVotes.removeWhere((v) => v.userId == 'current_user');
-
-      // Add new vote if not null
-      if (vote != null) {
-        final newVote = RsvpVote(
-          id: 'vote_current_user_${DateTime.now().millisecondsSinceEpoch}',
-          userId: 'current_user',
-          userName: 'You',
-          userAvatar: null,
-          status: vote ? RsvpVoteStatus.going : RsvpVoteStatus.notGoing,
-          votedAt: DateTime.now(),
-        );
-        updatedVotes.add(newVote);
-      }
-
-      // Recalculate going count and attendee lists
-      final goingVotes =
-          updatedVotes.where((v) => v.status == RsvpVoteStatus.going).toList();
-      final newGoingCount = goingVotes.length;
-
-      // Sort votes to prioritize user first if they voted "Can"
-      goingVotes.sort((a, b) {
-        if (a.userId == 'current_user') return -1;
-        if (b.userId == 'current_user') return 1;
-        return 0;
-      });
-
-      final newAttendeeNames = goingVotes.map((v) => v.userName).toList();
-      final newAttendeeAvatars =
-          goingVotes.map((v) => v.userAvatar ?? '').toList();
-
-      _currentEvent = _currentEvent.copyWith(
-        userVote: vote,
-        allVotes: updatedVotes,
-        goingCount: newGoingCount,
-        attendeeNames: newAttendeeNames,
-        attendeeAvatars: newAttendeeAvatars,
-        updateUserVote: true, // Allow explicit null setting
-      );
-    });
-    widget.onVoteChanged?.call(_currentEvent.id, vote);
   }
 
   @override
@@ -318,15 +267,10 @@ class _HomeEventCardState extends ConsumerState<HomeEventCard> {
   }
 
   Widget _buildAttendeeInfo(BuildContext context) {
-    // For Living and Recap states, show photos bottom sheet
-    // For other states, show votes bottom sheet
-    final isPhotoState = widget.state == HomeEventCardState.living ||
-        widget.state == HomeEventCardState.recap;
-
+    // Show votes bottom sheet when tapping on attendee info
+    // This displays all participants with their RSVPs
     return InkWell(
-      onTap: () => isPhotoState
-          ? _showPhotosBottomSheet(context)
-          : _showVotesBottomSheet(context),
+      onTap: () => _showVotesBottomSheet(context),
       borderRadius: BorderRadius.circular(Radii.sm),
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: Gaps.xxs),
@@ -355,6 +299,11 @@ class _HomeEventCardState extends ConsumerState<HomeEventCard> {
   }
 
   void _showVotesBottomSheet(BuildContext context) {
+    // Get current user ID and avatar
+    final currentUser = Supabase.instance.client.auth.currentUser;
+    final currentUserId = currentUser?.id;
+    final currentUserAvatar = currentUser?.userMetadata?['avatar_url'] as String?;
+    
     VotesBottomSheet.show(
       context: context,
       allVotes: _currentEvent.allVotes,
@@ -365,27 +314,21 @@ class _HomeEventCardState extends ConsumerState<HomeEventCard> {
           : null,
       eventLocation: _currentEvent.location,
       userVote: _currentEvent.userVote,
-      onVoteChanged: (vote) => _updateVote(vote),
-    );
-  }
-
-  void _showPhotosBottomSheet(BuildContext context) {
-    PhotosBottomSheet.show(
-      context: context,
-      participants: _currentEvent.participantPhotos,
-      totalPhotos: _currentEvent.photoCount,
-      maxPhotos: _currentEvent.maxPhotos,
+      onVoteChanged: widget.onVoteChanged != null
+          ? (vote) => widget.onVoteChanged!(_currentEvent.id, vote)
+          : null,
+      currentUserId: currentUserId,
+      currentUserAvatar: currentUserAvatar,
     );
   }
 
   String _buildAttendeeText() {
-    // For Living and Recap states, show photo count instead of names
+    final participantText =
+        _currentEvent.goingCount == 1 ? 'participant' : 'participants';
+
+    // For Living and Recap states, include photo count
     if (widget.state == HomeEventCardState.living ||
         widget.state == HomeEventCardState.recap) {
-      final participantText =
-          _currentEvent.goingCount == 1 ? 'participant' : 'participants';
-
-      // Show "No photos yet" if no photos added
       final photoInfo = _currentEvent.photoCount == 0
           ? 'No photos yet'
           : '${_currentEvent.photoCount}/${_currentEvent.maxPhotos} ${_currentEvent.photoCount == 1 ? 'photo' : 'photos'}';
@@ -393,14 +336,8 @@ class _HomeEventCardState extends ConsumerState<HomeEventCard> {
       return '${_currentEvent.goingCount} $participantText • $photoInfo';
     }
 
-    // For other states (Pending/Confirmed), show names as before
-    // If user hasn't voted yet, show "Tap to vote!" message
-    if (_currentEvent.userVote == null) {
-      return '${_currentEvent.goingCount} going • Tap to vote!';
-    }
-
-    // If user has voted, show "Tap to view votes" message
-    return '${_currentEvent.goingCount} going • Tap to view votes';
+    // For other states (Pending/Confirmed), show simple participant count
+    return '${_currentEvent.goingCount} $participantText';
   }
 
   Widget _buildAttendeeAvatars() {
