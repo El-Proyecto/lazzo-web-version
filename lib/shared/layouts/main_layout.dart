@@ -10,7 +10,6 @@ import '../../features/profile/presentation/pages/profile_page.dart';
 import '../../features/home/presentation/pages/home.dart';
 import '../../features/home/presentation/providers/home_event_providers.dart';
 import '../../features/home/domain/entities/home_event.dart';
-import '../../features/memory/presentation/providers/memory_providers.dart';
 import '../../routes/app_router.dart';
 import '../../services/event_status_service.dart';
 import 'main_layout_providers.dart';
@@ -101,52 +100,37 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
 
         final memoryId = nextEvent.id; // eventId = memoryId for recap events
 
-        // Get memory to check if user has already uploaded photos
-        final memoryAsync =
-            await ref.read(memoryDetailProvider(memoryId).future);
-        final hasPhotos = memoryAsync != null && memoryAsync.photos.isNotEmpty;
+        // Recap mode: Always open gallery to upload photos
+        final picker = ImagePicker();
+        final selectedImages = await picker.pickMultiImage(
+          maxWidth: 1920,
+          maxHeight: 1920,
+          imageQuality: 85,
+        );
 
-        if (hasPhotos && mounted) {
-          // User already has photos → go directly to manage memory page
-          Navigator.pushNamed(
-            context,
-            AppRouter.manageMemory,
-            arguments: {'memoryId': memoryId},
-          );
-        } else {
-          // No photos yet → open gallery to upload photos
-          final picker = ImagePicker();
-          final selectedImages = await picker.pickMultiImage(
-            maxWidth: 1920,
-            maxHeight: 1920,
-            imageQuality: 85,
-          );
+        if (selectedImages.isNotEmpty && mounted) {
+          // Limit to 5 photos
+          final limitedImages = selectedImages.take(5).toList();
 
-          if (selectedImages.isNotEmpty && mounted) {
-            // Limit to 5 photos
-            final limitedImages = selectedImages.take(5).toList();
+          if (limitedImages.length < selectedImages.length) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Maximum 5 photos selected'),
+                duration: Duration(seconds: 2),
+              ),
+            );
+          }
 
-            if (limitedImages.length < selectedImages.length) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Maximum 5 photos selected'),
-                  duration: Duration(seconds: 2),
-                ),
-              );
-            }
-
-            // Navigate to ManageMemoryPage with selected photos
-            if (mounted) {
-              Navigator.pushNamed(
-                context,
-                AppRouter.manageMemory,
-                arguments: {
-                  'memoryId': memoryId,
-                  'selectedPhotos':
-                      limitedImages.map((img) => img.path).toList(),
-                },
-              );
-            }
+          // Navigate to ManageMemoryPage with selected photos
+          if (mounted) {
+            Navigator.pushNamed(
+              context,
+              AppRouter.manageMemory,
+              arguments: {
+                'memoryId': memoryId,
+                'selectedPhotos': limitedImages.map((img) => img.path).toList(),
+              },
+            );
           }
         }
       } else {

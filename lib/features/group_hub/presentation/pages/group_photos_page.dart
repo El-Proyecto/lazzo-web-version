@@ -86,7 +86,7 @@ class _GroupPhotosPageState extends ConsumerState<GroupPhotosPage> {
             files.add(XFile(filePath));
           }
         } catch (e) {
-}
+        }
       }
 
       if (files.isEmpty) {
@@ -161,12 +161,12 @@ class _GroupPhotosPageState extends ConsumerState<GroupPhotosPage> {
             try {
               await Gal.putImage(filePath, album: 'Lazzo');
               successCount++;
-} catch (e) {
-// Gallery permission might be needed, but file is downloaded
+                          } catch (e) {
+                            // Gallery permission might be needed, but file is downloaded
             }
           }
         } catch (e) {
-}
+                  }
       }
 
       if (!mounted) return;

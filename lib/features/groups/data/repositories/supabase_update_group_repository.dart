@@ -25,7 +25,7 @@ String? photoUrl;
       
       // Upload photo to storage if provided
       if (photoPath != null && photoPath.isNotEmpty) {
-final file = File(photoPath);
+        final file = File(photoPath);
         if (!await file.exists()) {
           throw Exception('Photo file does not exist: $photoPath');
         }
@@ -34,7 +34,9 @@ final file = File(photoPath);
         final timestamp = DateTime.now().millisecondsSinceEpoch;
         final extension = photoPath.split('.').last.toLowerCase();
         final fileName = '$groupId/$timestamp.$extension';
-// Determine MIME type
+
+                
+        // Determine MIME type
         String mimeType;
         switch (extension) {
           case 'jpg':
@@ -65,15 +67,18 @@ final file = File(photoPath);
                 upsert: false,
               ),
             );
+
         
         // Get public URL
         photoUrl = _supabase.storage
             .from('group-photos')
             .getPublicUrl(fileName);
-}
+
+              }
 
       // Update group in database
-final updateData = {
+            
+      final updateData = {
         'name': name,
         'members_can_invite': canEditSettings,
         'members_can_add_members': canAddMembers,
@@ -98,7 +103,9 @@ final updateData = {
             created_at
           ''')
           .single();
-// Convert to GroupEntity
+
+      
+      // Convert to GroupEntity
       return GroupEntity(
         id: response['id'] as String,
         name: response['name'] as String,
@@ -114,7 +121,7 @@ final updateData = {
         createdAt: DateTime.parse(response['created_at'] as String),
       );
     } catch (e) {
-      throw Exception('Failed to update group: $e');
+        throw Exception('Failed to update group: $e');
     }
   }
 }

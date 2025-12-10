@@ -50,7 +50,7 @@ class GroupDetailsRepositoryImpl implements GroupDetailsRepository {
               .from('group-photos')
               .createSignedUrl(normalizedPath, 3600); // 1 hour
         } catch (e) {
-photoUrl = null;
+                    photoUrl = null;
         }
       }
 
@@ -117,15 +117,16 @@ final members = <GroupMemberEntity>[];
                 // Normalize path - remove leading slash if present
                 try {
                   final normalizedPath = avatarPath.startsWith('/') ? avatarPath.substring(1) : avatarPath;
-profileImageUrl = await _supabase.storage
+                                    profileImageUrl = await _supabase.storage
                       .from('users-profile-pic')
                       .createSignedUrl(normalizedPath, 3600); // 1 hour
-} catch (e) {
-profileImageUrl = null;
+                                  } catch (e) {
+                                    profileImageUrl = null;
                 }
               }
             }
-} else if (users is List && users.isNotEmpty) {
+            
+                      } else if (users is List && users.isNotEmpty) {
             final firstUser = users[0] as Map<String, dynamic>;
             name = firstUser['name'] as String?;
             final avatarPath = firstUser['avatar_url'] as String?;
@@ -142,13 +143,14 @@ profileImageUrl = null;
                       .from('users-profile-pic')
                       .createSignedUrl(normalizedPath, 3600); // 1 hour
                 } catch (e) {
-profileImageUrl = null;
+                                    profileImageUrl = null;
                 }
               }
             }
-}
+            
+                      }
         } else {
-}
+                  }
 
         members.add(GroupMemberEntity(
           id: userId,
@@ -202,8 +204,10 @@ profileImageUrl = null;
       if (currentUserId == null) {
         throw Exception('User not authenticated');
       }
-// Check if current user is admin of this group
-final currentUserMembership = await _supabase
+      
+                                    
+      // Check if current user is admin of this group
+            final currentUserMembership = await _supabase
           .from('group_members')
           .select('role')
           .eq('group_id', groupId)
@@ -211,21 +215,25 @@ final currentUserMembership = await _supabase
           .single();
       
       final currentUserRole = currentUserMembership['role'] as String;
-if (currentUserRole != 'admin') {
+            
+      if (currentUserRole != 'admin') {
         throw Exception('Only admins can change member roles');
       }
       
       // Validate: cannot demote if this is the last admin
       if (!isAdmin) {
-final members = await getGroupMembers(groupId);
+                final members = await getGroupMembers(groupId);
         final adminCount = members.where((m) => m.isAdmin).length;
-if (adminCount <= 1) {
+                
+        if (adminCount <= 1) {
           throw Exception('Cannot demote the last admin. Promote another member first.');
         }
       }
 
       final newRole = isAdmin ? 'admin' : 'member';
-// Try using RPC function if available, otherwise direct update
+      
+            
+      // Try using RPC function if available, otherwise direct update
       try {
         // Check if RPC function exists
         await _supabase.rpc('update_group_member_role', params: {
@@ -233,17 +241,19 @@ if (adminCount <= 1) {
           'p_user_id': userId,
           'p_new_role': newRole,
         });
-} catch (rpcError) {
-// Fallback to direct update
+              } catch (rpcError) {
+                
+        // Fallback to direct update
         await _supabase
             .from('group_members')
             .update({'role': newRole})
             .eq('group_id', groupId)
             .eq('user_id', userId);
-}
+        
+              }
       
       // Verify the update worked
-final verifyResponse = await _supabase
+            final verifyResponse = await _supabase
           .from('group_members')
           .select('role')
           .eq('group_id', groupId)
@@ -251,11 +261,13 @@ final verifyResponse = await _supabase
           .single();
       
       final actualRole = verifyResponse['role'] as String;
-if (actualRole != newRole) {
+            
+      if (actualRole != newRole) {
         throw Exception('Role update failed: expected $newRole but got $actualRole. This may be a Row Level Security (RLS) policy issue. Check Supabase dashboard for policies on group_members table.');
       }
-} catch (e) {
-throw Exception('Failed to update member role: $e');
+      
+          } catch (e) {
+            throw Exception('Failed to update member role: $e');
     }
   }
 
@@ -267,13 +279,14 @@ throw Exception('Failed to update member role: $e');
         throw Exception('User not authenticated');
       }
       
+                              
       // Validate: cannot remove yourself
       if (userId == currentUserId) {
         throw Exception('Cannot remove yourself from the group. Use "Leave Group" instead.');
       }
       
       // Check if current user is admin
-final currentUserMembership = await _supabase
+            final currentUserMembership = await _supabase
           .from('group_members')
           .select('role')
           .eq('group_id', groupId)
@@ -281,7 +294,8 @@ final currentUserMembership = await _supabase
           .single();
       
       final currentUserRole = currentUserMembership['role'] as String;
-if (currentUserRole != 'admin') {
+            
+      if (currentUserRole != 'admin') {
         throw Exception('Only admins can remove members');
       }
       
@@ -294,30 +308,37 @@ if (currentUserRole != 'admin') {
           .single();
       
       final targetUserRole = targetUserMembership['role'] as String;
-// If removing an admin, check if at least one other admin will remain
+            
+      // If removing an admin, check if at least one other admin will remain
       if (targetUserRole == 'admin') {
-final members = await getGroupMembers(groupId);
+                final members = await getGroupMembers(groupId);
         final adminCount = members.where((m) => m.isAdmin).length;
-if (adminCount <= 1) {
+                
+        if (adminCount <= 1) {
           throw Exception('Cannot remove the last admin. Promote another member first.');
         }
       }
-// Try using RPC function first (bypasses RLS policies)
+      
+            
+      // Try using RPC function first (bypasses RLS policies)
       try {
         await _supabase.rpc('remove_group_member', params: {
           'p_group_id': groupId,
           'p_user_id': userId,
         });
-} catch (rpcError) {
-// Fallback to direct delete (will likely fail due to RLS)
+              } catch (rpcError) {
+                
+        // Fallback to direct delete (will likely fail due to RLS)
         await _supabase
             .from('group_members')
             .delete()
             .eq('group_id', groupId)
             .eq('user_id', userId);
-}
-} catch (e) {
-throw Exception('Failed to remove member: $e');
+        
+              }
+      
+          } catch (e) {
+            throw Exception('Failed to remove member: $e');
     }
   }
 }

@@ -104,6 +104,17 @@ class FakeMemoryRepository implements MemoryRepository {
     // Fake implementation: always succeeds
     return true;
   }
+
+  @override
+  Future<bool> closeRecap(String eventId) async {
+    await Future.delayed(const Duration(milliseconds: 500));
+    // Fake implementation: simulate closing recap
+    // In real implementation, this would:
+    // 1. Validate at least one photo exists
+    // 2. Set first photo as cover if none selected
+    // 3. Change status from 'recap' to 'ended'
+    return true;
+  }
 }
 
 final DateTime _baseDate = DateTime(2024, 7, 5);

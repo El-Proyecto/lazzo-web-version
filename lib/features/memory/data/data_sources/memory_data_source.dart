@@ -88,4 +88,21 @@ class MemoryDataSource {
       throw Exception('Failed to update cover: ${e.message}');
     }
   }
+
+  /// Close recap phase early (host only)
+  /// Changes event status from 'recap' to 'ended'
+  Future<void> closeRecapEarly(String eventId) async {
+    try {
+      await _client
+          .from('events')
+          .update({
+            'status': 'ended',
+            'updated_at': DateTime.now().toIso8601String(),
+          })
+          .eq('id', eventId)
+          .eq('status', 'recap'); // Only update if currently in recap
+    } on PostgrestException catch (e) {
+      throw Exception('Failed to close recap: ${e.message}');
+    }
+  }
 }

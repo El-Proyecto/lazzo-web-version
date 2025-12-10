@@ -90,7 +90,7 @@ class GroupPhotosDataSource {
         },
       }).toList();
     } catch (e) {
-      throw Exception('Failed to fetch group photos: $e');
+                  throw Exception('Failed to fetch group photos: $e');
     }
   }
 

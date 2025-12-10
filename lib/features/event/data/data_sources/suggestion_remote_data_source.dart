@@ -519,8 +519,8 @@ return '';
           .delete()
           .eq('event_id', eventId);
 
-          } on PostgrestException catch (e) {
-                              throw Exception('Failed to clear location suggestions: ${e.message}');
+    } on PostgrestException catch (e) {
+      throw Exception('Failed to clear location suggestions: ${e.message}');
     } catch (e) {
             throw Exception('Failed to clear location suggestions: $e');
     }

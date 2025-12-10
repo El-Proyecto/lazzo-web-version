@@ -26,7 +26,7 @@ import '../../data/fakes/fake_memory_repository.dart';
 /// 1. Living: CTA banner if no photos uploaded, edit button if has photos or is host
 /// 2. Recap: Same as living but with orange CTA button
 /// 3. Ended: No CTA, no edit button - read-only memory
-class MemoryPage extends ConsumerWidget {
+class MemoryPage extends ConsumerStatefulWidget {
   final String memoryId;
 
   const MemoryPage({
@@ -35,8 +35,27 @@ class MemoryPage extends ConsumerWidget {
   });
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final memoryAsync = ref.watch(memoryDetailProvider(memoryId));
+  ConsumerState<MemoryPage> createState() => _MemoryPageState();
+}
+
+class _MemoryPageState extends ConsumerState<MemoryPage> {
+  @override
+  void initState() {
+    super.initState();
+    // Refresh data when page is first loaded
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _refreshData();
+    });
+  }
+
+  /// Refresh memory data
+  void _refreshData() {
+    ref.invalidate(memoryDetailProvider(widget.memoryId));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final memoryAsync = ref.watch(memoryDetailProvider(widget.memoryId));
 
     // Get event status from fake config (TODO: get from event provider in P2)
     final eventStatus = FakeMemoryConfig.eventStatus;
@@ -56,115 +75,133 @@ class MemoryPage extends ConsumerWidget {
     return Scaffold(
       backgroundColor: BrandColors.bg1,
       appBar: appBar,
-      body: memoryAsync.when(
-        data: (memory) {
-          if (memory == null) {
-            return const Center(
-              child: Text(
-                'Memory not found',
-                style: TextStyle(color: BrandColors.text2),
-              ),
-            );
-          }
+      body: RefreshIndicator(
+        onRefresh: () async {
+          // Invalidate and wait for memory data to refetch
+          _refreshData();
+          await ref.read(memoryDetailProvider(widget.memoryId).future);
+        },
+        color: BrandColors.planning,
+        backgroundColor: BrandColors.bg2,
+        child: memoryAsync.when(
+          data: (memory) {
+            if (memory == null) {
+              return const Center(
+                child: Text(
+                  'Memory not found',
+                  style: TextStyle(color: BrandColors.text2),
+                ),
+              );
+            }
 
-          final coverPhotos = memory.coverPhotos;
-          final gridPhotos = memory.gridPhotos;
+            final coverPhotos = memory.coverPhotos;
+            final gridPhotos = memory.gridPhotos;
 
-          return SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const SizedBox(height: Gaps.sm),
+            return SingleChildScrollView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: Gaps.sm),
 
-                // CTA Banner: Show for living/recap if user hasn't uploaded photos
-                if (_shouldShowCtaBanner(eventStatus, userHasUploadedPhotos))
-                  Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: Insets.screenH,
+                  // CTA Banner: Show for living/recap if user hasn't uploaded photos
+                  if (_shouldShowCtaBanner(eventStatus, userHasUploadedPhotos))
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: Insets.screenH,
+                      ),
+                      child: eventStatus == FakeEventStatus.living
+                          ? AddPhotosCtaCard.living(
+                              onPressed: () => _navigateToManageMemory(context),
+                            )
+                          : AddPhotosCtaCard.recap(
+                              onPressed: () => _navigateToManageMemory(context),
+                            ),
                     ),
-                    child: eventStatus == FakeEventStatus.living
-                        ? AddPhotosCtaCard.living(
-                            onPressed: () => _navigateToManageMemory(context),
-                          )
-                        : AddPhotosCtaCard.recap(
-                            onPressed: () => _navigateToManageMemory(context),
+
+                  if (_shouldShowCtaBanner(eventStatus, userHasUploadedPhotos))
+                    const SizedBox(height: Gaps.lg),
+
+                  // Cover Mosaic (full width with horizontal padding)
+                  CoverMosaic(
+                    covers: coverPhotos
+                        .map(
+                          (photo) => CoverPhotoData(
+                            id: photo.id,
+                            imageUrl: photo.coverUrl ?? photo.url,
+                            isPortrait: photo.isPortrait,
                           ),
+                        )
+                        .toList(),
+                    onPhotoTap: (photoId) =>
+                        _navigateToViewer(context, photoId),
                   ),
 
-                if (_shouldShowCtaBanner(eventStatus, userHasUploadedPhotos))
                   const SizedBox(height: Gaps.lg),
 
-                // Cover Mosaic (full width with horizontal padding)
-                CoverMosaic(
-                  covers: coverPhotos
-                      .map(
-                        (photo) => CoverPhotoData(
-                          id: photo.id,
-                          imageUrl: photo.coverUrl ?? photo.url,
-                          isPortrait: photo.isPortrait,
+                  // Event Title & Subtitle (full width, center-aligned)
+                  Padding(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: Insets.screenH),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        // Title
+                        Text(
+                          memory.title,
+                          style: AppText.subtitleMuted.copyWith(
+                            color: BrandColors.text1,
+                          ),
+                          textAlign: TextAlign.center,
                         ),
-                      )
-                      .toList(),
-                  onPhotoTap: (photoId) => _navigateToViewer(context, photoId),
-                ),
 
-                const SizedBox(height: Gaps.lg),
+                        const SizedBox(height: Gaps.xxs),
 
-                // Event Title & Subtitle (full width, center-aligned)
-                Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: Insets.screenH),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      // Title
-                      Text(
-                        memory.title,
-                        style: AppText.subtitleMuted.copyWith(
-                          color: BrandColors.text1,
+                        // Subtitle: location • date
+                        Text(
+                          _buildSubtitle(memory.location, memory.eventDate),
+                          style: AppText.bodyMedium.copyWith(
+                            color: BrandColors.text2,
+                          ),
+                          textAlign: TextAlign.center,
                         ),
-                        textAlign: TextAlign.center,
-                      ),
+                      ],
+                    ),
+                  ),
 
-                      const SizedBox(height: Gaps.xxs),
+                  const SizedBox(height: Gaps.xl),
 
-                      // Subtitle: location • date
-                      Text(
-                        _buildSubtitle(memory.location, memory.eventDate),
-                        style: AppText.bodyMedium.copyWith(
-                          color: BrandColors.text2,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                    ],
+                  // Hybrid Photo Grid with Clustering
+                  HybridPhotoGrid(
+                    clusters: _buildClusters(gridPhotos),
+                    onPhotoTap: (photoId) =>
+                        _navigateToViewer(context, photoId),
+                  ),
+
+                  const SizedBox(height: Gaps.md),
+                ],
+              ),
+            );
+          },
+          loading: () => const Center(
+            child: CircularProgressIndicator(),
+          ),
+          error: (error, stackTrace) => SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            child: SizedBox(
+              height: MediaQuery.of(context).size.height * 0.7,
+              child: Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(Insets.screenH),
+                  child: Text(
+                    'Error loading memory: $error',
+                    style: AppText.bodyMedium.copyWith(
+                      color: BrandColors.text2,
+                    ),
+                    textAlign: TextAlign.center,
                   ),
                 ),
-
-                const SizedBox(height: Gaps.xl),
-
-                // Hybrid Photo Grid with Clustering
-                HybridPhotoGrid(
-                  clusters: _buildClusters(gridPhotos),
-                  onPhotoTap: (photoId) => _navigateToViewer(context, photoId),
-                ),
-
-                const SizedBox(height: Gaps.md),
-              ],
-            ),
-          );
-        },
-        loading: () => const Center(
-          child: CircularProgressIndicator(),
-        ),
-        error: (error, stackTrace) => Center(
-          child: Padding(
-            padding: const EdgeInsets.all(Insets.screenH),
-            child: Text(
-              'Error loading memory: $error',
-              style: AppText.bodyMedium.copyWith(
-                color: BrandColors.text2,
               ),
-              textAlign: TextAlign.center,
             ),
           ),
         ),
@@ -363,13 +400,25 @@ class MemoryPage extends ConsumerWidget {
   }
 
   /// Navigate to manage memory page
-  void _navigateToManageMemory(BuildContext context) {
-    Navigator.of(context).pushNamed(
+  Future<void> _navigateToManageMemory(BuildContext context) async {
+    final result = await Navigator.of(context).pushNamed(
       AppRouter.manageMemory,
       arguments: {
-        'memoryId': memoryId,
+        'memoryId': widget.memoryId,
       },
     );
+
+    // Refresh memory data if changes were made
+    if (result == true && mounted) {
+      // Force complete refresh by invalidating and immediately reading the future
+      // This ensures we wait for fresh data from Supabase before rebuilding
+      ref.invalidate(memoryDetailProvider(widget.memoryId));
+      try {
+        await ref.read(memoryDetailProvider(widget.memoryId).future);
+      } catch (e) {
+        // Handle error silently, provider will show error state
+      }
+    }
   }
 
   /// Navigate to event chat page
@@ -377,7 +426,7 @@ class MemoryPage extends ConsumerWidget {
     Navigator.of(context).pushNamed(
       AppRouter.eventChat,
       arguments: {
-        'eventId': memoryId, // Using memoryId as eventId
+        'eventId': widget.memoryId, // Using memoryId as eventId
       },
     );
   }
@@ -387,7 +436,7 @@ class MemoryPage extends ConsumerWidget {
     Navigator.of(context).pushNamed(
       AppRouter.memoryViewer,
       arguments: {
-        'memoryId': memoryId,
+        'memoryId': widget.memoryId,
         'photoId': photoId,
       },
     );

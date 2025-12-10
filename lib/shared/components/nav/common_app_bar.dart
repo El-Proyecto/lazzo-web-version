@@ -122,6 +122,7 @@ class CommonAppBar extends StatelessWidget implements PreferredSizeWidget {
       elevation: elevation,
       automaticallyImplyLeading: automaticallyImplyLeading,
       title: Stack(
+        alignment: Alignment.center,
         children: [
           // Leading widget (left-aligned)
           Align(
@@ -129,13 +130,14 @@ class CommonAppBar extends StatelessWidget implements PreferredSizeWidget {
             child: leading ?? const SizedBox(width: 28, height: 28),
           ),
 
-          // Title (absolutely centered)
-          Center(
+          // Title (absolutely centered both horizontally and vertically)
+          Align(
+            alignment: Alignment.center,
             child: Text(
               title,
               style: AppText.dropdownTitle.copyWith(
                 color: BrandColors.text1,
-                fontSize: 18,
+                fontSize: 22,
                 fontWeight: FontWeight.w500,
               ),
               textAlign: TextAlign.center,

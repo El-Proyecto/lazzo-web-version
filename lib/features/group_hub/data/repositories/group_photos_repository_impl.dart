@@ -20,12 +20,12 @@ class GroupPhotosRepositoryImpl implements GroupPhotosRepository {
       try {
         photosData = await _dataSource.getGroupPhotos(groupId);
       } catch (e) {
-        throw Exception('Data source failed: $e');
+          throw Exception('Data source failed: $e');
       }
       
             
       if (photosData.isEmpty) {
-return [];
+          return [];
       }
 
       final entities = <GroupPhotoEntity>[];
@@ -35,8 +35,8 @@ return [];
         String photoUrl;
         try {
           photoUrl = await _dataSource.getSignedUrl(json['storage_path'] as String);
-} catch (e) {
-// Skip this photo if we can't get a signed URL
+        } catch (e) {
+            // Skip this photo if we can't get a signed URL
           continue;
         }
         
@@ -50,8 +50,8 @@ return [];
               model.profileImageUrl!,
               bucket: 'users-profile-pic',
             );
-} catch (e) {
-                        profileImageUrl = null;
+          } catch (e) {
+            profileImageUrl = null;
           }
         }
         
@@ -65,7 +65,7 @@ return [];
           isPortrait: model.isPortrait,
         ));
       }
-return entities;
+        return entities;
     } on Exception catch (e) {
       // Network/auth errors - rethrow
       throw Exception('Failed to load group photos: $e');
