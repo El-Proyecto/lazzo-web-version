@@ -33,7 +33,9 @@ class OtherProfileRepositoryImpl implements OtherProfileRepository {
       print('🟡 [OtherProfileRepo] Fetching basic profile data...');
       final profileData = await _dataSource.getOtherUserProfile(userId);
       print('🟡 [OtherProfileRepo] Profile data received: ${profileData['name']}');
+      print('🟡 [OtherProfileRepo] Raw avatar_url from DB: ${profileData['avatar_url']}');
       final profileModel = OtherProfileModel.fromMap(profileData);
+      print('🟡 [OtherProfileRepo] Model avatar_url: ${profileModel.avatarUrl}');
 
       // Generate signed URL for avatar if exists
       String? signedAvatarUrl;
