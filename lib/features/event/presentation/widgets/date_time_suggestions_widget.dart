@@ -700,8 +700,12 @@ class _SuggestionVoteItem extends StatelessWidget {
         Navigator.pop(context);
         
         if (isCurrentUser) {
-          // Navigate to own profile
-          Navigator.pushNamed(context, '/profile');
+          // Navigate to own profile with back button
+          Navigator.pushNamed(
+            context,
+            '/profile',
+            arguments: {'showBackButton': true},
+          );
         } else {
           // Navigate to other user profile
           Navigator.pushNamed(
