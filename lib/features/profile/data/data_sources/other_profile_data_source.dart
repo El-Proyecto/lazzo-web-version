@@ -325,9 +325,6 @@ class OtherProfileDataSource {
     print('[InvitableGroups] Found ${invitableGroups.length} invitable groups\n');
     return invitableGroups;
   }
-
-  /// Send group invitation
-  /// Creates entry in group_invites table
   Future<void> inviteToGroup({
     required String userId,
     required String groupId,

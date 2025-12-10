@@ -24,23 +24,19 @@ class OtherProfileRepositoryImpl implements OtherProfileRepository {
 
   @override
   Future<OtherProfileEntity> getOtherUserProfile(String userId) async {
-    print('\n🟡 [OtherProfileRepo] ====== REPOSITORY CALLED ======');
-    print('🟡 [OtherProfileRepo] Target userId: $userId');
-    print('🟡 [OtherProfileRepo] Current userId: $_currentUserId');
+    print('[OtherProfileRepo] Fetching profile for user: $userId');
     
     try {
       // Fetch basic profile data
-      print('🟡 [OtherProfileRepo] Fetching basic profile data...');
       final profileData = await _dataSource.getOtherUserProfile(userId);
-      print('🟡 [OtherProfileRepo] Profile data received: ${profileData['name']}');
-      print('🟡 [OtherProfileRepo] Raw avatar_url from DB: ${profileData['avatar_url']}');
+      print('[OtherProfileRepo] Profile data received: ${profileData['name']}');
       final profileModel = OtherProfileModel.fromMap(profileData);
-      print('🟡 [OtherProfileRepo] Model avatar_url: ${profileModel.avatarUrl}');
 
       // Generate signed URL for avatar if exists
+      // Note: NULL avatar_url is expected when user hasn't uploaded profile picture
       String? signedAvatarUrl;
       if (profileModel.avatarUrl != null && profileModel.avatarUrl!.isNotEmpty) {
-        print('[OtherProfileRepo] Generating signed URL for avatar: ${profileModel.avatarUrl}');
+        print('[OtherProfileRepo] Generating signed URL for avatar');
         try {
           signedAvatarUrl = await _storageService.getSignedUrl(
             profileModel.avatarUrl!,
@@ -52,8 +48,6 @@ class OtherProfileRepositoryImpl implements OtherProfileRepository {
           print('[OtherProfileRepo] ❌ Avatar signed URL error: $e');
           signedAvatarUrl = null;
         }
-      } else {
-        print('[OtherProfileRepo] ⚠️ No avatar URL in profile');
       }
 
       // Fetch shared memories data

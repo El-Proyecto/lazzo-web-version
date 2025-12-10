@@ -18,6 +18,7 @@ class LocationSuggestionsWidget extends StatefulWidget {
       onPickLocation; // Callback for pick location
   final String? currentEventLocationName; // Current event location name
   final String? currentEventAddress; // Current event address
+  final String? currentUserId; // Current user ID for profile navigation
 
   const LocationSuggestionsWidget({
     super.key,
@@ -30,6 +31,7 @@ class LocationSuggestionsWidget extends StatefulWidget {
     required this.onPickLocation,
     this.currentEventLocationName,
     this.currentEventAddress,
+    this.currentUserId,
   });
 
   @override
@@ -503,6 +505,7 @@ class _LocationSuggestionsWidgetState extends State<LocationSuggestionsWidget> {
                   subtitle: suggestion.address ?? 'address not defined',
                   count: votes.length,
                   votes: votes,
+                  currentUserId: widget.currentUserId,
                 ),
                 if (suggestion != widget.suggestions.last)
                   const SizedBox(height: Gaps.lg),
@@ -521,12 +524,14 @@ class _LocationSuggestionVoteSection extends StatelessWidget {
   final String? subtitle;
   final int count;
   final List<SuggestionVote> votes;
+  final String? currentUserId;
 
   const _LocationSuggestionVoteSection({
     required this.title,
     this.subtitle,
     required this.count,
     required this.votes,
+    this.currentUserId,
   });
 
   @override
@@ -566,7 +571,10 @@ class _LocationSuggestionVoteSection extends StatelessWidget {
 
         // Vote list (sorted by most recent first)
         ...(votes.toList()..sort((a, b) => b.createdAt.compareTo(a.createdAt)))
-            .map((vote) => _LocationSuggestionVoteItem(vote: vote)),
+            .map((vote) => _LocationSuggestionVoteItem(
+              vote: vote,
+              currentUserId: currentUserId,
+            )),
       ],
     );
   }
@@ -575,46 +583,82 @@ class _LocationSuggestionVoteSection extends StatelessWidget {
 /// Individual vote item for location suggestions
 class _LocationSuggestionVoteItem extends StatelessWidget {
   final SuggestionVote vote;
+  final String? currentUserId;
 
-  const _LocationSuggestionVoteItem({required this.vote});
+  const _LocationSuggestionVoteItem({
+    required this.vote,
+    this.currentUserId,
+  });
+
+  String get _displayName {
+    return vote.userId == currentUserId ? 'You' : vote.userName;
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: Gaps.sm),
-      child: Row(
-        children: [
-          // Avatar
-          CircleAvatar(
-            radius: 16,
-            backgroundColor: BrandColors.bg3,
-            child: vote.userAvatar != null
-                ? ClipOval(
-                    child: Image.network(
-                      vote.userAvatar!,
-                      width: 32,
-                      height: 32,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) =>
-                          _buildDefaultAvatar(),
-                    ),
-                  )
-                : _buildDefaultAvatar(),
-          ),
-          const SizedBox(width: Gaps.sm),
-
-          // Name
-          Expanded(child: Text(vote.userName, style: AppText.bodyMedium)),
-
-          // Date (if voted)
-          Text(
-            _formatVoteDate(vote.createdAt),
-            style: AppText.bodyMedium.copyWith(
-              color: BrandColors.text2,
-              fontSize: 12,
+    final bool isCurrentUser = vote.userId == currentUserId;
+    
+    return InkWell(
+      onTap: () {
+        // Close bottom sheet
+        Navigator.pop(context);
+        
+        if (isCurrentUser) {
+          // Navigate to own profile
+          Navigator.pushNamed(context, '/profile');
+        } else {
+          // Navigate to other user profile
+          Navigator.pushNamed(
+            context,
+            '/other-profile',
+            arguments: {'userId': vote.userId},
+          );
+        }
+      },
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: Gaps.sm),
+        child: Row(
+          children: [
+            // Avatar
+            CircleAvatar(
+              radius: 16,
+              backgroundColor: BrandColors.bg3,
+              child: vote.userAvatar != null
+                  ? ClipOval(
+                      child: Image.network(
+                        vote.userAvatar!,
+                        width: 32,
+                        height: 32,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) =>
+                            _buildDefaultAvatar(),
+                      ),
+                    )
+                  : _buildDefaultAvatar(),
             ),
-          ),
-        ],
+            const SizedBox(width: Gaps.sm),
+
+            // Name
+            Expanded(child: Text(_displayName, style: AppText.bodyMedium)),
+
+            // Date (if voted)
+            Text(
+              _formatVoteDate(vote.createdAt),
+              style: AppText.bodyMedium.copyWith(
+                color: BrandColors.text2,
+                fontSize: 12,
+              ),
+            ),
+            
+            // Chevron indicator (always show for navigation)
+            const SizedBox(width: Gaps.xs),
+            const Icon(
+              Icons.chevron_right_rounded,
+              color: BrandColors.text2,
+              size: 16,
+            ),
+          ],
+        ),
       ),
     );
   }

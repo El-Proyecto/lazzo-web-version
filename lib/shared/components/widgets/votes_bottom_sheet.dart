@@ -576,15 +576,21 @@ class _VoteItem extends StatelessWidget {
     final bool isCurrentUser = vote.userId == currentUserId;
             
     return InkWell(
-      onTap: isCurrentUser ? null : () {
+      onTap: () {
         // Close bottom sheet
         Navigator.pop(context);
-        // Navigate to other user profile
-        Navigator.pushNamed(
-          context,
-          AppRouter.otherProfile,
-          arguments: {'userId': vote.userId},
-        );
+        
+        if (isCurrentUser) {
+          // Navigate to own profile
+          Navigator.pushNamed(context, AppRouter.profile);
+        } else {
+          // Navigate to other user profile
+          Navigator.pushNamed(
+            context,
+            AppRouter.otherProfile,
+            arguments: {'userId': vote.userId},
+          );
+        }
       },
       child: Padding(
         padding: const EdgeInsets.only(bottom: Gaps.sm),
@@ -622,14 +628,13 @@ class _VoteItem extends StatelessWidget {
                 ),
               ),
             
-            // Chevron indicator (only if not current user)
-            if (!isCurrentUser) ...[              const SizedBox(width: Gaps.xs),
-              const Icon(
-                Icons.chevron_right_rounded,
-                color: BrandColors.text2,
-                size: 16,
-              ),
-            ],
+            // Chevron indicator (always show for navigation)
+            const SizedBox(width: Gaps.xs),
+            const Icon(
+              Icons.chevron_right_rounded,
+              color: BrandColors.text2,
+              size: 16,
+            ),
           ],
         ),
       ),
