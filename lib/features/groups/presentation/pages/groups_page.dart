@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../shared/themes/colors.dart';
 import '../../../../shared/constants/spacing.dart';
-import '../widgets/groups_app_bar.dart';
+import '../../../../shared/components/nav/common_app_bar.dart';
 import '../../../../shared/components/inputs/search_bar.dart' as custom;
 import '../../../../shared/components/cards/group_card.dart';
 import '../widgets/group_context_menu.dart';
@@ -58,7 +58,9 @@ class _GroupsPageState extends ConsumerState<GroupsPage>
 
     return Scaffold(
       backgroundColor: BrandColors.bg1,
-      appBar: GroupsAppBar(onCreateGroupPressed: _handleCreateGroup),
+      appBar: CommonAppBar.groups(
+        onCreateGroupPressed: _handleCreateGroup,
+      ),
       body: Column(
         children: [
           // Search bar

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../../../routes/app_router.dart';
 import '../../../../shared/components/nav/common_app_bar.dart';
 import '../../../../shared/components/common/top_banner.dart';
@@ -10,6 +11,7 @@ import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/constants/text_styles.dart';
 import '../../../../shared/themes/colors.dart';
 import '../providers/manage_memory_providers.dart';
+import '../providers/memory_providers.dart';
 import '../widgets/cover_selection_card.dart';
 import '../widgets/photo_grid_item.dart';
 import '../widgets/add_photo_card.dart';
@@ -41,6 +43,7 @@ class ManageMemoryPage extends ConsumerStatefulWidget {
 class _ManageMemoryPageState extends ConsumerState<ManageMemoryPage> {
   bool _isSelectionMode = false;
   final Set<String> _selectedPhotoIds = {};
+  bool _hasChanges = false; // Track if any changes were made
 
   void _toggleSelectionMode() {
     setState(() {
@@ -73,7 +76,7 @@ class _ManageMemoryPageState extends ConsumerState<ManageMemoryPage> {
         title: 'Manage Photos',
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: BrandColors.text1),
-          onPressed: () => Navigator.of(context).pop(),
+          onPressed: () => Navigator.of(context).pop(_hasChanges),
         ),
         trailing: IconButton(
           icon: Icon(
@@ -121,18 +124,21 @@ class _ManageMemoryPageState extends ConsumerState<ManageMemoryPage> {
                     else
                       Builder(
                         builder: (context) {
-                                                                              if (state.selectedCover != null) {
-                                                      }
-                          
+                          if (state.selectedCover != null) {}
+
                           return Center(
                             child: CoverSelectionCard(
                               selectedPhoto: state.selectedCover,
                               onTap: () => _showPhotoSelector(context, state),
                               onRemove: state.selectedCover != null
-                                  ? () => ref
-                                      .read(manageMemoryProvider(widget.memoryId)
-                                          .notifier)
-                                      .removeCover()
+                                  ? () {
+                                      setState(() => _hasChanges = true);
+                                      ref
+                                          .read(manageMemoryProvider(
+                                                  widget.memoryId)
+                                              .notifier)
+                                          .removeCover();
+                                    }
                                   : null,
                             ),
                           );
@@ -359,7 +365,11 @@ class _ManageMemoryPageState extends ConsumerState<ManageMemoryPage> {
           .removePhoto(photoId);
     }
 
+    // Invalidate memory provider to refresh Memory page when user goes back
+    ref.invalidate(memoryDetailProvider(widget.memoryId));
+
     setState(() {
+      _hasChanges = true; // Mark that changes were made
       _selectedPhotoIds.clear();
       _isSelectionMode = false; // Exit selection mode after deletion
     });
@@ -369,14 +379,40 @@ class _ManageMemoryPageState extends ConsumerState<ManageMemoryPage> {
     }
   }
 
-  void _handleAddPhoto() {
-    // TODO: Implement photo picker
-    TopBanner.showSuccess(
-      context,
-      message: FakeMemoryConfig.eventStatus == FakeEventStatus.living
-          ? 'Opening camera...'
-          : 'Opening photo picker...',
+  void _handleAddPhoto() async {
+    // Open photo picker
+    final picker = ImagePicker();
+    final selectedImages = await picker.pickMultiImage(
+      maxWidth: 1920,
+      maxHeight: 1920,
+      imageQuality: 85,
     );
+
+    if (selectedImages.isNotEmpty && mounted) {
+      // Limit to 5 photos
+      final limitedImages = selectedImages.take(5).toList();
+
+      if (limitedImages.length < selectedImages.length) {
+        TopBanner.show(
+          context,
+          message: 'Maximum 5 photos selected',
+        );
+      }
+
+      // Add selected photos to provider
+      ref.read(selectedPhotoPathsProvider.notifier).state =
+          limitedImages.map((img) => img.path).toList();
+
+      // Refresh the manage memory state to show new photos
+      ref.invalidate(manageMemoryProvider(widget.memoryId));
+
+      setState(() => _hasChanges = true); // Mark that changes were made
+
+      TopBanner.showSuccess(
+        context,
+        message: '${limitedImages.length} photo(s) added',
+      );
+    }
   }
 
   void _handleCloseRecap() {
@@ -432,6 +468,8 @@ class _ManageMemoryPageState extends ConsumerState<ManageMemoryPage> {
                   final photo = state.allPhotos[index];
                   return GestureDetector(
                     onTap: () {
+                      setState(() =>
+                          _hasChanges = true); // Mark that changes were made
                       ref
                           .read(manageMemoryProvider(widget.memoryId).notifier)
                           .selectCover(photo);

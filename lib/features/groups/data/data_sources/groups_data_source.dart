@@ -102,8 +102,7 @@ class SupabaseGroupsDataSource implements GroupsDataSource {
       
       // Validate that it's a storage path, not a local path
       if (photoPath.contains('cache') || photoPath.contains('data/user')) {
-        print('   ❌ Invalid path detected (local path instead of storage path): $photoPath');
-        throw Exception('Invalid photo path - local paths are not supported');
+                throw Exception('Invalid photo path - local paths are not supported');
       }
       
       // Normalize path - remove leading slash if present (storage paths shouldn't have leading /)

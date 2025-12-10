@@ -109,8 +109,7 @@ class FakeGroupDetailsRepository implements GroupDetailsRepository {
     if (!isAdmin) {
       // In a real scenario, this would check the actual member list
       // For fake, we just simulate the validation
-      print('🔐 [FAKE] Updating role for user $userId to ${isAdmin ? "admin" : "member"}');
-    }
+          }
     
     // In real implementation, this would update the backend
   }
@@ -120,8 +119,7 @@ class FakeGroupDetailsRepository implements GroupDetailsRepository {
     // Simulate network delay
     await Future.delayed(const Duration(milliseconds: 300));
     
-    print('🗑️ [FAKE] Removing user $userId from group $groupId');
-    
+        
     // In real implementation, this would delete from backend
   }
 }

@@ -70,9 +70,10 @@ class _GroupHubPageState extends ConsumerState<GroupHubPage>
       final confirmedToLiving = needsUpdate['confirmed_to_living']!;
       final livingToRecap = needsUpdate['living_to_recap']!;
       final recapToEnded = needsUpdate['recap_to_ended']!;
-      
-      if (confirmedToLiving.isNotEmpty || livingToRecap.isNotEmpty || recapToEnded.isNotEmpty) {
-        
+
+      if (confirmedToLiving.isNotEmpty ||
+          livingToRecap.isNotEmpty ||
+          recapToEnded.isNotEmpty) {
         // Update all event statuses
         final updatedCount = await statusService.updateEventStatuses();
 
@@ -445,7 +446,8 @@ class _GroupHubPageState extends ConsumerState<GroupHubPage>
           // Member count (dynamic from groupDetailsProvider)
           Consumer(
             builder: (context, ref, child) {
-              final detailsAsync = ref.watch(groupDetailsProvider(widget.groupId));
+              final detailsAsync =
+                  ref.watch(groupDetailsProvider(widget.groupId));
               final memberCount = detailsAsync.value?.memberCount ?? 0;
               return Text(
                 '$memberCount Members',
@@ -634,12 +636,20 @@ class _GroupHubPageState extends ConsumerState<GroupHubPage>
                 event: displayEvent,
                 state: cardState,
                 onTap: () async {
-                  // Navigate to event detail page and refresh on return
-                  await Navigator.pushNamed(
-                    context,
-                    '/event',
-                    arguments: {'eventId': event.id},
-                  );
+                  // Navigate to Memory Page if Recap, otherwise Event Page
+                  if (event.status == GroupEventStatus.recap) {
+                    await Navigator.pushNamed(
+                      context,
+                      '/memory',
+                      arguments: {'memoryId': event.id},
+                    );
+                  } else {
+                    await Navigator.pushNamed(
+                      context,
+                      '/event',
+                      arguments: {'eventId': event.id},
+                    );
+                  }
 
                   // Refresh only this specific event instead of entire list
                   // This will fetch updated status, votes, and participant counts
@@ -732,7 +742,6 @@ class _GroupHubPageState extends ConsumerState<GroupHubPage>
             subtitle: 'Group memories will appear here',
           );
         }
-
 
         return SingleChildScrollView(
           controller: _memoriesScrollController,

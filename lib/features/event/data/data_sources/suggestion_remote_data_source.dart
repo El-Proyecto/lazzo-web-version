@@ -446,8 +446,6 @@ class SuggestionRemoteDataSource {
   Future<void> clearEventLocationSuggestions(String eventId) async {
     try {
             
-      // Get current user ID for debugging
-      final currentUser = _supabaseClient.auth.currentUser;
       
       // Get existing suggestions BEFORE delete
       final existingBefore = await _supabaseClient
@@ -477,8 +475,8 @@ class SuggestionRemoteDataSource {
                   }
       }
 
-          } on PostgrestException catch (e) {
-                              throw Exception('Failed to clear location suggestions: ${e.message}');
+    } on PostgrestException catch (e) {
+      throw Exception('Failed to clear location suggestions: ${e.message}');
     } catch (e) {
             throw Exception('Failed to clear location suggestions: $e');
     }

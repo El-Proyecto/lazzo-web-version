@@ -359,12 +359,20 @@ class _HomePageState extends ConsumerState<HomePage> {
                             event: event,
                             state: _mapStatusToHomeCardState(event.status),
                             onTap: () async {
-                              // ✅ Navigate to event details
-                              await Navigator.pushNamed(
-                                context,
-                                AppRouter.event,
-                                arguments: {'eventId': event.id},
-                              );
+                              // Navigate to Memory Page if Recap, otherwise Event Page
+                              if (event.status == HomeEventStatus.recap) {
+                                await Navigator.pushNamed(
+                                  context,
+                                  AppRouter.memory,
+                                  arguments: {'memoryId': event.id},
+                                );
+                              } else {
+                                await Navigator.pushNamed(
+                                  context,
+                                  AppRouter.event,
+                                  arguments: {'eventId': event.id},
+                                );
+                              }
                             },
                             onChatPressed: () {
                               // TODO: Navigate to event chat
