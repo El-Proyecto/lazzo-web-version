@@ -59,9 +59,7 @@ class GroupPhotosDataSource {
   /// which pre-joins users and events data for 10x faster queries
   Future<List<Map<String, dynamic>>> getGroupPhotos(String groupId) async {
     try {
-      print('🔍 [DATA SOURCE] Querying group_photos_with_uploader for groupId: $groupId');
-      
-      // Query materialized view (data already joined)
+// Query materialized view (data already joined)
       // This is 10x faster than joining at query time
       final response = await _supabase
           .from('group_photos_with_uploader')
@@ -78,8 +76,7 @@ class GroupPhotosDataSource {
           .order('captured_at', ascending: false)
           .limit(100);
 
-      print('✅ [DATA SOURCE] Query successful, received ${(response as List).length} photos');
-      
+            
       // Transform response to match expected format
       return (response as List).map((row) => {
         'id': row['id'],
@@ -92,9 +89,7 @@ class GroupPhotosDataSource {
           'avatar_url': row['uploader_avatar_url'],
         },
       }).toList();
-    } catch (e, stackTrace) {
-      print('❌ [DATA SOURCE] Error fetching group photos: $e');
-      print('   Stack trace: $stackTrace');
+    } catch (e) {
       throw Exception('Failed to fetch group photos: $e');
     }
   }

@@ -40,7 +40,7 @@ class HomeEventRemoteDataSource {
 
       // ✅ Convert all events and find highest priority
       // Pass callback to persist status changes
-      final events = data.map((e) => homeEventFromMap(
+      final eventsFutures = data.map((e) => homeEventFromMap(
         e as Map<String, dynamic>,
         onStatusMismatch: (eventId, newStatus) {
           // Persist status change asynchronously (fire and forget)
@@ -48,7 +48,11 @@ class HomeEventRemoteDataSource {
                         return false;
           });
         },
-      )).toList();
+        currentUserId: userId,
+        supabaseClient: client,
+      ));
+      
+      final events = await Future.wait(eventsFutures);
 
       // Priority order: living (4) > recap (3) > confirmed (2) > pending (1)
       final priorityMap = {
@@ -95,14 +99,18 @@ class HomeEventRemoteDataSource {
       final data = response as List<dynamic>;
 
 
-      final events = data.map((e) => homeEventFromMap(
+      final eventsFutures = data.map((e) => homeEventFromMap(
         e as Map<String, dynamic>,
         onStatusMismatch: (eventId, newStatus) {
           updateEventStatus(eventId, newStatus).catchError((error) {
                         return false;
           });
         },
-      )).toList();
+        currentUserId: userId,
+        supabaseClient: client,
+      ));
+      
+      final events = await Future.wait(eventsFutures);
 
       // Filter out past events (keep future and null dates)
       final now = DateTime.now();
@@ -151,14 +159,18 @@ class HomeEventRemoteDataSource {
       final data = response as List<dynamic>;
 
       // Convert to entities with status persistence
-      final events = data.map((e) => homeEventFromMap(
+      final eventsFutures = data.map((e) => homeEventFromMap(
         e as Map<String, dynamic>,
         onStatusMismatch: (eventId, newStatus) {
           updateEventStatus(eventId, newStatus).catchError((error) {
                         return false;
           });
         },
-      )).toList();
+        currentUserId: userId,
+        supabaseClient: client,
+      ));
+      
+      final events = await Future.wait(eventsFutures);
 
       // Sort: future dates first (ascending), null dates last
       events.sort((a, b) {

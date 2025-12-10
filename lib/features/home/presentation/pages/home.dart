@@ -17,8 +17,8 @@ import '../../../inbox/presentation/providers/payments_provider.dart';
 import '../widgets/no_groups_yet_card.dart';
 import '../widgets/no_upcoming_events_card.dart';
 import '../providers/home_event_providers.dart';
-import '../../domain/entities/home_event.dart';
 import '../../../../routes/app_router.dart';
+import '../../domain/entities/home_event.dart';
 
 /// Home page - main screen showing next event, confirmed/pending events, todos, payments, and memories
 ///
@@ -654,7 +654,10 @@ class _HomePageState extends ConsumerState<HomePage> {
                               child: RecentMemoryCard(
                                 memory: memory,
                                 onTap: () {
-                                  // TODO P2: Navigate to memory detail
+                                  Navigator.of(context).pushNamed(
+                                    AppRouter.memoryViewer,
+                                    arguments: {'memoryId': memory.id},
+                                  );
                                 },
                               ),
                             );

@@ -98,7 +98,11 @@ class AppRouter {
       return EditEventPage(event: event);
     },
     inbox: (context) => const InboxPage(),
-    profile: (context) => const ProfilePage(),
+    profile: (context) {
+      final args =
+          ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+      return ProfilePage(showBackButton: args?['showBackButton'] ?? false);
+    },
     editProfile: (context) => const EditProfilePage(),
     otherProfile: (context) {
       final args =

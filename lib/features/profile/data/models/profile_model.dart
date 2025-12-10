@@ -79,35 +79,44 @@ class ProfileModel {
   );
 }
 
-// DTO memory model for profile memories
+// DTO memory model for profile memories (events with status recap/ended)
 class MemoryModel {
   final String eventId;
   final String title;
-  final String? imageUrl;
-  final DateTime createdAt;
+  final String? coverStoragePath;
+  final DateTime date;
   final String? location;
 
   const MemoryModel({
     required this.eventId,
     required this.title,
-    this.imageUrl,
-    required this.createdAt,
+    this.coverStoragePath,
+    required this.date,
     this.location,
   });
 
-  factory MemoryModel.fromMap(Map<String, dynamic> row) => MemoryModel(
-    eventId: row['mem_id'] as String,
-    title: row['mem_title'] as String,
-    imageUrl: row['photo_id'] as String?,
-    createdAt: DateTime.parse(row['mem_date'] as String),
-    location: row['mem_location'] as String?,
-  );
+  factory MemoryModel.fromMap(Map<String, dynamic> row) {
+    // Extract location from nested locations object
+    String? locationName;
+    if (row['locations'] != null) {
+      final locations = row['locations'];
+      locationName = locations['display_name'] as String?;
+    }
 
-  MemoryEntity toEntity() => MemoryEntity(
+    return MemoryModel(
+      eventId: row['id'] as String,
+      title: row['name'] as String,
+      coverStoragePath: row['cover_storage_path'] as String?,
+      date: DateTime.parse(row['end_datetime'] as String),
+      location: locationName,
+    );
+  }
+
+  MemoryEntity toEntity({String? signedUrl}) => MemoryEntity(
     id: eventId,
     title: title,
-    coverImageUrl: imageUrl,
-    date: createdAt,
+    coverImageUrl: signedUrl,
+    date: date,
     location: location,
   );
 }

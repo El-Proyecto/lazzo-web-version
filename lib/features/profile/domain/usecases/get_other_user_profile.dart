@@ -7,7 +7,8 @@ class GetOtherUserProfile {
 
   const GetOtherUserProfile(this.repository);
 
-  Future<OtherProfileEntity> call(String userId) {
-    return repository.getOtherUserProfile(userId);
+  Future<OtherProfileEntity> call(String userId) async {
+final result = await repository.getOtherUserProfile(userId);
+return result;
   }
 }

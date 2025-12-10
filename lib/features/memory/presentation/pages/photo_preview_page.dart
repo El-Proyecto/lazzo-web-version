@@ -347,8 +347,7 @@ class _PhotoPreviewPageState extends ConsumerState<PhotoPreviewPage> {
   }
 
   Future<void> _handlePromoteToCover(BuildContext context, ManagePhotoItem photo) async {
-    print('\n [PHOTO PREVIEW] Promoting photo ${photo.id.substring(0, 8)}... to cover');
-    
+        
     // Promote to cover (will persist to Supabase)
     await ref
         .read(manageMemoryProvider(widget.memoryId).notifier)
