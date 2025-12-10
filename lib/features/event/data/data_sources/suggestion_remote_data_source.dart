@@ -286,11 +286,6 @@ return '';
       return (response as List)
           .map((json) => LocationSuggestionModel.fromJson(json))
           .toList();
-
-            for (var i = 0; i < suggestions.length; i++) {
-              }
-
-      return suggestions;
     } on PostgrestException catch (e) {
       throw Exception('Failed to get location suggestions: ${e.message}');
     } catch (e) {
@@ -518,37 +513,11 @@ return '';
   /// Clear all location suggestions and votes for an event
   Future<void> clearEventLocationSuggestions(String eventId) async {
     try {
-            
-      // Get current user ID for debugging
-      final currentUser = _supabaseClient.auth.currentUser;
-      
-      // Get existing suggestions BEFORE delete
-      final existingBefore = await _supabaseClient
-          .from('location_suggestions')
-          .select('id, location_name, user_id')
-          .eq('event_id', eventId);
-            for (var s in existingBefore) {
-              }
-
       // Delete location suggestions (CASCADE will delete votes)
-      final result = await _supabaseClient
+      await _supabaseClient
           .from('location_suggestions')
           .delete()
-          .eq('event_id', eventId)
-          .select(); // Add select() to get deleted rows
-
-            for (var r in result) {
-              }
-
-      // Verify deletion
-      final existingAfter = await _supabaseClient
-          .from('location_suggestions')
-          .select('id, location_name')
           .eq('event_id', eventId);
-            if (existingAfter.isNotEmpty) {
-                for (var s in existingAfter) {
-                  }
-      }
 
           } on PostgrestException catch (e) {
                               throw Exception('Failed to clear location suggestions: ${e.message}');
