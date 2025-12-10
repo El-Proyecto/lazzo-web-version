@@ -147,6 +147,7 @@ lib/
 - Feature has complete DI setup (fake repo, real repo, provider override).
 - `const` constructors added where possible for performance.
 - Empty or TODO-only files are removed or implemented.
+- **All `print()` debug statements removed** - run `./scripts/clean_prints.sh` before merge.
 
 ---
 
@@ -519,4 +520,3 @@ Important context for P2 team
 ---
 
 Keep this guide up to date. When in doubt: **tokenize, separate layers, fake-first, DI override, move-don't-delete**.
-

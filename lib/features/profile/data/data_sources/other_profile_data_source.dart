@@ -28,11 +28,7 @@ class OtherProfileDataSource {
     required String currentUserId,
     required String targetUserId,
   }) async {
-    print('\n🔴 [OtherProfileDataSource] ====== DATA SOURCE CALLED ======');
-    print('🔴 [OtherProfileDataSource] Current user: $currentUserId');
-    print('🔴 [OtherProfileDataSource] Target user: $targetUserId');
-    
-    try {
+try {
       // Step 1: Get groups where current user is member
       final currentUserGroups = await _client
           .from('group_members')
@@ -40,17 +36,13 @@ class OtherProfileDataSource {
           .eq('user_id', currentUserId);
 
       if ((currentUserGroups as List).isEmpty) {
-        print('[OtherProfile] Current user has no groups');
-        return [];
+return [];
       }
 
       final currentGroupIds = currentUserGroups
           .map((g) => g['group_id'] as String)
           .toList();
-
-      print('[OtherProfile] Current user is in ${currentGroupIds.length} groups');
-
-      // Step 2: Get groups where target user is also member (intersection)
+// Step 2: Get groups where target user is also member (intersection)
       final targetUserGroups = await _client
           .from('group_members')
           .select('group_id')
@@ -62,13 +54,9 @@ class OtherProfileDataSource {
           .toList();
 
       if (sharedGroupIds.isEmpty) {
-        print('[OtherProfile] No shared groups found');
-        return [];
+return [];
       }
-
-      print('[OtherProfile] Found ${sharedGroupIds.length} shared groups');
-
-      // Step 3: Query events for shared groups with status 'recap' or 'ended'
+// Step 3: Query events for shared groups with status 'recap' or 'ended'
       // Following EXACT same logic as profile_memory_data_source.dart
       final eventsResponse = await _client
           .from('events')
@@ -86,13 +74,9 @@ class OtherProfileDataSource {
           .order('end_datetime', ascending: false);
 
       if ((eventsResponse as List).isEmpty) {
-        print('[OtherProfile] No recap/ended events found in shared groups');
-        return [];
+return [];
       }
-
-      print('[OtherProfile] Found ${eventsResponse.length} recap/ended events');
-
-      // Step 4: Process each event to add cover photo (same logic as profile)
+// Step 4: Process each event to add cover photo (same logic as profile)
       final List<Map<String, dynamic>> memoriesWithCovers = [];
       
       for (final event in eventsResponse) {
@@ -160,8 +144,7 @@ class OtherProfileDataSource {
 
         // Only add event if we found a valid cover photo
         if (coverStoragePath != null) {
-          print('  ✅ Event: ${eventMap['name']}, path: $coverStoragePath');
-          memoriesWithCovers.add({
+memoriesWithCovers.add({
             'id': eventId,
             'title': eventMap['name'] as String? ?? 'Untitled',
             'date': eventMap['end_datetime'],
@@ -169,15 +152,11 @@ class OtherProfileDataSource {
             'cover_storage_path': coverStoragePath,
           });
         } else {
-          print('  ❌ Event: ${eventMap['name']}, no cover photo found');
-        }
+}
       }
-
-      print('[OtherProfile] Returning ${memoriesWithCovers.length} memories with covers\n');
-      return memoriesWithCovers;
+return memoriesWithCovers;
     } catch (e) {
-      print('[OtherProfile] ERROR: $e');
-      rethrow;
+rethrow;
     }
   }
 
@@ -237,9 +216,7 @@ class OtherProfileDataSource {
     required String currentUserId,
     required String targetUserId,
   }) async {
-    print('\n[InvitableGroups] Finding groups where $currentUserId can invite $targetUserId');
-    
-    // Get groups where current user is member
+// Get groups where current user is member
     final currentUserGroups = await _client
         .from('group_members')
         .select('group_id, role')
@@ -290,18 +267,15 @@ class OtherProfileDataSource {
     }
 
     // Filter based on permissions
-    print('[InvitableGroups] Checking permissions for ${(groups as List).length} eligible groups');
-    final invitableGroups = <Map<String, dynamic>>[];
+        final invitableGroups = <Map<String, dynamic>>[];
     for (final group in groups) {
       final groupId = group['id'] as String;
-      final groupName = group['name'] as String;
       
       // Check if members can invite or current user is admin
       final membersCanInvite = group['members_can_invite'] as bool? ?? false;
       
       if (membersCanInvite) {
-        print('  ✅ $groupName - members_can_invite=true');
-        final groupWithCount = Map<String, dynamic>.from(group);
+final groupWithCount = Map<String, dynamic>.from(group);
         groupWithCount['member_count'] = memberCounts[groupId] ?? 0;
         invitableGroups.add(groupWithCount);
       } else {
@@ -312,36 +286,29 @@ class OtherProfileDataSource {
         );
         
         if (membership['role'] == 'admin') {
-          print('  ✅ $groupName - user is admin');
-          final groupWithCount = Map<String, dynamic>.from(group);
+final groupWithCount = Map<String, dynamic>.from(group);
           groupWithCount['member_count'] = memberCounts[groupId] ?? 0;
           invitableGroups.add(groupWithCount);
         } else {
-          print('  ❌ $groupName - no permission');
-        }
+}
       }
     }
-
-    print('[InvitableGroups] Found ${invitableGroups.length} invitable groups\n');
-    return invitableGroups;
+return invitableGroups;
   }
   Future<void> inviteToGroup({
     required String userId,
     required String groupId,
     required String invitedBy,
   }) async {
-    print('[InviteToGroup] Sending invite: user=$userId, group=$groupId, by=$invitedBy');
-    try {
+try {
       await _client.from('group_invites').insert({
         'group_id': groupId,
         'invited_id': userId,
         'invited_by': invitedBy,
         'created_at': DateTime.now().toIso8601String(),
       });
-      print('[InviteToGroup] ✅ Invite sent successfully');
-    } catch (e) {
-      print('[InviteToGroup] ❌ Error: $e');
-      rethrow;
+} catch (e) {
+rethrow;
     }
   }
 }

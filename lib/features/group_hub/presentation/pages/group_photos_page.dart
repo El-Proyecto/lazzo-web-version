@@ -86,8 +86,7 @@ class _GroupPhotosPageState extends ConsumerState<GroupPhotosPage> {
             files.add(XFile(filePath));
           }
         } catch (e) {
-          print('Error downloading photo: $e');
-        }
+}
       }
 
       if (files.isEmpty) {
@@ -162,15 +161,12 @@ class _GroupPhotosPageState extends ConsumerState<GroupPhotosPage> {
             try {
               await Gal.putImage(filePath, album: 'Lazzo');
               successCount++;
-              print('✅ Saved photo ${i + 1} to gallery');
-            } catch (e) {
-              print('❌ Failed to save photo ${i + 1} to gallery: $e');
-              // Gallery permission might be needed, but file is downloaded
+} catch (e) {
+// Gallery permission might be needed, but file is downloaded
             }
           }
         } catch (e) {
-          print('❌ Error downloading photo ${i + 1}: $e');
-        }
+}
       }
 
       if (!mounted) return;

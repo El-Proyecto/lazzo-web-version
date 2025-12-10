@@ -21,17 +21,11 @@ class SupabaseUpdateGroupRepository implements UpdateGroupRepository {
     required bool canSendMessages,
   }) async {
     try {
-      print('\n📝 [UPDATE GROUP REPO] Starting update for group: $groupId');
-      print('   Name: $name');
-      print('   Photo path: ${photoPath ?? "no change"}');
-
-      String? photoUrl;
+String? photoUrl;
       
       // Upload photo to storage if provided
       if (photoPath != null && photoPath.isNotEmpty) {
-        print('📤 [UPDATE GROUP REPO] Uploading photo to storage...');
-        
-        final file = File(photoPath);
+final file = File(photoPath);
         if (!await file.exists()) {
           throw Exception('Photo file does not exist: $photoPath');
         }
@@ -40,10 +34,7 @@ class SupabaseUpdateGroupRepository implements UpdateGroupRepository {
         final timestamp = DateTime.now().millisecondsSinceEpoch;
         final extension = photoPath.split('.').last.toLowerCase();
         final fileName = '$groupId/$timestamp.$extension';
-
-        print('   Storage path: $fileName');
-        
-        // Determine MIME type
+// Determine MIME type
         String mimeType;
         switch (extension) {
           case 'jpg':
@@ -64,7 +55,7 @@ class SupabaseUpdateGroupRepository implements UpdateGroupRepository {
         }
 
         // Upload to storage
-        final uploadPath = await _supabase.storage
+        await _supabase.storage
             .from('group-photos')
             .upload(
               fileName,
@@ -74,21 +65,15 @@ class SupabaseUpdateGroupRepository implements UpdateGroupRepository {
                 upsert: false,
               ),
             );
-
-        print('✅ [UPDATE GROUP REPO] Photo uploaded: $uploadPath');
-
+        
         // Get public URL
         photoUrl = _supabase.storage
             .from('group-photos')
             .getPublicUrl(fileName);
-
-        print('   Public URL: $photoUrl');
-      }
+}
 
       // Update group in database
-      print('💾 [UPDATE GROUP REPO] Updating database...');
-      
-      final updateData = {
+final updateData = {
         'name': name,
         'members_can_invite': canEditSettings,
         'members_can_add_members': canAddMembers,
@@ -113,10 +98,7 @@ class SupabaseUpdateGroupRepository implements UpdateGroupRepository {
             created_at
           ''')
           .single();
-
-      print('✅ [UPDATE GROUP REPO] Database updated successfully');
-
-      // Convert to GroupEntity
+// Convert to GroupEntity
       return GroupEntity(
         id: response['id'] as String,
         name: response['name'] as String,
@@ -131,9 +113,7 @@ class SupabaseUpdateGroupRepository implements UpdateGroupRepository {
         groupUrl: response['group_url'] as String?,
         createdAt: DateTime.parse(response['created_at'] as String),
       );
-    } catch (e, stackTrace) {
-      print('❌ [UPDATE GROUP REPO] Error: $e');
-      print('Stack trace: $stackTrace');
+    } catch (e) {
       throw Exception('Failed to update group: $e');
     }
   }

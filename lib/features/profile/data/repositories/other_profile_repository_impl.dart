@@ -24,41 +24,32 @@ class OtherProfileRepositoryImpl implements OtherProfileRepository {
 
   @override
   Future<OtherProfileEntity> getOtherUserProfile(String userId) async {
-    print('[OtherProfileRepo] Fetching profile for user: $userId');
-    
-    try {
+try {
       // Fetch basic profile data
       final profileData = await _dataSource.getOtherUserProfile(userId);
-      print('[OtherProfileRepo] Profile data received: ${profileData['name']}');
-      final profileModel = OtherProfileModel.fromMap(profileData);
+final profileModel = OtherProfileModel.fromMap(profileData);
 
       // Generate signed URL for avatar if exists
       // Note: NULL avatar_url is expected when user hasn't uploaded profile picture
       String? signedAvatarUrl;
       if (profileModel.avatarUrl != null && profileModel.avatarUrl!.isNotEmpty) {
-        print('[OtherProfileRepo] Generating signed URL for avatar');
-        try {
+try {
           signedAvatarUrl = await _storageService.getSignedUrl(
             profileModel.avatarUrl!,
             bucket: 'users-profile-pic',
             expiresInSeconds: 3600, // 1 hour
           );
-          print('[OtherProfileRepo] ✅ Avatar signed URL generated');
-        } catch (e) {
-          print('[OtherProfileRepo] ❌ Avatar signed URL error: $e');
-          signedAvatarUrl = null;
+} catch (e) {
+signedAvatarUrl = null;
         }
       }
 
       // Fetch shared memories data
-      print('[OtherProfileRepo] Fetching shared memories...');
-      final sharedMemoriesData = await _dataSource.getSharedMemories(
+final sharedMemoriesData = await _dataSource.getSharedMemories(
         currentUserId: _currentUserId,
         targetUserId: userId,
       );
-      print('[OtherProfileRepo] Data source returned ${sharedMemoriesData.length} memories');
-
-      // Convert shared memories to entities with signed URLs
+// Convert shared memories to entities with signed URLs
       final memoriesList = <MemoryEntity>[];
       
       for (final memoryData in sharedMemoriesData) {
@@ -66,8 +57,7 @@ class OtherProfileRepositoryImpl implements OtherProfileRepository {
         final coverPath = memoryData['cover_storage_path'] as String?;
         
         if (coverPath != null && coverPath.isNotEmpty) {
-          print('[OtherProfileRepo] Generating signed URL for path: $coverPath');
-          try {
+try {
             // Note: photos are stored in 'memory_groups' bucket, not 'group_photos'
             // The table name is group_photos but the storage bucket is memory_groups
             signedCoverUrl = await _storageService.getSignedUrl(
@@ -75,14 +65,11 @@ class OtherProfileRepositoryImpl implements OtherProfileRepository {
               bucket: 'memory_groups',
               expiresInSeconds: 3600,
             );
-            print('[OtherProfileRepo] ✅ Signed URL generated successfully');
-          } catch (e) {
-            print('[OtherProfileRepo] ❌ Signed URL error for ${memoryData['title']}: $e');
-            signedCoverUrl = null;
+} catch (e) {
+signedCoverUrl = null;
           }
         } else {
-          print('[OtherProfileRepo] ⚠️ No storage path for ${memoryData['title']}');
-        }
+}
 
         memoriesList.add(MemoryEntity(
           id: memoryData['id'] as String,
@@ -94,10 +81,7 @@ class OtherProfileRepositoryImpl implements OtherProfileRepository {
           location: memoryData['location'] as String?,
         ));
       }
-      
-      print('[OtherProfileRepo] Final memories with signed URLs: ${memoriesList.length}');
-
-      // Fetch upcoming events data
+// Fetch upcoming events data
       final upcomingEventsData = await _dataSource.getSharedUpcomingEvents(
         currentUserId: _currentUserId,
         targetUserId: userId,
@@ -125,10 +109,6 @@ class OtherProfileRepositoryImpl implements OtherProfileRepository {
       }).toList();
 
       // Convert to entity with lists
-      print('[OtherProfileRepo] Creating entity with:');
-      print('  - Avatar URL: ${signedAvatarUrl != null ? "✅ Present" : "❌ Missing"}');
-      print('  - Memories: ${memoriesList.length}');
-      print('  - Upcoming events: ${upcomingList.length}');
       
       return profileModel.toEntity(
         signedAvatarUrl: signedAvatarUrl,
@@ -178,18 +158,15 @@ class OtherProfileRepositoryImpl implements OtherProfileRepository {
         final photoUrl = groupData['photo_url'] as String?;
         
         if (photoUrl != null && photoUrl.isNotEmpty) {
-          print('[InvitableGroups] Generating signed URL for group photo: $photoUrl');
-          try {
+try {
             // Note: group photos are stored in 'group-photos' bucket (with hyphen)
             signedPhotoUrl = await _storageService.getSignedUrl(
               photoUrl,
               bucket: 'group-photos',
               expiresInSeconds: 3600,
             );
-            print('[InvitableGroups] ✅ Group photo signed URL generated');
-          } catch (e) {
-            print('[InvitableGroups] ❌ Group photo signed URL error: $e');
-            signedPhotoUrl = null;
+} catch (e) {
+signedPhotoUrl = null;
           }
         }
 

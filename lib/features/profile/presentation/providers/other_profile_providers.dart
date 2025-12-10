@@ -15,12 +15,9 @@ final otherProfileRepositoryProvider = Provider<OtherProfileRepository>((ref) {
 /// Provider for getting another user's profile
 final otherUserProfileProvider =
     FutureProvider.family<OtherProfileEntity, String>((ref, userId) async {
-  print('🟣 [Provider] otherUserProfileProvider created for userId: $userId');
-  final repository = ref.watch(otherProfileRepositoryProvider);
-  print('🟣 [Provider] Repository type: ${repository.runtimeType}');
-  final useCase = GetOtherUserProfile(repository);
-  print('🟣 [Provider] Calling use case...');
-  return useCase(userId);
+final repository = ref.watch(otherProfileRepositoryProvider);
+final useCase = GetOtherUserProfile(repository);
+return useCase(userId);
 });
 
 /// Provider for getting invitable groups

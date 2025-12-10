@@ -50,8 +50,7 @@ class GroupDetailsRepositoryImpl implements GroupDetailsRepository {
               .from('group-photos')
               .createSignedUrl(normalizedPath, 3600); // 1 hour
         } catch (e) {
-          print('⚠️ Failed to generate signed URL for group photo: $e');
-          photoUrl = null;
+photoUrl = null;
         }
       }
 
@@ -90,19 +89,13 @@ class GroupDetailsRepositoryImpl implements GroupDetailsRepository {
           ''')
           .eq('group_id', groupId)
           .order('role', ascending: false); // Admins first
-
-      print('🔍 [GROUP MEMBERS] Raw response: $response');
-
-      final members = <GroupMemberEntity>[];
+final members = <GroupMemberEntity>[];
       
       for (final json in response as List) {
         final userId = json['user_id'] as String;
         final isCurrentUser = userId == currentUserId;
         final role = json['role'] as String;
         final isAdmin = role == 'admin';
-        
-        print('👤 [MEMBER] userId: $userId, isCurrentUser: $isCurrentUser');
-        print('   users field: ${json['users']}');
         
         // Handle nested users join
         String? name;
@@ -113,8 +106,7 @@ class GroupDetailsRepositoryImpl implements GroupDetailsRepository {
             name = users['name'] as String?;
             final avatarPath = users['avatar_url'] as String?;
             
-            print('   🔍 DEBUG avatarPath from DB: "$avatarPath" (starts with /: ${avatarPath?.startsWith('/')})');
-            
+                        
             // Convert storage path to signed URL (works with private buckets)
             if (avatarPath != null && avatarPath.isNotEmpty) {
               // Check if it's already a full URL
@@ -125,20 +117,15 @@ class GroupDetailsRepositoryImpl implements GroupDetailsRepository {
                 // Normalize path - remove leading slash if present
                 try {
                   final normalizedPath = avatarPath.startsWith('/') ? avatarPath.substring(1) : avatarPath;
-                  print('   🔍 DEBUG normalized: "$normalizedPath"');
-                  profileImageUrl = await _supabase.storage
+profileImageUrl = await _supabase.storage
                       .from('users-profile-pic')
                       .createSignedUrl(normalizedPath, 3600); // 1 hour
-                  print('   🔍 DEBUG signed URL: "$profileImageUrl"');
-                } catch (e) {
-                  print('   ⚠️ Error creating signed URL: $e');
-                  profileImageUrl = null;
+} catch (e) {
+profileImageUrl = null;
                 }
               }
             }
-            
-            print('   ✅ Map: name=$name, avatarPath=$avatarPath → url=$profileImageUrl');
-          } else if (users is List && users.isNotEmpty) {
+} else if (users is List && users.isNotEmpty) {
             final firstUser = users[0] as Map<String, dynamic>;
             name = firstUser['name'] as String?;
             final avatarPath = firstUser['avatar_url'] as String?;
@@ -155,17 +142,13 @@ class GroupDetailsRepositoryImpl implements GroupDetailsRepository {
                       .from('users-profile-pic')
                       .createSignedUrl(normalizedPath, 3600); // 1 hour
                 } catch (e) {
-                  print('   ⚠️ Error creating signed URL: $e');
-                  profileImageUrl = null;
+profileImageUrl = null;
                 }
               }
             }
-            
-            print('   ✅ List: name=$name, avatarPath=$avatarPath → url=$profileImageUrl');
-          }
+}
         } else {
-          print('   ❌ users field is null!');
-        }
+}
 
         members.add(GroupMemberEntity(
           id: userId,
@@ -219,16 +202,8 @@ class GroupDetailsRepositoryImpl implements GroupDetailsRepository {
       if (currentUserId == null) {
         throw Exception('User not authenticated');
       }
-      
-      print('🔐 [UPDATE ROLE] Starting update...');
-      print('   Group ID: $groupId');
-      print('   User ID to update: $userId');
-      print('   New role: ${isAdmin ? "admin" : "member"}');
-      print('   Current user ID: $currentUserId');
-      
-      // Check if current user is admin of this group
-      print('   🔍 Checking current user permissions...');
-      final currentUserMembership = await _supabase
+// Check if current user is admin of this group
+final currentUserMembership = await _supabase
           .from('group_members')
           .select('role')
           .eq('group_id', groupId)
@@ -236,29 +211,21 @@ class GroupDetailsRepositoryImpl implements GroupDetailsRepository {
           .single();
       
       final currentUserRole = currentUserMembership['role'] as String;
-      print('   Current user role: $currentUserRole');
-      
-      if (currentUserRole != 'admin') {
+if (currentUserRole != 'admin') {
         throw Exception('Only admins can change member roles');
       }
       
       // Validate: cannot demote if this is the last admin
       if (!isAdmin) {
-        print('   🔍 Checking if this is the last admin...');
-        final members = await getGroupMembers(groupId);
+final members = await getGroupMembers(groupId);
         final adminCount = members.where((m) => m.isAdmin).length;
-        print('   Current admin count: $adminCount');
-        
-        if (adminCount <= 1) {
+if (adminCount <= 1) {
           throw Exception('Cannot demote the last admin. Promote another member first.');
         }
       }
 
       final newRole = isAdmin ? 'admin' : 'member';
-      
-      print('   📝 Executing UPDATE query with RLS context...');
-      
-      // Try using RPC function if available, otherwise direct update
+// Try using RPC function if available, otherwise direct update
       try {
         // Check if RPC function exists
         await _supabase.rpc('update_group_member_role', params: {
@@ -266,23 +233,17 @@ class GroupDetailsRepositoryImpl implements GroupDetailsRepository {
           'p_user_id': userId,
           'p_new_role': newRole,
         });
-        print('   ✅ Update via RPC completed');
-      } catch (rpcError) {
-        print('   ⚠️ RPC not available, trying direct update: $rpcError');
-        
-        // Fallback to direct update
+} catch (rpcError) {
+// Fallback to direct update
         await _supabase
             .from('group_members')
             .update({'role': newRole})
             .eq('group_id', groupId)
             .eq('user_id', userId);
-        
-        print('   ✅ Direct update completed');
-      }
+}
       
       // Verify the update worked
-      print('   🔍 Verifying role change...');
-      final verifyResponse = await _supabase
+final verifyResponse = await _supabase
           .from('group_members')
           .select('role')
           .eq('group_id', groupId)
@@ -290,16 +251,11 @@ class GroupDetailsRepositoryImpl implements GroupDetailsRepository {
           .single();
       
       final actualRole = verifyResponse['role'] as String;
-      print('   Current role in database: $actualRole');
-      
-      if (actualRole != newRole) {
+if (actualRole != newRole) {
         throw Exception('Role update failed: expected $newRole but got $actualRole. This may be a Row Level Security (RLS) policy issue. Check Supabase dashboard for policies on group_members table.');
       }
-      
-      print('✅ [UPDATE ROLE] Role successfully changed to $newRole');
-    } catch (e) {
-      print('❌ [UPDATE ROLE] Failed: $e');
-      throw Exception('Failed to update member role: $e');
+} catch (e) {
+throw Exception('Failed to update member role: $e');
     }
   }
 
@@ -311,19 +267,13 @@ class GroupDetailsRepositoryImpl implements GroupDetailsRepository {
         throw Exception('User not authenticated');
       }
       
-      print('🗑️ [REMOVE MEMBER] Starting removal...');
-      print('   Group ID: $groupId');
-      print('   User ID to remove: $userId');
-      print('   Current user ID: $currentUserId');
-      
       // Validate: cannot remove yourself
       if (userId == currentUserId) {
         throw Exception('Cannot remove yourself from the group. Use "Leave Group" instead.');
       }
       
       // Check if current user is admin
-      print('   🔍 Checking current user permissions...');
-      final currentUserMembership = await _supabase
+final currentUserMembership = await _supabase
           .from('group_members')
           .select('role')
           .eq('group_id', groupId)
@@ -331,9 +281,7 @@ class GroupDetailsRepositoryImpl implements GroupDetailsRepository {
           .single();
       
       final currentUserRole = currentUserMembership['role'] as String;
-      print('   Current user role: $currentUserRole');
-      
-      if (currentUserRole != 'admin') {
+if (currentUserRole != 'admin') {
         throw Exception('Only admins can remove members');
       }
       
@@ -346,46 +294,30 @@ class GroupDetailsRepositoryImpl implements GroupDetailsRepository {
           .single();
       
       final targetUserRole = targetUserMembership['role'] as String;
-      print('   Target user role: $targetUserRole');
-      
-      // If removing an admin, check if at least one other admin will remain
+// If removing an admin, check if at least one other admin will remain
       if (targetUserRole == 'admin') {
-        print('   🔍 Checking if other admins exist...');
-        final members = await getGroupMembers(groupId);
+final members = await getGroupMembers(groupId);
         final adminCount = members.where((m) => m.isAdmin).length;
-        print('   Current admin count: $adminCount');
-        
-        if (adminCount <= 1) {
+if (adminCount <= 1) {
           throw Exception('Cannot remove the last admin. Promote another member first.');
         }
       }
-      
-      print('   📝 Executing DELETE via RPC...');
-      
-      // Try using RPC function first (bypasses RLS policies)
+// Try using RPC function first (bypasses RLS policies)
       try {
         await _supabase.rpc('remove_group_member', params: {
           'p_group_id': groupId,
           'p_user_id': userId,
         });
-        print('   ✅ Delete via RPC completed');
-      } catch (rpcError) {
-        print('   ⚠️ RPC not available, trying direct delete: $rpcError');
-        
-        // Fallback to direct delete (will likely fail due to RLS)
+} catch (rpcError) {
+// Fallback to direct delete (will likely fail due to RLS)
         await _supabase
             .from('group_members')
             .delete()
             .eq('group_id', groupId)
             .eq('user_id', userId);
-        
-        print('   ✅ Direct delete completed');
-      }
-      
-      print('✅ [REMOVE MEMBER] Member successfully removed');
-    } catch (e) {
-      print('❌ [REMOVE MEMBER] Failed: $e');
-      throw Exception('Failed to remove member: $e');
+}
+} catch (e) {
+throw Exception('Failed to remove member: $e');
     }
   }
 }

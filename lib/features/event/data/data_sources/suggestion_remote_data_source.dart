@@ -33,8 +33,7 @@ class SuggestionRemoteDataSource {
       
       return signedUrl;
     } catch (e) {
-      print('[SuggestionDataSource] Error creating signed URL for avatar: $e');
-      return '';
+return '';
     }
   }
 

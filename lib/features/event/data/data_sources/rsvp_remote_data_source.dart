@@ -33,8 +33,7 @@ class RsvpRemoteDataSource {
       
       return signedUrl;
     } catch (e) {
-      print('[RsvpDataSource] Error creating signed URL for avatar: $e');
-      return '';
+return '';
     }
   }
 

@@ -19,33 +19,24 @@ class GroupPhotosRepositoryImpl implements GroupPhotosRepository {
       List<Map<String, dynamic>> photosData;
       try {
         photosData = await _dataSource.getGroupPhotos(groupId);
-      } catch (e, stackTrace) {
-        print('❌ [GROUP PHOTOS REPO] Data source error: $e');
-        print('   Stack trace: $stackTrace');
+      } catch (e) {
         throw Exception('Data source failed: $e');
       }
       
             
       if (photosData.isEmpty) {
-        print('ℹ️ [GROUP PHOTOS REPO] No photos found for group');
-        return [];
+return [];
       }
 
       final entities = <GroupPhotoEntity>[];
       for (final json in photosData) {
-        print('   - Photo: ${json['id']}');
-        print('     storage_path: ${json['storage_path']}');
-        print('     uploader_id: ${json['uploader_id']}');
-        print('     users: ${json['users']}');
         
         // Generate signed URL for the photo (from memory_groups bucket)
         String photoUrl;
         try {
           photoUrl = await _dataSource.getSignedUrl(json['storage_path'] as String);
-          print('     ✅ Generated signed URL for photo');
-        } catch (e) {
-          print('     ⚠️ Failed to generate signed URL for photo: $e');
-          // Skip this photo if we can't get a signed URL
+} catch (e) {
+// Skip this photo if we can't get a signed URL
           continue;
         }
         
@@ -59,8 +50,7 @@ class GroupPhotosRepositoryImpl implements GroupPhotosRepository {
               model.profileImageUrl!,
               bucket: 'users-profile-pic',
             );
-            print('     ✅ Generated signed URL for avatar');
-          } catch (e) {
+} catch (e) {
                         profileImageUrl = null;
           }
         }
@@ -75,18 +65,12 @@ class GroupPhotosRepositoryImpl implements GroupPhotosRepository {
           isPortrait: model.isPortrait,
         ));
       }
-      
-      print('✅ [GROUP PHOTOS REPO] Returning ${entities.length} entities');
-      return entities;
-    } on Exception catch (e, stackTrace) {
+return entities;
+    } on Exception catch (e) {
       // Network/auth errors - rethrow
-      print('❌ [GROUP PHOTOS REPO] Exception caught: $e');
-      print('   Stack trace: $stackTrace');
       throw Exception('Failed to load group photos: $e');
-    } catch (e, stackTrace) {
+    } catch (e) {
       // Parsing errors - log and return empty
-      print('❌ [GROUP PHOTOS REPO] Unexpected error: $e');
-      print('   Stack trace: $stackTrace');
       return [];
     }
   }
