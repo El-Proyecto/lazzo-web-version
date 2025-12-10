@@ -1,3 +1,4 @@
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../shared/components/widgets/rsvp_widget.dart';
 import '../../domain/entities/home_event.dart';
 
@@ -20,6 +21,8 @@ class _HomeEventModel {
   final List<dynamic> goingUsers;
   final List<dynamic> notGoingUsers; // ✅ NOVO
   final List<dynamic> noResponseUsers; // ✅ NOVO
+  final String? currentUserId;
+  final SupabaseClient supabaseClient;
 
   const _HomeEventModel({
     required this.id,
@@ -39,9 +42,16 @@ class _HomeEventModel {
     required this.goingUsers,
     required this.notGoingUsers,
     required this.noResponseUsers,
+    this.currentUserId,
+    required this.supabaseClient,
   });
 
-  factory _HomeEventModel.fromMap(Map<String, dynamic> map, {Function(String, String)? onStatusMismatch}) {
+  factory _HomeEventModel.fromMap(
+    Map<String, dynamic> map, {
+    Function(String, String)? onStatusMismatch,
+    String? currentUserId,
+    required SupabaseClient supabaseClient,
+  }) {
     final startDate = _parseDateTime(map['start_datetime']);
     final endDate = _parseDateTime(map['end_datetime']);
     final backendStatus = _asString(map['event_status']) ?? 'pending';
@@ -74,15 +84,36 @@ class _HomeEventModel {
       goingUsers: _parseJsonArray(map['going_users']),
       notGoingUsers: _parseJsonArray(map['not_going_users']),
       noResponseUsers: _parseJsonArray(map['no_response_users']),
+      currentUserId: currentUserId,
+      supabaseClient: supabaseClient,
     );
   }
 
-  HomeEventEntity toEntity() {
-    // ✅ Combinar todos os votos (going + not_going + no_response)
+  Future<HomeEventEntity> toEntity() async {
+    // ✅ Combinar todos os votos (going + not_going + no_response) with signed URLs
+    final goingVotes = await _parseVotesFromUsers(
+      goingUsers, 
+      RsvpVoteStatus.going, 
+      currentUserId, 
+      supabaseClient,
+    );
+    final notGoingVotes = await _parseVotesFromUsers(
+      notGoingUsers, 
+      RsvpVoteStatus.notGoing, 
+      currentUserId, 
+      supabaseClient,
+    );
+    final pendingVotes = await _parseVotesFromUsers(
+      noResponseUsers, 
+      RsvpVoteStatus.pending, 
+      currentUserId, 
+      supabaseClient,
+    );
+    
     final allVotes = <RsvpVote>[
-      ..._parseVotesFromUsers(goingUsers, RsvpVoteStatus.going),
-      ..._parseVotesFromUsers(notGoingUsers, RsvpVoteStatus.notGoing),
-      ..._parseVotesFromUsers(noResponseUsers, RsvpVoteStatus.pending),
+      ...goingVotes,
+      ...notGoingVotes,
+      ...pendingVotes,
     ];
 
     return HomeEventEntity(
@@ -107,30 +138,59 @@ class _HomeEventModel {
   }
 
   // ✅ NOVO: Parse votes from user arrays with status
-  static List<RsvpVote> _parseVotesFromUsers(
+  static Future<List<RsvpVote>> _parseVotesFromUsers(
     List<dynamic> users,
     RsvpVoteStatus status,
-  ) {
-    return users.map((u) {
+    String? currentUserId,
+    SupabaseClient supabaseClient,
+  ) async {
+    final votes = <RsvpVote>[];
+    
+    for (final u in users) {
       if (u is Map<String, dynamic>) {
-        return RsvpVote(
-          id: _asString(u['user_id']) ?? '',
-          userId: _asString(u['user_id']) ?? '',
-          userName: _asString(u['display_name']) ?? 'Unknown',
-          userAvatar: _asString(u['avatar_url']),
+        final userId = _asString(u['user_id']) ?? '';
+        final displayName = _asString(u['display_name']) ?? 'Unknown';
+        final avatarPath = _asString(u['avatar_url']);
+        
+        // Convert avatar to signed URL if present
+        String? signedAvatarUrl;
+        if (avatarPath != null && avatarPath.isNotEmpty) {
+          try {
+            final normalizedPath = avatarPath.startsWith('/') 
+                ? avatarPath.substring(1) 
+                : avatarPath;
+            signedAvatarUrl = await supabaseClient.storage
+                .from('users-profile-pic')
+                .createSignedUrl(normalizedPath, 3600);
+          } catch (e) {
+            signedAvatarUrl = null;
+          }
+        }
+        
+        // Use "You" for current user
+        final userName = userId == currentUserId ? 'You' : displayName;
+        
+        votes.add(RsvpVote(
+          id: userId,
+          userId: userId,
+          userName: userName,
+          userAvatar: signedAvatarUrl,
           status: status,
           votedAt: _parseDateTime(u['voted_at']),
-        );
+        ));
+      } else {
+        votes.add(const RsvpVote(
+          id: '',
+          userId: '',
+          userName: 'Unknown',
+          userAvatar: null,
+          status: RsvpVoteStatus.pending,
+          votedAt: null,
+        ));
       }
-      return const RsvpVote(
-        id: '',
-        userId: '',
-        userName: 'Unknown',
-        userAvatar: null,
-        status: RsvpVoteStatus.pending,
-        votedAt: null,
-      );
-    }).toList();
+    }
+    
+    return votes;
   }
 
   // ✅ NOVO: Calcular estado baseado em timestamps e status da DB
@@ -248,6 +308,16 @@ class _HomeEventModel {
 }
 
 /// Public function to convert Map to HomeEventEntity
-HomeEventEntity homeEventFromMap(Map<String, dynamic> map, {Function(String, String)? onStatusMismatch}) {
-  return _HomeEventModel.fromMap(map, onStatusMismatch: onStatusMismatch).toEntity();
+Future<HomeEventEntity> homeEventFromMap(
+  Map<String, dynamic> map, {
+  Function(String, String)? onStatusMismatch,
+  String? currentUserId,
+  required SupabaseClient supabaseClient,
+}) async {
+  return await _HomeEventModel.fromMap(
+    map,
+    onStatusMismatch: onStatusMismatch,
+    currentUserId: currentUserId,
+    supabaseClient: supabaseClient,
+  ).toEntity();
 }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../routes/app_router.dart';
 import '../../../../shared/components/nav/common_app_bar.dart';
 import '../../../../shared/components/dialogs/confirmation_dialog.dart';
 import '../../../../shared/components/common/top_banner.dart';
@@ -312,8 +313,18 @@ class GroupDetailsPage extends ConsumerWidget {
                 member: member,
                 isCurrentUserAdmin: isCurrentUserAdmin,
                 onTap: () {
-                  // TODO: Navigate to member profile
-                                  },
+                  if (member.isCurrentUser) {
+                    // Navigate to own profile
+                    Navigator.pushNamed(context, AppRouter.profile);
+                  } else {
+                    // Navigate to other user profile
+                    Navigator.pushNamed(
+                      context,
+                      AppRouter.otherProfile,
+                      arguments: {'userId': member.id},
+                    );
+                  }
+                },
                 onPromoteToAdmin: () {
                   _showPromoteDialog(context, ref, member);
                 },

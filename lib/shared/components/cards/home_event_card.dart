@@ -299,6 +299,11 @@ class _HomeEventCardState extends ConsumerState<HomeEventCard> {
   }
 
   void _showVotesBottomSheet(BuildContext context) {
+    // Get current user ID and avatar
+    final currentUser = Supabase.instance.client.auth.currentUser;
+    final currentUserId = currentUser?.id;
+    final currentUserAvatar = currentUser?.userMetadata?['avatar_url'] as String?;
+    
     VotesBottomSheet.show(
       context: context,
       allVotes: _currentEvent.allVotes,
@@ -312,6 +317,8 @@ class _HomeEventCardState extends ConsumerState<HomeEventCard> {
       onVoteChanged: widget.onVoteChanged != null
           ? (vote) => widget.onVoteChanged!(_currentEvent.id, vote)
           : null,
+      currentUserId: currentUserId,
+      currentUserAvatar: currentUserAvatar,
     );
   }
 
