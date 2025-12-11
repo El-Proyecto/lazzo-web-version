@@ -634,12 +634,22 @@ class _GroupHubPageState extends ConsumerState<GroupHubPage>
                 event: displayEvent,
                 state: cardState,
                 onTap: () async {
-                  // Navigate to event detail page and refresh on return
-                  await Navigator.pushNamed(
-                    context,
-                    '/event',
-                    arguments: {'eventId': event.id},
-                  );
+                  // Navigate based on event status
+                  if (event.status == GroupEventStatus.living) {
+                    // Living event → EventLivingPage
+                    await Navigator.pushNamed(
+                      context,
+                      AppRouter.eventLiving,
+                      arguments: {'eventId': event.id},
+                    );
+                  } else {
+                    // Other statuses → EventPage (planning/confirmed/recap)
+                    await Navigator.pushNamed(
+                      context,
+                      AppRouter.event,
+                      arguments: {'eventId': event.id},
+                    );
+                  }
 
                   // Refresh only this specific event instead of entire list
                   // This will fetch updated status, votes, and participant counts

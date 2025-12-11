@@ -33,4 +33,13 @@ abstract class EventRepository {
   );
 
   Future<List<EventParticipantEntity>> getEventParticipants(String eventId);
+
+  /// Extend event end time by specified minutes
+  Future<EventDetail> extendEventTime(
+    String eventId,
+    int minutes,
+  );
+
+  /// End event immediately (set end time to now)
+  Future<EventDetail> endEventNow(String eventId);
 }

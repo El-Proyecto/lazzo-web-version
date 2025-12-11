@@ -28,7 +28,6 @@ import '../widgets/date_time_suggestions_widget.dart'
 import '../widgets/date_time_suggestions_widget.dart' as datetime_widget;
 import '../widgets/location_suggestions_widget.dart';
 import '../widgets/add_suggestion_bottom_sheet.dart';
-import '../providers/event_participants_provider.dart';
 import 'event_page_models.dart';
 
 import '../../../../shared/components/dialogs/add_expense_bottom_sheet.dart';

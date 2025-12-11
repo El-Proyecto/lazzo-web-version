@@ -269,4 +269,42 @@ class FakeEventRepository implements EventRepository {
 
         return participants;
   }
+
+  @override
+  Future<EventDetail> extendEventTime(String eventId, int minutes) async {
+    await Future.delayed(const Duration(milliseconds: 300));
+    
+    _initializeIfEmpty();
+    final event = _events[eventId];
+    if (event == null) {
+      throw Exception('Event not found');
+    }
+
+    // Calculate new end time
+    final currentEndTime = event.endDateTime ?? DateTime.now();
+    final newEndTime = currentEndTime.add(Duration(minutes: minutes));
+
+    // Update event
+    final updatedEvent = event.copyWith(endDateTime: newEndTime);
+    _events[eventId] = updatedEvent;
+
+    return updatedEvent;
+  }
+
+  @override
+  Future<EventDetail> endEventNow(String eventId) async {
+    await Future.delayed(const Duration(milliseconds: 300));
+    
+    _initializeIfEmpty();
+    final event = _events[eventId];
+    if (event == null) {
+      throw Exception('Event not found');
+    }
+
+    // Set end time to now
+    final updatedEvent = event.copyWith(endDateTime: DateTime.now());
+    _events[eventId] = updatedEvent;
+
+    return updatedEvent;
+  }
 }

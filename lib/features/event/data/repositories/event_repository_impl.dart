@@ -84,4 +84,16 @@ class EventRepositoryImpl implements EventRepository {
       String eventId) async {
     return await _remoteDataSource.getEventParticipants(eventId);
   }
+
+  @override
+  Future<EventDetail> extendEventTime(String eventId, int minutes) async {
+    final model = await _remoteDataSource.extendEventTime(eventId, minutes);
+    return model.toEntity();
+  }
+
+  @override
+  Future<EventDetail> endEventNow(String eventId) async {
+    final model = await _remoteDataSource.endEventNow(eventId);
+    return model.toEntity();
+  }
 }

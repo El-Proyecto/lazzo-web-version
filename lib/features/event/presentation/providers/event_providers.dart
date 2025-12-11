@@ -24,6 +24,9 @@ import '../../domain/usecases/create_suggestion.dart';
 import '../../domain/usecases/create_location_suggestion.dart';
 import '../../domain/usecases/toggle_suggestion_vote.dart';
 import '../../domain/usecases/update_event_status.dart';
+import '../../domain/usecases/extend_event_time.dart';
+import '../../domain/usecases/end_event_now.dart';
+import '../../domain/entities/event_participant_entity.dart';
 import '../../../group_hub/presentation/providers/group_hub_providers.dart';
 import 'chat_providers.dart';
 
@@ -164,6 +167,22 @@ final toggleSuggestionVoteProvider = Provider<ToggleSuggestionVote>((ref) {
 
 final updateEventStatusProvider = Provider<UpdateEventStatus>((ref) {
   return UpdateEventStatus(ref.watch(eventRepositoryProvider));
+});
+
+// Use cases for event time management
+final extendEventTimeProvider = Provider<ExtendEventTime>((ref) {
+  return ExtendEventTime(ref.watch(eventRepositoryProvider));
+});
+
+final endEventNowProvider = Provider<EndEventNow>((ref) {
+  return EndEventNow(ref.watch(eventRepositoryProvider));
+});
+
+// Event participants provider
+final eventParticipantsProvider =
+    FutureProvider.family<List<EventParticipantEntity>, String>((ref, eventId) async {
+  final repository = ref.watch(eventRepositoryProvider);
+  return await repository.getEventParticipants(eventId);
 });
 
 // Event status update state provider

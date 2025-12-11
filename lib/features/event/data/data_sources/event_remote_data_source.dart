@@ -350,4 +350,53 @@ class EventRemoteDataSource {
                   throw Exception('Failed to get event participants: $e');
     }
   }
+
+  /// Extend event end time by specified minutes
+  Future<EventDetailModel> extendEventTime(String eventId, int minutes) async {
+    try {
+      // Get current event to calculate new end time
+      final currentEvent = await getEventDetail(eventId);
+      final currentEndTime = currentEvent.endDateTime;
+
+      if (currentEndTime == null) {
+        throw Exception('Event has no end time set');
+      }
+
+      // Calculate new end time
+      final newEndTime = currentEndTime.add(Duration(minutes: minutes));
+
+      // Update event in database
+      await _supabaseClient
+          .from('events')
+          .update({'end_datetime': newEndTime.toIso8601String()})
+          .eq('id', eventId);
+
+      // Return updated event
+      return await getEventDetail(eventId);
+    } on PostgrestException catch (e) {
+      throw Exception('Failed to extend event time: ${e.message}');
+    } catch (e) {
+      throw Exception('Failed to extend event time: $e');
+    }
+  }
+
+  /// End event immediately (set end time to now)
+  Future<EventDetailModel> endEventNow(String eventId) async {
+    try {
+      // Set end time to now
+      final now = DateTime.now();
+
+      await _supabaseClient
+          .from('events')
+          .update({'end_datetime': now.toIso8601String()})
+          .eq('id', eventId);
+
+      // Return updated event
+      return await getEventDetail(eventId);
+    } on PostgrestException catch (e) {
+      throw Exception('Failed to end event: ${e.message}');
+    } catch (e) {
+      throw Exception('Failed to end event: $e');
+    }
+  }
 }
