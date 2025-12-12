@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../routes/app_router.dart';
 import '../../../../shared/components/nav/common_app_bar.dart';
 import '../../../../shared/components/common/top_banner.dart';
@@ -160,10 +161,16 @@ class _EventLivingPageState extends ConsumerState<EventLivingPage> {
                     final participantsAsync =
                         await ref.read(eventParticipantsProvider(widget.eventId).future);
 
+                    final currentUserId =
+                        Supabase.instance.client.auth.currentUser?.id;
                     final participants = participantsAsync
                         .map((p) => ExpenseParticipantOption(
                               id: p.userId,
-                              name: p.displayName,
+                              name: _getUserDisplayName(
+                                p.userId,
+                                p.displayName,
+                                currentUserId,
+                              ),
                               avatarUrl: p.avatarUrl,
                             ))
                         .toList();
@@ -225,8 +232,23 @@ class _EventLivingPageState extends ConsumerState<EventLivingPage> {
                             context,
                             message: '✅ Photo uploaded successfully!',
                           );
-                          // Refresh event to update photo count
+                          
+                          // Optimistic UI: invalidate all photo-related providers
+                          // This forces fresh data fetch when navigating to manage memory
                           ref.invalidate(eventDetailProvider(widget.eventId));
+                          ref.invalidate(eventPhotosProvider(widget.eventId));
+                          
+                          // Navigate immediately to manage memory page
+                          // The manageMemoryProvider will fetch fresh photos on init
+                          if (context.mounted) {
+                            Navigator.pushNamed(
+                              context,
+                              AppRouter.manageMemory,
+                              arguments: {
+                                'memoryId': widget.eventId,
+                              },
+                            );
+                          }
                         }
                       },
                       loading: () {},
@@ -239,13 +261,12 @@ class _EventLivingPageState extends ConsumerState<EventLivingPage> {
                     );
                   },
                   onViewMemory: () {
-                    // Navigate to memory viewer
+                    // Navigate to manage memory page
                     Navigator.pushNamed(
                       context,
-                      AppRouter.memory,
+                      AppRouter.manageMemory,
                       arguments: {
-                        'eventId': widget.eventId,
-                        'groupId': event.groupId,
+                        'memoryId': widget.eventId,
                       },
                     );
                   },
@@ -327,10 +348,16 @@ class _EventLivingPageState extends ConsumerState<EventLivingPage> {
                   future: ref
                       .read(eventParticipantsProvider(widget.eventId).future),
                   builder: (context, snapshot) {
+                    final currentUserId =
+                        Supabase.instance.client.auth.currentUser?.id;
                     final participants = snapshot.data
                             ?.map((p) => ExpenseParticipantOption(
                                   id: p.userId,
-                                  name: p.displayName,
+                                  name: _getUserDisplayName(
+                                    p.userId,
+                                    p.displayName,
+                                    currentUserId,
+                                  ),
                                   avatarUrl: p.avatarUrl,
                                 ))
                             .toList() ??

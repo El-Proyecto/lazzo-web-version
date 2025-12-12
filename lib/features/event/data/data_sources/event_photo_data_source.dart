@@ -135,4 +135,45 @@ class EventPhotoDataSource {
             return false;
     }
   }
+
+  /// Get all photos for an event with uploader information
+  Future<List<Map<String, dynamic>>> getEventPhotos(String eventId) async {
+    try {
+      // Query group_photos with user info
+      final response = await _client
+          .from('group_photos')
+          .select('''
+            id,
+            url,
+            storage_path,
+            captured_at,
+            uploader_id,
+            is_portrait,
+            uploader:uploader_id(id, name, avatar_url)
+          ''')
+          .eq('event_id', eventId)
+          .order('captured_at', ascending: false);
+
+      // Generate signed URLs for each photo
+      final photos = <Map<String, dynamic>>[];
+      for (final photo in response as List) {
+        final signedUrl = await getSignedUrl(photo['storage_path'] as String);
+        
+        photos.add({
+          'id': photo['id'],
+          'url': signedUrl,
+          'storage_path': photo['storage_path'],
+          'captured_at': photo['captured_at'],
+          'uploader_id': photo['uploader_id'],
+          'is_portrait': photo['is_portrait'],
+          'uploader_name': photo['uploader']?['name'],
+          'uploader_avatar': photo['uploader']?['avatar_url'],
+        });
+      }
+
+      return photos;
+    } catch (e) {
+      throw Exception('Failed to get event photos: $e');
+    }
+  }
 }
