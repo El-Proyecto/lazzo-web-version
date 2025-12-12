@@ -447,7 +447,19 @@ class _HomeEventCardState extends ConsumerState<HomeEventCard> {
         // Chat button
         Expanded(
           child: GestureDetector(
-            onTap: widget.onChatPressed,
+            onTap: () {
+              // Navigate to event chat page
+              if (widget.state == HomeEventCardState.living) {
+                Navigator.pushNamed(
+                  context,
+                  '/event-chat',
+                  arguments: {'eventId': _currentEvent.id},
+                );
+              } else {
+                // For non-living events, use the callback if provided
+                widget.onChatPressed?.call();
+              }
+            },
             child: Container(
               height: 44,
               decoration: BoxDecoration(
