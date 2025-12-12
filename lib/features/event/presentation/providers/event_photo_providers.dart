@@ -119,3 +119,9 @@ final eventPhotoUploadNotifierProvider = StateNotifierProvider.family<
 
   return EventPhotoUploadNotifier(uploadUseCase, imagePicker);
 });
+
+/// Provider to get all photos for an event
+final eventPhotosProvider = FutureProvider.family<List<dynamic>, String>((ref, eventId) async {
+  final repository = ref.watch(eventPhotoRepositoryProvider);
+  return await repository.getEventPhotos(eventId);
+});

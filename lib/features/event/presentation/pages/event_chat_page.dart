@@ -15,6 +15,7 @@ import '../../../../shared/themes/colors.dart';
 import '../../domain/entities/chat_message.dart';
 import '../providers/chat_providers.dart';
 import '../providers/event_providers.dart';
+import '../../../expense/presentation/providers/event_expense_providers.dart';
 import '../../data/fakes/fake_chat_repository.dart';
 
 /// Event chat page
@@ -639,6 +640,8 @@ class _EventChatPageState extends ConsumerState<EventChatPage> {
                 },
                 eventStateColor: _eventStateColor,
                 showSuggestions: allMessages.isEmpty,
+                ref: ref,
+                eventId: widget.eventId,
               );
             },
             loading: () => _ChatInput(
@@ -653,6 +656,8 @@ class _EventChatPageState extends ConsumerState<EventChatPage> {
               },
               eventStateColor: _eventStateColor,
               showSuggestions: false,
+              ref: ref,
+              eventId: widget.eventId,
             ),
             error: (_, __) => _ChatInput(
               controller: _messageController,
@@ -666,6 +671,8 @@ class _EventChatPageState extends ConsumerState<EventChatPage> {
               },
               eventStateColor: _eventStateColor,
               showSuggestions: false,
+              ref: ref,
+              eventId: widget.eventId,
             ),
           ),
         ],
@@ -880,6 +887,8 @@ class _ChatInput extends StatelessWidget {
   final VoidCallback? onCancelReply;
   final Color eventStateColor;
   final bool showSuggestions;
+  final WidgetRef ref;
+  final String eventId;
 
   const _ChatInput({
     required this.controller,
@@ -889,34 +898,57 @@ class _ChatInput extends StatelessWidget {
     this.onCancelReply,
     required this.eventStateColor,
     this.showSuggestions = false,
+    required this.ref,
+    required this.eventId,
   });
 
-  void _showAddExpenseBottomSheet(BuildContext context) {
-    // Mock participants for the event
-    final participants = [
-      const ExpenseParticipantOption(
-        id: 'current_user',
-        name: 'You',
-      ),
-      const ExpenseParticipantOption(
-        id: 'marco',
-        name: 'Marco',
-      ),
-      const ExpenseParticipantOption(
-        id: 'ana',
-        name: 'Ana',
-      ),
-      const ExpenseParticipantOption(
-        id: 'joao',
-        name: 'João',
-      ),
-    ];
+  Future<void> _showAddExpenseBottomSheet(BuildContext context) async {
+    // Get event participants
+    final participantsAsync = await ref.read(eventParticipantsProvider(eventId).future);
+
+    final currentUserId = Supabase.instance.client.auth.currentUser?.id;
+    
+    // Helper function to display "You" for current user
+    String getUserDisplayName(String userId, String userName) {
+      return userId == currentUserId ? 'You' : userName;
+    }
+    
+    final participants = participantsAsync
+        .map((p) => ExpenseParticipantOption(
+              id: p.userId,
+              name: getUserDisplayName(p.userId, p.displayName),
+              avatarUrl: p.avatarUrl,
+            ))
+        .toList();
+
+    if (!context.mounted) return;
 
     AddExpenseBottomSheet.show(
       context: context,
       participants: participants,
-      onAddExpense: (title, paidByIds, payerIds, totalAmount) async {
-        // TODO: Implement add expense logic with repository
+      onAddExpense: (title, paidBy, participantsOwe, amount) async {
+        // Create expense using expense provider
+        try {
+          await ref
+              .read(eventExpensesProvider(eventId).notifier)
+              .addExpense(
+                description: title,
+                amount: amount,
+                paidBy: paidBy,
+                participantsOwe: participantsOwe,
+                participantsPaid: [paidBy],
+              );
+
+          if (context.mounted) {
+            TopBanner.showSuccess(context,
+                message: 'Expense added successfully');
+          }
+        } catch (e) {
+          if (context.mounted) {
+            TopBanner.showError(context,
+                message: 'Failed to add expense: $e');
+          }
+        }
       },
     );
   }

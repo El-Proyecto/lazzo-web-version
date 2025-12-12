@@ -71,4 +71,13 @@ class EventPhotoRepositoryImpl implements EventPhotoRepository {
       throw Exception('Failed to get signed photo URL: $e');
     }
   }
+
+  @override
+  Future<List<dynamic>> getEventPhotos(String eventId) async {
+    try {
+      return await _dataSource.getEventPhotos(eventId);
+    } catch (e) {
+      throw Exception('Failed to get event photos: $e');
+    }
+  }
 }

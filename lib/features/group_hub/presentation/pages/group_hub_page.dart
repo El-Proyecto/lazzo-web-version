@@ -636,17 +636,25 @@ class _GroupHubPageState extends ConsumerState<GroupHubPage>
                 event: displayEvent,
                 state: cardState,
                 onTap: () async {
-                  // Navigate to Memory Page if Recap, otherwise Event Page
-                  if (event.status == GroupEventStatus.recap) {
+                  // Navigate based on event status
+                  if (event.status == GroupEventStatus.living) {
+                    // Living event → EventLivingPage
+                    await Navigator.pushNamed(
+                      context,
+                      AppRouter.eventLiving,
+                      arguments: {'eventId': event.id},
+                    );
+                  } else if (event.status == GroupEventStatus.recap) {
                     await Navigator.pushNamed(
                       context,
                       '/memory',
                       arguments: {'memoryId': event.id},
                     );
                   } else {
+                    // Other statuses → EventPage (planning/confirmed/recap)
                     await Navigator.pushNamed(
                       context,
-                      '/event',
+                      AppRouter.event,
                       arguments: {'eventId': event.id},
                     );
                   }

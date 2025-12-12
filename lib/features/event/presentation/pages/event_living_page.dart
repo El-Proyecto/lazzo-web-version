@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../../../routes/app_router.dart';
 import '../../../../shared/components/nav/common_app_bar.dart';
 import '../../../../shared/components/common/top_banner.dart';
 import '../../../../shared/components/sections/event_header.dart';
@@ -7,6 +9,7 @@ import '../../../../shared/components/widgets/location_widget.dart';
 import '../../../../shared/components/dialogs/add_expense_bottom_sheet.dart';
 import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/themes/colors.dart';
+import '../../../expense/presentation/providers/event_expense_providers.dart';
 import '../../domain/entities/chat_message.dart';
 import '../providers/event_providers.dart';
 import '../providers/chat_providers.dart';
@@ -80,17 +83,70 @@ class _EventLivingPageState extends ConsumerState<EventLivingPage> {
 
                 // Time left pill (with controls for host)
                 if (event.endDateTime != null)
-                  event.hostId == 'current-user' // TODO: Get from auth
+                  event.hostId == currentUserId
                       ? HostTimeControls(
                           eventEndTime: event.endDateTime!,
-                          onExtend30Minutes: () {
-                            // TODO: Extend event by 30 minutes
+                          onExtend30Minutes: () async {
+                            // Extend event by 30 minutes
+                            try {
+                              await ref
+                                  .read(extendEventTimeProvider)
+                                  .call(widget.eventId, 30);
+                              // Refresh event details
+                              ref.invalidate(
+                                  eventDetailProvider(widget.eventId));
+                              if (context.mounted) {
+                                TopBanner.showSuccess(context,
+                                    message: 'Event extended by 30 minutes');
+                              }
+                            } catch (e) {
+                              if (context.mounted) {
+                                TopBanner.showError(context,
+                                    message: 'Failed to extend event: $e');
+                              }
+                            }
                           },
-                          onCustomExtend: () {
-                            // TODO: Show custom time picker
+                          onCustomExtend: (minutes) async {
+                            // Extend event by custom minutes
+                            try {
+                              await ref
+                                  .read(extendEventTimeProvider)
+                                  .call(widget.eventId, minutes);
+                              // Refresh event details
+                              ref.invalidate(
+                                  eventDetailProvider(widget.eventId));
+                              if (context.mounted) {
+                                TopBanner.showSuccess(context,
+                                    message: 'Event extended by $minutes minutes');
+                              }
+                            } catch (e) {
+                              if (context.mounted) {
+                                TopBanner.showError(context,
+                                    message: 'Failed to extend event: $e');
+                              }
+                            }
                           },
-                          onEndNow: () {
-                            // TODO: End event now
+                          onEndNow: () async {
+                            // End event immediately
+                            try {
+                              await ref
+                                  .read(endEventNowProvider)
+                                  .call(widget.eventId);
+                              // Refresh event details
+                              ref.invalidate(
+                                  eventDetailProvider(widget.eventId));
+                              if (context.mounted) {
+                                TopBanner.showSuccess(context,
+                                    message: 'Event ended successfully');
+                                // Navigate back to group hub or home
+                                Navigator.pop(context);
+                              }
+                            } catch (e) {
+                              if (context.mounted) {
+                                TopBanner.showError(context,
+                                    message: 'Failed to end event: $e');
+                              }
+                            }
                           },
                         )
                       : LivingTimeLeftPill(
@@ -100,13 +156,55 @@ class _EventLivingPageState extends ConsumerState<EventLivingPage> {
 
                 // Action row
                 LivingActionRow(
-                  onAddExpense: () {
+                  onAddExpense: () async {
+                    // Get event participants
+                    final participantsAsync =
+                        await ref.read(eventParticipantsProvider(widget.eventId).future);
+
+                    final currentUserId =
+                        Supabase.instance.client.auth.currentUser?.id;
+                    final participants = participantsAsync
+                        .map((p) => ExpenseParticipantOption(
+                              id: p.userId,
+                              name: _getUserDisplayName(
+                                p.userId,
+                                p.displayName,
+                                currentUserId,
+                              ),
+                              avatarUrl: p.avatarUrl,
+                            ))
+                        .toList();
+
+                    if (!context.mounted) return;
+
                     // Open add expense bottom sheet
                     AddExpenseBottomSheet.show(
                       context: context,
-                      participants: [], // TODO: Get event participants
-                      onAddExpense: (title, paidByIds, payerIds, amount) async {
-                        // TODO: Implement add expense
+                      participants: participants,
+                      onAddExpense: (title, paidBy, participantsOwe, amount) async {
+                        // Create expense using expense provider
+                        try {
+                          await ref
+                              .read(eventExpensesProvider(widget.eventId)
+                                  .notifier)
+                              .addExpense(
+                                description: title,
+                                amount: amount,
+                                paidBy: paidBy,
+                                participantsOwe: participantsOwe,
+                                participantsPaid: [paidBy],
+                              );
+
+                          if (context.mounted) {
+                            TopBanner.showSuccess(context,
+                                message: 'Expense added successfully');
+                          }
+                        } catch (e) {
+                          if (context.mounted) {
+                            TopBanner.showError(context,
+                                message: 'Failed to add expense: $e');
+                          }
+                        }
                       },
                     );
                   },
@@ -134,8 +232,23 @@ class _EventLivingPageState extends ConsumerState<EventLivingPage> {
                             context,
                             message: '✅ Photo uploaded successfully!',
                           );
-                          // Refresh event to update photo count
+                          
+                          // Optimistic UI: invalidate all photo-related providers
+                          // This forces fresh data fetch when navigating to manage memory
                           ref.invalidate(eventDetailProvider(widget.eventId));
+                          ref.invalidate(eventPhotosProvider(widget.eventId));
+                          
+                          // Navigate immediately to manage memory page
+                          // The manageMemoryProvider will fetch fresh photos on init
+                          if (context.mounted) {
+                            Navigator.pushNamed(
+                              context,
+                              AppRouter.manageMemory,
+                              arguments: {
+                                'memoryId': widget.eventId,
+                              },
+                            );
+                          }
                         }
                       },
                       loading: () {},
@@ -148,7 +261,14 @@ class _EventLivingPageState extends ConsumerState<EventLivingPage> {
                     );
                   },
                   onViewMemory: () {
-                    // TODO: Navigate to memory
+                    // Navigate to manage memory page
+                    Navigator.pushNamed(
+                      context,
+                      AppRouter.manageMemory,
+                      arguments: {
+                        'memoryId': widget.eventId,
+                      },
+                    );
                   },
                 ),
                 const SizedBox(height: Gaps.lg),
@@ -168,7 +288,7 @@ class _EventLivingPageState extends ConsumerState<EventLivingPage> {
 
                     return ChatPreviewWidget(
                       newMessagesCount: unreadCount,
-                      currentUserId: currentUserId ?? 'current-user',
+                      currentUserId: currentUserId ?? 'unknown',
                       recentMessages: messages
                           .map(
                             (m) => ChatMessagePreview(
@@ -185,7 +305,12 @@ class _EventLivingPageState extends ConsumerState<EventLivingPage> {
                           )
                           .toList(),
                       onOpenChat: () {
-                        // TODO: Navigate to chat
+                        // Navigate to event chat page
+                        Navigator.pushNamed(
+                          context,
+                          AppRouter.eventChat,
+                          arguments: {'eventId': widget.eventId},
+                        );
                       },
                       onSendMessage: (content,
                           {ChatMessagePreview? replyTo}) async {
@@ -219,12 +344,55 @@ class _EventLivingPageState extends ConsumerState<EventLivingPage> {
                 const SizedBox(height: Gaps.lg),
 
                 // Expenses widget
-                EventExpensesWidget(
-                  eventId: widget.eventId,
-                  mode: ChatMode.living,
-                  participants: const [], // TODO: Get event participants
-                  onAddExpense: (title, paidByIds, payerIds, amount) async {
-                    // TODO: Implement add expense
+                FutureBuilder(
+                  future: ref
+                      .read(eventParticipantsProvider(widget.eventId).future),
+                  builder: (context, snapshot) {
+                    final currentUserId =
+                        Supabase.instance.client.auth.currentUser?.id;
+                    final participants = snapshot.data
+                            ?.map((p) => ExpenseParticipantOption(
+                                  id: p.userId,
+                                  name: _getUserDisplayName(
+                                    p.userId,
+                                    p.displayName,
+                                    currentUserId,
+                                  ),
+                                  avatarUrl: p.avatarUrl,
+                                ))
+                            .toList() ??
+                        [];
+
+                    return EventExpensesWidget(
+                      eventId: widget.eventId,
+                      mode: ChatMode.living,
+                      participants: participants,
+                      onAddExpense:
+                          (title, paidBy, participantsOwe, amount) async {
+                        try {
+                          await ref
+                              .read(eventExpensesProvider(widget.eventId)
+                                  .notifier)
+                              .addExpense(
+                                description: title,
+                                amount: amount,
+                                paidBy: paidBy,
+                                participantsOwe: participantsOwe,
+                                participantsPaid: [paidBy],
+                              );
+
+                          if (context.mounted) {
+                            TopBanner.showSuccess(context,
+                                message: 'Expense added successfully');
+                          }
+                        } catch (e) {
+                          if (context.mounted) {
+                            TopBanner.showError(context,
+                                message: 'Failed to add expense: $e');
+                          }
+                        }
+                      },
+                    );
                   },
                 ),
                 const SizedBox(height: Gaps.lg),

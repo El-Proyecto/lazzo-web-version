@@ -325,29 +325,99 @@ class EventRemoteDataSource {
       };
 
       
-      // Combine participants with their user data
-      final participants = (participantsResponse as List).map((participant) {
-        final userId = participant['user_id'] as String;
-        final userData = usersMap[userId];
+      // Combine participants with their user data and generate signed URLs for avatars
+      final participants = await Future.wait(
+        (participantsResponse as List).map((participant) async {
+          final userId = participant['user_id'] as String;
+          final userData = usersMap[userId];
 
-        if (userData == null) {
-                  }
+          if (userData == null) {
+            return EventParticipantEntity(
+              userId: userId,
+              displayName: 'Unknown User',
+              avatarUrl: null,
+              status: participant['rsvp'] as String? ?? 'pending',
+            );
+          }
 
-        final displayName = userData?['name'] as String? ?? 'Unknown User';
-        
-        return EventParticipantEntity(
-          userId: userId,
-          displayName: displayName,
-          avatarUrl: userData?['avatar_url'] as String?,
-          status: participant['rsvp'] as String? ?? 'pending',
-        );
-      }).toList();
+          final displayName = userData['name'] as String? ?? 'Unknown User';
+          final avatarPath = userData['avatar_url'] as String?;
+          
+          // Generate signed URL for avatar if path exists
+          String? signedAvatarUrl;
+          if (avatarPath != null && avatarPath.isNotEmpty) {
+            try {
+              signedAvatarUrl = await _supabaseClient.storage
+                  .from('users-profile-pic')
+                  .createSignedUrl(avatarPath, 3600); // 1 hour expiry
+            } catch (e) {
+              // Failed to generate signed URL, avatar will be null
+            }
+          }
+          
+          return EventParticipantEntity(
+            userId: userId,
+            displayName: displayName,
+            avatarUrl: signedAvatarUrl,
+            status: participant['rsvp'] as String? ?? 'pending',
+          );
+        }),
+      );
 
-            return participants;
+      return participants;
     } on PostgrestException catch (e) {
                         throw Exception('Failed to get event participants: ${e.message}');
     } catch (e) {
                   throw Exception('Failed to get event participants: $e');
+    }
+  }
+
+  /// Extend event end time by specified minutes
+  Future<EventDetailModel> extendEventTime(String eventId, int minutes) async {
+    try {
+      // Get current event to calculate new end time
+      final currentEvent = await getEventDetail(eventId);
+      final currentEndTime = currentEvent.endDateTime;
+
+      if (currentEndTime == null) {
+        throw Exception('Event has no end time set');
+      }
+
+      // Calculate new end time
+      final newEndTime = currentEndTime.add(Duration(minutes: minutes));
+
+      // Update event in database
+      await _supabaseClient
+          .from('events')
+          .update({'end_datetime': newEndTime.toIso8601String()})
+          .eq('id', eventId);
+
+      // Return updated event
+      return await getEventDetail(eventId);
+    } on PostgrestException catch (e) {
+      throw Exception('Failed to extend event time: ${e.message}');
+    } catch (e) {
+      throw Exception('Failed to extend event time: $e');
+    }
+  }
+
+  /// End event immediately (set end time to now)
+  Future<EventDetailModel> endEventNow(String eventId) async {
+    try {
+      // Set end time to now
+      final now = DateTime.now();
+
+      await _supabaseClient
+          .from('events')
+          .update({'end_datetime': now.toIso8601String()})
+          .eq('id', eventId);
+
+      // Return updated event
+      return await getEventDetail(eventId);
+    } on PostgrestException catch (e) {
+      throw Exception('Failed to end event: ${e.message}');
+    } catch (e) {
+      throw Exception('Failed to end event: $e');
     }
   }
 }

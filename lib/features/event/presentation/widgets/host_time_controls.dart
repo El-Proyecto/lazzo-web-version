@@ -10,7 +10,7 @@ import '../../../../shared/components/dialogs/confirmation_dialog.dart';
 class HostTimeControls extends StatelessWidget {
   final DateTime eventEndTime;
   final VoidCallback onExtend30Minutes;
-  final VoidCallback onCustomExtend;
+  final Function(int minutes) onCustomExtend;
   final VoidCallback onEndNow;
 
   const HostTimeControls({
@@ -49,8 +49,9 @@ class HostTimeControls extends StatelessWidget {
       builder: (context) => _TimeManagementBottomSheet(
         currentTimeLeft: timeLeft,
         onAddTime: (minutes) {
-          // TODO: Implement add time
           Navigator.pop(context);
+          // Call the custom extend callback with selected minutes
+          onCustomExtend(minutes);
         },
         onEndNow: () {
           Navigator.pop(context);

@@ -29,4 +29,8 @@ abstract class EventPhotoRepository {
 
   /// Get signed URL for a photo (for private bucket access)
   Future<String> getSignedPhotoUrl(String storagePath);
+
+  /// Get all photos for an event
+  /// Returns list of group photos with uploader info
+  Future<List<dynamic>> getEventPhotos(String eventId);
 }

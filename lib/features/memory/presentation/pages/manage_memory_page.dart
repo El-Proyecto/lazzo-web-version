@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../../routes/app_router.dart';
 import '../../../../shared/components/nav/common_app_bar.dart';
@@ -10,6 +11,7 @@ import '../../../../shared/components/cards/close_recap_card.dart';
 import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/constants/text_styles.dart';
 import '../../../../shared/themes/colors.dart';
+import '../../../event/presentation/providers/event_providers.dart';
 import '../providers/manage_memory_providers.dart';
 import '../providers/memory_providers.dart';
 import '../widgets/cover_selection_card.dart';
@@ -43,6 +45,16 @@ class ManageMemoryPage extends ConsumerStatefulWidget {
 class _ManageMemoryPageState extends ConsumerState<ManageMemoryPage> {
   bool _isSelectionMode = false;
   final Set<String> _selectedPhotoIds = {};
+
+  @override
+  void initState() {
+    super.initState();
+    // Force refresh of providers when page opens to show latest photos
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.invalidate(manageMemoryProvider(widget.memoryId));
+      ref.invalidate(memoryDetailProvider(widget.memoryId));
+    });
+  }
   bool _hasChanges = false; // Track if any changes were made
 
   void _toggleSelectionMode() {
@@ -69,6 +81,9 @@ class _ManageMemoryPageState extends ConsumerState<ManageMemoryPage> {
     }
 
     final manageState = ref.watch(manageMemoryProvider(widget.memoryId));
+    
+    // Get event details to determine status and host (memoryId is eventId)
+    final eventAsync = ref.watch(eventDetailProvider(widget.memoryId));
 
     return Scaffold(
       backgroundColor: BrandColors.bg1,
@@ -103,14 +118,42 @@ class _ManageMemoryPageState extends ConsumerState<ManageMemoryPage> {
                     const SizedBox(height: Gaps.lg),
 
                     // Close recap card (only for hosts in recap phase)
-                    if (FakeMemoryConfig.eventStatus == FakeEventStatus.recap &&
-                        FakeMemoryConfig.isHost) ...[
-                      CloseRecapCard(
-                        timeRemaining: FakeMemoryConfig.formattedRemainingTime,
-                        onCloseConfirmed: () => _handleCloseRecap(),
-                      ),
-                      const SizedBox(height: Gaps.md),
-                    ],
+                    // Show only if:
+                    // 1. Event has ended (status = ended)
+                    // 2. Current user is the host
+                    // 3. Still within recap window (48h after end)
+                    ...eventAsync.when(
+                      data: (event) {
+                        final currentUserId =
+                            Supabase.instance.client.auth.currentUser?.id;
+                        final isHost = event.hostId == currentUserId;
+                        final isEnded = event.status.toString().split('.').last == 'ended';
+                        
+                        // Check if within recap window (48h after event end)
+                        final isInRecap = event.endDateTime != null &&
+                            DateTime.now().difference(event.endDateTime!) <
+                                const Duration(hours: 24);
+                        
+                        if (isEnded && isHost && isInRecap && event.endDateTime != null) {
+                          final recapEndTime = event.endDateTime!.add(const Duration(hours: 24));
+                          final remaining = recapEndTime.difference(DateTime.now());
+                          final hours = remaining.inHours;
+                          final minutes = remaining.inMinutes.remainder(60);
+                          final timeRemaining = 'Closes in ${hours}h${minutes}m';
+                          
+                          return [
+                            CloseRecapCard(
+                              timeRemaining: timeRemaining,
+                              onCloseConfirmed: () => _handleCloseRecap(),
+                            ),
+                            const SizedBox(height: Gaps.md),
+                          ];
+                        }
+                        return [];
+                      },
+                      loading: () => [],
+                      error: (_, __) => [],
+                    ),
 
                     // Show CTA banner if user has no photos, otherwise show cover selection
                     if (!FakeMemoryConfig.userHasUploadedPhotos)
