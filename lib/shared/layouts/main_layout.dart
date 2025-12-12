@@ -11,6 +11,8 @@ import '../../features/home/presentation/pages/home.dart';
 import '../../features/home/presentation/providers/home_event_providers.dart';
 import '../../features/home/domain/entities/home_event.dart';
 import '../../features/memory/presentation/providers/memory_providers.dart';
+import '../../features/event/presentation/providers/event_providers.dart';
+import '../../features/event/presentation/providers/event_photo_providers.dart';
 import '../../routes/app_router.dart';
 import '../../services/event_status_service.dart';
 import 'main_layout_providers.dart';
@@ -64,12 +66,71 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
       final nextEventStatus = ref.read(navBarStateProvider);
 
       if (nextEventStatus == HomeEventStatus.living) {
-        // Living mode: open camera (TODO: implement)
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('📸 Camera for living mode coming soon!'),
-            duration: Duration(seconds: 2),
-          ),
+        // Living mode: Take photo and upload
+        final nextEvent = await ref.read(nextEventControllerProvider.future);
+        
+        if (nextEvent == null) {
+          if (mounted) {
+            TopBanner.showError(
+              context,
+              message: 'No event in living mode found',
+            );
+          }
+          return;
+        }
+
+        final eventId = nextEvent.id;
+        
+        // Get event detail to obtain groupId
+        final eventDetail = await ref.read(eventDetailProvider(eventId).future);
+
+        // Get photo upload notifier
+        final photoNotifier = ref.read(
+          eventPhotoUploadNotifierProvider(eventId).notifier,
+        );
+
+        // Take photo and upload
+        await photoNotifier.takePhoto(
+          eventId: eventId,
+          groupId: eventDetail.groupId,
+        );
+
+        // Show result
+        final uploadState = ref.read(
+          eventPhotoUploadNotifierProvider(eventId),
+        );
+
+        uploadState.when(
+          data: (photoUrl) {
+            if (photoUrl != null && mounted) {
+              TopBanner.showSuccess(
+                context,
+                message: '✅ Photo uploaded successfully!',
+              );
+              
+              // Optimistic UI: invalidate all photo-related providers
+              ref.invalidate(eventDetailProvider(eventId));
+              ref.invalidate(eventPhotosProvider(eventId));
+              
+              // Navigate to manage memory page
+              Navigator.pushNamed(
+                context,
+                AppRouter.manageMemory,
+                arguments: {
+                  'memoryId': eventId,
+                },
+              );
+            }
+          },
+          loading: () {},
+          error: (error, _) {
+            if (mounted) {
+              TopBanner.showError(
+                context,
+                message: '❌ Failed to upload photo: $error',
+              );
+            }
+          },
         );
       } else if (nextEventStatus == HomeEventStatus.recap) {
         // First, update event statuses to ensure recap events are correctly marked
