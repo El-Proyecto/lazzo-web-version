@@ -21,46 +21,140 @@ As tabelas `events`, `location_suggestions`, `event_date_options` já suportam e
 
 ---
 
-### 1.2 RLS Policies Review
-**Status:** ⚠️ Verificar políticas existentes
+### 1.2 RLS Policies Verification
+**Status:** ⚠️ **VERIFICAR PRIMEIRO** - Executar queries abaixo antes de criar novas policies
 
-**Action Required:**
+**Step 1: Verificar Policies Existentes**
+
+Execute estas queries para verificar se as policies necessárias já existem:
+
 ```sql
--- Verificar se location_suggestions e event_date_options permitem INSERT/SELECT
--- para participantes do evento (não apenas hosts)
+-- ============================================================================
+-- VERIFICATION QUERIES - Execute estas queries para verificar policies
+-- ============================================================================
 
--- Se necessário, adicionar/ajustar políticas:
+-- 1. Listar TODAS as policies para event_date_options
+SELECT 
+  schemaname,
+  tablename,
+  policyname,
+  permissive,
+  roles,
+  cmd,
+  qual,
+  with_check
+FROM pg_policies 
+WHERE schemaname = 'public' 
+  AND tablename = 'event_date_options'
+ORDER BY policyname;
 
--- Policy para participantes adicionarem sugestões de data
-CREATE POLICY "Event participants can add date suggestions"
-ON event_date_options
-FOR INSERT
-TO authenticated
-USING (
-  EXISTS (
-    SELECT 1 FROM event_participants ep
-    WHERE ep.pevent_id = event_date_options.event_id
-    AND ep.user_id = auth.uid()
+-- 2. Listar TODAS as policies para location_suggestions
+SELECT 
+  schemaname,
+  tablename,
+  policyname,
+  permissive,
+  roles,
+  cmd,
+  qual,
+  with_check
+FROM pg_policies 
+WHERE schemaname = 'public' 
+  AND tablename = 'location_suggestions'
+ORDER BY policyname;
+
+-- 3. Listar TODAS as policies para event_date_votes
+SELECT 
+  schemaname,
+  tablename,
+  policyname,
+  permissive,
+  roles,
+  cmd,
+  qual,
+  with_check
+FROM pg_policies 
+WHERE schemaname = 'public' 
+  AND tablename = 'event_date_votes'
+ORDER BY policyname;
+
+-- 4. Listar TODAS as policies para location_suggestion_votes
+SELECT 
+  schemaname,
+  tablename,
+  policyname,
+  permissive,
+  roles,
+  cmd,
+  qual,
+  with_check
+FROM pg_policies 
+WHERE schemaname = 'public' 
+  AND tablename = 'location_suggestion_votes'
+ORDER BY policyname;
+
+-- 5. Verificar se RLS está ativado nestas tabelas
+SELECT 
+  schemaname,
+  tablename,
+  rowsecurity
+FROM pg_tables
+WHERE schemaname = 'public'
+  AND tablename IN (
+    'event_date_options',
+    'location_suggestions', 
+    'event_date_votes',
+    'location_suggestion_votes'
   )
-);
+ORDER BY tablename;
+```
 
--- Policy para participantes adicionarem sugestões de local
-CREATE POLICY "Event participants can add location suggestions"
-ON location_suggestions
-FOR INSERT
-TO authenticated
-USING (
-  EXISTS (
-    SELECT 1 FROM event_participants ep
-    WHERE ep.pevent_id = location_suggestions.event_id
-    AND ep.user_id = auth.uid()
-  )
-);
+---
 
--- Verificar policies de SELECT já existem
--- Se não, adicionar:
+**Step 2: Análise dos Resultados**
 
-CREATE POLICY "Event participants can view date suggestions"
+Após executar as queries acima, verificar se existem policies para:
+
+**event_date_options:**
+- [X] **SELECT** - Participantes podem ver sugestões de data
+- [X] **INSERT** - Participantes podem adicionar sugestões de data
+- [X] **DELETE** (opcional) - Criador pode deletar sua sugestão
+
+**location_suggestions:**
+- [X] **SELECT** - Participantes podem ver sugestões de local
+- [X] **INSERT** - Participantes podem adicionar sugestões de local
+- [X] **DELETE** (opcional) - Criador pode deletar sua sugestão
+
+**event_date_votes:**
+- [X] **SELECT** - Participantes podem ver votos
+- [X] **INSERT** - Participantes podem votar em sugestões
+- [X] **DELETE** - Participantes podem remover seu voto (toggle)
+
+**location_suggestion_votes:**
+- [X] **SELECT** - Participantes podem ver votos
+- [X] **INSERT** - Participantes podem votar em sugestões
+- [X] **DELETE** - Participantes podem remover seu voto (toggle)
+
+---
+
+**Step 3: Criar Policies em Falta (Se Necessário)**
+
+⚠️ **APENAS executar as queries abaixo para policies que NÃO existem** (verificado no Step 1)
+
+```sql
+-- ============================================================================
+-- CREATE POLICIES - Apenas se verificação mostrar que não existem
+-- ============================================================================
+
+-- ATENÇÃO: NÃO executar se policy com mesmo nome já existir!
+-- Ajustar lógica da policy conforme padrões do projeto
+
+-- ============================================================================
+-- event_date_options policies
+-- ============================================================================
+
+-- Permitir participantes verem sugestões de data
+CREATE POLICY "event_participants_can_view_date_suggestions"
 ON event_date_options
 FOR SELECT
 TO authenticated
@@ -72,7 +166,32 @@ USING (
   )
 );
 
-CREATE POLICY "Event participants can view location suggestions"
+-- Permitir participantes adicionarem sugestões de data
+CREATE POLICY "event_participants_can_add_date_suggestions"
+ON event_date_options
+FOR INSERT
+TO authenticated
+WITH CHECK (
+  EXISTS (
+    SELECT 1 FROM event_participants ep
+    WHERE ep.pevent_id = event_date_options.event_id
+    AND ep.user_id = auth.uid()
+  )
+);
+
+-- (Opcional) Permitir criador deletar sua própria sugestão
+CREATE POLICY "users_can_delete_own_date_suggestions"
+ON event_date_options
+FOR DELETE
+TO authenticated
+USING (created_by = auth.uid());
+
+-- ============================================================================
+-- location_suggestions policies
+-- ============================================================================
+
+-- Permitir participantes verem sugestões de local
+CREATE POLICY "event_participants_can_view_location_suggestions"
 ON location_suggestions
 FOR SELECT
 TO authenticated
@@ -82,14 +201,170 @@ USING (
     WHERE ep.pevent_id = location_suggestions.event_id
     AND ep.user_id = auth.uid()
   )
+);
+
+-- Permitir participantes adicionarem sugestões de local
+CREATE POLICY "event_participants_can_add_location_suggestions"
+ON location_suggestions
+FOR INSERT
+TO authenticated
+WITH CHECK (
+  EXISTS (
+    SELECT 1 FROM event_participants ep
+    WHERE ep.pevent_id = location_suggestions.event_id
+    AND ep.user_id = auth.uid()
+  )
+);
+
+-- (Opcional) Permitir criador deletar sua própria sugestão
+CREATE POLICY "users_can_delete_own_location_suggestions"
+ON location_suggestions
+FOR DELETE
+TO authenticated
+USING (user_id = auth.uid());
+
+-- ============================================================================
+-- event_date_votes policies
+-- ============================================================================
+
+-- Permitir participantes verem votos
+CREATE POLICY "event_participants_can_view_date_votes"
+ON event_date_votes
+FOR SELECT
+TO authenticated
+USING (
+  EXISTS (
+    SELECT 1 FROM event_participants ep
+    WHERE ep.pevent_id = event_date_votes.event_id
+    AND ep.user_id = auth.uid()
+  )
+);
+
+-- Permitir participantes votarem
+CREATE POLICY "event_participants_can_vote_on_date_suggestions"
+ON event_date_votes
+FOR INSERT
+TO authenticated
+WITH CHECK (
+  user_id = auth.uid() AND
+  EXISTS (
+    SELECT 1 FROM event_participants ep
+    WHERE ep.pevent_id = event_date_votes.event_id
+    AND ep.user_id = auth.uid()
+  )
+);
+
+-- Permitir participantes removerem seu próprio voto (toggle)
+CREATE POLICY "users_can_remove_own_date_votes"
+ON event_date_votes
+FOR DELETE
+TO authenticated
+USING (user_id = auth.uid());
+
+-- ============================================================================
+-- location_suggestion_votes policies
+-- ============================================================================
+
+-- Permitir participantes verem votos
+CREATE POLICY "event_participants_can_view_location_votes"
+ON location_suggestion_votes
+FOR SELECT
+TO authenticated
+USING (
+  EXISTS (
+    SELECT 1 FROM event_participants ep
+    INNER JOIN location_suggestions ls ON ls.event_id = ep.pevent_id
+    WHERE ls.id = location_suggestion_votes.suggestion_id
+    AND ep.user_id = auth.uid()
+  )
+);
+
+-- Permitir participantes votarem
+CREATE POLICY "event_participants_can_vote_on_location_suggestions"
+ON location_suggestion_votes
+FOR INSERT
+TO authenticated
+WITH CHECK (
+  user_id = auth.uid() AND
+  EXISTS (
+    SELECT 1 FROM event_participants ep
+    INNER JOIN location_suggestions ls ON ls.event_id = ep.pevent_id
+    WHERE ls.id = location_suggestion_votes.suggestion_id
+    AND ep.user_id = auth.uid()
+  )
+);
+
+-- Permitir participantes removerem seu próprio voto (toggle)
+CREATE POLICY "users_can_remove_own_location_votes"
+ON location_suggestion_votes
+FOR DELETE
+TO authenticated
+USING (user_id = auth.uid());
+```
+
+---
+
+**Step 4: Testar Policies (Após Criar as em Falta)**
+
+Execute estes testes para verificar se as policies funcionam:
+
+```sql
+-- ============================================================================
+-- TESTING - Execute como participante (não-host) do evento
+-- ============================================================================
+
+-- 1. Tentar adicionar sugestão de data (deve funcionar)
+INSERT INTO event_date_options (event_id, starts_at, ends_at, created_by)
+VALUES (
+  '<event_id_onde_sou_participante>',
+  '2025-12-20 14:00:00+00',
+  '2025-12-20 16:00:00+00',
+  auth.uid()
+);
+
+-- 2. Tentar ver sugestões de data (deve funcionar)
+SELECT * FROM event_date_options 
+WHERE event_id = '<event_id_onde_sou_participante>';
+
+-- 3. Tentar adicionar sugestão de local (deve funcionar)
+INSERT INTO location_suggestions (event_id, user_id, location_name, address)
+VALUES (
+  '<event_id_onde_sou_participante>',
+  auth.uid(),
+  'Test Location',
+  'Test Address'
+);
+
+-- 4. Tentar ver sugestões de local (deve funcionar)
+SELECT * FROM location_suggestions 
+WHERE event_id = '<event_id_onde_sou_participante>';
+
+-- 5. Tentar votar em sugestão de data (deve funcionar)
+INSERT INTO event_date_votes (option_id, user_id, event_id)
+VALUES (
+  '<date_option_id>',
+  auth.uid(),
+  '<event_id>'
+);
+
+-- 6. Tentar votar em sugestão de local (deve funcionar)
+INSERT INTO location_suggestion_votes (suggestion_id, user_id)
+VALUES (
+  '<location_suggestion_id>',
+  auth.uid()
 );
 ```
 
-**Testing:**
-- [ ] Participante (não-host) pode adicionar sugestão de data quando `start_datetime IS NULL`
-- [ ] Participante (não-host) pode adicionar sugestão de local quando `location_id IS NULL`
-- [ ] Participante pode ver sugestões adicionadas por outros
-- [ ] Participante pode votar em sugestões existentes
+---
+
+**Testing Checklist (Manual - App):**
+- [X] Participante (não-host) pode adicionar sugestão de data quando `start_datetime IS NULL`
+- [X] Participante (não-host) pode adicionar sugestão de local quando `location_id IS NULL`
+- [X] Participante pode ver sugestões adicionadas por outros
+- [X] Participante pode votar em sugestões existentes
+- [X] Participante pode remover seu próprio voto (toggle)
+- [X] Participante NÃO pode deletar sugestões de outros (deve falhar)
+- [X] Participante NÃO pode votar em eventos onde não é participante (deve falhar)
 
 ---
 
@@ -966,12 +1241,23 @@ bool _shouldShowHelpPlanWidget(...) { ... }
 
 ## Implementation Order
 
-### Phase 1: Foundation (P2 Supabase + Domain)
-**Duration:** ~30 min
-1. [ ] Verify/update RLS policies (P2)
-2. [ ] Add computed properties to `EventDetail` entity (Agent)
-3. [ ] Add `EventPlanningStatus` enum (Agent)
-4. [ ] Test entity properties with various event states (Agent)
+### Phase 1: Foundation (P2 Supabase + Domain) ✅ COMPLETE
+**Duration:** ~30 min (Actual: 25 min)
+1. [X] Verify/update RLS policies (P2) ✅
+2. [X] Add computed properties to `EventDetail` entity (Agent) ✅
+3. [X] Add `EventPlanningStatus` enum (Agent) ✅
+4. [X] Test entity properties with various event states (Agent) ✅
+
+**Completed Files:**
+- `lib/features/event/domain/entities/event_detail.dart` - Added computed properties and enum
+- `test/features/event/domain/entities/event_detail_test.dart` - Created comprehensive tests (7 passing tests)
+
+**Test Results:**
+```
+✅ All 7 tests passed
+✅ flutter analyze: No issues found
+✅ Computed properties working correctly for all planning states
+```
 
 ### Phase 2: Shared UI Components
 **Duration:** ~1 hour
