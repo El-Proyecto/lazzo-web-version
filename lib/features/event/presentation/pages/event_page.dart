@@ -8,7 +8,9 @@ import '../../../../shared/components/sections/event_header.dart';
 import '../../../../shared/components/common/top_banner.dart';
 import '../../../../shared/components/chips/event_status_chip.dart';
 import '../../../../shared/components/dialogs/confirmation_dialog.dart';
+import '../../../../shared/components/dialogs/missing_fields_confirmation_dialog.dart';
 import '../../../../shared/components/widgets/rsvp_widget.dart' as rsvp_widget;
+import '../../../../shared/components/widgets/help_plan_event_widget.dart';
 import '../../../../shared/components/widgets/location_widget.dart';
 import '../../../../shared/components/widgets/date_time_widget.dart';
 import '../../../../shared/components/widgets/poll_widget.dart';
@@ -98,13 +100,27 @@ class _EventPageState extends ConsumerState<EventPage> {
   }
 
   /// Show dialog to change event status
+  /// Now checks if event has required fields before allowing confirmation
   void _showStatusChangeDialog(
     BuildContext context,
     WidgetRef ref,
     String eventId,
+    EventDetail event,
     EventStatus currentStatus,
   ) {
     final isConfirmed = currentStatus == EventStatus.confirmed;
+
+    // If trying to confirm but missing required fields, show warning dialog
+    if (!isConfirmed && !event.isFullyDefined) {
+      showDialog(
+        context: context,
+        builder: (context) => MissingFieldsConfirmationDialog(
+          hasLocation: event.hasDefinedLocation,
+          hasDate: event.hasDefinedDate,
+        ),
+      );
+      return;
+    }
 
     showDialog(
       context: context,
@@ -1020,6 +1036,7 @@ class _EventPageState extends ConsumerState<EventPage> {
                             context,
                             ref,
                             eventId,
+                            event,
                             event.status,
                           )
                       : () {},
@@ -1038,6 +1055,7 @@ class _EventPageState extends ConsumerState<EventPage> {
                           context,
                           ref,
                           eventId,
+                          event,
                           event.status,
                         )
                     : () {},
@@ -1055,6 +1073,7 @@ class _EventPageState extends ConsumerState<EventPage> {
                           context,
                           ref,
                           eventId,
+                          event,
                           event.status,
                         )
                     : () {},
@@ -1067,9 +1086,55 @@ class _EventPageState extends ConsumerState<EventPage> {
     );
   }
 
+  /// Build help plan section when event has undefined fields
+  /// Shows instead of RSVP widget when location or date not defined
+  Widget _buildHelpPlanSection(EventDetail event) {
+    return Column(
+      children: [
+        const SizedBox(height: Gaps.md),
+        HelpPlanEventWidget(
+          hasLocation: event.hasDefinedLocation,
+          hasDate: event.hasDefinedDate,
+          onAddSuggestion: () {
+            // Determine initial tab based on what's missing
+            final initialType =
+                event.hasDefinedLocation && !event.hasDefinedDate
+                    ? SuggestionType.dateTime
+                    : SuggestionType.location;
+
+            // Use existing bottom sheet function
+            showAddSuggestionBottomSheet(
+              context,
+              eventId: event.id,
+              eventStartDate: event.startDateTime ?? DateTime.now(),
+              eventStartTime: event.startDateTime != null
+                  ? TimeOfDay.fromDateTime(event.startDateTime!)
+                  : const TimeOfDay(hour: 12, minute: 0),
+              eventEndDate: event.endDateTime ??
+                  DateTime.now().add(const Duration(hours: 2)),
+              eventEndTime: event.endDateTime != null
+                  ? TimeOfDay.fromDateTime(event.endDateTime!)
+                  : const TimeOfDay(hour: 14, minute: 0),
+              type: initialType,
+              currentEventLocationName: event.location?.displayName,
+              currentEventAddress: event.location?.formattedAddress,
+            );
+          },
+        ),
+      ],
+    );
+  }
+
   /// Builds the RSVP section with voting functionality
   /// This is one of the most complex sections with nested AsyncValues
+  /// When event is not fully defined, shows HelpPlanSection instead
   Widget _buildRsvpSection(EventDetail event, String? currentUserId) {
+    // If event doesn't have both location and date, show help plan widget
+    if (!event.isFullyDefined) {
+      return _buildHelpPlanSection(event);
+    }
+
+    // Original RSVP logic - only runs when event is fully defined
     final rsvpsAsync = ref.watch(eventRsvpsProvider(eventId));
     final userRsvpAsync = ref.watch(userRsvpProvider(eventId));
     final suggestionsAsync = ref.watch(eventSuggestionsProvider(eventId));
