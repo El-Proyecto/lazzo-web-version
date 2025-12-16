@@ -79,8 +79,9 @@ enum NotificationPriority { low, medium, high }
 
 class NotificationEntity {
   final String id;
-  final String title;
-  final String description;
+  // V2: title/description generated on client via i18n (not stored in DB)
+  final String title; // Temporary until i18n implemented
+  final String description; // Temporary until i18n implemented
   final NotificationType type;
   final NotificationCategory category;
   final NotificationPriority priority;

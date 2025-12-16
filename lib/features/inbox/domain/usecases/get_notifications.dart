@@ -11,6 +11,7 @@ class GetNotifications {
     int offset = 0,
     bool unreadOnly = false,
   }) {
+    print('[GetNotifications UseCase] 📞 Called with limit: $limit, offset: $offset, unreadOnly: $unreadOnly');
     return repository.getNotifications(
       limit: limit,
       offset: offset,

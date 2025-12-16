@@ -55,11 +55,24 @@ class NotificationsController
   }
 
   Future<void> loadNotifications() async {
+    print('[NotificationsController] 🚀 loadNotifications called');
     state = const AsyncValue.loading();
+    
     try {
+      print('[NotificationsController] 🔄 Calling use case...');
       final notifications = await _getNotifications();
+      
+      print('[NotificationsController] ✅ Got ${notifications.length} notifications');
+      if (notifications.isNotEmpty) {
+        print('[NotificationsController] First notification: ${notifications.first.type}');
+      }
+      
       state = AsyncValue.data(notifications);
+      print('[NotificationsController] ✅ State updated to data');
     } catch (error, stackTrace) {
+      print('[NotificationsController] ❌ ERROR: $error');
+      print('[NotificationsController] Error type: ${error.runtimeType}');
+      print('[NotificationsController] Stack trace: $stackTrace');
       state = AsyncValue.error(error, stackTrace);
     }
   }

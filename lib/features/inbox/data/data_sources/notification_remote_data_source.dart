@@ -14,26 +14,45 @@ class NotificationRemoteDataSource {
     bool unreadOnly = false,
     String? category,
   }) async {
-    var query = _client
-        .from('notifications')
-        .select()
-        .eq('recipient_user_id', userId);
+    print('[NotificationDataSource] 📥 getNotifications called');
+    print('[NotificationDataSource] userId: $userId');
+    print('[NotificationDataSource] limit: $limit, offset: $offset');
+    print('[NotificationDataSource] unreadOnly: $unreadOnly, category: $category');
 
-    if (unreadOnly) {
-      query = query.eq('is_read', false);
+    try {
+      var query = _client
+          .from('notifications')
+          .select()
+          .eq('recipient_user_id', userId);
+
+      if (unreadOnly) {
+        query = query.eq('is_read', false);
+      }
+
+      if (category != null) {
+        query = query.eq('category', category);
+      }
+
+      print('[NotificationDataSource] 🔍 Executing query...');
+      final response = await query
+          .order('created_at', ascending: false)
+          .range(offset, offset + limit - 1);
+
+      print('[NotificationDataSource] ✅ Query successful');
+      print('[NotificationDataSource] Response type: ${response.runtimeType}');
+      print('[NotificationDataSource] Response length: ${(response as List).length}');
+      
+      final models = (response as List)
+          .map((json) => NotificationModel.fromJson(json as Map<String, dynamic>))
+          .toList();
+      
+      print('[NotificationDataSource] ✅ Parsed ${models.length} notifications');
+      return models;
+    } catch (e, stackTrace) {
+      print('[NotificationDataSource] ❌ ERROR: $e');
+      print('[NotificationDataSource] Stack trace: $stackTrace');
+      rethrow;
     }
-
-    if (category != null) {
-      query = query.eq('category', category);
-    }
-
-    final response = await query
-        .order('created_at', ascending: false)
-        .range(offset, offset + limit - 1);
-
-    return (response as List)
-        .map((json) => NotificationModel.fromJson(json as Map<String, dynamic>))
-        .toList();
   }
 
   /// Get single notification by ID

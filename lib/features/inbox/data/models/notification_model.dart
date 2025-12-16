@@ -2,8 +2,7 @@ import '../../domain/entities/notification_entity.dart';
 
 class NotificationModel {
   final String id;
-  final String title;
-  final String description;
+  // title & description removed - V2 uses i18n on client side
   final String type;
   final String category;
   final String priority;
@@ -29,8 +28,6 @@ class NotificationModel {
 
   const NotificationModel({
     required this.id,
-    required this.title,
-    required this.description,
     required this.type,
     required this.category,
     required this.priority,
@@ -56,10 +53,11 @@ class NotificationModel {
   });
 
   factory NotificationModel.fromJson(Map<String, dynamic> json) {
+    print('[NotificationModel] 📝 Parsing JSON: ${json.keys.toList()}');
+    
     return NotificationModel(
       id: json['id'] as String,
-      title: json['title'] as String,
-      description: json['description'] as String,
+      // title & description removed - V2 doesn't have these fields
       type: json['type'] as String,
       category: json['category'] as String,
       priority: json['priority'] as String? ?? 'medium',
@@ -88,8 +86,7 @@ class NotificationModel {
   Map<String, dynamic> toJson() {
     return {
       'id': id,
-      'title': title,
-      'description': description,
+      // title & description removed - V2 doesn't have these fields
       'type': type,
       'category': category,
       'priority': priority,
@@ -116,10 +113,14 @@ class NotificationModel {
   }
 
   NotificationEntity toEntity() {
+    // Generate temporary title/description (will be replaced by i18n in UI)
+    final tempTitle = _generateTitle();
+    final tempDescription = _generateDescription();
+    
     return NotificationEntity(
       id: id,
-      title: title,
-      description: description,
+      title: tempTitle,
+      description: tempDescription,
       type: _parseNotificationType(type),
       category: _parseCategory(category),
       priority: _parsePriority(priority),
@@ -143,6 +144,42 @@ class NotificationModel {
       device: device,
       note: note,
     );
+  }
+
+  // Temporary title generation (to be replaced by i18n)
+  String _generateTitle() {
+    switch (type) {
+      case 'groupInviteReceived':
+        return 'Group Invite';
+      case 'expenseAddedYouOwe':
+        return 'New Expense';
+      case 'paymentReceived':
+        return 'Payment Received';
+      case 'eventStartsSoon':
+        return 'Event Starting Soon';
+      case 'eventCreated':
+        return 'New Event';
+      default:
+        return 'Notification';
+    }
+  }
+
+  // Temporary description generation (to be replaced by i18n)
+  String _generateDescription() {
+    switch (type) {
+      case 'groupInviteReceived':
+        return '${userName ?? 'Someone'} invited you to join ${groupName ?? 'a group'}';
+      case 'expenseAddedYouOwe':
+        return '${userName ?? 'Someone'} added an expense. You owe ${amount ?? '?'}';
+      case 'paymentReceived':
+        return '${userName ?? 'Someone'} paid you ${amount ?? '?'}';
+      case 'eventStartsSoon':
+        return '${eventEmoji ?? '🎉'} ${eventName ?? 'Event'} starts in ${hours ?? '?'}h ${mins ?? '?'}m';
+      case 'eventCreated':
+        return '${userName ?? 'Someone'} created ${eventEmoji ?? '🎉'} ${eventName ?? 'an event'}';
+      default:
+        return 'You have a new notification';
+    }
   }
 
   NotificationType _parseNotificationType(String type) {
