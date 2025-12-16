@@ -1,11 +1,13 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/event_expense_model.dart';
 import '../models/user_event_expense_view_model.dart';
+import '../../../../services/notification_service.dart';
 
 class EventExpenseRemoteDataSource {
   final SupabaseClient _client;
+  final NotificationService _notificationService;
 
-  EventExpenseRemoteDataSource(this._client);
+  EventExpenseRemoteDataSource(this._client, this._notificationService);
 
   /// Cria despesa associada a um evento
   Future<EventExpenseDto> createExpense({
@@ -30,10 +32,14 @@ class EventExpenseRemoteDataSource {
           .single();
 
       final expenseId = expenseResponse['id'] as String;
+      print('[createExpense] ✅ Expense created: $expenseId');
 
       // Step 2: Insert expense_splits (who owes)
       if (participantsOwe.isNotEmpty) {
+        print('[createExpense] Creating splits for ${participantsOwe.length} participants');
         final amountPerPerson = amount / participantsOwe.length;
+        print('[createExpense] Amount per person: ${amountPerPerson.toStringAsFixed(2)}');
+        
         await _client.from('expense_splits').insert(
               participantsOwe
                   .map((userId) => {
@@ -45,8 +51,54 @@ class EventExpenseRemoteDataSource {
                       })
                   .toList(),
             );
+        print('[createExpense] ✅ Splits inserted successfully');
+        
+        // Step 3: Send notifications to participants who owe money (excluding payer)
+        try {
+          print('[createExpense] Fetching creator and event data...');
+          final creatorData = await _client
+              .from('users')
+              .select('name')
+              .eq('id', paidBy)
+              .single();
+          
+          final eventData = await _client
+              .from('events')
+              .select('name, emoji')
+              .eq('id', eventId)
+              .single();
+          
+          final creatorName = creatorData['name'] ?? 'Someone';
+          final eventName = eventData['name'];
+          final eventEmoji = eventData['emoji'];
+          print('[createExpense] Creator: $creatorName, Event: $eventName');
+          
+          // Send notification to each participant (except the payer)
+          print('[createExpense] Sending notifications to participants (excluding payer)...');
+          for (final userId in participantsOwe) {
+            if (userId != paidBy) {
+              print('[createExpense] Sending notification to: $userId');
+              final notificationId = await _notificationService.sendExpenseAddedYouOwe(
+                recipientUserId: userId,
+                creatorName: creatorName,
+                amount: amountPerPerson.toStringAsFixed(2),
+                eventId: eventId,
+                eventEmoji: eventEmoji,
+                eventName: eventName,
+              );
+              print('[createExpense] ✅ Notification sent to $userId. ID: $notificationId');
+            }
+          }
+        } catch (notifError) {
+          // Don't fail expense creation if notifications fail
+          print('[createExpense] ❌ Notification sending failed: $notifError');
+          print('[createExpense] Stack trace: ${StackTrace.current}');
+        }
+      } else {
+        print('[createExpense] No participants to notify (list empty)');
       }
 
+      print('[createExpense] ✅ Expense creation complete');
       return EventExpenseDto.fromJson(expenseResponse);
     } catch (e) {
       throw Exception('Failed to create expense: $e');

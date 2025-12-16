@@ -6,8 +6,8 @@ final notificationServiceProvider = Provider<NotificationService>((ref) {
   return NotificationService(Supabase.instance.client);
 });
 
-/// Service for programmatic notification creation (V2 - Secure)
-/// Uses create_notification_secure RPC with server-side filtering
+/// Service for programmatic notification creation
+/// Uses V2 secure RPC (create_notification_secure) with server-side filtering
 /// Most notifications are created automatically via database triggers,
 /// but this service provides methods for manual/edge case notifications.
 ///
@@ -17,11 +17,9 @@ class NotificationService {
 
   NotificationService(this._client);
 
-  // ==================== PUSH NOTIFICATIONS ====================
-  // Urgent actions requiring immediate attention (phone notification + inbox)
-
   /// Send group invite notification
   /// Triggered when: User invites another user to join a group
+  /// Category: PUSH (urgent action required)
   Future<String?> sendGroupInvite({
     required String recipientUserId,
     required String inviterName,
@@ -40,30 +38,6 @@ class NotificationService {
     });
   }
 
-  /// Send expense added notification (you owe money)
-  /// Triggered when: Someone creates an expense where you owe money
-  Future<String?> sendExpenseAddedYouOwe({
-    required String recipientUserId,
-    required String creatorName,
-    required String amount,
-    required String eventId,
-    String? eventEmoji,
-    String? eventName,
-  }) async {
-    return await _client.rpc('create_notification_secure', params: {
-      'p_recipient_user_id': recipientUserId,
-      'p_type': 'paymentsAddedYouOwe',
-      'p_category': 'push',
-      'p_priority': 'high',
-      'p_deeplink': 'lazzo://events/$eventId/expenses',
-      'p_event_id': eventId,
-      'p_event_emoji': eventEmoji,
-      'p_user_name': creatorName,
-      'p_event_name': eventName,
-      'p_amount': amount,
-    });
-  }
-
   /// Send payment request notification
   /// Triggered when: User requests payment from another user
   Future<String?> sendPaymentRequest({
@@ -75,11 +49,14 @@ class NotificationService {
     String? eventName,
     String? note,
   }) async {
-    return await _client.rpc('create_notification_secure', params: {
+    return await _client.rpc('create_notification_if_not_duplicate', params: {
       'p_recipient_user_id': recipientUserId,
       'p_type': 'paymentsRequest',
+      'p_title': 'Payment Request',
+      'p_description': '{user} requested **{amount}** for {note}.',
       'p_category': 'push',
       'p_priority': 'high',
+      'p_action_text': 'Pay Now',
       'p_deeplink': 'lazzo://events/$eventId/expenses',
       'p_event_id': eventId,
       'p_event_emoji': eventEmoji,
@@ -87,6 +64,60 @@ class NotificationService {
       'p_event_name': eventName,
       'p_amount': amount,
       'p_note': note ?? 'expense',
+    });
+  }
+
+  /// Send expense added notification (you owe money)
+  /// Usually triggered by database trigger, but can be called manually
+  Future<String?> sendExpenseAddedYouOwe({
+    required String recipientUserId,
+    required String creatorName,
+    required String amount,
+    required String eventId,
+    String? eventEmoji,
+    String? eventName,
+  }) async {
+    return await _client.rpc('create_notification_if_not_duplicate', params: {
+      'p_recipient_user_id': recipientUserId,
+      'p_type': 'paymentsAddedYouOwe',
+      'p_title': 'New Expense',
+      'p_description': '{user} added an expense. You owe **{amount}**.',
+      'p_category': 'push',
+      'p_priority': 'high',
+      'p_action_text': 'View Details',
+      'p_deeplink': 'lazzo://events/$eventId/expenses',
+      'p_event_id': eventId,
+      'p_event_emoji': eventEmoji,
+      'p_user_name': creatorName,
+      'p_event_name': eventName,
+      'p_amount': amount,
+    });
+  }
+
+  /// Send payment received notification
+  /// Triggered when: Someone pays you back for an expense
+  Future<String?> sendPaymentReceived({
+    required String recipientUserId,
+    required String payerName,
+    required String amount,
+    required String eventId,
+    String? eventEmoji,
+    String? eventName,
+  }) async {
+    return await _client.rpc('create_notification_if_not_duplicate', params: {
+      'p_recipient_user_id': recipientUserId,
+      'p_type': 'paymentsPaidYou',
+      'p_title': 'Payment Received',
+      'p_description': '{user} paid you **{amount}**.',
+      'p_category': 'notifications',
+      'p_priority': 'medium',
+      'p_action_text': 'View Details',
+      'p_deeplink': 'lazzo://events/$eventId/expenses',
+      'p_event_id': eventId,
+      'p_event_emoji': eventEmoji,
+      'p_user_name': payerName,
+      'p_event_name': eventName,
+      'p_amount': amount,
     });
   }
 
@@ -99,11 +130,14 @@ class NotificationService {
     required int minsUntilStart,
     String? eventEmoji,
   }) async {
-    return await _client.rpc('create_notification_secure', params: {
+    return await _client.rpc('create_notification_if_not_duplicate', params: {
       'p_recipient_user_id': recipientUserId,
       'p_type': 'eventStartsSoon',
+      'p_title': 'Event Starting Soon',
+      'p_description': '**{event}** starts in {mins} min.',
       'p_category': 'push',
       'p_priority': 'high',
+      'p_action_text': 'View Event',
       'p_deeplink': 'lazzo://events/$eventId',
       'p_event_id': eventId,
       'p_event_emoji': eventEmoji,
@@ -120,150 +154,18 @@ class NotificationService {
     required String eventId,
     String? eventEmoji,
   }) async {
-    return await _client.rpc('create_notification_secure', params: {
+    return await _client.rpc('create_notification_if_not_duplicate', params: {
       'p_recipient_user_id': recipientUserId,
       'p_type': 'eventLive',
+      'p_title': 'Event is Live',
+      'p_description': '**{event}** is live now.',
       'p_category': 'push',
       'p_priority': 'high',
+      'p_action_text': 'Join Now',
       'p_deeplink': 'lazzo://events/$eventId',
       'p_event_id': eventId,
       'p_event_emoji': eventEmoji,
       'p_event_name': eventName,
-    });
-  }
-
-  /// Send chat mention notification
-  /// Triggered when: User is @mentioned in event chat
-  Future<String?> sendChatMention({
-    required String recipientUserId,
-    required String mentionerName,
-    required String eventName,
-    required String eventId,
-    String? eventEmoji,
-  }) async {
-    return await _client.rpc('create_notification_secure', params: {
-      'p_recipient_user_id': recipientUserId,
-      'p_type': 'chatMention',
-      'p_category': 'push',
-      'p_priority': 'medium',
-      'p_deeplink': 'lazzo://events/$eventId/chat',
-      'p_event_id': eventId,
-      'p_event_emoji': eventEmoji,
-      'p_user_name': mentionerName,
-      'p_event_name': eventName,
-    });
-  }
-
-  /// Send new login notification (security)
-  /// Triggered when: User logs in from a new device
-  Future<String?> sendNewLogin({
-    required String recipientUserId,
-    required String deviceName,
-    required String location,
-  }) async {
-    return await _client.rpc('create_notification_secure', params: {
-      'p_recipient_user_id': recipientUserId,
-      'p_type': 'securityNewLogin',
-      'p_category': 'push',
-      'p_priority': 'high',
-      'p_deeplink': 'lazzo://settings/security',
-      'p_device': deviceName,
-      'p_place': location,
-    });
-  }
-
-  /// Send uploads closing notification
-  /// Triggered by: Scheduled job (1 hour before upload deadline)
-  Future<String?> sendUploadsClosing({
-    required String recipientUserId,
-    required String eventName,
-    required String eventId,
-    required int minsRemaining,
-    String? eventEmoji,
-  }) async {
-    return await _client.rpc('create_notification_secure', params: {
-      'p_recipient_user_id': recipientUserId,
-      'p_type': 'uploadsClosing',
-      'p_category': 'push',
-      'p_priority': 'high',
-      'p_deeplink': 'lazzo://events/$eventId/upload',
-      'p_event_id': eventId,
-      'p_event_emoji': eventEmoji,
-      'p_event_name': eventName,
-      'p_mins': minsRemaining.toString(),
-    });
-  }
-
-  /// Send memory ready notification
-  /// Triggered when: Memory processing completes for an event
-  Future<String?> sendMemoryReady({
-    required String recipientUserId,
-    required String eventName,
-    required String eventId,
-    String? eventEmoji,
-  }) async {
-    return await _client.rpc('create_notification_secure', params: {
-      'p_recipient_user_id': recipientUserId,
-      'p_type': 'memoryReady',
-      'p_category': 'push',
-      'p_priority': 'medium',
-      'p_deeplink': 'lazzo://events/$eventId/memory',
-      'p_event_id': eventId,
-      'p_event_emoji': eventEmoji,
-      'p_event_name': eventName,
-    });
-  }
-
-  // ==================== NOTIFICATIONS (Inbox Only) ====================
-  // Useful information but not urgent (inbox feed only)
-
-  /// Send event created notification (feed)
-  /// Usually triggered by database trigger, but can be called manually
-  Future<String?> sendEventCreated({
-    required String recipientUserId,
-    required String creatorName,
-    required String eventName,
-    required String groupName,
-    required String eventId,
-    required String groupId,
-    String? eventEmoji,
-  }) async {
-    return await _client.rpc('create_notification_secure', params: {
-      'p_recipient_user_id': recipientUserId,
-      'p_type': 'eventCreated',
-      'p_category': 'notifications',
-      'p_priority': 'medium',
-      'p_deeplink': 'lazzo://events/$eventId',
-      'p_group_id': groupId,
-      'p_event_id': eventId,
-      'p_event_emoji': eventEmoji,
-      'p_user_name': creatorName,
-      'p_group_name': groupName,
-      'p_event_name': eventName,
-    });
-  }
-
-  /// Send payment received notification
-  /// Triggered when: Someone pays you back for an expense
-  Future<String?> sendPaymentReceived({
-    required String recipientUserId,
-    required String payerName,
-    required String amount,
-    required String eventId,
-    String? eventEmoji,
-    String? eventName,
-  }) async {
-    return await _client.rpc('create_notification_secure', params: {
-      'p_recipient_user_id': recipientUserId,
-      'p_type': 'paymentsPaidYou',
-      'p_category': 'notifications',
-      'p_priority': 'medium',
-      'p_deeplink': 'lazzo://events/$eventId/expenses',
-      'p_event_id': eventId,
-      'p_event_emoji': eventEmoji,
-      'p_user_name': payerName,
-      'p_event_name': eventName,
-      'p_amount': amount,
     });
   }
 
@@ -276,11 +178,14 @@ class NotificationService {
     required int additionalHours,
     String? eventEmoji,
   }) async {
-    return await _client.rpc('create_notification_secure', params: {
+    return await _client.rpc('create_notification_if_not_duplicate', params: {
       'p_recipient_user_id': recipientUserId,
       'p_type': 'eventExtended',
-      'p_category': 'notifications',
+      'p_title': 'Event Extended',
+      'p_description': '**{event}** extended by {hours} hours.',
+      'p_category': 'push',
       'p_priority': 'medium',
+      'p_action_text': 'View Event',
       'p_deeplink': 'lazzo://events/$eventId',
       'p_event_id': eventId,
       'p_event_emoji': eventEmoji,
@@ -298,16 +203,141 @@ class NotificationService {
     required int hoursRemaining,
     String? eventEmoji,
   }) async {
-    return await _client.rpc('create_notification_secure', params: {
+    return await _client.rpc('create_notification_if_not_duplicate', params: {
       'p_recipient_user_id': recipientUserId,
       'p_type': 'uploadsOpen',
-      'p_category': 'notifications',
+      'p_title': 'Uploads Open',
+      'p_description': 'Upload photos for **{event}**. {hours} hours left.',
+      'p_category': 'push',
       'p_priority': 'medium',
+      'p_action_text': 'Upload Now',
       'p_deeplink': 'lazzo://events/$eventId/upload',
       'p_event_id': eventId,
       'p_event_emoji': eventEmoji,
       'p_event_name': eventName,
       'p_hours': hoursRemaining.toString(),
+    });
+  }
+
+  /// Send uploads closing notification
+  /// Triggered by: Scheduled job (1 hour before upload deadline)
+  Future<String?> sendUploadsClosing({
+    required String recipientUserId,
+    required String eventName,
+    required String eventId,
+    required int minsRemaining,
+    String? eventEmoji,
+  }) async {
+    return await _client.rpc('create_notification_if_not_duplicate', params: {
+      'p_recipient_user_id': recipientUserId,
+      'p_type': 'uploadsClosing',
+      'p_title': 'Uploads Closing',
+      'p_description': 'Last chance! Upload photos for **{event}**. {mins} min left.',
+      'p_category': 'push',
+      'p_priority': 'high',
+      'p_action_text': 'Upload Now',
+      'p_deeplink': 'lazzo://events/$eventId/upload',
+      'p_event_id': eventId,
+      'p_event_emoji': eventEmoji,
+      'p_event_name': eventName,
+      'p_mins': minsRemaining.toString(),
+    });
+  }
+
+  /// Send memory ready notification
+  /// Triggered when: Memory processing completes for an event
+  Future<String?> sendMemoryReady({
+    required String recipientUserId,
+    required String eventName,
+    required String eventId,
+    String? eventEmoji,
+  }) async {
+    return await _client.rpc('create_notification_if_not_duplicate', params: {
+      'p_recipient_user_id': recipientUserId,
+      'p_type': 'memoryReady',
+      'p_title': 'Memory Ready',
+      'p_description': 'Your memory for **{event}** is ready to view.',
+      'p_category': 'push',
+      'p_priority': 'medium',
+      'p_action_text': 'View Memory',
+      'p_deeplink': 'lazzo://events/$eventId/memory',
+      'p_event_id': eventId,
+      'p_event_emoji': eventEmoji,
+      'p_event_name': eventName,
+    });
+  }
+
+  /// Send chat mention notification
+  /// Triggered when: User is @mentioned in event chat
+  Future<String?> sendChatMention({
+    required String recipientUserId,
+    required String mentionerName,
+    required String eventName,
+    required String eventId,
+    String? eventEmoji,
+  }) async {
+    return await _client.rpc('create_notification_if_not_duplicate', params: {
+      'p_recipient_user_id': recipientUserId,
+      'p_type': 'chatMention',
+      'p_title': 'Mentioned in Chat',
+      'p_description': '{user} mentioned you in **{event}** chat.',
+      'p_category': 'push',
+      'p_priority': 'medium',
+      'p_action_text': 'View Chat',
+      'p_deeplink': 'lazzo://events/$eventId/chat',
+      'p_event_id': eventId,
+      'p_event_emoji': eventEmoji,
+      'p_user_name': mentionerName,
+      'p_event_name': eventName,
+    });
+  }
+
+  /// Send new login notification
+  /// Triggered when: User logs in from a new device
+  Future<String?> sendNewLogin({
+    required String recipientUserId,
+    required String deviceName,
+    required String location,
+  }) async {
+    return await _client.rpc('create_notification_if_not_duplicate', params: {
+      'p_recipient_user_id': recipientUserId,
+      'p_type': 'securityNewLogin',
+      'p_title': 'New Login',
+      'p_description': 'New login from {device} in {place}.',
+      'p_category': 'push',
+      'p_priority': 'high',
+      'p_action_text': 'Review',
+      'p_deeplink': 'lazzo://settings/security',
+      'p_device': deviceName,
+      'p_place': location,
+    });
+  }
+
+  /// Send event created notification (feed)
+  /// Usually triggered by database trigger, but can be called manually
+  Future<String?> sendEventCreated({
+    required String recipientUserId,
+    required String creatorName,
+    required String eventName,
+    required String groupName,
+    required String eventId,
+    required String groupId,
+    String? eventEmoji,
+  }) async {
+    return await _client.rpc('create_notification_if_not_duplicate', params: {
+      'p_recipient_user_id': recipientUserId,
+      'p_type': 'eventCreated',
+      'p_title': 'New Event',
+      'p_description': 'New event **{event}** in **{group}**.',
+      'p_category': 'notifications',
+      'p_priority': 'medium',
+      'p_deeplink': 'lazzo://events/$eventId',
+      'p_group_id': groupId,
+      'p_event_id': eventId,
+      'p_event_emoji': eventEmoji,
+      'p_user_name': creatorName,
+      'p_group_name': groupName,
+      'p_event_name': eventName,
     });
   }
 
@@ -321,9 +351,11 @@ class NotificationService {
     required String time,
     String? eventEmoji,
   }) async {
-    return await _client.rpc('create_notification_secure', params: {
+    return await _client.rpc('create_notification_if_not_duplicate', params: {
       'p_recipient_user_id': recipientUserId,
       'p_type': 'eventDateSet',
+      'p_title': 'Date Confirmed',
+      'p_description': 'Date confirmed for **{event}**: {date}, {time}.',
       'p_category': 'notifications',
       'p_priority': 'medium',
       'p_deeplink': 'lazzo://events/$eventId',
@@ -344,9 +376,11 @@ class NotificationService {
     required String locationName,
     String? eventEmoji,
   }) async {
-    return await _client.rpc('create_notification_secure', params: {
+    return await _client.rpc('create_notification_if_not_duplicate', params: {
       'p_recipient_user_id': recipientUserId,
       'p_type': 'eventLocationSet',
+      'p_title': 'Location Confirmed',
+      'p_description': 'Location set for **{event}**: {place}.',
       'p_category': 'notifications',
       'p_priority': 'medium',
       'p_deeplink': 'lazzo://events/$eventId',
@@ -356,50 +390,5 @@ class NotificationService {
       'p_place': locationName,
     });
   }
-
-  /// Send RSVP updated notification
-  /// Triggered when: Someone updates their RSVP (useful for host)
-  Future<String?> sendRsvpUpdated({
-    required String recipientUserId,
-    required String userName,
-    required String eventName,
-    required String eventId,
-    required String rsvpStatus, // 'going', 'maybe', 'cant_go'
-    String? eventEmoji,
-  }) async {
-    return await _client.rpc('create_notification_secure', params: {
-      'p_recipient_user_id': recipientUserId,
-      'p_type': 'rsvpUpdated',
-      'p_category': 'notifications',
-      'p_priority': 'low',
-      'p_deeplink': 'lazzo://events/$eventId',
-      'p_event_id': eventId,
-      'p_event_emoji': eventEmoji,
-      'p_user_name': userName,
-      'p_event_name': eventName,
-      'p_note': rsvpStatus,
-    });
-  }
-
-  /// Send memory shared notification
-  /// Triggered when: Someone shares a memory with you
-  Future<String?> sendMemoryShared({
-    required String recipientUserId,
-    required String sharerName,
-    required String eventName,
-    required String eventId,
-    String? eventEmoji,
-  }) async {
-    return await _client.rpc('create_notification_secure', params: {
-      'p_recipient_user_id': recipientUserId,
-      'p_type': 'memoryShared',
-      'p_category': 'notifications',
-      'p_priority': 'medium',
-      'p_deeplink': 'lazzo://events/$eventId/memory',
-      'p_event_id': eventId,
-      'p_event_emoji': eventEmoji,
-      'p_user_name': sharerName,
-      'p_event_name': eventName,
-    });
-  }
 }
+

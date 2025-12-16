@@ -31,10 +31,10 @@ import 'features/inbox/data/data_source/payments_remote_data_source.dart';
 import 'features/inbox/data/repositories/payment_repository_impl.dart';
 import 'features/inbox/presentation/providers/payments_provider.dart';
 
-// INBOX NOTIFICATIONS - TODO: Add real implementation imports when available
-// import '../features/inbox/data/data_sources/notification_remote_data_source.dart';
-// import '../features/inbox/data/repositories/notification_repository_impl.dart';
-// import '../features/inbox/presentation/providers/notifications_provider.dart';
+// INBOX NOTIFICATIONS - Real implementation (P2)
+import 'features/inbox/data/data_sources/notification_remote_data_source.dart';
+import 'features/inbox/data/repositories/notification_repository_impl.dart';
+import 'features/inbox/presentation/providers/notifications_provider.dart';
 
 // INBOX ACTIONS - TODO: Add real implementation imports when available
 // import '../features/inbox/data/data_sources/action_remote_data_source.dart';
@@ -53,6 +53,9 @@ import '../features/groups/data/repositories/group_repository_impl.dart';
 import 'features/expense/presentation/providers/event_expense_providers.dart';
 import 'features/expense/data/data_sources/event_expense_remote_data_source.dart';
 import 'features/expense/data/repositories/event_expense_repository_impl.dart';
+
+// NOTIFICATION SERVICE
+import 'services/notification_service.dart';
 
 // GROUP HUB - Real implementation
 import '../features/group_hub/presentation/providers/group_hub_providers.dart'
@@ -198,12 +201,15 @@ void main() async {
           },
         ),
 
-        // Notification repo -> TODO: Add when NotificationRepositoryImpl exists
-        // notificationRepositoryProvider.overrideWith(
-        //   (ref) => NotificationRepositoryImpl(
-        //     NotificationRemoteDataSource(Supabase.instance.client),
-        //   ),
-        // ),
+        // ✅ INBOX NOTIFICATIONS repo -> real (Supabase) via DI (Dec 13, 2025)
+        notificationRepositoryProvider.overrideWith(
+          (ref) {
+            final client = Supabase.instance.client;
+            final userId = client.auth.currentUser?.id ?? '';
+            final dataSource = NotificationRemoteDataSource(client);
+            return NotificationRepositoryImpl(dataSource, userId);
+          },
+        ),
 
         // Action repo -> TODO: Add when ActionRepositoryImpl exists
         // actionRepositoryProvider.overrideWith(
@@ -282,15 +288,17 @@ void main() async {
           );
         }),
 
-        // ✅ OTHER PROFILE repo -> real (Supabase) with shared memories (P2 Implementation)
+        // ✅ OTHER PROFILE repo -> real (Supabase) with shared memories + notifications (P2 Implementation)
         otherProfileRepositoryProvider.overrideWith((ref) {
           final client = Supabase.instance.client;
           final currentUserId = client.auth.currentUser?.id ?? '';
           final dataSource = OtherProfileDataSource(client);
           final storageService = StorageService(client);
+          final notificationService = ref.watch(notificationServiceProvider);
           return OtherProfileRepositoryImpl(
             dataSource: dataSource,
             storageService: storageService,
+            notificationService: notificationService,
             currentUserId: currentUserId,
           );
         }),
@@ -310,7 +318,8 @@ void main() async {
 
         eventExpenseRepositoryProvider.overrideWith((ref) {
           final client = Supabase.instance.client;
-          final dataSource = EventExpenseRemoteDataSource(client);
+          final notificationService = ref.watch(notificationServiceProvider);
+          final dataSource = EventExpenseRemoteDataSource(client, notificationService);
           return EventExpenseRepositoryImpl(dataSource);
         }),
 

@@ -6,20 +6,25 @@ import '../../../group_hub/domain/entities/group_event_entity.dart';
 import '../data_sources/other_profile_data_source.dart';
 import '../models/other_profile_model.dart';
 import '../../../../services/storage_service.dart';
+import '../../../../services/notification_service.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 /// Implementation of OtherProfileRepository using Supabase
 /// Bridges data source → domain entities with signed URL generation
 class OtherProfileRepositoryImpl implements OtherProfileRepository {
   final OtherProfileDataSource _dataSource;
   final StorageService _storageService;
+  final NotificationService _notificationService;
   final String _currentUserId;
 
   OtherProfileRepositoryImpl({
     required OtherProfileDataSource dataSource,
     required StorageService storageService,
+    required NotificationService notificationService,
     required String currentUserId,
   })  : _dataSource = dataSource,
         _storageService = storageService,
+        _notificationService = notificationService,
         _currentUserId = currentUserId;
 
   @override
@@ -190,13 +195,54 @@ signedPhotoUrl = null;
     required String groupId,
   }) async {
     try {
+      print('[inviteToGroup] Starting invite: userId=$userId, groupId=$groupId, invitedBy=$_currentUserId');
+      
       await _dataSource.inviteToGroup(
         userId: userId,
         groupId: groupId,
         invitedBy: _currentUserId,
       );
+      print('[inviteToGroup] ✅ Invite inserted successfully');
+      
+      // Send notification to invited user
+      try {
+        print('[inviteToGroup] Fetching inviter and group names...');
+        // Get inviter name and group name from Supabase
+        final client = Supabase.instance.client;
+        final inviterData = await client
+            .from('users')
+            .select('name')
+            .eq('id', _currentUserId)
+            .single();
+        print('[inviteToGroup] Inviter name: ${inviterData['name']}');
+        
+        final groupData = await client
+            .from('groups')
+            .select('name')
+            .eq('id', groupId)
+            .single();
+        print('[inviteToGroup] Group name: ${groupData['name']}');
+        
+        print('[inviteToGroup] Calling sendGroupInvite...');
+        final notificationId = await _notificationService.sendGroupInvite(
+          recipientUserId: userId,
+          inviterName: inviterData['name'] ?? 'Someone',
+          groupName: groupData['name'] ?? 'a group',
+          groupId: groupId,
+        );
+        print('[inviteToGroup] ✅ Notification sent successfully. ID: $notificationId');
+      } catch (notifError, notifStack) {
+        // Don't fail the whole operation if notification fails
+        print('[inviteToGroup] ❌ Notification failed: $notifError');
+        print('[inviteToGroup] Notification stack: $notifStack');
+      }
+      
+      print('[inviteToGroup] ✅ Invite operation completed successfully');
       return true;
-    } catch (e) {
+    } catch (e, stackTrace) {
+      print('[inviteToGroup] ❌❌ CRITICAL ERROR: $e');
+      print('[inviteToGroup] Stack trace: $stackTrace');
+      print('[inviteToGroup] Error type: ${e.runtimeType}');
       return false;
     }
   }

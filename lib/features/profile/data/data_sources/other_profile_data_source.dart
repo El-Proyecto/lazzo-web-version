@@ -300,15 +300,19 @@ return invitableGroups;
     required String groupId,
     required String invitedBy,
   }) async {
-try {
+    print('[OtherProfileDataSource] inviteToGroup called: userId=$userId, groupId=$groupId, invitedBy=$invitedBy');
+    try {
       await _client.from('group_invites').insert({
         'group_id': groupId,
         'invited_id': userId,
         'invited_by': invitedBy,
         'created_at': DateTime.now().toIso8601String(),
       });
-} catch (e) {
-rethrow;
+      print('[OtherProfileDataSource] ✅ Insert successful');
+    } catch (e, stackTrace) {
+      print('[OtherProfileDataSource] ❌ ERROR inserting invite: $e');
+      print('[OtherProfileDataSource] Stack trace: $stackTrace');
+      rethrow;
     }
   }
 }
