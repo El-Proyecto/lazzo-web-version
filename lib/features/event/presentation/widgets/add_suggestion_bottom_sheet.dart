@@ -128,7 +128,7 @@ class _AddSuggestionBottomSheetState
         // It's before 20h today - use 20h-22h today
         startDate = todayAt20h;
         startTime = const TimeOfDay(hour: 20, minute: 0);
-        endDate = todayAt20h.add(const Duration(hours: 2));
+        endDate = DateTime(now.year, now.month, now.day, 22, 0);
         endTime = const TimeOfDay(hour: 22, minute: 0);
       } else {
         // It's after 20h today - use 20h-22h tomorrow
@@ -136,7 +136,7 @@ class _AddSuggestionBottomSheetState
         startDate =
             DateTime(tomorrow.year, tomorrow.month, tomorrow.day, 20, 0);
         startTime = const TimeOfDay(hour: 20, minute: 0);
-        endDate = startDate.add(const Duration(hours: 2));
+        endDate = DateTime(tomorrow.year, tomorrow.month, tomorrow.day, 22, 0);
         endTime = const TimeOfDay(hour: 22, minute: 0);
       }
     }
@@ -153,6 +153,12 @@ class _AddSuggestionBottomSheetState
 
   bool get _hasChanges {
     if (_selectedType == SuggestionType.dateTime) {
+      // If event doesn't have meaningful dates (in past), any valid future date is a change
+      final now = DateTime.now();
+      if (widget.eventStartDate.isBefore(now)) {
+        return true; // Event has no valid date, so any selection is a change
+      }
+
       return startDate != widget.eventStartDate ||
           startTime != widget.eventStartTime ||
           endDate != widget.eventEndDate ||
@@ -162,6 +168,29 @@ class _AddSuggestionBottomSheetState
       return _selectedLocation != null ||
           _locationNameController.text.trim().isNotEmpty;
     }
+  }
+
+  bool get _isDateTimeInPast {
+    if (_selectedType != SuggestionType.dateTime) return false;
+
+    final now = DateTime.now();
+    final startDateTime = DateTime(
+      startDate.year,
+      startDate.month,
+      startDate.day,
+      startTime.hour,
+      startTime.minute,
+    );
+
+    final endDateTime = DateTime(
+      endDate.year,
+      endDate.month,
+      endDate.day,
+      endTime.hour,
+      endTime.minute,
+    );
+
+    return startDateTime.isBefore(now) || endDateTime.isBefore(now);
   }
 
   bool get _isTimeValid {
@@ -380,6 +409,11 @@ class _AddSuggestionBottomSheetState
                 }
 
                 isStartDatePickerExpanded = false;
+
+                // Show validation error immediately if date is in the past
+                if (_isDateTimeInPast) {
+                  _showValidationError = true;
+                }
               });
             },
           ),
@@ -392,6 +426,10 @@ class _AddSuggestionBottomSheetState
             onTimeChanged: (time) {
               setState(() {
                 startTime = time;
+                // Show validation error immediately if date is in the past
+                if (_isDateTimeInPast) {
+                  _showValidationError = true;
+                }
               });
             },
           ),
@@ -432,6 +470,11 @@ class _AddSuggestionBottomSheetState
               setState(() {
                 endDate = date;
                 isEndDatePickerExpanded = false;
+
+                // Show validation error immediately if date is in the past
+                if (_isDateTimeInPast) {
+                  _showValidationError = true;
+                }
               });
             },
           ),
@@ -444,6 +487,11 @@ class _AddSuggestionBottomSheetState
             onTimeChanged: (time) {
               setState(() {
                 endTime = time;
+
+                // Show validation error immediately if date is in the past
+                if (_isDateTimeInPast) {
+                  _showValidationError = true;
+                }
               });
             },
           ),
@@ -595,12 +643,14 @@ class _AddSuggestionBottomSheetState
             child: FilledButton(
               onPressed: _handleAddSuggestionPressed,
               style: FilledButton.styleFrom(
-                backgroundColor: _hasChanges && _isTimeValid
-                    ? BrandColors.planning // Green when valid
-                    : BrandColors.border,
-                foregroundColor: _hasChanges && _isTimeValid
-                    ? BrandColors.text1 // Green text when enabled
-                    : BrandColors.text2,
+                backgroundColor:
+                    _hasChanges && _isTimeValid && !_isDateTimeInPast
+                        ? BrandColors.planning // Green when valid
+                        : BrandColors.border,
+                foregroundColor:
+                    _hasChanges && _isTimeValid && !_isDateTimeInPast
+                        ? BrandColors.text1 // Green text when enabled
+                        : BrandColors.text2,
                 padding: const EdgeInsets.symmetric(vertical: Pads.ctlV),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(Radii.sm),
@@ -705,7 +755,7 @@ class _AddSuggestionBottomSheetState
 
   void _handleAddSuggestionPressed() {
     // Always show validation errors when button is pressed
-    if (!_hasChanges || !_isTimeValid) {
+    if (!_hasChanges || !_isTimeValid || _isDateTimeInPast) {
       setState(() {
         _showValidationError = true;
       });

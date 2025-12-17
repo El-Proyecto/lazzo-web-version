@@ -425,22 +425,18 @@ class _EventPageState extends ConsumerState<EventPage> {
                           },
                           isHost: event.hostId == currentUserId,
                           onAddSuggestion: () {
-                            // Use current event dates if defined, otherwise smart defaults
-                            final now = DateTime.now();
-                            final defaultStartDate = event.startDateTime ??
-                                now.add(const Duration(hours: 8));
-                            final defaultEndDate = event.endDateTime ??
-                                now.add(const Duration(hours: 10));
-
                             showAddSuggestionBottomSheet(
                               context,
                               eventId: eventId,
-                              eventStartDate: defaultStartDate,
-                              eventStartTime:
-                                  TimeOfDay.fromDateTime(defaultStartDate),
-                              eventEndDate: defaultEndDate,
-                              eventEndTime:
-                                  TimeOfDay.fromDateTime(defaultEndDate),
+                              eventStartDate:
+                                  event.startDateTime ?? DateTime.now(),
+                              eventStartTime: event.startDateTime != null
+                                  ? TimeOfDay.fromDateTime(event.startDateTime!)
+                                  : const TimeOfDay(hour: 0, minute: 0),
+                              eventEndDate: event.endDateTime ?? DateTime.now(),
+                              eventEndTime: event.endDateTime != null
+                                  ? TimeOfDay.fromDateTime(event.endDateTime!)
+                                  : const TimeOfDay(hour: 0, minute: 0),
                             );
                           },
                           onSetDate: (selectedSuggestion) async {
@@ -510,22 +506,18 @@ class _EventPageState extends ConsumerState<EventPage> {
                         currentEventGoingCount:
                             processedData.currentEventGoingCount,
                         onAddSuggestion: () {
-                          // Use current event dates if defined, otherwise smart defaults
-                          final now = DateTime.now();
-                          final defaultStartDate = event.startDateTime ??
-                              now.add(const Duration(hours: 8));
-                          final defaultEndDate = event.endDateTime ??
-                              now.add(const Duration(hours: 10));
-
                           showAddSuggestionBottomSheet(
                             context,
                             eventId: eventId,
-                            eventStartDate: defaultStartDate,
-                            eventStartTime:
-                                TimeOfDay.fromDateTime(defaultStartDate),
-                            eventEndDate: defaultEndDate,
-                            eventEndTime:
-                                TimeOfDay.fromDateTime(defaultEndDate),
+                            eventStartDate:
+                                event.startDateTime ?? DateTime.now(),
+                            eventStartTime: event.startDateTime != null
+                                ? TimeOfDay.fromDateTime(event.startDateTime!)
+                                : const TimeOfDay(hour: 0, minute: 0),
+                            eventEndDate: event.endDateTime ?? DateTime.now(),
+                            eventEndTime: event.endDateTime != null
+                                ? TimeOfDay.fromDateTime(event.endDateTime!)
+                                : const TimeOfDay(hour: 0, minute: 0),
                             type: SuggestionType.location,
                             currentEventLocationName:
                                 event.location?.displayName,
@@ -842,16 +834,7 @@ class _EventPageState extends ConsumerState<EventPage> {
     DateTimeSuggestion selectedSuggestion,
   ) async {
     try {
-      // OPTIMISTIC UI: Invalidate providers FIRST for instant UI update
-      // Providers will refetch and show loading state immediately
-      ref.invalidate(eventDetailProvider(eventId));
-      ref.invalidate(eventSuggestionsProvider(eventId));
-      ref.invalidate(suggestionVotesProvider(eventId));
-      ref.invalidate(userSuggestionVotesProvider(eventId));
-      ref.invalidate(eventRsvpsProvider(eventId));
-      ref.invalidate(userRsvpProvider(eventId));
-
-      // Get suggestion votes before clearing (needed for Step 2)
+      // Get suggestion votes BEFORE clearing (needed for Step 2)
       final suggestionVotesAsync = ref.read(suggestionVotesProvider(eventId));
       final suggestionVotes = suggestionVotesAsync.value ?? [];
 
@@ -879,7 +862,20 @@ class _EventPageState extends ConsumerState<EventPage> {
       final suggestionRepository = ref.read(suggestionRepositoryProvider);
       await suggestionRepository.clearEventSuggestions(eventId);
 
-      // Step 4: Show success feedback
+      // Step 3.5: Wait for DB to propagate changes
+      await Future.delayed(const Duration(milliseconds: 500));
+
+      // Step 4: Invalidate providers to refetch updated data
+      // This triggers UI rebuild with new event state
+      ref.invalidate(eventDetailProvider(eventId));
+      ref.invalidate(eventSuggestionsProvider(eventId));
+      ref.invalidate(suggestionVotesProvider(eventId));
+      ref.invalidate(userSuggestionVotesProvider(eventId));
+      ref.invalidate(dateTimeSuggestionsDataProvider(eventId));
+      ref.invalidate(eventRsvpsProvider(eventId));
+      ref.invalidate(userRsvpProvider(eventId));
+
+      // Step 5: Show success feedback
       if (context.mounted) {
         TopBanner.showSuccess(
           context,
@@ -907,17 +903,7 @@ class _EventPageState extends ConsumerState<EventPage> {
     LocationSuggestion selectedSuggestion,
   ) async {
     try {
-      // OPTIMISTIC UI: Invalidate providers FIRST for instant UI update
-      // Providers will refetch and show loading state immediately
-      ref.invalidate(eventDetailProvider(eventId));
-      ref.invalidate(eventLocationSuggestionsProvider(eventId));
-      ref.invalidate(locationSuggestionVotesProvider(eventId));
-      ref.invalidate(userLocationSuggestionVotesProvider(eventId));
-      ref.invalidate(locationSuggestionsDataProvider(eventId));
-      ref.invalidate(eventRsvpsProvider(eventId));
-      ref.invalidate(userRsvpProvider(eventId));
-
-      // Get location votes before clearing (needed for Step 2)
+      // Get location votes BEFORE clearing (needed for Step 2)
       final locationVotesAsync = ref.read(
         locationSuggestionVotesProvider(eventId),
       );
@@ -949,46 +935,20 @@ class _EventPageState extends ConsumerState<EventPage> {
       final suggestionRepository = ref.read(suggestionRepositoryProvider);
       await suggestionRepository.clearEventLocationSuggestions(eventId);
 
-      // Step 3.5: Wait for DB transaction to complete
-      await Future.delayed(const Duration(milliseconds: 300));
+      // Step 3.5: Wait for DB to propagate changes
+      await Future.delayed(const Duration(milliseconds: 500));
 
-      // Note: We don't create a suggestion for the new current location.
-      // Current location comes from event.location and displays with a star (not votable).
+      // Step 3.6: Invalidate providers to refetch updated data
+      // This triggers UI rebuild with new event state
+      ref.invalidate(eventDetailProvider(eventId));
+      ref.invalidate(eventLocationSuggestionsProvider(eventId));
+      ref.invalidate(locationSuggestionVotesProvider(eventId));
+      ref.invalidate(userLocationSuggestionVotesProvider(eventId));
+      ref.invalidate(locationSuggestionsDataProvider(eventId));
+      ref.invalidate(eventRsvpsProvider(eventId));
+      ref.invalidate(userRsvpProvider(eventId));
 
-      // Step 4: Get updated event for verification
-      final updatedEvent = await ref.read(eventDetailProvider(eventId).future);
-
-      // Step 4d: Verify deletion worked and re-delete if alternatives remain
-      // Note: The current location suggestion is expected and correct.
-      // We only care about ALTERNATIVE suggestions (different from current location).
-      final remainingSuggestions = await ref.read(
-        eventLocationSuggestionsProvider(eventId).future,
-      );
-
-      // Count alternatives (suggestions that DON'T match current location)
-      final alternatives = remainingSuggestions.where((s) {
-        // Check if suggestion matches current event location
-        final nameMatches =
-            s.locationName == updatedEvent.location?.displayName;
-        final addressMatches = (s.address ?? '') ==
-            (updatedEvent.location?.formattedAddress ?? '');
-        final isCurrentLocation = nameMatches && addressMatches;
-        return !isCurrentLocation; // Only count alternatives
-      }).toList();
-
-      if (alternatives.isNotEmpty) {
-        // Delete ALL suggestions again (including current location)
-        await suggestionRepository.clearEventLocationSuggestions(eventId);
-        // Wait again
-        await Future.delayed(const Duration(milliseconds: 300));
-        // Invalidate again
-        ref.invalidate(eventLocationSuggestionsProvider(eventId));
-        ref.invalidate(locationSuggestionVotesProvider(eventId));
-        ref.invalidate(userLocationSuggestionVotesProvider(eventId));
-        ref.invalidate(locationSuggestionsDataProvider(eventId));
-      }
-
-      // Step 5: Show success feedback
+      // Step 4: Show success feedback
       if (context.mounted) {
         TopBanner.showSuccess(
           context,

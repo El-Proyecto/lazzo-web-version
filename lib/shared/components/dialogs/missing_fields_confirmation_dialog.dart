@@ -89,7 +89,7 @@ class MissingFieldsConfirmationDialog extends StatelessWidget {
                 onPressed: () => Navigator.of(context).pop(),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: BrandColors.planning,
-                  foregroundColor: BrandColors.bg1,
+                  foregroundColor: BrandColors.text1,
                   padding: const EdgeInsets.symmetric(
                     vertical: Pads.ctlVSm,
                   ),
@@ -101,7 +101,7 @@ class MissingFieldsConfirmationDialog extends StatelessWidget {
                 child: Text(
                   'Ok',
                   style: AppText.labelLarge.copyWith(
-                    color: BrandColors.bg1,
+                    color: BrandColors.text1,
                   ),
                 ),
               ),
