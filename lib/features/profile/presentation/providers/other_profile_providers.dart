@@ -5,6 +5,8 @@ import '../../domain/repositories/other_profile_repository.dart';
 import '../../domain/usecases/get_other_user_profile.dart';
 import '../../domain/usecases/get_invitable_groups.dart';
 import '../../domain/usecases/invite_to_group.dart';
+import '../../domain/usecases/accept_group_invite.dart';
+import '../../domain/usecases/decline_group_invite.dart';
 import '../../data/fakes/fake_other_profile_repository.dart';
 
 /// Provider for the other profile repository (fake by default)
@@ -32,4 +34,16 @@ final invitableGroupsProvider =
 final inviteToGroupProvider = Provider<InviteToGroup>((ref) {
   final repository = ref.watch(otherProfileRepositoryProvider);
   return InviteToGroup(repository);
+});
+
+/// Provider for accept group invite use case
+final acceptGroupInviteProvider = Provider<AcceptGroupInvite>((ref) {
+  final repository = ref.watch(otherProfileRepositoryProvider);
+  return AcceptGroupInvite(repository);
+});
+
+/// Provider for decline group invite use case
+final declineGroupInviteProvider = Provider<DeclineGroupInvite>((ref) {
+  final repository = ref.watch(otherProfileRepositoryProvider);
+  return DeclineGroupInvite(repository);
 });

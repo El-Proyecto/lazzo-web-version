@@ -18,4 +18,18 @@ abstract class OtherProfileRepository {
     required String userId,
     required String groupId,
   });
+
+  /// Accept a group invite
+  /// Returns true if invite was accepted successfully
+  Future<bool> acceptGroupInvite({
+    required String userId,
+    required String groupId,
+  });
+
+  /// Decline a group invite
+  /// Returns true if invite was declined successfully
+  Future<bool> declineGroupInvite({
+    required String userId,
+    required String groupId,
+  });
 }

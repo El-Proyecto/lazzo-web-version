@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../shared/components/common/page_segmented_control.dart';
 import '../../../../shared/components/nav/common_app_bar.dart';
 import '../../../../shared/themes/colors.dart';
@@ -13,6 +14,7 @@ import '../providers/payments_provider.dart';
 import '../widgets/notifications_section.dart';
 // import '../widgets/actions_section.dart'; // MVP: Actions removed, preserved for P2
 import '../widgets/payments_section.dart';
+import '../../../profile/presentation/providers/other_profile_providers.dart';
 
 class InboxPage extends ConsumerStatefulWidget {
   const InboxPage({super.key});
@@ -114,6 +116,50 @@ class _InboxPageState extends ConsumerState<InboxPage>
             // Navigate to action URL
           }
         },
+        onAcceptInvite: (groupId) async {
+          print('[InboxPage] 🟢 Accept invite clicked for group: $groupId');
+          final userId = Supabase.instance.client.auth.currentUser?.id;
+          if (userId == null) {
+            print('[InboxPage] ❌ No user logged in');
+            _showSnackBar('Error: Not logged in', isError: true);
+            return;
+          }
+
+          final acceptUseCase = ref.read(acceptGroupInviteProvider);
+          final success = await acceptUseCase(userId: userId, groupId: groupId);
+          
+          if (success) {
+            print('[InboxPage] ✅ Invite accepted successfully');
+            _showSnackBar('Joined group successfully!');
+            // Refresh notifications to remove the invite
+            ref.read(notificationsProvider.notifier).refresh();
+          } else {
+            print('[InboxPage] ❌ Failed to accept invite');
+            _showSnackBar('Failed to join group', isError: true);
+          }
+        },
+        onDeclineInvite: (groupId) async {
+          print('[InboxPage] 🔴 Decline invite clicked for group: $groupId');
+          final userId = Supabase.instance.client.auth.currentUser?.id;
+          if (userId == null) {
+            print('[InboxPage] ❌ No user logged in');
+            _showSnackBar('Error: Not logged in', isError: true);
+            return;
+          }
+
+          final declineUseCase = ref.read(declineGroupInviteProvider);
+          final success = await declineUseCase(userId: userId, groupId: groupId);
+          
+          if (success) {
+            print('[InboxPage] ✅ Invite declined successfully');
+            _showSnackBar('Invite declined');
+            // Refresh notifications to remove the invite
+            ref.read(notificationsProvider.notifier).refresh();
+          } else {
+            print('[InboxPage] ❌ Failed to decline invite');
+            _showSnackBar('Failed to decline invite', isError: true);
+          }
+        },
       ),
       loading: () =>
           const NotificationsSection(notifications: [], isLoading: true),
@@ -136,6 +182,16 @@ class _InboxPageState extends ConsumerState<InboxPage>
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  void _showSnackBar(String message, {bool isError = false}) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: isError ? Colors.red[700] : BrandColors.planning,
+        duration: const Duration(seconds: 2),
       ),
     );
   }

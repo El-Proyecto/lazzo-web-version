@@ -61,6 +61,32 @@ class FakeOtherProfileRepository implements OtherProfileRepository {
     return true;
   }
 
+  @override
+  Future<bool> acceptGroupInvite({
+    required String userId,
+    required String groupId,
+  }) async {
+    // Simulate network delay
+    await Future.delayed(const Duration(milliseconds: 400));
+
+    // Always succeed in fake implementation
+    print('[FakeRepository] ✅ Accepted group invite (fake)');
+    return true;
+  }
+
+  @override
+  Future<bool> declineGroupInvite({
+    required String userId,
+    required String groupId,
+  }) async {
+    // Simulate network delay
+    await Future.delayed(const Duration(milliseconds: 300));
+
+    // Always succeed in fake implementation
+    print('[FakeRepository] ✅ Declined group invite (fake)');
+    return true;
+  }
+
   List<GroupEventEntity> _getMockUpcomingEvents() {
     return [
       GroupEventEntity(

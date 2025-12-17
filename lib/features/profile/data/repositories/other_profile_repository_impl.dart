@@ -246,4 +246,44 @@ signedPhotoUrl = null;
       return false;
     }
   }
+
+  @override
+  Future<bool> acceptGroupInvite({
+    required String userId,
+    required String groupId,
+  }) async {
+    print('[acceptGroupInvite] 🟢 Starting: userId=$userId, groupId=$groupId');
+    try {
+      await _dataSource.acceptGroupInvite(
+        userId: userId,
+        groupId: groupId,
+      );
+      print('[acceptGroupInvite] ✅ Invite accepted successfully');
+      return true;
+    } catch (e, stackTrace) {
+      print('[acceptGroupInvite] ❌ ERROR: $e');
+      print('[acceptGroupInvite] Stack trace: $stackTrace');
+      return false;
+    }
+  }
+
+  @override
+  Future<bool> declineGroupInvite({
+    required String userId,
+    required String groupId,
+  }) async {
+    print('[declineGroupInvite] 🔴 Starting: userId=$userId, groupId=$groupId');
+    try {
+      await _dataSource.declineGroupInvite(
+        userId: userId,
+        groupId: groupId,
+      );
+      print('[declineGroupInvite] ✅ Invite declined successfully');
+      return true;
+    } catch (e, stackTrace) {
+      print('[declineGroupInvite] ❌ ERROR: $e');
+      print('[declineGroupInvite] Stack trace: $stackTrace');
+      return false;
+    }
+  }
 }

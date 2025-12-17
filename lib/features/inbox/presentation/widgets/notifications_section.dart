@@ -11,6 +11,8 @@ class NotificationsSection extends StatelessWidget {
   final VoidCallback? onRefresh;
   final Function(NotificationEntity)? onNotificationTap;
   final Function(NotificationEntity)? onActionTap;
+  final Function(String groupId)? onAcceptInvite;
+  final Function(String groupId)? onDeclineInvite;
 
   const NotificationsSection({
     super.key,
@@ -19,6 +21,8 @@ class NotificationsSection extends StatelessWidget {
     this.onRefresh,
     this.onNotificationTap,
     this.onActionTap,
+    this.onAcceptInvite,
+    this.onDeclineInvite,
   });
 
   @override
@@ -49,6 +53,8 @@ class NotificationsSection extends StatelessWidget {
             notification: notification,
             onTap: () => onNotificationTap?.call(notification),
             onActionTap: () => onActionTap?.call(notification),
+            onAccept: onAcceptInvite,
+            onDecline: onDeclineInvite,
           );
         },
       ),

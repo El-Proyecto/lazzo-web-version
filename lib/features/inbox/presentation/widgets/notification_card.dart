@@ -8,16 +8,22 @@ class NotificationCard extends StatelessWidget {
   final NotificationEntity notification;
   final VoidCallback? onTap;
   final VoidCallback? onActionTap;
+  final Function(String groupId)? onAccept; // Callback for accepting invite
+  final Function(String groupId)? onDecline; // Callback for declining invite
 
   const NotificationCard({
     super.key,
     required this.notification,
     this.onTap,
     this.onActionTap,
+    this.onAccept,
+    this.onDecline,
   });
 
   @override
   Widget build(BuildContext context) {
+    final isGroupInvite = notification.type == NotificationType.groupInviteReceived;
+    
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -28,15 +34,71 @@ class NotificationCard extends StatelessWidget {
             borderRadius: BorderRadius.circular(Radii.md),
           ),
         ),
-        child: Row(
+        child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildAvatar(),
-            const SizedBox(width: Gaps.md),
-            Expanded(child: _buildNotificationTextWithTime()),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildAvatar(),
+                const SizedBox(width: Gaps.md),
+                Expanded(child: _buildNotificationTextWithTime()),
+              ],
+            ),
+            // Show accept/decline buttons if it's a group invite
+            if (isGroupInvite && notification.groupId != null) ...[
+              const SizedBox(height: Gaps.md),
+              _buildActionButtons(context),
+            ],
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildActionButtons(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: OutlinedButton(
+            onPressed: () => onDecline?.call(notification.groupId!),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: BrandColors.text2,
+              side: const BorderSide(color: BrandColors.bg3),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(Radii.sm),
+              ),
+              padding: const EdgeInsets.symmetric(vertical: Gaps.sm),
+            ),
+            child: Text(
+              'Decline',
+              style: AppText.labelLarge.copyWith(color: BrandColors.text2),
+            ),
+          ),
+        ),
+        const SizedBox(width: Gaps.sm),
+        Expanded(
+          child: ElevatedButton(
+            onPressed: () => onAccept?.call(notification.groupId!),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: BrandColors.planning,
+              foregroundColor: BrandColors.text1,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(Radii.sm),
+              ),
+              padding: const EdgeInsets.symmetric(vertical: Gaps.sm),
+              elevation: 0,
+            ),
+            child: Text(
+              'Accept',
+              style: AppText.labelLarge.copyWith(
+                color: BrandColors.text1,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 

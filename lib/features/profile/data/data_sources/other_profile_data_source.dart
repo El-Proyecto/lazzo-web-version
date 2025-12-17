@@ -315,4 +315,46 @@ return invitableGroups;
       rethrow;
     }
   }
+
+  /// Accept a group invite
+  /// Uses RPC to bypass RLS and atomically add member + delete invite
+  Future<void> acceptGroupInvite({
+    required String userId,
+    required String groupId,
+  }) async {
+    print('[OtherProfileDataSource] 🟢 acceptGroupInvite: userId=$userId, groupId=$groupId');
+    try {
+      // Use RPC to accept invite (bypasses RLS + atomic operation)
+      await _client.rpc('accept_group_invite', params: {
+        'p_group_id': groupId,
+        'p_user_id': userId,
+      });
+      print('[OtherProfileDataSource] ✅ Invite accepted via RPC');
+    } catch (e, stackTrace) {
+      print('[OtherProfileDataSource] ❌ ERROR accepting invite: $e');
+      print('[OtherProfileDataSource] Stack trace: $stackTrace');
+      rethrow;
+    }
+  }
+
+  /// Decline a group invite
+  /// Simply deletes the invite record
+  Future<void> declineGroupInvite({
+    required String userId,
+    required String groupId,
+  }) async {
+    print('[OtherProfileDataSource] 🔴 declineGroupInvite: userId=$userId, groupId=$groupId');
+    try {
+      await _client
+          .from('group_invites')
+          .delete()
+          .eq('group_id', groupId)
+          .eq('invited_id', userId);
+      print('[OtherProfileDataSource] ✅ Invite declined and deleted');
+    } catch (e, stackTrace) {
+      print('[OtherProfileDataSource] ❌ ERROR declining invite: $e');
+      print('[OtherProfileDataSource] Stack trace: $stackTrace');
+      rethrow;
+    }
+  }
 }

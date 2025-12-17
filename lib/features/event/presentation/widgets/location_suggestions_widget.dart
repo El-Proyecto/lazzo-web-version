@@ -656,25 +656,14 @@ class _LocationSuggestionVoteItem extends StatelessWidget {
     final bool isCurrentUser = vote.userId == currentUserId;
     
     return InkWell(
-      onTap: () {
-        // Close bottom sheet
+      onTap: isCurrentUser ? null : () {
+        // Close bottom sheet and navigate to other user profile
         Navigator.pop(context);
-        
-        if (isCurrentUser) {
-          // Navigate to own profile with back button
-          Navigator.pushNamed(
-            context,
-            '/profile',
-            arguments: {'showBackButton': true},
-          );
-        } else {
-          // Navigate to other user profile
-          Navigator.pushNamed(
-            context,
-            '/other-profile',
-            arguments: {'userId': vote.userId},
-          );
-        }
+        Navigator.pushNamed(
+          context,
+          '/other-profile',
+          arguments: {'userId': vote.userId},
+        );
       },
       child: Padding(
         padding: const EdgeInsets.only(bottom: Gaps.sm),
