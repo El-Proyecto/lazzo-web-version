@@ -7,13 +7,14 @@ import '../../../../shared/themes/colors.dart';
 import '../../../../shared/components/nav/common_app_bar.dart';
 import '../../../../routes/app_router.dart';
 import '../../domain/entities/profile_entity.dart';
+import '../../../memory/data/fakes/fake_memory_repository.dart';
 import '../providers/profile_providers.dart';
 
 /// Profile page displaying user information and memories
 /// Uses simple provider architecture with automatic sync
 class ProfilePage extends ConsumerWidget {
   final bool showBackButton;
-  
+
   const ProfilePage({super.key, this.showBackButton = false});
 
   @override
@@ -118,8 +119,11 @@ class ProfilePage extends ConsumerWidget {
 
   void _onMemoryTap(BuildContext context, MemoryEntity memory) {
     Navigator.of(context).pushNamed(
-      AppRouter.memoryViewer,
-      arguments: {'memoryId': memory.id},
+      AppRouter.memory,
+      arguments: {
+        'memoryId': memory.id,
+        'eventStatus': FakeEventStatus.ended,
+      },
     );
   }
 }

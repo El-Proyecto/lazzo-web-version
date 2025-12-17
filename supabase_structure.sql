@@ -91,9 +91,9 @@ CREATE TABLE public.expense_splits (
 );
 CREATE TABLE public.group_invites (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
-  group_id uuid UNIQUE,
+  group_id uuid,
   invited_id uuid NOT NULL,
-  invited_by uuid UNIQUE,
+  invited_by uuid,
   group_url text UNIQUE,
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   CONSTRAINT group_invites_pkey PRIMARY KEY (id),
@@ -225,15 +225,34 @@ CREATE TABLE public.message_reads (
 );
 CREATE TABLE public.notifications (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
-  user_id uuid NOT NULL,
+  recipient_user_id uuid NOT NULL,
   type text NOT NULL,
-  title text,
-  body text,
-  payload jsonb NOT NULL CHECK (jsonb_typeof(payload) = 'object'::text),
-  read_at timestamp with time zone,
-  created_at timestamp with time zone DEFAULT now(),
+  category USER-DEFINED NOT NULL,
+  priority USER-DEFINED NOT NULL DEFAULT 'medium'::notification_priority,
+  is_read boolean NOT NULL DEFAULT false,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  action_url text,
+  deeplink text,
+  group_id uuid,
+  event_id uuid,
+  event_emoji text,
+  user_name text,
+  group_name text,
+  event_name text,
+  amount text,
+  hours text,
+  mins text,
+  date text,
+  time text,
+  place text,
+  device text,
+  note text,
+  dedup_bucket timestamp with time zone NOT NULL DEFAULT (date_trunc('minute'::text, now()) + '00:05:00'::interval),
+  dedup_key text DEFAULT (((((((recipient_user_id)::text || ':'::text) || type) || ':'::text) || COALESCE((group_id)::text, ''::text)) || ':'::text) || COALESCE((event_id)::text, ''::text)),
   CONSTRAINT notifications_pkey PRIMARY KEY (id),
-  CONSTRAINT notifications_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
+  CONSTRAINT notifications_recipient_user_id_fkey FOREIGN KEY (recipient_user_id) REFERENCES public.users(id),
+  CONSTRAINT notifications_group_id_fkey FOREIGN KEY (group_id) REFERENCES public.groups(id),
+  CONSTRAINT notifications_event_id_fkey FOREIGN KEY (event_id) REFERENCES public.events(id)
 );
 CREATE TABLE public.photos (
   photo_id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -257,6 +276,34 @@ CREATE TABLE public.problem_reports (
   updated_at timestamp with time zone NOT NULL DEFAULT now(),
   CONSTRAINT problem_reports_pkey PRIMARY KEY (id),
   CONSTRAINT problem_reports_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
+);
+CREATE TABLE public.push_tokens (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  token text NOT NULL,
+  platform text NOT NULL CHECK (platform = ANY (ARRAY['ios'::text, 'android'::text, 'web'::text])),
+  device_name text,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  last_used_at timestamp with time zone,
+  is_active boolean NOT NULL DEFAULT true,
+  CONSTRAINT push_tokens_pkey PRIMARY KEY (id),
+  CONSTRAINT push_tokens_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
+);
+CREATE TABLE public.user_notification_settings (
+  user_id uuid NOT NULL,
+  push_enabled boolean NOT NULL DEFAULT true,
+  quiet_hours_enabled boolean NOT NULL DEFAULT false,
+  quiet_hours_start time without time zone,
+  quiet_hours_end time without time zone,
+  push_enabled_for_invites boolean NOT NULL DEFAULT true,
+  push_enabled_for_events boolean NOT NULL DEFAULT true,
+  push_enabled_for_payments boolean NOT NULL DEFAULT true,
+  push_enabled_for_chat boolean NOT NULL DEFAULT true,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT user_notification_settings_pkey PRIMARY KEY (user_id),
+  CONSTRAINT user_notification_settings_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
 );
 CREATE TABLE public.user_settings (
   user_id uuid NOT NULL,

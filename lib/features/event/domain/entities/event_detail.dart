@@ -62,6 +62,35 @@ class EventDetail {
       notGoingCount: notGoingCount ?? this.notGoingCount,
     );
   }
+
+  // ═════════════════════════════════════════════════════════════════════════
+  // COMPUTED PROPERTIES FOR PLANNING STATES
+  // These properties encapsulate business logic for determining event
+  // planning status, following DDD principles. UI code should read these
+  // properties instead of checking nullable fields directly.
+  // ═════════════════════════════════════════════════════════════════════════
+
+  /// Check if event has both location and date defined
+  /// Returns true only when both fields are non-null
+  bool get isFullyDefined => location != null && startDateTime != null;
+
+  /// Check if event has location defined
+  /// Returns true when location is set, regardless of date
+  bool get hasDefinedLocation => location != null;
+
+  /// Check if event has date defined
+  /// Returns true when start date is set, regardless of location
+  bool get hasDefinedDate => startDateTime != null;
+
+  /// Planning status for conditional UI rendering
+  /// Determines which widgets to show (RSVP vs HelpPlan)
+  EventPlanningStatus get planningStatus {
+    if (isFullyDefined) return EventPlanningStatus.bothDefined;
+    if (hasDefinedLocation || hasDefinedDate) {
+      return EventPlanningStatus.partialDefined;
+    }
+    return EventPlanningStatus.noneDefined;
+  }
 }
 
 /// Event location domain entity
@@ -83,3 +112,16 @@ class EventLocation {
 
 /// Event status enumeration
 enum EventStatus { pending, confirmed, ended }
+
+/// Event planning status based on location and date definition
+/// Used to determine which UI widgets to show (RSVP vs HelpPlan)
+enum EventPlanningStatus {
+  /// Both location and date are defined - show RSVP widget
+  bothDefined,
+
+  /// Only one of location or date is defined - show HelpPlan widget
+  partialDefined,
+
+  /// Neither location nor date is defined - show HelpPlan widget
+  noneDefined,
+}

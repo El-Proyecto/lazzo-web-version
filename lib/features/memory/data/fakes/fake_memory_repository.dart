@@ -31,7 +31,8 @@ class FakeMemoryConfig {
 
   /// Whether current user has uploaded photos
   /// Used to determine if edit button should show in living/recap
-  static bool userHasUploadedPhotos = true;
+  /// Set to false to test CTA banners, true to test cover selection
+  static bool userHasUploadedPhotos = false;
 
   /// When the recap phase closes (null for living/ended)
   /// Used for countdown timer in AppBar
@@ -119,16 +120,98 @@ class FakeMemoryRepository implements MemoryRepository {
 
 final DateTime _baseDate = DateTime(2024, 7, 5);
 
-/// Build memory from dynamic config (NO FAKE PHOTOS - real photos come from uploads)
+/// Build memory from dynamic config with fake photos based on FakeMemoryConfig
 MemoryEntity _buildDynamicMemory() {
-  // Return empty memory - real photos will be added via upload
+  final List<MemoryPhoto> photos = [];
+  int photoIndex = 0;
+
+  // Add cover photos (portrait)
+  for (int i = 0; i < FakeMemoryConfig.coverPortraitCount; i++) {
+    photos.add(MemoryPhoto(
+      id: 'cover-portrait-$photoIndex',
+      url: 'https://picsum.photos/seed/cover-portrait-$photoIndex/600/800',
+      thumbnailUrl:
+          'https://picsum.photos/seed/cover-portrait-$photoIndex/512/682',
+      coverUrl:
+          'https://picsum.photos/seed/cover-portrait-$photoIndex/1024/1365',
+      voteCount: 0,
+      capturedAt: _baseDate.add(Duration(hours: photoIndex)),
+      aspectRatio: 0.75, // 600/800 = portrait
+      uploaderId: 'user-123',
+      uploaderName: 'User 123',
+      profileImageUrl: null,
+      isCover: true,
+    ));
+    photoIndex++;
+  }
+
+  // Add cover photos (landscape)
+  for (int i = 0; i < FakeMemoryConfig.coverLandscapeCount; i++) {
+    photos.add(MemoryPhoto(
+      id: 'cover-landscape-$photoIndex',
+      url: 'https://picsum.photos/seed/cover-landscape-$photoIndex/800/600',
+      thumbnailUrl:
+          'https://picsum.photos/seed/cover-landscape-$photoIndex/512/384',
+      coverUrl:
+          'https://picsum.photos/seed/cover-landscape-$photoIndex/1024/768',
+      voteCount: 0,
+      capturedAt: _baseDate.add(Duration(hours: photoIndex)),
+      aspectRatio: 1.33, // 800/600 = landscape
+      uploaderId: 'user-123',
+      uploaderName: 'User 123',
+      profileImageUrl: null,
+      isCover: true,
+    ));
+    photoIndex++;
+  }
+
+  // Add grid photos (portrait)
+  for (int i = 0; i < FakeMemoryConfig.gridPortraitCount; i++) {
+    photos.add(MemoryPhoto(
+      id: 'grid-portrait-$photoIndex',
+      url: 'https://picsum.photos/seed/grid-portrait-$photoIndex/600/800',
+      thumbnailUrl:
+          'https://picsum.photos/seed/grid-portrait-$photoIndex/512/682',
+      coverUrl:
+          'https://picsum.photos/seed/grid-portrait-$photoIndex/1024/1365',
+      voteCount: 0,
+      capturedAt: _baseDate.add(Duration(hours: photoIndex)),
+      aspectRatio: 0.75, // 600/800 = portrait
+      uploaderId: 'user-456',
+      uploaderName: 'User 456',
+      profileImageUrl: null,
+      isCover: false,
+    ));
+    photoIndex++;
+  }
+
+  // Add grid photos (landscape)
+  for (int i = 0; i < FakeMemoryConfig.gridLandscapeCount; i++) {
+    photos.add(MemoryPhoto(
+      id: 'grid-landscape-$photoIndex',
+      url: 'https://picsum.photos/seed/grid-landscape-$photoIndex/800/600',
+      thumbnailUrl:
+          'https://picsum.photos/seed/grid-landscape-$photoIndex/512/384',
+      coverUrl:
+          'https://picsum.photos/seed/grid-landscape-$photoIndex/1024/768',
+      voteCount: 0,
+      capturedAt: _baseDate.add(Duration(hours: photoIndex)),
+      aspectRatio: 1.33, // 800/600 = landscape
+      uploaderId: 'user-789',
+      uploaderName: 'User 789',
+      profileImageUrl: null,
+      isCover: false,
+    ));
+    photoIndex++;
+  }
+
   final memory = MemoryEntity(
     id: 'memory-dynamic',
     eventId: 'event-dynamic',
     title: 'Memory Photos',
     location: 'Test Location',
     eventDate: _baseDate,
-    photos: [], // No fake photos - only real uploaded photos
+    photos: photos,
   );
 
   return memory;

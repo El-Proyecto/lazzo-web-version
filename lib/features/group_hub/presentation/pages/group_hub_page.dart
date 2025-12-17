@@ -16,6 +16,7 @@ import '../../domain/entities/group_memory_entity.dart';
 import '../../../event/domain/entities/rsvp.dart';
 import '../../../event/presentation/providers/event_providers.dart';
 import '../../domain/entities/group_event_entity.dart';
+import '../../../memory/data/fakes/fake_memory_repository.dart';
 import 'group_details_page.dart';
 
 class GroupHubPage extends ConsumerStatefulWidget {
@@ -341,6 +342,7 @@ class _GroupHubPageState extends ConsumerState<GroupHubPage>
                               AppRouter.memory,
                               arguments: {
                                 'memoryId': memories[i].id,
+                                'eventStatus': FakeEventStatus.ended,
                               },
                             );
                           },
@@ -367,6 +369,7 @@ class _GroupHubPageState extends ConsumerState<GroupHubPage>
                                 AppRouter.memory,
                                 arguments: {
                                   'memoryId': memories[i + 1].id,
+                                  'eventStatus': FakeEventStatus.ended,
                                 },
                               );
                             },

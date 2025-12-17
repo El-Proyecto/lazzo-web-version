@@ -155,8 +155,9 @@ class _ManageMemoryPageState extends ConsumerState<ManageMemoryPage> {
                       error: (_, __) => [],
                     ),
 
-                    // Show CTA banner if user has no photos, otherwise show cover selection
-                    if (!FakeMemoryConfig.userHasUploadedPhotos)
+                    // Show CTA banner if no photos exist yet, otherwise show cover selection
+                    // CTA encourages first upload, cover selection manages existing photos
+                    if (state.allPhotos.isEmpty)
                       FakeMemoryConfig.eventStatus == FakeEventStatus.living
                           ? AddPhotosCtaCard.living(
                               onPressed: () => _handleAddPhoto(),
@@ -484,13 +485,18 @@ class _ManageMemoryPageState extends ConsumerState<ManageMemoryPage> {
       if (mounted) {
         TopBanner.showSuccess(
           context,
-          message: 'Recap closed. Memory is now shareable!',
+          message: 'Recap closed. Memory is ready!',
         );
       }
 
-      // Navigate back to memory page
+      // Navigate to MemoryReady page
       if (mounted) {
-        Navigator.of(context).pop(true); // Return true to trigger refresh
+        Navigator.of(context).pushReplacementNamed(
+          AppRouter.memoryReady,
+          arguments: {
+            'memoryId': widget.memoryId,
+          },
+        );
       }
     } catch (e) {
       if (mounted) {
