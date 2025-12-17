@@ -4,7 +4,8 @@ import 'package:app/shared/components/widgets/help_plan_event_widget.dart';
 
 void main() {
   group('HelpPlanEventWidget', () {
-    testWidgets('shows correct button text when both fields missing',
+    testWidgets(
+        'shows correct button text when both fields missing and no suggestions',
         (WidgetTester tester) async {
       await tester.pumpWidget(
         MaterialApp(
@@ -12,6 +13,8 @@ void main() {
             body: HelpPlanEventWidget(
               hasLocation: false,
               hasDate: false,
+              hasSuggestedLocation: false,
+              hasSuggestedDate: false,
               onAddSuggestion: () {},
             ),
           ),
@@ -22,7 +25,8 @@ void main() {
       expect(find.text('Add date and place suggestion'), findsOneWidget);
     });
 
-    testWidgets('shows correct button text when only location missing',
+    testWidgets(
+        'shows correct button text when only location missing and no location suggestions',
         (WidgetTester tester) async {
       await tester.pumpWidget(
         MaterialApp(
@@ -30,6 +34,8 @@ void main() {
             body: HelpPlanEventWidget(
               hasLocation: false,
               hasDate: true,
+              hasSuggestedLocation: false,
+              hasSuggestedDate: false,
               onAddSuggestion: () {},
             ),
           ),
@@ -40,7 +46,8 @@ void main() {
       expect(find.text('Add place suggestion'), findsOneWidget);
     });
 
-    testWidgets('shows correct button text when only date missing',
+    testWidgets(
+        'shows correct button text when only date missing and no date suggestions',
         (WidgetTester tester) async {
       await tester.pumpWidget(
         MaterialApp(
@@ -48,6 +55,8 @@ void main() {
             body: HelpPlanEventWidget(
               hasLocation: true,
               hasDate: false,
+              hasSuggestedLocation: false,
+              hasSuggestedDate: false,
               onAddSuggestion: () {},
             ),
           ),
@@ -55,6 +64,46 @@ void main() {
       );
 
       expect(find.text('Help plan this event'), findsOneWidget);
+      expect(find.text('Add date suggestion'), findsOneWidget);
+    });
+
+    testWidgets(
+        'shows place suggestion when date is suggested but location is not',
+        (WidgetTester tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: HelpPlanEventWidget(
+              hasLocation: false,
+              hasDate: false,
+              hasSuggestedLocation: false,
+              hasSuggestedDate: true, // Date suggested
+              onAddSuggestion: () {},
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('Add place suggestion'), findsOneWidget);
+    });
+
+    testWidgets(
+        'shows date suggestion when location is suggested but date is not',
+        (WidgetTester tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: HelpPlanEventWidget(
+              hasLocation: false,
+              hasDate: false,
+              hasSuggestedLocation: true, // Location suggested
+              hasSuggestedDate: false,
+              onAddSuggestion: () {},
+            ),
+          ),
+        ),
+      );
+
       expect(find.text('Add date suggestion'), findsOneWidget);
     });
 
@@ -68,6 +117,8 @@ void main() {
             body: HelpPlanEventWidget(
               hasLocation: false,
               hasDate: false,
+              hasSuggestedLocation: false,
+              hasSuggestedDate: false,
               onAddSuggestion: () {
                 wasCalled = true;
               },
@@ -88,6 +139,8 @@ void main() {
       const widget = HelpPlanEventWidget(
         hasLocation: true,
         hasDate: false,
+        hasSuggestedLocation: false,
+        hasSuggestedDate: false,
         onAddSuggestion: _dummyCallback,
       );
 

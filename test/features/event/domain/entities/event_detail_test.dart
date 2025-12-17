@@ -4,7 +4,7 @@ import 'package:app/features/event/domain/entities/event_detail.dart';
 void main() {
   group('EventDetail Planning Status', () {
     // Test data
-    final testLocation = EventLocation(
+    final testLocation = const EventLocation(
       id: 'loc-1',
       displayName: 'Test Venue',
       formattedAddress: '123 Test St',

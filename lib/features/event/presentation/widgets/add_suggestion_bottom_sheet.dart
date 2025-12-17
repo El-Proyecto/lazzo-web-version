@@ -111,11 +111,35 @@ class _AddSuggestionBottomSheetState
       vsync: this,
       initialIndex: _selectedType == SuggestionType.dateTime ? 0 : 1,
     );
-    // Pre-select with event's current date/time
-    startDate = widget.eventStartDate;
-    startTime = widget.eventStartTime;
-    endDate = widget.eventEndDate;
-    endTime = widget.eventEndTime;
+
+    // Smart defaults: use event dates if available, otherwise use 20h-22h today or tomorrow
+    final now = DateTime.now();
+    final todayAt20h = DateTime(now.year, now.month, now.day, 20, 0);
+
+    // If event has dates, use them as defaults
+    if (widget.eventStartDate.isAfter(now)) {
+      startDate = widget.eventStartDate;
+      startTime = widget.eventStartTime;
+      endDate = widget.eventEndDate;
+      endTime = widget.eventEndTime;
+    } else {
+      // Event dates are in the past or not meaningful - use smart defaults
+      if (now.isBefore(todayAt20h)) {
+        // It's before 20h today - use 20h-22h today
+        startDate = todayAt20h;
+        startTime = const TimeOfDay(hour: 20, minute: 0);
+        endDate = todayAt20h.add(const Duration(hours: 2));
+        endTime = const TimeOfDay(hour: 22, minute: 0);
+      } else {
+        // It's after 20h today - use 20h-22h tomorrow
+        final tomorrow = now.add(const Duration(days: 1));
+        startDate =
+            DateTime(tomorrow.year, tomorrow.month, tomorrow.day, 20, 0);
+        startTime = const TimeOfDay(hour: 20, minute: 0);
+        endDate = startDate.add(const Duration(hours: 2));
+        endTime = const TimeOfDay(hour: 22, minute: 0);
+      }
+    }
   }
 
   @override
@@ -170,6 +194,33 @@ class _AddSuggestionBottomSheetState
     if (!_showValidationError) return null;
 
     if (_selectedType == SuggestionType.dateTime) {
+      final now = DateTime.now();
+      final startDateTime = DateTime(
+        startDate.year,
+        startDate.month,
+        startDate.day,
+        startTime.hour,
+        startTime.minute,
+      );
+
+      final endDateTime = DateTime(
+        endDate.year,
+        endDate.month,
+        endDate.day,
+        endTime.hour,
+        endTime.minute,
+      );
+
+      // Check if start time has already passed
+      if (startDateTime.isBefore(now)) {
+        return 'Start time cannot be in the past';
+      }
+
+      // Check if end time has already passed
+      if (endDateTime.isBefore(now)) {
+        return 'End time cannot be in the past';
+      }
+
       if (!_hasChanges) {
         return 'Please select different dates/times from the original event';
       }
@@ -754,7 +805,7 @@ class _AddSuggestionBottomSheetState
       readOnly: readOnly,
       onTap: onTap,
       onChanged: (value) {
-                        // Call the provided onChanged callback if exists
+        // Call the provided onChanged callback if exists
         onChanged?.call(value);
         // Force setState to update button color
         setState(() {});

@@ -4,21 +4,28 @@ import '../../constants/text_styles.dart';
 import '../../themes/colors.dart';
 
 /// Widget to encourage participants to help plan event
-/// when location or date (or both) are not defined.
+/// when location or date (or both) are not defined or suggested.
 ///
-/// This widget appears instead of the RSVP widget when the event
-/// is not fully defined (missing date and/or location).
+/// This widget appears when event fields are missing AND no suggestions
+/// have been added for those fields yet.
+///
+/// Visibility logic:
+/// - Hidden when both date and location are defined
+/// - Hidden when missing field has suggestions (widget shrinks)
+/// - Shown when at least one field is missing AND no suggestion for it
 ///
 /// Design: Similar layout to RSVPWidget for visual consistency
 /// - Same padding, border radius, background color
 /// - Title "Help plan this event"
-/// - Single CTA button with dynamic text based on missing fields
+/// - Dynamic CTA button text based on missing fields and suggestions
 ///
 /// Usage:
 /// ```dart
 /// HelpPlanEventWidget(
 ///   hasLocation: event.hasDefinedLocation,
 ///   hasDate: event.hasDefinedDate,
+///   hasSuggestedLocation: locationSuggestions.isNotEmpty,
+///   hasSuggestedDate: dateSuggestions.isNotEmpty,
 ///   onAddSuggestion: () {
 ///     // Open bottom sheet to add suggestions
 ///   },
@@ -31,6 +38,12 @@ class HelpPlanEventWidget extends StatelessWidget {
   /// Whether the event has a date defined
   final bool hasDate;
 
+  /// Whether there are location suggestions added
+  final bool hasSuggestedLocation;
+
+  /// Whether there are date suggestions added
+  final bool hasSuggestedDate;
+
   /// Callback when user taps the add suggestion button
   final VoidCallback onAddSuggestion;
 
@@ -38,14 +51,22 @@ class HelpPlanEventWidget extends StatelessWidget {
     super.key,
     required this.hasLocation,
     required this.hasDate,
+    required this.hasSuggestedLocation,
+    required this.hasSuggestedDate,
     required this.onAddSuggestion,
   });
 
-  /// Dynamic button text based on what fields are missing
+  /// Dynamic button text based on what fields are missing/suggested
+  /// Logic:
+  /// - Both missing, no suggestions: "Add date and place suggestion"
+  /// - One defined/suggested: "Add [missing] suggestion"
   String get _buttonText {
-    if (!hasLocation && !hasDate) {
+    final locationOk = hasLocation || hasSuggestedLocation;
+    final dateOk = hasDate || hasSuggestedDate;
+
+    if (!locationOk && !dateOk) {
       return 'Add date and place suggestion';
-    } else if (!hasLocation) {
+    } else if (!locationOk) {
       return 'Add place suggestion';
     } else {
       return 'Add date suggestion';
@@ -90,7 +111,7 @@ class HelpPlanEventWidget extends StatelessWidget {
             child: Text(
               _buttonText,
               style: AppText.labelLarge.copyWith(
-                color: BrandColors.bg1,
+                color: BrandColors.text1,
               ),
             ),
           ),

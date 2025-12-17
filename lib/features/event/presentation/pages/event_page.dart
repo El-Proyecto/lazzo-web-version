@@ -425,26 +425,22 @@ class _EventPageState extends ConsumerState<EventPage> {
                           },
                           isHost: event.hostId == currentUserId,
                           onAddSuggestion: () {
-                            if (event.startDateTime == null ||
-                                event.endDateTime == null) {
-                              TopBanner.showError(
-                                context,
-                                message:
-                                    'Event dates must be set before adding suggestions',
-                              );
-                              return;
-                            }
+                            // Use current event dates if defined, otherwise smart defaults
+                            final now = DateTime.now();
+                            final defaultStartDate = event.startDateTime ??
+                                now.add(const Duration(hours: 8));
+                            final defaultEndDate = event.endDateTime ??
+                                now.add(const Duration(hours: 10));
+
                             showAddSuggestionBottomSheet(
                               context,
                               eventId: eventId,
-                              eventStartDate: event.startDateTime!,
-                              eventStartTime: TimeOfDay.fromDateTime(
-                                event.startDateTime!,
-                              ),
-                              eventEndDate: event.endDateTime!,
-                              eventEndTime: TimeOfDay.fromDateTime(
-                                event.endDateTime!,
-                              ),
+                              eventStartDate: defaultStartDate,
+                              eventStartTime:
+                                  TimeOfDay.fromDateTime(defaultStartDate),
+                              eventEndDate: defaultEndDate,
+                              eventEndTime:
+                                  TimeOfDay.fromDateTime(defaultEndDate),
                             );
                           },
                           onSetDate: (selectedSuggestion) async {
@@ -514,17 +510,22 @@ class _EventPageState extends ConsumerState<EventPage> {
                         currentEventGoingCount:
                             processedData.currentEventGoingCount,
                         onAddSuggestion: () {
+                          // Use current event dates if defined, otherwise smart defaults
+                          final now = DateTime.now();
+                          final defaultStartDate = event.startDateTime ??
+                              now.add(const Duration(hours: 8));
+                          final defaultEndDate = event.endDateTime ??
+                              now.add(const Duration(hours: 10));
+
                           showAddSuggestionBottomSheet(
                             context,
                             eventId: eventId,
-                            eventStartDate: event.startDateTime!,
-                            eventStartTime: TimeOfDay.fromDateTime(
-                              event.startDateTime!,
-                            ),
-                            eventEndDate: event.endDateTime!,
-                            eventEndTime: TimeOfDay.fromDateTime(
-                              event.endDateTime!,
-                            ),
+                            eventStartDate: defaultStartDate,
+                            eventStartTime:
+                                TimeOfDay.fromDateTime(defaultStartDate),
+                            eventEndDate: defaultEndDate,
+                            eventEndTime:
+                                TimeOfDay.fromDateTime(defaultEndDate),
                             type: SuggestionType.location,
                             currentEventLocationName:
                                 event.location?.displayName,
@@ -699,7 +700,6 @@ class _EventPageState extends ConsumerState<EventPage> {
                     );
                   },
                 ),
-                const SizedBox(height: Gaps.lg),
 
                 // Expenses widget
                 // Use whenOrNull to keep previous expenses visible during refresh
@@ -726,8 +726,7 @@ class _EventPageState extends ConsumerState<EventPage> {
                         return EventExpensesWidget(
                           eventId: eventId,
                           mode: ChatMode.planning,
-                          participants:
-                              participantOptions, // ✅ Participantes reais
+                          participants: participantOptions,
                           onAddExpense:
                               (title, paidById, participantsOwe, amount) async {
                             ref
@@ -1086,21 +1085,49 @@ class _EventPageState extends ConsumerState<EventPage> {
     );
   }
 
-  /// Build help plan section when event has undefined fields
-  /// Shows instead of RSVP widget when location or date not defined
-  Widget _buildHelpPlanSection(EventDetail event) {
+  /// Build help plan section when event has undefined/unsuggested fields
+  /// Shows when location or date are not defined AND not suggested
+  /// Shrinks when suggestions are added for the missing field
+  Widget _buildHelpPlanSection(
+    EventDetail event,
+    List<dynamic> dateSuggestions,
+    List<dynamic> locationSuggestions,
+  ) {
+    final hasSuggestedLocation = locationSuggestions.isNotEmpty;
+    final hasSuggestedDate = dateSuggestions.isNotEmpty;
+
+    // Check if widget should be visible
+    final locationOk = event.hasDefinedLocation || hasSuggestedLocation;
+    final dateOk = event.hasDefinedDate || hasSuggestedDate;
+
+    // If both are ok (defined or suggested), shrink
+    if (locationOk && dateOk) {
+      return const SizedBox.shrink();
+    }
+
     return Column(
       children: [
-        const SizedBox(height: Gaps.md),
         HelpPlanEventWidget(
           hasLocation: event.hasDefinedLocation,
           hasDate: event.hasDefinedDate,
+          hasSuggestedLocation: hasSuggestedLocation,
+          hasSuggestedDate: hasSuggestedDate,
           onAddSuggestion: () {
-            // Determine initial tab based on what's missing
-            final initialType =
-                event.hasDefinedLocation && !event.hasDefinedDate
-                    ? SuggestionType.dateTime
-                    : SuggestionType.location;
+            // Determine initial tab:
+            // - If both missing → start with dateTime tab
+            // - If only location missing → location tab
+            // - If only date missing → dateTime tab
+            final SuggestionType initialType;
+            if (!locationOk && !dateOk) {
+              // Both missing: start with date/time
+              initialType = SuggestionType.dateTime;
+            } else if (!locationOk) {
+              // Only location missing
+              initialType = SuggestionType.location;
+            } else {
+              // Only date missing
+              initialType = SuggestionType.dateTime;
+            }
 
             // Use existing bottom sheet function
             showAddSuggestionBottomSheet(
@@ -1121,56 +1148,76 @@ class _EventPageState extends ConsumerState<EventPage> {
             );
           },
         ),
+        const SizedBox(height: Gaps.lg),
       ],
     );
   }
 
   /// Builds the RSVP section with voting functionality
   /// This is one of the most complex sections with nested AsyncValues
-  /// When event is not fully defined, shows HelpPlanSection instead
+  /// When event is not fully defined/suggested, shows HelpPlanSection instead
   Widget _buildRsvpSection(EventDetail event, String? currentUserId) {
-    // If event doesn't have both location and date, show help plan widget
-    if (!event.isFullyDefined) {
-      return _buildHelpPlanSection(event);
-    }
-
-    // Original RSVP logic - only runs when event is fully defined
-    final rsvpsAsync = ref.watch(eventRsvpsProvider(eventId));
-    final userRsvpAsync = ref.watch(userRsvpProvider(eventId));
+    // Watch suggestions to determine visibility
     final suggestionsAsync = ref.watch(eventSuggestionsProvider(eventId));
+    final locationSuggestionsAsync =
+        ref.watch(eventLocationSuggestionsProvider(eventId));
 
-    // Use whenOrNull to keep previous RSVP visible during refresh
-    return rsvpsAsync.whenOrNull(
-          data: (rsvps) {
-            return userRsvpAsync.whenOrNull(
-                  data: (userRsvp) {
-                    return suggestionsAsync.whenOrNull(
-                          data: (suggestions) => _buildRsvpWidget(
+    // If event is fully defined, show RSVP
+    if (event.isFullyDefined) {
+      // Original RSVP logic
+      final rsvpsAsync = ref.watch(eventRsvpsProvider(eventId));
+      final userRsvpAsync = ref.watch(userRsvpProvider(eventId));
+
+      // Use whenOrNull to keep previous RSVP visible during refresh
+      return rsvpsAsync.whenOrNull(
+            data: (rsvps) {
+              return userRsvpAsync.whenOrNull(
+                    data: (userRsvp) {
+                      return suggestionsAsync.whenOrNull(
+                            data: (suggestions) => _buildRsvpWidget(
+                              event,
+                              currentUserId,
+                              rsvps,
+                              userRsvp,
+                              suggestions,
+                            ),
+                          ) ??
+                          _buildRsvpLoadingState(
                             event,
                             currentUserId,
                             rsvps,
                             userRsvp,
-                            suggestions,
-                          ),
-                        ) ??
-                        _buildRsvpLoadingState(
-                          event,
-                          currentUserId,
-                          rsvps,
-                          userRsvp,
-                        );
-                  },
+                          );
+                    },
+                  ) ??
+                  _buildRsvpLoadingState(
+                    event,
+                    currentUserId,
+                    rsvps,
+                    null, // userRsvp not loaded yet
+                  );
+            },
+          ) ??
+          _buildRsvpErrorState(
+              event, currentUserId); // Fallback for first load or error
+    }
+
+    // Event not fully defined - check suggestions and show HelpPlan if needed
+    return suggestionsAsync.whenOrNull(
+          data: (dateSuggestions) {
+            return locationSuggestionsAsync.whenOrNull(
+                  data: (locationSuggestions) => _buildHelpPlanSection(
+                    event,
+                    dateSuggestions,
+                    locationSuggestions,
+                  ),
                 ) ??
-                _buildRsvpLoadingState(
-                  event,
-                  currentUserId,
-                  rsvps,
-                  null, // userRsvp not loaded yet
-                );
+                _buildHelpPlanSection(
+                    event, dateSuggestions, const []); // location loading
           },
         ) ??
-        _buildRsvpErrorState(
-            event, currentUserId); // Fallback for first load or error
+        _buildHelpPlanSection(
+            event, const [], const []); // both loading or error
   }
 
   /// Helper: Builds the actual RSVP widget with all data loaded
