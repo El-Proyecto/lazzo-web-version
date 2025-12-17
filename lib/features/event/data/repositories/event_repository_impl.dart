@@ -66,6 +66,9 @@ class EventRepositoryImpl implements EventRepository {
       case EventStatus.confirmed:
         statusString = 'confirmed';
         break;
+      case EventStatus.living:
+        statusString = 'living';
+        break;
       case EventStatus.ended:
         statusString = 'ended';
         break;
@@ -75,7 +78,7 @@ class EventRepositoryImpl implements EventRepository {
       eventId,
       statusString,
     );
-    
+
     return model.toEntity();
   }
 

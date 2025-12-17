@@ -42,6 +42,8 @@ class EventDetailModel {
 
   /// Create model from Supabase JSON
   factory EventDetailModel.fromJson(Map<String, dynamic> json) {
+    final statusFromDb = json['status'] as String? ?? 'pending';
+
     return EventDetailModel(
       id: json['id'] as String,
       name: json['name'] as String,
@@ -58,7 +60,7 @@ class EventDetailModel {
       locationAddress: json['location_address'] as String?,
       locationLatitude: json['location_latitude'] as double?,
       locationLongitude: json['location_longitude'] as double?,
-      status: json['status'] as String? ?? 'pending',
+      status: statusFromDb,
       createdAt: DateTime.parse(json['created_at'] as String),
       hostId: json['host_id'] as String,
       goingCount: json['rsvp_going_count'] as int? ?? 0,
@@ -90,9 +92,14 @@ class EventDetailModel {
   EventDetail toEntity() {
     // Parse status enum
     EventStatus statusEnum;
-    switch (status.toLowerCase()) {
+    final statusLower = status.toLowerCase();
+
+    switch (statusLower) {
       case 'confirmed':
         statusEnum = EventStatus.confirmed;
+        break;
+      case 'living':
+        statusEnum = EventStatus.living;
         break;
       case 'ended':
         statusEnum = EventStatus.ended;
