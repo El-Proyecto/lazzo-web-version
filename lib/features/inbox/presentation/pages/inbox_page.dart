@@ -8,6 +8,7 @@ import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/constants/text_styles.dart';
 import '../../../../shared/layouts/main_layout_providers.dart';
 import '../../domain/entities/payment_entity.dart';
+import '../../domain/entities/notification_entity.dart';
 import '../providers/notifications_provider.dart';
 // import '../providers/actions_provider.dart'; // MVP: Actions removed, preserved for P2
 import '../providers/payments_provider.dart';
@@ -130,8 +131,20 @@ class _InboxPageState extends ConsumerState<InboxPage>
           
           if (success) {
             print('[InboxPage] ✅ Invite accepted successfully');
+            
+            // Find and mark the notification as read to hide it
+            final notificationsState = ref.read(notificationsProvider);
+            notificationsState.whenData((notifications) {
+              final inviteNotification = notifications.firstWhere(
+                (n) => n.groupId == groupId && n.type == NotificationType.groupInviteReceived,
+                orElse: () => notifications.first,
+              );
+              // Mark as read to remove from inbox
+              ref.read(markNotificationAsReadUseCaseProvider).call(inviteNotification.id);
+            });
+            
             _showSnackBar('Joined group successfully!');
-            // Refresh notifications to remove the invite
+            // Refresh notifications to show updated list
             ref.read(notificationsProvider.notifier).refresh();
           } else {
             print('[InboxPage] ❌ Failed to accept invite');
@@ -152,8 +165,20 @@ class _InboxPageState extends ConsumerState<InboxPage>
           
           if (success) {
             print('[InboxPage] ✅ Invite declined successfully');
+            
+            // Find and mark the notification as read to hide it
+            final notificationsState = ref.read(notificationsProvider);
+            notificationsState.whenData((notifications) {
+              final inviteNotification = notifications.firstWhere(
+                (n) => n.groupId == groupId && n.type == NotificationType.groupInviteReceived,
+                orElse: () => notifications.first,
+              );
+              // Mark as read to remove from inbox
+              ref.read(markNotificationAsReadUseCaseProvider).call(inviteNotification.id);
+            });
+            
             _showSnackBar('Invite declined');
-            // Refresh notifications to remove the invite
+            // Refresh notifications to show updated list
             ref.read(notificationsProvider.notifier).refresh();
           } else {
             print('[InboxPage] ❌ Failed to decline invite');

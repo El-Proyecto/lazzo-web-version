@@ -721,6 +721,8 @@ class _SuggestionVoteItem extends StatelessWidget {
   });
 
   String get _displayName {
+    // Always check currentUserId first to ensure "You" is displayed
+    if (currentUserId == null) return vote.userName;
     return vote.userId == currentUserId ? 'You' : vote.userName;
   }
 
@@ -729,14 +731,25 @@ class _SuggestionVoteItem extends StatelessWidget {
     final bool isCurrentUser = vote.userId == currentUserId;
     
     return InkWell(
-      onTap: isCurrentUser ? null : () {
-        // Close bottom sheet and navigate to other user profile
+      onTap: () {
+        // Close bottom sheet
         Navigator.pop(context);
-        Navigator.pushNamed(
-          context,
-          '/other-profile',
-          arguments: {'userId': vote.userId},
-        );
+        
+        if (isCurrentUser) {
+          // Navigate to own profile
+          Navigator.pushNamed(
+            context,
+            '/profile',
+            arguments: {'showBackButton': true},
+          );
+        } else {
+          // Navigate to other user profile
+          Navigator.pushNamed(
+            context,
+            '/other-profile',
+            arguments: {'userId': vote.userId},
+          );
+        }
       },
       child: Padding(
         padding: const EdgeInsets.only(bottom: Gaps.sm),
@@ -773,14 +786,6 @@ class _SuggestionVoteItem extends StatelessWidget {
                   fontSize: 12,
                 ),
               ),
-            
-            // Chevron indicator (always show for navigation)
-            const SizedBox(width: Gaps.xs),
-            const Icon(
-              Icons.chevron_right_rounded,
-              color: BrandColors.text2,
-              size: 16,
-            ),
           ],
         ),
       ),

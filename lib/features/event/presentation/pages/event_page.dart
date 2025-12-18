@@ -407,6 +407,7 @@ class _EventPageState extends ConsumerState<EventPage> {
                                 .toggleVote_(eventId, suggestionId);
                           },
                           isHost: event.hostId == currentUserId,
+                          currentUserId: currentUserId,
                           onAddSuggestion: () {
                             if (event.startDateTime == null ||
                                 event.endDateTime == null) {
@@ -494,6 +495,7 @@ class _EventPageState extends ConsumerState<EventPage> {
                               .toggleVote(eventId, suggestionId);
                         },
                         isHost: event.hostId == currentUserId,
+                        currentUserId: currentUserId,
                         currentEventGoingCount:
                             processedData.currentEventGoingCount,
                         onAddSuggestion: () {
@@ -1158,6 +1160,7 @@ class _EventPageState extends ConsumerState<EventPage> {
                   notGoingCount: notGoingCount,
                   pendingCount: pendingCount,
                   userVote: _getUserVoteStatus(userRsvp),
+                  currentUserId: currentUserId,
                   onGoingPressed: () async {
                     final currentStatus =
                         userRsvp?.status ?? RsvpStatus.pending;
@@ -1272,6 +1275,7 @@ class _EventPageState extends ConsumerState<EventPage> {
           notGoingCount: notGoingCount,
           pendingCount: pendingCount,
           userVote: _getUserVoteStatus(userRsvp),
+          currentUserId: currentUserId,
           onGoingPressed: () async {
             final currentStatus = userRsvp?.status ?? RsvpStatus.pending;
             final newStatus = currentStatus == RsvpStatus.going
@@ -1327,6 +1331,7 @@ class _EventPageState extends ConsumerState<EventPage> {
           notGoingCount: 0,
           pendingCount: 0,
           userVote: null,
+          currentUserId: currentUserId,
           onGoingPressed: () {},
           onNotGoingPressed: () {},
           allVotes: const [],
