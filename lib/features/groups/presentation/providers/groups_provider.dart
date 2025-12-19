@@ -145,6 +145,28 @@ class GroupsController {
 
   GroupsController(this._ref);
 
+  /// Leave group with optimistic UI update
+  /// Returns true if successful, false if failed (for rollback)
+  Future<bool> leaveGroupOptimistic(String groupId) async {
+    try {
+      // 1. OPTIMISTIC UPDATE - immediately refresh to remove group from list
+      _ref.invalidate(groupsProvider);
+      _ref.invalidate(archivedGroupsProvider);
+      
+      // 2. SERVER UPDATE - execute in background
+      final leaveGroup = _ref.read(leaveGroupProvider);
+      await leaveGroup.call(groupId);
+      
+      // 3. SUCCESS - group removed from server
+      return true;
+    } catch (e) {
+      // 4. ROLLBACK - refresh to restore group in list
+      _ref.invalidate(groupsProvider);
+      _ref.invalidate(archivedGroupsProvider);
+      rethrow;
+    }
+  }
+
   Future<void> leaveGroup(String groupId) async {
     final leaveGroup = _ref.read(leaveGroupProvider);
     await leaveGroup.call(groupId);

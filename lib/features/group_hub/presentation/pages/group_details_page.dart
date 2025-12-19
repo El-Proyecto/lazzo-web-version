@@ -15,6 +15,7 @@ import '../widgets/group_shortcut_action.dart';
 import '../widgets/group_member_list_item.dart';
 import '../../domain/entities/group_member_entity.dart';
 import 'group_photos_page.dart';
+import '../../../groups/presentation/providers/groups_provider.dart' as groups;
 
 class GroupDetailsPage extends ConsumerWidget {
   final String groupId;
@@ -246,7 +247,7 @@ class GroupDetailsPage extends ConsumerWidget {
               label: 'Leave',
               iconColor: BrandColors.cantVote,
               onTap: () {
-                _showLeaveGroupDialog(context);
+                _showLeaveGroupDialog(context, ref);
               },
             ),
           ),
@@ -433,19 +434,65 @@ class GroupDetailsPage extends ConsumerWidget {
     );
   }
 
-  void _showLeaveGroupDialog(BuildContext context) {
+  void _showLeaveGroupDialog(BuildContext context, WidgetRef ref) {
+    final detailsAsync = ref.read(groupDetailsProvider(groupId));
+    final groupName = detailsAsync.value?.name ?? 'this group';
+    
     showDialog(
       context: context,
-      builder: (context) => ConfirmationDialog(
+      builder: (dialogContext) => ConfirmationDialog(
         title: 'Leave Group?',
         message:
-            'Are you sure you want to leave this group? You can rejoin later with an invite.',
+            'Are you sure you want to leave $groupName? You can rejoin later with an invite.',
         confirmText: 'Leave',
         cancelText: 'Cancel',
         isDestructive: true,
-        onConfirm: () {
-          // TODO: Implement leave group logic
-                  },
+        onConfirm: () async {
+          // OPTIMISTIC UI: invalidate groups immediately and navigate back
+          final controller = ref.read(groups.groupsControllerProvider);
+          
+          // Close dialog first
+          if (dialogContext.mounted) {
+            Navigator.of(dialogContext).pop();
+          }
+          
+          try {
+            // Optimistically invalidate groups provider to remove from list
+            ref.invalidate(groups.groupsProvider);
+            ref.invalidate(groups.archivedGroupsProvider);
+            
+            // Navigate back to groups page immediately (group already removed from list)
+            if (context.mounted) {
+              Navigator.of(context).popUntil((route) => route.isFirst);
+              Navigator.of(context).pushReplacementNamed(AppRouter.groups);
+            }
+            
+            // Call server in background
+            await controller.leaveGroupOptimistic(groupId);
+            
+            // Show success feedback
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Left "$groupName"'),
+                  backgroundColor: BrandColors.planning,
+                  duration: const Duration(seconds: 2),
+                ),
+              );
+            }
+          } catch (e) {
+            // Show error feedback (rollback already happened in controller)
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Failed to leave group: ${e.toString().replaceAll('Exception: ', '')}'),
+                  backgroundColor: BrandColors.cantVote,
+                  duration: const Duration(seconds: 3),
+                ),
+              );
+            }
+          }
+        },
       ),
     );
   }
