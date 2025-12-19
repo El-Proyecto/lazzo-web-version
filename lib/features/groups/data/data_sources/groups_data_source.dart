@@ -426,84 +426,143 @@ class SupabaseGroupsDataSource implements GroupsDataSource {
   @override
   Future<void> leaveGroup(String groupId, String userId) async {
     try {
-      
-      // STEP 1: Verificar quantos membros tem o grupo
-      final membersCount = await _client
-          .from('group_members')
-          .select('user_id')
-          .eq('group_id', groupId)
-          .count();
-      
-      
-      // STEP 2: Remove o usuário da tabela group_members
+      // STEP 1: Remove o usuário da tabela group_members
       await _client
           .from('group_members')
           .delete()
           .eq('group_id', groupId)
           .eq('user_id', userId);
       
-      
-      // STEP 3: Remove configurações do usuário para este grupo
+      // STEP 2: Remove configurações do usuário para este grupo
       await _client
           .from('group_user_settings')
           .delete()
           .eq('group_id', groupId)
           .eq('user_id', userId);
       
+      // STEP 3: Verificar quantos membros restam APÓS remoção
+      final remainingMembers = await _client
+          .from('group_members')
+          .select('user_id')
+          .eq('group_id', groupId)
+          .count();
       
-      // STEP 4: Se era o último membro, apagar o grupo completamente
-      if (membersCount.count <= 1) {
+      // STEP 4: Se não há mais membros, apagar TUDO (grupo + eventos + dados)
+      if (remainingMembers.count == 0) {
+        // STEP 4.1: Buscar todos os eventos do grupo para deletar dados relacionados
+        final events = await _client
+            .from('events')
+            .select('id')
+            .eq('group_id', groupId);
         
-        // STEP 4.1: Buscar dados do grupo para verificar se tem imagem
-        final groupData = await _client
-            .from('groups')
-            .select('photo_url')
-            .eq('id', groupId)
-            .maybeSingle();
+        final eventIds = (events as List).map((e) => e['id'] as String).toList();
         
-        // STEP 4.2: Apagar TODOS os ficheiros do folder do grupo no storage
-        if (groupData != null && groupData['photo_url'] != null) {
-          final photoPath = groupData['photo_url'] as String;
-          if (photoPath.isNotEmpty) {
+        // STEP 4.2: Deletar dados de CADA evento (na ordem correta das FKs)
+        if (eventIds.isNotEmpty) {
+          // 4.2.1: message_reads (FK para events + chat_messages)
+          await _client.from('message_reads').delete().inFilter('event_id', eventIds);
+          
+          // 4.2.2: chat_messages (FK para events)
+          await _client.from('chat_messages').delete().inFilter('event_id', eventIds);
+          
+          // 4.2.3: event_date_votes (FK para event_date_options)
+          await _client.from('event_date_votes').delete().inFilter('event_id', eventIds);
+          
+          // 4.2.4: event_date_options (FK para events)
+          await _client.from('event_date_options').delete().inFilter('event_id', eventIds);
+          
+          // 4.2.5: event_participants (FK para events)
+          await _client.from('event_participants').delete().inFilter('pevent_id', eventIds);
+          
+          // 4.2.6: expense_splits (FK para event_expenses)
+          final expenses = await _client.from('event_expenses').select('id').inFilter('event_id', eventIds);
+          final expenseIds = (expenses as List).map((e) => e['id'] as String).toList();
+          if (expenseIds.isNotEmpty) {
+            await _client.from('expense_splits').delete().inFilter('expense_id', expenseIds);
+          }
+          
+          // 4.2.7: event_expenses (FK para events)
+          await _client.from('event_expenses').delete().inFilter('event_id', eventIds);
+          
+          // 4.2.8: location_suggestion_votes (FK para location_suggestions)
+          final suggestions = await _client.from('location_suggestions').select('id').inFilter('event_id', eventIds);
+          final suggestionIds = (suggestions as List).map((s) => s['id'] as String).toList();
+          if (suggestionIds.isNotEmpty) {
+            await _client.from('location_suggestion_votes').delete().inFilter('suggestion_id', suggestionIds);
+          }
+          
+          // 4.2.9: location_suggestions (FK para events)
+          await _client.from('location_suggestions').delete().inFilter('event_id', eventIds);
+          
+          // 4.2.10: group_photos (FK para events) + storage files
+          final photos = await _client.from('group_photos').select('storage_path').inFilter('event_id', eventIds);
+          final photoPaths = (photos as List).map((p) => p['storage_path'] as String).toList();
+          if (photoPaths.isNotEmpty) {
             try {
-              
-              // List all files in the group's folder
-              final filesList = await _client.storage
-                  .from(_bucketName)
-                  .list(path: 'groups/$groupId');
-              
-              // Extract file paths (append folder prefix to each file name)
-              final filePaths = filesList
-                  .map((file) => 'groups/$groupId/${file.name}')
-                  .toList();
-              
-              if (filePaths.isNotEmpty) {
-                // Delete all files in the folder
-                await _client.storage
-                    .from(_bucketName)
-                    .remove(filePaths);
-              } else {
-              }
-            } catch (e) {
-                            // Continue mesmo se falhar a remoção da imagem
+              await _client.storage.from(_bucketName).remove(photoPaths);
+            } catch (_) {
+              // Continue mesmo se falhar a remoção do storage
             }
           }
+          await _client.from('group_photos').delete().inFilter('event_id', eventIds);
+          
+          // 4.2.11: photos (FK para events)
+          await _client.from('photos').delete().inFilter('event_id', eventIds);
+          
+          // 4.2.12: notifications relacionadas aos eventos
+          await _client.from('notifications').delete().inFilter('event_id', eventIds);
+          
+          // 4.2.13: events (FK para groups)
+          await _client.from('events').delete().inFilter('id', eventIds);
         }
         
-        // STEP 4.3: Remove todas as configurações restantes do grupo
+        // STEP 4.3: Apagar TODOS os ficheiros do folder do grupo no storage
+        try {
+          final filesList = await _client.storage
+              .from(_bucketName)
+              .list(path: 'groups/$groupId');
+          
+          if (filesList.isNotEmpty) {
+            final filePaths = filesList
+                .map((file) => 'groups/$groupId/${file.name}')
+                .toList();
+            
+            await _client.storage.from(_bucketName).remove(filePaths);
+          }
+        } catch (_) {
+          // Continue mesmo se falhar a remoção do storage
+        }
+        
+        // STEP 4.4: Remove todas as configurações restantes do grupo
         await _client
             .from('group_user_settings')
             .delete()
             .eq('group_id', groupId);
         
-        // STEP 4.4: Remove o grupo da tabela groups
+        // STEP 4.5: Remove todos os convites pendentes (FK constraint)
+        await _client
+            .from('group_invites')
+            .delete()
+            .eq('group_id', groupId);
+        
+        // STEP 4.6: Remove mensagens do grupo (se existirem)
+        await _client
+            .from('group_messages')
+            .delete()
+            .eq('group_id', groupId);
+        
+        // STEP 4.7: Remove notificações do grupo (se existirem)
+        await _client
+            .from('notifications')
+            .delete()
+            .eq('group_id', groupId);
+        
+        // STEP 4.8: Remove o grupo da tabela groups (último passo)
         await _client
             .from('groups')
             .delete()
             .eq('id', groupId);
-        
       }
-      
     } catch (e) {
       throw Exception('Failed to leave group: $e');
     }
