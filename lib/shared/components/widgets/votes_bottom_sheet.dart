@@ -631,14 +631,6 @@ class _VoteItem extends StatelessWidget {
                   color: BrandColors.text2,
                 ),
               ),
-            
-            // Chevron indicator (always show for navigation)
-            const SizedBox(width: Gaps.xs),
-            const Icon(
-              Icons.chevron_right_rounded,
-              color: BrandColors.text2,
-              size: 16,
-            ),
           ],
         ),
       ),
