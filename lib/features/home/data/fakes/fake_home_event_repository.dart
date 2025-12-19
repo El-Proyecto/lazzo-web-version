@@ -594,4 +594,19 @@ class FakeHomeEventRepository implements HomeEventRepository {
       ),
     ];
   }
+
+  @override
+  Future<List<HomeEventEntity>> getLivingAndRecapEvents() async {
+    // Simulate network delay
+    await Future.delayed(const Duration(milliseconds: 500));
+
+    // Check mock empty state
+    if (mockEmptyState == 'no-events') {
+      return []; // Return empty list
+    }
+
+    // Return empty for normal state (no living/recap by default)
+    // To test multiple living/recap events, you can return mock data here
+    return [];
+  }
 }

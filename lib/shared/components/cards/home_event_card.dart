@@ -146,7 +146,7 @@ class _HomeEventCardState extends ConsumerState<HomeEventCard> {
       case HomeEventCardState.confirmed:
         return 'Confirmed';
       case HomeEventCardState.living:
-        return 'Living';
+        return 'Live';
       case HomeEventCardState.recap:
         return 'Recap';
     }
@@ -302,8 +302,9 @@ class _HomeEventCardState extends ConsumerState<HomeEventCard> {
     // Get current user ID and avatar
     final currentUser = Supabase.instance.client.auth.currentUser;
     final currentUserId = currentUser?.id;
-    final currentUserAvatar = currentUser?.userMetadata?['avatar_url'] as String?;
-    
+    final currentUserAvatar =
+        currentUser?.userMetadata?['avatar_url'] as String?;
+
     VotesBottomSheet.show(
       context: context,
       allVotes: _currentEvent.allVotes,
