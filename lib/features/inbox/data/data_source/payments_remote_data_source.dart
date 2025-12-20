@@ -13,16 +13,21 @@ class PaymentsRemoteDataSource {
   /// debtor_user_id matches the provided userId
   Future<List<PaymentDebtDto>> getDebtsUserOwes(String userId) async {
     try {
+      print(
+          '[PaymentsDataSource] Fetching debts user owes for userId: $userId');
       final response = await _supabase
           .from('user_payment_debts_view')
           .select()
           .eq('debtor_user_id', userId)
           .order('created_at', ascending: false);
 
+      print(
+          '[PaymentsDataSource] User owes query returned ${(response as List).length} debts');
       return (response as List)
           .map((json) => PaymentDebtDto.fromJson(json as Map<String, dynamic>))
           .toList();
     } catch (e) {
+      print('[PaymentsDataSource] ❌ Error fetching debts user owes: $e');
       throw Exception('Failed to fetch debts user owes: $e');
     }
   }
@@ -33,16 +38,21 @@ class PaymentsRemoteDataSource {
   /// paid_by_user_id matches the provided userId
   Future<List<PaymentDebtDto>> getDebtsOwedToUser(String userId) async {
     try {
+      print(
+          '[PaymentsDataSource] Fetching debts owed to user for userId: $userId');
       final response = await _supabase
           .from('user_payment_debts_view')
           .select()
           .eq('paid_by_user_id', userId)
           .order('created_at', ascending: false);
 
+      print(
+          '[PaymentsDataSource] Owed to user query returned ${(response as List).length} debts');
       return (response as List)
           .map((json) => PaymentDebtDto.fromJson(json as Map<String, dynamic>))
           .toList();
     } catch (e) {
+      print('[PaymentsDataSource] ❌ Error fetching debts owed to user: $e');
       throw Exception('Failed to fetch debts owed to user: $e');
     }
   }

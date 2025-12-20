@@ -151,10 +151,10 @@ class _ExpenseDetailBottomSheetState extends State<ExpenseDetailBottomSheet> {
                       paidParticipants.length,
                       BrandColors.planning,
                     ),
-                    const SizedBox(height: Gaps.xs),
+                    const SizedBox(height: Gaps.sm),
                     ...paidParticipants
                         .map((p) => _buildParticipantRow(p, true)),
-                    const SizedBox(height: Gaps.lg),
+                    const SizedBox(height: Gaps.sm),
                   ],
 
                   // Owes section
@@ -164,13 +164,13 @@ class _ExpenseDetailBottomSheetState extends State<ExpenseDetailBottomSheet> {
                       oweParticipants.length,
                       BrandColors.cantVote,
                     ),
-                    const SizedBox(height: Gaps.xs),
+                    const SizedBox(height: Gaps.sm),
                     ...oweParticipants
                         .map((p) => _buildParticipantRow(p, false)),
                   ],
 
                   // Bottom spacing
-                  SizedBox(height: showButton ? 32 : Pads.sectionH),
+                  const SizedBox(height: Gaps.xs),
                 ],
               ),
             ),
@@ -219,7 +219,7 @@ class _ExpenseDetailBottomSheetState extends State<ExpenseDetailBottomSheet> {
                 ),
               ),
               Text(
-                '€${widget.expense.amount.toStringAsFixed(2)}',
+                '${widget.expense.amount.toStringAsFixed(2)}€',
                 style: AppText.titleMediumEmph.copyWith(
                   color: BrandColors.text1,
                 ),
@@ -237,7 +237,7 @@ class _ExpenseDetailBottomSheetState extends State<ExpenseDetailBottomSheet> {
                 ),
               ),
               Text(
-                '€${singleAmount.toStringAsFixed(2)} each',
+                '${singleAmount.toStringAsFixed(2)}€ each',
                 style: AppText.bodyMedium.copyWith(
                   color: BrandColors.text2,
                 ),
@@ -293,13 +293,6 @@ class _ExpenseDetailBottomSheetState extends State<ExpenseDetailBottomSheet> {
                 Text(
                   participant.name,
                   style: AppText.bodyMedium.copyWith(color: BrandColors.text1),
-                ),
-                Text(
-                  '€${participant.amount.toStringAsFixed(2)}', // ✅ Show split amount
-                  style: AppText.bodyMedium.copyWith(
-                    color: BrandColors.text2,
-                    fontSize: 12,
-                  ),
                 ),
               ],
             ),
@@ -483,7 +476,7 @@ class _ExpenseDetailBottomSheetState extends State<ExpenseDetailBottomSheet> {
           child: Text(
             hasPaid
                 ? 'Already Paid'
-                : 'Mark €${amount.toStringAsFixed(2)} as paid',
+                : 'Mark ${amount.toStringAsFixed(2)}€ as paid',
             style: AppText.bodyMediumEmph.copyWith(
               color: hasPaid ? BrandColors.text2 : BrandColors.text1,
             ),

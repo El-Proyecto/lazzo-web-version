@@ -56,7 +56,7 @@ class PaymentDetailsBottomSheet extends StatelessWidget {
                     ),
                   ),
                   Text(
-                    '€${paymentGroup.totalAmount.toStringAsFixed(2)}',
+                    '${paymentGroup.totalAmount.toStringAsFixed(2)}€',
                     style: AppText.titleMediumEmph.copyWith(
                       color: paymentGroup.isOwedToUser
                           ? BrandColors.planning
@@ -80,6 +80,41 @@ class PaymentDetailsBottomSheet extends StatelessWidget {
                 ),
               ),
             ),
+
+            // Mark as paid button (only show if user owes money)
+            if (!paymentGroup.isOwedToUser)
+              Padding(
+                padding: const EdgeInsets.only(
+                  left: Pads.sectionH,
+                  right: Pads.sectionH,
+                  bottom: Pads.sectionH,
+                ),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      // TODO: Implement mark all as paid functionality
+                      Navigator.of(context).pop();
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: BrandColors.planning,
+                      foregroundColor: BrandColors.text1,
+                      padding: const EdgeInsets.symmetric(
+                        vertical: Gaps.md,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(Radii.md),
+                      ),
+                    ),
+                    child: Text(
+                      'Mark ${paymentGroup.totalAmount.toStringAsFixed(2)}€ as paid',
+                      style: AppText.labelLarge.copyWith(
+                        color: BrandColors.text1,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
 
             // Bottom safe area
             SizedBox(height: MediaQuery.of(context).padding.bottom),
@@ -139,7 +174,7 @@ class PaymentDetailsBottomSheet extends StatelessWidget {
                   ),
                 ),
                 Text(
-                  '${paymentIsOwedToUser ? '+' : '-'}€${payment.amount.toStringAsFixed(2)}',
+                  '${payment.amount.toStringAsFixed(2)}€',
                   style: AppText.bodyMediumEmph.copyWith(
                     color: paymentIsOwedToUser
                         ? BrandColors.planning

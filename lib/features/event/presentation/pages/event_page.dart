@@ -714,26 +714,40 @@ class _EventPageState extends ConsumerState<EventPage> {
                           return a.name.compareTo(b.name);
                         });
 
-                        return EventExpensesWidget(
-                          eventId: eventId,
-                          mode: ChatMode.planning,
-                          participants: participantOptions,
-                          onAddExpense:
-                              (title, paidById, participantsOwe, amount) async {
-                            ref
-                                .read(eventExpensesProvider(eventId).notifier)
-                                .addExpense(
-                              description: title,
-                              amount: amount,
-                              paidBy: paidById,
-                              participantsOwe: participantsOwe,
-                              participantsPaid: [],
-                            );
-                          },
+                        // Determine if expenses widget should be shrinked based on expenses count
+                        final expensesAsync =
+                            ref.watch(eventExpensesProvider(eventId));
+                        final isExpensesShrinked = expensesAsync.maybeWhen(
+                          data: (expenses) => expenses.isEmpty,
+                          orElse: () => false,
+                        );
+
+                        return Padding(
+                          padding: EdgeInsets.only(
+                            top: isExpensesShrinked ? 0 : Gaps.lg,
+                          ),
+                          child: EventExpensesWidget(
+                            eventId: eventId,
+                            mode: ChatMode.planning,
+                            participants: participantOptions,
+                            onAddExpense: (title, paidById, participantsOwe,
+                                amount) async {
+                              ref
+                                  .read(eventExpensesProvider(eventId).notifier)
+                                  .addExpense(
+                                description: title,
+                                amount: amount,
+                                paidBy: paidById,
+                                participantsOwe: participantsOwe,
+                                participantsPaid: [],
+                              );
+                            },
+                          ),
                         );
                       },
                     ) ??
-                    const SizedBox.shrink(), // Default when no data yet
+                    const SizedBox.shrink(),
+
                 const SizedBox(height: Gaps.lg),
 
                 // Location Widget (if location is set)
