@@ -296,7 +296,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                     placeholder: 'Search groups, events, memories...',
                     enabled: false,
                     onTap: () {
-                      // TODO: Navigate to search page
+                      Navigator.pushNamed(context, AppRouter.homeSearch);
                     },
                   ),
                 ),
@@ -513,7 +513,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                                               const SizedBox(height: Gaps.sm),
                                           ],
                                         );
-                                      }).toList(),
+                                      }),
                                     ],
                                   ],
                                 ),
@@ -597,7 +597,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                                               const SizedBox(height: Gaps.sm),
                                           ],
                                         );
-                                      }).toList(),
+                                      }),
                                     ] else if (recapEvents.length > 1) ...[
                                       const SizedBox(height: Gaps.sm),
                                       ...recapEvents
@@ -634,7 +634,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                                               const SizedBox(height: Gaps.sm),
                                           ],
                                         );
-                                      }).toList(),
+                                      }),
                                     ],
                                   ],
                                 ),
@@ -859,6 +859,9 @@ class _HomePageState extends ConsumerState<HomePage> {
                 // Component preserved: TodoCard in shared/components/cards/
                 // Provider preserved: todosControllerProvider (inactive)
               ], // End of EVENT SECTIONS
+
+              // Spacing after event sections
+              const SizedBox(height: Gaps.lg),
 
               // Payments Section (shows even without events)
               paymentsAsync.when(
