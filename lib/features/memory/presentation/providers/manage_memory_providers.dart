@@ -96,7 +96,9 @@ class ManageMemoryNotifier
       final memoryAsync = await ref.read(memoryDetailProvider(memoryId).future);
 
       if (memoryAsync == null) {
-        state = AsyncValue.error('Memory not found', StackTrace.current);
+        if (mounted) {
+          state = AsyncValue.error('Memory not found', StackTrace.current);
+        }
         return;
       }
 
@@ -104,7 +106,10 @@ class ManageMemoryNotifier
       final currentUserId = Supabase.instance.client.auth.currentUser?.id;
 
       if (currentUserId == null) {
-        state = AsyncValue.error('User not authenticated', StackTrace.current);
+        if (mounted) {
+          state =
+              AsyncValue.error('User not authenticated', StackTrace.current);
+        }
         return;
       }
 
@@ -121,22 +126,20 @@ class ManageMemoryNotifier
           return a.capturedAt.compareTo(b.capturedAt);
         });
 
-      final photoItems = sortedPhotos
-          .map((p) {
-            final isCurrentUser = p.uploaderId == currentUserId;
-            
-            return ManagePhotoItem(
-              id: p.id,
-              url: p.url,
-              thumbnailUrl: p.thumbnailUrl,
-              isPortrait: p.isPortrait,
-              uploaderId: p.uploaderId,
-              uploaderName: p.uploaderName,
-              profileImageUrl: p.profileImageUrl,
-              isUploadedByCurrentUser: isCurrentUser,
-            );
-          })
-          .toList();
+      final photoItems = sortedPhotos.map((p) {
+        final isCurrentUser = p.uploaderId == currentUserId;
+
+        return ManagePhotoItem(
+          id: p.id,
+          url: p.url,
+          thumbnailUrl: p.thumbnailUrl,
+          isPortrait: p.isPortrait,
+          uploaderId: p.uploaderId,
+          uploaderName: p.uploaderName,
+          profileImageUrl: p.profileImageUrl,
+          isUploadedByCurrentUser: isCurrentUser,
+        );
+      }).toList();
 
       // Upload selected photos from gallery (if provided)
       final selectedPhotoPaths = ref.read(selectedPhotoPathsProvider);
@@ -165,7 +168,10 @@ class ManageMemoryNotifier
         // Get real eventId from next event
         final nextEvent = await ref.read(nextEventControllerProvider.future);
         if (nextEvent == null) {
-          state = AsyncValue.error('No active event to upload photos', StackTrace.current);
+          if (mounted) {
+            state = AsyncValue.error(
+                'No active event to upload photos', StackTrace.current);
+          }
           return;
         }
 
@@ -179,14 +185,14 @@ class ManageMemoryNotifier
             .single();
 
         final groupId = eventData['group_id'] as String;
-        
+
         final dataSource = MemoryPhotoDataSource(Supabase.instance.client);
 
         for (int i = 0; i < selectedPhotoPaths.length; i++) {
           try {
             final filePath = selectedPhotoPaths[i];
             final file = File(filePath);
-            
+
             // Detect image orientation
             bool isPortrait = false;
             try {
@@ -237,8 +243,8 @@ class ManageMemoryNotifier
       }
 
       // Find cover photo from memory (cover photos have isCover = true)
-      final coverPhoto = memoryAsync.coverPhotos.isNotEmpty 
-          ? memoryAsync.coverPhotos.first 
+      final coverPhoto = memoryAsync.coverPhotos.isNotEmpty
+          ? memoryAsync.coverPhotos.first
           : null;
 
       ManagePhotoItem? currentCover;
@@ -269,26 +275,30 @@ class ManageMemoryNotifier
       const participantCount = 4; // Placeholder
       final maxPhotos = (20 > 5 * participantCount) ? 20 : 5 * participantCount;
 
-      state = AsyncValue.data(ManageMemoryState(
-        memoryId: memoryId,
-        allPhotos: photoItems,
-        selectedCover: currentCover,
-        maxPhotos: maxPhotos,
-        isHost: isHost,
-        currentUserId: currentUserId,
-      ));
+      if (mounted) {
+        state = AsyncValue.data(ManageMemoryState(
+          memoryId: memoryId,
+          allPhotos: photoItems,
+          selectedCover: currentCover,
+          maxPhotos: maxPhotos,
+          isHost: isHost,
+          currentUserId: currentUserId,
+        ));
+      }
     } catch (error, stackTrace) {
-      state = AsyncValue.error(error, stackTrace);
+      if (mounted) {
+        state = AsyncValue.error(error, stackTrace);
+      }
     }
   }
 
   /// Select a photo as cover and persist to Supabase
   Future<void> selectCover(ManagePhotoItem photo) async {
-    
-    
     state.whenData((currentState) async {
       // Update state immediately for UI responsiveness
-      state = AsyncValue.data(currentState.copyWith(selectedCover: photo));
+      if (mounted) {
+        state = AsyncValue.data(currentState.copyWith(selectedCover: photo));
+      }
 
       // Persist to Supabase
       try {
@@ -302,11 +312,11 @@ class ManageMemoryNotifier
 
   /// Remove cover selection and persist to Supabase
   Future<void> removeCover() async {
-    
-    
     state.whenData((currentState) async {
       // Update state immediately
-      state = AsyncValue.data(currentState.copyWith(clearCover: true));
+      if (mounted) {
+        state = AsyncValue.data(currentState.copyWith(clearCover: true));
+      }
 
       // Persist to Supabase (null = no cover)
       try {
@@ -327,8 +337,10 @@ class ManageMemoryNotifier
         final success = await removeUseCase(memoryId, photoId);
 
         if (!success) {
-          state =
-              AsyncValue.error('Failed to remove photo', StackTrace.current);
+          if (mounted) {
+            state =
+                AsyncValue.error('Failed to remove photo', StackTrace.current);
+          }
           return;
         }
 
@@ -339,12 +351,16 @@ class ManageMemoryNotifier
         // Clear cover if removed photo was the cover
         final clearCover = currentState.selectedCover?.id == photoId;
 
-        state = AsyncValue.data(currentState.copyWith(
-          allPhotos: updatedPhotos,
-          clearCover: clearCover,
-        ));
+        if (mounted) {
+          state = AsyncValue.data(currentState.copyWith(
+            allPhotos: updatedPhotos,
+            clearCover: clearCover,
+          ));
+        }
       } catch (error, stackTrace) {
-        state = AsyncValue.error(error, stackTrace);
+        if (mounted) {
+          state = AsyncValue.error(error, stackTrace);
+        }
       }
     });
   }
@@ -353,15 +369,16 @@ class ManageMemoryNotifier
   Future<void> saveChanges() async {
     state.whenData((currentState) async {
       try {
-        
         // Call use case to update cover
         final updateUseCase = ref.read(updateMemoryCoverUseCaseProvider);
         await updateUseCase(memoryId, currentState.selectedCover?.id);
-        
+
         // Invalidate the memory detail provider so it refetches with updated cover
         ref.invalidate(memoryDetailProvider(memoryId));
       } catch (error, stackTrace) {
-        state = AsyncValue.error(error, stackTrace);
+        if (mounted) {
+          state = AsyncValue.error(error, stackTrace);
+        }
       }
     });
   }

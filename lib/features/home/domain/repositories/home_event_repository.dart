@@ -11,4 +11,7 @@ abstract class HomeEventRepository {
 
   /// Get list of pending events
   Future<List<HomeEventEntity>> getPendingEvents();
+
+  /// Get all living and recap events sorted by time remaining
+  Future<List<HomeEventEntity>> getLivingAndRecapEvents();
 }

@@ -10,6 +10,7 @@ import '../../domain/repositories/recent_memory_repository.dart';
 import '../../domain/usecases/get_next_event.dart';
 import '../../domain/usecases/get_confirmed_events.dart';
 import '../../domain/usecases/get_home_pending_events.dart';
+import '../../domain/usecases/get_living_and_recap_events.dart';
 import '../../domain/usecases/get_todos.dart';
 import '../../domain/usecases/get_recent_memories.dart';
 import '../../data/fakes/fake_home_event_repository.dart';
@@ -49,6 +50,11 @@ final getConfirmedEventsProvider = Provider<GetConfirmedEvents>((ref) {
 
 final getHomePendingEventsProvider = Provider<GetHomePendingEvents>((ref) {
   return GetHomePendingEvents(ref.watch(homeEventRepositoryProvider));
+});
+
+final getLivingAndRecapEventsProvider =
+    Provider<GetLivingAndRecapEvents>((ref) {
+  return GetLivingAndRecapEvents(ref.watch(homeEventRepositoryProvider));
 });
 
 final getTodosProvider = Provider<GetTodos>((ref) {
@@ -171,6 +177,12 @@ final totalBalanceControllerProvider =
 final recentMemoriesControllerProvider =
     FutureProvider.autoDispose<List<RecentMemoryEntity>>((ref) async {
   final useCase = ref.watch(getRecentMemoriesProvider);
+  return await useCase();
+});
+
+final livingAndRecapEventsControllerProvider =
+    FutureProvider.autoDispose<List<HomeEventEntity>>((ref) async {
+  final useCase = ref.watch(getLivingAndRecapEventsProvider);
   return await useCase();
 });
 

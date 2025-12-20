@@ -19,7 +19,7 @@ class HomeEventRepositoryImpl implements HomeEventRepository {
       final authState = ref.read(authProvider);
       return authState.valueOrNull?.id;
     } catch (e) {
-            return null;
+      return null;
     }
   }
 
@@ -27,7 +27,7 @@ class HomeEventRepositoryImpl implements HomeEventRepository {
   Future<HomeEventEntity?> getNextEvent() async {
     final userId = _currentUserId;
     if (userId == null) {
-            return null;
+      return null;
     }
     return await dataSource.fetchNextEvent(userId);
   }
@@ -36,7 +36,7 @@ class HomeEventRepositoryImpl implements HomeEventRepository {
   Future<List<HomeEventEntity>> getConfirmedEvents() async {
     final userId = _currentUserId;
     if (userId == null) {
-            return [];
+      return [];
     }
     return await dataSource.fetchConfirmedEvents(userId);
   }
@@ -45,8 +45,17 @@ class HomeEventRepositoryImpl implements HomeEventRepository {
   Future<List<HomeEventEntity>> getPendingEvents() async {
     final userId = _currentUserId;
     if (userId == null) {
-            return [];
+      return [];
     }
     return await dataSource.fetchPendingEvents(userId);
+  }
+
+  @override
+  Future<List<HomeEventEntity>> getLivingAndRecapEvents() async {
+    final userId = _currentUserId;
+    if (userId == null) {
+      return [];
+    }
+    return await dataSource.fetchLivingAndRecapEvents(userId);
   }
 }

@@ -5,6 +5,7 @@ import '../../../../shared/components/inputs/search_bar.dart' as custom;
 import '../../../../shared/components/sections/section_block.dart';
 import '../../../../shared/components/cards/home_event_card.dart';
 import '../../../../shared/components/cards/event_small_card.dart';
+import '../../../../shared/components/cards/event_full_card.dart';
 // import '../../../../shared/components/cards/todo_card.dart'; // MVP: Actions removed, preserved for P2
 import '../../../../shared/components/cards/payment_summary_card.dart';
 import '../../../../shared/components/cards/recent_memory_card.dart';
@@ -14,6 +15,7 @@ import '../../../../shared/themes/colors.dart';
 import '../../../../shared/layouts/main_layout_providers.dart';
 import '../../../groups/presentation/providers/groups_provider.dart';
 import '../../../inbox/presentation/providers/payments_provider.dart';
+import '../../../group_hub/domain/entities/group_event_entity.dart';
 import '../widgets/no_groups_yet_card.dart';
 import '../widgets/no_upcoming_events_card.dart';
 import '../providers/home_event_providers.dart';
@@ -75,6 +77,7 @@ class _HomePageState extends ConsumerState<HomePage> {
     ref.invalidate(nextEventControllerProvider);
     ref.invalidate(confirmedEventsControllerProvider);
     ref.invalidate(homeEventsControllerProvider);
+    ref.invalidate(livingAndRecapEventsControllerProvider);
     ref.invalidate(todosControllerProvider);
     ref.invalidate(recentMemoriesControllerProvider);
     ref.invalidate(paymentSummariesControllerProvider);
@@ -137,6 +140,40 @@ class _HomePageState extends ConsumerState<HomePage> {
     }
   }
 
+  GroupEventEntity _convertHomeEventToGroupEvent(HomeEventEntity event) {
+    return GroupEventEntity(
+      id: event.id,
+      name: event.name,
+      emoji: event.emoji,
+      date: event.date,
+      endDate: event.endDate,
+      location: event.location,
+      status: _mapHomeStatusToGroupStatus(event.status),
+      goingCount: event.goingCount,
+      participantCount: event.attendeeNames.length,
+      attendeeAvatars: event.attendeeAvatars,
+      attendeeNames: event.attendeeNames,
+      userVote: event.userVote,
+      allVotes: event.allVotes,
+      photoCount: event.photoCount,
+      maxPhotos: event.maxPhotos,
+      participantPhotos: event.participantPhotos,
+    );
+  }
+
+  GroupEventStatus _mapHomeStatusToGroupStatus(HomeEventStatus status) {
+    switch (status) {
+      case HomeEventStatus.pending:
+        return GroupEventStatus.pending;
+      case HomeEventStatus.confirmed:
+        return GroupEventStatus.confirmed;
+      case HomeEventStatus.living:
+        return GroupEventStatus.living;
+      case HomeEventStatus.recap:
+        return GroupEventStatus.recap;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     // Listen for scroll-to-top trigger (when tapping active NavBar tab)
@@ -155,6 +192,8 @@ class _HomePageState extends ConsumerState<HomePage> {
     final nextEventAsync = ref.watch(nextEventControllerProvider);
     final confirmedEventsAsync = ref.watch(confirmedEventsControllerProvider);
     final pendingEventsAsync = ref.watch(homeEventsControllerProvider);
+    final livingAndRecapEventsAsync =
+        ref.watch(livingAndRecapEventsControllerProvider);
     // final todosAsync = ref.watch(todosControllerProvider); // MVP: Actions removed, preserved for P2
     final paymentsAsync = ref.watch(paymentSummariesControllerProvider);
     final totalBalanceAsync = ref.watch(totalBalanceControllerProvider);
@@ -234,6 +273,7 @@ class _HomePageState extends ConsumerState<HomePage> {
               ref.read(nextEventControllerProvider.future),
               ref.read(confirmedEventsControllerProvider.future),
               ref.read(homeEventsControllerProvider.future),
+              ref.read(livingAndRecapEventsControllerProvider.future),
               ref.read(todosControllerProvider.future),
               ref.read(recentMemoriesControllerProvider.future),
               ref.read(paymentSummariesControllerProvider.future),
@@ -256,7 +296,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                     placeholder: 'Search groups, events, memories...',
                     enabled: false,
                     onTap: () {
-                      // TODO: Navigate to search page
+                      Navigator.pushNamed(context, AppRouter.homeSearch);
                     },
                   ),
                 ),
@@ -330,79 +370,284 @@ class _HomePageState extends ConsumerState<HomePage> {
 
               // EVENT SECTIONS - Only show if NOT in empty state
               if (!showNoGroupsCard && !showNoEventsCard) ...[
-                // Next Event Section
-                nextEventAsync.when(
-                  data: (event) {
-                    if (event == null) {
-                      return const SizedBox.shrink();
+                // Living and Recap Events Sections
+                livingAndRecapEventsAsync.when(
+                  data: (allLivingAndRecapEvents) {
+                    if (allLivingAndRecapEvents.isEmpty) {
+                      // No living/recap events, show Next Event section
+                      return nextEventAsync.when(
+                        data: (event) {
+                          if (event == null) {
+                            return const SizedBox.shrink();
+                          }
+
+                          return Column(
+                            children: [
+                              SectionBlock(
+                                title: 'Next Event',
+                                child: HomeEventCard(
+                                  event: event,
+                                  state:
+                                      _mapStatusToHomeCardState(event.status),
+                                  onTap: () async {
+                                    await Navigator.pushNamed(
+                                      context,
+                                      AppRouter.event,
+                                      arguments: {'eventId': event.id},
+                                    );
+                                  },
+                                  onChatPressed: () {
+                                    // TODO: Navigate to event chat
+                                  },
+                                  onExpensePressed: () {
+                                    // Handled inside HomeEventCard
+                                  },
+                                  onVoteChanged: (eventId, vote) {
+                                    debugPrint(
+                                      'Vote changed for event $eventId: $vote',
+                                    );
+                                  },
+                                ),
+                              ),
+                              const SizedBox(height: Gaps.lg),
+                            ],
+                          );
+                        },
+                        loading: () => SectionBlock(
+                          title: 'Next Event',
+                          child: Container(
+                            height: 200,
+                            decoration: BoxDecoration(
+                              color: Theme.of(context).colorScheme.surface,
+                              borderRadius: BorderRadius.circular(Radii.md),
+                            ),
+                            child: const Center(
+                              child: CircularProgressIndicator(),
+                            ),
+                          ),
+                        ),
+                        error: (error, stackTrace) => const SizedBox.shrink(),
+                      );
                     }
 
-                    // Determine section title based on event status
-                    String sectionTitle;
-                    switch (event.status) {
-                      case HomeEventStatus.living:
-                        sectionTitle = 'Live Event';
-                        break;
-                      case HomeEventStatus.recap:
-                        sectionTitle = 'Recap Event';
-                        break;
-                      case HomeEventStatus.pending:
-                      case HomeEventStatus.confirmed:
-                        sectionTitle = 'Next Event';
-                        break;
-                    }
+                    // Separate living and recap events
+                    final livingEvents = allLivingAndRecapEvents
+                        .where((e) => e.status == HomeEventStatus.living)
+                        .toList();
+                    final recapEvents = allLivingAndRecapEvents
+                        .where((e) => e.status == HomeEventStatus.recap)
+                        .toList();
 
                     return Column(
                       children: [
-                        SectionBlock(
-                          title: sectionTitle,
-                          child: HomeEventCard(
-                            event: event,
-                            state: _mapStatusToHomeCardState(event.status),
-                            onTap: () async {
-                              // Navigate based on event status
-                              if (event.status == HomeEventStatus.living) {
-                                // Living event → EventLivingPage
-                                await Navigator.pushNamed(
-                                  context,
-                                  AppRouter.eventLiving,
-                                  arguments: {'eventId': event.id},
-                                );
-                              } else if (event.status == HomeEventStatus.recap) {
-                                await Navigator.pushNamed(
-                                  context,
-                                  AppRouter.memory,
-                                  arguments: {'memoryId': event.id},
-                                );
-                              } else {
-                                // Other statuses → EventPage (planning/confirmed/recap)
-                                await Navigator.pushNamed(
-                                  context,
-                                  AppRouter.event,
-                                  arguments: {'eventId': event.id},
-                                );
-                              }
-                            },
-                            onChatPressed: () {
-                              // TODO: Navigate to event chat
-                            },
-                            onExpensePressed: () {
-                              // Handled inside HomeEventCard
-                            },
-                            onVoteChanged: (eventId, vote) {
-                              // TODO: Update vote in backend
-                              debugPrint(
-                                'Vote changed for event $eventId: $vote',
-                              );
-                            },
+                        // Live Events section
+                        if (livingEvents.isNotEmpty) ...[
+                          Column(
+                            children: [
+                              SectionBlock(
+                                title: livingEvents.length == 1
+                                    ? 'Live Event'
+                                    : 'Live Events',
+                                child: Column(
+                                  children: [
+                                    // Hero card for first living event
+                                    HomeEventCard(
+                                      event: livingEvents.first,
+                                      state: HomeEventCardState.living,
+                                      onTap: () async {
+                                        await Navigator.pushNamed(
+                                          context,
+                                          AppRouter.eventLiving,
+                                          arguments: {
+                                            'eventId': livingEvents.first.id
+                                          },
+                                        );
+                                      },
+                                      onChatPressed: () {
+                                        // TODO: Navigate to event chat
+                                      },
+                                      onExpensePressed: () {
+                                        // Handled inside HomeEventCard
+                                      },
+                                      onVoteChanged: (eventId, vote) {
+                                        debugPrint(
+                                          'Vote changed for event $eventId: $vote',
+                                        );
+                                      },
+                                    ),
+
+                                    // Additional living events as EventFullCard
+                                    if (livingEvents.length > 1) ...[
+                                      const SizedBox(height: Gaps.sm),
+                                      ...livingEvents
+                                          .skip(1)
+                                          .toList()
+                                          .asMap()
+                                          .entries
+                                          .map((entry) {
+                                        final index = entry.key;
+                                        final event = entry.value;
+                                        return Column(
+                                          children: [
+                                            EventFullCard(
+                                              event:
+                                                  _convertHomeEventToGroupEvent(
+                                                      event),
+                                              state: EventFullCardState.living,
+                                              onTap: () async {
+                                                await Navigator.pushNamed(
+                                                  context,
+                                                  AppRouter.eventLiving,
+                                                  arguments: {
+                                                    'eventId': event.id
+                                                  },
+                                                );
+                                              },
+                                              onVoteChanged: (eventId, vote) {
+                                                debugPrint(
+                                                  'Vote changed for event $eventId: $vote',
+                                                );
+                                              },
+                                            ),
+                                            if (index < livingEvents.length - 2)
+                                              const SizedBox(height: Gaps.sm),
+                                          ],
+                                        );
+                                      }),
+                                    ],
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(height: Gaps.lg),
+                            ],
                           ),
-                        ),
-                        const SizedBox(height: Gaps.lg),
+                        ],
+
+                        // Recaps section
+                        if (recapEvents.isNotEmpty) ...[
+                          Column(
+                            children: [
+                              SectionBlock(
+                                title: recapEvents.length == 1 &&
+                                        livingEvents.isEmpty
+                                    ? 'Recap'
+                                    : 'Recaps',
+                                child: Column(
+                                  children: [
+                                    // Hero card for first recap event (only if no living events)
+                                    if (livingEvents.isEmpty)
+                                      HomeEventCard(
+                                        event: recapEvents.first,
+                                        state: HomeEventCardState.recap,
+                                        onTap: () async {
+                                          await Navigator.pushNamed(
+                                            context,
+                                            AppRouter.memory,
+                                            arguments: {
+                                              'memoryId': recapEvents.first.id
+                                            },
+                                          );
+                                        },
+                                        onChatPressed: () {
+                                          // TODO: Navigate to event chat
+                                        },
+                                        onExpensePressed: () {
+                                          // Handled inside HomeEventCard
+                                        },
+                                        onVoteChanged: (eventId, vote) {
+                                          debugPrint(
+                                            'Vote changed for event $eventId: $vote',
+                                          );
+                                        },
+                                      ),
+
+                                    // Additional recap events as EventFullCard
+                                    // If living exists, all recap events use EventFullCard
+                                    // If no living, skip first recap (already shown as hero)
+                                    if (livingEvents.isNotEmpty) ...[
+                                      ...recapEvents
+                                          .asMap()
+                                          .entries
+                                          .map((entry) {
+                                        final index = entry.key;
+                                        final event = entry.value;
+                                        return Column(
+                                          children: [
+                                            EventFullCard(
+                                              event:
+                                                  _convertHomeEventToGroupEvent(
+                                                      event),
+                                              state: EventFullCardState.recap,
+                                              onTap: () async {
+                                                await Navigator.pushNamed(
+                                                  context,
+                                                  AppRouter.memory,
+                                                  arguments: {
+                                                    'memoryId': event.id
+                                                  },
+                                                );
+                                              },
+                                              onVoteChanged: (eventId, vote) {
+                                                debugPrint(
+                                                  'Vote changed for event $eventId: $vote',
+                                                );
+                                              },
+                                            ),
+                                            if (index < recapEvents.length - 1)
+                                              const SizedBox(height: Gaps.sm),
+                                          ],
+                                        );
+                                      }),
+                                    ] else if (recapEvents.length > 1) ...[
+                                      const SizedBox(height: Gaps.sm),
+                                      ...recapEvents
+                                          .skip(1)
+                                          .toList()
+                                          .asMap()
+                                          .entries
+                                          .map((entry) {
+                                        final index = entry.key;
+                                        final event = entry.value;
+                                        return Column(
+                                          children: [
+                                            EventFullCard(
+                                              event:
+                                                  _convertHomeEventToGroupEvent(
+                                                      event),
+                                              state: EventFullCardState.recap,
+                                              onTap: () async {
+                                                await Navigator.pushNamed(
+                                                  context,
+                                                  AppRouter.memory,
+                                                  arguments: {
+                                                    'memoryId': event.id
+                                                  },
+                                                );
+                                              },
+                                              onVoteChanged: (eventId, vote) {
+                                                debugPrint(
+                                                  'Vote changed for event $eventId: $vote',
+                                                );
+                                              },
+                                            ),
+                                            if (index < recapEvents.length - 2)
+                                              const SizedBox(height: Gaps.sm),
+                                          ],
+                                        );
+                                      }),
+                                    ],
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(height: Gaps.lg),
+                            ],
+                          ),
+                        ],
                       ],
                     );
                   },
                   loading: () => SectionBlock(
-                    title: 'Next Event',
+                    title: 'Live Events',
                     child: Container(
                       height: 200,
                       decoration: BoxDecoration(
@@ -414,7 +659,90 @@ class _HomePageState extends ConsumerState<HomePage> {
                       ),
                     ),
                   ),
-                  error: (error, stackTrace) => const SizedBox.shrink(),
+                  error: (error, stackTrace) {
+                    // If error, fall back to showing Next Event
+                    return nextEventAsync.when(
+                      data: (event) {
+                        if (event == null) {
+                          return const SizedBox.shrink();
+                        }
+
+                        String sectionTitle;
+                        switch (event.status) {
+                          case HomeEventStatus.living:
+                            sectionTitle = 'Live Event';
+                            break;
+                          case HomeEventStatus.recap:
+                            sectionTitle = 'Recap Event';
+                            break;
+                          case HomeEventStatus.pending:
+                          case HomeEventStatus.confirmed:
+                            sectionTitle = 'Next Event';
+                            break;
+                        }
+
+                        return Column(
+                          children: [
+                            SectionBlock(
+                              title: sectionTitle,
+                              child: HomeEventCard(
+                                event: event,
+                                state: _mapStatusToHomeCardState(event.status),
+                                onTap: () async {
+                                  // Navigate based on event status
+                                  if (event.status == HomeEventStatus.living) {
+                                    await Navigator.pushNamed(
+                                      context,
+                                      AppRouter.eventLiving,
+                                      arguments: {'eventId': event.id},
+                                    );
+                                  } else if (event.status ==
+                                      HomeEventStatus.recap) {
+                                    await Navigator.pushNamed(
+                                      context,
+                                      AppRouter.memory,
+                                      arguments: {'memoryId': event.id},
+                                    );
+                                  } else {
+                                    await Navigator.pushNamed(
+                                      context,
+                                      AppRouter.event,
+                                      arguments: {'eventId': event.id},
+                                    );
+                                  }
+                                },
+                                onChatPressed: () {
+                                  // TODO: Navigate to event chat
+                                },
+                                onExpensePressed: () {
+                                  // Handled inside HomeEventCard
+                                },
+                                onVoteChanged: (eventId, vote) {
+                                  debugPrint(
+                                    'Vote changed for event $eventId: $vote',
+                                  );
+                                },
+                              ),
+                            ),
+                          ],
+                        );
+                      },
+                      loading: () => SectionBlock(
+                        title: 'Next Event',
+                        child: Container(
+                          height: 200,
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).colorScheme.surface,
+                            borderRadius: BorderRadius.circular(Radii.md),
+                          ),
+                          child: const Center(
+                            child: CircularProgressIndicator(),
+                          ),
+                        ),
+                      ),
+                      error: (error, stackTrace) => const SizedBox.shrink(),
+                    );
+                  },
                 ),
 
                 // Confirmed Events Section
@@ -531,6 +859,9 @@ class _HomePageState extends ConsumerState<HomePage> {
                 // Component preserved: TodoCard in shared/components/cards/
                 // Provider preserved: todosControllerProvider (inactive)
               ], // End of EVENT SECTIONS
+
+              // Spacing after event sections
+              const SizedBox(height: Gaps.lg),
 
               // Payments Section (shows even without events)
               paymentsAsync.when(

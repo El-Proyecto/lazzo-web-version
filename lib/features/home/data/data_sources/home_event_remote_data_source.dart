@@ -41,17 +41,17 @@ class HomeEventRemoteDataSource {
       // ✅ Convert all events and find highest priority
       // Pass callback to persist status changes
       final eventsFutures = data.map((e) => homeEventFromMap(
-        e as Map<String, dynamic>,
-        onStatusMismatch: (eventId, newStatus) {
-          // Persist status change asynchronously (fire and forget)
-          updateEventStatus(eventId, newStatus).catchError((error) {
-                        return false;
-          });
-        },
-        currentUserId: userId,
-        supabaseClient: client,
-      ));
-      
+            e as Map<String, dynamic>,
+            onStatusMismatch: (eventId, newStatus) {
+              // Persist status change asynchronously (fire and forget)
+              updateEventStatus(eventId, newStatus).catchError((error) {
+                return false;
+              });
+            },
+            currentUserId: userId,
+            supabaseClient: client,
+          ));
+
       final events = await Future.wait(eventsFutures);
 
       // Priority order: living (4) > recap (3) > confirmed (2) > pending (1)
@@ -71,15 +71,13 @@ class HomeEventRemoteDataSource {
       final nextEvent = events.first;
       return nextEvent;
     } catch (e) {
-            return null;
+      return null;
     }
   }
 
   /// Fetch confirmed events (user voted yes, not next event)
   Future<List<HomeEventEntity>> fetchConfirmedEvents(String userId) async {
     try {
-
-
       final response = await client
           .from(_eventsView)
           .select('''
@@ -98,18 +96,17 @@ class HomeEventRemoteDataSource {
 
       final data = response as List<dynamic>;
 
-
       final eventsFutures = data.map((e) => homeEventFromMap(
-        e as Map<String, dynamic>,
-        onStatusMismatch: (eventId, newStatus) {
-          updateEventStatus(eventId, newStatus).catchError((error) {
-                        return false;
-          });
-        },
-        currentUserId: userId,
-        supabaseClient: client,
-      ));
-      
+            e as Map<String, dynamic>,
+            onStatusMismatch: (eventId, newStatus) {
+              updateEventStatus(eventId, newStatus).catchError((error) {
+                return false;
+              });
+            },
+            currentUserId: userId,
+            supabaseClient: client,
+          ));
+
       final events = await Future.wait(eventsFutures);
 
       // Filter out past events (keep future and null dates)
@@ -132,14 +129,13 @@ class HomeEventRemoteDataSource {
 
       return filteredEvents.take(10).toList();
     } catch (e) {
-            return [];
+      return [];
     }
   }
 
   /// Fetch pending events (awaiting user vote or date confirmation)
   Future<List<HomeEventEntity>> fetchPendingEvents(String userId) async {
     try {
-
       final response = await client
           .from(_eventsView)
           .select('''
@@ -160,16 +156,16 @@ class HomeEventRemoteDataSource {
 
       // Convert to entities with status persistence
       final eventsFutures = data.map((e) => homeEventFromMap(
-        e as Map<String, dynamic>,
-        onStatusMismatch: (eventId, newStatus) {
-          updateEventStatus(eventId, newStatus).catchError((error) {
-                        return false;
-          });
-        },
-        currentUserId: userId,
-        supabaseClient: client,
-      ));
-      
+            e as Map<String, dynamic>,
+            onStatusMismatch: (eventId, newStatus) {
+              updateEventStatus(eventId, newStatus).catchError((error) {
+                return false;
+              });
+            },
+            currentUserId: userId,
+            supabaseClient: client,
+          ));
+
       final events = await Future.wait(eventsFutures);
 
       // Sort: future dates first (ascending), null dates last
@@ -182,14 +178,13 @@ class HomeEventRemoteDataSource {
 
       return events.take(10).toList();
     } catch (e) {
-            return [];
+      return [];
     }
   }
 
   /// Vote on event RSVP
   Future<bool> voteOnEvent(String eventId, String userId, bool isGoing) async {
     try {
-
       await client.from('event_participants').upsert(
         {
           'pevent_id': eventId,
@@ -202,7 +197,7 @@ class HomeEventRemoteDataSource {
 
       return true;
     } catch (e) {
-            return false;
+      return false;
     }
   }
 
@@ -210,15 +205,68 @@ class HomeEventRemoteDataSource {
   /// Called when calculated status differs from DB status
   Future<bool> updateEventStatus(String eventId, String newStatus) async {
     try {
-      
       await client
           .from('events')
-          .update({'status': newStatus})
-          .eq('id', eventId);
-      
+          .update({'status': newStatus}).eq('id', eventId);
+
       return true;
     } catch (e) {
-            return false;
+      return false;
+    }
+  }
+
+  /// Fetch all living and recap events sorted by time remaining (soonest to end first)
+  Future<List<HomeEventEntity>> fetchLivingAndRecapEvents(String userId) async {
+    try {
+      // Fetch events with status 'living' or 'recap'
+      final response = await client
+          .from(_eventsView)
+          .select('''
+            event_id, event_name, emoji,
+            group_id, group_name,
+            start_datetime, end_datetime,
+            location_name, event_status,
+            user_rsvp, voted_at,
+            going_count, going_users,
+            not_going_users, no_response_users,
+            participants_total, voters_total
+          ''')
+          .eq('user_id', userId)
+          .inFilter('event_status', ['living', 'recap'])
+          .not('end_datetime', 'is', null) // Only events with end_datetime
+          .order('end_datetime', ascending: true)
+          .limit(20);
+
+      final data = response as List<dynamic>;
+      if (data.isEmpty) {
+        return [];
+      }
+
+      // Convert to entities with status persistence
+      final eventsFutures = data.map((e) => homeEventFromMap(
+            e as Map<String, dynamic>,
+            onStatusMismatch: (eventId, newStatus) {
+              updateEventStatus(eventId, newStatus).catchError((error) {
+                return false;
+              });
+            },
+            currentUserId: userId,
+            supabaseClient: client,
+          ));
+
+      final events = await Future.wait(eventsFutures);
+
+      // Sort by end_datetime (soonest to end first)
+      events.sort((a, b) {
+        if (a.endDate == null && b.endDate == null) return 0;
+        if (a.endDate == null) return 1;
+        if (b.endDate == null) return -1;
+        return a.endDate!.compareTo(b.endDate!);
+      });
+
+      return events;
+    } catch (e) {
+      return [];
     }
   }
 }

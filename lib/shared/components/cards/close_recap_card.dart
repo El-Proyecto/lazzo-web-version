@@ -4,17 +4,19 @@ import '../../constants/text_styles.dart';
 import '../../themes/colors.dart';
 import '../dialogs/confirmation_dialog.dart';
 
-/// Card for hosts to close recap phase early
-/// Only shown in recap state for event hosts
-/// Allows immediate access to memory by ending recap timer
+/// Card for hosts to close recap/living phase early
+/// Only shown in recap or living state for event hosts
+/// Allows immediate access to memory by ending recap/living timer
 class CloseRecapCard extends StatelessWidget {
   final String timeRemaining;
   final VoidCallback onCloseConfirmed;
+  final bool isLiving; // true for living mode, false for recap mode
 
   const CloseRecapCard({
     super.key,
     required this.timeRemaining,
     required this.onCloseConfirmed,
+    this.isLiving = false, // defaults to recap mode
   });
 
   void _showConfirmationDialog(BuildContext context) {
@@ -22,8 +24,7 @@ class CloseRecapCard extends StatelessWidget {
       context: context,
       builder: (context) => ConfirmationDialog(
         title: 'Close Recap Early?',
-        message:
-            'This will end the recap phase. This action cannot be undone.',
+        message: 'This will end the recap phase. This action cannot be undone.',
         confirmText: 'Close Now',
         cancelText: 'Cancel',
         isDestructive: true,
@@ -86,6 +87,7 @@ class CloseRecapCard extends StatelessWidget {
         // Botão à direita
         _CloseNowButton(
           onTap: () => _showConfirmationDialog(context),
+          isLiving: isLiving,
         ),
       ],
     );
@@ -119,6 +121,7 @@ class CloseRecapCard extends StatelessWidget {
           alignment: Alignment.centerRight,
           child: _CloseNowButton(
             onTap: () => _showConfirmationDialog(context),
+            isLiving: isLiving,
           ),
         ),
       ],
@@ -128,8 +131,9 @@ class CloseRecapCard extends StatelessWidget {
 
 class _CloseNowButton extends StatelessWidget {
   final VoidCallback onTap;
+  final bool isLiving;
 
-  const _CloseNowButton({required this.onTap});
+  const _CloseNowButton({required this.onTap, this.isLiving = false});
 
   @override
   Widget build(BuildContext context) {
@@ -141,7 +145,7 @@ class _CloseNowButton extends StatelessWidget {
           vertical: Gaps.sm,
         ),
         decoration: BoxDecoration(
-          color: BrandColors.cantVote,
+          color: BrandColors.cantVote, // Always red for destructive action
           borderRadius: BorderRadius.circular(Radii.smAlt),
         ),
         child: Text(

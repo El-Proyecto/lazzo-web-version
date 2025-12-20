@@ -10,7 +10,6 @@ import '../../features/profile/presentation/pages/profile_page.dart';
 import '../../features/home/presentation/pages/home.dart';
 import '../../features/home/presentation/providers/home_event_providers.dart';
 import '../../features/home/domain/entities/home_event.dart';
-import '../../features/memory/presentation/providers/memory_providers.dart';
 import '../../features/event/presentation/providers/event_providers.dart';
 import '../../features/event/presentation/providers/event_photo_providers.dart';
 import '../../routes/app_router.dart';

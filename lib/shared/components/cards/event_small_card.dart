@@ -6,7 +6,9 @@ import '../../themes/colors.dart';
 /// Small event card state
 /// Pending: chip with bg3 and border
 /// Confirmed: chip with green background
-enum EventSmallCardState { pending, confirmed }
+/// Living: chip with purple background
+/// Recap: chip with purple background
+enum EventSmallCardState { pending, confirmed, living, recap }
 
 /// Small event card without voting functionality
 /// Shows event info with a status chip (pending or confirmed)
@@ -35,6 +37,10 @@ class EventSmallCard extends StatelessWidget {
         return BrandColors.bg3;
       case EventSmallCardState.confirmed:
         return BrandColors.planning;
+      case EventSmallCardState.living:
+        return BrandColors.living;
+      case EventSmallCardState.recap:
+        return BrandColors.recap;
     }
   }
 
@@ -58,6 +64,10 @@ class EventSmallCard extends StatelessWidget {
         return 'Pending';
       case EventSmallCardState.confirmed:
         return 'Confirmed';
+      case EventSmallCardState.living:
+        return 'Live';
+      case EventSmallCardState.recap:
+        return 'Recap';
     }
   }
 
