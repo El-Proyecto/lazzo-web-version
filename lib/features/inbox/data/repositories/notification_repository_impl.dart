@@ -32,7 +32,7 @@ class NotificationRepositoryImpl implements NotificationRepository {
       final entities = models.map((model) => model.toEntity()).toList();
       
             return entities;
-    } catch (e, stackTrace) {
+    } catch (e) {
                   throw Exception('Failed to fetch notifications: $e');
     }
   }

@@ -39,7 +39,7 @@ class NotificationRemoteDataSource {
           .toList();
       
             return models;
-    } catch (e, stackTrace) {
+    } catch (e) {
                   rethrow;
     }
   }

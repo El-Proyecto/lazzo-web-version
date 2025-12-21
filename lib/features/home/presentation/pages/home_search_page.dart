@@ -326,7 +326,7 @@ class _HomeSearchPageState extends ConsumerState<HomeSearchPage> {
                                     },
                                   ),
                                 );
-                              }).toList(),
+                              }),
                               const SizedBox(height: Gaps.md),
                             ],
 
@@ -354,7 +354,7 @@ class _HomeSearchPageState extends ConsumerState<HomeSearchPage> {
                                     },
                                   ),
                                 );
-                              }).toList(),
+                              }),
                               const SizedBox(height: Gaps.md),
                             ],
 
@@ -386,7 +386,7 @@ class _HomeSearchPageState extends ConsumerState<HomeSearchPage> {
                                     },
                                   ),
                                 );
-                              }).toList(),
+                              }),
                               const SizedBox(height: Gaps.md),
                             ],
 
@@ -418,7 +418,7 @@ class _HomeSearchPageState extends ConsumerState<HomeSearchPage> {
                                     },
                                   ),
                                 );
-                              }).toList(),
+                              }),
                               const SizedBox(height: Gaps.md),
                             ],
 
@@ -448,7 +448,7 @@ class _HomeSearchPageState extends ConsumerState<HomeSearchPage> {
                                     ),
                                   ),
                                 );
-                              }).toList(),
+                              }),
                               const SizedBox(height: Gaps.md),
                             ],
 

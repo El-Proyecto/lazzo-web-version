@@ -307,7 +307,7 @@ return invitableGroups;
         'invited_by': invitedBy,
         'created_at': DateTime.now().toIso8601String(),
       });
-          } catch (e, stackTrace) {
+          } catch (e) {
                   rethrow;
     }
   }
@@ -324,7 +324,7 @@ return invitableGroups;
         'p_group_id': groupId,
         'p_user_id': userId,
       });
-          } catch (e, stackTrace) {
+          } catch (e) {
                   rethrow;
     }
   }
@@ -341,7 +341,7 @@ return invitableGroups;
           .delete()
           .eq('group_id', groupId)
           .eq('invited_id', userId);
-          } catch (e, stackTrace) {
+          } catch (e) {
                   rethrow;
     }
   }

@@ -56,7 +56,7 @@ class _EventChatPageState extends ConsumerState<EventChatPage> {
     switch (status) {
       case EventStatus.living:
         return BrandColors.living; // Purple
-      case EventStatus.ended:
+      case EventStatus.recap:
         return BrandColors.recap; // Orange
       case EventStatus.pending:
       case EventStatus.confirmed:
@@ -595,6 +595,7 @@ class _EventChatPageState extends ConsumerState<EventChatPage> {
                     );
 
                     // Build list with date separators and unread indicator
+                    final bubbleColor = _getEventStateColor(event.status);
                     return ChatMessagesList(
                       messages: allMessages,
                       scrollController: _scrollController,
@@ -603,7 +604,7 @@ class _EventChatPageState extends ConsumerState<EventChatPage> {
                       onSwipeReply: _replyToMessage,
                       messageKeys: _messageKeys,
                       currentUserId: _currentUserId,
-                      bubbleColor: _getEventStateColor(event.status),
+                      bubbleColor: bubbleColor,
                       unreadCount: unreadCount,
                       enableSwipeToReply: true,
                       reverse: true,
@@ -1123,7 +1124,7 @@ class _ChatInput extends StatelessWidget {
 
                       if (shouldHide ||
                           (eventStatus != EventStatus.living &&
-                              eventStatus != EventStatus.ended)) {
+                              eventStatus != EventStatus.recap)) {
                         return const SizedBox.shrink();
                       }
 
@@ -1147,7 +1148,7 @@ class _ChatInput extends StatelessWidget {
                               HapticFeedback.lightImpact();
 
                               // Recap mode: open gallery with multi-select (max 5)
-                              if (eventStatus == EventStatus.ended) {
+                              if (eventStatus == EventStatus.recap) {
                                 final picker = ImagePicker();
                                 final selectedImages =
                                     await picker.pickMultiImage(
@@ -1172,14 +1173,11 @@ class _ChatInput extends StatelessWidget {
                                   }
 
                                   // Navigate to ManageMemoryPage with selected photos
-                                  // TODO P2: Get actual memoryId from event
-                                  final memoryId = 'memory-1'; // Placeholder
-
                                   if (context.mounted) {
                                     Navigator.of(context).pushNamed(
                                       AppRouter.manageMemory,
                                       arguments: {
-                                        'memoryId': memoryId,
+                                        'memoryId': eventId,
                                         'selectedPhotos': limitedImages
                                             .map((img) => img.path)
                                             .toList(),
@@ -1254,7 +1252,7 @@ class _ChatInput extends StatelessWidget {
                           color: hasText
                               ? (eventStatus == EventStatus.living
                                   ? BrandColors.living
-                                  : eventStatus == EventStatus.ended
+                                  : eventStatus == EventStatus.recap
                                       ? BrandColors.recap
                                       : BrandColors.planning)
                               : Colors.transparent,

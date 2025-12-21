@@ -224,12 +224,12 @@ signedPhotoUrl = null;
           groupName: groupData['name'] ?? 'a group',
           groupId: groupId,
         );
-              } catch (notifError, notifStack) {
+              } catch (notifError) {
         // Don't fail the whole operation if notification fails
                       }
       
             return true;
-    } catch (e, stackTrace) {
+    } catch (e) {
                         return false;
     }
   }
@@ -245,7 +245,7 @@ signedPhotoUrl = null;
         groupId: groupId,
       );
             return true;
-    } catch (e, stackTrace) {
+    } catch (e) {
                   return false;
     }
   }
@@ -261,7 +261,7 @@ signedPhotoUrl = null;
         groupId: groupId,
       );
             return true;
-    } catch (e, stackTrace) {
+    } catch (e) {
                   return false;
     }
   }
