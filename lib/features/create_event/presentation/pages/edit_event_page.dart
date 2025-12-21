@@ -223,9 +223,14 @@ class _EditEventPageState extends ConsumerState<EditEventPage> {
     bool dateTimeValid = (_dateTimeState == DateTimeState.decideLater ||
         (_selectedDate != null && _selectedTime != null));
 
-    // Localização é válida se for "decide later" ou se tiver localização definida
-    bool locationValid = (_locationState == LocationState.decideLater ||
-        _selectedLocation != null);
+    // Localização é válida se for "decide later" ou se tiver pelo menos um campo preenchido
+    bool locationValid = _locationState == LocationState.decideLater;
+    if (_locationState == LocationState.setNow && _selectedLocation != null) {
+      final hasAddress = _selectedLocation!.formattedAddress.isNotEmpty;
+      final hasName = _selectedLocation!.displayName != null &&
+          _selectedLocation!.displayName!.isNotEmpty;
+      locationValid = hasAddress || hasName;
+    }
 
     return nameValid && groupValid && dateTimeValid && locationValid;
   }
@@ -588,10 +593,12 @@ class _EditEventPageState extends ConsumerState<EditEventPage> {
 
             // Botão de salvar
             Container(
-              padding: const EdgeInsets.all(Insets.screenH),
+              padding: const EdgeInsets.symmetric(
+                horizontal: Insets.screenH,
+                vertical: 20,
+              ),
               child: SizedBox(
                 width: double.infinity,
-                height: 56,
                 child: ElevatedButton(
                   onPressed:
                       (_isFormValid() && _hasChanges() && !editState.isLoading)
@@ -601,13 +608,10 @@ class _EditEventPageState extends ConsumerState<EditEventPage> {
                     backgroundColor: (_isFormValid() && _hasChanges())
                         ? BrandColors.planning
                         : BrandColors.bg3,
-                    foregroundColor: (_isFormValid() && _hasChanges())
-                        ? Colors.white
-                        : BrandColors.text2,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(Radii.md),
+                      borderRadius: BorderRadius.circular(16),
                     ),
-                    elevation: 0,
                   ),
                   child: editState.isLoading
                       ? const SizedBox(
@@ -622,9 +626,9 @@ class _EditEventPageState extends ConsumerState<EditEventPage> {
                         )
                       : Text(
                           'Save Changes',
-                          style: AppText.labelLarge.copyWith(
+                          style: AppText.titleMediumEmph.copyWith(
                             color: (_isFormValid() && _hasChanges())
-                                ? Colors.white
+                                ? BrandColors.text1
                                 : BrandColors.text2,
                           ),
                         ),

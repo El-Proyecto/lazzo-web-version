@@ -235,18 +235,16 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
       return true; // Decide later is always valid
     }
 
-    // For "Set now", location is valid if:
-    // 1. Location object exists AND
-    // 2. Has either formattedAddress OR displayName (custom name)
-    if (_selectedLocation != null &&
-        (_selectedLocation!.formattedAddress.isNotEmpty ||
-            (_selectedLocation!.displayName != null &&
-                _selectedLocation!.displayName!.isNotEmpty))) {
-      return true;
+    // For "Set now", require at least one field:
+    // Location object must exist AND have either formattedAddress OR displayName
+    if (_selectedLocation != null) {
+      final hasAddress = _selectedLocation!.formattedAddress.isNotEmpty;
+      final hasName = _selectedLocation!.displayName != null &&
+          _selectedLocation!.displayName!.isNotEmpty;
+      return hasAddress || hasName;
     }
 
-    // If location is being edited (cleared temporarily),
-    // don't make the form invalid - user can still switch to "Decide Later"
+    // If no location is set when "Set Now" is selected, it's invalid
     return false;
   }
 
@@ -262,7 +260,7 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
     if (!_showValidationErrors) return null;
 
     if (_locationState == LocationState.setNow && !_isLocationValid) {
-      return 'Please set a location or switch to "Decide later"';
+      return 'Please fill in at least one field: Location name or Address';
     }
     return null;
   }
@@ -535,8 +533,8 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
               const SizedBox(height: 24),
 
               // Continue button
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 0),
+              Container(
+                padding: const EdgeInsets.only(bottom: 20),
                 child: SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
