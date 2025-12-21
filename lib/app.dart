@@ -27,8 +27,7 @@ class _LazzoAppState extends ConsumerState<LazzoApp> {
     
     await pushService.initialize(
       onDeeplinkReceived: (deeplink) {
-        print('[App] 🔗 Deeplink received: $deeplink');
-        _navigateToDeeplink(deeplink);
+                _navigateToDeeplink(deeplink);
       },
     );
   }

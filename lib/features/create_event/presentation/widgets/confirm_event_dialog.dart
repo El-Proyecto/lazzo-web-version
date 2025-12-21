@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../shared/components/common/top_banner.dart';
+import '../../../../shared/components/common/common_bottom_sheet.dart';
 import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/constants/text_styles.dart';
 import '../../../../shared/themes/colors.dart';
 import 'event_group_selector.dart';
 import 'location_section.dart';
-import '../../../../shared/components/widgets/grabber_bar.dart';
 import '../providers/event_providers.dart';
 import '../../domain/entities/event.dart';
 
@@ -125,125 +125,66 @@ class _ConfirmEventBottomSheetState
 
   @override
   Widget build(BuildContext context) {
-    final keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
-    final screenHeight = MediaQuery.of(context).size.height;
-    final maxHeight = screenHeight * 0.9;
-
-    return Container(
-      width: double.infinity,
-      constraints: BoxConstraints(
-        maxHeight: keyboardHeight > 0 ? maxHeight : screenHeight * 0.7,
-      ),
-      decoration: const BoxDecoration(
-        color: BrandColors.bg2,
-        borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(Radii.md),
-          topRight: Radius.circular(Radii.md),
-        ),
-      ),
-      child: Column(
+    return CommonBottomSheet(
+      title: 'Confirm Event',
+      showGrabber: true,
+      onClose: null, // No close button
+      maxHeight: MediaQuery.of(context).size.height * 0.7,
+      content: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Grabber bar
-          const Padding(
-            padding: EdgeInsets.only(top: Gaps.sm),
-            child: Center(child: GrabberBar()),
+          // Group
+          _buildInfoRow(
+            'Group',
+            widget.selectedGroup?.name ?? 'No group selected',
+            Icons.group,
           ),
 
-          // Header com título e botão fechar
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: Gaps.lg),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Confirm Event',
-                  style: AppText.titleMediumEmph.copyWith(
-                    color: BrandColors.text1,
-                  ),
-                ),
-                GestureDetector(
-                  onTap: () => Navigator.of(context).pop(),
-                  child: const Icon(
-                    Icons.close,
-                    color: BrandColors.text2,
-                    size: 24,
-                  ),
-                ),
-              ],
-            ),
+          const SizedBox(height: Gaps.md),
+
+          // Name com emoji
+          _buildNameRow(),
+
+          const SizedBox(height: Gaps.md),
+
+          // Date & Time
+          _buildInfoRow(
+            'Date & Time',
+            _formatDateTime(),
+            Icons.schedule,
           ),
 
-          const SizedBox(height: 16),
+          const SizedBox(height: Gaps.md),
 
-          // Content with padding
-          Flexible(
-            child: Padding(
-              padding: EdgeInsets.only(
-                left: Gaps.lg,
-                right: Gaps.lg,
-                bottom: Gaps.lg + MediaQuery.of(context).viewInsets.bottom,
+          // Location
+          _buildInfoRow(
+            'Location',
+            _formatLocation(),
+            Icons.location_on,
+          ),
+
+          const SizedBox(height: 24),
+
+          // Create button
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: () => _createEvent(),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: BrandColors.planning,
+                padding: const EdgeInsets.symmetric(
+                  vertical: 12,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
               ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Group
-                  _buildInfoRow(
-                    'Group',
-                    widget.selectedGroup?.name ?? 'No group selected',
-                    Icons.group,
-                  ),
-
-                  const SizedBox(height: Gaps.md),
-
-                  // Name com emoji
-                  _buildNameRow(),
-
-                  const SizedBox(height: Gaps.md),
-
-                  // Date & Time
-                  _buildInfoRow(
-                    'Date & Time',
-                    _formatDateTime(),
-                    Icons.schedule,
-                  ),
-
-                  const SizedBox(height: Gaps.md),
-
-                  // Location
-                  _buildInfoRow(
-                    'Location',
-                    _formatLocation(),
-                    Icons.location_on,
-                  ),
-
-                  const SizedBox(height: 24),
-
-                  // Create button
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: () => _createEvent(),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: BrandColors.planning,
-                        padding: const EdgeInsets.symmetric(
-                          vertical: Pads.ctlVSm,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                      ),
-                      child: Text(
-                        'Create',
-                        style: AppText.titleMediumEmph.copyWith(
-                          color: BrandColors.text1,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
+              child: Text(
+                'Create',
+                style: AppText.titleMediumEmph.copyWith(
+                  color: BrandColors.text1,
+                ),
               ),
             ),
           ),

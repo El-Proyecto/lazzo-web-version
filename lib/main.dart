@@ -147,14 +147,11 @@ void main() async {
   // Inicialização do Firebase (MUST be before Supabase)
   try {
     await Firebase.initializeApp();
-    print('[Main] ✅ Firebase initialized');
-    
+        
     // Register background message handler
     FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
-    print('[Main] ✅ Background message handler registered');
-  } catch (e) {
-    print('[Main] ❌ Firebase initialization error: $e');
-    // Continue anyway - push won't work but app should still function
+      } catch (e) {
+        // Continue anyway - push won't work but app should still function
   }
 
   // Inicialização do Supabase
@@ -166,10 +163,8 @@ void main() async {
         authFlowType: AuthFlowType.pkce, // garante fluxo mobile correto
       ),
     );
-    print('[Main] ✅ Supabase initialized');
-  } catch (e) {
-    print('[Main] ❌ Supabase initialization error: $e');
-    rethrow;
+      } catch (e) {
+        rethrow;
   }
   runApp(
     ProviderScope(

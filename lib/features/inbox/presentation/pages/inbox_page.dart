@@ -101,17 +101,13 @@ class _InboxPageState extends ConsumerState<InboxPage>
   }
 
   Widget _buildNotificationsTab() {
-    print('[InboxPage] 🔄 Building notifications tab');
-    final notificationsState = ref.watch(notificationsProvider);
+        final notificationsState = ref.watch(notificationsProvider);
 
-    print('[InboxPage] Notifications state: ${notificationsState.runtimeType}');
-    
+        
     return notificationsState.when(
       data: (notifications) {
-        print('[InboxPage] ✅ Got ${notifications.length} notifications');
-        if (notifications.isNotEmpty) {
-          print('[InboxPage] First notification: ${notifications.first.type} - ${notifications.first.title}');
-        }
+                if (notifications.isNotEmpty) {
+                  }
         
         // Filter out notifications that should ONLY appear in push (not in inbox)
         final inboxNotifications = notifications.where((n) {
@@ -120,25 +116,20 @@ class _InboxPageState extends ConsumerState<InboxPage>
                  n.type != NotificationType.chatMention;
         }).toList();
         
-        print('[InboxPage] 📥 Showing ${inboxNotifications.length} notifications in inbox (filtered ${notifications.length - inboxNotifications.length} push-only)');
-        
+                
         return NotificationsSection(
           notifications: inboxNotifications,
           onRefresh: () => ref.read(notificationsProvider.notifier).refresh(),
           onNotificationTap: (notification) {
-            print('[InboxPage] 📱 Notification tapped: ${notification.type}');
-            _handleNotificationTap(notification);
+                        _handleNotificationTap(notification);
           },
           onActionTap: (notification) {
-            print('[InboxPage] 🔘 Action button tapped: ${notification.type}');
-            _handleActionButtonTap(notification);
+                        _handleActionButtonTap(notification);
           },
           onAcceptInvite: (groupId) async {
-            print('[InboxPage] 🟢 Accept invite clicked for group: $groupId');
-            final userId = Supabase.instance.client.auth.currentUser?.id;
+                        final userId = Supabase.instance.client.auth.currentUser?.id;
             if (userId == null) {
-              print('[InboxPage] ❌ No user logged in');
-              _showSnackBar('Error: Not logged in', isError: true);
+                            _showSnackBar('Error: Not logged in', isError: true);
               return;
             }
 
@@ -146,8 +137,7 @@ class _InboxPageState extends ConsumerState<InboxPage>
             final success = await acceptUseCase(userId: userId, groupId: groupId);
             
             if (success) {
-              print('[InboxPage] ✅ Invite accepted successfully');
-              
+                            
               // Find and mark the notification as read to hide it
               final notificationsState = ref.read(notificationsProvider);
               notificationsState.whenData((notifications) {
@@ -163,16 +153,13 @@ class _InboxPageState extends ConsumerState<InboxPage>
               // Refresh notifications to show updated list
               ref.read(notificationsProvider.notifier).refresh();
             } else {
-              print('[InboxPage] ❌ Failed to accept invite');
-              _showSnackBar('Failed to join group', isError: true);
+                            _showSnackBar('Failed to join group', isError: true);
             }
           },
           onDeclineInvite: (groupId) async {
-            print('[InboxPage] 🔴 Decline invite clicked for group: $groupId');
-            final userId = Supabase.instance.client.auth.currentUser?.id;
+                        final userId = Supabase.instance.client.auth.currentUser?.id;
             if (userId == null) {
-              print('[InboxPage] ❌ No user logged in');
-              _showSnackBar('Error: Not logged in', isError: true);
+                            _showSnackBar('Error: Not logged in', isError: true);
               return;
             }
 
@@ -180,8 +167,7 @@ class _InboxPageState extends ConsumerState<InboxPage>
             final success = await declineUseCase(userId: userId, groupId: groupId);
             
             if (success) {
-              print('[InboxPage] ✅ Invite declined successfully');
-              
+                            
               // Find and mark the notification as read to hide it
               final notificationsState = ref.read(notificationsProvider);
               notificationsState.whenData((notifications) {
@@ -197,13 +183,11 @@ class _InboxPageState extends ConsumerState<InboxPage>
               // Refresh notifications to show updated list
               ref.read(notificationsProvider.notifier).refresh();
             } else {
-              print('[InboxPage] ❌ Failed to decline invite');
-              _showSnackBar('Failed to decline invite', isError: true);
+                            _showSnackBar('Failed to decline invite', isError: true);
             }
           },
           onMarkPaymentPaid: (notificationId) async {
-            print('[InboxPage] 💰 Mark payment as paid via notification: $notificationId');
-            
+                        
             try {
               // P2: Mark expense split as paid + mark notification as read
               await ref.read(markExpenseAsPaidFromNotificationUseCaseProvider).call(notificationId);
@@ -214,20 +198,16 @@ class _InboxPageState extends ConsumerState<InboxPage>
               // Show success feedback
               _showSnackBar('Marked as Paid!');
             } catch (e) {
-              print('[InboxPage] ❌ Error marking payment as paid: $e');
-              _showSnackBar('Error marking as Paid', isError: true);
+                            _showSnackBar('Error marking as Paid', isError: true);
             }
           },
         );
       },
       loading: () {
-        print('[InboxPage] ⏳ Loading notifications...');
-        return const NotificationsSection(notifications: [], isLoading: true);
+                return const NotificationsSection(notifications: [], isLoading: true);
       },
       error: (error, stack) {
-        print('[InboxPage] ❌ Error loading notifications: $error');
-        print('[InboxPage] Stack: $stack');
-        return Center(
+                        return Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
@@ -262,8 +242,7 @@ class _InboxPageState extends ConsumerState<InboxPage>
   }
 
   void _handleNotificationTap(NotificationEntity notification) {
-    print('[InboxPage] 🎯 Handling notification tap: ${notification.type}');
-    
+        
     // Mark as read
     ref.read(markNotificationAsReadUseCaseProvider).call(notification.id);
     
@@ -273,8 +252,7 @@ class _InboxPageState extends ConsumerState<InboxPage>
       case NotificationType.eventStartsSoon:
       case NotificationType.eventExtended:
         if (notification.eventId != null) {
-          print('[InboxPage] 📅 Navigating to event: ${notification.eventId}');
-          Navigator.pushNamed(
+                    Navigator.pushNamed(
             context,
             '/event',
             arguments: {'eventId': notification.eventId},
@@ -285,8 +263,7 @@ class _InboxPageState extends ConsumerState<InboxPage>
       // Memory ready → Navigate to memory viewer
       case NotificationType.memoryReady:
         if (notification.eventId != null) {
-          print('[InboxPage] 🎥 Navigating to memory: ${notification.eventId}');
-          Navigator.pushNamed(
+                    Navigator.pushNamed(
             context,
             '/memory-viewer',
             arguments: {'eventId': notification.eventId},
@@ -298,8 +275,7 @@ class _InboxPageState extends ConsumerState<InboxPage>
       case NotificationType.uploadsOpen:
       case NotificationType.uploadsClosing:
         if (notification.eventId != null) {
-          print('[InboxPage] 📸 Navigating to event uploads: ${notification.eventId}');
-          Navigator.pushNamed(
+                    Navigator.pushNamed(
             context,
             '/event',
             arguments: {'eventId': notification.eventId},
@@ -312,16 +288,14 @@ class _InboxPageState extends ConsumerState<InboxPage>
       case NotificationType.paymentsRequest:
       case NotificationType.paymentsAddedYouOwe:
       case NotificationType.paymentsPaidYou:
-        print('[InboxPage] 💰 Switching to payments tab');
-        ref.read(inboxTabIndexProvider.notifier).state = 1; // Payments tab
+                ref.read(inboxTabIndexProvider.notifier).state = 1; // Payments tab
         break;
 
       // Group notifications → Navigate to group hub
       case NotificationType.groupInviteReceived:
       case NotificationType.groupPhotoChanged:
         if (notification.groupId != null) {
-          print('[InboxPage] 👥 Navigating to group: ${notification.groupId}');
-          Navigator.pushNamed(
+                    Navigator.pushNamed(
             context,
             '/group-hub',
             arguments: {'groupId': notification.groupId},
@@ -339,8 +313,7 @@ class _InboxPageState extends ConsumerState<InboxPage>
       case NotificationType.eventConfirmed:
       case NotificationType.suggestionAdded:
         if (notification.eventId != null) {
-          print('[InboxPage] 📅 Navigating to event: ${notification.eventId}');
-          Navigator.pushNamed(
+                    Navigator.pushNamed(
             context,
             '/event',
             arguments: {'eventId': notification.eventId},
@@ -349,13 +322,11 @@ class _InboxPageState extends ConsumerState<InboxPage>
         break;
 
       default:
-        print('[InboxPage] ℹ️ No specific navigation for: ${notification.type}');
-    }
+            }
   }
 
   void _handleActionButtonTap(NotificationEntity notification) {
-    print('[InboxPage] 🎯 Handling action button: ${notification.type}');
-    
+        
     switch (notification.type) {
       case NotificationType.uploadsOpen:
       case NotificationType.uploadsClosing:

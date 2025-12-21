@@ -6,15 +6,12 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 /// Top-level function for background message handler (required by Firebase)
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  print('[PushNotifications] 📱 Background message: ${message.messageId}');
-  print('[PushNotifications] Data: ${message.data}');
-  
+      
   // Store deeplink for later navigation when app opens
   final deeplink = message.data['deeplink'];
   if (deeplink != null && deeplink.isNotEmpty) {
     // TODO: Save to local storage using shared_preferences
-    print('[PushNotifications] 🔗 Saving deeplink for later: $deeplink');
-  }
+      }
 }
 
 /// Provider for PushNotificationService
@@ -48,24 +45,20 @@ class PushNotificationService {
   }) async {
     _onDeeplinkReceived = onDeeplinkReceived;
     
-    print('[PushNotifications] 🚀 Initializing...');
-    
+        
     // Request permissions (iOS requires this, Android grants by default)
     final settings = await _requestPermission();
     if (settings.authorizationStatus == AuthorizationStatus.denied) {
-      print('[PushNotifications] ❌ Permission denied');
-      return;
+            return;
     }
     
-    print('[PushNotifications] ✅ Permission granted: ${settings.authorizationStatus}');
-    
+        
     // Get FCM token and register with Supabase
     await _registerToken();
     
     // Listen for token refresh (happens when app reinstalled, data cleared, etc)
     _messaging.onTokenRefresh.listen((newToken) {
-      print('[PushNotifications] 🔄 Token refreshed: ${newToken.substring(0, 20)}...');
-      _saveTokenToSupabase(newToken);
+            _saveTokenToSupabase(newToken);
     });
     
     // Handle foreground messages (when app is open)
@@ -77,12 +70,10 @@ class PushNotificationService {
     // Check if app was opened from a terminated state via notification
     final initialMessage = await _messaging.getInitialMessage();
     if (initialMessage != null) {
-      print('[PushNotifications] 📬 App opened from terminated state');
-      _handleMessageOpenedApp(initialMessage);
+            _handleMessageOpenedApp(initialMessage);
     }
     
-    print('[PushNotifications] ✅ Initialization complete');
-  }
+      }
 
   /// Request notification permissions (iOS)
   Future<NotificationSettings> _requestPermission() async {
@@ -102,15 +93,12 @@ class PushNotificationService {
     try {
       final token = await _messaging.getToken();
       if (token == null) {
-        print('[PushNotifications] ❌ Failed to get FCM token');
-        return;
+                return;
       }
       
-      print('[PushNotifications] 📝 Got FCM token: ${token.substring(0, 20)}...');
-      await _saveTokenToSupabase(token);
+            await _saveTokenToSupabase(token);
     } catch (e) {
-      print('[PushNotifications] ❌ Error registering token: $e');
-    }
+          }
   }
 
   /// Save/update push token in Supabase
@@ -118,8 +106,7 @@ class PushNotificationService {
     try {
       final userId = _supabase.auth.currentUser?.id;
       if (userId == null) {
-        print('[PushNotifications] ❌ No user logged in, cannot save token');
-        return;
+                return;
       }
       
       // Determine platform
@@ -138,19 +125,13 @@ class PushNotificationService {
         'last_used_at': DateTime.now().toIso8601String(),
       }, onConflict: 'user_id,token');
       
-      print('[PushNotifications] ✅ Token saved to Supabase for user: $userId');
-    } catch (e) {
-      print('[PushNotifications] ❌ Error saving token to Supabase: $e');
-    }
+          } catch (e) {
+          }
   }
 
   /// Handle foreground message (app is open)
   void _handleForegroundMessage(RemoteMessage message) {
-    print('[PushNotifications] 📱 Foreground message received');
-    print('[PushNotifications] Title: ${message.notification?.title}');
-    print('[PushNotifications] Body: ${message.notification?.body}');
-    print('[PushNotifications] Data: ${message.data}');
-    
+                    
     // TODO: Show in-app notification banner
     // Could use ScaffoldMessenger or custom overlay
     // For now, just log it
@@ -158,15 +139,12 @@ class PushNotificationService {
 
   /// Handle message when user taps notification (app in background/terminated)
   void _handleMessageOpenedApp(RemoteMessage message) {
-    print('[PushNotifications] 👆 User tapped notification');
-    print('[PushNotifications] Data: ${message.data}');
-    
+            
     final deeplink = message.data['deeplink'] as String?;
     final notificationId = message.data['notification_id'] as String?;
     
     if (deeplink != null && deeplink.isNotEmpty) {
-      print('[PushNotifications] 🔗 Navigating to deeplink: $deeplink');
-      _onDeeplinkReceived?.call(deeplink);
+            _onDeeplinkReceived?.call(deeplink);
       
       // Mark notification as read
       if (notificationId != null) {
@@ -183,10 +161,8 @@ class PushNotificationService {
           .update({'is_read': true})
           .eq('id', notificationId);
       
-      print('[PushNotifications] ✅ Marked notification as read: $notificationId');
-    } catch (e) {
-      print('[PushNotifications] ❌ Error marking notification as read: $e');
-    }
+          } catch (e) {
+          }
   }
 
   /// Unregister token (call on logout)
@@ -205,19 +181,15 @@ class PushNotificationService {
           .eq('user_id', userId)
           .eq('token', token);
       
-      print('[PushNotifications] ✅ Token unregistered');
-    } catch (e) {
-      print('[PushNotifications] ❌ Error unregistering token: $e');
-    }
+          } catch (e) {
+          }
   }
 
   /// Delete FCM token (call on logout or account deletion)
   Future<void> deleteToken() async {
     try {
       await _messaging.deleteToken();
-      print('[PushNotifications] ✅ FCM token deleted');
-    } catch (e) {
-      print('[PushNotifications] ❌ Error deleting FCM token: $e');
-    }
+          } catch (e) {
+          }
   }
 }

@@ -593,9 +593,11 @@ class _EditEventPageState extends ConsumerState<EditEventPage> {
 
             // Botão de salvar
             Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: Insets.screenH,
-                vertical: 20,
+              padding: const EdgeInsets.only(
+                left: Insets.screenH,
+                right: Insets.screenH,
+                top: 20,
+                bottom: 32,
               ),
               child: SizedBox(
                 width: double.infinity,
