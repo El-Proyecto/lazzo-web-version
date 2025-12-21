@@ -8,8 +8,9 @@ class NotificationCard extends StatelessWidget {
   final NotificationEntity notification;
   final VoidCallback? onTap;
   final VoidCallback? onActionTap;
-  final Function(String groupId)? onAccept; // Callback for accepting invite
-  final Function(String groupId)? onDecline; // Callback for declining invite
+  final Function(String groupId)? onAccept;
+  final Function(String groupId)? onDecline;
+  final Function(String paymentId)? onMarkPaid; // Mark payment as paid
 
   const NotificationCard({
     super.key,
@@ -18,11 +19,12 @@ class NotificationCard extends StatelessWidget {
     this.onActionTap,
     this.onAccept,
     this.onDecline,
+    this.onMarkPaid,
   });
 
   @override
   Widget build(BuildContext context) {
-    final isGroupInvite = notification.type == NotificationType.groupInviteReceived;
+    final shouldShowActionButtons = _shouldShowActionButtons();
     
     return GestureDetector(
       onTap: onTap,
@@ -45,8 +47,8 @@ class NotificationCard extends StatelessWidget {
                 Expanded(child: _buildNotificationTextWithTime()),
               ],
             ),
-            // Show accept/decline buttons if it's a group invite
-            if (isGroupInvite && notification.groupId != null) ...[
+            // Show action buttons if applicable
+            if (shouldShowActionButtons) ...[
               const SizedBox(height: Gaps.md),
               _buildActionButtons(context),
             ],
@@ -55,51 +57,210 @@ class NotificationCard extends StatelessWidget {
       ),
     );
   }
+  
+  bool _shouldShowActionButtons() {
+    final type = notification.type;
+    
+    // Group invite has buttons
+    if (type == NotificationType.groupInviteReceived && notification.groupId != null) {
+      return true;
+    }
+    
+    // Payment notifications have "Mark as Paid" button
+    if (type == NotificationType.paymentsAddedYouOwe) {
+      return true;
+    }
+    
+    // Some PUSH notifications have action buttons
+    if ([
+      NotificationType.uploadsOpen,
+      NotificationType.uploadsClosing,
+      NotificationType.paymentsRequest,
+    ].contains(type)) {
+      return true;
+    }
+    
+    return false;
+  }
 
   Widget _buildActionButtons(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          child: OutlinedButton(
-            onPressed: () => onDecline?.call(notification.groupId!),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: BrandColors.text2,
-              side: const BorderSide(color: BrandColors.bg3),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(Radii.sm),
-              ),
-              padding: const EdgeInsets.symmetric(vertical: Gaps.sm),
+    final type = notification.type;
+    
+    // Uploads: View Event button
+    if (type == NotificationType.uploadsOpen || type == NotificationType.uploadsClosing) {
+      return SizedBox(
+        width: double.infinity,
+        child: ElevatedButton(
+          onPressed: onActionTap,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: BrandColors.planning,
+            foregroundColor: BrandColors.text1,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(Radii.sm),
             ),
-            child: Text(
-              'Decline',
-              style: AppText.labelLarge.copyWith(color: BrandColors.text2),
+            padding: const EdgeInsets.symmetric(vertical: Gaps.sm),
+            elevation: 0,
+          ),
+          child: Text(
+            'View Event',
+            style: AppText.labelLarge.copyWith(
+              color: BrandColors.text1,
+              fontWeight: FontWeight.w600,
             ),
           ),
         ),
-        const SizedBox(width: Gaps.sm),
-        Expanded(
-          child: ElevatedButton(
-            onPressed: () => onAccept?.call(notification.groupId!),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: BrandColors.planning,
-              foregroundColor: BrandColors.text1,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(Radii.sm),
-              ),
-              padding: const EdgeInsets.symmetric(vertical: Gaps.sm),
-              elevation: 0,
+      );
+    }
+    
+    // Payment Request: View Payments button
+    if (type == NotificationType.paymentsRequest) {
+      return SizedBox(
+        width: double.infinity,
+        child: ElevatedButton(
+          onPressed: onActionTap,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: BrandColors.planning,
+            foregroundColor: BrandColors.text1,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(Radii.sm),
             ),
-            child: Text(
-              'Accept',
-              style: AppText.labelLarge.copyWith(
-                color: BrandColors.text1,
-                fontWeight: FontWeight.w600,
-              ),
+            padding: const EdgeInsets.symmetric(vertical: Gaps.sm),
+            elevation: 0,
+          ),
+          child: Text(
+            'View Payments',
+            style: AppText.labelLarge.copyWith(
+              color: BrandColors.text1,
+              fontWeight: FontWeight.w600,
             ),
           ),
         ),
-      ],
-    );
+      );
+    }
+    
+    // Group invite: Accept/Decline
+    if (type == NotificationType.groupInviteReceived && notification.groupId != null) {
+      return Row(
+        children: [
+          Expanded(
+            child: OutlinedButton(
+              onPressed: () => onDecline?.call(notification.groupId!),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: BrandColors.text2,
+                side: const BorderSide(color: BrandColors.bg3),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(Radii.sm),
+                ),
+                padding: const EdgeInsets.symmetric(vertical: Gaps.sm),
+              ),
+              child: Text(
+                'Decline',
+                style: AppText.labelLarge.copyWith(color: BrandColors.text2),
+              ),
+            ),
+          ),
+          const SizedBox(width: Gaps.sm),
+          Expanded(
+            child: ElevatedButton(
+              onPressed: () => onAccept?.call(notification.groupId!),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: BrandColors.planning,
+                foregroundColor: BrandColors.text1,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(Radii.sm),
+                ),
+                padding: const EdgeInsets.symmetric(vertical: Gaps.sm),
+                elevation: 0,
+              ),
+              child: Text(
+                'Accept',
+                style: AppText.labelLarge.copyWith(
+                  color: BrandColors.text1,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+    
+    // Payment "Mark as Paid" button
+    if (type == NotificationType.paymentsAddedYouOwe) {
+      return SizedBox(
+        width: double.infinity,
+        child: ElevatedButton(
+          onPressed: () {
+            print('[NotificationCard] 💰 Mark as Paid clicked');
+            onMarkPaid?.call(notification.id);
+          },
+          style: ElevatedButton.styleFrom(
+            backgroundColor: BrandColors.planning,
+            foregroundColor: BrandColors.text1,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(Radii.sm),
+            ),
+            padding: const EdgeInsets.symmetric(vertical: Gaps.xs),
+            elevation: 0,
+          ),
+          child: Text(
+            'Pay',
+            style: AppText.labelLarge.copyWith(
+              color: BrandColors.text1,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+      );
+    }
+    
+    // Single action button for other notification types
+    if (_hasActionButton(type)) {
+      return SizedBox(
+        width: double.infinity,
+        child: ElevatedButton(
+          onPressed: () => onActionTap?.call(),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: BrandColors.planning,
+            foregroundColor: BrandColors.text1,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(Radii.sm),
+            ),
+            padding: const EdgeInsets.symmetric(vertical: Gaps.sm),
+            elevation: 0,
+          ),
+          child: Text(
+            _getActionButtonText(type),
+            style: AppText.labelLarge.copyWith(
+              color: BrandColors.text1,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+      );
+    }
+    
+    return const SizedBox.shrink();
+  }
+  
+  bool _hasActionButton(NotificationType type) {
+    return [
+      NotificationType.uploadsOpen,
+      NotificationType.uploadsClosing,
+      NotificationType.paymentsRequest,
+    ].contains(type);
+  }
+  
+  String _getActionButtonText(NotificationType type) {
+    switch (type) {
+      case NotificationType.uploadsOpen:
+      case NotificationType.uploadsClosing:
+        return 'Add Photos';
+      case NotificationType.paymentsRequest:
+        return 'Pay';
+      default:
+        return 'Open';
+    }
   }
 
   Widget _buildAvatar() {
@@ -271,15 +432,15 @@ class NotificationCard extends StatelessWidget {
     switch (notification.type) {
       // Legacy types
       case NotificationType.groupInvite:
-        return '👥'; // Group emoji
+        return '👥';
       case NotificationType.eventUpdate:
-        return '📅'; // Event emoji
+        return '📅';
       case NotificationType.paymentRequest:
-        return '💰'; // Money emoji
+        return '💰';
       case NotificationType.general:
-        return '📢'; // General notification emoji
+        return '📢';
 
-      // New specific types from catalog
+      // PUSH notifications
       case NotificationType.groupInviteReceived:
         return '👥';
       case NotificationType.eventStartsSoon:
@@ -300,8 +461,9 @@ class NotificationCard extends StatelessWidget {
         return '💬';
       case NotificationType.securityNewLogin:
         return '🔐';
+      
+      // NOTIFICATIONS (feed)
       case NotificationType.groupInviteAccepted:
-        return '👥';
       case NotificationType.groupRenamed:
       case NotificationType.groupPhotoChanged:
         return '👥';
@@ -315,6 +477,9 @@ class NotificationCard extends StatelessWidget {
         return '📅';
       case NotificationType.suggestionAdded:
         return '💡';
+      
+      // ACTIONS (to-dos)
+
     }
   }
 

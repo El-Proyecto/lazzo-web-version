@@ -1,12 +1,14 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../domain/entities/notification_entity.dart';
 import '../../domain/repositories/notification_repository.dart';
 import '../../domain/usecases/get_notifications.dart';
-import '../../data/fakes/fake_notification_repository.dart';
+import '../../domain/usecases/mark_expense_paid_from_notification.dart';
+import '../../../expense/presentation/providers/event_expense_providers.dart';
 
-// Repository provider - defaults to fake
+// Repository provider - overridden in main.dart with real Supabase implementation
 final notificationRepositoryProvider = Provider<NotificationRepository>((ref) {
-  return FakeNotificationRepository();
+  throw UnimplementedError('NotificationRepository must be overridden in main.dart');
 });
 
 // Use case providers
@@ -18,6 +20,14 @@ final markNotificationAsReadUseCaseProvider = Provider<MarkNotificationAsRead>((
   ref,
 ) {
   return MarkNotificationAsRead(ref.watch(notificationRepositoryProvider));
+});
+
+final markExpenseAsPaidFromNotificationUseCaseProvider = Provider<MarkExpenseAsPaidFromNotification>((ref) {
+  return MarkExpenseAsPaidFromNotification(
+    notificationRepository: ref.watch(notificationRepositoryProvider),
+    expenseRepository: ref.watch(eventExpenseRepositoryProvider),
+    supabase: Supabase.instance.client,
+  );
 });
 
 final getUnreadNotificationCountUseCaseProvider =

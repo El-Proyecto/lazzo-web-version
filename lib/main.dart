@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'env.dart';
 
 import 'package:app/app.dart';
+import 'services/push_notification_service.dart';
 
 // MEMORY (Home recent memories - different from manage_memory)
 import '../features/home/data/data_sources/memory_remote_data_source.dart';
@@ -141,8 +144,20 @@ import '../features/settings/data/repositories/suggestion_repository_impl.dart'
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Inicialização do Supabase
+  // Inicialização do Firebase (MUST be before Supabase)
+  try {
+    await Firebase.initializeApp();
+    print('[Main] ✅ Firebase initialized');
+    
+    // Register background message handler
+    FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+    print('[Main] ✅ Background message handler registered');
+  } catch (e) {
+    print('[Main] ❌ Firebase initialization error: $e');
+    // Continue anyway - push won't work but app should still function
+  }
 
+  // Inicialização do Supabase
   try {
     await Supabase.initialize(
       url: Env.supabaseUrl,
@@ -151,7 +166,9 @@ void main() async {
         authFlowType: AuthFlowType.pkce, // garante fluxo mobile correto
       ),
     );
+    print('[Main] ✅ Supabase initialized');
   } catch (e) {
+    print('[Main] ❌ Supabase initialization error: $e');
     rethrow;
   }
   runApp(

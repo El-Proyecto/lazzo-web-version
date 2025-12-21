@@ -13,6 +13,7 @@ class NotificationsSection extends StatelessWidget {
   final Function(NotificationEntity)? onActionTap;
   final Function(String groupId)? onAcceptInvite;
   final Function(String groupId)? onDeclineInvite;
+  final Function(String paymentId)? onMarkPaymentPaid;
 
   const NotificationsSection({
     super.key,
@@ -23,6 +24,7 @@ class NotificationsSection extends StatelessWidget {
     this.onActionTap,
     this.onAcceptInvite,
     this.onDeclineInvite,
+    this.onMarkPaymentPaid,
   });
 
   @override
@@ -55,6 +57,7 @@ class NotificationsSection extends StatelessWidget {
             onActionTap: () => onActionTap?.call(notification),
             onAccept: onAcceptInvite,
             onDecline: onDeclineInvite,
+            onMarkPaid: onMarkPaymentPaid,
           );
         },
       ),

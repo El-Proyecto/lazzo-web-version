@@ -104,6 +104,7 @@ class NotificationEntity {
   final String? place; // For {place} placeholder
   final String? device; // For {device} placeholder
   final String? note; // For payment notes
+  final String? expenseId; // Link to expense for payment notifications
 
   const NotificationEntity({
     required this.id,
@@ -131,6 +132,7 @@ class NotificationEntity {
     this.place,
     this.device,
     this.note,
+    this.expenseId,
   });
 
   NotificationEntity copyWith({
@@ -159,6 +161,7 @@ class NotificationEntity {
     String? place,
     String? device,
     String? note,
+    String? expenseId,
   }) {
     return NotificationEntity(
       id: id ?? this.id,
@@ -186,6 +189,7 @@ class NotificationEntity {
       place: place ?? this.place,
       device: device ?? this.device,
       note: note ?? this.note,
+      expenseId: expenseId ?? this.expenseId,
     );
   }
 

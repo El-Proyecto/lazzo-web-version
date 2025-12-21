@@ -15,7 +15,7 @@ class NotificationRepositoryImpl implements NotificationRepository {
   Future<List<NotificationEntity>> getNotifications({
     int limit = 20,
     int offset = 0,
-    bool unreadOnly = false,
+    bool unreadOnly = true, // ✅ P2: Default to unread only
     NotificationCategory? category,
   }) async {
     print('[NotificationRepository] 📦 getNotifications called');
