@@ -227,7 +227,7 @@ class _LocationSectionState extends State<LocationSection>
       children: [
         // Location Name Field (Optional)
         _buildTextField(
-          hintText: 'Location name (optional)',
+          hintText: 'Location name',
           icon: Icons.edit_location_alt,
           controller: _locationNameController,
           onChanged: (value) => _updateLocationName(value),
@@ -244,6 +244,18 @@ class _LocationSectionState extends State<LocationSection>
           onSubmitted: (value) => _handleEnterKeyPressed(),
           readOnly: false,
         ),
+
+        // Validation Error
+        if (widget.validationError != null) ...[
+          const SizedBox(height: Gaps.sm),
+          Text(
+            widget.validationError!,
+            style: AppText.bodyMedium.copyWith(
+              fontSize: 12,
+              color: BrandColors.cantVote,
+            ),
+          ),
+        ],
 
         // Suggestions list
         if (_showSuggestions) ...[

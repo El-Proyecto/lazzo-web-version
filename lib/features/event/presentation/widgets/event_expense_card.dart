@@ -33,9 +33,9 @@ class EventExpenseCard extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(Pads.ctlH),
         decoration: BoxDecoration(
-          color: BrandColors.bg2,
+          color: BrandColors.bg3,
           borderRadius: BorderRadius.circular(Radii.md),
-          border: Border.all(color: BrandColors.bg3, width: 1),
+          border: Border.all(color: BrandColors.border, width: 1),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -59,7 +59,7 @@ class EventExpenseCard extends StatelessWidget {
                       ? 'Not related'
                       : (paymentStatus.isNotEmpty
                           ? paymentStatus
-                          : '${isOwedToUser ? '' : '-'}${userAmount.toStringAsFixed(2)} €'),
+                          : '${userAmount.toStringAsFixed(2)}€'),
                   style: AppText.bodyMediumEmph.copyWith(
                     color: !isUserRelated
                         ? BrandColors.text2
@@ -95,7 +95,7 @@ class EventExpenseCard extends StatelessWidget {
                 ),
                 // Total amount (always show)
                 Text(
-                  'Total: €${totalAmount.toStringAsFixed(2)}',
+                  'Total: ${totalAmount.toStringAsFixed(2)}€',
                   style: AppText.bodyMedium.copyWith(
                     color: BrandColors.text2,
                   ),
