@@ -38,6 +38,9 @@ class EventLivingPage extends ConsumerStatefulWidget {
 }
 
 class _EventLivingPageState extends ConsumerState<EventLivingPage> {
+  final ScrollController _scrollController = ScrollController();
+  bool _showTitleInAppBar = false;
+
   @override
   void initState() {
     super.initState();
@@ -45,6 +48,35 @@ class _EventLivingPageState extends ConsumerState<EventLivingPage> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(unreadCountRealtimeProvider(widget.eventId));
     });
+    // Listen to scroll to show/hide title in app bar
+    _scrollController.addListener(_onScroll);
+  }
+
+  @override
+  void dispose() {
+    _scrollController.removeListener(_onScroll);
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    // Show title when scrolled past ~150px (approximate header height)
+    final shouldShow =
+        _scrollController.hasClients && _scrollController.offset > 150;
+    if (shouldShow != _showTitleInAppBar) {
+      setState(() {
+        _showTitleInAppBar = shouldShow;
+      });
+    }
+  }
+
+  Future<void> refreshEventData() async {
+    ref.invalidate(eventDetailProvider(widget.eventId));
+    ref.invalidate(chatMessagesProvider(widget.eventId));
+    ref.invalidate(unreadMessagesCountProvider(widget.eventId));
+    ref.invalidate(eventParticipantsProvider(widget.eventId));
+    ref.invalidate(eventExpensesProvider(widget.eventId));
+    ref.invalidate(eventPhotosProvider(widget.eventId));
   }
 
   @override
@@ -56,15 +88,19 @@ class _EventLivingPageState extends ConsumerState<EventLivingPage> {
     return Scaffold(
       backgroundColor: BrandColors.bg1,
       appBar: CommonAppBar(
-        title: '',
+        title: _showTitleInAppBar ? (eventAsync.value?.name ?? '') : '',
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: BrandColors.text1),
           onPressed: () => Navigator.of(context).pop(),
         ),
       ),
       body: eventAsync.when(
-        data: (event) {
-          return SingleChildScrollView(
+        data: (event) => RefreshIndicator(
+          onRefresh: refreshEventData,
+          color: BrandColors.living,
+          backgroundColor: BrandColors.bg2,
+          child: SingleChildScrollView(
+            controller: _scrollController,
             padding: const EdgeInsets.symmetric(
               horizontal: Insets.screenH,
               vertical: Gaps.lg,
@@ -117,7 +153,8 @@ class _EventLivingPageState extends ConsumerState<EventLivingPage> {
                                   eventDetailProvider(widget.eventId));
                               if (context.mounted) {
                                 TopBanner.showSuccess(context,
-                                    message: 'Event extended by $minutes minutes');
+                                    message:
+                                        'Event extended by $minutes minutes');
                               }
                             } catch (e) {
                               if (context.mounted) {
@@ -158,8 +195,8 @@ class _EventLivingPageState extends ConsumerState<EventLivingPage> {
                 LivingActionRow(
                   onAddExpense: () async {
                     // Get event participants
-                    final participantsAsync =
-                        await ref.read(eventParticipantsProvider(widget.eventId).future);
+                    final participantsAsync = await ref
+                        .read(eventParticipantsProvider(widget.eventId).future);
 
                     final currentUserId =
                         Supabase.instance.client.auth.currentUser?.id;
@@ -181,19 +218,20 @@ class _EventLivingPageState extends ConsumerState<EventLivingPage> {
                     AddExpenseBottomSheet.show(
                       context: context,
                       participants: participants,
-                      onAddExpense: (title, paidBy, participantsOwe, amount) async {
+                      onAddExpense:
+                          (title, paidBy, participantsOwe, amount) async {
                         // Create expense using expense provider
                         try {
                           await ref
                               .read(eventExpensesProvider(widget.eventId)
                                   .notifier)
                               .addExpense(
-                                description: title,
-                                amount: amount,
-                                paidBy: paidBy,
-                                participantsOwe: participantsOwe,
-                                participantsPaid: [paidBy],
-                              );
+                            description: title,
+                            amount: amount,
+                            paidBy: paidBy,
+                            participantsOwe: participantsOwe,
+                            participantsPaid: [paidBy],
+                          );
 
                           if (context.mounted) {
                             TopBanner.showSuccess(context,
@@ -232,12 +270,12 @@ class _EventLivingPageState extends ConsumerState<EventLivingPage> {
                             context,
                             message: '✅ Photo uploaded successfully!',
                           );
-                          
+
                           // Optimistic UI: invalidate all photo-related providers
                           // This forces fresh data fetch when navigating to manage memory
                           ref.invalidate(eventDetailProvider(widget.eventId));
                           ref.invalidate(eventPhotosProvider(widget.eventId));
-                          
+
                           // Navigate immediately to manage memory page
                           // The manageMemoryProvider will fetch fresh photos on init
                           if (context.mounted) {
@@ -341,9 +379,8 @@ class _EventLivingPageState extends ConsumerState<EventLivingPage> {
                       const Center(child: CircularProgressIndicator()),
                   error: (error, stack) => const SizedBox.shrink(),
                 ),
-                const SizedBox(height: Gaps.lg),
 
-                // Expenses widget
+                // Expenses widget (spacing will be added after if widget renders)
                 FutureBuilder(
                   future: ref
                       .read(eventParticipantsProvider(widget.eventId).future),
@@ -363,17 +400,31 @@ class _EventLivingPageState extends ConsumerState<EventLivingPage> {
                             .toList() ??
                         [];
 
-                    return EventExpensesWidget(
-                      eventId: widget.eventId,
-                      mode: ChatMode.living,
-                      participants: participants,
-                      onAddExpense:
-                          (title, paidBy, participantsOwe, amount) async {
-                        try {
-                          await ref
-                              .read(eventExpensesProvider(widget.eventId)
-                                  .notifier)
-                              .addExpense(
+                    // Check if there are expenses to show
+                    final expensesAsync =
+                        ref.watch(eventExpensesProvider(widget.eventId));
+                    final hasExpenses = expensesAsync.when(
+                      data: (expenses) => expenses.isNotEmpty,
+                      loading: () => false,
+                      error: (_, __) => false,
+                    );
+
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Spacing before expenses section (only if chat exists above)
+                        const SizedBox(height: Gaps.lg),
+                        EventExpensesWidget(
+                          eventId: widget.eventId,
+                          mode: ChatMode.living,
+                          participants: participants,
+                          onAddExpense:
+                              (title, paidBy, participantsOwe, amount) async {
+                            try {
+                              await ref
+                                  .read(eventExpensesProvider(widget.eventId)
+                                      .notifier)
+                                  .addExpense(
                                 description: title,
                                 amount: amount,
                                 paidBy: paidBy,
@@ -381,36 +432,37 @@ class _EventLivingPageState extends ConsumerState<EventLivingPage> {
                                 participantsPaid: [paidBy],
                               );
 
-                          if (context.mounted) {
-                            TopBanner.showSuccess(context,
-                                message: 'Expense added successfully');
-                          }
-                        } catch (e) {
-                          if (context.mounted) {
-                            TopBanner.showError(context,
-                                message: 'Failed to add expense: $e');
-                          }
-                        }
-                      },
+                              if (context.mounted) {
+                                TopBanner.showSuccess(context,
+                                    message: 'Expense added successfully');
+                              }
+                            } catch (e) {
+                              if (context.mounted) {
+                                TopBanner.showError(context,
+                                    message: 'Failed to add expense: $e');
+                              }
+                            }
+                          },
+                        ),
+                        // Only add spacing after if there are expenses
+                        if (hasExpenses) const SizedBox(height: Gaps.lg),
+                      ],
                     );
                   },
                 ),
-                const SizedBox(height: Gaps.lg),
 
                 // Location Widget (if location is set)
-                if (event.location != null) ...[
+                if (event.location != null)
                   LocationWidget(
                     displayName: event.location!.displayName,
                     formattedAddress: event.location!.formattedAddress,
                     latitude: event.location!.latitude,
                     longitude: event.location!.longitude,
                   ),
-                  const SizedBox(height: Gaps.lg),
-                ],
               ],
             ),
-          );
-        },
+          ),
+        ),
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, stack) =>
             Center(child: Text('Error loading event: $error')),

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../features/auth/presentation/pages/authenticated_page.dart';
 import '../features/auth/presentation/pages/login/login_page.dart';
 import '../features/home/presentation/pages/home.dart';
+import '../features/home/presentation/pages/home_search_page.dart';
 import '../features/auth/presentation/pages/verify_otp.dart';
 import '../features/auth/presentation/pages/login/login_otp_verification.dart';
 import '../features/auth/presentation/pages/auth_page.dart';
@@ -36,6 +37,7 @@ import '../features/settings/presentation/pages/share_suggestion_page.dart';
 
 class AppRouter {
   static const String home = '/home';
+  static const String homeSearch = '/home-search';
   static const String auth = '/auth';
   static const String mainLayout = '/main';
   static const String groups = '/groups';
@@ -73,6 +75,7 @@ class AppRouter {
   static final routes = <String, WidgetBuilder>{
     auth: (context) => const AuthPage(),
     home: (context) => const HomePage(),
+    homeSearch: (context) => const HomeSearchPage(),
     mainLayout: (context) => const MainLayout(),
     groups: (context) => const GroupsPage(),
     createGroup: (context) => const CreateGroupPage(),

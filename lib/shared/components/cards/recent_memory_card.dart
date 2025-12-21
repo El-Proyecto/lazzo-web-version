@@ -4,15 +4,20 @@ import '../../constants/text_styles.dart';
 import '../../themes/colors.dart';
 import '../../../features/home/domain/entities/recent_memory_entity.dart';
 
+/// State for recent memory card
+enum RecentMemoryCardState { normal, living, recap }
+
 /// Card for displaying a recent memory with cover photo and event details
 class RecentMemoryCard extends StatelessWidget {
   final RecentMemoryEntity memory;
   final VoidCallback? onTap;
+  final RecentMemoryCardState state;
 
   const RecentMemoryCard({
     super.key,
     required this.memory,
     this.onTap,
+    this.state = RecentMemoryCardState.normal,
   });
 
   @override
@@ -43,6 +48,32 @@ class RecentMemoryCard extends StatelessWidget {
                         ),
                       );
                     },
+                  ),
+                ),
+
+              // Top right chip for living/recap states
+              if (state != RecentMemoryCardState.normal)
+                Positioned(
+                  top: Pads.sectionV,
+                  right: Pads.sectionH,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: Pads.sectionV,
+                      vertical: Pads.ctlVXss,
+                    ),
+                    decoration: BoxDecoration(
+                      color: state == RecentMemoryCardState.living
+                          ? BrandColors.living
+                          : BrandColors.recap,
+                      borderRadius: BorderRadius.circular(Radii.pill),
+                    ),
+                    child: Text(
+                      state == RecentMemoryCardState.living ? 'Live' : 'Recap',
+                      style: AppText.labelLarge.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
                   ),
                 ),
 
