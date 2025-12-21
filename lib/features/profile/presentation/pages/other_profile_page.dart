@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../widgets/other_profile_app_bar.dart';
 import '../widgets/user_info_card.dart';
 import '../widgets/upcoming_together_section.dart';
 import '../widgets/memories_section.dart';
@@ -8,6 +7,7 @@ import '../widgets/invite_to_group_bottom_sheet.dart';
 import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/themes/colors.dart';
 import '../../../../shared/components/common/top_banner.dart';
+import '../../../../shared/components/nav/common_app_bar.dart';
 import '../../../../routes/app_router.dart';
 import '../providers/other_profile_providers.dart';
 import '../../../group_hub/domain/entities/group_event_entity.dart';
@@ -29,8 +29,34 @@ class OtherProfilePage extends ConsumerWidget {
     final profileAsync = ref.watch(otherUserProfileProvider(userId));
     return Scaffold(
       backgroundColor: BrandColors.bg1,
-      appBar: OtherProfileAppBar(
-        onInvitePressed: () => _handleInvitePressed(context, ref),
+      appBar: CommonAppBar(
+        title: 'Profile',
+        leading: GestureDetector(
+          onTap: () => Navigator.pop(context),
+          child: Container(
+            width: 36,
+            height: 36,
+            alignment: Alignment.center,
+            child: const Icon(
+              Icons.arrow_back_ios,
+              color: BrandColors.text1,
+              size: 20,
+            ),
+          ),
+        ),
+        trailing: GestureDetector(
+          onTap: () => _handleInvitePressed(context, ref),
+          child: Container(
+            width: 36,
+            height: 36,
+            alignment: Alignment.center,
+            child: const Icon(
+              Icons.person_add_outlined,
+              color: BrandColors.text1,
+              size: 20,
+            ),
+          ),
+        ),
       ),
       body: profileAsync.when(
         loading: () => const Center(

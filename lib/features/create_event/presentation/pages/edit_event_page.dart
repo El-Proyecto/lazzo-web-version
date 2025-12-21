@@ -5,7 +5,7 @@ import '../../../../shared/constants/text_styles.dart';
 import '../widgets/event_group_selector.dart';
 import '../widgets/date_time_section.dart';
 import '../widgets/location_section.dart'; // Use original version from commit 6641830
-import '../widgets/create_event_app_bar.dart'; // Import CreateEventAppBar
+import '../../../../shared/components/nav/common_app_bar.dart'; // Import CommonAppBar
 // import '../../../../shared/models/event_draft.dart'; // Commented for P1 - conflicts with Google Maps
 // import '../../../../services/draft_service.dart'; // Commented for P1
 import '../../../../shared/themes/colors.dart';
@@ -526,14 +526,26 @@ class _EditEventPageState extends ConsumerState<EditEventPage> {
       },
       child: Scaffold(
         backgroundColor: BrandColors.bg1,
-        appBar: CreateEventAppBar(
+        appBar: CommonAppBar(
           title: 'Edit Event',
-          onBackPressed: _handleBackPressed,
-          trailingAction: GestureDetector(
+          leading: GestureDetector(
+            onTap: _handleBackPressed,
+            child: Container(
+              width: 36,
+              height: 36,
+              alignment: Alignment.center,
+              child: const Icon(
+                Icons.arrow_back_ios,
+                color: BrandColors.text1,
+                size: 20,
+              ),
+            ),
+          ),
+          trailing: GestureDetector(
             onTap: _showDeleteConfirmationDialog,
             child: Container(
-              width: 32,
-              height: 32,
+              width: 36,
+              height: 36,
               alignment: Alignment.center,
               child: const Icon(
                 Icons.delete_outline,

@@ -4,7 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/constants/text_styles.dart';
 import '../../../../routes/app_router.dart';
-import '../widgets/create_event_app_bar.dart';
+import '../../../../shared/components/nav/common_app_bar.dart';
 import '../widgets/event_group_selector.dart';
 import '../widgets/date_time_section.dart';
 import '../widgets/location_section.dart';
@@ -409,17 +409,40 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
       },
       child: Scaffold(
         backgroundColor: BrandColors.bg1,
-        appBar: CreateEventAppBar(
+        appBar: CommonAppBar(
           title: 'Create Event',
-          isEditable: false,
-          onHistoryPressed: _showEventHistory,
-          onBackPressed: () async {
-            final navigator = Navigator.of(context);
-            final shouldPop = await _onWillPop();
-            if (shouldPop && mounted) {
-              navigator.pop();
-            }
-          },
+          leading: GestureDetector(
+            onTap: () async {
+              final navigator = Navigator.of(context);
+              final shouldPop = await _onWillPop();
+              if (shouldPop && mounted) {
+                navigator.pop();
+              }
+            },
+            child: Container(
+              width: 36,
+              height: 36,
+              alignment: Alignment.center,
+              child: const Icon(
+                Icons.arrow_back_ios,
+                color: BrandColors.text1,
+                size: 20,
+              ),
+            ),
+          ),
+          trailing: GestureDetector(
+            onTap: _showEventHistory,
+            child: Container(
+              width: 36,
+              height: 36,
+              alignment: Alignment.center,
+              child: const Icon(
+                Icons.history,
+                color: BrandColors.text1,
+                size: 20,
+              ),
+            ),
+          ),
         ),
         body: Column(
           children: [
