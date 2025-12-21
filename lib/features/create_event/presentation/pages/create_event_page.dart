@@ -529,49 +529,36 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
                       validationError: _getLocationValidationError(),
                     ),
 
+                    const SizedBox(height: Gaps.lg),
+
+                    // Continue button - inside scroll
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        key: const Key('continue_button'),
+                        onPressed: _handleContinuePressed,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: _isFormValid
+                              ? BrandColors.planning
+                              : BrandColors.bg3,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                        ),
+                        child: Text(
+                          'Continue',
+                          style: AppText.titleMediumEmph.copyWith(
+                            color: _isFormValid
+                                ? BrandColors.text1
+                                : BrandColors.text2,
+                          ),
+                        ),
+                      ),
+                    ),
+
                     const SizedBox(height: 24),
                   ],
-                ),
-              ),
-            ),
-
-            // Continue button - fixed at bottom
-            Container(
-              padding: const EdgeInsets.only(
-                left: Insets.screenH,
-                right: Insets.screenH,
-                top: 20,
-                bottom: 32,
-              ),
-              decoration: BoxDecoration(
-                color: BrandColors.bg1,
-                border: Border(
-                  top: BorderSide(
-                    color: BrandColors.text2.withValues(alpha: 0.1),
-                    width: 1,
-                  ),
-                ),
-              ),
-              child: SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  key: const Key('continue_button'),
-                  onPressed: _handleContinuePressed,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor:
-                        _isFormValid ? BrandColors.planning : BrandColors.bg3,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                  ),
-                  child: Text(
-                    'Continue',
-                    style: AppText.titleMediumEmph.copyWith(
-                      color:
-                          _isFormValid ? BrandColors.text1 : BrandColors.text2,
-                    ),
-                  ),
                 ),
               ),
             ),

@@ -235,39 +235,103 @@ class _EditEventPageState extends ConsumerState<EditEventPage> {
     return nameValid && groupValid && dateTimeValid && locationValid;
   }
 
+  /// Obtém o erro de validação de localização
+  String? _getLocationValidationError() {
+    if (!_showValidationErrors) return null;
+
+    if (_locationState == LocationState.setNow) {
+      // Check if location is valid
+      if (_selectedLocation == null) {
+        return 'Please fill in at least one field: Location name or Address';
+      }
+
+      final hasAddress = _selectedLocation!.formattedAddress.isNotEmpty;
+      final hasName = _selectedLocation!.displayName != null &&
+          _selectedLocation!.displayName!.isNotEmpty;
+
+      if (!hasAddress && !hasName) {
+        return 'Please fill in at least one field: Location name or Address';
+      }
+    }
+    return null;
+  }
+
+  /// Verifica se data e hora são válidas
+  bool get _isDateTimeValid {
+    if (_dateTimeState == DateTimeState.decideLater) {
+      return true; // Decide later is always valid
+    }
+
+    // For "Set now", require start date and time
+    if (_selectedDate == null || _selectedTime == null) {
+      return false;
+    }
+
+    // If end date/time is set, validate that end > start
+    if ((_endDate != null && _endTime != null)) {
+      final startDateTime = DateTime(
+        _selectedDate!.year,
+        _selectedDate!.month,
+        _selectedDate!.day,
+        _selectedTime!.hour,
+        _selectedTime!.minute,
+      );
+
+      final endDateTime = DateTime(
+        _endDate!.year,
+        _endDate!.month,
+        _endDate!.day,
+        _endTime!.hour,
+        _endTime!.minute,
+      );
+
+      return endDateTime.isAfter(startDateTime);
+    }
+
+    return true;
+  }
+
+  /// Obtém o erro de validação de data e hora
+  String? _getDateTimeValidationError() {
+    if (!_showValidationErrors) return null;
+
+    if (_dateTimeState == DateTimeState.decideLater) {
+      return null;
+    }
+
+    if (_selectedDate == null || _selectedTime == null) {
+      return 'Please set start date and time';
+    }
+
+    if ((_endDate != null && _endTime != null) && !_isDateTimeValid) {
+      return 'End time must be after start time';
+    }
+
+    return null;
+  }
+
   /// Lida com a tentativa de salvar o evento
   void _handleSaveEvent() {
-    // Se o botão está verde (isFormValid && hasChanges), salva diretamente
+    // Se não há alterações, mostrar topBanner
+    if (!_hasChanges()) {
+      TopBanner.showInfo(
+        context,
+        message: 'No changes made',
+      );
+      return;
+    }
+
+    // Se há alterações e são válidas, salva diretamente
     if (_isFormValid() && _hasChanges()) {
       _updateEvent();
       return;
     }
 
-    // Caso contrário, mostra os erros de validação
-    if (!_showValidationErrors) {
-      setState(() {
-        _showValidationErrors = true;
-      });
-    }
-
-    if (_validateForm()) {
-      _showConfirmEventDialog();
-    }
-  }
-
-  /// Mostra o dialog de confirmação de atualização
-  void _showConfirmEventDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => ConfirmationDialog(
-        title: 'Atualizar Evento',
-        message: 'Tem certeza que deseja salvar as alterações?',
-        confirmText: 'Salvar Alterações',
-        cancelText: 'Cancelar',
-        isDestructive: false,
-        onConfirm: _updateEvent,
-      ),
-    );
+    // Se há alterações mas são inválidas, mostrar erros de validação
+    setState(() {
+      _showValidationErrors = true;
+    });
+    _validateForm();
   }
 
   /// Atualiza o evento
@@ -417,26 +481,23 @@ class _EditEventPageState extends ConsumerState<EditEventPage> {
 
   /// Mostra dialog de confirmação para alterações não salvas
   void _showUnsavedChangesDialog() {
+    final bool isValid = _isFormValid();
+
     showDialog(
       context: context,
       builder: (context) => ConfirmationDialog(
         title: 'Unsaved Changes',
-        message:
-            'You have unsaved changes. Do you want to save them before leaving?',
-        confirmText: 'Save',
+        message: isValid
+            ? 'You have unsaved changes. Do you want to save them before leaving?'
+            : 'You have unsaved changes but they are not valid. Discard them?',
+        confirmText: isValid ? 'Save' : null,
         cancelText: 'Discard',
         isDestructive: false,
-        onConfirm: () {
-          if (_isFormValid()) {
-            _updateEvent(); // This already navigates back
-          } else {
-            // Close dialog first, then show validation errors
-            Navigator.of(context).pop();
-            setState(() {
-              _showValidationErrors = true;
-            });
-          }
-        },
+        onConfirm: isValid
+            ? () {
+                _updateEvent(); // This already navigates back
+              }
+            : null,
         onCancel: () {
           Navigator.of(context).pop(); // Sair sem salvar
         },
@@ -456,7 +517,6 @@ class _EditEventPageState extends ConsumerState<EditEventPage> {
       }
     });
 
-    final editState = ref.watch(editEventControllerProvider);
     return PopScope(
       canPop: !_hasChanges(),
       onPopInvokedWithResult: (didPop, result) async {
@@ -562,6 +622,7 @@ class _EditEventPageState extends ConsumerState<EditEventPage> {
                           _endTime = time;
                         });
                       },
+                      validationError: _getDateTimeValidationError(),
                     ),
 
                     const SizedBox(height: Gaps.md),
@@ -583,50 +644,26 @@ class _EditEventPageState extends ConsumerState<EditEventPage> {
                           _selectedLocation = location;
                         });
                       },
+                      validationError: _getLocationValidationError(),
                     ),
 
-                    const SizedBox(height: 24),
-                  ],
-                ),
-              ),
-            ),
+                    const SizedBox(height: Gaps.lg),
 
-            // Botão de salvar
-            Container(
-              padding: const EdgeInsets.only(
-                left: Insets.screenH,
-                right: Insets.screenH,
-                top: 20,
-                bottom: 32,
-              ),
-              child: SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed:
-                      (_isFormValid() && _hasChanges() && !editState.isLoading)
-                          ? _handleSaveEvent
-                          : null,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: (_isFormValid() && _hasChanges())
-                        ? BrandColors.planning
-                        : BrandColors.bg3,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                  ),
-                  child: editState.isLoading
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(
-                              Colors.white,
-                            ),
+                    // Save Changes button - inside scroll
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: _handleSaveEvent,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: (_isFormValid() && _hasChanges())
+                              ? BrandColors.planning
+                              : BrandColors.bg3,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
                           ),
-                        )
-                      : Text(
+                        ),
+                        child: Text(
                           'Save Changes',
                           style: AppText.titleMediumEmph.copyWith(
                             color: (_isFormValid() && _hasChanges())
@@ -634,6 +671,11 @@ class _EditEventPageState extends ConsumerState<EditEventPage> {
                                 : BrandColors.text2,
                           ),
                         ),
+                      ),
+                    ),
+
+                    const SizedBox(height: 24),
+                  ],
                 ),
               ),
             ),

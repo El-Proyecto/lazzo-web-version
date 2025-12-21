@@ -293,7 +293,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                   padding:
                       const EdgeInsets.symmetric(horizontal: Insets.screenH),
                   child: custom.SearchBar(
-                    placeholder: 'Search groups, events, memories...',
+                    placeholder: 'Search events, memories, payments...',
                     enabled: false,
                     onTap: () {
                       Navigator.pushNamed(context, AppRouter.homeSearch);
