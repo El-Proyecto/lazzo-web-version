@@ -88,7 +88,7 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
 
         if (livingEvents.length > 1) {
           // Multiple events - show selection menu
-                    for (var event in livingEvents) {
+                    for (var _ in livingEvents) {
                       }
           if (mounted) {
             EventSelectionMenu.show(
@@ -133,7 +133,7 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
 
         if (recapEvents.length > 1) {
           // Multiple events - show selection menu
-                    for (var event in recapEvents) {
+                    for (var _ in recapEvents) {
                       }
           if (mounted) {
             EventSelectionMenu.show(
