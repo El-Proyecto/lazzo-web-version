@@ -25,7 +25,7 @@ class EventHistoryBottomSheet extends StatelessWidget {
     return CommonBottomSheet.show(
       context: context,
       title: 'Event History',
-      maxHeight: 400,
+      maxHeight: MediaQuery.of(context).size.height * 0.9,
       content: EventHistoryBottomSheet(
         events: events,
         onEventSelected: onEventSelected,

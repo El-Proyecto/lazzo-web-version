@@ -94,19 +94,20 @@ class EventDetailModel {
     EventStatus statusEnum;
     final statusLower = status.toLowerCase();
 
+    
     switch (statusLower) {
       case 'confirmed':
         statusEnum = EventStatus.confirmed;
-        break;
+                break;
       case 'living':
         statusEnum = EventStatus.living;
-        break;
-      case 'ended':
-        statusEnum = EventStatus.ended;
-        break;
+                break;
+      case 'recap':
+        statusEnum = EventStatus.recap;
+                break;
       default:
         statusEnum = EventStatus.pending;
-    }
+            }
 
     // Create location if all fields present
     EventLocation? location;

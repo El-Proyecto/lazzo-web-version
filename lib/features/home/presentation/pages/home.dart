@@ -293,7 +293,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                   padding:
                       const EdgeInsets.symmetric(horizontal: Insets.screenH),
                   child: custom.SearchBar(
-                    placeholder: 'Search groups, events, memories...',
+                    placeholder: 'Search events, memories, payments...',
                     enabled: false,
                     onTap: () {
                       Navigator.pushNamed(context, AppRouter.homeSearch);
@@ -874,9 +874,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                             totalBalanceAsync.when(
                               data: (balance) {
                                 return Text(
-                                  balance >= 0
-                                      ? '+€${balance.toStringAsFixed(2)}'
-                                      : '-€${balance.abs().toStringAsFixed(2)}',
+                                  '${balance.abs().toStringAsFixed(2)}€',
                                   style: AppText.titleMediumEmph.copyWith(
                                     color: balance >= 0
                                         ? BrandColors.planning // Green
@@ -909,21 +907,24 @@ class _HomePageState extends ConsumerState<HomePage> {
                               child: PaymentSummaryCard(
                                 payment: payment,
                                 onTap: () {
+                                  // Set inbox internal tab to Payments (index 1, since Notifications is 0)
+                                  ref
+                                      .read(inboxTabIndexProvider.notifier)
+                                      .state = 1;
+
                                   // Store selected payment user ID
                                   ref
                                       .read(selectedPaymentUserIdProvider
                                           .notifier)
                                       .state = payment.userId;
 
-                                  // Set inbox internal tab to Payments (index 2) FIRST
-                                  ref
-                                      .read(inboxTabIndexProvider.notifier)
-                                      .state = 2;
-
-                                  // Navigate to Inbox main tab (index 2)
-                                  ref
-                                      .read(mainLayoutTabProvider.notifier)
-                                      .state = 2;
+                                  // Navigate to Inbox main tab (index 2) after a frame
+                                  WidgetsBinding.instance
+                                      .addPostFrameCallback((_) {
+                                    ref
+                                        .read(mainLayoutTabProvider.notifier)
+                                        .state = 2;
+                                  });
                                 },
                               ),
                             );
@@ -937,6 +938,8 @@ class _HomePageState extends ConsumerState<HomePage> {
                 loading: () => const SizedBox.shrink(),
                 error: (error, stackTrace) => const SizedBox.shrink(),
               ),
+
+              const SizedBox(height: Gaps.lg),
 
               // Recent Memories Section
               recentMemoriesAsync.when(

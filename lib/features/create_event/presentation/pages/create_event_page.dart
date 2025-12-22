@@ -4,7 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/constants/text_styles.dart';
 import '../../../../routes/app_router.dart';
-import '../widgets/create_event_app_bar.dart';
+import '../../../../shared/components/nav/common_app_bar.dart';
 import '../widgets/event_group_selector.dart';
 import '../widgets/date_time_section.dart';
 import '../widgets/location_section.dart';
@@ -219,13 +219,8 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
         _eventName != 'Add Event Name' &&
         _selectedGroup != null;
 
-    // If basic fields (name, group) are valid, allow continue
-    // Location and DateTime can be set to "Decide Later" if invalid
-    if (basicFieldsValid) {
-      return true;
-    }
-
-    // If basic fields are invalid, require all fields including location and datetime
+    // All fields must be valid: basic fields + location + datetime
+    // Location and DateTime are valid if "Decide Later" OR properly filled when "Set Now"
     return basicFieldsValid && _isLocationValid && _isDateTimeValid;
   }
 
@@ -235,18 +230,16 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
       return true; // Decide later is always valid
     }
 
-    // For "Set now", location is valid if:
-    // 1. Location object exists AND
-    // 2. Has either formattedAddress OR displayName (custom name)
-    if (_selectedLocation != null &&
-        (_selectedLocation!.formattedAddress.isNotEmpty ||
-            (_selectedLocation!.displayName != null &&
-                _selectedLocation!.displayName!.isNotEmpty))) {
-      return true;
+    // For "Set now", require at least one field:
+    // Location object must exist AND have either formattedAddress OR displayName
+    if (_selectedLocation != null) {
+      final hasAddress = _selectedLocation!.formattedAddress.isNotEmpty;
+      final hasName = _selectedLocation!.displayName != null &&
+          _selectedLocation!.displayName!.isNotEmpty;
+      return hasAddress || hasName;
     }
 
-    // If location is being edited (cleared temporarily),
-    // don't make the form invalid - user can still switch to "Decide Later"
+    // If no location is set when "Set Now" is selected, it's invalid
     return false;
   }
 
@@ -262,7 +255,7 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
     if (!_showValidationErrors) return null;
 
     if (_locationState == LocationState.setNow && !_isLocationValid) {
-      return 'Please set a location or switch to "Decide later"';
+      return 'Please fill in at least one field: Location name or Address';
     }
     return null;
   }
@@ -416,156 +409,183 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
       },
       child: Scaffold(
         backgroundColor: BrandColors.bg1,
-        appBar: CreateEventAppBar(
+        appBar: CommonAppBar(
           title: 'Create Event',
-          isEditable: false,
-          onHistoryPressed: _showEventHistory,
-          onBackPressed: () async {
-            final navigator = Navigator.of(context);
-            final shouldPop = await _onWillPop();
-            if (shouldPop && mounted) {
-              navigator.pop();
-            }
-          },
+          leading: GestureDetector(
+            onTap: () async {
+              final navigator = Navigator.of(context);
+              final shouldPop = await _onWillPop();
+              if (shouldPop && mounted) {
+                navigator.pop();
+              }
+            },
+            child: Container(
+              width: 36,
+              height: 36,
+              alignment: Alignment.center,
+              child: const Icon(
+                Icons.arrow_back_ios,
+                color: BrandColors.text1,
+                size: 20,
+              ),
+            ),
+          ),
+          trailing: GestureDetector(
+            onTap: _showEventHistory,
+            child: Container(
+              width: 36,
+              height: 36,
+              alignment: Alignment.center,
+              child: const Icon(
+                Icons.history,
+                color: BrandColors.text1,
+                size: 20,
+              ),
+            ),
+          ),
         ),
-        body: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: Insets.screenH),
-          child: Column(
-            children: [
-              const SizedBox(height: Gaps.lg),
+        body: Column(
+          children: [
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: Insets.screenH),
+                child: Column(
+                  children: [
+                    const SizedBox(height: Gaps.lg),
 
-              // Seleção de grupo e nome do evento
-              EventGroupSelector(
-                key: const Key('createEvent:groupSelector'),
-                eventEmoji: _eventEmoji,
-                eventName: _eventName.isEmpty ? 'Add Event Name' : _eventName,
-                nameFieldKey: const Key('createEvent:name'),
-                groupButtonKey: const Key('createEvent:groupButton'),
-                selectedGroup: _selectedGroup,
-                nameError: _showValidationErrors ? _nameError : null,
-                groupError: _showValidationErrors ? _groupError : null,
-                onGroupPressed: _showGroupSelection,
-                onEventNameChanged: (name) {
-                  setState(() {
-                    _eventName = name;
-                    // Clear error if field is now valid
-                    if (_showValidationErrors &&
-                        name.trim().isNotEmpty &&
-                        name != 'Add Event Name') {
-                      _nameError = null;
-                    }
-                  });
-                },
-                onEmojiPressed: (emoji) {
-                  setState(() {
-                    _eventEmoji = emoji;
-                  });
-                },
-              ),
+                    // Seleção de grupo e nome do evento
+                    EventGroupSelector(
+                      key: const Key('createEvent:groupSelector'),
+                      eventEmoji: _eventEmoji,
+                      eventName:
+                          _eventName.isEmpty ? 'Add Event Name' : _eventName,
+                      nameFieldKey: const Key('createEvent:name'),
+                      groupButtonKey: const Key('createEvent:groupButton'),
+                      selectedGroup: _selectedGroup,
+                      nameError: _showValidationErrors ? _nameError : null,
+                      groupError: _showValidationErrors ? _groupError : null,
+                      onGroupPressed: _showGroupSelection,
+                      onEventNameChanged: (name) {
+                        setState(() {
+                          _eventName = name;
+                          // Clear error if field is now valid
+                          if (_showValidationErrors &&
+                              name.trim().isNotEmpty &&
+                              name != 'Add Event Name') {
+                            _nameError = null;
+                          }
+                        });
+                      },
+                      onEmojiPressed: (emoji) {
+                        setState(() {
+                          _eventEmoji = emoji;
+                        });
+                      },
+                    ),
 
-              const SizedBox(height: Gaps.md),
+                    const SizedBox(height: Gaps.md),
 
-              // Seção de data e hora
-              DateTimeSection(
-                startDate: _selectedDate,
-                startTime: _selectedTime,
-                endDate: _endDate,
-                endTime: _endTime,
-                initialState: _dateTimeState,
-                onStartDateChanged: (date) {
-                  setState(() {
-                    _selectedDate = date;
-                  });
-                  _setDefaultEndTimeIfNeeded();
-                  _clearValidationErrorsIfValid();
-                },
-                onStartTimeChanged: (time) {
-                  setState(() {
-                    _selectedTime = time;
-                  });
-                  _setDefaultEndTimeIfNeeded();
-                  _clearValidationErrorsIfValid();
-                },
-                onEndDateChanged: (date) {
-                  setState(() {
-                    _endDate = date;
-                  });
-                  _clearValidationErrorsIfValid();
-                },
-                onEndTimeChanged: (time) {
-                  setState(() {
-                    _endTime = time;
-                  });
-                  _clearValidationErrorsIfValid();
-                },
-                onStateChanged: (state) {
-                  setState(() {
-                    _dateTimeState = state;
-                  });
-                  // Clear validation errors if state becomes valid
-                  _clearValidationErrorsIfValid();
-                },
-                validationError: _getDateTimeValidationError(),
-              ),
+                    // Seção de data e hora
+                    DateTimeSection(
+                      startDate: _selectedDate,
+                      startTime: _selectedTime,
+                      endDate: _endDate,
+                      endTime: _endTime,
+                      initialState: _dateTimeState,
+                      onStartDateChanged: (date) {
+                        setState(() {
+                          _selectedDate = date;
+                        });
+                        _setDefaultEndTimeIfNeeded();
+                        _clearValidationErrorsIfValid();
+                      },
+                      onStartTimeChanged: (time) {
+                        setState(() {
+                          _selectedTime = time;
+                        });
+                        _setDefaultEndTimeIfNeeded();
+                        _clearValidationErrorsIfValid();
+                      },
+                      onEndDateChanged: (date) {
+                        setState(() {
+                          _endDate = date;
+                        });
+                        _clearValidationErrorsIfValid();
+                      },
+                      onEndTimeChanged: (time) {
+                        setState(() {
+                          _endTime = time;
+                        });
+                        _clearValidationErrorsIfValid();
+                      },
+                      onStateChanged: (state) {
+                        setState(() {
+                          _dateTimeState = state;
+                        });
+                        // Clear validation errors if state becomes valid
+                        _clearValidationErrorsIfValid();
+                      },
+                      validationError: _getDateTimeValidationError(),
+                    ),
 
-              const SizedBox(height: Gaps.md),
+                    const SizedBox(height: Gaps.md),
 
-              // Seção de localização
-              LocationSection(
-                selectedLocation: _selectedLocation,
-                initialState: _locationState,
-                onLocationChanged: (location) {
-                  setState(() {
-                    _selectedLocation = location;
-                  });
-                  // Clear validation errors if location becomes valid
-                  _clearValidationErrorsIfValid();
-                },
-                onStateChanged: (state) {
-                  setState(() {
-                    _locationState = state;
-                  });
-                  _validateLocationState();
-                  // Clear validation errors if state becomes valid
-                  _clearValidationErrorsIfValid();
-                },
-                validationError: _getLocationValidationError(),
-              ),
+                    // Seção de localização
+                    LocationSection(
+                      selectedLocation: _selectedLocation,
+                      initialState: _locationState,
+                      onLocationChanged: (location) {
+                        setState(() {
+                          _selectedLocation = location;
+                        });
+                        // Clear validation errors if location becomes valid
+                        _clearValidationErrorsIfValid();
+                      },
+                      onStateChanged: (state) {
+                        setState(() {
+                          _locationState = state;
+                        });
+                        _validateLocationState();
+                        // Clear validation errors if state becomes valid
+                        _clearValidationErrorsIfValid();
+                      },
+                      validationError: _getLocationValidationError(),
+                    ),
 
-              const SizedBox(height: 24),
+                    const SizedBox(height: Gaps.lg),
 
-              // Continue button
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 0),
-                child: SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    key: const Key('continue_button'),
-                    onPressed: _handleContinuePressed,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor:
-                          _isFormValid ? BrandColors.planning : BrandColors.bg3,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
+                    // Continue button - inside scroll
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        key: const Key('continue_button'),
+                        onPressed: _handleContinuePressed,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: _isFormValid
+                              ? BrandColors.planning
+                              : BrandColors.bg3,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                        ),
+                        child: Text(
+                          'Continue',
+                          style: AppText.titleMediumEmph.copyWith(
+                            color: _isFormValid
+                                ? BrandColors.text1
+                                : BrandColors.text2,
+                          ),
+                        ),
                       ),
                     ),
-                    child: Text(
-                      'Continue',
-                      style: AppText.titleMediumEmph.copyWith(
-                        color: _isFormValid
-                            ? BrandColors.text1
-                            : BrandColors.text2,
-                      ),
-                    ),
-                  ),
+
+                    const SizedBox(height: 24),
+                  ],
                 ),
               ),
-
-              // Espaço extra para scroll
-              const SizedBox(height: 100),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -631,8 +651,8 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      isDismissible: false,
-      enableDrag: false,
+      isDismissible: true,
+      enableDrag: true,
       backgroundColor: Colors.transparent,
       builder: (context) => ConfirmEventBottomSheet(
         eventName: _eventName,

@@ -218,7 +218,7 @@ signedPhotoUrl = null;
             .eq('id', groupId)
             .single();
                 
-                await _notificationService.sendGroupInvite(
+                final notificationId = await _notificationService.sendGroupInvite(
           recipientUserId: userId,
           inviterName: inviterData['name'] ?? 'Someone',
           groupName: groupData['name'] ?? 'a group',

@@ -20,7 +20,7 @@ class EventExpensesWidget extends ConsumerWidget {
   final ChatMode mode;
   final Future<void> Function(
     String title,
-    String paidById, // ✅ Mudou de List<String> para String
+    String paidById,
     List<String> participantsOwe,
     double totalAmount,
   ) onAddExpense;
@@ -35,7 +35,7 @@ class EventExpensesWidget extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // ✅ MUDAR: usar eventExpensesProvider de expense/
+
     final expensesAsync = ref.watch(eventExpensesProvider(eventId));
 
     return expensesAsync.when(
@@ -70,7 +70,7 @@ class EventExpensesWidget extends ConsumerWidget {
                   Text(
                     allSettled
                         ? 'Settled'
-                        : '${isOwedToUser ? '+' : '-'}${userTotal.abs().toStringAsFixed(2)} €',
+                        : '${userTotal.abs().toStringAsFixed(2)}€',
                     style: AppText.bodyMediumEmph.copyWith(
                       color: allSettled
                           ? BrandColors.text2
@@ -140,7 +140,6 @@ class EventExpensesWidget extends ConsumerWidget {
                   );
                 },
               ),
-              const SizedBox(height: Gaps.md),
 
               // Add Expense button
               SizedBox(

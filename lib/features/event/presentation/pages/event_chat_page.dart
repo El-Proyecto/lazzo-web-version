@@ -16,7 +16,7 @@ import '../../domain/entities/chat_message.dart';
 import '../providers/chat_providers.dart';
 import '../providers/event_providers.dart';
 import '../../../expense/presentation/providers/event_expense_providers.dart';
-import '../../data/fakes/fake_chat_repository.dart';
+import '../../domain/entities/event_detail.dart';
 
 /// Event chat page
 /// Full-screen chat interface for event communication
@@ -51,15 +51,16 @@ class _EventChatPageState extends ConsumerState<EventChatPage> {
   /// Get current user ID from Supabase auth
   String? get _currentUserId => Supabase.instance.client.auth.currentUser?.id;
 
-  /// Get current event state color based on FakeEventChatConfig
-  /// P2 TODO: Get from actual event status provider
-  Color get _eventStateColor {
-    switch (FakeEventChatConfig.eventStatus) {
-      case FakeEventChatStatus.living:
+  /// Get current event state color based on event status
+  Color _getEventStateColor(EventStatus? status) {
+    switch (status) {
+      case EventStatus.living:
         return BrandColors.living; // Purple
-      case FakeEventChatStatus.recap:
+      case EventStatus.recap:
         return BrandColors.recap; // Orange
-      case FakeEventChatStatus.planning:
+      case EventStatus.pending:
+      case EventStatus.confirmed:
+      default:
         return BrandColors.planning; // Green
     }
   }
@@ -517,102 +518,121 @@ class _EventChatPageState extends ConsumerState<EventChatPage> {
         children: [
           // Messages list
           Expanded(
-            child: messagesAsync.when(
-              data: (messages) {
-                // Filter out pending messages that already exist in real messages
-                // Match by content, userId, and approximate timestamp (within 5 seconds)
-                final filteredPendingMessages =
-                    _pendingMessages.where((pending) {
-                  final hasDuplicate = messages.any((real) =>
-                      real.content == pending.content &&
-                      real.userId == pending.userId &&
-                      real.createdAt
-                              .difference(pending.createdAt)
-                              .abs()
-                              .inSeconds <
-                          5);
+            child: eventAsync.when(
+              data: (event) {
+                return messagesAsync.when(
+                  data: (messages) {
+                    // Filter out pending messages that already exist in real messages
+                    // Match by content, userId, and approximate timestamp (within 5 seconds)
+                    final filteredPendingMessages =
+                        _pendingMessages.where((pending) {
+                      final hasDuplicate = messages.any((real) =>
+                          real.content == pending.content &&
+                          real.userId == pending.userId &&
+                          real.createdAt
+                                  .difference(pending.createdAt)
+                                  .abs()
+                                  .inSeconds <
+                              5);
 
-                  if (hasDuplicate) {
-                    // Remove from pending list in next frame to avoid setState during build
-                    WidgetsBinding.instance.addPostFrameCallback((_) {
-                      if (mounted) {
-                        setState(() {
-                          _pendingMessages.removeWhere((p) =>
-                              p.content == pending.content &&
-                              p.userId == pending.userId);
+                      if (hasDuplicate) {
+                        // Remove from pending list in next frame to avoid setState during build
+                        WidgetsBinding.instance.addPostFrameCallback((_) {
+                          if (mounted) {
+                            setState(() {
+                              _pendingMessages.removeWhere((p) =>
+                                  p.content == pending.content &&
+                                  p.userId == pending.userId);
+                            });
+                          }
                         });
                       }
-                    });
-                  }
 
-                  return !hasDuplicate;
-                }).toList();
+                      return !hasDuplicate;
+                    }).toList();
 
-                // Combine filtered pending messages with real messages
-                final allMessages = [...filteredPendingMessages, ...messages];
+                    // Combine filtered pending messages with real messages
+                    final allMessages = [
+                      ...filteredPendingMessages,
+                      ...messages
+                    ];
 
-                if (allMessages.isEmpty) {
-                  return Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.message_outlined,
-                          size: 64,
-                          color: BrandColors.text2.withValues(alpha: 0.3),
+                    if (allMessages.isEmpty) {
+                      return Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.message_outlined,
+                              size: 64,
+                              color: BrandColors.text2.withValues(alpha: 0.3),
+                            ),
+                            const SizedBox(height: Gaps.sm),
+                            Text(
+                              'No messages yet.',
+                              style: AppText.bodyMedium.copyWith(
+                                color: BrandColors.text2,
+                              ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(height: Gaps.sm),
-                        Text(
-                          'No messages yet.',
-                          style: AppText.bodyMedium.copyWith(
-                            color: BrandColors.text2,
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                }
+                      );
+                    }
 
-                // Get unread count from new read receipts system
-                final unreadCountAsync = ref.watch(
-                  unreadMessagesCountProvider(widget.eventId),
-                );
+                    // Get unread count from new read receipts system
+                    final unreadCountAsync = ref.watch(
+                      unreadMessagesCountProvider(widget.eventId),
+                    );
 
-                final unreadCount = unreadCountAsync.when(
-                  data: (count) {
-                    return count;
+                    final unreadCount = unreadCountAsync.when(
+                      data: (count) {
+                        return count;
+                      },
+                      loading: () => 0,
+                      error: (e, stack) {
+                        return 0;
+                      },
+                    );
+
+                    // Build list with date separators and unread indicator
+                    final bubbleColor = _getEventStateColor(event.status);
+                    return ChatMessagesList(
+                      messages: allMessages,
+                      scrollController: _scrollController,
+                      onMessageLongPress: _onMessageLongPress,
+                      onMessageTap: _scrollToMessage,
+                      onSwipeReply: _replyToMessage,
+                      messageKeys: _messageKeys,
+                      currentUserId: _currentUserId,
+                      bubbleColor: bubbleColor,
+                      unreadCount: unreadCount,
+                      enableSwipeToReply: true,
+                      reverse: true,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: Pads.sectionH,
+                      ),
+                      physics: const AlwaysScrollableScrollPhysics(),
+                    );
                   },
-                  loading: () => 0,
-                  error: (e, stack) {
-                    return 0;
-                  },
-                );
-
-                // Build list with date separators and unread indicator
-                return ChatMessagesList(
-                  messages: allMessages,
-                  scrollController: _scrollController,
-                  onMessageLongPress: _onMessageLongPress,
-                  onMessageTap: _scrollToMessage,
-                  onSwipeReply: _replyToMessage,
-                  messageKeys: _messageKeys,
-                  currentUserId: _currentUserId,
-                  bubbleColor: _eventStateColor,
-                  unreadCount: unreadCount,
-                  enableSwipeToReply: true,
-                  reverse: true,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: Pads.sectionH,
+                  loading: () => const Center(
+                    child: CircularProgressIndicator(),
                   ),
-                  physics: const AlwaysScrollableScrollPhysics(),
+                  error: (error, _) => Center(
+                    child: Text(
+                      'Error loading messages',
+                      style: AppText.bodyMedium.copyWith(
+                        color: BrandColors.text2,
+                      ),
+                    ),
+                  ),
                 );
               },
               loading: () => const Center(
                 child: CircularProgressIndicator(),
               ),
-              error: (error, _) => Center(
+              error: (_, __) => Center(
                 child: Text(
-                  'Error loading messages',
+                  'Error loading event',
                   style: AppText.bodyMedium.copyWith(
                     color: BrandColors.text2,
                   ),
@@ -622,26 +642,63 @@ class _EventChatPageState extends ConsumerState<EventChatPage> {
           ),
 
           // Message input
-          messagesAsync.when(
-            data: (messages) {
-              final allMessages = [
-                ..._pendingMessages,
-                ...messages,
-              ];
-              return _ChatInput(
-                controller: _messageController,
-                focusNode: _focusNode,
-                onSend: _sendMessage,
-                replyingTo: _replyingTo,
-                onCancelReply: () {
-                  setState(() {
-                    _replyingTo = null;
-                  });
+          eventAsync.when(
+            data: (event) {
+              return messagesAsync.when(
+                data: (messages) {
+                  final allMessages = [
+                    ..._pendingMessages,
+                    ...messages,
+                  ];
+                  return _ChatInput(
+                    controller: _messageController,
+                    focusNode: _focusNode,
+                    onSend: _sendMessage,
+                    replyingTo: _replyingTo,
+                    onCancelReply: () {
+                      setState(() {
+                        _replyingTo = null;
+                      });
+                    },
+                    eventStateColor: _getEventStateColor(event.status),
+                    eventStatus: event.status,
+                    showSuggestions: allMessages.isEmpty,
+                    ref: ref,
+                    eventId: widget.eventId,
+                  );
                 },
-                eventStateColor: _eventStateColor,
-                showSuggestions: allMessages.isEmpty,
-                ref: ref,
-                eventId: widget.eventId,
+                loading: () => _ChatInput(
+                  controller: _messageController,
+                  focusNode: _focusNode,
+                  onSend: _sendMessage,
+                  replyingTo: _replyingTo,
+                  onCancelReply: () {
+                    setState(() {
+                      _replyingTo = null;
+                    });
+                  },
+                  eventStateColor: _getEventStateColor(event.status),
+                  eventStatus: event.status,
+                  showSuggestions: false,
+                  ref: ref,
+                  eventId: widget.eventId,
+                ),
+                error: (_, __) => _ChatInput(
+                  controller: _messageController,
+                  focusNode: _focusNode,
+                  onSend: _sendMessage,
+                  replyingTo: _replyingTo,
+                  onCancelReply: () {
+                    setState(() {
+                      _replyingTo = null;
+                    });
+                  },
+                  eventStateColor: _getEventStateColor(event.status),
+                  eventStatus: event.status,
+                  showSuggestions: false,
+                  ref: ref,
+                  eventId: widget.eventId,
+                ),
               );
             },
             loading: () => _ChatInput(
@@ -654,7 +711,8 @@ class _EventChatPageState extends ConsumerState<EventChatPage> {
                   _replyingTo = null;
                 });
               },
-              eventStateColor: _eventStateColor,
+              eventStateColor: _getEventStateColor(null),
+              eventStatus: null,
               showSuggestions: false,
               ref: ref,
               eventId: widget.eventId,
@@ -669,7 +727,8 @@ class _EventChatPageState extends ConsumerState<EventChatPage> {
                   _replyingTo = null;
                 });
               },
-              eventStateColor: _eventStateColor,
+              eventStateColor: _getEventStateColor(null),
+              eventStatus: null,
               showSuggestions: false,
               ref: ref,
               eventId: widget.eventId,
@@ -886,6 +945,7 @@ class _ChatInput extends StatelessWidget {
   final ChatMessage? replyingTo;
   final VoidCallback? onCancelReply;
   final Color eventStateColor;
+  final EventStatus? eventStatus;
   final bool showSuggestions;
   final WidgetRef ref;
   final String eventId;
@@ -897,6 +957,7 @@ class _ChatInput extends StatelessWidget {
     this.replyingTo,
     this.onCancelReply,
     required this.eventStateColor,
+    this.eventStatus,
     this.showSuggestions = false,
     required this.ref,
     required this.eventId,
@@ -904,15 +965,16 @@ class _ChatInput extends StatelessWidget {
 
   Future<void> _showAddExpenseBottomSheet(BuildContext context) async {
     // Get event participants
-    final participantsAsync = await ref.read(eventParticipantsProvider(eventId).future);
+    final participantsAsync =
+        await ref.read(eventParticipantsProvider(eventId).future);
 
     final currentUserId = Supabase.instance.client.auth.currentUser?.id;
-    
+
     // Helper function to display "You" for current user
     String getUserDisplayName(String userId, String userName) {
       return userId == currentUserId ? 'You' : userName;
     }
-    
+
     final participants = participantsAsync
         .map((p) => ExpenseParticipantOption(
               id: p.userId,
@@ -929,15 +991,13 @@ class _ChatInput extends StatelessWidget {
       onAddExpense: (title, paidBy, participantsOwe, amount) async {
         // Create expense using expense provider
         try {
-          await ref
-              .read(eventExpensesProvider(eventId).notifier)
-              .addExpense(
-                description: title,
-                amount: amount,
-                paidBy: paidBy,
-                participantsOwe: participantsOwe,
-                participantsPaid: [paidBy],
-              );
+          await ref.read(eventExpensesProvider(eventId).notifier).addExpense(
+            description: title,
+            amount: amount,
+            paidBy: paidBy,
+            participantsOwe: participantsOwe,
+            participantsPaid: [paidBy],
+          );
 
           if (context.mounted) {
             TopBanner.showSuccess(context,
@@ -945,8 +1005,7 @@ class _ChatInput extends StatelessWidget {
           }
         } catch (e) {
           if (context.mounted) {
-            TopBanner.showError(context,
-                message: 'Failed to add expense: $e');
+            TopBanner.showError(context, message: 'Failed to add expense: $e');
           }
         }
       },
@@ -971,17 +1030,17 @@ class _ChatInput extends StatelessWidget {
             // Message suggestions (empty state)
             if (showSuggestions)
               Align(
-              alignment: Alignment.centerLeft,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                horizontal: Pads.sectionH,
+                alignment: Alignment.centerLeft,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: Pads.sectionH,
+                  ),
+                  child: MessageSuggestionsList(
+                    onSuggestionTap: (suggestion) {
+                      controller.text = suggestion;
+                    },
+                  ),
                 ),
-                child: MessageSuggestionsList(
-                onSuggestionTap: (suggestion) {
-                  controller.text = suggestion;
-                },
-                ),
-              ),
               ),
 
             // Reply banner
@@ -1064,8 +1123,8 @@ class _ChatInput extends StatelessWidget {
                       final shouldHide = hasText || isFocused;
 
                       if (shouldHide ||
-                          (!FakeEventChatConfig.isLiving &&
-                              !FakeEventChatConfig.isRecap)) {
+                          (eventStatus != EventStatus.living &&
+                              eventStatus != EventStatus.recap)) {
                         return const SizedBox.shrink();
                       }
 
@@ -1077,7 +1136,7 @@ class _ChatInput extends StatelessWidget {
                           bottom: Gaps.xxs,
                         ),
                         decoration: BoxDecoration(
-                          color: FakeEventChatConfig.isLiving
+                          color: eventStatus == EventStatus.living
                               ? BrandColors.living
                               : BrandColors.recap,
                           borderRadius: BorderRadius.circular(Radii.pill),
@@ -1089,7 +1148,7 @@ class _ChatInput extends StatelessWidget {
                               HapticFeedback.lightImpact();
 
                               // Recap mode: open gallery with multi-select (max 5)
-                              if (FakeEventChatConfig.isRecap) {
+                              if (eventStatus == EventStatus.recap) {
                                 final picker = ImagePicker();
                                 final selectedImages =
                                     await picker.pickMultiImage(
@@ -1114,14 +1173,11 @@ class _ChatInput extends StatelessWidget {
                                   }
 
                                   // Navigate to ManageMemoryPage with selected photos
-                                  // TODO P2: Get actual memoryId from event
-                                  final memoryId = 'memory-1'; // Placeholder
-
                                   if (context.mounted) {
                                     Navigator.of(context).pushNamed(
                                       AppRouter.manageMemory,
                                       arguments: {
-                                        'memoryId': memoryId,
+                                        'memoryId': eventId,
                                         'selectedPhotos': limitedImages
                                             .map((img) => img.path)
                                             .toList(),
@@ -1142,7 +1198,7 @@ class _ChatInput extends StatelessWidget {
                             },
                             borderRadius: BorderRadius.circular(Radii.pill),
                             child: Icon(
-                              FakeEventChatConfig.isLiving
+                              eventStatus == EventStatus.living
                                   ? Icons.camera_alt
                                   : Icons.add_photo_alternate,
                               size: IconSizes.smAlt,
@@ -1194,9 +1250,9 @@ class _ChatInput extends StatelessWidget {
                         ),
                         decoration: BoxDecoration(
                           color: hasText
-                              ? (FakeEventChatConfig.isLiving
+                              ? (eventStatus == EventStatus.living
                                   ? BrandColors.living
-                                  : FakeEventChatConfig.isRecap
+                                  : eventStatus == EventStatus.recap
                                       ? BrandColors.recap
                                       : BrandColors.planning)
                               : Colors.transparent,

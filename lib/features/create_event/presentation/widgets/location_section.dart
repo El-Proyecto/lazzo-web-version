@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../../shared/components/common/top_banner.dart';
 import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/constants/text_styles.dart';
@@ -145,77 +146,105 @@ class _LocationSectionState extends State<LocationSection>
 
   Widget _buildExpandedContent() {
     if (widget.selectedLocation != null) {
-      // Show location preview when selected
-      return _buildLocationPreview();
+      // Show location with address field filled and clear button
+      return _buildLocationWithMap();
     } else {
       // Show location input form
       return _buildLocationInput();
     }
   }
 
-  Widget _buildLocationPreview() {
+  Widget _buildLocationWithMap() {
     final location = widget.selectedLocation!;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Static map mockup
-        Container(
-          width: double.infinity,
-          height: 120,
-          decoration: BoxDecoration(
-            color: BrandColors.bg3,
-            borderRadius: BorderRadius.circular(Radii.smAlt),
-          ),
-          child: const Stack(
-            alignment: Alignment.center,
-            children: [
-              Icon(Icons.map, size: 40, color: BrandColors.text2),
-              Icon(Icons.place, size: 30, color: BrandColors.planning),
-            ],
-          ),
+        // Location Name Field (Optional)
+        _buildTextField(
+          hintText: 'Location name',
+          icon: Icons.edit_location_alt,
+          controller: _locationNameController,
+          onChanged: (value) => _updateLocationName(value),
         ),
 
         const SizedBox(height: Gaps.md),
 
-        // Location info
-        if (location.displayName != null) ...[
-          Text(
-            location.displayName!,
-            style: AppText.titleMediumEmph.copyWith(
-              color: BrandColors.text1,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          const SizedBox(height: 4),
-        ],
-        Text(
-          location.formattedAddress,
-          style: AppText.bodyMedium.copyWith(color: BrandColors.text2),
-        ),
-
-        const SizedBox(height: Gaps.md),
-
-        // Action buttons
+        // Address field with clear button (full width)
         Row(
           children: [
             Expanded(
-              child: _buildActionButton(
-                icon: Icons.edit_outlined,
-                text: 'Change',
-                onTap: () => _resetLocationForEditing(),
-                isSecondary: true,
-              ),
-            ),
-            const SizedBox(width: Gaps.sm),
-            Expanded(
-              child: _buildActionButton(
-                icon: Icons.open_in_new,
-                text: 'Open in Maps',
-                onTap: () => _openInMaps(location),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: Pads.ctlH,
+                  vertical: Pads.ctlV,
+                ),
+                decoration: BoxDecoration(
+                  color: BrandColors.bg3,
+                  borderRadius: BorderRadius.circular(Radii.smAlt),
+                  border: Border.all(
+                    color: BrandColors.text2.withValues(alpha: 0.2),
+                    width: 1,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.search,
+                      color: BrandColors.text2,
+                      size: 18,
+                    ),
+                    const SizedBox(width: Gaps.xs),
+                    Expanded(
+                      child: Text(
+                        location.formattedAddress,
+                        style: AppText.bodyMedium.copyWith(
+                          color: BrandColors.text1,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(width: Gaps.xs),
+                    GestureDetector(
+                      onTap: _resetLocationForEditing,
+                      child: const Icon(
+                        Icons.close,
+                        color: BrandColors.text2,
+                        size: 18,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ],
+        ),
+
+        const SizedBox(height: Gaps.md),
+
+        // Map preview (clickable)
+        GestureDetector(
+          onTap: () => _openInMaps(location),
+          child: Container(
+            width: double.infinity,
+            height: 120,
+            decoration: BoxDecoration(
+              color: BrandColors.bg3,
+              borderRadius: BorderRadius.circular(Radii.smAlt),
+              border: Border.all(
+                color: BrandColors.text2.withValues(alpha: 0.2),
+                width: 1,
+              ),
+            ),
+            child: const Stack(
+              alignment: Alignment.center,
+              children: [
+                Icon(Icons.map, size: 40, color: BrandColors.text2),
+                Icon(Icons.place, size: 30, color: BrandColors.planning),
+              ],
+            ),
+          ),
         ),
       ],
     );
@@ -227,7 +256,7 @@ class _LocationSectionState extends State<LocationSection>
       children: [
         // Location Name Field (Optional)
         _buildTextField(
-          hintText: 'Location name (optional)',
+          hintText: 'Location name',
           icon: Icons.edit_location_alt,
           controller: _locationNameController,
           onChanged: (value) => _updateLocationName(value),
@@ -235,15 +264,54 @@ class _LocationSectionState extends State<LocationSection>
 
         const SizedBox(height: Gaps.md),
 
-        // Search Address Field
-        _buildTextField(
-          hintText: 'Search address or place',
-          icon: Icons.search,
-          controller: _addressSearchController,
-          onChanged: (value) => _handleAddressSearch(value),
-          onSubmitted: (value) => _handleEnterKeyPressed(),
-          readOnly: false,
+        // Search Address Field with Current Location button
+        Row(
+          children: [
+            Expanded(
+              child: _buildTextField(
+                hintText: 'Search address or place',
+                icon: Icons.search,
+                controller: _addressSearchController,
+                onChanged: (value) => _handleAddressSearch(value),
+                onSubmitted: (value) => _handleEnterKeyPressed(),
+                readOnly: false,
+              ),
+            ),
+            const SizedBox(width: Gaps.sm),
+            // Current Location button
+            GestureDetector(
+              onTap: _useCurrentLocation,
+              child: Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: BrandColors.bg3,
+                  borderRadius: BorderRadius.circular(Radii.smAlt),
+                  border: Border.all(
+                    color: BrandColors.text2.withValues(alpha: 0.2),
+                    width: 1,
+                  ),
+                ),
+                child: const Icon(
+                  Icons.my_location,
+                  color: BrandColors.text1,
+                  size: 20,
+                ),
+              ),
+            ),
+          ],
         ),
+
+        // Validation Error
+        if (widget.validationError != null) ...[
+          const SizedBox(height: Gaps.sm),
+          Text(
+            widget.validationError!,
+            style: AppText.bodyMedium.copyWith(
+              fontSize: 12,
+              color: BrandColors.cantVote,
+            ),
+          ),
+        ],
 
         // Suggestions list
         if (_showSuggestions) ...[
@@ -251,29 +319,48 @@ class _LocationSectionState extends State<LocationSection>
           _buildSuggestionsList(),
         ],
 
+        // Always show map area
         const SizedBox(height: Gaps.md),
-
-        // Action Buttons
-        Row(
-          children: [
-            Expanded(
-              child: _buildActionButton(
-                icon: Icons.my_location,
-                text: 'Current location',
-                onTap: () => _useCurrentLocation(),
-              ),
-            ),
-            const SizedBox(width: Gaps.sm),
-            Expanded(
-              child: _buildActionButton(
-                icon: Icons.map_outlined,
-                text: 'Pick on map',
-                onTap: () => _pickOnMap(),
-              ),
-            ),
-          ],
-        ),
+        _buildMapArea(),
       ],
+    );
+  }
+
+  /// Build map area - shows empty state or location map
+  Widget _buildMapArea() {
+    final hasLocation = widget.selectedLocation != null &&
+        widget.selectedLocation!.formattedAddress.isNotEmpty;
+
+    return GestureDetector(
+      onTap: hasLocation ? () => _openInMaps(widget.selectedLocation!) : null,
+      child: Container(
+        width: double.infinity,
+        height: 120,
+        decoration: BoxDecoration(
+          color: BrandColors.bg3,
+          borderRadius: BorderRadius.circular(Radii.smAlt),
+          border: Border.all(
+            color: BrandColors.text2.withValues(alpha: 0.2),
+            width: 1,
+          ),
+        ),
+        child: hasLocation
+            ? const Stack(
+                alignment: Alignment.center,
+                children: [
+                  Icon(Icons.map, size: 40, color: BrandColors.text2),
+                  Icon(Icons.place, size: 30, color: BrandColors.planning),
+                ],
+              )
+            : Center(
+                child: Text(
+                  'Add address first',
+                  style: AppText.bodyMedium.copyWith(
+                    color: BrandColors.text2,
+                  ),
+                ),
+              ),
+      ),
     );
   }
 
@@ -331,55 +418,6 @@ class _LocationSectionState extends State<LocationSection>
     );
   }
 
-  Widget _buildActionButton({
-    required IconData icon,
-    required String text,
-    required VoidCallback onTap,
-    bool isSecondary = false,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(
-          horizontal: Pads.ctlH - 2,
-          vertical: Pads.ctlV,
-        ),
-        decoration: BoxDecoration(
-          color: BrandColors.bg3,
-          borderRadius: BorderRadius.circular(Radii.smAlt),
-          border: Border.all(
-            color: isSecondary
-                ? BrandColors.text2.withValues(alpha: 0.3)
-                : BrandColors.planning,
-            width: 1,
-          ),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              icon,
-              color: isSecondary ? BrandColors.text2 : BrandColors.planning,
-              size: 16,
-            ),
-            const SizedBox(width: Gaps.xs),
-            Flexible(
-              child: Text(
-                text,
-                style: AppText.bodyMedium.copyWith(
-                  color: isSecondary ? BrandColors.text1 : BrandColors.planning,
-                  fontWeight: FontWeight.w500,
-                  fontSize: 12,
-                ),
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   Future<void> _useCurrentLocation() async {
     try {
       // Check location permissions
@@ -410,12 +448,17 @@ class _LocationSectionState extends State<LocationSection>
 
       if (placemarks.isNotEmpty) {
         final placemark = placemarks.first;
+        final formattedAddr = _formatAddress(placemark);
+
+        // Auto-generate display name if not provided
+        String? displayName = _locationNameController.text.isNotEmpty
+            ? _locationNameController.text
+            : _generateLocationNameFromAddress(formattedAddr);
+
         final currentLocation = LocationInfo(
           id: 'current-location-${DateTime.now().millisecondsSinceEpoch}',
-          displayName: _locationNameController.text.isNotEmpty
-              ? _locationNameController.text
-              : placemark.name ?? 'Current Location',
-          formattedAddress: _formatAddress(placemark),
+          displayName: displayName,
+          formattedAddress: formattedAddr,
           latitude: position.latitude,
           longitude: position.longitude,
         );
@@ -443,32 +486,36 @@ class _LocationSectionState extends State<LocationSection>
     }
   }
 
-  void _pickOnMap() {
-    // TODO: Implement map picker functionality
-    // For now, create a mock location and go to state 2
-    final mockLocation = LocationInfo(
-      id: 'map-pick-${DateTime.now().millisecondsSinceEpoch}',
-      displayName: _locationNameController.text.isNotEmpty
-          ? _locationNameController.text
-          : null,
-      formattedAddress: 'Selected from map',
-      latitude: -23.5505,
-      longitude: -46.6333,
+  void _openInMaps(LocationInfo location) async {
+    final lat = location.latitude;
+    final lng = location.longitude;
+    final label = Uri.encodeComponent(
+      location.displayName ?? location.formattedAddress,
     );
 
-    // Hide suggestions and go to state 2
-    setState(() {
-      _showSuggestions = false;
-      _suggestions.clear();
-    });
+    // Try Apple Maps first on iOS, Google Maps on Android
+    final appleMapsUrl =
+        Uri.parse('https://maps.apple.com/?q=$label&ll=$lat,$lng');
+    final googleMapsUrl =
+        Uri.parse('https://www.google.com/maps/search/?api=1&query=$lat,$lng');
 
-    widget.onLocationChanged?.call(mockLocation);
-    HapticFeedback.lightImpact();
-  }
-
-  void _openInMaps(LocationInfo location) {
-    // TODO: Implement opening in maps
-    // This would typically use url_launcher to open maps app
+    try {
+      // Try Apple Maps first
+      if (await canLaunchUrl(appleMapsUrl)) {
+        await launchUrl(appleMapsUrl, mode: LaunchMode.externalApplication);
+      } else if (await canLaunchUrl(googleMapsUrl)) {
+        await launchUrl(googleMapsUrl, mode: LaunchMode.externalApplication);
+      } else {
+        throw 'Could not open maps';
+      }
+    } catch (e) {
+      if (mounted) {
+        TopBanner.showError(
+          context,
+          message: 'Could not open maps app',
+        );
+      }
+    }
   }
 
   void _changeState(LocationState newState) {
@@ -756,11 +803,14 @@ class _LocationSectionState extends State<LocationSection>
   }
 
   void _selectSuggestion(LocationSuggestion suggestion) {
+    // Auto-generate display name from address if custom name not provided
+    String? displayName = _locationNameController.text.isNotEmpty
+        ? _locationNameController.text
+        : _generateLocationNameFromAddress(suggestion.address);
+
     final location = LocationInfo(
       id: suggestion.id,
-      displayName: _locationNameController.text.isNotEmpty
-          ? _locationNameController.text
-          : null,
+      displayName: displayName,
       formattedAddress: suggestion.address,
       latitude: suggestion.latitude,
       longitude: suggestion.longitude,
@@ -774,6 +824,29 @@ class _LocationSectionState extends State<LocationSection>
 
     widget.onLocationChanged?.call(location);
     HapticFeedback.lightImpact();
+  }
+
+  /// Generate a short, useful location name from address
+  /// Example: "1-99 Stockton St, Union Square, São Francisco, Estados Unidos"
+  /// becomes "Union Square (São Francisco)"
+  String _generateLocationNameFromAddress(String address) {
+    final parts = address.split(',').map((s) => s.trim()).toList();
+
+    if (parts.length >= 3) {
+      // Try to get a meaningful middle part (neighborhood/area) and city
+      // Usually format is: Street, Neighborhood, City, Country
+      final area = parts[1]; // Usually neighborhood or area
+      final city = parts[2]; // Usually city
+      return '$area ($city)';
+    } else if (parts.length == 2) {
+      // Just area and city/country
+      return '${parts[0]} (${parts[1]})';
+    } else if (parts.isNotEmpty) {
+      // Just return first part
+      return parts[0];
+    }
+
+    return 'Selected Location';
   }
 
   void _handleEnterKeyPressed() {
@@ -800,6 +873,8 @@ class _LocationSectionState extends State<LocationSection>
     widget.onLocationChanged?.call(null);
     HapticFeedback.lightImpact();
   }
+
+  /// Build map preview when location is selected
 }
 
 /// Seletor expandido de localização

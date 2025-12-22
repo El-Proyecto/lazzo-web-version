@@ -130,22 +130,21 @@ class _AddExpenseBottomSheetState extends State<AddExpenseBottomSheet> {
   }
 
   Future<void> _handleAddExpense() async {
-                        
     if (!_isValid) {
-            _validateFields();
+      _validateFields();
       setState(() {
         _showErrors = true;
       });
       return;
     }
 
-        await widget.onAddExpense(
+    await widget.onAddExpense(
       _titleController.text.trim(),
       _selectedPaidBy!,
       _selectedParticipants,
       _totalAmount,
     );
-    
+
     if (mounted) {
       Navigator.of(context).pop();
     }
@@ -186,9 +185,7 @@ class _AddExpenseBottomSheetState extends State<AddExpenseBottomSheet> {
     return GestureDetector(
       onTap: _closeAllDropdowns,
       child: Container(
-        constraints: BoxConstraints(
-          maxHeight: MediaQuery.of(context).size.height * 0.9,
-        ),
+        height: MediaQuery.of(context).size.height * 0.9,
         decoration: const BoxDecoration(
           color: BrandColors.bg2,
           borderRadius: BorderRadius.only(
@@ -197,39 +194,31 @@ class _AddExpenseBottomSheetState extends State<AddExpenseBottomSheet> {
           ),
         ),
         child: Column(
-          mainAxisSize: MainAxisSize.min,
+          mainAxisSize: MainAxisSize.max,
           children: [
             // Grabber
             const GrabberBar(),
 
-            // Header
+            // Header - title aligned left, no close button
             Padding(
               padding: const EdgeInsets.only(
                   right: Pads.sectionH,
                   left: Pads.sectionH,
+                  top: Gaps.sm,
                   bottom: Pads.sectionH),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'New Expense',
-                    style: AppText.titleMediumEmph.copyWith(
-                      color: BrandColors.text1,
-                    ),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'New Expense',
+                  style: AppText.titleMediumEmph.copyWith(
+                    color: BrandColors.text1,
                   ),
-                  IconButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    icon: const Icon(Icons.close),
-                    color: BrandColors.text2,
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
-                  ),
-                ],
+                ),
               ),
             ),
 
-            // Content
-            Flexible(
+            // Content - Expanded to fill available space
+            Expanded(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.only(
                   left: Pads.sectionH,
@@ -314,35 +303,35 @@ class _AddExpenseBottomSheetState extends State<AddExpenseBottomSheet> {
                       },
                       dropdownBuilder: _buildSplitWithDropdown,
                     ),
-                    const SizedBox(height: Gaps.xl),
-
-                    // Add Expense Button
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: _handleAddExpense,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor:
-                              _isValid ? BrandColors.planning : BrandColors.bg3,
-                          foregroundColor: BrandColors.text1,
-                          padding: const EdgeInsets.symmetric(
-                            vertical: Gaps.md,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(Radii.md),
-                          ),
-                        ),
-                        child: Text(
-                          'Add Expense',
-                          style: AppText.labelLarge.copyWith(
-                            color: _isValid
-                                ? BrandColors.text1
-                                : BrandColors.text2,
-                          ),
-                        ),
-                      ),
-                    ),
                   ],
+                ),
+              ),
+            ),
+
+            // Add Expense Button - pinned at bottom
+            Padding(
+              padding: const EdgeInsets.all(Pads.sectionH),
+              child: SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: _handleAddExpense,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor:
+                        _isValid ? BrandColors.planning : BrandColors.bg3,
+                    foregroundColor: BrandColors.text1,
+                    padding: const EdgeInsets.symmetric(
+                      vertical: Gaps.md,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(Radii.md),
+                    ),
+                  ),
+                  child: Text(
+                    'Add Expense',
+                    style: AppText.labelLarge.copyWith(
+                      color: _isValid ? BrandColors.text1 : BrandColors.text2,
+                    ),
+                  ),
                 ),
               ),
             ),

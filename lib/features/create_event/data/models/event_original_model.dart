@@ -93,10 +93,16 @@ class EventModel {
 
   EventStatus _parseEventStatus(String status) {
     switch (status.toLowerCase()) {
-      case 'pending':     return EventStatus.pending;
-      case 'confirmed': return EventStatus.confirmed;
-      case 'ended': return EventStatus.ended;
-      default:          return EventStatus.pending;
+      case 'pending':
+        return EventStatus.pending;
+      case 'confirmed':
+        return EventStatus.confirmed;
+      case 'living':
+        return EventStatus.living;
+      case 'recap':
+        return EventStatus.recap;
+      default:
+        return EventStatus.pending;
     }
   }
 }

@@ -80,32 +80,49 @@ class _InboxPaymentCardState extends State<InboxPaymentCard> {
                           style: AppText.bodyMedium.copyWith(
                             color: BrandColors.text1,
                           ),
-                          children: [
-                            TextSpan(
-                              text: userName.isNotEmpty
-                                  ? '$userName '
-                                  : 'Someone ',
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            TextSpan(
-                              text: widget.isOwedToUser
-                                  ? 'owes you '
-                                  : 'you owe ',
-                            ),
-                            TextSpan(
-                              text:
-                                  '€${widget.payment.amount.toStringAsFixed(2)}',
-                              style: TextStyle(
-                                color: widget.isOwedToUser
-                                    ? BrandColors
-                                        .planning // Green for "owed to you"
-                                    : BrandColors.cantVote, // Red for "you owe"
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
+                          children: widget.isOwedToUser
+                              ? [
+                                  TextSpan(
+                                    text: userName.isNotEmpty
+                                        ? '$userName '
+                                        : 'Someone ',
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  const TextSpan(
+                                    text: 'owes you ',
+                                  ),
+                                  TextSpan(
+                                    text:
+                                        '${widget.payment.amount.toStringAsFixed(2)}€',
+                                    style: const TextStyle(
+                                      color: BrandColors.planning,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ]
+                              : [
+                                  const TextSpan(
+                                    text: 'You owe ',
+                                  ),
+                                  TextSpan(
+                                    text:
+                                        '${widget.payment.amount.toStringAsFixed(2)}€',
+                                    style: const TextStyle(
+                                      color: BrandColors.cantVote,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  TextSpan(
+                                    text: userName.isNotEmpty
+                                        ? ' to $userName'
+                                        : ' to someone',
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
                         ),
                       ),
 

@@ -10,6 +10,7 @@ import '../../constants/text_styles.dart';
 import '../../themes/colors.dart';
 import '../widgets/votes_bottom_sheet.dart';
 import '../dialogs/add_expense_bottom_sheet.dart';
+import '../common/top_banner.dart';
 
 /// Home event card state
 /// Planning phase: pending (border color) or confirmed (green)
@@ -449,17 +450,12 @@ class _HomeEventCardState extends ConsumerState<HomeEventCard> {
         Expanded(
           child: GestureDetector(
             onTap: () {
-              // Navigate to event chat page
-              if (widget.state == HomeEventCardState.living) {
-                Navigator.pushNamed(
-                  context,
-                  '/event-chat',
-                  arguments: {'eventId': _currentEvent.id},
-                );
-              } else {
-                // For non-living events, use the callback if provided
-                widget.onChatPressed?.call();
-              }
+              // Navigate to event chat page for all states
+              Navigator.pushNamed(
+                context,
+                '/event-chat',
+                arguments: {'eventId': _currentEvent.id},
+              );
             },
             child: Container(
               height: 44,
@@ -502,14 +498,7 @@ class _HomeEventCardState extends ConsumerState<HomeEventCard> {
 
                 // If loading, wait for it to complete
                 if (currentState is AsyncLoading) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Loading participants...'),
-                      duration: Duration(seconds: 1),
-                    ),
-                  );
-
-                  // Wait a bit and try again
+                  // Wait for data to load
                   await Future.delayed(const Duration(milliseconds: 1500));
 
                   final newState =
@@ -520,10 +509,9 @@ class _HomeEventCardState extends ConsumerState<HomeEventCard> {
 
                     if (participants.isEmpty) {
                       if (mounted) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                              content:
-                                  Text('No participants found for this event')),
+                        TopBanner.showInfo(
+                          context,
+                          message: 'No participants found for this event',
                         );
                       }
                       return;
@@ -560,8 +548,11 @@ class _HomeEventCardState extends ConsumerState<HomeEventCard> {
                         participants: participantOptions,
                         onAddExpense: (title, paidById, participantsOwe,
                             totalAmount) async {
+                          // ✅ Optimistic UI: Call callback immediately
+                          widget.onExpensePressed?.call();
+
+                          // ✅ Create expense in Supabase (background)
                           try {
-                            // ✅ Create expense in Supabase
                             await ref
                                 .read(eventExpensesProvider(eventId).notifier)
                                 .addExpense(
@@ -576,25 +567,21 @@ class _HomeEventCardState extends ConsumerState<HomeEventCard> {
                             ref.invalidate(paymentsOwedToUserProvider);
                             ref.invalidate(paymentsUserOwesProvider);
 
-                            // Show success message
+                            // ✅ Show success TopBanner
                             if (mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text('Expense "$title" created!'),
-                                  backgroundColor: BrandColors.planning,
-                                ),
+                              TopBanner.showSuccess(
+                                context,
+                                message: 'Expense "$title" added!',
                               );
                             }
-
-                            widget.onExpensePressed?.call();
                           } catch (e) {
-                            // Show error message
+                            debugPrint(
+                                '❌ [HomeEventCard] Error adding expense: $e');
+                            // ✅ Show error TopBanner
                             if (mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text('Error creating expense: $e'),
-                                  backgroundColor: BrandColors.cantVote,
-                                ),
+                              TopBanner.showError(
+                                context,
+                                message: 'Failed to add expense',
                               );
                             }
                           }
@@ -603,17 +590,16 @@ class _HomeEventCardState extends ConsumerState<HomeEventCard> {
                     }
                   } else if (newState is AsyncError) {
                     if (mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                            content: Text(
-                                'Error loading participants: ${newState.error}')),
+                      TopBanner.showError(
+                        context,
+                        message: 'Failed to load participants',
                       );
                     }
                   } else {
                     if (mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                            content: Text('Still loading, please try again')),
+                      TopBanner.showInfo(
+                        context,
+                        message: 'Loading participants, please try again',
                       );
                     }
                   }
@@ -625,11 +611,12 @@ class _HomeEventCardState extends ConsumerState<HomeEventCard> {
                   final participants = currentState.value ?? [];
 
                   if (participants.isEmpty) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                          content:
-                              Text('No participants found for this event')),
-                    );
+                    if (mounted) {
+                      TopBanner.showInfo(
+                        context,
+                        message: 'No participants found for this event',
+                      );
+                    }
                     return;
                   }
 
@@ -664,8 +651,11 @@ class _HomeEventCardState extends ConsumerState<HomeEventCard> {
                     participants: participantOptions,
                     onAddExpense:
                         (title, paidById, participantsOwe, totalAmount) async {
+                      // ✅ Optimistic UI: Call callback immediately
+                      widget.onExpensePressed?.call();
+
+                      // ✅ Create expense in Supabase (background)
                       try {
-                        // ✅ Create expense in Supabase
                         await ref
                             .read(eventExpensesProvider(eventId).notifier)
                             .addExpense(
@@ -676,25 +666,25 @@ class _HomeEventCardState extends ConsumerState<HomeEventCard> {
                           participantsPaid: [],
                         );
 
-                        // Show success message
+                        // ✅ Invalidate payments to refresh home page
+                        ref.invalidate(paymentsOwedToUserProvider);
+                        ref.invalidate(paymentsUserOwesProvider);
+
+                        // ✅ Show success TopBanner
                         if (mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text('Expense "$title" created!'),
-                              backgroundColor: BrandColors.planning,
-                            ),
+                          TopBanner.showSuccess(
+                            context,
+                            message: 'Expense "$title" added!',
                           );
                         }
-
-                        widget.onExpensePressed?.call();
                       } catch (e) {
-                        // Show error message
+                        debugPrint(
+                            '❌ [HomeEventCard] Error adding expense: $e');
+                        // ✅ Show error TopBanner
                         if (mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text('Error creating expense: $e'),
-                              backgroundColor: BrandColors.cantVote,
-                            ),
+                          TopBanner.showError(
+                            context,
+                            message: 'Failed to add expense',
                           );
                         }
                       }
@@ -705,15 +695,21 @@ class _HomeEventCardState extends ConsumerState<HomeEventCard> {
 
                 // If error state
                 if (currentState is AsyncError) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Error: ${currentState.error}')),
-                  );
+                  if (mounted) {
+                    TopBanner.showError(
+                      context,
+                      message: 'Failed to load participants',
+                    );
+                  }
                   return;
                 }
-              } catch (e) {
-                                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Error: $e')),
+              } catch (e, stackTrace) {
+                debugPrint(
+                    '❌ [HomeEventCard] Error opening expense sheet: $e\n$stackTrace');
+                if (mounted) {
+                  TopBanner.showError(
+                    context,
+                    message: 'Failed to open expense sheet',
                   );
                 }
               }
@@ -729,7 +725,7 @@ class _HomeEventCardState extends ConsumerState<HomeEventCard> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     const Icon(
-                      Icons.add,
+                      Icons.receipt_long_outlined,
                       color: BrandColors.text1,
                       size: 18,
                     ),

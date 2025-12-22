@@ -189,7 +189,7 @@ class _PaymentsSectionState extends ConsumerState<PaymentsSection> {
           style: AppText.titleMediumEmph.copyWith(color: BrandColors.text1),
         ),
         Text(
-          '€${total.toStringAsFixed(2)}',
+          '${total.toStringAsFixed(2)}€',
           style: AppText.titleMediumEmph.copyWith(
             color: title.contains('owe')
                 ? BrandColors.cantVote

@@ -32,7 +32,8 @@ class EventExpenseRemoteDataSource {
           .single();
 
       final expenseId = expenseResponse['id'] as String;
-            // Step 2: Insert expense_splits (who owes)
+      
+      // Step 2: Insert expense_splits (who owes)
       if (participantsOwe.isNotEmpty) {
                 final amountPerPerson = amount / participantsOwe.length;
                 
@@ -69,7 +70,7 @@ class EventExpenseRemoteDataSource {
           // Send notification to each participant (except the payer)
                     for (final userId in participantsOwe) {
             if (userId != paidBy) {
-                            await _notificationService.sendExpenseAddedYouOwe(
+                            final notificationId = await _notificationService.sendExpenseAddedYouOwe(
                 recipientUserId: userId,
                 creatorName: creatorName,
                 amount: amountPerPerson.toStringAsFixed(2),
