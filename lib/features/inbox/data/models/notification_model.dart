@@ -55,8 +55,7 @@ class NotificationModel {
   });
 
   factory NotificationModel.fromJson(Map<String, dynamic> json) {
-    print('[NotificationModel] 📝 Parsing JSON: ${json.keys.toList()}');
-    
+        
     return NotificationModel(
       id: json['id'] as String,
       // title & description removed - V2 doesn't have these fields
@@ -117,15 +116,12 @@ class NotificationModel {
   }
 
   NotificationEntity toEntity() {
-    print('[NotificationModel] 🔄 Converting to entity: type=$type, category=$category');
-    
+        
     // Generate temporary title/description (will be replaced by i18n in UI)
     final tempTitle = _generateTitle();
     final tempDescription = _generateDescription();
     
-    print('[NotificationModel] ✅ Generated title: $tempTitle');
-    print('[NotificationModel] ✅ Generated description: $tempDescription');
-    
+            
     return NotificationEntity(
       id: id,
       title: tempTitle,
@@ -211,7 +207,7 @@ class NotificationModel {
       case 'eventEndsSoon':
         return '${eventEmoji ?? '🎉'} ${eventName ?? 'Event'} ends in ${mins ?? '?'} min.';
       case 'eventExtended':
-        return '${eventEmoji ?? '🎉'} ${eventName ?? 'Event'} was extended by ${mins ?? '?'} min.';
+        return ' ${eventName ?? 'Event'} was extended by ${hours ?? '?'}h.';
       case 'uploadsOpen':
         return 'Add your photos to ${eventEmoji ?? '🎉'} ${eventName ?? 'event'} · ${hours ?? '?'}h left.';
       case 'uploadsClosing':

@@ -710,10 +710,8 @@ class _HomeEventCardState extends ConsumerState<HomeEventCard> {
                   );
                   return;
                 }
-              } catch (e, stackTrace) {
-                debugPrint(
-                    '❌ [HomeEventCard] Error opening expense sheet: $e\n$stackTrace');
-                if (mounted) {
+              } catch (e) {
+                                if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(content: Text('Error: $e')),
                   );

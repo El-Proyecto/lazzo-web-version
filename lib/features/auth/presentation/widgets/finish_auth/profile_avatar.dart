@@ -93,7 +93,6 @@ class _ProfileAvatarState extends State<ProfileAvatar> {
 
       setState(() => _resolvedUrl = url);
     } catch (e) {
-      debugPrint('Erro a criar Signed URL: $e');
       setState(() => _resolvedUrl = null);
     } finally {
       if (mounted) setState(() => _isLoading = false);

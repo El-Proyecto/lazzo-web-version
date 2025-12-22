@@ -101,40 +101,32 @@ final members = <GroupMemberEntity>[];
         String? name;
         String? profileImageUrl;
         final users = json['users'];
-        print('[GroupDetailsRepo] 👥 Processing member: userId=$userId, isCurrentUser=$isCurrentUser');
-        print('[GroupDetailsRepo] 👥 Raw users data: $users');
-        
+                        
         if (users != null) {
           if (users is Map<String, dynamic>) {
             name = users['name'] as String?;
             final avatarPath = users['avatar_url'] as String?;
-            print('[GroupDetailsRepo] 🖼️ Avatar path from DB: "$avatarPath"');
-            
+                        
                         
             // Convert storage path to signed URL (works with private buckets)
             if (avatarPath != null && avatarPath.isNotEmpty) {
-              print('[GroupDetailsRepo] 🔒 Avatar path exists, generating signed URL...');
-              // Check if it's already a full URL
+                            // Check if it's already a full URL
               if (avatarPath.startsWith('http')) {
                 profileImageUrl = avatarPath;
-                print('[GroupDetailsRepo] ✅ Using existing URL: $profileImageUrl');
-              } else {
+                              } else {
                 // Create signed URL (valid for 1 hour)
                 // Normalize path - remove leading slash if present
                 try {
                   final normalizedPath = avatarPath.startsWith('/') ? avatarPath.substring(1) : avatarPath;
-                  print('[GroupDetailsRepo] 🔄 Normalized path: "$normalizedPath"');
-                                    profileImageUrl = await _supabase.storage
+                                                      profileImageUrl = await _supabase.storage
                       .from('users-profile-pic')
                       .createSignedUrl(normalizedPath, 3600); // 1 hour
-                  print('[GroupDetailsRepo] ✅ Signed URL created: $profileImageUrl');
-                                  } catch (e) {
-                  print('[GroupDetailsRepo] ❌ Failed to create signed URL: $e');
-                                    profileImageUrl = null;
+                                                    } catch (e) {
+                                                      profileImageUrl = null;
                 }
               }
             } else {
-              print('[GroupDetailsRepo] ⚠️ No avatar path for user $userId');            }
+                          }
             
                       } else if (users is List && users.isNotEmpty) {
             final firstUser = users[0] as Map<String, dynamic>;

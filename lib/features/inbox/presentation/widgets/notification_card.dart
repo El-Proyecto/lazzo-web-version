@@ -191,8 +191,7 @@ class NotificationCard extends StatelessWidget {
         width: double.infinity,
         child: ElevatedButton(
           onPressed: () {
-            print('[NotificationCard] 💰 Mark as Paid clicked');
-            onMarkPaid?.call(notification.id);
+                        onMarkPaid?.call(notification.id);
           },
           style: ElevatedButton.styleFrom(
             backgroundColor: BrandColors.planning,

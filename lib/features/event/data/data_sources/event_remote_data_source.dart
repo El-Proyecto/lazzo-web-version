@@ -1,13 +1,16 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/event_detail_model.dart';
 import '../../domain/entities/event_participant_entity.dart';
+import '../../../../services/notification_service.dart';
 
 /// Remote data source for event operations
 /// Handles all Supabase queries related to events
 class EventRemoteDataSource {
   final SupabaseClient _supabaseClient;
+  final NotificationService _notificationService;
 
-  EventRemoteDataSource(this._supabaseClient);
+  EventRemoteDataSource(this._supabaseClient)
+      : _notificationService = NotificationService(_supabaseClient);
 
   /// Get event details by ID
   /// Includes: RSVP counts, suggestion counts, location suggestion counts, poll count, host info
@@ -391,6 +394,36 @@ class EventRemoteDataSource {
           .from('events')
           .update({'end_datetime': newEndTime.toIso8601String()})
           .eq('id', eventId);
+
+      // CRITICAL: Send notifications to all participants (except host)
+      try {
+        final currentUserId = _supabaseClient.auth.currentUser?.id;
+        final additionalHours = (minutes / 60).ceil();
+        
+        if (currentUserId != null) {
+          // Get all participants of this event (except current user/host)
+          final participants = await _supabaseClient
+              .from('event_participants')
+              .select('user_id')
+              .eq('pevent_id', eventId)
+              .neq('user_id', currentUserId);
+          
+          // Send notification to each participant
+          for (final participant in participants) {
+            final participantId = participant['user_id'] as String;
+            
+            await _notificationService.sendEventExtended(
+              recipientUserId: participantId,
+              eventName: currentEvent.name,
+              eventId: eventId,
+              additionalHours: additionalHours,
+              eventEmoji: currentEvent.emoji,
+            );
+          }
+        }
+      } catch (e) {
+        // Don't fail the extension if notification fails
+      }
 
       // Return updated event
       return await getEventDetail(eventId);

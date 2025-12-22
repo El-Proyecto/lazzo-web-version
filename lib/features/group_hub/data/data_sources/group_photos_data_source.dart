@@ -59,8 +59,7 @@ class GroupPhotosDataSource {
   /// which pre-joins users and events data for 10x faster queries
   Future<List<Map<String, dynamic>>> getGroupPhotos(String groupId) async {
     try {
-      print('[GroupPhotosDataSource] 📸 Fetching photos for group: $groupId');
-      
+            
       // Step 1: Get all event IDs for this group
       final eventsResponse = await _supabase
           .from('events')
@@ -71,11 +70,9 @@ class GroupPhotosDataSource {
           .map((e) => e['id'] as String)
           .toList();
       
-      print('[GroupPhotosDataSource] 🎯 Found ${eventIds.length} events in group');
-      
+            
       if (eventIds.isEmpty) {
-        print('[GroupPhotosDataSource] ⚠️ No events found for group $groupId');
-        return [];
+                return [];
       }
       
       // Step 2: Query photos for these events from materialized view
@@ -95,12 +92,10 @@ class GroupPhotosDataSource {
           .order('captured_at', ascending: false)
           .limit(100);
       
-      print('[GroupPhotosDataSource] ✅ Found ${(response as List).length} photos');
-            
+                  
       // Transform response to match expected format
       return (response as List).map((row) {
-        print('[GroupPhotosDataSource] 🖼️ Photo: id=${row['id']}, event=${row['event_id']}, uploader=${row['uploader_name']}');
-        return {
+                return {
           'id': row['id'],
           'event_id': row['event_id'],
           'storage_path': row['storage_path'],
@@ -114,8 +109,7 @@ class GroupPhotosDataSource {
         };
       }).toList();
     } catch (e) {
-      print('[GroupPhotosDataSource] ❌ Error fetching photos: $e');
-      throw Exception('Failed to fetch group photos: $e');
+            throw Exception('Failed to fetch group photos: $e');
     }
   }
 
