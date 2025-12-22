@@ -1,6 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../shared/components/widgets/rsvp_widget.dart';
 import '../../domain/entities/home_event.dart';
+import '../../domain/entities/participant_photo.dart';
 
 /// DTO for home event - converts Supabase rows to entities
 class _HomeEventModel {
@@ -21,6 +22,8 @@ class _HomeEventModel {
   final List<dynamic> goingUsers;
   final List<dynamic> notGoingUsers; // ✅ NOVO
   final List<dynamic> noResponseUsers; // ✅ NOVO
+  final int photoCount; // ✅ Total photos in event
+  final int maxPhotos; // ✅ Maximum allowed photos
   final String? currentUserId;
   final SupabaseClient supabaseClient;
 
@@ -42,6 +45,8 @@ class _HomeEventModel {
     required this.goingUsers,
     required this.notGoingUsers,
     required this.noResponseUsers,
+    required this.photoCount,
+    required this.maxPhotos,
     this.currentUserId,
     required this.supabaseClient,
   });
@@ -60,10 +65,10 @@ class _HomeEventModel {
     // ✅ CALCULAR estado baseado em datas e status da DB
     final calculatedStatus =
         _calculateStatusFromDates(startDate, endDate, backendStatus);
-    
+
     // ✅ Se status calculado difere do DB, notifica para atualizar
     if (calculatedStatus != backendStatus && onStatusMismatch != null) {
-            onStatusMismatch(eventId, calculatedStatus);
+      onStatusMismatch(eventId, calculatedStatus);
     }
 
     return _HomeEventModel(
@@ -84,6 +89,8 @@ class _HomeEventModel {
       goingUsers: _parseJsonArray(map['going_users']),
       notGoingUsers: _parseJsonArray(map['not_going_users']),
       noResponseUsers: _parseJsonArray(map['no_response_users']),
+      photoCount: _asInt(map['photo_count']),
+      maxPhotos: _asInt(map['max_photos']),
       currentUserId: currentUserId,
       supabaseClient: supabaseClient,
     );
@@ -92,29 +99,32 @@ class _HomeEventModel {
   Future<HomeEventEntity> toEntity() async {
     // ✅ Combinar todos os votos (going + not_going + no_response) with signed URLs
     final goingVotes = await _parseVotesFromUsers(
-      goingUsers, 
-      RsvpVoteStatus.going, 
-      currentUserId, 
+      goingUsers,
+      RsvpVoteStatus.going,
+      currentUserId,
       supabaseClient,
     );
     final notGoingVotes = await _parseVotesFromUsers(
-      notGoingUsers, 
-      RsvpVoteStatus.notGoing, 
-      currentUserId, 
+      notGoingUsers,
+      RsvpVoteStatus.notGoing,
+      currentUserId,
       supabaseClient,
     );
     final pendingVotes = await _parseVotesFromUsers(
-      noResponseUsers, 
-      RsvpVoteStatus.pending, 
-      currentUserId, 
+      noResponseUsers,
+      RsvpVoteStatus.pending,
+      currentUserId,
       supabaseClient,
     );
-    
+
     final allVotes = <RsvpVote>[
       ...goingVotes,
       ...notGoingVotes,
       ...pendingVotes,
     ];
+
+    // Fetch participant photos for living/recap events
+    final participantPhotos = await _fetchParticipantPhotos();
 
     return HomeEventEntity(
       id: id,
@@ -131,10 +141,85 @@ class _HomeEventModel {
       attendeeNames: _extractNames(goingUsers),
       userVote: _mapUserVote(userRsvp),
       allVotes: allVotes,
-      photoCount: 0, // ✅ TODO: Add quando view incluir fotos
-      maxPhotos: 0,
-      participantPhotos: const [],
+      photoCount: photoCount,
+      maxPhotos: maxPhotos,
+      participantPhotos: participantPhotos,
     );
+  }
+
+  // Fetch participant photos from Supabase
+  Future<List<ParticipantPhoto>> _fetchParticipantPhotos() async {
+    try {
+      // Only fetch photos for living/recap events
+      if (status != 'living' && status != 'recap') {
+        return [];
+      }
+
+      // Query to get photo count by participant
+      final response = await supabaseClient
+          .from('group_photos')
+          .select(
+              'uploader_id, users!group_photos_uploader_id_fkey(id, display_name, avatar_url)')
+          .eq('event_id', id)
+          .order('captured_at', ascending: false);
+
+      if (response == null || response.isEmpty) {
+        return [];
+      }
+
+      // Group photos by uploader
+      final Map<String, ParticipantPhoto> participantsMap = {};
+
+      for (final row in response as List<dynamic>) {
+        if (row is! Map<String, dynamic>) continue;
+
+        final uploaderId = row['uploader_id'] as String?;
+        if (uploaderId == null) continue;
+
+        final userData = row['users'];
+        if (userData is! Map<String, dynamic>) continue;
+
+        final displayName = userData['display_name'] as String? ?? 'Unknown';
+        final avatarPath = userData['avatar_url'] as String?;
+
+        // Get signed URL for avatar
+        String? avatarUrl;
+        if (avatarPath != null && avatarPath.isNotEmpty) {
+          try {
+            final normalizedPath = avatarPath.startsWith('/')
+                ? avatarPath.substring(1)
+                : avatarPath;
+            avatarUrl = await supabaseClient.storage
+                .from('users-profile-pic')
+                .createSignedUrl(normalizedPath, 3600);
+          } catch (e) {
+            avatarUrl = null;
+          }
+        }
+
+        // Add or update participant
+        if (participantsMap.containsKey(uploaderId)) {
+          participantsMap[uploaderId] = ParticipantPhoto(
+            userId: uploaderId,
+            userName: currentUserId == uploaderId ? 'You' : displayName,
+            userAvatar: avatarUrl,
+            photoCount: participantsMap[uploaderId]!.photoCount + 1,
+          );
+        } else {
+          participantsMap[uploaderId] = ParticipantPhoto(
+            userId: uploaderId,
+            userName: currentUserId == uploaderId ? 'You' : displayName,
+            userAvatar: avatarUrl,
+            photoCount: 1,
+          );
+        }
+      }
+
+      return participantsMap.values.toList()
+        ..sort((a, b) => b.photoCount.compareTo(a.photoCount));
+    } catch (e) {
+      return [];
+    }
   }
 
   // ✅ NOVO: Parse votes from user arrays with status
@@ -145,19 +230,19 @@ class _HomeEventModel {
     SupabaseClient supabaseClient,
   ) async {
     final votes = <RsvpVote>[];
-    
+
     for (final u in users) {
       if (u is Map<String, dynamic>) {
         final userId = _asString(u['user_id']) ?? '';
         final displayName = _asString(u['display_name']) ?? 'Unknown';
         final avatarPath = _asString(u['avatar_url']);
-        
+
         // Convert avatar to signed URL if present
         String? signedAvatarUrl;
         if (avatarPath != null && avatarPath.isNotEmpty) {
           try {
-            final normalizedPath = avatarPath.startsWith('/') 
-                ? avatarPath.substring(1) 
+            final normalizedPath = avatarPath.startsWith('/')
+                ? avatarPath.substring(1)
                 : avatarPath;
             signedAvatarUrl = await supabaseClient.storage
                 .from('users-profile-pic')
@@ -166,10 +251,10 @@ class _HomeEventModel {
             signedAvatarUrl = null;
           }
         }
-        
+
         // Use "You" for current user
         final userName = userId == currentUserId ? 'You' : displayName;
-        
+
         votes.add(RsvpVote(
           id: userId,
           userId: userId,
@@ -189,7 +274,7 @@ class _HomeEventModel {
         ));
       }
     }
-    
+
     return votes;
   }
 

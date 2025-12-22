@@ -64,9 +64,9 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
     if (index == 2) {
       // Center button - action depends on NavBar state
       final nextEventStatus = ref.read(navBarStateProvider);
-      
+
       if (nextEventStatus == HomeEventStatus.living) {
-                // Living mode: Check if there are multiple living events
+        // Living mode: Check if there are multiple living events
         final livingEventsAsync = await ref.read(
           livingAndRecapEventsControllerProvider.future,
         );
@@ -88,8 +88,7 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
 
         if (livingEvents.length > 1) {
           // Multiple events - show selection menu
-                    for (var event in livingEvents) {
-                      }
+          for (var event in livingEvents) {}
           if (mounted) {
             EventSelectionMenu.show(
               context: context,
@@ -101,7 +100,7 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
                       ))
                   .toList(),
               onEventSelected: (selectedEvent) {
-                                _handleLivingEventPhoto(selectedEvent.id);
+                _handleLivingEventPhoto(selectedEvent.id);
               },
             );
           }
@@ -109,9 +108,9 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
         }
 
         // Single event - proceed directly
-                _handleLivingEventPhoto(livingEvents.first.id);
+        _handleLivingEventPhoto(livingEvents.first.id);
       } else if (nextEventStatus == HomeEventStatus.recap) {
-                // Recap mode: Check if there are multiple recap events
+        // Recap mode: Check if there are multiple recap events
         final recapEventsAsync = await ref.read(
           livingAndRecapEventsControllerProvider.future,
         );
@@ -133,8 +132,7 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
 
         if (recapEvents.length > 1) {
           // Multiple events - show selection menu
-                    for (var event in recapEvents) {
-                      }
+          for (var event in recapEvents) {}
           if (mounted) {
             EventSelectionMenu.show(
               context: context,
@@ -146,7 +144,7 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
                       ))
                   .toList(),
               onEventSelected: (selectedEvent) {
-                                _handleRecapEventPhotos(selectedEvent.id);
+                _handleRecapEventPhotos(selectedEvent.id);
               },
             );
           }
@@ -154,7 +152,7 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
         }
 
         // Single event - proceed directly
-                _handleRecapEventPhotos(recapEvents.first.id);
+        _handleRecapEventPhotos(recapEvents.first.id);
       } else {
         // Planning state: navigate to Create Event page
         Navigator.pushNamed(context, AppRouter.createEvent);
@@ -200,21 +198,21 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
 
   /// Handle photo capture for living event
   Future<void> _handleLivingEventPhoto(String eventId) async {
-        try {
+    try {
       // Get event detail to obtain groupId
       final eventDetail = await ref.read(eventDetailProvider(eventId).future);
-      
+
       // Get photo upload notifier
-            final photoNotifier = ref.read(
+      final photoNotifier = ref.read(
         eventPhotoUploadNotifierProvider(eventId).notifier,
       );
 
       // Take photo and upload
-            await photoNotifier.takePhoto(
+      await photoNotifier.takePhoto(
         eventId: eventId,
         groupId: eventDetail.groupId,
       );
-      
+
       // Show result
       final uploadState = ref.read(
         eventPhotoUploadNotifierProvider(eventId),
@@ -222,8 +220,8 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
 
       uploadState.when(
         data: (photoUrl) {
-                    if (photoUrl != null && mounted) {
-                        TopBanner.showSuccess(
+          if (photoUrl != null && mounted) {
+            TopBanner.showSuccess(
               context,
               message: '✅ Photo uploaded successfully!',
             );
@@ -264,7 +262,7 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
 
   /// Handle photo selection for recap event
   Future<void> _handleRecapEventPhotos(String eventId) async {
-        try {
+    try {
       // First, update event statuses to ensure recap events are correctly marked
       try {
         final statusService = EventStatusService(Supabase.instance.client);
@@ -286,7 +284,7 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
       );
 
       if (selectedImages.isNotEmpty && mounted) {
-                // Limit to 5 photos
+        // Limit to 5 photos
         final limitedImages = selectedImages.take(5).toList();
 
         if (limitedImages.length < selectedImages.length) {
@@ -298,7 +296,7 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
 
         // Navigate to ManageMemoryPage with selected photos
         if (mounted) {
-                    Navigator.pushNamed(
+          Navigator.pushNamed(
             context,
             AppRouter.manageMemory,
             arguments: {
