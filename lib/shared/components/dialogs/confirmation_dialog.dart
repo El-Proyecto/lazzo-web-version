@@ -8,7 +8,7 @@ import '../../themes/colors.dart';
 class ConfirmationDialog extends StatelessWidget {
   final String title;
   final String message;
-  final String confirmText;
+  final String? confirmText;
   final String? cancelText;
   final VoidCallback? onConfirm;
   final VoidCallback? onCancel;
@@ -18,7 +18,7 @@ class ConfirmationDialog extends StatelessWidget {
     super.key,
     required this.title,
     required this.message,
-    required this.confirmText,
+    this.confirmText,
     this.cancelText,
     this.onConfirm,
     this.onCancel,
@@ -80,33 +80,37 @@ class ConfirmationDialog extends StatelessWidget {
                 ),
               ),
 
-              const SizedBox(width: Gaps.sm),
+              // Only show confirm button if confirmText is provided
+              if (confirmText != null) ...[
+                const SizedBox(width: Gaps.sm),
 
-              // Confirm button
-              Expanded(
-                child: TextButton(
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                    onConfirm?.call();
-                  },
-                  style: TextButton.styleFrom(
-                    backgroundColor: isDestructive
-                        ? BrandColors.cantVote
-                        : BrandColors.planning,
-                    padding: const EdgeInsets.symmetric(vertical: Pads.ctlVSm),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(Radii.smAlt),
+                // Confirm button
+                Expanded(
+                  child: TextButton(
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                      onConfirm?.call();
+                    },
+                    style: TextButton.styleFrom(
+                      backgroundColor: isDestructive
+                          ? BrandColors.cantVote
+                          : BrandColors.planning,
+                      padding:
+                          const EdgeInsets.symmetric(vertical: Pads.ctlVSm),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(Radii.smAlt),
+                      ),
                     ),
-                  ),
-                  child: Text(
-                    confirmText,
-                    style: AppText.labelLarge.copyWith(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w500,
+                    child: Text(
+                      confirmText!,
+                      style: AppText.labelLarge.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                   ),
                 ),
-              ),
+              ],
             ],
           ),
         ],

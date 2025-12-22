@@ -18,14 +18,9 @@ class NotificationRepositoryImpl implements NotificationRepository {
     bool unreadOnly = true, // ✅ P2: Default to unread only
     NotificationCategory? category,
   }) async {
-    print('[NotificationRepository] 📦 getNotifications called');
-    print('[NotificationRepository] userId: $_userId');
-    print('[NotificationRepository] limit: $limit, offset: $offset, unreadOnly: $unreadOnly');
-    print('[NotificationRepository] category: $category');
-
+                
     try {
-      print('[NotificationRepository] 🔄 Calling data source...');
-      final models = await _remoteDataSource.getNotifications(
+            final models = await _remoteDataSource.getNotifications(
         userId: _userId,
         limit: limit,
         offset: offset,
@@ -33,17 +28,12 @@ class NotificationRepositoryImpl implements NotificationRepository {
         category: category?.name,
       );
 
-      print('[NotificationRepository] ✅ Got ${models.length} models from data source');
-      print('[NotificationRepository] 🔄 Converting to entities...');
-      
+                  
       final entities = models.map((model) => model.toEntity()).toList();
       
-      print('[NotificationRepository] ✅ Converted ${entities.length} entities');
-      return entities;
-    } catch (e, stackTrace) {
-      print('[NotificationRepository] ❌ ERROR: $e');
-      print('[NotificationRepository] Stack trace: $stackTrace');
-      throw Exception('Failed to fetch notifications: $e');
+            return entities;
+    } catch (e) {
+                  throw Exception('Failed to fetch notifications: $e');
     }
   }
 

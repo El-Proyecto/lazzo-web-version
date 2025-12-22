@@ -42,7 +42,8 @@ class Event {
       name: name ?? this.name,
       emoji: emoji ?? this.emoji,
       groupId: groupId ?? this.groupId,
-      startDateTime: startDateTime != null ? startDateTime.value : this.startDateTime,
+      startDateTime:
+          startDateTime != null ? startDateTime.value : this.startDateTime,
       endDateTime: endDateTime != null ? endDateTime.value : this.endDateTime,
       location: location != null ? location.value : this.location,
       status: status ?? this.status,
@@ -76,4 +77,4 @@ class EventLocation {
 }
 
 /// Event status enumeration
-enum EventStatus { pending, confirmed, ended }
+enum EventStatus { pending, confirmed, living, recap }

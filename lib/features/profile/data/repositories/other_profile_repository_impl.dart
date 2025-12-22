@@ -195,55 +195,42 @@ signedPhotoUrl = null;
     required String groupId,
   }) async {
     try {
-      print('[inviteToGroup] Starting invite: userId=$userId, groupId=$groupId, invitedBy=$_currentUserId');
-      
+            
       await _dataSource.inviteToGroup(
         userId: userId,
         groupId: groupId,
         invitedBy: _currentUserId,
       );
-      print('[inviteToGroup] ✅ Invite inserted successfully');
-      
+            
       // Send notification to invited user
       try {
-        print('[inviteToGroup] Fetching inviter and group names...');
-        // Get inviter name and group name from Supabase
+                // Get inviter name and group name from Supabase
         final client = Supabase.instance.client;
         final inviterData = await client
             .from('users')
             .select('name')
             .eq('id', _currentUserId)
             .single();
-        print('[inviteToGroup] Inviter name: ${inviterData['name']}');
-        
+                
         final groupData = await client
             .from('groups')
             .select('name')
             .eq('id', groupId)
             .single();
-        print('[inviteToGroup] Group name: ${groupData['name']}');
-        
-        print('[inviteToGroup] Calling sendGroupInvite...');
-        final notificationId = await _notificationService.sendGroupInvite(
+                
+                final notificationId = await _notificationService.sendGroupInvite(
           recipientUserId: userId,
           inviterName: inviterData['name'] ?? 'Someone',
           groupName: groupData['name'] ?? 'a group',
           groupId: groupId,
         );
-        print('[inviteToGroup] ✅ Notification sent successfully. ID: $notificationId');
-      } catch (notifError, notifStack) {
+              } catch (notifError) {
         // Don't fail the whole operation if notification fails
-        print('[inviteToGroup] ❌ Notification failed: $notifError');
-        print('[inviteToGroup] Notification stack: $notifStack');
-      }
+                      }
       
-      print('[inviteToGroup] ✅ Invite operation completed successfully');
-      return true;
-    } catch (e, stackTrace) {
-      print('[inviteToGroup] ❌❌ CRITICAL ERROR: $e');
-      print('[inviteToGroup] Stack trace: $stackTrace');
-      print('[inviteToGroup] Error type: ${e.runtimeType}');
-      return false;
+            return true;
+    } catch (e) {
+                        return false;
     }
   }
 
@@ -252,18 +239,14 @@ signedPhotoUrl = null;
     required String userId,
     required String groupId,
   }) async {
-    print('[acceptGroupInvite] 🟢 Starting: userId=$userId, groupId=$groupId');
-    try {
+        try {
       await _dataSource.acceptGroupInvite(
         userId: userId,
         groupId: groupId,
       );
-      print('[acceptGroupInvite] ✅ Invite accepted successfully');
-      return true;
-    } catch (e, stackTrace) {
-      print('[acceptGroupInvite] ❌ ERROR: $e');
-      print('[acceptGroupInvite] Stack trace: $stackTrace');
-      return false;
+            return true;
+    } catch (e) {
+                  return false;
     }
   }
 
@@ -272,18 +255,14 @@ signedPhotoUrl = null;
     required String userId,
     required String groupId,
   }) async {
-    print('[declineGroupInvite] 🔴 Starting: userId=$userId, groupId=$groupId');
-    try {
+        try {
       await _dataSource.declineGroupInvite(
         userId: userId,
         groupId: groupId,
       );
-      print('[declineGroupInvite] ✅ Invite declined successfully');
-      return true;
-    } catch (e, stackTrace) {
-      print('[declineGroupInvite] ❌ ERROR: $e');
-      print('[declineGroupInvite] Stack trace: $stackTrace');
-      return false;
+            return true;
+    } catch (e) {
+                  return false;
     }
   }
 }

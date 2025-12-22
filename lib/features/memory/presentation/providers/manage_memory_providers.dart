@@ -144,7 +144,7 @@ class ManageMemoryNotifier
       // Upload selected photos from gallery (if provided)
       final selectedPhotoPaths = ref.read(selectedPhotoPathsProvider);
       if (selectedPhotoPaths != null && selectedPhotoPaths.isNotEmpty) {
-        // Get current user's profile photo
+                // Get current user's profile photo
         String? currentUserProfileUrl;
         try {
           final userResponse = await Supabase.instance.client
@@ -165,19 +165,11 @@ class ManageMemoryNotifier
           // Failed to fetch current user profile photo
         }
 
-        // Get real eventId from next event
-        final nextEvent = await ref.read(nextEventControllerProvider.future);
-        if (nextEvent == null) {
-          if (mounted) {
-            state = AsyncValue.error(
-                'No active event to upload photos', StackTrace.current);
-          }
-          return;
-        }
+        // Use the memoryId (eventId) passed to this provider
+        // This ensures photos are uploaded to the correct event
+        final eventId = memoryId;
 
-        final eventId = nextEvent.id;
-
-        // Get groupId from events table (since HomeEventEntity doesn't expose it)
+        // Get groupId from events table
         final eventData = await Supabase.instance.client
             .from('events')
             .select('group_id')
@@ -214,6 +206,7 @@ class ManageMemoryNotifier
               isPortrait: isPortrait,
             );
 
+            
             // Generate signed URL for display (storage path was returned)
             final storagePath = uploadResult['storage_path'] as String;
             final storageService = StorageService(Supabase.instance.client);

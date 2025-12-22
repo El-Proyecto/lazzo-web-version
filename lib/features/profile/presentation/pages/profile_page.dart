@@ -29,8 +29,8 @@ class ProfilePage extends ConsumerWidget {
             ? GestureDetector(
                 onTap: () => Navigator.pop(context),
                 child: Container(
-                  width: 32,
-                  height: 32,
+                  width: 36,
+                  height: 36,
                   alignment: Alignment.center,
                   child: const Icon(
                     Icons.arrow_back_ios,
@@ -43,8 +43,8 @@ class ProfilePage extends ConsumerWidget {
         trailing: GestureDetector(
           onTap: () => Navigator.pushNamed(context, AppRouter.settings),
           child: Container(
-            width: 28,
-            height: 28,
+            width: 36,
+            height: 36,
             alignment: Alignment.center,
             child: const Icon(
               Icons.menu,

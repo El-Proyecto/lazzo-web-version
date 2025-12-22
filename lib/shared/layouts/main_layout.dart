@@ -4,6 +4,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../components/nav/navigation_bar.dart' as nav;
 import '../components/common/top_banner.dart';
+import '../components/dialogs/event_selection_menu.dart';
 import '../../features/groups/presentation/pages/groups_page.dart';
 import '../../features/inbox/presentation/pages/inbox_page.dart';
 import '../../features/profile/presentation/pages/profile_page.dart';
@@ -63,12 +64,19 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
     if (index == 2) {
       // Center button - action depends on NavBar state
       final nextEventStatus = ref.read(navBarStateProvider);
-
+      
       if (nextEventStatus == HomeEventStatus.living) {
-        // Living mode: Take photo and upload
-        final nextEvent = await ref.read(nextEventControllerProvider.future);
-        
-        if (nextEvent == null) {
+                // Living mode: Check if there are multiple living events
+        final livingEventsAsync = await ref.read(
+          livingAndRecapEventsControllerProvider.future,
+        );
+        final livingEvents = livingEventsAsync
+            .where(
+              (e) => e.status == HomeEventStatus.living,
+            )
+            .toList();
+
+        if (livingEvents.isEmpty) {
           if (mounted) {
             TopBanner.showError(
               context,
@@ -78,122 +86,75 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
           return;
         }
 
-        final eventId = nextEvent.id;
-        
-        // Get event detail to obtain groupId
-        final eventDetail = await ref.read(eventDetailProvider(eventId).future);
-
-        // Get photo upload notifier
-        final photoNotifier = ref.read(
-          eventPhotoUploadNotifierProvider(eventId).notifier,
-        );
-
-        // Take photo and upload
-        await photoNotifier.takePhoto(
-          eventId: eventId,
-          groupId: eventDetail.groupId,
-        );
-
-        // Show result
-        final uploadState = ref.read(
-          eventPhotoUploadNotifierProvider(eventId),
-        );
-
-        uploadState.when(
-          data: (photoUrl) {
-            if (photoUrl != null && mounted) {
-              TopBanner.showSuccess(
-                context,
-                message: '✅ Photo uploaded successfully!',
-              );
-              
-              // Optimistic UI: invalidate all photo-related providers
-              ref.invalidate(eventDetailProvider(eventId));
-              ref.invalidate(eventPhotosProvider(eventId));
-              
-              // Navigate to manage memory page
-              Navigator.pushNamed(
-                context,
-                AppRouter.manageMemory,
-                arguments: {
-                  'memoryId': eventId,
-                },
-              );
-            }
-          },
-          loading: () {},
-          error: (error, _) {
-            if (mounted) {
-              TopBanner.showError(
-                context,
-                message: '❌ Failed to upload photo: $error',
-              );
-            }
-          },
-        );
-      } else if (nextEventStatus == HomeEventStatus.recap) {
-        // First, update event statuses to ensure recap events are correctly marked
-        try {
-          final statusService = EventStatusService(Supabase.instance.client);
-          final updatedCount = await statusService.updateEventStatuses();
-          if (updatedCount > 0) {
-            // Refresh next event provider to get updated status
-            ref.invalidate(nextEventControllerProvider);
-          }
-        } catch (e) {
-          // Failed to update event status - will retry on next load
-        }
-
-        // Recap mode: Get memoryId from next event (event in recap = memory)
-        final nextEvent = await ref.read(nextEventControllerProvider.future);
-
-        if (nextEvent == null) {
+        if (livingEvents.length > 1) {
+          // Multiple events - show selection menu
+                    for (var event in livingEvents) {
+                      }
           if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('No event in recap mode found'),
-                duration: Duration(seconds: 2),
-              ),
+            EventSelectionMenu.show(
+              context: context,
+              events: livingEvents
+                  .map((e) => EventOption(
+                        id: e.id,
+                        name: e.name,
+                        emoji: e.emoji,
+                      ))
+                  .toList(),
+              onEventSelected: (selectedEvent) {
+                                _handleLivingEventPhoto(selectedEvent.id);
+              },
             );
           }
           return;
         }
 
-        final memoryId = nextEvent.id; // eventId = memoryId for recap events
-
-        // Recap mode: Always open gallery to upload photos
-        final picker = ImagePicker();
-        final selectedImages = await picker.pickMultiImage(
-          maxWidth: 1920,
-          maxHeight: 1920,
-          imageQuality: 85,
+        // Single event - proceed directly
+                _handleLivingEventPhoto(livingEvents.first.id);
+      } else if (nextEventStatus == HomeEventStatus.recap) {
+                // Recap mode: Check if there are multiple recap events
+        final recapEventsAsync = await ref.read(
+          livingAndRecapEventsControllerProvider.future,
         );
+        final recapEvents = recapEventsAsync
+            .where(
+              (e) => e.status == HomeEventStatus.recap,
+            )
+            .toList();
 
-        if (selectedImages.isNotEmpty && mounted) {
-          // Limit to 5 photos
-          final limitedImages = selectedImages.take(5).toList();
-
-          if (limitedImages.length < selectedImages.length) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Maximum 5 photos selected'),
-                duration: Duration(seconds: 2),
-              ),
+        if (recapEvents.isEmpty) {
+          if (mounted) {
+            TopBanner.showError(
+              context,
+              message: 'No event in recap mode found',
             );
           }
+          return;
+        }
 
-          // Navigate to ManageMemoryPage with selected photos
+        if (recapEvents.length > 1) {
+          // Multiple events - show selection menu
+                    for (var event in recapEvents) {
+                      }
           if (mounted) {
-            Navigator.pushNamed(
-              context,
-              AppRouter.manageMemory,
-              arguments: {
-                'memoryId': memoryId,
-                'selectedPhotos': limitedImages.map((img) => img.path).toList(),
+            EventSelectionMenu.show(
+              context: context,
+              events: recapEvents
+                  .map((e) => EventOption(
+                        id: e.id,
+                        name: e.name,
+                        emoji: e.emoji,
+                      ))
+                  .toList(),
+              onEventSelected: (selectedEvent) {
+                                _handleRecapEventPhotos(selectedEvent.id);
               },
             );
           }
+          return;
         }
+
+        // Single event - proceed directly
+                _handleRecapEventPhotos(recapEvents.first.id);
       } else {
         // Planning state: navigate to Create Event page
         Navigator.pushNamed(context, AppRouter.createEvent);
@@ -235,6 +196,126 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
 
     // Update provider as well
     ref.read(mainLayoutTabProvider.notifier).state = pageIndex;
+  }
+
+  /// Handle photo capture for living event
+  Future<void> _handleLivingEventPhoto(String eventId) async {
+        try {
+      // Get event detail to obtain groupId
+      final eventDetail = await ref.read(eventDetailProvider(eventId).future);
+      
+      // Get photo upload notifier
+            final photoNotifier = ref.read(
+        eventPhotoUploadNotifierProvider(eventId).notifier,
+      );
+
+      // Take photo and upload
+            await photoNotifier.takePhoto(
+        eventId: eventId,
+        groupId: eventDetail.groupId,
+      );
+      
+      // Show result
+      final uploadState = ref.read(
+        eventPhotoUploadNotifierProvider(eventId),
+      );
+
+      uploadState.when(
+        data: (photoUrl) {
+                    if (photoUrl != null && mounted) {
+                        TopBanner.showSuccess(
+              context,
+              message: '✅ Photo uploaded successfully!',
+            );
+
+            // Optimistic UI: invalidate all photo-related providers
+            ref.invalidate(eventDetailProvider(eventId));
+            ref.invalidate(eventPhotosProvider(eventId));
+
+            // Navigate to manage memory page
+            Navigator.pushNamed(
+              context,
+              AppRouter.manageMemory,
+              arguments: {
+                'memoryId': eventId,
+              },
+            );
+          }
+        },
+        loading: () {},
+        error: (error, _) {
+          if (mounted) {
+            TopBanner.showError(
+              context,
+              message: '❌ Failed to upload photo: $error',
+            );
+          }
+        },
+      );
+    } catch (e) {
+      if (mounted) {
+        TopBanner.showError(
+          context,
+          message: 'Error: $e',
+        );
+      }
+    }
+  }
+
+  /// Handle photo selection for recap event
+  Future<void> _handleRecapEventPhotos(String eventId) async {
+        try {
+      // First, update event statuses to ensure recap events are correctly marked
+      try {
+        final statusService = EventStatusService(Supabase.instance.client);
+        final updatedCount = await statusService.updateEventStatuses();
+        if (updatedCount > 0) {
+          // Refresh next event provider to get updated status
+          ref.invalidate(nextEventControllerProvider);
+        }
+      } catch (e) {
+        // Failed to update event status - will retry on next load
+      }
+
+      // Recap mode: Always open gallery to upload photos
+      final picker = ImagePicker();
+      final selectedImages = await picker.pickMultiImage(
+        maxWidth: 1920,
+        maxHeight: 1920,
+        imageQuality: 85,
+      );
+
+      if (selectedImages.isNotEmpty && mounted) {
+                // Limit to 5 photos
+        final limitedImages = selectedImages.take(5).toList();
+
+        if (limitedImages.length < selectedImages.length) {
+          TopBanner.showInfo(
+            context,
+            message: 'Maximum 5 photos selected',
+          );
+        }
+
+        // Navigate to ManageMemoryPage with selected photos
+        if (mounted) {
+                    Navigator.pushNamed(
+            context,
+            AppRouter.manageMemory,
+            arguments: {
+              'memoryId': eventId,
+              'selectedPhotos': limitedImages.map((img) => img.path).toList(),
+            },
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        TopBanner.showError(
+          context,
+          message: 'Error: $e',
+        );
+      }
+    }
   }
 
   @override

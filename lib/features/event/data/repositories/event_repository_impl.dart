@@ -69,8 +69,8 @@ class EventRepositoryImpl implements EventRepository {
       case EventStatus.living:
         statusString = 'living';
         break;
-      case EventStatus.ended:
-        statusString = 'ended';
+      case EventStatus.recap:
+        statusString = 'recap';
         break;
     }
 

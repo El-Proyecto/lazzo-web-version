@@ -450,17 +450,12 @@ class _HomeEventCardState extends ConsumerState<HomeEventCard> {
         Expanded(
           child: GestureDetector(
             onTap: () {
-              // Navigate to event chat page
-              if (widget.state == HomeEventCardState.living) {
-                Navigator.pushNamed(
-                  context,
-                  '/event-chat',
-                  arguments: {'eventId': _currentEvent.id},
-                );
-              } else {
-                // For non-living events, use the callback if provided
-                widget.onChatPressed?.call();
-              }
+              // Navigate to event chat page for all states
+              Navigator.pushNamed(
+                context,
+                '/event-chat',
+                arguments: {'eventId': _currentEvent.id},
+              );
             },
             child: Container(
               height: 44,
@@ -730,7 +725,7 @@ class _HomeEventCardState extends ConsumerState<HomeEventCard> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     const Icon(
-                      Icons.add,
+                      Icons.receipt_long_outlined,
                       color: BrandColors.text1,
                       size: 18,
                     ),

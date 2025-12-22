@@ -44,14 +44,24 @@ class ManageMemoryPage extends ConsumerStatefulWidget {
 class _ManageMemoryPageState extends ConsumerState<ManageMemoryPage> {
   bool _isSelectionMode = false;
   final Set<String> _selectedPhotoIds = {};
+  bool _hasSetSelectedPhotos =
+      false; // Track if selectedPhotos were already set
 
   @override
   void initState() {
     super.initState();
-    // Force refresh of providers when page opens to show latest photos
+    // Set selected photos only once on init
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.invalidate(manageMemoryProvider(widget.memoryId));
-      ref.invalidate(memoryDetailProvider(widget.memoryId));
+      final args =
+          ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+      final selectedPhotos = args?['selectedPhotos'] as List<String>?;
+
+      if (selectedPhotos != null &&
+          selectedPhotos.isNotEmpty &&
+          !_hasSetSelectedPhotos) {
+        _hasSetSelectedPhotos = true;
+        ref.read(selectedPhotoPathsProvider.notifier).state = selectedPhotos;
+      }
     });
   }
 
@@ -75,18 +85,6 @@ class _ManageMemoryPageState extends ConsumerState<ManageMemoryPage> {
 
   @override
   Widget build(BuildContext context) {
-    // Extract selected photos from route arguments and set in provider
-    final args =
-        ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
-    final selectedPhotos = args?['selectedPhotos'] as List<String>?;
-
-    // Set selected photos in provider if provided
-    if (selectedPhotos != null && selectedPhotos.isNotEmpty) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        ref.read(selectedPhotoPathsProvider.notifier).state = selectedPhotos;
-      });
-    }
-
     final manageState = ref.watch(manageMemoryProvider(widget.memoryId));
 
     // Get event details to determine status and host (memoryId is eventId)
