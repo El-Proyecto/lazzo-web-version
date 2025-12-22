@@ -59,38 +59,63 @@ class GroupPhotosDataSource {
   /// which pre-joins users and events data for 10x faster queries
   Future<List<Map<String, dynamic>>> getGroupPhotos(String groupId) async {
     try {
-// Query materialized view (data already joined)
-      // This is 10x faster than joining at query time
+      print('[GroupPhotosDataSource] 📸 Fetching photos for group: $groupId');
+      
+      // Step 1: Get all event IDs for this group
+      final eventsResponse = await _supabase
+          .from('events')
+          .select('id')
+          .eq('group_id', groupId);
+      
+      final eventIds = (eventsResponse as List)
+          .map((e) => e['id'] as String)
+          .toList();
+      
+      print('[GroupPhotosDataSource] 🎯 Found ${eventIds.length} events in group');
+      
+      if (eventIds.isEmpty) {
+        print('[GroupPhotosDataSource] ⚠️ No events found for group $groupId');
+        return [];
+      }
+      
+      // Step 2: Query photos for these events from materialized view
       final response = await _supabase
           .from('group_photos_with_uploader')
           .select('''
             id,
+            event_id,
             storage_path,
             captured_at,
             uploader_id,
             is_portrait,
             uploader_name,
-            uploader_avatar_url
+            uploader_avatar
           ''')
-          .eq('group_id', groupId)
+          .inFilter('event_id', eventIds)
           .order('captured_at', ascending: false)
           .limit(100);
-
+      
+      print('[GroupPhotosDataSource] ✅ Found ${(response as List).length} photos');
             
       // Transform response to match expected format
-      return (response as List).map((row) => {
-        'id': row['id'],
-        'storage_path': row['storage_path'],
-        'captured_at': row['captured_at'],
-        'uploader_id': row['uploader_id'],
-        'is_portrait': row['is_portrait'],
-        'users': {
-          'name': row['uploader_name'],
-          'avatar_url': row['uploader_avatar_url'],
-        },
+      return (response as List).map((row) {
+        print('[GroupPhotosDataSource] 🖼️ Photo: id=${row['id']}, event=${row['event_id']}, uploader=${row['uploader_name']}');
+        return {
+          'id': row['id'],
+          'event_id': row['event_id'],
+          'storage_path': row['storage_path'],
+          'captured_at': row['captured_at'],
+          'uploader_id': row['uploader_id'],
+          'is_portrait': row['is_portrait'],
+          'users': {
+            'name': row['uploader_name'],
+            'avatar_url': row['uploader_avatar'],
+          },
+        };
       }).toList();
     } catch (e) {
-                  throw Exception('Failed to fetch group photos: $e');
+      print('[GroupPhotosDataSource] ❌ Error fetching photos: $e');
+      throw Exception('Failed to fetch group photos: $e');
     }
   }
 

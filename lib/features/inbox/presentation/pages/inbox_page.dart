@@ -27,6 +27,9 @@ class InboxPage extends ConsumerStatefulWidget {
 class _InboxPageState extends ConsumerState<InboxPage>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  
+  // Track notifications being optimistically removed
+  final Set<String> _deletingNotificationIds = {};
 
   @override
   void initState() {
@@ -114,10 +117,12 @@ class _InboxPageState extends ConsumerState<InboxPage>
         }
         
         // Filter out notifications that should ONLY appear in push (not in inbox)
+        // Also filter out notifications being optimistically deleted
         final inboxNotifications = notifications.where((n) {
           return n.type != NotificationType.eventLive &&
                  n.type != NotificationType.eventEndsSoon &&
-                 n.type != NotificationType.chatMention;
+                 n.type != NotificationType.chatMention &&
+                 !_deletingNotificationIds.contains(n.id);
         }).toList();
         
         print('[InboxPage] 📥 Showing ${inboxNotifications.length} notifications in inbox (filtered ${notifications.length - inboxNotifications.length} push-only)');
@@ -205,17 +210,77 @@ class _InboxPageState extends ConsumerState<InboxPage>
             print('[InboxPage] 💰 Mark payment as paid via notification: $notificationId');
             
             try {
-              // P2: Mark expense split as paid + mark notification as read
+              // Optimistic UI: Add to deleting set to hide immediately
+              setState(() {
+                _deletingNotificationIds.add(notificationId);
+              });
+              
+              // Show TopBanner immediately
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Row(
+                      children: [
+                        const Icon(Icons.check_circle, color: Colors.white, size: 20),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Payment marked as paid!',
+                          style: AppText.bodyMedium.copyWith(color: Colors.white),
+                        ),
+                      ],
+                    ),
+                    backgroundColor: BrandColors.planning,
+                    behavior: SnackBarBehavior.floating,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(Radii.sm),
+                    ),
+                    margin: const EdgeInsets.all(Insets.screenH),
+                    duration: const Duration(seconds: 2),
+                  ),
+                );
+              }
+              
+              // P2: Mark expense split as paid + mark notification as read in background
               await ref.read(markExpenseAsPaidFromNotificationUseCaseProvider).call(notificationId);
               
-              // Refresh to show updated list (notification removed)
+              // Refresh to sync with server (notification will be gone)
               ref.read(notificationsProvider.notifier).refresh();
               
-              // Show success feedback
-              _showSnackBar('Marked as Paid!');
+              // Clean up deleting set after refresh
+              setState(() {
+                _deletingNotificationIds.remove(notificationId);
+              });
             } catch (e) {
               print('[InboxPage] ❌ Error marking payment as paid: $e');
-              _showSnackBar('Error marking as Paid', isError: true);
+              
+              // Revert optimistic update on error
+              setState(() {
+                _deletingNotificationIds.remove(notificationId);
+              });
+              
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Row(
+                      children: [
+                        const Icon(Icons.error, color: Colors.white, size: 20),
+                        const SizedBox(width: 8),
+                        Text(
+                          'Failed to mark as paid',
+                          style: AppText.bodyMedium.copyWith(color: Colors.white),
+                        ),
+                      ],
+                    ),
+                    backgroundColor: const Color(0xFFFF4444),
+                    behavior: SnackBarBehavior.floating,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(Radii.sm),
+                    ),
+                    margin: const EdgeInsets.all(Insets.screenH),
+                    duration: const Duration(seconds: 2),
+                  ),
+                );
+              }
             }
           },
         );

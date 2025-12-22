@@ -30,6 +30,7 @@ class HomeEventRemoteDataSource {
             participants_total, voters_total
           ''')
           .eq('user_id', userId)
+          .eq('user_rsvp', 'yes') // Only show events where user voted "yes"
           .order('start_datetime', ascending: true)
           .limit(10); // Fetch top 10 to find highest priority
 
@@ -92,6 +93,7 @@ class HomeEventRemoteDataSource {
           ''')
           .eq('user_id', userId)
           .eq('event_status', 'confirmed') // ✅ Only confirmed events
+          .eq('user_rsvp', 'yes') // Only show events where user voted "yes"
           .limit(20); // Increased to get both dated and null dated events
 
       final data = response as List<dynamic>;
@@ -233,6 +235,7 @@ class HomeEventRemoteDataSource {
           ''')
           .eq('user_id', userId)
           .inFilter('event_status', ['living', 'recap'])
+          .eq('user_rsvp', 'yes') // Only show events where user voted "yes"
           .not('end_datetime', 'is', null) // Only events with end_datetime
           .order('end_datetime', ascending: true)
           .limit(20);
