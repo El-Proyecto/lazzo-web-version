@@ -135,7 +135,7 @@ class _LocationSuggestionsWidgetState extends State<LocationSuggestionsWidget> {
       return false;
     }
 
-        return true;
+    return true;
   }
 
   // Helper method to get vote count for a specific suggestion
@@ -148,14 +148,14 @@ class _LocationSuggestionsWidgetState extends State<LocationSuggestionsWidget> {
 
     // If this is the current event location, return going count from RSVP
     if (_isCurrentEventSuggestion(suggestion)) {
-            return widget.currentEventGoingCount;
+      return widget.currentEventGoingCount;
     }
 
     // Otherwise return vote count from suggestion votes
     final voteCount = widget.allVotes
         .where((vote) => vote.suggestionId == suggestionId)
         .length;
-        return voteCount;
+    return voteCount;
   }
 
   // Helper method to get votes for a specific suggestion
@@ -299,7 +299,7 @@ class _LocationSuggestionsWidgetState extends State<LocationSuggestionsWidget> {
                   ),
                 ),
 
-                // Pick Location button (only for host)
+                // Set Location button (for host and admins)
                 if (widget.isHost) ...[
                   const SizedBox(width: Gaps.sm),
                   Expanded(
@@ -629,9 +629,9 @@ class _LocationSuggestionVoteSection extends StatelessWidget {
         // Vote list (sorted by most recent first)
         ...(votes.toList()..sort((a, b) => b.createdAt.compareTo(a.createdAt)))
             .map((vote) => _LocationSuggestionVoteItem(
-              vote: vote,
-              currentUserId: currentUserId,
-            )),
+                  vote: vote,
+                  currentUserId: currentUserId,
+                )),
       ],
     );
   }
@@ -656,12 +656,12 @@ class _LocationSuggestionVoteItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bool isCurrentUser = vote.userId == currentUserId;
-    
+
     return InkWell(
       onTap: () {
         // Close bottom sheet
         Navigator.pop(context);
-        
+
         if (isCurrentUser) {
           // Navigate to own profile
           Navigator.pushNamed(

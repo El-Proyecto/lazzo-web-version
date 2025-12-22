@@ -291,8 +291,9 @@ class _EventPageState extends ConsumerState<EventPage> {
 
     final eventName = eventAsync.value?.name ?? '';
     final eventStatus = eventAsync.value?.status;
-    final showAddExpense =
-        eventStatus == EventStatus.pending || eventStatus == EventStatus.living;
+    final showAddExpense = eventStatus == EventStatus.pending ||
+        eventStatus == EventStatus.confirmed ||
+        eventStatus == EventStatus.living;
 
     return Scaffold(
       backgroundColor: BrandColors.bg1,
@@ -313,10 +314,11 @@ class _EventPageState extends ConsumerState<EventPage> {
                 // Cache the isHost status
                 _cachedIsHost = canManage;
 
-                // Show edit button for host/admin
+                // Show edit button for host/admin (except in living status)
                 if (canManage) {
                   final eventData = eventAsync.value;
-                  if (eventData != null) {
+                  if (eventData != null &&
+                      eventData.status != EventStatus.living) {
                     return IconButton(
                       icon: const Icon(Icons.edit, color: BrandColors.text1),
                       onPressed: () {
@@ -358,7 +360,8 @@ class _EventPageState extends ConsumerState<EventPage> {
                 // Use cached state during loading
                 if (_cachedIsHost == true) {
                   final eventData = eventAsync.value;
-                  if (eventData != null) {
+                  if (eventData != null &&
+                      eventData.status != EventStatus.living) {
                     return IconButton(
                       icon: const Icon(Icons.edit, color: BrandColors.text1),
                       onPressed: () {
@@ -483,7 +486,7 @@ class _EventPageState extends ConsumerState<EventPage> {
                                 )
                                 .toggleVote_(eventId, suggestionId);
                           },
-                          isHost: event.hostId == currentUserId,
+                          isHost: _cachedIsHost ?? false,
                           currentUserId: currentUserId,
                           onAddSuggestion: () {
                             showAddSuggestionBottomSheet(
@@ -563,7 +566,7 @@ class _EventPageState extends ConsumerState<EventPage> {
                               )
                               .toggleVote(eventId, suggestionId);
                         },
-                        isHost: event.hostId == currentUserId,
+                        isHost: _cachedIsHost ?? false,
                         currentUserId: currentUserId,
                         currentEventGoingCount:
                             processedData.currentEventGoingCount,

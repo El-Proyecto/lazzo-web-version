@@ -298,7 +298,7 @@ class _DateTimeSuggestionsWidgetState extends State<DateTimeSuggestionsWidget> {
                   ),
                 ),
 
-                // Set Date button (only for host)
+                // Set Date button (for host and admins)
                 if (widget.isHost) ...[
                   const SizedBox(width: Gaps.sm),
                   Expanded(
@@ -702,9 +702,9 @@ class _SuggestionVoteSection extends StatelessWidget {
                 return b.votedAt!.compareTo(a.votedAt!);
               }))
             .map((vote) => _SuggestionVoteItem(
-              vote: vote,
-              currentUserId: currentUserId,
-            )),
+                  vote: vote,
+                  currentUserId: currentUserId,
+                )),
       ],
     );
   }
@@ -729,12 +729,12 @@ class _SuggestionVoteItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bool isCurrentUser = vote.userId == currentUserId;
-    
+
     return InkWell(
       onTap: () {
         // Close bottom sheet
         Navigator.pop(context);
-        
+
         if (isCurrentUser) {
           // Navigate to own profile
           Navigator.pushNamed(
