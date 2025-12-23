@@ -403,9 +403,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                                     // Handled inside HomeEventCard
                                   },
                                   onVoteChanged: (eventId, vote) {
-                                    debugPrint(
-                                      'Vote changed for event $eventId: $vote',
-                                    );
+                                    // Vote changes handled via provider refresh
                                   },
                                 ),
                               ),
@@ -470,9 +468,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                                         // Handled inside HomeEventCard
                                       },
                                       onVoteChanged: (eventId, vote) {
-                                        debugPrint(
-                                          'Vote changed for event $eventId: $vote',
-                                        );
+                                        // Vote changes handled via provider refresh
                                       },
                                     ),
 
@@ -504,9 +500,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                                                 );
                                               },
                                               onVoteChanged: (eventId, vote) {
-                                                debugPrint(
-                                                  'Vote changed for event $eventId: $vote',
-                                                );
+                                                // Vote changes handled via provider refresh
                                               },
                                             ),
                                             if (index < livingEvents.length - 2)
@@ -555,9 +549,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                                           // Handled inside HomeEventCard
                                         },
                                         onVoteChanged: (eventId, vote) {
-                                          debugPrint(
-                                            'Vote changed for event $eventId: $vote',
-                                          );
+                                          // Vote changes handled via provider refresh
                                         },
                                       ),
 
@@ -588,9 +580,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                                                 );
                                               },
                                               onVoteChanged: (eventId, vote) {
-                                                debugPrint(
-                                                  'Vote changed for event $eventId: $vote',
-                                                );
+                                                // Vote changes handled via provider refresh
                                               },
                                             ),
                                             if (index < recapEvents.length - 1)
@@ -625,9 +615,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                                                 );
                                               },
                                               onVoteChanged: (eventId, vote) {
-                                                debugPrint(
-                                                  'Vote changed for event $eventId: $vote',
-                                                );
+                                                // Vote changes handled via provider refresh
                                               },
                                             ),
                                             if (index < recapEvents.length - 2)
@@ -718,9 +706,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                                   // Handled inside HomeEventCard
                                 },
                                 onVoteChanged: (eventId, vote) {
-                                  debugPrint(
-                                    'Vote changed for event $eventId: $vote',
-                                  );
+                                  // Vote changes handled via provider refresh
                                 },
                               ),
                             ),

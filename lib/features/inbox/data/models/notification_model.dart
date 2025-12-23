@@ -201,23 +201,23 @@ class NotificationModel {
       case 'groupInviteReceived':
         return '${userName ?? 'Someone'} invited you to join ${groupName ?? 'a group'}';
       case 'eventStartsSoon':
-        return '${eventEmoji ?? '🎉'} ${eventName ?? 'Event'} starts in ${mins ?? '?'} min.';
+        return '${eventName ?? 'Event'} starts in ${mins ?? '?'} min!';
       case 'eventLive':
         return '${eventEmoji ?? '🎉'} ${eventName ?? 'Event'} is live now.';
       case 'eventEndsSoon':
         return '${eventEmoji ?? '🎉'} ${eventName ?? 'Event'} ends in ${mins ?? '?'} min.';
       case 'eventExtended':
-        return '${eventEmoji ?? '🎉'} ${eventName ?? 'Event'} was extended by ${mins ?? '?'} min.';
+        return ' ${eventName ?? 'Event'} was extended by ${hours ?? '?'}h.';
       case 'uploadsOpen':
         return 'Add your photos to ${eventEmoji ?? '🎉'} ${eventName ?? 'event'} · ${hours ?? '?'}h left.';
       case 'uploadsClosing':
         return 'Last call to add photos to ${eventEmoji ?? '🎉'} ${eventName ?? 'event'} · ${hours ?? '?'}h left.';
       case 'memoryReady':
-        return 'Your memory for ${eventEmoji ?? '🎉'} ${eventName ?? 'event'} is ready to share.';
+        return 'Your memory for ${eventName ?? 'event'} is ready to share.';
       case 'paymentsRequest':
         return '${userName ?? 'Someone'} requested ${amount ?? '?'}${note != null ? ' for $note' : ''}.';
       case 'paymentsAddedYouOwe':
-        return '${userName ?? 'Someone'} added an expense in ${eventName ?? 'event'}. You owe ${amount ?? '?'}.';
+        return '${userName ?? 'Someone'} added **${note ?? 'an expense'}** in ${eventName ?? 'event'}. You owe **${amount ?? '?'}**';
       case 'paymentsPaidYou':
         return '${userName ?? 'Someone'} paid you ${amount ?? '?'}.';
       case 'chatMention':

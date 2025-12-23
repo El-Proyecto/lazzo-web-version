@@ -180,7 +180,8 @@ final endEventNowProvider = Provider<EndEventNow>((ref) {
 
 // Event participants provider
 final eventParticipantsProvider =
-    FutureProvider.family<List<EventParticipantEntity>, String>((ref, eventId) async {
+    FutureProvider.family<List<EventParticipantEntity>, String>(
+        (ref, eventId) async {
   final repository = ref.watch(eventRepositoryProvider);
   return await repository.getEventParticipants(eventId);
 });
@@ -763,7 +764,7 @@ final dateTimeSuggestionsDataProvider =
 final locationSuggestionsDataProvider =
     FutureProvider.autoDispose.family<Map<String, dynamic>, String>(
   (ref, eventId) async {
-        // Fetch all dependencies in parallel
+    // Fetch all dependencies in parallel
     final results = await Future.wait([
       ref.watch(eventLocationSuggestionsProvider(eventId).future),
       ref.watch(locationSuggestionVotesProvider(eventId).future),

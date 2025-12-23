@@ -101,30 +101,32 @@ final members = <GroupMemberEntity>[];
         String? name;
         String? profileImageUrl;
         final users = json['users'];
+                        
         if (users != null) {
           if (users is Map<String, dynamic>) {
             name = users['name'] as String?;
             final avatarPath = users['avatar_url'] as String?;
-            
+                        
                         
             // Convert storage path to signed URL (works with private buckets)
             if (avatarPath != null && avatarPath.isNotEmpty) {
-              // Check if it's already a full URL
+                            // Check if it's already a full URL
               if (avatarPath.startsWith('http')) {
                 profileImageUrl = avatarPath;
-              } else {
+                              } else {
                 // Create signed URL (valid for 1 hour)
                 // Normalize path - remove leading slash if present
                 try {
                   final normalizedPath = avatarPath.startsWith('/') ? avatarPath.substring(1) : avatarPath;
-                                    profileImageUrl = await _supabase.storage
+                                                      profileImageUrl = await _supabase.storage
                       .from('users-profile-pic')
                       .createSignedUrl(normalizedPath, 3600); // 1 hour
-                                  } catch (e) {
-                                    profileImageUrl = null;
+                                                    } catch (e) {
+                                                      profileImageUrl = null;
                 }
               }
-            }
+            } else {
+                          }
             
                       } else if (users is List && users.isNotEmpty) {
             final firstUser = users[0] as Map<String, dynamic>;

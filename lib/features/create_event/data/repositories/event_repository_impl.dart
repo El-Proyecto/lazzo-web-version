@@ -7,16 +7,19 @@ import '../models/event_original_model.dart';
 import '../models/event_history_model.dart';
 import '../models/location_model.dart';
 import '../../../../env.dart';
+import '../../../../services/notification_service.dart';
 
 /// Implementation of EventRepository using Supabase
 
 class EventRepositoryImpl implements EventRepository {
   final EventDataSource _dataSource;
   final SupabaseClient _client;
+  final NotificationService _notificationService;
 
   EventRepositoryImpl(SupabaseClient client)
       : _dataSource = EventDataSource(client),
-        _client = client;
+        _client = client,
+        _notificationService = NotificationService(client);
 
   /// Get current authenticated user ID
   String? get _currentUserId => _client.auth.currentUser?.id;
@@ -307,7 +310,48 @@ class EventRepositoryImpl implements EventRepository {
         }
       }
 
-      return EventModel.fromJson(response).toEntity(location: location);
+      final updatedEvent = EventModel.fromJson(response).toEntity(location: location);
+
+      // CRITICAL: Send notifications to participants when event is extended
+      // Check if event duration was increased (end time pushed forward)
+      try {
+        // Get the previous event data to compare end times
+        final previousEvent = await getEventById(event.id);
+        
+        if (previousEvent != null && 
+            previousEvent.endDateTime != null && 
+            event.endDateTime != null &&
+            event.endDateTime!.isAfter(previousEvent.endDateTime!)) {
+          
+          // Calculate how many hours the event was extended
+          final extension = event.endDateTime!.difference(previousEvent.endDateTime!);
+          final additionalHours = (extension.inMinutes / 60).ceil();
+          
+          // Get all participants of this event (except the current user)
+          final participants = await _client
+              .from('event_participants')
+              .select('user_id')
+              .eq('pevent_id', event.id)
+              .neq('user_id', userId);
+          
+          // Send notification to each participant
+          for (final participant in participants) {
+            final participantId = participant['user_id'] as String;
+            
+            await _notificationService.sendEventExtended(
+              recipientUserId: participantId,
+              eventName: event.name,
+              eventId: event.id,
+              additionalHours: additionalHours,
+              eventEmoji: event.emoji,
+            );
+          }
+        }
+      } catch (e) {
+        // Don't fail the update if notification fails
+      }
+
+      return updatedEvent;
     } on Exception catch (e) {
       // Re-throw with better context
       throw Exception('Failed to update event: ${e.toString()}');

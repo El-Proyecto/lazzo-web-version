@@ -14,8 +14,7 @@ class NotificationRemoteDataSource {
     bool unreadOnly = false,
     String? category,
   }) async {
-                
-    try {
+                    try {
       var query = _client
           .from('notifications')
           .select()

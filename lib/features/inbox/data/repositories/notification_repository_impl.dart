@@ -18,8 +18,7 @@ class NotificationRepositoryImpl implements NotificationRepository {
     bool unreadOnly = true, // ✅ P2: Default to unread only
     NotificationCategory? category,
   }) async {
-                
-    try {
+                    try {
             final models = await _remoteDataSource.getNotifications(
         userId: _userId,
         limit: limit,

@@ -6,7 +6,6 @@ import '../../domain/entities/memory_entity.dart';
 import '../../data/fakes/fake_memory_repository.dart';
 import '../../data/data_sources/memory_photo_data_source.dart';
 import 'memory_providers.dart';
-import '../../../home/presentation/providers/home_event_providers.dart';
 import '../../../../services/storage_service.dart';
 
 /// Provider for selected photo paths from gallery

@@ -387,7 +387,29 @@ class NotificationCard extends StatelessWidget {
     for (final match in regex.allMatches(text)) {
       // Add normal text before the bold part
       if (match.start > lastEnd) {
-        spans.add(TextSpan(text: text.substring(lastEnd, match.start)));
+        final normalText = text.substring(lastEnd, match.start);
+        // Check if 'You owe' comes just before this bold text
+        final isOweAmount = normalText.toLowerCase().endsWith('you owe ');
+        
+        if (isOweAmount && notification.type == NotificationType.paymentsAddedYouOwe) {
+          // Split 'You owe ' from the rest
+          final beforeOwe = normalText.substring(0, normalText.lastIndexOf('You owe '));
+          if (beforeOwe.isNotEmpty) {
+            spans.add(TextSpan(text: beforeOwe));
+          }
+          // Add 'You owe ' in red
+          spans.add(
+            TextSpan(
+              text: 'You owe ',
+              style: AppText.bodyMedium.copyWith(
+                color: const Color(0xFFFF4444), // Red color
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          );
+        } else {
+          spans.add(TextSpan(text: normalText));
+        }
       }
 
       // Add bold text

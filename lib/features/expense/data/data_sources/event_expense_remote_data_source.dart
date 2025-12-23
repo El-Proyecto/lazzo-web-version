@@ -70,7 +70,7 @@ class EventExpenseRemoteDataSource {
           // Send notification to each participant (except the payer)
                     for (final userId in participantsOwe) {
             if (userId != paidBy) {
-                            final notificationId = await _notificationService.sendExpenseAddedYouOwe(
+                            await _notificationService.sendExpenseAddedYouOwe(
                 recipientUserId: userId,
                 creatorName: creatorName,
                 amount: amountPerPerson.toStringAsFixed(2),

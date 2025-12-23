@@ -59,38 +59,57 @@ class GroupPhotosDataSource {
   /// which pre-joins users and events data for 10x faster queries
   Future<List<Map<String, dynamic>>> getGroupPhotos(String groupId) async {
     try {
-// Query materialized view (data already joined)
-      // This is 10x faster than joining at query time
+            
+      // Step 1: Get all event IDs for this group
+      final eventsResponse = await _supabase
+          .from('events')
+          .select('id')
+          .eq('group_id', groupId);
+      
+      final eventIds = (eventsResponse as List)
+          .map((e) => e['id'] as String)
+          .toList();
+      
+            
+      if (eventIds.isEmpty) {
+                return [];
+      }
+      
+      // Step 2: Query photos for these events from materialized view
       final response = await _supabase
           .from('group_photos_with_uploader')
           .select('''
             id,
+            event_id,
             storage_path,
             captured_at,
             uploader_id,
             is_portrait,
             uploader_name,
-            uploader_avatar_url
+            uploader_avatar
           ''')
-          .eq('group_id', groupId)
+          .inFilter('event_id', eventIds)
           .order('captured_at', ascending: false)
           .limit(100);
-
-            
+      
+                  
       // Transform response to match expected format
-      return (response as List).map((row) => {
-        'id': row['id'],
-        'storage_path': row['storage_path'],
-        'captured_at': row['captured_at'],
-        'uploader_id': row['uploader_id'],
-        'is_portrait': row['is_portrait'],
-        'users': {
-          'name': row['uploader_name'],
-          'avatar_url': row['uploader_avatar_url'],
-        },
+      return (response as List).map((row) {
+                return {
+          'id': row['id'],
+          'event_id': row['event_id'],
+          'storage_path': row['storage_path'],
+          'captured_at': row['captured_at'],
+          'uploader_id': row['uploader_id'],
+          'is_portrait': row['is_portrait'],
+          'users': {
+            'name': row['uploader_name'],
+            'avatar_url': row['uploader_avatar'],
+          },
+        };
       }).toList();
     } catch (e) {
-                  throw Exception('Failed to fetch group photos: $e');
+            throw Exception('Failed to fetch group photos: $e');
     }
   }
 
