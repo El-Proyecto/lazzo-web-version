@@ -107,7 +107,14 @@ class EventStatusService {
 
       String? newStatus;
 
-      // Determine correct status based on times
+      // Only transition events that are already confirmed or beyond
+      // Pending events should remain pending even if time has passed
+      if (currentStatus == 'pending') {
+        // Pending events never auto-transition
+        return false;
+      }
+
+      // Determine correct status based on times (only for confirmed+ events)
       if (now.isAfter(recapDeadline)) {
         newStatus = 'ended';
       } else if (now.isAfter(endTime)) {

@@ -433,6 +433,7 @@ class _EventPageState extends ConsumerState<EventPage> {
                   dateTime: event.startDateTime,
                   endDateTime: event.endDateTime,
                   groupName: event.groupName,
+                  isExpired: event.isExpired,
                 ),
                 const SizedBox(height: Gaps.md),
 
@@ -1196,6 +1197,36 @@ class _EventPageState extends ConsumerState<EventPage> {
   /// This is one of the most complex sections with nested AsyncValues
   /// When event is not fully defined/suggested, shows HelpPlanSection instead
   Widget _buildRsvpSection(EventDetail event, String? currentUserId) {
+    // If event is expired, show help plan widget with custom message
+    if (event.isExpired) {
+      return Column(
+        children: [
+          HelpPlanEventWidget(
+            hasLocation: event.hasDefinedLocation,
+            hasDate: false, // Force date as missing since it's expired
+            hasSuggestedLocation: false,
+            hasSuggestedDate: false,
+            onAddSuggestion: () {
+              showAddSuggestionBottomSheet(
+                context,
+                eventId: eventId,
+                eventStartDate: event.startDateTime ?? DateTime.now(),
+                eventStartTime: event.startDateTime != null
+                    ? TimeOfDay.fromDateTime(event.startDateTime!)
+                    : TimeOfDay.now(),
+                eventEndDate: event.endDateTime ?? DateTime.now(),
+                eventEndTime: event.endDateTime != null
+                    ? TimeOfDay.fromDateTime(event.endDateTime!)
+                    : TimeOfDay.now(),
+              );
+            },
+            customTitle: 'Event date has expired',
+          ),
+          const SizedBox(height: Gaps.lg),
+        ],
+      );
+    }
+
     // Watch suggestions to determine visibility
     final suggestionsAsync = ref.watch(eventSuggestionsProvider(eventId));
     final locationSuggestionsAsync =
