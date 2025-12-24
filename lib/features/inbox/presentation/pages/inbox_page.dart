@@ -423,20 +423,25 @@ class _InboxPageState extends ConsumerState<InboxPage>
 
       final eventStatus = response['status'] as String?;
 
-      // If event is recap or ended, navigate to Payments tab
-      if (eventStatus == 'recap') {
-        // Switch to Payments tab
+      // Check if event is NOT active (pending, confirmed, living)
+      // If event is recap, ended, cancelled, etc., navigate to Payments tab
+      final isActiveEvent = eventStatus == 'pending' || 
+                           eventStatus == 'confirmed' || 
+                           eventStatus == 'living';
+      
+      if (!isActiveEvent) {
+        // Switch to Payments tab for non-active events
         ref.read(inboxTabIndexProvider.notifier).state = 1;
         
         // Wait for tab switch to complete
-        await Future.delayed(const Duration(milliseconds: 100));
+        await Future.delayed(const Duration(milliseconds: 300));
         
         // Try to find and show the payment details bottom sheet if expenseId exists
         if (notification.expenseId != null && mounted) {
           _tryShowExpenseBottomSheet(context, notification.expenseId!);
         }
       } else {
-        // For pending/confirmed/living events, navigate to event page
+        // For active events (pending/confirmed/living), navigate to event page
         if (mounted) {
           Navigator.pushNamed(
             context,
