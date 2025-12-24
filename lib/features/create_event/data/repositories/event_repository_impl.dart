@@ -160,6 +160,48 @@ class EventRepositoryImpl implements EventRepository {
         }
       }
 
+      // Send "Event Created" notification to all group members except creator
+      try {
+        // Get creator name and group name
+        final userResponse = await _client
+            .from('users')
+            .select('name')
+            .eq('id', userId)
+            .single();
+        
+        final groupResponse = await _client
+            .from('groups')
+            .select('name')
+            .eq('id', effectiveGroupId)
+            .single();
+        
+        final creatorName = userResponse['name'] as String;
+        final groupName = groupResponse['name'] as String;
+        
+        // Get all group members except the creator
+        final membersResponse = await _client
+            .from('group_members')
+            .select('user_id')
+            .eq('group_id', effectiveGroupId)
+            .neq('user_id', userId);
+        
+        // Send notification to each member
+        for (final member in membersResponse) {
+          final memberId = member['user_id'] as String;
+          await _notificationService.sendEventCreated(
+            recipientUserId: memberId,
+            creatorName: creatorName,
+            eventName: event.name,
+            groupName: groupName,
+            eventId: eventId,
+            groupId: effectiveGroupId,
+            eventEmoji: event.emoji,
+          );
+        }
+      } catch (e) {
+        // Don't fail event creation if notification fails
+      }
+
       return EventModel.fromJson(response).toEntity();
     } catch (e) {
       rethrow;

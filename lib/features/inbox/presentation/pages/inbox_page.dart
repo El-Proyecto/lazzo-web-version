@@ -8,6 +8,7 @@ import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/constants/text_styles.dart';
 import '../../../../shared/layouts/main_layout_providers.dart';
 import '../../domain/entities/payment_entity.dart';
+import '../../domain/entities/payment_group.dart';
 import '../../domain/entities/notification_entity.dart';
 import '../providers/notifications_provider.dart';
 // import '../providers/actions_provider.dart'; // MVP: Actions removed, preserved for P2
@@ -15,6 +16,7 @@ import '../providers/payments_provider.dart';
 import '../widgets/notifications_section.dart';
 // import '../widgets/actions_section.dart'; // MVP: Actions removed, preserved for P2
 import '../widgets/payments_section.dart';
+import '../widgets/payment_details_bottom_sheet.dart';
 import '../../../profile/presentation/providers/other_profile_providers.dart';
 
 class InboxPage extends ConsumerStatefulWidget {
@@ -114,14 +116,14 @@ class _InboxPageState extends ConsumerState<InboxPage>
                   }
         
         // Filter out notifications that should ONLY appear in push (not in inbox)
-        // Also filter out payment notifications (they appear in Payments tab)
+        // Also filter out payment requests and paid confirmations (they appear in Payments tab)
+        // paymentsAddedYouOwe now appears in Notifications tab (navigates to event)
         // Also filter out notifications being optimistically deleted
         final inboxNotifications = notifications.where((n) {
           return n.type != NotificationType.eventLive &&
                  n.type != NotificationType.eventEndsSoon &&
                  n.type != NotificationType.chatMention &&
-                 // ✅ Filter out payment notifications (already in Payments tab)
-                 n.type != NotificationType.paymentsAddedYouOwe &&
+                 // ✅ Payment requests and confirmations stay in Payments tab
                  n.type != NotificationType.paymentsRequest &&
                  n.type != NotificationType.paymentsPaidYou &&
                  !_deletingNotificationIds.contains(n.id);
@@ -355,11 +357,18 @@ class _InboxPageState extends ConsumerState<InboxPage>
         }
         break;
 
-      // Payment notifications → Navigate to payments tab
+      // Payment notifications → Navigate based on type
       case NotificationType.paymentsRequest:
-      case NotificationType.paymentsAddedYouOwe:
       case NotificationType.paymentsPaidYou:
                 ref.read(inboxTabIndexProvider.notifier).state = 1; // Payments tab
+        break;
+      
+      // Expense added notification → Navigate based on event status
+      case NotificationType.paymentsAddedYouOwe:
+        if (notification.eventId != null) {
+          // Check event status to decide navigation
+          _handleExpenseNotificationTap(context, notification);
+        }
         break;
 
       // Group notifications → Navigate to group hub
@@ -394,6 +403,127 @@ class _InboxPageState extends ConsumerState<InboxPage>
 
       default:
             }
+  }
+
+  /// Handle expense notification tap - navigate based on event status
+  Future<void> _handleExpenseNotificationTap(
+    BuildContext context,
+    NotificationEntity notification,
+  ) async {
+    final eventId = notification.eventId;
+    if (eventId == null) return;
+
+    try {
+      // Fetch event status from Supabase
+      final response = await Supabase.instance.client
+          .from('events')
+          .select('status')
+          .eq('id', eventId)
+          .single();
+
+      final eventStatus = response['status'] as String?;
+
+      // If event is recap or ended, navigate to Payments tab
+      if (eventStatus == 'recap') {
+        // Switch to Payments tab
+        ref.read(inboxTabIndexProvider.notifier).state = 1;
+        
+        // Wait for tab switch to complete
+        await Future.delayed(const Duration(milliseconds: 100));
+        
+        // Try to find and show the payment details bottom sheet if expenseId exists
+        if (notification.expenseId != null && mounted) {
+          _tryShowExpenseBottomSheet(context, notification.expenseId!);
+        }
+      } else {
+        // For pending/confirmed/living events, navigate to event page
+        if (mounted) {
+          Navigator.pushNamed(
+            context,
+            '/event',
+            arguments: {'eventId': eventId},
+          );
+        }
+      }
+    } catch (e) {
+      // On error, fallback to navigating to event
+      if (mounted) {
+        Navigator.pushNamed(
+          context,
+          '/event',
+          arguments: {'eventId': eventId},
+        );
+      }
+    }
+  }
+
+  /// Try to show expense bottom sheet for a specific expenseId
+  void _tryShowExpenseBottomSheet(BuildContext context, String expenseId) {
+    // Get current payments from providers
+    final owedToUserState = ref.read(paymentsOwedToUserProvider);
+    final userOwesState = ref.read(paymentsUserOwesProvider);
+    
+    final owedToUser = owedToUserState.asData?.value ?? <PaymentEntity>[];
+    final userOwes = userOwesState.asData?.value ?? <PaymentEntity>[];
+    
+    // Combine all payments
+    final allPayments = [...owedToUser, ...userOwes];
+    
+    // Find payment with matching expense ID
+    // Note: PaymentEntity.id format is "expenseId_userId"
+    final matchingPayment = allPayments.firstWhere(
+      (p) => p.id.startsWith(expenseId),
+      orElse: () => allPayments.isEmpty ? allPayments.first : allPayments.first,
+    );
+    
+    // If no matching payment found, don't show bottom sheet
+    if (allPayments.isEmpty || !matchingPayment.id.startsWith(expenseId)) {
+      return;
+    }
+    
+    // Get current user ID to determine payment group
+    final currentUserId = Supabase.instance.client.auth.currentUser?.id ?? '';
+    
+    // Find which list contains this payment to determine direction
+    final isOwedToUser = owedToUser.any((p) => p.id == matchingPayment.id);
+    
+    // Get the other user ID (the one who isn't current user)
+    final otherUserId = isOwedToUser 
+        ? matchingPayment.fromUserId 
+        : matchingPayment.toUserId;
+    
+    if (otherUserId == null) return;
+    
+    // Get user name
+    final otherUserName = isOwedToUser
+        ? matchingPayment.fromUserName ?? 'Unknown'
+        : matchingPayment.toUserName ?? 'Unknown';
+    
+    // Create payment group for this user
+    final paymentGroup = PaymentGroup(
+      userId: otherUserId,
+      userName: otherUserName,
+      payments: allPayments.where((p) {
+        return isOwedToUser
+            ? (p.fromUserId == otherUserId && p.toUserId == currentUserId)
+            : (p.toUserId == otherUserId && p.fromUserId == currentUserId);
+      }).toList(),
+      totalAmount: allPayments.where((p) {
+        return isOwedToUser
+            ? (p.fromUserId == otherUserId && p.toUserId == currentUserId)
+            : (p.toUserId == otherUserId && p.fromUserId == currentUserId);
+      }).fold(0.0, (sum, p) => sum + p.amount),
+      isOwedToUser: isOwedToUser,
+    );
+    
+    // Show bottom sheet
+    PaymentDetailsBottomSheet.show(
+      context: context,
+      paymentGroup: paymentGroup,
+      onPaymentTap: (payment) {
+        Navigator.of(context).pop();
+      },
+    );
   }
 
   void _handleActionButtonTap(NotificationEntity notification) {

@@ -210,6 +210,41 @@ class EventRemoteDataSource {
         }).eq('id', eventId);
       }
 
+      // Send "Event Location Set" notification to all participants except host
+      try {
+        // Get event details for notification
+        final eventResponse = await _supabaseClient
+            .from('events')
+            .select('name, emoji, created_by')
+            .eq('id', eventId)
+            .single();
+        
+        final eventName = eventResponse['name'] as String;
+        final eventEmoji = eventResponse['emoji'] as String?;
+        final hostUserId = eventResponse['created_by'] as String;
+        
+        // Get all participants except the host
+        final participantsResponse = await _supabaseClient
+            .from('event_participants')
+            .select('user_id')
+            .eq('pevent_id', eventId)
+            .neq('user_id', hostUserId);
+        
+        // Send notification to each participant
+        for (final participant in participantsResponse) {
+          final participantId = participant['user_id'] as String;
+          await _notificationService.sendEventLocationSet(
+            recipientUserId: participantId,
+            eventName: eventName,
+            eventId: eventId,
+            locationName: locationName,
+            eventEmoji: eventEmoji,
+          );
+        }
+      } catch (e) {
+        // Don't fail location update if notification fails
+      }
+
       // Return updated event detail
       return await getEventDetail(eventId);
     } on PostgrestException catch (e) {
@@ -269,6 +304,51 @@ class EventRemoteDataSource {
       await _supabaseClient
           .from('events')
           .update({'status': finalStatus}).eq('id', eventId);
+
+      // Send "Event Date Set" notification when status changes to planning/confirmed
+      if (finalStatus == 'planning' || finalStatus == 'confirmed') {
+        try {
+          // Get event details for notification
+          final eventResponse = await _supabaseClient
+              .from('events')
+              .select('name, emoji, created_by, start_datetime')
+              .eq('id', eventId)
+              .single();
+          
+          final eventName = eventResponse['name'] as String;
+          final eventEmoji = eventResponse['emoji'] as String?;
+          final hostUserId = eventResponse['created_by'] as String;
+          final startDateTimeStr = eventResponse['start_datetime'] as String?;
+          
+          if (startDateTimeStr != null) {
+            final startDateTime = DateTime.parse(startDateTimeStr);
+            final date = '${startDateTime.day}/${startDateTime.month}/${startDateTime.year}';
+            final time = '${startDateTime.hour.toString().padLeft(2, '0')}:${startDateTime.minute.toString().padLeft(2, '0')}';
+            
+            // Get all participants except the host
+            final participantsResponse = await _supabaseClient
+                .from('event_participants')
+                .select('user_id')
+                .eq('pevent_id', eventId)
+                .neq('user_id', hostUserId);
+            
+            // Send notification to each participant
+            for (final participant in participantsResponse) {
+              final participantId = participant['user_id'] as String;
+              await _notificationService.sendEventDateSet(
+                recipientUserId: participantId,
+                eventName: eventName,
+                eventId: eventId,
+                date: date,
+                time: time,
+                eventEmoji: eventEmoji,
+              );
+            }
+          }
+        } catch (e) {
+          // Don't fail status update if notification fails
+        }
+      }
 
       // Verify the update by fetching the event directly with a small delay
       await Future.delayed(const Duration(milliseconds: 100));

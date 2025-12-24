@@ -217,7 +217,7 @@ class NotificationModel {
       case 'paymentsRequest':
         return '${userName ?? 'Someone'} requested ${amount ?? '?'}${note != null ? ' for $note' : ''}.';
       case 'paymentsAddedYouOwe':
-        return '${userName ?? 'Someone'} added **${note ?? 'an expense'}** in ${eventName ?? 'event'}. You owe **${amount ?? '?'}**';
+        return '${userName ?? 'Someone'} added **${note ?? 'an expense'}** in ${eventName ?? 'event'}. **${amount ?? '?'}**';
       case 'paymentsPaidYou':
         return '${userName ?? 'Someone'} paid you ${amount ?? '?'}.';
       case 'chatMention':

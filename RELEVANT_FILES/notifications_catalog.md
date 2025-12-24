@@ -52,33 +52,15 @@ Informational updates (tap opens context).
 | --------------------- | ---------------------------------------------------- | ----------------- |
 | group.invite.accepted | `{user} joined **{group}**.`                         | `group/{groupId}` |
 | group.renamed         | `**{group}** has a new name.`                        | `group/{groupId}` |
-| group.photo.changed   | `**{group}** has a new photo.`                       | `group/{groupId}` |
 | event.created         | `New event **{event}** in **{group}**.`              | `event/{eventId}` |
 | event.date.set        | `Date confirmed for **{event}**: {date}, {time}.`    | `event/{eventId}` |
 | event.location.set    | `Location confirmed for **{event}**: {place}.`       | `event/{eventId}` |
 | event.details.updated | `**{event}** was updated. Check the new details.`    | `event/{eventId}` |
 | event.canceled        | `**{event}** was canceled.`                          | `group/{groupId}` |
-| event.restored        | `**{event}** is back on.`                            | `event/{eventId}` |
 | event.confirmed       | `**{event} is confirmed to happen.`                  | `event/{eventId}` |
 | suggestion.added      | `{user} suggested **{suggestion}** for **{event}**.` | `event/{eventId}` |
 
 Empty state: *“No new notifications.”*
-
----
-
-## 3) ACTIONS
-
-Items the user can/should resolve. **No push** by default
-
-| Key                              | Message (EN)                             | Deeplink                  | 
-| -------------------------------- | ---------------------------------------- | ------------------------- | 
-| action.vote.date                 | `Vote a date · closes {weekday}`         | `event/{eventId}`         |
-| action.vote.place                | `Vote a place · closes {weekday}`        | `event/{eventId}`         |
-| action.confirm.attendance        | `Confirm attendance · {days}d left`      | `event/{eventId}`         |
-| action.complete.details          | `Complete event details (date/location)` | `event/{eventId}`         |
-| action.add.photos                | `Add photos · {hours}h left`             | `event/{eventId}/uploads` |
-
-Empty state: *“All set — nothing to do.”*
 
 ---
 

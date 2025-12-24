@@ -66,10 +66,8 @@ class NotificationCard extends StatelessWidget {
       return true;
     }
     
-    // Payment notifications have "Mark as Paid" button
-    if (type == NotificationType.paymentsAddedYouOwe) {
-      return true;
-    }
+    // paymentsAddedYouOwe no longer shows action button (just taps to event)
+    // Payment requests still have action buttons
     
     // Some PUSH notifications have action buttons
     if ([
@@ -185,81 +183,10 @@ class NotificationCard extends StatelessWidget {
       );
     }
     
-    // Payment "Mark as Paid" button
-    if (type == NotificationType.paymentsAddedYouOwe) {
-      return SizedBox(
-        width: double.infinity,
-        child: ElevatedButton(
-          onPressed: () {
-                        onMarkPaid?.call(notification.id);
-          },
-          style: ElevatedButton.styleFrom(
-            backgroundColor: BrandColors.planning,
-            foregroundColor: BrandColors.text1,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(Radii.sm),
-            ),
-            padding: const EdgeInsets.symmetric(vertical: Gaps.xs),
-            elevation: 0,
-          ),
-          child: Text(
-            'Pay',
-            style: AppText.labelLarge.copyWith(
-              color: BrandColors.text1,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ),
-      );
-    }
-    
-    // Single action button for other notification types
-    if (_hasActionButton(type)) {
-      return SizedBox(
-        width: double.infinity,
-        child: ElevatedButton(
-          onPressed: () => onActionTap?.call(),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: BrandColors.planning,
-            foregroundColor: BrandColors.text1,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(Radii.sm),
-            ),
-            padding: const EdgeInsets.symmetric(vertical: Gaps.sm),
-            elevation: 0,
-          ),
-          child: Text(
-            _getActionButtonText(type),
-            style: AppText.labelLarge.copyWith(
-              color: BrandColors.text1,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ),
-      );
-    }
+    // No action button for paymentsAddedYouOwe anymore
+    // Just tap on card to navigate to event
     
     return const SizedBox.shrink();
-  }
-  
-  bool _hasActionButton(NotificationType type) {
-    return [
-      NotificationType.uploadsOpen,
-      NotificationType.uploadsClosing,
-      NotificationType.paymentsRequest,
-    ].contains(type);
-  }
-  
-  String _getActionButtonText(NotificationType type) {
-    switch (type) {
-      case NotificationType.uploadsOpen:
-      case NotificationType.uploadsClosing:
-        return 'Add Photos';
-      case NotificationType.paymentsRequest:
-        return 'Pay';
-      default:
-        return 'Open';
-    }
   }
 
   Widget _buildAvatar() {
@@ -388,36 +315,21 @@ class NotificationCard extends StatelessWidget {
       // Add normal text before the bold part
       if (match.start > lastEnd) {
         final normalText = text.substring(lastEnd, match.start);
-        // Check if 'You owe' comes just before this bold text
-        final isOweAmount = normalText.toLowerCase().endsWith('you owe ');
-        
-        if (isOweAmount && notification.type == NotificationType.paymentsAddedYouOwe) {
-          // Split 'You owe ' from the rest
-          final beforeOwe = normalText.substring(0, normalText.lastIndexOf('You owe '));
-          if (beforeOwe.isNotEmpty) {
-            spans.add(TextSpan(text: beforeOwe));
-          }
-          // Add 'You owe ' in red
-          spans.add(
-            TextSpan(
-              text: 'You owe ',
-              style: AppText.bodyMedium.copyWith(
-                color: const Color(0xFFFF4444), // Red color
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          );
-        } else {
-          spans.add(TextSpan(text: normalText));
-        }
+        spans.add(TextSpan(text: normalText));
       }
 
       // Add bold text
+      // Check if this is the amount in a payment notification (last bold element)
+      final isPaymentAmount = notification.type == NotificationType.paymentsAddedYouOwe &&
+          match.end == text.length;
+      
       spans.add(
         TextSpan(
           text: match.group(1),
           style: AppText.bodyMedium.copyWith(
-            color: BrandColors.text1,
+            color: isPaymentAmount 
+                ? const Color(0xFFFF4444) // Red for amount you owe
+                : BrandColors.text1,
             fontWeight: FontWeight.w600,
           ),
         ),
