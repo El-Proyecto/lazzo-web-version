@@ -30,15 +30,30 @@ class EventStatusService {
       final now = DateTime.now().toUtc();
       int updatedCount = 0;
 
+      print('[EventStatusService] ===== updateEventStatuses called =====');
+      print('[EventStatusService] Current UTC time: $now');
+
       // 1. Find confirmed events that should be living (start_datetime has passed)
+      print(
+          '[EventStatusService] Checking confirmed events to transition to living...');
+      print('[EventStatusService] Current time: $now');
+
       final confirmedToLiving = await _client
           .from('events')
-          .select('id, name, start_datetime')
+          .select('id, name, start_datetime, status')
           .eq('status', 'confirmed')
           .lte('start_datetime', now.toIso8601String());
 
+      print(
+          '[EventStatusService] Found ${confirmedToLiving.length} confirmed events that should be living');
+
       if (confirmedToLiving.isNotEmpty) {
         for (final event in confirmedToLiving) {
+          print(
+              '[EventStatusService] Transitioning event ${event['name']} (${event['id']}) from confirmed to living');
+          print(
+              '[EventStatusService] Event start_datetime: ${event['start_datetime']}');
+
           await _client
               .from('events')
               .update({'status': 'living'}).eq('id', event['id']);
@@ -93,6 +108,9 @@ class EventStatusService {
   /// Useful when you know an event needs updating
   Future<bool> updateEventStatus(String eventId) async {
     try {
+      print(
+          '[EventStatusService] updateEventStatus called for event: $eventId');
+
       final event = await _client
           .from('events')
           .select('id, name, status, start_datetime, end_datetime')
@@ -105,12 +123,23 @@ class EventStatusService {
       final recapDeadline = endTime.add(const Duration(hours: 24));
       final currentStatus = event['status'] as String;
 
+      print('[EventStatusService] Event: ${event['name']}');
+      print('[EventStatusService] Current status: $currentStatus');
+      print('[EventStatusService] Start time: $startTime');
+      print('[EventStatusService] End time: $endTime');
+      print('[EventStatusService] Current time: $now');
+      print('[EventStatusService] Is after start? ${now.isAfter(startTime)}');
+
       String? newStatus;
 
       // Only transition events that are already confirmed or beyond
       // Pending events should remain pending even if time has passed
       if (currentStatus == 'pending') {
         // Pending events never auto-transition
+        print(
+            '[EventStatusService] Event is PENDING - no auto-transition allowed');
+        print(
+            '[EventStatusService] Event should remain pending (isExpired will handle UI)');
         return false;
       }
 
@@ -126,11 +155,15 @@ class EventStatusService {
       }
 
       if (newStatus != currentStatus) {
+        print(
+            '[EventStatusService] Updating status from $currentStatus to $newStatus');
         await _client
             .from('events')
             .update({'status': newStatus}).eq('id', eventId);
+        print('[EventStatusService] Status updated successfully');
         return true;
       } else {
+        print('[EventStatusService] Status unchanged ($currentStatus)');
         return false;
       }
     } catch (e) {

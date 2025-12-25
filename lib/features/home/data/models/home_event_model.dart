@@ -163,7 +163,7 @@ class _HomeEventModel {
           .eq('event_id', id)
           .order('captured_at', ascending: false);
 
-      if (response == null || response.isEmpty) {
+      if (response.isEmpty) {
         return [];
       }
 
@@ -289,12 +289,17 @@ class _HomeEventModel {
     final now = DateTime.now();
     const recapDuration = Duration(hours: 24);
 
+    // CRITICAL: Pending events NEVER auto-transition, even if date has passed
+    if (backendStatus == 'pending') {
+      return 'pending'; // Always return pending, regardless of dates
+    }
+
     // Sem data ou data futura = PLANNING → usa status da DB (pending/confirmed)
     if (start == null || start.isAfter(now)) {
       return backendStatus; // Mantém 'pending' ou 'confirmed' da DB
     }
 
-    // Evento a decorrer = LIVING
+    // Evento a decorrer = LIVING (only for confirmed+ events)
     if (end == null || end.isAfter(now)) return 'living';
 
     // Evento terminou há menos de 24h = RECAP

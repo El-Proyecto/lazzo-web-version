@@ -109,6 +109,21 @@ class _EventPageState extends ConsumerState<EventPage> {
   ) {
     final isConfirmed = currentStatus == EventStatus.confirmed;
 
+    // If trying to confirm expired event, show cannot confirm dialog
+    if (!isConfirmed && event.isExpired) {
+      showDialog(
+        context: context,
+        builder: (context) => ConfirmationDialog(
+          title: 'Cannot Confirm Event',
+          message:
+              'Event date has expired. Please set a new date before confirming.',
+          confirmText: 'OK',
+          onConfirm: () {},
+        ),
+      );
+      return;
+    }
+
     // If trying to confirm but missing required fields, show warning dialog
     if (!isConfirmed && !event.isFullyDefined) {
       showDialog(
@@ -332,7 +347,7 @@ class _EventPageState extends ConsumerState<EventPage> {
                           endDateTime: eventData.endDateTime,
                           location: eventData.location != null
                               ? create_event.EventLocation(
-                                  id: eventData.location!.id,
+                                  id: 'temp-id', // Will be created/updated in repository
                                   displayName: eventData.location!.displayName,
                                   formattedAddress:
                                       eventData.location!.formattedAddress,
@@ -374,7 +389,7 @@ class _EventPageState extends ConsumerState<EventPage> {
                           endDateTime: eventData.endDateTime,
                           location: eventData.location != null
                               ? create_event.EventLocation(
-                                  id: eventData.location!.id,
+                                  id: 'temp-id', // Will be created/updated in repository
                                   displayName: eventData.location!.displayName,
                                   formattedAddress:
                                       eventData.location!.formattedAddress,
@@ -1197,40 +1212,48 @@ class _EventPageState extends ConsumerState<EventPage> {
   /// This is one of the most complex sections with nested AsyncValues
   /// When event is not fully defined/suggested, shows HelpPlanSection instead
   Widget _buildRsvpSection(EventDetail event, String? currentUserId) {
-    // If event is expired, show help plan widget with custom message
-    if (event.isExpired) {
-      return Column(
-        children: [
-          HelpPlanEventWidget(
-            hasLocation: event.hasDefinedLocation,
-            hasDate: false, // Force date as missing since it's expired
-            hasSuggestedLocation: false,
-            hasSuggestedDate: false,
-            onAddSuggestion: () {
-              showAddSuggestionBottomSheet(
-                context,
-                eventId: eventId,
-                eventStartDate: event.startDateTime ?? DateTime.now(),
-                eventStartTime: event.startDateTime != null
-                    ? TimeOfDay.fromDateTime(event.startDateTime!)
-                    : TimeOfDay.now(),
-                eventEndDate: event.endDateTime ?? DateTime.now(),
-                eventEndTime: event.endDateTime != null
-                    ? TimeOfDay.fromDateTime(event.endDateTime!)
-                    : TimeOfDay.now(),
-              );
-            },
-            customTitle: 'Event date has expired',
-          ),
-          const SizedBox(height: Gaps.lg),
-        ],
-      );
-    }
-
     // Watch suggestions to determine visibility
     final suggestionsAsync = ref.watch(eventSuggestionsProvider(eventId));
     final locationSuggestionsAsync =
         ref.watch(eventLocationSuggestionsProvider(eventId));
+
+    // If event is expired, check if there are date suggestions first
+    if (event.isExpired) {
+      final dateSuggestions = suggestionsAsync.value ?? [];
+
+      // If there are date suggestions, hide RSVP section (let suggestions widget show)
+      if (dateSuggestions.isNotEmpty) {
+        return const SizedBox.shrink();
+      } else {
+        // No suggestions - show expired widget
+        return Column(
+          children: [
+            HelpPlanEventWidget(
+              hasLocation: event.hasDefinedLocation,
+              hasDate: false, // Force date as missing since it's expired
+              hasSuggestedLocation: false,
+              hasSuggestedDate: false,
+              onAddSuggestion: () {
+                showAddSuggestionBottomSheet(
+                  context,
+                  eventId: eventId,
+                  eventStartDate: event.startDateTime ?? DateTime.now(),
+                  eventStartTime: event.startDateTime != null
+                      ? TimeOfDay.fromDateTime(event.startDateTime!)
+                      : TimeOfDay.now(),
+                  eventEndDate: event.endDateTime ?? DateTime.now(),
+                  eventEndTime: event.endDateTime != null
+                      ? TimeOfDay.fromDateTime(event.endDateTime!)
+                      : TimeOfDay.now(),
+                );
+              },
+              customTitle: 'Event date has expired',
+            ),
+            const SizedBox(height: Gaps.lg),
+          ],
+        );
+      }
+    }
 
     // If event is fully defined, show RSVP
     if (event.isFullyDefined) {

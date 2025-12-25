@@ -203,20 +203,15 @@ class EventRepositoryImpl implements EventRepository {
           // Location already exists, just use its ID
           locationId = existingId;
         } else {
-          // New location - create it first
-          try {
-            final locationData = await _dataSource.createLocation(
-              displayName: event.location!.displayName,
-              formattedAddress: event.location!.formattedAddress,
-              latitude: event.location!.latitude,
-              longitude: event.location!.longitude,
-              createdBy: userId,
-            );
-            locationId = locationData['id'] as String;
-          } catch (e) {
-            // Don't fail the entire update, just log it
-            locationId = null;
-          }
+          // New location or temp-id - create it first
+          final locationData = await _dataSource.createLocation(
+            displayName: event.location!.displayName,
+            formattedAddress: event.location!.formattedAddress,
+            latitude: event.location!.latitude,
+            longitude: event.location!.longitude,
+            createdBy: userId,
+          );
+          locationId = locationData['id'] as String;
         }
       }
 
@@ -310,34 +305,35 @@ class EventRepositoryImpl implements EventRepository {
         }
       }
 
-      final updatedEvent = EventModel.fromJson(response).toEntity(location: location);
+      final updatedEvent =
+          EventModel.fromJson(response).toEntity(location: location);
 
       // CRITICAL: Send notifications to participants when event is extended
       // Check if event duration was increased (end time pushed forward)
       try {
         // Get the previous event data to compare end times
         final previousEvent = await getEventById(event.id);
-        
-        if (previousEvent != null && 
-            previousEvent.endDateTime != null && 
+
+        if (previousEvent != null &&
+            previousEvent.endDateTime != null &&
             event.endDateTime != null &&
             event.endDateTime!.isAfter(previousEvent.endDateTime!)) {
-          
           // Calculate how many hours the event was extended
-          final extension = event.endDateTime!.difference(previousEvent.endDateTime!);
+          final extension =
+              event.endDateTime!.difference(previousEvent.endDateTime!);
           final additionalHours = (extension.inMinutes / 60).ceil();
-          
+
           // Get all participants of this event (except the current user)
           final participants = await _client
               .from('event_participants')
               .select('user_id')
               .eq('pevent_id', event.id)
               .neq('user_id', userId);
-          
+
           // Send notification to each participant
           for (final participant in participants) {
             final participantId = participant['user_id'] as String;
-            
+
             await _notificationService.sendEventExtended(
               recipientUserId: participantId,
               eventName: event.name,

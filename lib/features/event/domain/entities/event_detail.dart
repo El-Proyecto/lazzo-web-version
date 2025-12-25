@@ -85,6 +85,20 @@ class EventDetail {
   /// Check if event date has expired
   /// Returns true when event is in pending status and start date has passed
   bool get isExpired {
+    final now = DateTime.now();
+    final isPending = status == EventStatus.pending;
+    final hasStartDate = startDateTime != null;
+    final isAfterStart = hasStartDate ? now.isAfter(startDateTime!) : false;
+
+    if (hasStartDate) {
+      print('[EventDetail] isExpired check for event "$name" (id: $id):');
+      print('[EventDetail]   - Status: $status (pending? $isPending)');
+      print('[EventDetail]   - Start: $startDateTime');
+      print('[EventDetail]   - Now: $now');
+      print('[EventDetail]   - Is after start? $isAfterStart');
+      print('[EventDetail]   - Result: ${isPending && isAfterStart}');
+    }
+
     if (status != EventStatus.pending) return false;
     if (startDateTime == null) return false;
     return DateTime.now().isAfter(startDateTime!);
