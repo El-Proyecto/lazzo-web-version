@@ -91,13 +91,7 @@ class EventDetail {
     final isAfterStart = hasStartDate ? now.isAfter(startDateTime!) : false;
 
     if (hasStartDate) {
-      print('[EventDetail] isExpired check for event "$name" (id: $id):');
-      print('[EventDetail]   - Status: $status (pending? $isPending)');
-      print('[EventDetail]   - Start: $startDateTime');
-      print('[EventDetail]   - Now: $now');
-      print('[EventDetail]   - Is after start? $isAfterStart');
-      print('[EventDetail]   - Result: ${isPending && isAfterStart}');
-    }
+                                        }
 
     if (status != EventStatus.pending) return false;
     if (startDateTime == null) return false;

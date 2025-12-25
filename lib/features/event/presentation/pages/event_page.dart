@@ -1217,42 +1217,68 @@ class _EventPageState extends ConsumerState<EventPage> {
     final locationSuggestionsAsync =
         ref.watch(eventLocationSuggestionsProvider(eventId));
 
-    // If event is expired, check if there are date suggestions first
+    print('[EventPage] _buildRsvpSection called');
+    print('[EventPage] event.isExpired: ${event.isExpired}');
+    print('[EventPage] event.startDateTime: ${event.startDateTime}');
+    print('[EventPage] event.status: ${event.status}');
+
+    // If event is expired, never show RSVP
     if (event.isExpired) {
       final dateSuggestions = suggestionsAsync.value ?? [];
+      print(
+          '[EventPage] Event is expired, dateSuggestions count: ${dateSuggestions.length}');
 
-      // If there are date suggestions, hide RSVP section (let suggestions widget show)
-      if (dateSuggestions.isNotEmpty) {
+      // Filter out suggestions that are the SAME as the expired event date
+      // Only consider suggestions that are DIFFERENT (alternatives)
+      final alternateSuggestions = dateSuggestions.where((s) {
+        if (event.startDateTime == null || event.endDateTime == null) {
+          return true;
+        }
+        final isDifferent =
+            !s.startDateTime.isAtSameMomentAs(event.startDateTime!) ||
+                !(s.endDateTime?.isAtSameMomentAs(event.endDateTime!) ?? false);
+        return isDifferent;
+      }).toList();
+
+      print(
+          '[EventPage] Alternate suggestions (different from expired date): ${alternateSuggestions.length}');
+
+      // If there are ALTERNATIVE date suggestions, hide this section (let suggestions widget show)
+      if (alternateSuggestions.isNotEmpty) {
+        print(
+            '[EventPage] Has alternate date suggestions, hiding expired widget');
         return const SizedBox.shrink();
-      } else {
-        // No suggestions - show expired widget
-        return Column(
-          children: [
-            HelpPlanEventWidget(
-              hasLocation: event.hasDefinedLocation,
-              hasDate: false, // Force date as missing since it's expired
-              hasSuggestedLocation: false,
-              hasSuggestedDate: false,
-              onAddSuggestion: () {
-                showAddSuggestionBottomSheet(
-                  context,
-                  eventId: eventId,
-                  eventStartDate: event.startDateTime ?? DateTime.now(),
-                  eventStartTime: event.startDateTime != null
-                      ? TimeOfDay.fromDateTime(event.startDateTime!)
-                      : TimeOfDay.now(),
-                  eventEndDate: event.endDateTime ?? DateTime.now(),
-                  eventEndTime: event.endDateTime != null
-                      ? TimeOfDay.fromDateTime(event.endDateTime!)
-                      : TimeOfDay.now(),
-                );
-              },
-              customTitle: 'Event date has expired',
-            ),
-            const SizedBox(height: Gaps.lg),
-          ],
-        );
       }
+
+      // No alternative suggestions - show expired widget
+      print(
+          '[EventPage] No alternate date suggestions, showing expired widget');
+      return Column(
+        children: [
+          HelpPlanEventWidget(
+            hasLocation: event.hasDefinedLocation,
+            hasDate: false, // Force date as missing since it's expired
+            hasSuggestedLocation: false,
+            hasSuggestedDate: false,
+            onAddSuggestion: () {
+              showAddSuggestionBottomSheet(
+                context,
+                eventId: eventId,
+                eventStartDate: event.startDateTime ?? DateTime.now(),
+                eventStartTime: event.startDateTime != null
+                    ? TimeOfDay.fromDateTime(event.startDateTime!)
+                    : TimeOfDay.now(),
+                eventEndDate: event.endDateTime ?? DateTime.now(),
+                eventEndTime: event.endDateTime != null
+                    ? TimeOfDay.fromDateTime(event.endDateTime!)
+                    : TimeOfDay.now(),
+              );
+            },
+            customTitle: 'Event date has expired',
+          ),
+          const SizedBox(height: Gaps.lg),
+        ],
+      );
     }
 
     // If event is fully defined, show RSVP
@@ -1564,6 +1590,11 @@ class _EventPageState extends ConsumerState<EventPage> {
     required int goingCount,
     required String? currentUserId,
   }) {
+    print('[EventPage] _processDateTimeSuggestions called');
+    print('[EventPage] Total suggestions from DB: ${suggestions.length}');
+    print('[EventPage] event.isExpired: ${event.isExpired}');
+    print('[EventPage] event.startDateTime: ${event.startDateTime}');
+
     // Filter suggestions that are DIFFERENT from current event date
     final alternateSuggestions = suggestions.where((s) {
       if (event.startDateTime == null || event.endDateTime == null) {
@@ -1575,11 +1606,19 @@ class _EventPageState extends ConsumerState<EventPage> {
       return isDifferent;
     }).toList();
 
+    print(
+        '[EventPage] Alternate suggestions (different from current): ${alternateSuggestions.length}');
+
     final List<DateTimeSuggestion> dateTimeSuggestions = [];
 
-    // Always add current event date as FIRST option (for comparison)
+    // Only add current event date if NOT expired
+    // Expired dates should not be shown as a valid "current" option
     DateTimeSuggestion? currentEventOption;
-    if (event.startDateTime != null && event.endDateTime != null) {
+    if (event.startDateTime != null &&
+        event.endDateTime != null &&
+        !event.isExpired) {
+      print(
+          '[EventPage] Adding current event date as first option (not expired)');
       currentEventOption = DateTimeSuggestion(
         id: 'current_event_date',
         startDateTime: event.startDateTime!,
@@ -1589,6 +1628,8 @@ class _EventPageState extends ConsumerState<EventPage> {
         votes: [],
       );
       dateTimeSuggestions.add(currentEventOption);
+    } else if (event.isExpired) {
+      print('[EventPage] Skipping current event date (expired)');
     }
 
     // Add all ALTERNATIVE suggestions (different from current date)
@@ -1614,6 +1655,10 @@ class _EventPageState extends ConsumerState<EventPage> {
         votes: suggestionVotes,
       );
     }));
+
+    print(
+        '[EventPage] Final dateTimeSuggestions count: ${dateTimeSuggestions.length}');
+    print('[EventPage] hasAlternatives: ${alternateSuggestions.isNotEmpty}');
 
     return DateTimeSuggestionsData(
       suggestions: dateTimeSuggestions,
