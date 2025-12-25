@@ -47,6 +47,9 @@ class HelpPlanEventWidget extends StatelessWidget {
   /// Callback when user taps the add suggestion button
   final VoidCallback onAddSuggestion;
 
+  /// Optional custom title (defaults to 'Help plan this event')
+  final String? customTitle;
+
   const HelpPlanEventWidget({
     super.key,
     required this.hasLocation,
@@ -54,6 +57,7 @@ class HelpPlanEventWidget extends StatelessWidget {
     required this.hasSuggestedLocation,
     required this.hasSuggestedDate,
     required this.onAddSuggestion,
+    this.customTitle,
   });
 
   /// Dynamic button text based on what fields are missing/suggested
@@ -86,7 +90,7 @@ class HelpPlanEventWidget extends StatelessWidget {
         children: [
           // Title
           Text(
-            'Help plan this event',
+            customTitle ?? 'Help plan this event',
             style: AppText.titleMediumEmph.copyWith(
               color: BrandColors.text1,
             ),

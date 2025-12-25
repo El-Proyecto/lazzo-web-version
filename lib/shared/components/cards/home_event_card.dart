@@ -9,6 +9,7 @@ import '../../constants/spacing.dart';
 import '../../constants/text_styles.dart';
 import '../../themes/colors.dart';
 import '../widgets/votes_bottom_sheet.dart';
+import '../widgets/photos_bottom_sheet.dart';
 import '../dialogs/add_expense_bottom_sheet.dart';
 import '../common/top_banner.dart';
 
@@ -268,10 +269,16 @@ class _HomeEventCardState extends ConsumerState<HomeEventCard> {
   }
 
   Widget _buildAttendeeInfo(BuildContext context) {
-    // Show votes bottom sheet when tapping on attendee info
-    // This displays all participants with their RSVPs
+    // Show photos bottom sheet for Living/Recap, votes for Pending/Confirmed
     return InkWell(
-      onTap: () => _showVotesBottomSheet(context),
+      onTap: () {
+        if (widget.state == HomeEventCardState.living ||
+            widget.state == HomeEventCardState.recap) {
+          _showPhotosBottomSheet(context);
+        } else {
+          _showVotesBottomSheet(context);
+        }
+      },
       borderRadius: BorderRadius.circular(Radii.sm),
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: Gaps.xxs),
@@ -296,6 +303,15 @@ class _HomeEventCardState extends ConsumerState<HomeEventCard> {
           ],
         ),
       ),
+    );
+  }
+
+  void _showPhotosBottomSheet(BuildContext context) {
+    PhotosBottomSheet.show(
+      context: context,
+      participants: _currentEvent.participantPhotos,
+      totalPhotos: _currentEvent.photoCount,
+      maxPhotos: _currentEvent.maxPhotos,
     );
   }
 

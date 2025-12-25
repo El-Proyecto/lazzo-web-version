@@ -231,7 +231,8 @@ class HomeEventRemoteDataSource {
             user_rsvp, voted_at,
             going_count, going_users,
             not_going_users, no_response_users,
-            participants_total, voters_total
+            participants_total, voters_total,
+            photo_count, max_photos
           ''')
           .eq('user_id', userId)
           .inFilter('event_status', ['living', 'recap'])

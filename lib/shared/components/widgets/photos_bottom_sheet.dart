@@ -13,8 +13,10 @@ class PhotosBottomSheet {
     required int totalPhotos,
     required int maxPhotos,
   }) {
-    // Sort participants by photo count (descending)
-    final sortedParticipants = List<ParticipantPhoto>.from(participants)
+    // Filter out participants with no photos and sort by photo count (descending)
+    final sortedParticipants = participants
+        .where((p) => p.photoCount > 0)
+        .toList()
       ..sort((a, b) => b.photoCount.compareTo(a.photoCount));
 
     final photoCountText = totalPhotos == 0

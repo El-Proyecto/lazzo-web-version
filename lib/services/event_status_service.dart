@@ -30,15 +30,19 @@ class EventStatusService {
       final now = DateTime.now().toUtc();
       int updatedCount = 0;
 
+            
       // 1. Find confirmed events that should be living (start_datetime has passed)
+            
       final confirmedToLiving = await _client
           .from('events')
-          .select('id, name, start_datetime')
+          .select('id, name, start_datetime, status')
           .eq('status', 'confirmed')
           .lte('start_datetime', now.toIso8601String());
 
+      
       if (confirmedToLiving.isNotEmpty) {
         for (final event in confirmedToLiving) {
+                    
           await _client
               .from('events')
               .update({'status': 'living'}).eq('id', event['id']);
@@ -93,6 +97,7 @@ class EventStatusService {
   /// Useful when you know an event needs updating
   Future<bool> updateEventStatus(String eventId) async {
     try {
+      
       final event = await _client
           .from('events')
           .select('id, name, status, start_datetime, end_datetime')
@@ -105,9 +110,17 @@ class EventStatusService {
       final recapDeadline = endTime.add(const Duration(hours: 24));
       final currentStatus = event['status'] as String;
 
+                                    
       String? newStatus;
 
-      // Determine correct status based on times
+      // Only transition events that are already confirmed or beyond
+      // Pending events should remain pending even if time has passed
+      if (currentStatus == 'pending') {
+        // Pending events never auto-transition
+                        return false;
+      }
+
+      // Determine correct status based on times (only for confirmed+ events)
       if (now.isAfter(recapDeadline)) {
         newStatus = 'ended';
       } else if (now.isAfter(endTime)) {
@@ -119,12 +132,12 @@ class EventStatusService {
       }
 
       if (newStatus != currentStatus) {
-        await _client
+                await _client
             .from('events')
             .update({'status': newStatus}).eq('id', eventId);
-        return true;
+                return true;
       } else {
-        return false;
+                return false;
       }
     } catch (e) {
       return false;

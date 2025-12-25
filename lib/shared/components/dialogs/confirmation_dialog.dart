@@ -57,34 +57,36 @@ class ConfirmationDialog extends StatelessWidget {
           // Botões lado a lado
           Row(
             children: [
-              // Cancel button
-              Expanded(
-                child: TextButton(
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                    onCancel?.call();
-                  },
-                  style: TextButton.styleFrom(
-                    backgroundColor: BrandColors.bg3,
-                    padding: const EdgeInsets.symmetric(vertical: Pads.ctlVSm),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(Radii.smAlt),
+              // Only show cancel button if cancelText is provided
+              if (cancelText != null) ...[
+                // Cancel button
+                Expanded(
+                  child: TextButton(
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                      onCancel?.call();
+                    },
+                    style: TextButton.styleFrom(
+                      backgroundColor: BrandColors.bg3,
+                      padding:
+                          const EdgeInsets.symmetric(vertical: Pads.ctlVSm),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(Radii.smAlt),
+                      ),
                     ),
-                  ),
-                  child: Text(
-                    cancelText ?? 'Cancel',
-                    style: AppText.labelLarge.copyWith(
-                      color: BrandColors.text1,
+                    child: Text(
+                      cancelText!,
+                      style: AppText.labelLarge.copyWith(
+                        color: BrandColors.text1,
+                      ),
                     ),
                   ),
                 ),
-              ),
-
-              // Only show confirm button if confirmText is provided
-              if (confirmText != null) ...[
                 const SizedBox(width: Gaps.sm),
+              ],
 
-                // Confirm button
+              // Confirm button
+              if (confirmText != null)
                 Expanded(
                   child: TextButton(
                     onPressed: () {
@@ -110,7 +112,6 @@ class ConfirmationDialog extends StatelessWidget {
                     ),
                   ),
                 ),
-              ],
             ],
           ),
         ],

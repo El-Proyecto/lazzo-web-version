@@ -109,6 +109,21 @@ class _EventPageState extends ConsumerState<EventPage> {
   ) {
     final isConfirmed = currentStatus == EventStatus.confirmed;
 
+    // If trying to confirm expired event, show cannot confirm dialog
+    if (!isConfirmed && event.isExpired) {
+      showDialog(
+        context: context,
+        builder: (context) => ConfirmationDialog(
+          title: 'Cannot Confirm Event',
+          message:
+              'Event date has expired. Please set a new date before confirming.',
+          confirmText: 'OK',
+          onConfirm: () {},
+        ),
+      );
+      return;
+    }
+
     // If trying to confirm but missing required fields, show warning dialog
     if (!isConfirmed && !event.isFullyDefined) {
       showDialog(
@@ -291,8 +306,9 @@ class _EventPageState extends ConsumerState<EventPage> {
 
     final eventName = eventAsync.value?.name ?? '';
     final eventStatus = eventAsync.value?.status;
-    final showAddExpense =
-        eventStatus == EventStatus.pending || eventStatus == EventStatus.living;
+    final showAddExpense = eventStatus == EventStatus.pending ||
+        eventStatus == EventStatus.confirmed ||
+        eventStatus == EventStatus.living;
 
     return Scaffold(
       backgroundColor: BrandColors.bg1,
@@ -313,10 +329,11 @@ class _EventPageState extends ConsumerState<EventPage> {
                 // Cache the isHost status
                 _cachedIsHost = canManage;
 
-                // Show edit button for host/admin
+                // Show edit button for host/admin (except in living status)
                 if (canManage) {
                   final eventData = eventAsync.value;
-                  if (eventData != null) {
+                  if (eventData != null &&
+                      eventData.status != EventStatus.living) {
                     return IconButton(
                       icon: const Icon(Icons.edit, color: BrandColors.text1),
                       onPressed: () {
@@ -330,7 +347,7 @@ class _EventPageState extends ConsumerState<EventPage> {
                           endDateTime: eventData.endDateTime,
                           location: eventData.location != null
                               ? create_event.EventLocation(
-                                  id: eventData.location!.id,
+                                  id: 'temp-id', // Will be created/updated in repository
                                   displayName: eventData.location!.displayName,
                                   formattedAddress:
                                       eventData.location!.formattedAddress,
@@ -358,7 +375,8 @@ class _EventPageState extends ConsumerState<EventPage> {
                 // Use cached state during loading
                 if (_cachedIsHost == true) {
                   final eventData = eventAsync.value;
-                  if (eventData != null) {
+                  if (eventData != null &&
+                      eventData.status != EventStatus.living) {
                     return IconButton(
                       icon: const Icon(Icons.edit, color: BrandColors.text1),
                       onPressed: () {
@@ -371,7 +389,7 @@ class _EventPageState extends ConsumerState<EventPage> {
                           endDateTime: eventData.endDateTime,
                           location: eventData.location != null
                               ? create_event.EventLocation(
-                                  id: eventData.location!.id,
+                                  id: 'temp-id', // Will be created/updated in repository
                                   displayName: eventData.location!.displayName,
                                   formattedAddress:
                                       eventData.location!.formattedAddress,
@@ -430,6 +448,7 @@ class _EventPageState extends ConsumerState<EventPage> {
                   dateTime: event.startDateTime,
                   endDateTime: event.endDateTime,
                   groupName: event.groupName,
+                  isExpired: event.isExpired,
                 ),
                 const SizedBox(height: Gaps.md),
 
@@ -483,7 +502,7 @@ class _EventPageState extends ConsumerState<EventPage> {
                                 )
                                 .toggleVote_(eventId, suggestionId);
                           },
-                          isHost: event.hostId == currentUserId,
+                          isHost: _cachedIsHost ?? false,
                           currentUserId: currentUserId,
                           onAddSuggestion: () {
                             showAddSuggestionBottomSheet(
@@ -563,7 +582,7 @@ class _EventPageState extends ConsumerState<EventPage> {
                               )
                               .toggleVote(eventId, suggestionId);
                         },
-                        isHost: event.hostId == currentUserId,
+                        isHost: _cachedIsHost ?? false,
                         currentUserId: currentUserId,
                         currentEventGoingCount:
                             processedData.currentEventGoingCount,
@@ -1198,6 +1217,56 @@ class _EventPageState extends ConsumerState<EventPage> {
     final locationSuggestionsAsync =
         ref.watch(eventLocationSuggestionsProvider(eventId));
 
+    // If event is expired, never show RSVP
+    if (event.isExpired) {
+      final dateSuggestions = suggestionsAsync.value ?? [];
+
+      // Filter out suggestions that are the SAME as the expired event date
+      // Only consider suggestions that are DIFFERENT (alternatives)
+      final alternateSuggestions = dateSuggestions.where((s) {
+        if (event.startDateTime == null || event.endDateTime == null) {
+          return true;
+        }
+        final isDifferent =
+            !s.startDateTime.isAtSameMomentAs(event.startDateTime!) ||
+                !(s.endDateTime?.isAtSameMomentAs(event.endDateTime!) ?? false);
+        return isDifferent;
+      }).toList();
+
+      // If there are ALTERNATIVE date suggestions, hide this section (let suggestions widget show)
+      if (alternateSuggestions.isNotEmpty) {
+        return const SizedBox.shrink();
+      }
+
+      // No alternative suggestions - show expired widget
+      return Column(
+        children: [
+          HelpPlanEventWidget(
+            hasLocation: event.hasDefinedLocation,
+            hasDate: false, // Force date as missing since it's expired
+            hasSuggestedLocation: false,
+            hasSuggestedDate: false,
+            onAddSuggestion: () {
+              showAddSuggestionBottomSheet(
+                context,
+                eventId: eventId,
+                eventStartDate: event.startDateTime ?? DateTime.now(),
+                eventStartTime: event.startDateTime != null
+                    ? TimeOfDay.fromDateTime(event.startDateTime!)
+                    : TimeOfDay.now(),
+                eventEndDate: event.endDateTime ?? DateTime.now(),
+                eventEndTime: event.endDateTime != null
+                    ? TimeOfDay.fromDateTime(event.endDateTime!)
+                    : TimeOfDay.now(),
+              );
+            },
+            customTitle: 'Event date has expired',
+          ),
+          const SizedBox(height: Gaps.lg),
+        ],
+      );
+    }
+
     // If event is fully defined, show RSVP
     if (event.isFullyDefined) {
       // Original RSVP logic
@@ -1507,6 +1576,7 @@ class _EventPageState extends ConsumerState<EventPage> {
     required int goingCount,
     required String? currentUserId,
   }) {
+                
     // Filter suggestions that are DIFFERENT from current event date
     final alternateSuggestions = suggestions.where((s) {
       if (event.startDateTime == null || event.endDateTime == null) {
@@ -1518,12 +1588,16 @@ class _EventPageState extends ConsumerState<EventPage> {
       return isDifferent;
     }).toList();
 
+    
     final List<DateTimeSuggestion> dateTimeSuggestions = [];
 
-    // Always add current event date as FIRST option (for comparison)
+    // Only add current event date if NOT expired
+    // Expired dates should not be shown as a valid "current" option
     DateTimeSuggestion? currentEventOption;
-    if (event.startDateTime != null && event.endDateTime != null) {
-      currentEventOption = DateTimeSuggestion(
+    if (event.startDateTime != null &&
+        event.endDateTime != null &&
+        !event.isExpired) {
+            currentEventOption = DateTimeSuggestion(
         id: 'current_event_date',
         startDateTime: event.startDateTime!,
         endDateTime: event.endDateTime!,
@@ -1532,7 +1606,8 @@ class _EventPageState extends ConsumerState<EventPage> {
         votes: [],
       );
       dateTimeSuggestions.add(currentEventOption);
-    }
+    } else if (event.isExpired) {
+          }
 
     // Add all ALTERNATIVE suggestions (different from current date)
     dateTimeSuggestions.addAll(alternateSuggestions.map((suggestion) {
@@ -1558,6 +1633,7 @@ class _EventPageState extends ConsumerState<EventPage> {
       );
     }));
 
+        
     return DateTimeSuggestionsData(
       suggestions: dateTimeSuggestions,
       hasAlternatives: alternateSuggestions.isNotEmpty,

@@ -12,6 +12,7 @@ class EventHeader extends StatelessWidget {
   final DateTime? dateTime;
   final DateTime? endDateTime;
   final String? groupName;
+  final bool isExpired;
 
   const EventHeader({
     super.key,
@@ -21,6 +22,7 @@ class EventHeader extends StatelessWidget {
     this.dateTime,
     this.endDateTime,
     this.groupName,
+    this.isExpired = false,
   });
 
   @override
@@ -55,6 +57,7 @@ class EventHeader extends StatelessWidget {
           _InfoRow(
             icon: Icons.calendar_today,
             text: _formatDateTime(dateTime!, endDateTime),
+            isExpired: isExpired,
           ),
         ],
 
@@ -115,22 +118,34 @@ class EventHeader extends StatelessWidget {
 class _InfoRow extends StatelessWidget {
   final IconData icon;
   final String text;
+  final bool isExpired;
 
-  const _InfoRow({required this.icon, required this.text});
+  const _InfoRow({
+    required this.icon,
+    required this.text,
+    this.isExpired = false,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final color = isExpired
+        ? BrandColors.text2.withValues(alpha: 0.5)
+        : BrandColors.text2;
+
     return Container(
       decoration: BoxDecoration(borderRadius: BorderRadius.circular(Radii.sm)),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: IconSizes.sm, color: BrandColors.text2),
+          Icon(icon, size: IconSizes.sm, color: color),
           const SizedBox(width: Gaps.xs),
           Flexible(
             child: Text(
               text,
-              style: AppText.bodyMedium.copyWith(color: BrandColors.text2),
+              style: AppText.bodyMedium.copyWith(
+                color: color,
+                decoration: isExpired ? TextDecoration.lineThrough : null,
+              ),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
