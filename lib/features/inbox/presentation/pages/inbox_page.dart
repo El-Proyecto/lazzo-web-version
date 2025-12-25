@@ -434,11 +434,16 @@ class _InboxPageState extends ConsumerState<InboxPage>
         ref.read(inboxTabIndexProvider.notifier).state = 1;
         
         // Wait for tab switch to complete
-        await Future.delayed(const Duration(milliseconds: 300));
+        await Future.delayed(const Duration(milliseconds: 400));
         
         // Try to find and show the payment details bottom sheet if expenseId exists
         if (notification.expenseId != null && mounted) {
-          _tryShowExpenseBottomSheet(context, notification.expenseId!);
+          // Use post frame callback to ensure UI is ready
+          WidgetsBinding.instance.addPostFrameCallback((_) async {
+            if (mounted) {
+              await _tryShowExpenseBottomSheet(context, notification.expenseId!);
+            }
+          });
         }
       } else {
         // For active events (pending/confirmed/living), navigate to event page
@@ -463,7 +468,23 @@ class _InboxPageState extends ConsumerState<InboxPage>
   }
 
   /// Try to show expense bottom sheet for a specific expenseId
-  void _tryShowExpenseBottomSheet(BuildContext context, String expenseId) {
+  Future<void> _tryShowExpenseBottomSheet(BuildContext context, String expenseId) async {
+    print('[DEBUG] _tryShowExpenseBottomSheet called with expenseId: $expenseId');
+    
+    // Force refresh providers to ensure we have latest data
+    await ref.read(paymentsOwedToUserProvider.notifier).refresh();
+    await ref.read(paymentsUserOwesProvider.notifier).refresh();
+    
+    print('[DEBUG] Providers refreshed, waiting for data...');
+    
+    // Wait a bit for data to settle
+    await Future.delayed(const Duration(milliseconds: 300));
+    
+    if (!mounted) {
+      print('[DEBUG] Widget not mounted, aborting');
+      return;
+    }
+    
     // Get current payments from providers
     final owedToUserState = ref.read(paymentsOwedToUserProvider);
     final userOwesState = ref.read(paymentsUserOwesProvider);
@@ -471,64 +492,89 @@ class _InboxPageState extends ConsumerState<InboxPage>
     final owedToUser = owedToUserState.asData?.value ?? <PaymentEntity>[];
     final userOwes = userOwesState.asData?.value ?? <PaymentEntity>[];
     
+    print('[DEBUG] Payments loaded - owedToUser: ${owedToUser.length}, userOwes: ${userOwes.length}');
+    
     // Combine all payments
     final allPayments = [...owedToUser, ...userOwes];
     
+    if (allPayments.isEmpty) {
+      print('[DEBUG] No payments found, aborting');
+      return;
+    }
+    
+    print('[DEBUG] All payment IDs: ${allPayments.map((p) => p.id).toList()}');
+    
     // Find payment with matching expense ID
     // Note: PaymentEntity.id format is "expenseId_userId"
-    final matchingPayment = allPayments.firstWhere(
-      (p) => p.id.startsWith(expenseId),
-      orElse: () => allPayments.isEmpty ? allPayments.first : allPayments.first,
-    );
-    
-    // If no matching payment found, don't show bottom sheet
-    if (allPayments.isEmpty || !matchingPayment.id.startsWith(expenseId)) {
+    PaymentEntity? matchingPayment;
+    try {
+      matchingPayment = allPayments.firstWhere(
+        (p) => p.id.startsWith(expenseId),
+      );
+      print('[DEBUG] Found matching payment: ${matchingPayment.id}');
+    } catch (e) {
+      // No matching payment found
+      print('[DEBUG] No matching payment found for expenseId: $expenseId');
       return;
     }
     
     // Get current user ID to determine payment group
     final currentUserId = Supabase.instance.client.auth.currentUser?.id ?? '';
+    print('[DEBUG] Current user ID: $currentUserId');
     
     // Find which list contains this payment to determine direction
-    final isOwedToUser = owedToUser.any((p) => p.id == matchingPayment.id);
+    final isOwedToUser = owedToUser.any((p) => p.id == matchingPayment!.id);
+    print('[DEBUG] isOwedToUser: $isOwedToUser');
     
     // Get the other user ID (the one who isn't current user)
     final otherUserId = isOwedToUser 
         ? matchingPayment.fromUserId 
         : matchingPayment.toUserId;
     
-    if (otherUserId == null) return;
+    if (otherUserId == null) {
+      print('[DEBUG] Other user ID is null, aborting');
+      return;
+    }
+    
+    print('[DEBUG] Other user ID: $otherUserId');
     
     // Get user name
     final otherUserName = isOwedToUser
         ? matchingPayment.fromUserName ?? 'Unknown'
         : matchingPayment.toUserName ?? 'Unknown';
     
+    print('[DEBUG] Other user name: $otherUserName');
+    
+    // Filter payments for this specific user
+    final userPayments = allPayments.where((p) {
+      return isOwedToUser
+          ? (p.fromUserId == otherUserId && p.toUserId == currentUserId)
+          : (p.toUserId == otherUserId && p.fromUserId == currentUserId);
+    }).toList();
+    
+    print('[DEBUG] User payments count: ${userPayments.length}');
+    
     // Create payment group for this user
     final paymentGroup = PaymentGroup(
       userId: otherUserId,
       userName: otherUserName,
-      payments: allPayments.where((p) {
-        return isOwedToUser
-            ? (p.fromUserId == otherUserId && p.toUserId == currentUserId)
-            : (p.toUserId == otherUserId && p.fromUserId == currentUserId);
-      }).toList(),
-      totalAmount: allPayments.where((p) {
-        return isOwedToUser
-            ? (p.fromUserId == otherUserId && p.toUserId == currentUserId)
-            : (p.toUserId == otherUserId && p.fromUserId == currentUserId);
-      }).fold(0.0, (sum, p) => sum + p.amount),
+      payments: userPayments,
+      totalAmount: userPayments.fold(0.0, (sum, p) => sum + p.amount),
       isOwedToUser: isOwedToUser,
     );
     
+    print('[DEBUG] Payment group created, showing bottom sheet...');
+    
     // Show bottom sheet
-    PaymentDetailsBottomSheet.show(
+    await PaymentDetailsBottomSheet.show(
       context: context,
       paymentGroup: paymentGroup,
       onPaymentTap: (payment) {
         Navigator.of(context).pop();
       },
     );
+    
+    print('[DEBUG] Bottom sheet shown successfully');
   }
 
   void _handleActionButtonTap(NotificationEntity notification) {
