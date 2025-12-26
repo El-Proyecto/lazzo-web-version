@@ -15,7 +15,7 @@ class HomeEventRemoteDataSource {
   /// Priority: living (4) > recap (3) > confirmed (2) > pending (1)
   Future<HomeEventEntity?> fetchNextEvent(String userId) async {
     try {
-      // ✅ Fetch multiple events and choose highest priority on frontend
+            // ✅ Fetch multiple events and choose highest priority on frontend
       // This allows proper priority calculation: living > recap > confirmed
       final response = await client
           .from(_eventsView)
@@ -35,6 +35,8 @@ class HomeEventRemoteDataSource {
           .limit(10); // Fetch top 10 to find highest priority
 
       final data = response as List<dynamic>;
+            for (var event in data) {
+              }
       if (data.isEmpty) {
         return null;
       }
@@ -54,6 +56,8 @@ class HomeEventRemoteDataSource {
           ));
 
       final events = await Future.wait(eventsFutures);
+            for (var event in events) {
+              }
 
       // Priority order: living (4) > recap (3) > confirmed (2) > pending (1)
       final priorityMap = {
@@ -70,7 +74,7 @@ class HomeEventRemoteDataSource {
       });
 
       final nextEvent = events.first;
-      return nextEvent;
+            return nextEvent;
     } catch (e) {
       return null;
     }
@@ -79,7 +83,7 @@ class HomeEventRemoteDataSource {
   /// Fetch confirmed events (user voted yes, not next event)
   Future<List<HomeEventEntity>> fetchConfirmedEvents(String userId) async {
     try {
-      final response = await client
+            final response = await client
           .from(_eventsView)
           .select('''
             event_id, event_name, emoji,
@@ -97,6 +101,8 @@ class HomeEventRemoteDataSource {
           .limit(20); // Increased to get both dated and null dated events
 
       final data = response as List<dynamic>;
+            for (var event in data) {
+              }
 
       final eventsFutures = data.map((e) => homeEventFromMap(
             e as Map<String, dynamic>,
@@ -110,7 +116,7 @@ class HomeEventRemoteDataSource {
           ));
 
       final events = await Future.wait(eventsFutures);
-
+      
       // Filter out past events (keep future and null dates)
       final now = DateTime.now();
       final filteredEvents = events.where((event) {
@@ -120,7 +126,7 @@ class HomeEventRemoteDataSource {
         final isFuture = event.date!.isAfter(now);
         return isFuture; // Keep future events
       }).toList();
-
+      
       // Sort: future dates first (ascending), null dates last
       filteredEvents.sort((a, b) {
         if (a.date == null && b.date == null) return 0;
@@ -129,7 +135,8 @@ class HomeEventRemoteDataSource {
         return a.date!.compareTo(b.date!); // Normal date comparison
       });
 
-      return filteredEvents.take(10).toList();
+      final result = filteredEvents.take(10).toList();
+            return result;
     } catch (e) {
       return [];
     }
@@ -138,7 +145,7 @@ class HomeEventRemoteDataSource {
   /// Fetch pending events (awaiting user vote or date confirmation)
   Future<List<HomeEventEntity>> fetchPendingEvents(String userId) async {
     try {
-      final response = await client
+            final response = await client
           .from(_eventsView)
           .select('''
             event_id, event_name, emoji,
@@ -152,9 +159,12 @@ class HomeEventRemoteDataSource {
           ''')
           .eq('user_id', userId)
           .eq('event_status', 'pending') // ✅ Backend status (pending/confirmed)
+          // ❌ REMOVED: .eq('user_rsvp', 'yes') - pending events can have any RSVP or null
           .limit(20); // Increased to get both dated and null dated events
 
       final data = response as List<dynamic>;
+            for (var event in data) {
+              }
 
       // Convert to entities with status persistence
       final eventsFutures = data.map((e) => homeEventFromMap(
@@ -169,6 +179,8 @@ class HomeEventRemoteDataSource {
           ));
 
       final events = await Future.wait(eventsFutures);
+            for (var event in events) {
+              }
 
       // Sort: future dates first (ascending), null dates last
       events.sort((a, b) {
@@ -178,7 +190,8 @@ class HomeEventRemoteDataSource {
         return a.date!.compareTo(b.date!); // Normal date comparison
       });
 
-      return events.take(10).toList();
+      final result = events.take(10).toList();
+            return result;
     } catch (e) {
       return [];
     }
@@ -231,8 +244,7 @@ class HomeEventRemoteDataSource {
             user_rsvp, voted_at,
             going_count, going_users,
             not_going_users, no_response_users,
-            participants_total, voters_total,
-            photo_count, max_photos
+            participants_total, voters_total
           ''')
           .eq('user_id', userId)
           .inFilter('event_status', ['living', 'recap'])
@@ -259,6 +271,8 @@ class HomeEventRemoteDataSource {
           ));
 
       final events = await Future.wait(eventsFutures);
+            for (var event in events) {
+              }
 
       // Sort by end_datetime (soonest to end first)
       events.sort((a, b) {
@@ -268,7 +282,7 @@ class HomeEventRemoteDataSource {
         return a.endDate!.compareTo(b.endDate!);
       });
 
-      return events;
+            return events;
     } catch (e) {
       return [];
     }

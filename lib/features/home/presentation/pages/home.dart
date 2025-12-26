@@ -201,6 +201,22 @@ class _HomePageState extends ConsumerState<HomePage> {
     final groupsAsync = ref.watch(groupsProvider);
     final nextEventStatus = ref.watch(navBarStateProvider);
 
+    // Debug prints to check data received
+    nextEventAsync.whenData((event) {
+          });
+    confirmedEventsAsync.whenData((events) {
+            for (var e in events) {
+              }
+    });
+    pendingEventsAsync.whenData((events) {
+            for (var e in events) {
+              }
+    });
+    livingAndRecapEventsAsync.whenData((events) {
+            for (var e in events) {
+              }
+    });
+
     // Calculate empty states based on provider data
     // IMPORTANT: Only show empty states when data is LOADED, not during loading
     // Empty state logic:
@@ -390,7 +406,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                                   state:
                                       _mapStatusToHomeCardState(event.status),
                                   onTap: () async {
-                                    await Navigator.pushNamed(
+                                                                        await Navigator.pushNamed(
                                       context,
                                       AppRouter.event,
                                       arguments: {'eventId': event.id},
@@ -453,7 +469,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                                       event: livingEvents.first,
                                       state: HomeEventCardState.living,
                                       onTap: () async {
-                                        await Navigator.pushNamed(
+                                                                                await Navigator.pushNamed(
                                           context,
                                           AppRouter.eventLiving,
                                           arguments: {
@@ -534,7 +550,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                                         event: recapEvents.first,
                                         state: HomeEventCardState.recap,
                                         onTap: () async {
-                                          await Navigator.pushNamed(
+                                                                                    await Navigator.pushNamed(
                                             context,
                                             AppRouter.memory,
                                             arguments: {
@@ -758,12 +774,29 @@ class _HomePageState extends ConsumerState<HomePage> {
                                     state: _mapStatusToSmallCardState(
                                         event.status),
                                     onTap: () async {
-                                      // ✅ Navigate to event details
-                                      await Navigator.pushNamed(
-                                        context,
-                                        AppRouter.event,
-                                        arguments: {'eventId': event.id},
-                                      );
+                                                                            // ✅ Navigate based on actual calculated status
+                                      if (event.status ==
+                                          HomeEventStatus.living) {
+                                        await Navigator.pushNamed(
+                                          context,
+                                          AppRouter.eventLiving,
+                                          arguments: {'eventId': event.id},
+                                        );
+                                      } else if (event.status ==
+                                          HomeEventStatus.recap) {
+                                        await Navigator.pushNamed(
+                                          context,
+                                          AppRouter.memory,
+                                          arguments: {'memoryId': event.id},
+                                        );
+                                      } else {
+                                        // pending or confirmed -> event planning page
+                                        await Navigator.pushNamed(
+                                          context,
+                                          AppRouter.event,
+                                          arguments: {'eventId': event.id},
+                                        );
+                                      }
                                     },
                                   ),
                                   if (index < events.length - 1)
@@ -813,12 +846,29 @@ class _HomePageState extends ConsumerState<HomePage> {
                                     state: _mapStatusToSmallCardState(
                                         event.status),
                                     onTap: () async {
-                                      // ✅ Navigate to event details
-                                      await Navigator.pushNamed(
-                                        context,
-                                        AppRouter.event,
-                                        arguments: {'eventId': event.id},
-                                      );
+                                                                            // ✅ Navigate based on actual calculated status
+                                      if (event.status ==
+                                          HomeEventStatus.living) {
+                                        await Navigator.pushNamed(
+                                          context,
+                                          AppRouter.eventLiving,
+                                          arguments: {'eventId': event.id},
+                                        );
+                                      } else if (event.status ==
+                                          HomeEventStatus.recap) {
+                                        await Navigator.pushNamed(
+                                          context,
+                                          AppRouter.memory,
+                                          arguments: {'memoryId': event.id},
+                                        );
+                                      } else {
+                                        // pending or confirmed -> event planning page
+                                        await Navigator.pushNamed(
+                                          context,
+                                          AppRouter.event,
+                                          arguments: {'eventId': event.id},
+                                        );
+                                      }
                                     },
                                   ),
                                   if (index < events.length - 1)
