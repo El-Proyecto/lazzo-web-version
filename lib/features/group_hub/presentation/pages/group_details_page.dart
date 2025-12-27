@@ -437,7 +437,7 @@ class GroupDetailsPage extends ConsumerWidget {
   void _showLeaveGroupDialog(BuildContext context, WidgetRef ref) {
     final detailsAsync = ref.read(groupDetailsProvider(groupId));
     final groupName = detailsAsync.value?.name ?? 'this group';
-    
+
     showDialog(
       context: context,
       builder: (dialogContext) => ConfirmationDialog(
@@ -450,26 +450,26 @@ class GroupDetailsPage extends ConsumerWidget {
         onConfirm: () async {
           // OPTIMISTIC UI: invalidate groups immediately and navigate back
           final controller = ref.read(groups.groupsControllerProvider);
-          
+
           // Close dialog first
           if (dialogContext.mounted) {
             Navigator.of(dialogContext).pop();
           }
-          
+
           try {
             // Optimistically invalidate groups provider to remove from list
             ref.invalidate(groups.groupsProvider);
             ref.invalidate(groups.archivedGroupsProvider);
-            
+
             // Navigate back to groups page immediately (group already removed from list)
             if (context.mounted) {
               Navigator.of(context).popUntil((route) => route.isFirst);
               Navigator.of(context).pushReplacementNamed(AppRouter.groups);
             }
-            
+
             // Call server in background
             await controller.leaveGroupOptimistic(groupId);
-            
+
             // Show success feedback
             if (context.mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
@@ -485,7 +485,8 @@ class GroupDetailsPage extends ConsumerWidget {
             if (context.mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: Text('Failed to leave group: ${e.toString().replaceAll('Exception: ', '')}'),
+                  content: Text(
+                      'Failed to leave group: ${e.toString().replaceAll('Exception: ', '')}'),
                   backgroundColor: BrandColors.cantVote,
                   duration: const Duration(seconds: 3),
                 ),
@@ -512,37 +513,36 @@ class GroupDetailsPage extends ConsumerWidget {
         cancelText: 'Cancel',
         onConfirm: () async {
           // 1. OPTIMISTIC UPDATE - UI responds immediately
-          ref.read(groupMembersProvider(groupId).notifier)
+          ref
+              .read(groupMembersProvider(groupId).notifier)
               .updateMemberRoleOptimistically(member.id, true);
-          
+
           try {
             // 2. SERVER UPDATE - execute in background
             final updateMemberRole = ref.read(updateMemberRoleUseCaseProvider);
             await updateMemberRole(groupId, member.id, true);
-            
+
             // 3. CONFIRM - refresh from server to ensure consistency
-            if (context.mounted) {
-              await ref.read(groupMembersProvider(groupId).notifier).refresh();
-              
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('${member.name} is now an admin'),
-                  backgroundColor: BrandColors.planning,
-                ),
-              );
-            }
+            await ref.read(groupMembersProvider(groupId).notifier).refresh();
+
+            if (!context.mounted) return;
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('${member.name} is now an admin'),
+                backgroundColor: BrandColors.planning,
+              ),
+            );
           } catch (e) {
             // 4. ROLLBACK - revert optimistic update on error
-            if (context.mounted) {
-              await ref.read(groupMembersProvider(groupId).notifier).refresh();
-              
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('Failed to promote: $e'),
-                  backgroundColor: BrandColors.cantVote,
-                ),
-              );
-            }
+            await ref.read(groupMembersProvider(groupId).notifier).refresh();
+
+            if (!context.mounted) return;
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Failed to promote: $e'),
+                backgroundColor: BrandColors.cantVote,
+              ),
+            );
           }
         },
       ),
@@ -565,18 +565,19 @@ class GroupDetailsPage extends ConsumerWidget {
         isDestructive: true,
         onConfirm: () async {
           // 1. OPTIMISTIC UPDATE - UI responds immediately
-          ref.read(groupMembersProvider(groupId).notifier)
+          ref
+              .read(groupMembersProvider(groupId).notifier)
               .updateMemberRoleOptimistically(member.id, false);
-          
+
           try {
             // 2. SERVER UPDATE - execute in background
             final updateMemberRole = ref.read(updateMemberRoleUseCaseProvider);
             await updateMemberRole(groupId, member.id, false);
-            
+
             // 3. CONFIRM - refresh from server to ensure consistency
+            await ref.read(groupMembersProvider(groupId).notifier).refresh();
+
             if (context.mounted) {
-              await ref.read(groupMembersProvider(groupId).notifier).refresh();
-              
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text('${member.name} is now a regular member'),
@@ -586,12 +587,13 @@ class GroupDetailsPage extends ConsumerWidget {
             }
           } catch (e) {
             // 4. ROLLBACK - revert optimistic update on error
+            await ref.read(groupMembersProvider(groupId).notifier).refresh();
+
             if (context.mounted) {
-              await ref.read(groupMembersProvider(groupId).notifier).refresh();
-              
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: Text('Failed to demote: ${e.toString().replaceAll('Exception: ', '')}'),
+                  content: Text(
+                      'Failed to demote: ${e.toString().replaceAll('Exception: ', '')}'),
                   backgroundColor: BrandColors.cantVote,
                 ),
               );
@@ -619,21 +621,22 @@ class GroupDetailsPage extends ConsumerWidget {
         isDestructive: true,
         onConfirm: () async {
           // 1. OPTIMISTIC UPDATE - UI responds immediately
-          ref.read(groupMembersProvider(groupId).notifier)
+          ref
+              .read(groupMembersProvider(groupId).notifier)
               .removeMemberOptimistically(member.id);
-          
+
           try {
             // 2. SERVER UPDATE - execute in background
             final removeMember = ref.read(removeMemberUseCaseProvider);
             await removeMember(groupId, member.id);
-            
+
             // 3. CONFIRM - refresh from server to ensure consistency
+            await ref.read(groupMembersProvider(groupId).notifier).refresh();
+
             if (context.mounted) {
-              await ref.read(groupMembersProvider(groupId).notifier).refresh();
-              
               // Refresh group details to update member count
               ref.invalidate(groupDetailsProvider(groupId));
-              
+
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text('${member.name} has been removed'),
@@ -643,12 +646,13 @@ class GroupDetailsPage extends ConsumerWidget {
             }
           } catch (e) {
             // 4. ROLLBACK - revert optimistic update on error
+            await ref.read(groupMembersProvider(groupId).notifier).refresh();
+
             if (context.mounted) {
-              await ref.read(groupMembersProvider(groupId).notifier).refresh();
-              
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: Text('Failed to remove: ${e.toString().replaceAll('Exception: ', '')}'),
+                  content: Text(
+                      'Failed to remove: ${e.toString().replaceAll('Exception: ', '')}'),
                   backgroundColor: BrandColors.cantVote,
                 ),
               );

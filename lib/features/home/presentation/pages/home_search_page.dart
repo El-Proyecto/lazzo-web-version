@@ -257,7 +257,7 @@ class _HomeSearchPageState extends ConsumerState<HomeSearchPage> {
                           Icon(
                             Icons.search,
                             size: 64,
-                            color: BrandColors.text2.withOpacity(0.5),
+                            color: BrandColors.text2.withValues(alpha: 0.5),
                           ),
                           const SizedBox(height: Gaps.md),
                           Text(
@@ -278,7 +278,7 @@ class _HomeSearchPageState extends ConsumerState<HomeSearchPage> {
                               Icon(
                                 Icons.search_off,
                                 size: 64,
-                                color: BrandColors.text2.withOpacity(0.5),
+                                color: BrandColors.text2.withValues(alpha: 0.5),
                               ),
                               const SizedBox(height: Gaps.md),
                               Text(
