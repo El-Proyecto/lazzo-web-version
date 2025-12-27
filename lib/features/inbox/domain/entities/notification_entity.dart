@@ -73,6 +73,9 @@ enum NotificationType {
   eventRestored,
   eventConfirmed,
   suggestionAdded,
+  dateSuggestionAdded,
+  rsvpUpdated,
+  memoryShared,
 }
 
 enum NotificationPriority { low, medium, high }

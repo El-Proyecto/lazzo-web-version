@@ -1,0 +1,18 @@
+{
+  "files.exclude": {
+    "**/.git": true,
+    "**/.DS_Store": true
+  },
+  "typescript.tsdk": "node_modules/typescript/lib",
+  "deno.enable": false,
+  "deno.lint": false,
+  "deno.unstable": false,
+  
+  // Ignorar erros TypeScript em Edge Functions (são executadas no Deno, não Node)
+  "typescript.validate.enable": false,
+  "javascript.validate.enable": false,
+  
+  "[typescript]": {
+    "editor.defaultFormatter": "denoland.vscode-deno"
+  }
+}

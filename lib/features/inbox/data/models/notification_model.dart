@@ -182,6 +182,9 @@ class NotificationModel {
       case 'eventRestored': return 'Event Restored';
       case 'eventConfirmed': return 'Event Confirmed';
       case 'suggestionAdded': return 'New Suggestion';
+      case 'dateSuggestionAdded': return 'Date Suggested';
+      case 'rsvpUpdated': return 'RSVP Updated';
+      case 'memoryShared': return 'Memory Shared';
       
       // ACTIONS (to-dos)
       case 'voteDate': return 'Vote on Date';
@@ -248,6 +251,12 @@ class NotificationModel {
         return '${eventEmoji ?? '🎉'} ${eventName ?? 'Event'} is confirmed to happen.';
       case 'suggestionAdded':
         return '${userName ?? 'Someone'} suggested ${place ?? date ?? 'something'} for ${eventName ?? 'event'}.';
+      case 'dateSuggestionAdded':
+        return '${userName ?? 'Someone'} suggested ${date ?? 'a date'} at ${time ?? '?'} for ${eventName ?? 'event'}.';
+      case 'rsvpUpdated':
+        return '${userName ?? 'Someone'} is now ${note ?? 'attending'} ${eventName ?? 'event'}.';
+      case 'memoryShared':
+        return '${userName ?? 'Someone'} shared a memory from ${eventName ?? 'event'} with you.';
       
       // ACTIONS (to-dos)
       case 'voteDate':
@@ -283,7 +292,7 @@ class NotificationModel {
       case 'chatMention': return NotificationType.chatMention;
       case 'securityNewLogin': return NotificationType.securityNewLogin;
       
-      // NOTIFICATIONS (11 types)
+      // NOTIFICATIONS (14 types)
       case 'groupInviteAccepted': return NotificationType.groupInviteAccepted;
       case 'groupRenamed': return NotificationType.groupRenamed;
       case 'groupPhotoChanged': return NotificationType.groupPhotoChanged;
@@ -295,6 +304,9 @@ class NotificationModel {
       case 'eventRestored': return NotificationType.eventRestored;
       case 'eventConfirmed': return NotificationType.eventConfirmed;
       case 'suggestionAdded': return NotificationType.suggestionAdded;
+      case 'dateSuggestionAdded': return NotificationType.dateSuggestionAdded;
+      case 'rsvpUpdated': return NotificationType.rsvpUpdated;
+      case 'memoryShared': return NotificationType.memoryShared;
       
       default: return NotificationType.general;
     }

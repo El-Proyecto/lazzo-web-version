@@ -409,7 +409,12 @@ class NotificationCard extends StatelessWidget {
       case NotificationType.eventConfirmed:
         return '📅';
       case NotificationType.suggestionAdded:
+      case NotificationType.dateSuggestionAdded:
         return '💡';
+      case NotificationType.rsvpUpdated:
+        return '✅';
+      case NotificationType.memoryShared:
+        return '🎞️';
       
       // ACTIONS (to-dos)
 

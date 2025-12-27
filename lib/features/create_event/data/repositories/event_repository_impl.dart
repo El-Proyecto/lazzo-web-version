@@ -6,7 +6,6 @@ import '../data_sources/event_data_source.dart';
 import '../models/event_original_model.dart';
 import '../models/event_history_model.dart';
 import '../models/location_model.dart';
-import '../../../../env.dart';
 import '../../../../services/notification_service.dart';
 
 /// Implementation of EventRepository using Supabase
@@ -35,20 +34,6 @@ class EventRepositoryImpl implements EventRepository {
 
       // Validate and normalize groupId
       String effectiveGroupId = event.groupId;
-
-      // Check if groupId is a valid UUID format
-      final uuidRegex = RegExp(
-          r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$');
-      if (!uuidRegex.hasMatch(event.groupId)) {
-        effectiveGroupId = Env.devDefaultGroupId;
-
-        // Validate the fallback too
-        if (!uuidRegex.hasMatch(effectiveGroupId) ||
-            effectiveGroupId == 'REPLACE_WITH_VALID_GROUP_UUID') {
-          throw Exception(
-              'Invalid development groupId. Please set Env.devDefaultGroupId to a valid UUID from your groups table.');
-        }
-      }
 
       // Create location if needed
       String? locationId;

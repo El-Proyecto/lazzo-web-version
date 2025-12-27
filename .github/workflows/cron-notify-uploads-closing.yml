@@ -1,0 +1,24 @@
+name: cron-notify-uploads-closing
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch: {}
+
+concurrency:
+  group: cron-notify-uploads-closing
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call Supabase Edge Function
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+        run: |
+          curl -sS --fail-with-body \
+            --retry 3 --retry-all-errors \
+            -X POST "https://${PROJECT_REF}.supabase.co/functions/v1/notify-uploads-closing" \
+            -H "x-cron-secret: ${CRON_SECRET}"

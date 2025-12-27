@@ -214,6 +214,28 @@ class NotificationService {
     });
   }
 
+  /// Send event ends soon notification
+  /// Triggered by: Scheduled job (15 min before event ends)
+  Future<String?> sendEventEndsSoon({
+    required String recipientUserId,
+    required String eventName,
+    required String eventId,
+    required int minsUntilEnd,
+    String? eventEmoji,
+  }) async {
+    return await _client.rpc('create_notification_secure', params: {
+      'p_recipient_user_id': recipientUserId,
+      'p_type': 'eventEndsSoon',
+      'p_category': 'push',
+      'p_priority': 'high',
+      'p_deeplink': 'lazzo://events/$eventId',
+      'p_event_id': eventId,
+      'p_event_emoji': eventEmoji,
+      'p_event_name': eventName,
+      'p_mins': minsUntilEnd.toString(),
+    });
+  }
+
   // ==================== NOTIFICATIONS (Inbox Only) ====================
   // Useful information but not urgent (inbox feed only)
 
@@ -400,6 +422,146 @@ class NotificationService {
       'p_event_emoji': eventEmoji,
       'p_user_name': sharerName,
       'p_event_name': eventName,
+    });
+  }
+
+  /// Send date suggestion added notification
+  /// Triggered when: Someone suggests a new date for an event
+  Future<String?> sendDateSuggestionAdded({
+    required String recipientUserId,
+    required String suggestorName,
+    required String eventName,
+    required String eventId,
+    required String date,
+    required String time,
+    String? eventEmoji,
+  }) async {
+    return await _client.rpc('create_notification_secure', params: {
+      'p_recipient_user_id': recipientUserId,
+      'p_type': 'dateSuggestionAdded',
+      'p_category': 'notifications',
+      'p_priority': 'medium',
+      'p_deeplink': 'lazzo://events/$eventId/planning',
+      'p_event_id': eventId,
+      'p_event_emoji': eventEmoji,
+      'p_user_name': suggestorName,
+      'p_event_name': eventName,
+      'p_date': date,
+      'p_time': time,
+    });
+  }
+
+  /// Send event confirmed notification
+  /// Triggered when: Event status changes to 'confirmed'
+  Future<String?> sendEventConfirmed({
+    required String recipientUserId,
+    required String eventName,
+    required String eventId,
+    required String date,
+    required String time,
+    String? eventEmoji,
+    String? locationName,
+  }) async {
+    return await _client.rpc('create_notification_secure', params: {
+      'p_recipient_user_id': recipientUserId,
+      'p_type': 'eventConfirmed',
+      'p_category': 'notifications',
+      'p_priority': 'high',
+      'p_deeplink': 'lazzo://events/$eventId',
+      'p_event_id': eventId,
+      'p_event_emoji': eventEmoji,
+      'p_event_name': eventName,
+      'p_date': date,
+      'p_time': time,
+      'p_place': locationName,
+    });
+  }
+
+  /// Send event details updated notification
+  /// Triggered when: Event name, emoji, or other details are updated
+  Future<String?> sendEventDetailsUpdated({
+    required String recipientUserId,
+    required String eventName,
+    required String eventId,
+    String? eventEmoji,
+    String? note, // What changed: "name", "emoji", "details"
+  }) async {
+    return await _client.rpc('create_notification_secure', params: {
+      'p_recipient_user_id': recipientUserId,
+      'p_type': 'eventDetailsUpdated',
+      'p_category': 'notifications',
+      'p_priority': 'low',
+      'p_deeplink': 'lazzo://events/$eventId',
+      'p_event_id': eventId,
+      'p_event_emoji': eventEmoji,
+      'p_event_name': eventName,
+      'p_note': note ?? 'details',
+    });
+  }
+
+  /// Send event canceled notification
+  /// Triggered when: Event is canceled by host
+  Future<String?> sendEventCanceled({
+    required String recipientUserId,
+    required String eventName,
+    required String eventId,
+    String? eventEmoji,
+    String? reason,
+  }) async {
+    return await _client.rpc('create_notification_secure', params: {
+      'p_recipient_user_id': recipientUserId,
+      'p_type': 'eventCanceled',
+      'p_category': 'notifications',
+      'p_priority': 'high',
+      'p_deeplink': 'lazzo://events/$eventId',
+      'p_event_id': eventId,
+      'p_event_emoji': eventEmoji,
+      'p_event_name': eventName,
+      'p_note': reason,
+    });
+  }
+
+  /// Send group member joined notification (invite accepted)
+  /// Triggered when: Someone accepts a group invite
+  Future<String?> sendGroupMemberJoined({
+    required String recipientUserId,
+    required String joinerName,
+    required String groupName,
+    required String groupId,
+  }) async {
+    return await _client.rpc('create_notification_secure', params: {
+      'p_recipient_user_id': recipientUserId,
+      'p_type': 'groupInviteAccepted',
+      'p_category': 'notifications',
+      'p_priority': 'low',
+      'p_deeplink': 'lazzo://groups/$groupId',
+      'p_group_id': groupId,
+      'p_user_name': joinerName,
+      'p_group_name': groupName,
+    });
+  }
+
+  /// Send location suggestion added notification
+  /// Triggered when: Someone suggests a location for an event
+  Future<String?> sendLocationSuggestionAdded({
+    required String recipientUserId,
+    required String suggestorName,
+    required String eventName,
+    required String eventId,
+    required String locationName,
+    String? eventEmoji,
+  }) async {
+    return await _client.rpc('create_notification_secure', params: {
+      'p_recipient_user_id': recipientUserId,
+      'p_type': 'suggestionAdded',
+      'p_category': 'notifications',
+      'p_priority': 'low',
+      'p_deeplink': 'lazzo://events/$eventId/planning',
+      'p_event_id': eventId,
+      'p_event_emoji': eventEmoji,
+      'p_user_name': suggestorName,
+      'p_event_name': eventName,
+      'p_place': locationName,
     });
   }
 }

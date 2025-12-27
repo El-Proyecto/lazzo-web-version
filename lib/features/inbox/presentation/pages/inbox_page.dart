@@ -391,12 +391,52 @@ class _InboxPageState extends ConsumerState<InboxPage>
       case NotificationType.eventCanceled:
       case NotificationType.eventRestored:
       case NotificationType.eventConfirmed:
-      case NotificationType.suggestionAdded:
+      case NotificationType.eventEndsSoon:
         if (notification.eventId != null) {
                     Navigator.pushNamed(
             context,
             '/event',
             arguments: {'eventId': notification.eventId},
+          );
+        }
+        break;
+
+      // Planning notifications → Navigate to event planning tab
+      case NotificationType.dateSuggestionAdded:
+      case NotificationType.suggestionAdded:
+        if (notification.eventId != null) {
+                    Navigator.pushNamed(
+            context,
+            '/event',
+            arguments: {
+              'eventId': notification.eventId,
+              // TODO: Add support for initialTab parameter in event page
+            },
+          );
+        }
+        break;
+
+      // Group member notifications → Navigate to group
+      case NotificationType.groupInviteAccepted:
+        if (notification.groupId != null) {
+                    Navigator.pushNamed(
+            context,
+            '/group-hub',
+            arguments: {'groupId': notification.groupId},
+          );
+        }
+        break;
+
+      // RSVP notifications → Navigate to event (show participants)
+      case NotificationType.rsvpUpdated:
+        if (notification.eventId != null) {
+                    Navigator.pushNamed(
+            context,
+            '/event',
+            arguments: {
+              'eventId': notification.eventId,
+              // TODO: Add support for showParticipants parameter in event page
+            },
           );
         }
         break;
@@ -434,16 +474,11 @@ class _InboxPageState extends ConsumerState<InboxPage>
         ref.read(inboxTabIndexProvider.notifier).state = 1;
         
         // Wait for tab switch to complete
-        await Future.delayed(const Duration(milliseconds: 400));
+        await Future.delayed(const Duration(milliseconds: 600));
         
         // Try to find and show the payment details bottom sheet if expenseId exists
         if (notification.expenseId != null && mounted) {
-          // Use post frame callback to ensure UI is ready
-          WidgetsBinding.instance.addPostFrameCallback((_) async {
-            if (mounted) {
-              await _tryShowExpenseBottomSheet(context, notification.expenseId!);
-            }
-          });
+          await _tryShowExpenseBottomSheet(context, notification.expenseId!);
         }
       } else {
         // For active events (pending/confirmed/living), navigate to event page
