@@ -205,16 +205,13 @@ class _HomePageState extends ConsumerState<HomePage> {
     nextEventAsync.whenData((event) {
           });
     confirmedEventsAsync.whenData((events) {
-            for (var e in events) {
-              }
+
     });
     pendingEventsAsync.whenData((events) {
-            for (var e in events) {
-              }
+
     });
     livingAndRecapEventsAsync.whenData((events) {
-            for (var e in events) {
-              }
+
     });
 
     // Calculate empty states based on provider data

@@ -35,8 +35,7 @@ class HomeEventRemoteDataSource {
           .limit(10); // Fetch top 10 to find highest priority
 
       final data = response as List<dynamic>;
-            for (var event in data) {
-              }
+
       if (data.isEmpty) {
         return null;
       }
@@ -56,8 +55,7 @@ class HomeEventRemoteDataSource {
           ));
 
       final events = await Future.wait(eventsFutures);
-            for (var event in events) {
-              }
+
 
       // Priority order: living (4) > recap (3) > confirmed (2) > pending (1)
       final priorityMap = {
@@ -101,8 +99,7 @@ class HomeEventRemoteDataSource {
           .limit(20); // Increased to get both dated and null dated events
 
       final data = response as List<dynamic>;
-            for (var event in data) {
-              }
+
 
       final eventsFutures = data.map((e) => homeEventFromMap(
             e as Map<String, dynamic>,
@@ -163,8 +160,7 @@ class HomeEventRemoteDataSource {
           .limit(20); // Increased to get both dated and null dated events
 
       final data = response as List<dynamic>;
-            for (var event in data) {
-              }
+
 
       // Convert to entities with status persistence
       final eventsFutures = data.map((e) => homeEventFromMap(
@@ -179,8 +175,7 @@ class HomeEventRemoteDataSource {
           ));
 
       final events = await Future.wait(eventsFutures);
-            for (var event in events) {
-              }
+
 
       // Sort: future dates first (ascending), null dates last
       events.sort((a, b) {
@@ -271,8 +266,7 @@ class HomeEventRemoteDataSource {
           ));
 
       final events = await Future.wait(eventsFutures);
-            for (var event in events) {
-              }
+
 
       // Sort by end_datetime (soonest to end first)
       events.sort((a, b) {

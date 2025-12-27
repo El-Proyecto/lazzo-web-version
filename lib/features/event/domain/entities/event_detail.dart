@@ -85,10 +85,7 @@ class EventDetail {
   /// Check if event date has expired
   /// Returns true when event is in pending status and start date has passed
   bool get isExpired {
-    final now = DateTime.now();
-    final isPending = status == EventStatus.pending;
     final hasStartDate = startDateTime != null;
-    final isAfterStart = hasStartDate ? now.isAfter(startDateTime!) : false;
 
     if (hasStartDate) {
                                         }

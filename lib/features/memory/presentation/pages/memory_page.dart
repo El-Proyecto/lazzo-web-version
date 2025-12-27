@@ -458,7 +458,9 @@ class _MemoryPageState extends ConsumerState<MemoryPage> {
       // Limit to 5 photos
       final limitedImages = selectedImages.take(5).toList();
 
-      if (limitedImages.length < selectedImages.length && mounted) {
+      if (limitedImages.length < selectedImages.length) {
+        if (!mounted) return;
+        if (!context.mounted) return;
         TopBanner.showInfo(
           context,
           message: 'Maximum 5 photos selected',
@@ -466,6 +468,8 @@ class _MemoryPageState extends ConsumerState<MemoryPage> {
       }
 
       // Navigate to ManageMemory with selected photos
+      if (!mounted) return;
+      if (!context.mounted) return;
       final result = await Navigator.of(context).pushNamed(
         AppRouter.manageMemory,
         arguments: {

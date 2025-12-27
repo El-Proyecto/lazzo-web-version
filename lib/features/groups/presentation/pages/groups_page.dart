@@ -422,16 +422,17 @@ class _GroupsPageState extends ConsumerState<GroupsPage>
             TextButton(
               onPressed: () async {
                 Navigator.of(context).pop();
-                
+
                 // OPTIMISTIC UI: Remove group from list immediately
                 final controller = ref.read(groupsControllerProvider);
-                
+
                 try {
                   // Call server in background
                   await controller.leaveGroupOptimistic(groupId);
-                  
+
                   // Show success feedback
-                  if (mounted) {
+                  if (!mounted) return;
+                  if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
                         content: Text('Left "${group.name}"'),
@@ -442,10 +443,12 @@ class _GroupsPageState extends ConsumerState<GroupsPage>
                   }
                 } catch (e) {
                   // Show error feedback (rollback already happened in controller)
-                  if (mounted) {
+                  if (!mounted) return;
+                  if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: Text('Failed to leave group: ${e.toString().replaceAll('Exception: ', '')}'),
+                        content: Text(
+                            'Failed to leave group: ${e.toString().replaceAll('Exception: ', '')}'),
                         backgroundColor: BrandColors.cantVote,
                         duration: const Duration(seconds: 3),
                       ),
