@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../../shared/components/common/top_banner.dart';
 import '../../../../../shared/constants/spacing.dart';
 import '../../../../../shared/components/sections/lazzo_header.dart';
+import '../../../../../shared/constants/text_styles.dart';
+import '../../../../../shared/themes/colors.dart';
 import '../../providers/auth_provider.dart';
 //import '../verifyOTP.dart';
 
@@ -81,34 +83,6 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     Navigator.pushNamed(context, '/auth');
   }
 
-  void _handleAppleLogIn() {
-    // TODO: Implement Apple sign in when needed
-  }
-
-  Future<void> _handleGoogleLogIn() async {
-    try {
-      setState(() => _isLoading = true);
-
-      final authNotifier = ref.read(authProvider.notifier);
-      final success = await authNotifier.signInWithGoogle();
-
-      if (success) {
-        if (!mounted) return;
-        Navigator.pushNamedAndRemoveUntil(context, '/mainLayout', (_) => false);
-      } else {
-        throw Exception('Failed to sign in with Google');
-      }
-    } catch (e) {
-      if (!mounted) return;
-      TopBanner.showError(
-        context,
-        message: 'Google Sign In failed: ${e.toString()}',
-      );
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -121,22 +95,19 @@ class _LoginPageState extends ConsumerState<LoginPage> {
             children: [
               const Center(child: LazzoHeader()),
               const SizedBox(height: Gaps.xl),
-              const Text(
+              Text(
                 'Welcome Back!',
-                style: TextStyle(
-                  color: Colors.white,
+                style: AppText.headlineMedium.copyWith(
                   fontSize: 24,
-                  fontWeight: FontWeight.bold,
+                  color: BrandColors.text1,
                 ),
               ),
-              const SizedBox(height: Gaps.xl),
+              const SizedBox(height: Gaps.md),
               LoginForm(
                 emailController: _emailController,
                 onCreateAccount:
                     _canSubmit && !_isLoading ? _handleSubmit : null,
                 isLoading: _isLoading,
-                onGoogleSignIn: _handleGoogleLogIn,
-                onAppleSignIn: _handleAppleLogIn,
                 onLoginTap: _handleLogin,
               ),
             ],

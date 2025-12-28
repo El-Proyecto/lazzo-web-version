@@ -20,15 +20,15 @@ class ProfileModel {
   });
 
   factory ProfileModel.fromMap(Map<String, dynamic> row) => ProfileModel(
-    id: row['id'] as String,
-    name: row['name'] as String,
-    email: row['email'] as String?,
-    avatarUrl: row['avatar_url'] as String?,
-    city: row['city'] as String?,
-    birthDate: row['birth_date'] != null
-        ? DateTime.parse(row['birth_date'] as String)
-        : null,
-  );
+        id: row['id'] as String,
+        name: row['name'] as String,
+        email: row['email'] as String?,
+        avatarUrl: row['avatar_url'] as String?,
+        city: row['city'] as String?,
+        birthDate: row['birth_date'] != null
+            ? DateTime.parse(row['birth_date'] as String)
+            : null,
+      );
 
   Map<String, dynamic> toMap() {
     // Extract storage path from URL if it's a public URL
@@ -37,12 +37,13 @@ class ProfileModel {
       final url = avatarUrl!;
       if (url.startsWith('http://') || url.startsWith('https://')) {
         // Extract path after '/object/public/users-profile-pic/'
-        final match = RegExp(r'/object/public/users-profile-pic/(.+)$').firstMatch(url);
+        final match =
+            RegExp(r'/object/public/users-profile-pic/(.+)$').firstMatch(url);
         if (match != null) {
           storagePathOnly = match.group(1);
-                  } else {
+        } else {
           storagePathOnly = avatarUrl;
-                  }
+        }
       } else {
         storagePathOnly = avatarUrl;
       }
@@ -70,13 +71,13 @@ class ProfileModel {
       );
 
   factory ProfileModel.fromEntity(ProfileEntity entity) => ProfileModel(
-    id: entity.id,
-    name: entity.name,
-    email: entity.email,
-    avatarUrl: entity.profileImageUrl,
-    city: entity.location,
-    birthDate: entity.birthday,
-  );
+        id: entity.id,
+        name: entity.name,
+        email: entity.email,
+        avatarUrl: entity.profileImageUrl,
+        city: entity.location,
+        birthDate: entity.birthday,
+      );
 }
 
 // DTO memory model for profile memories (events with status recap/ended)
@@ -96,27 +97,42 @@ class MemoryModel {
   });
 
   factory MemoryModel.fromMap(Map<String, dynamic> row) {
-    // Extract location from nested locations object
+    // Extract location - supports both nested object and direct field (from RPC)
     String? locationName;
     if (row['locations'] != null) {
+      // Nested object format (from regular query)
       final locations = row['locations'];
       locationName = locations['display_name'] as String?;
+    } else if (row['display_name'] != null) {
+      // Direct field format (from RPC function)
+      locationName = row['display_name'] as String?;
+    }
+
+    // Parse date safely - handle null values
+    DateTime? parsedDate;
+    final endDatetimeValue = row['end_datetime'];
+    if (endDatetimeValue != null) {
+      if (endDatetimeValue is String) {
+        parsedDate = DateTime.tryParse(endDatetimeValue);
+      } else if (endDatetimeValue is DateTime) {
+        parsedDate = endDatetimeValue;
+      }
     }
 
     return MemoryModel(
       eventId: row['id'] as String,
       title: row['name'] as String,
       coverStoragePath: row['cover_storage_path'] as String?,
-      date: DateTime.parse(row['end_datetime'] as String),
+      date: parsedDate ?? DateTime.now(), // Fallback to now if null
       location: locationName,
     );
   }
 
   MemoryEntity toEntity({String? signedUrl}) => MemoryEntity(
-    id: eventId,
-    title: title,
-    coverImageUrl: signedUrl,
-    date: date,
-    location: location,
-  );
+        id: eventId,
+        title: title,
+        coverImageUrl: signedUrl,
+        date: date,
+        location: location,
+      );
 }

@@ -45,12 +45,8 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
-  Future<bool> signInWithGoogle() async {
-    return await remoteDatasource.signInWithGoogle();
-  }
-
-  @override
-  Future<User?> verifyOtp({required String email, required String otp, String? name}) async {
+  Future<User?> verifyOtp(
+      {required String email, required String otp, String? name}) async {
     try {
       final userModel = await remoteDatasource.verifyOtp(
         email: email,
