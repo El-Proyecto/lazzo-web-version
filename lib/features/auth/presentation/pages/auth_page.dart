@@ -10,9 +10,6 @@ import '../../../../shared/components/common/top_banner.dart';
 import 'verify_otp.dart';
 import './login/login_page.dart';
 
-// Domínio: para tipar o listen
-import '../../domain/entities/user.dart' as domain;
-
 class AuthPage extends ConsumerStatefulWidget {
   const AuthPage({super.key});
 
@@ -25,9 +22,6 @@ class _AuthPageState extends ConsumerState<AuthPage> {
   final _emailController = TextEditingController();
   bool _canSubmit = false;
   bool _isLoading = false;
-
-  // Flag para só navegar quando o fluxo OAuth realmente acontecer
-  bool _pendingOAuth = false;
 
   @override
   void initState() {
@@ -97,34 +91,6 @@ class _AuthPageState extends ConsumerState<AuthPage> {
     }
   }
 
-  // ❌ COMMENTED: Google login temporarily disabled
-  // Future<void> _handleGoogleSignIn() async {
-  //   try {
-  //     setState(() {
-  //       _isLoading = true;
-  //       _pendingOAuth = true; // a iniciar OAuth
-  //     });
-  //
-  //     await ref.read(authProvider.notifier).signInWithGoogle();
-  //     // Navegação acontece no listener no build
-  //   } catch (e) {
-  //     _pendingOAuth = false;
-  //     if (mounted) {
-  //       TopBanner.showError(
-  //         context,
-  //         message: 'Google Sign In failed: $e',
-  //       );
-  //     }
-  //   } finally {
-  //     if (mounted) setState(() => _isLoading = false);
-  //   }
-  // }
-
-  // ❌ COMMENTED: Apple login temporarily disabled
-  // void _handleAppleSignIn() {
-  //   // TODO: Implement Apple sign in when needed
-  // }
-
   void _handleLogin() {
     Navigator.pushReplacement(
       context,
@@ -134,30 +100,6 @@ class _AuthPageState extends ConsumerState<AuthPage> {
 
   @override
   Widget build(BuildContext context) {
-    // ✅ ref.listen deve estar no build
-    ref.listen<AsyncValue<domain.User?>>(authProvider, (prev, next) async {
-      next.whenOrNull(
-        data: (u) async {
-          if (!_pendingOAuth || u == null || !mounted) return;
-
-          _pendingOAuth = false;
-
-          // Garantir row no backend (se necessário)
-          final navigator = Navigator.of(context);
-          final n = ref.read(authProvider.notifier);
-          await n.ensureUsersRow(
-            u.id,
-            u.email.trim().toLowerCase(),
-            name: u.name,
-          );
-
-          if (mounted) {
-            navigator.pushNamedAndRemoveUntil('/home', (_) => false);
-          }
-        },
-      );
-    });
-
     return Scaffold(
       backgroundColor: Colors.black,
       body: SafeArea(
@@ -176,9 +118,6 @@ class _AuthPageState extends ConsumerState<AuthPage> {
                 onCreateAccount:
                     _canSubmit && !_isLoading ? _handleSubmit : null,
                 isLoading: _isLoading,
-                // ❌ COMMENTED: Social login disabled
-                // onGoogleSignIn: _handleGoogleSignIn,
-                // onAppleSignIn: _handleAppleSignIn,
                 onLoginTap: _handleLogin,
               ),
             ],

@@ -34,7 +34,6 @@ dependencies:
   mocktail: ^1.0.3
   flutter_riverpod: ^2.6.1
   http: ^1.4.0
-  sign_in_with_apple: ^7.0.1
   font_awesome_flutter: ^10.6.0
   image_picker: ^1.0.7
   intl: ^0.20.2
@@ -44,7 +43,6 @@ dependencies:
   geocoding: ^4.0.0
   # Location services for current location and map functionality
   geolocator: ^14.0.2
-  google_maps_flutter: ^2.9.0
   # QR Code generation for group invitations
   qr_flutter: ^4.1.0
   # Add events to device calendar (Android & iOS)

@@ -83,36 +83,6 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     Navigator.pushNamed(context, '/auth');
   }
 
-  // ❌ COMMENTED: Apple login temporarily disabled
-  // void _handleAppleLogIn() {
-  //   // TODO: Implement Apple sign in when needed
-  // }
-
-  // ❌ COMMENTED: Google login temporarily disabled
-  // Future<void> _handleGoogleLogIn() async {
-  //   try {
-  //     setState(() => _isLoading = true);
-  //
-  //     final authNotifier = ref.read(authProvider.notifier);
-  //     final success = await authNotifier.signInWithGoogle();
-  //
-  //     if (success) {
-  //       if (!mounted) return;
-  //       Navigator.pushNamedAndRemoveUntil(context, '/mainLayout', (_) => false);
-  //     } else {
-  //       throw Exception('Failed to sign in with Google');
-  //     }
-  //   } catch (e) {
-  //     if (!mounted) return;
-  //     TopBanner.showError(
-  //       context,
-  //       message: 'Google Sign In failed: ${e.toString()}',
-  //     );
-  //   } finally {
-  //     if (mounted) setState(() => _isLoading = false);
-  //   }
-  // }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -138,9 +108,6 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                 onCreateAccount:
                     _canSubmit && !_isLoading ? _handleSubmit : null,
                 isLoading: _isLoading,
-                // ❌ COMMENTED: Social login disabled
-                // onGoogleSignIn: _handleGoogleLogIn,
-                // onAppleSignIn: _handleAppleLogIn,
                 onLoginTap: _handleLogin,
               ),
             ],

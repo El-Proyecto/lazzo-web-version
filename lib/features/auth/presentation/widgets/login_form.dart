@@ -8,8 +8,6 @@ class LoginForm extends StatelessWidget {
   final TextEditingController? nameController;
   final TextEditingController emailController;
   final VoidCallback? onCreateAccount;
-  final VoidCallback? onGoogleSignIn;
-  final VoidCallback? onAppleSignIn;
   final VoidCallback? onLoginTap;
   final bool isLoading;
   final bool isLogin;
@@ -22,8 +20,6 @@ class LoginForm extends StatelessWidget {
     this.nameController,
     required this.emailController,
     this.onCreateAccount,
-    this.onGoogleSignIn,
-    this.onAppleSignIn,
     this.onLoginTap,
     this.isLoading = false,
     this.isLogin = false,

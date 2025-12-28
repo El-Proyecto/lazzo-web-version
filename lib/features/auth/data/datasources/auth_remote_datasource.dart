@@ -6,20 +6,6 @@ class AuthRemoteDatasource {
   final SupabaseClient client;
   AuthRemoteDatasource(this.client);
 
-  // Google Sign In
-  Future<bool> signInWithGoogle() async {
-    try {
-      final response = await client.auth.signInWithOAuth(
-        OAuthProvider.google,
-        redirectTo: 'lazzo://auth-callback-dev',
-        scopes: 'email profile',
-      );
-      return response;
-    } catch (e) {
-      rethrow;
-    }
-  }
-
   // 1) Login com email e OTP
   Future<void> login(String email) async {
     try {
@@ -79,8 +65,7 @@ class AuthRemoteDatasource {
     final u = client.auth.currentUser;
     if (u == null) return null;
 
-    final row =
-        await _getUsersRow(u.id) ??
+    final row = await _getUsersRow(u.id) ??
         await _upsertUsersRow(id: u.id, email: u.email ?? '');
     return UserModel.fromUsersRow(row);
   }
@@ -102,7 +87,7 @@ class AuthRemoteDatasource {
     String? name,
   }) async {
     try {
-       // Debug
+      // Debug
 
       // 1) Verificar estado atual
       //final currentUser = client.auth.currentUser;
@@ -114,7 +99,7 @@ class AuthRemoteDatasource {
         type: OtpType.email, // Mudado para signup pois é um novo registro
       );
 
-       // Debug
+      // Debug
 
       // 3) Verificar se temos usuário e sessão
       final u = response.user;
@@ -122,19 +107,19 @@ class AuthRemoteDatasource {
         throw Exception('Falha na autenticação: usuário ou sessão inválidos');
       }
 
-       // Debug
+      // Debug
       final row = await _upsertUsersRow(id: u.id, email: email, name: name);
-       // Debug
+      // Debug
 
       return UserModel.fromUsersRow(row);
     } on AuthException catch (e) {
-       // Debug
+      // Debug
       throw Exception('Falha na verificação OTP: ${e.message}');
     } on PostgrestException catch (e) {
-       // Debug
+      // Debug
       throw Exception('Falha na verificação OTP (DB): ${e.message}');
     } catch (e) {
-       // Debug
+      // Debug
       throw Exception('Falha na verificação OTP: $e');
     }
   }
@@ -173,8 +158,8 @@ class AuthRemoteDatasource {
     required String email,
     String? name,
   }) async {
-     // Debug
-    
+    // Debug
+
     final patch = <String, dynamic>{
       'id': id,
       'email': email.trim().toLowerCase(),
@@ -184,12 +169,12 @@ class AuthRemoteDatasource {
     // Only add name if it's provided, not null and not empty
     if (name != null && name.trim().isNotEmpty) {
       patch['name'] = name.trim();
-       // Debug
+      // Debug
     } else {
-       // Debug
+      // Debug
     }
 
-     // Debug
+    // Debug
 
     try {
       final row = await client
@@ -199,11 +184,11 @@ class AuthRemoteDatasource {
           .single();
 
       final result = Map<String, dynamic>.from(row as Map);
-       // Debug
-      
+      // Debug
+
       return result;
     } catch (e) {
-       // Debug
+      // Debug
       rethrow;
     }
   }
