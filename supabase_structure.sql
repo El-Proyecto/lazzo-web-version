@@ -61,18 +61,6 @@ CREATE TABLE public.event_participants (
   CONSTRAINT event_participants_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id),
   CONSTRAINT event_participants_pevent_id_fkey FOREIGN KEY (pevent_id) REFERENCES public.events(id)
 );
-CREATE TABLE public.event_status_audit (
-  id bigint NOT NULL DEFAULT nextval('event_status_audit_id_seq'::regclass),
-  event_id uuid NOT NULL,
-  old_status text,
-  new_status text,
-  changed_at timestamp with time zone NOT NULL DEFAULT now(),
-  changed_by uuid,
-  db_user text,
-  app_name text,
-  client_addr inet,
-  CONSTRAINT event_status_audit_pkey PRIMARY KEY (id)
-);
 CREATE TABLE public.events (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   name text,

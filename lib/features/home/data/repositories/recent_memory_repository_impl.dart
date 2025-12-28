@@ -28,33 +28,37 @@ class RecentMemoryRepositoryImpl implements RecentMemoryRepository {
         return [];
       }
 
-      // Convert to models and then to entities with signed URLs
-      final entities = <RecentMemoryEntity>[];
+      // Convert to models
+      final models =
+          jsonList.map((json) => RecentMemoryModel.fromJson(json)).toList();
 
-      for (final json in jsonList) {
-        final model = RecentMemoryModel.fromJson(json);
+      // Generate signed URLs for cover photos (BATCH OPTIMIZED)
+      final storagePaths = models
+          .where((m) =>
+              m.coverStoragePath != null && m.coverStoragePath!.isNotEmpty)
+          .map((m) => m.coverStoragePath!)
+          .toList();
 
-        // Generate signed URL for cover photo if available
-        String? coverPhotoUrl;
-        if (model.coverStoragePath != null &&
-            model.coverStoragePath!.isNotEmpty) {
-          try {
-            coverPhotoUrl = await _storageService.getSignedUrl(
-              model.coverStoragePath!,
-            );
-          } catch (e) {
-            // Failed to generate signed URL, continue without cover
-          }
-        }
+      final signedUrlsMap = await _storageService.getBatchSignedUrls(
+        storagePaths,
+        bucket: 'memory_groups',
+      );
 
-        entities.add(RecentMemoryEntity(
+      // Build entities with signed URLs
+      final entities = models.map((model) {
+        final coverPhotoUrl =
+            model.coverStoragePath != null && model.coverStoragePath!.isNotEmpty
+                ? signedUrlsMap[model.coverStoragePath]
+                : null;
+
+        return RecentMemoryEntity(
           id: model.id,
           eventName: model.eventName,
           location: model.location,
           date: model.date,
           coverPhotoUrl: coverPhotoUrl,
-        ));
-      }
+        );
+      }).toList();
 
       return entities;
     } catch (e) {

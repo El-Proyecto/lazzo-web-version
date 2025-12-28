@@ -29,64 +29,67 @@ class OtherProfileRepositoryImpl implements OtherProfileRepository {
 
   @override
   Future<OtherProfileEntity> getOtherUserProfile(String userId) async {
-try {
+    try {
       // Fetch basic profile data
       final profileData = await _dataSource.getOtherUserProfile(userId);
-final profileModel = OtherProfileModel.fromMap(profileData);
+      final profileModel = OtherProfileModel.fromMap(profileData);
 
       // Generate signed URL for avatar if exists
       // Note: NULL avatar_url is expected when user hasn't uploaded profile picture
       String? signedAvatarUrl;
-      if (profileModel.avatarUrl != null && profileModel.avatarUrl!.isNotEmpty) {
-try {
+      if (profileModel.avatarUrl != null &&
+          profileModel.avatarUrl!.isNotEmpty) {
+        try {
           signedAvatarUrl = await _storageService.getSignedUrl(
             profileModel.avatarUrl!,
             bucket: 'users-profile-pic',
             expiresInSeconds: 3600, // 1 hour
           );
-} catch (e) {
-signedAvatarUrl = null;
+        } catch (e) {
+          signedAvatarUrl = null;
         }
       }
 
       // Fetch shared memories data
-final sharedMemoriesData = await _dataSource.getSharedMemories(
+      final sharedMemoriesData = await _dataSource.getSharedMemories(
         currentUserId: _currentUserId,
         targetUserId: userId,
       );
-// Convert shared memories to entities with signed URLs
+
+      // Convert shared memories to entities with signed URLs (BATCH OPTIMIZED)
+      // Extract all cover paths
+      final coverPaths = sharedMemoriesData
+          .map((m) => m['cover_storage_path'] as String?)
+          .where((path) => path != null && path.isNotEmpty)
+          .cast<String>()
+          .toList();
+
+      // Get all signed URLs in batch
+      final signedUrlsMap = await _storageService.getBatchSignedUrls(
+        coverPaths,
+        bucket: 'memory_groups',
+      );
+
+      // Build entities
       final memoriesList = <MemoryEntity>[];
-      
       for (final memoryData in sharedMemoriesData) {
-        String? signedCoverUrl;
         final coverPath = memoryData['cover_storage_path'] as String?;
-        
-        if (coverPath != null && coverPath.isNotEmpty) {
-try {
-            // Note: photos are stored in 'memory_groups' bucket, not 'group_photos'
-            // The table name is group_photos but the storage bucket is memory_groups
-            signedCoverUrl = await _storageService.getSignedUrl(
-              coverPath,
-              bucket: 'memory_groups',
-              expiresInSeconds: 3600,
-            );
-} catch (e) {
-signedCoverUrl = null;
-          }
-        } else {
-}
+        final signedCoverUrl = coverPath != null && coverPath.isNotEmpty
+            ? signedUrlsMap[coverPath]
+            : null;
 
         memoriesList.add(MemoryEntity(
           id: memoryData['id'] as String,
           title: memoryData['title'] as String? ?? 'Untitled',
           coverImageUrl: signedCoverUrl,
-          date: memoryData['date'] != null 
+          date: memoryData['date'] != null
               ? DateTime.parse(memoryData['date'] as String)
               : DateTime.now(),
           location: memoryData['location'] as String?,
         ));
       }
-// Fetch upcoming events data
+
+      // Fetch upcoming events data
       final upcomingEventsData = await _dataSource.getSharedUpcomingEvents(
         currentUserId: _currentUserId,
         targetUserId: userId,
@@ -104,7 +107,8 @@ signedCoverUrl = null;
           endDate: eventData['end_datetime'] != null
               ? DateTime.parse(eventData['end_datetime'] as String)
               : null,
-          location: (eventData['locations'] as Map?)?['display_name'] as String?,
+          location:
+              (eventData['locations'] as Map?)?['display_name'] as String?,
           status: _parseEventStatus(eventData['status'] as String?),
           goingCount: 0,
           participantCount: 0,
@@ -114,7 +118,7 @@ signedCoverUrl = null;
       }).toList();
 
       // Convert to entity with lists
-      
+
       return profileModel.toEntity(
         signedAvatarUrl: signedAvatarUrl,
         memoriesTogether: memoriesList,
@@ -161,17 +165,17 @@ signedCoverUrl = null;
       for (final groupData in groupsData) {
         String? signedPhotoUrl;
         final photoUrl = groupData['photo_url'] as String?;
-        
+
         if (photoUrl != null && photoUrl.isNotEmpty) {
-try {
+          try {
             // Note: group photos are stored in 'group-photos' bucket (with hyphen)
             signedPhotoUrl = await _storageService.getSignedUrl(
               photoUrl,
               bucket: 'group-photos',
               expiresInSeconds: 3600,
             );
-} catch (e) {
-signedPhotoUrl = null;
+          } catch (e) {
+            signedPhotoUrl = null;
           }
         }
 
@@ -195,42 +199,41 @@ signedPhotoUrl = null;
     required String groupId,
   }) async {
     try {
-            
       await _dataSource.inviteToGroup(
         userId: userId,
         groupId: groupId,
         invitedBy: _currentUserId,
       );
-            
+
       // Send notification to invited user
       try {
-                // Get inviter name and group name from Supabase
+        // Get inviter name and group name from Supabase
         final client = Supabase.instance.client;
         final inviterData = await client
             .from('users')
             .select('name')
             .eq('id', _currentUserId)
             .single();
-                
+
         final groupData = await client
             .from('groups')
             .select('name')
             .eq('id', groupId)
             .single();
-                
-                await _notificationService.sendGroupInvite(
+
+        await _notificationService.sendGroupInvite(
           recipientUserId: userId,
           inviterName: inviterData['name'] ?? 'Someone',
           groupName: groupData['name'] ?? 'a group',
           groupId: groupId,
         );
-              } catch (notifError) {
+      } catch (notifError) {
         // Don't fail the whole operation if notification fails
-                      }
-      
-            return true;
+      }
+
+      return true;
     } catch (e) {
-                        return false;
+      return false;
     }
   }
 
@@ -239,14 +242,14 @@ signedPhotoUrl = null;
     required String userId,
     required String groupId,
   }) async {
-        try {
+    try {
       await _dataSource.acceptGroupInvite(
         userId: userId,
         groupId: groupId,
       );
-            return true;
+      return true;
     } catch (e) {
-                  return false;
+      return false;
     }
   }
 
@@ -255,14 +258,14 @@ signedPhotoUrl = null;
     required String userId,
     required String groupId,
   }) async {
-        try {
+    try {
       await _dataSource.declineGroupInvite(
         userId: userId,
         groupId: groupId,
       );
-            return true;
+      return true;
     } catch (e) {
-                  return false;
+      return false;
     }
   }
 }

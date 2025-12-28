@@ -28,22 +28,34 @@ class ProfileRepositoryImpl implements ProfileRepository {
 
     // Fetch memories for the profile using ProfileMemoryDataSource
     final memoryMaps = await memoryDataSource.getUserMemories(profileModel.id);
-    final memoryModels = memoryMaps.map((map) => MemoryModel.fromMap(map)).toList();
-    
-    // Generate signed URLs for memory covers
-    final memories = <MemoryEntity>[];
-    for (final model in memoryModels) {
-      String? signedUrl;
-      if (model.coverStoragePath != null) {
-        signedUrl = await storageService.getSignedUrl(model.coverStoragePath!);
-      }
-      memories.add(model.toEntity(signedUrl: signedUrl));
-    }
+    final memoryModels =
+        memoryMaps.map((map) => MemoryModel.fromMap(map)).toList();
+
+    // Filter: Only memories with cover photos (events without photos are not memories)
+    final memoriesWithCovers = memoryModels
+        .where(
+            (m) => m.coverStoragePath != null && m.coverStoragePath!.isNotEmpty)
+        .toList();
+
+    // Generate signed URLs for memory covers (BATCH OPTIMIZED)
+    final storagePaths =
+        memoriesWithCovers.map((m) => m.coverStoragePath!).toList();
+
+    final signedUrlsMap = await storageService.getBatchSignedUrls(
+      storagePaths,
+      bucket: 'memory_groups',
+    );
+
+    final memories = memoriesWithCovers.map((model) {
+      final signedUrl = signedUrlsMap[model.coverStoragePath];
+      return model.toEntity(signedUrl: signedUrl);
+    }).toList();
 
     // Get signed URL for profile picture if it exists
     String? profileSignedUrl;
     if (profileModel.avatarUrl != null && profileModel.avatarUrl!.isNotEmpty) {
-      profileSignedUrl = await remote.getProfilePictureSignedUrl(profileModel.avatarUrl);
+      profileSignedUrl =
+          await remote.getProfilePictureSignedUrl(profileModel.avatarUrl);
     }
 
     // Create a new model with signed URL if available
@@ -70,22 +82,34 @@ class ProfileRepositoryImpl implements ProfileRepository {
 
     // Fetch memories for the profile using ProfileMemoryDataSource
     final memoryMaps = await memoryDataSource.getUserMemories(userId);
-    final memoryModels = memoryMaps.map((map) => MemoryModel.fromMap(map)).toList();
-    
-    // Generate signed URLs for memory covers
-    final memories = <MemoryEntity>[];
-    for (final model in memoryModels) {
-      String? signedUrl;
-      if (model.coverStoragePath != null) {
-        signedUrl = await storageService.getSignedUrl(model.coverStoragePath!);
-      }
-      memories.add(model.toEntity(signedUrl: signedUrl));
-    }
+    final memoryModels =
+        memoryMaps.map((map) => MemoryModel.fromMap(map)).toList();
+
+    // Filter: Only memories with cover photos (events without photos are not memories)
+    final memoriesWithCovers = memoryModels
+        .where(
+            (m) => m.coverStoragePath != null && m.coverStoragePath!.isNotEmpty)
+        .toList();
+
+    // Generate signed URLs for memory covers (BATCH OPTIMIZED)
+    final storagePaths =
+        memoriesWithCovers.map((m) => m.coverStoragePath!).toList();
+
+    final signedUrlsMap = await storageService.getBatchSignedUrls(
+      storagePaths,
+      bucket: 'memory_groups',
+    );
+
+    final memories = memoriesWithCovers.map((model) {
+      final signedUrl = signedUrlsMap[model.coverStoragePath];
+      return model.toEntity(signedUrl: signedUrl);
+    }).toList();
 
     // Get signed URL for profile picture if it exists
     String? profileSignedUrl;
     if (profileModel.avatarUrl != null && profileModel.avatarUrl!.isNotEmpty) {
-      profileSignedUrl = await remote.getProfilePictureSignedUrl(profileModel.avatarUrl);
+      profileSignedUrl =
+          await remote.getProfilePictureSignedUrl(profileModel.avatarUrl);
     }
 
     // Create a new model with signed URL if available
@@ -110,17 +134,28 @@ class ProfileRepositoryImpl implements ProfileRepository {
 
     // Fetch updated memories using ProfileMemoryDataSource
     final memoryMaps = await memoryDataSource.getUserMemories(profile.id);
-    final memoryModels = memoryMaps.map((map) => MemoryModel.fromMap(map)).toList();
-    
-    // Generate signed URLs for memory covers
-    final memories = <MemoryEntity>[];
-    for (final model in memoryModels) {
-      String? signedUrl;
-      if (model.coverStoragePath != null) {
-        signedUrl = await storageService.getSignedUrl(model.coverStoragePath!);
-      }
-      memories.add(model.toEntity(signedUrl: signedUrl));
-    }
+    final memoryModels =
+        memoryMaps.map((map) => MemoryModel.fromMap(map)).toList();
+
+    // Filter: Only memories with cover photos (events without photos are not memories)
+    final memoriesWithCovers = memoryModels
+        .where(
+            (m) => m.coverStoragePath != null && m.coverStoragePath!.isNotEmpty)
+        .toList();
+
+    // Generate signed URLs for memory covers (BATCH OPTIMIZED)
+    final storagePaths =
+        memoriesWithCovers.map((m) => m.coverStoragePath!).toList();
+
+    final signedUrlsMap = await storageService.getBatchSignedUrls(
+      storagePaths,
+      bucket: 'memory_groups',
+    );
+
+    final memories = memoriesWithCovers.map((model) {
+      final signedUrl = signedUrlsMap[model.coverStoragePath];
+      return model.toEntity(signedUrl: signedUrl);
+    }).toList();
 
     return updatedModel.toEntity(memories: memories);
   }
@@ -128,30 +163,40 @@ class ProfileRepositoryImpl implements ProfileRepository {
   @override
   Future<List<MemoryEntity>> getUserMemories(String userId) async {
     final memoryMaps = await memoryDataSource.getUserMemories(userId);
-    final memoryModels = memoryMaps.map((map) => MemoryModel.fromMap(map)).toList();
-    
-    // Generate signed URLs for memory covers
-    final memories = <MemoryEntity>[];
-    for (final model in memoryModels) {
-      String? signedUrl;
-      if (model.coverStoragePath != null) {
-        signedUrl = await storageService.getSignedUrl(model.coverStoragePath!);
-      }
-      memories.add(model.toEntity(signedUrl: signedUrl));
-    }
-    
+    final memoryModels =
+        memoryMaps.map((map) => MemoryModel.fromMap(map)).toList();
+
+    // Filter: Only memories with cover photos (events without photos are not memories)
+    final memoriesWithCovers = memoryModels
+        .where(
+            (m) => m.coverStoragePath != null && m.coverStoragePath!.isNotEmpty)
+        .toList();
+
+    // Generate signed URLs for memory covers (BATCH OPTIMIZED)
+    final storagePaths =
+        memoriesWithCovers.map((m) => m.coverStoragePath!).toList();
+
+    final signedUrlsMap = await storageService.getBatchSignedUrls(
+      storagePaths,
+      bucket: 'memory_groups',
+    );
+
+    final memories = memoriesWithCovers.map((model) {
+      final signedUrl = signedUrlsMap[model.coverStoragePath];
+      return model.toEntity(signedUrl: signedUrl);
+    }).toList();
+
     return memories;
   }
 
   @override
   Future<String> uploadProfilePicture(XFile imageFile) async {
     try {
-            
       final storagePath = await remote.uploadProfilePicture(imageFile);
-      
-            return storagePath;
+
+      return storagePath;
     } catch (e) {
-            throw Exception('Failed to upload profile picture: $e');
+      throw Exception('Failed to upload profile picture: $e');
     }
   }
 
@@ -166,20 +211,18 @@ class ProfileRepositoryImpl implements ProfileRepository {
       final signedUrl = await remote.getProfilePictureSignedUrl(avatarUrl);
       return signedUrl;
     } catch (e) {
-            return null;
+      return null;
     }
   }
 
   @override
   Future<void> deleteProfilePicture() async {
     try {
-            
       // First get current profile to find current avatar URL
       final profile = await getCurrentUserProfile();
       await remote.deleteProfilePicture(profile.profileImageUrl);
-      
-          } catch (e) {
-            throw Exception('Failed to delete profile picture: $e');
+    } catch (e) {
+      throw Exception('Failed to delete profile picture: $e');
     }
   }
 }

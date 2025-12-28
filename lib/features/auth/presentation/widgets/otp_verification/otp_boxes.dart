@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../../../../../shared/constants/spacing.dart';
+import '../../../../../shared/themes/colors.dart';
 
 class OtpCodeBoxes extends StatefulWidget {
   const OtpCodeBoxes({
@@ -40,57 +42,54 @@ class _OtpCodeBoxesState extends State<OtpCodeBoxes> {
   }
 
   void _onChanged(int index, String value) {
-    // apenas 1 dígito; avança foco
     if (value.isNotEmpty) {
+      // Auto-advance: move to next box after typing
       if (index < widget.length - 1) {
         _focusNodes[index + 1].requestFocus();
       } else {
+        // Last box - unfocus keyboard
         _focusNodes[index].unfocus();
       }
     }
 
-    // se ficou vazio (backspace), recua foco
-    if (value.isEmpty && index > 0) {
-      _focusNodes[index - 1].requestFocus();
-    }
-
-    // notifica quando completo
+    // Notify when complete
     final code = _controllers.map((c) => c.text).join();
     if (code.length == widget.length) {
       widget.onCompleted?.call(code);
     }
   }
 
+  void _onKeyEvent(int index, KeyEvent event) {
+    // Handle backspace: if current box is empty, move to previous and clear it
+    if (event is KeyDownEvent &&
+        event.logicalKey == LogicalKeyboardKey.backspace) {
+      if (_controllers[index].text.isEmpty && index > 0) {
+        _focusNodes[index - 1].requestFocus();
+        _controllers[index - 1].clear();
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      mainAxisAlignment: MainAxisAlignment.start,
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        SizedBox(
-          width: 370,
-          height: 80,
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: List.generate(widget.length, (i) {
-              return Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _OtpBox(
-                    controller: _controllers[i],
-                    focusNode: _focusNodes[i],
-                    onChanged: (v) => _onChanged(i, v),
-                  ),
-                  if (i != widget.length - 1) const SizedBox(width: 8),
-                ],
-              );
-            }),
-          ),
-        ),
-      ],
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: Gaps.sm),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: List.generate(widget.length, (i) {
+          return Flexible(
+            child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: Gaps.xs / 2),
+              child: _OtpBox(
+                controller: _controllers[i],
+                focusNode: _focusNodes[i],
+                onChanged: (v) => _onChanged(i, v),
+                onKeyEvent: (event) => _onKeyEvent(i, event),
+              ),
+            ),
+          );
+        }),
+      ),
     );
   }
 }
@@ -100,48 +99,52 @@ class _OtpBox extends StatelessWidget {
     required this.controller,
     required this.focusNode,
     required this.onChanged,
+    required this.onKeyEvent,
   });
 
   final TextEditingController controller;
   final FocusNode focusNode;
   final ValueChanged<String> onChanged;
+  final ValueChanged<KeyEvent> onKeyEvent;
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: 55,
-      child: Container(
-        width: 55,
-        height: 80,
-        decoration: ShapeDecoration(
-          color: const Color(0xFF2B2B2B), // Background-3
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
+    return AspectRatio(
+      aspectRatio: 0.6,
+      child: KeyboardListener(
+        focusNode: FocusNode(),
+        onKeyEvent: onKeyEvent,
+        child: Container(
+          decoration: ShapeDecoration(
+            color: BrandColors.bg3,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(Radii.md),
+            ),
           ),
-        ),
-        alignment: Alignment.center,
-        child: TextField(
-          controller: controller,
-          focusNode: focusNode,
-          keyboardType: TextInputType.number,
-          textAlign: TextAlign.center,
-          style: const TextStyle(
-            color: Color(0xFFF2F2F2),
-            fontSize: 28,
-            fontWeight: FontWeight.w600,
+          alignment: Alignment.center,
+          child: TextField(
+            controller: controller,
+            focusNode: focusNode,
+            keyboardType: TextInputType.number,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              color: BrandColors.text1,
+              fontSize: 28,
+              fontWeight: FontWeight.w600,
+            ),
+            maxLength: 1,
+            decoration: const InputDecoration(
+              counterText: '',
+              border: InputBorder.none,
+              isCollapsed: true,
+              contentPadding: EdgeInsets.zero,
+            ),
+            inputFormatters: [
+              FilteringTextInputFormatter.digitsOnly,
+              LengthLimitingTextInputFormatter(1),
+            ],
+            onChanged: onChanged,
           ),
-          maxLength: 1,
-          decoration: const InputDecoration(
-            counterText: '',
-            border: InputBorder.none,
-            isCollapsed: true,
-            contentPadding: EdgeInsets.zero,
-          ),
-          inputFormatters: [
-            FilteringTextInputFormatter.digitsOnly,
-            LengthLimitingTextInputFormatter(1),
-          ],
-          onChanged: onChanged,
         ),
       ),
     );

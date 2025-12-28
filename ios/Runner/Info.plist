@@ -65,8 +65,6 @@
 	<!-- Permissões de localização para funcionalidade Current Location -->
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Este app precisa de acesso à sua localização para definir a localização do evento automaticamente.</string>
-	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
-	<string>Este app precisa de acesso à sua localização para definir a localização do evento automaticamente.</string>
 	<!-- Permissões para adicionar eventos ao calendário -->
 	<key>NSCalendarsUsageDescription</key>
 	<string>Este app precisa de acesso ao calendário para adicionar eventos.</string>
