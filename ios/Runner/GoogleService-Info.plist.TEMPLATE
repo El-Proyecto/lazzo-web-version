@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  ATENÇÃO: Este é um TEMPLATE. Substituir com o ficheiro real do Firebase Console.
+  
+  Como obter:
+  1. Firebase Console → https://console.firebase.google.com
+  2. Selecionar projeto Lazzo
+  3. Project Settings (⚙️) → General → Your apps → iOS app
+  4. Click "GoogleService-Info.plist" para download
+  5. Substituir este ficheiro pelo downloaded
+  6. Abrir ios/Runner.xcworkspace no Xcode
+  7. Adicionar GoogleService-Info.plist ao target Runner:
+     - Right-click "Runner" (pasta azul) → Add Files to "Runner"
+     - Selecionar GoogleService-Info.plist
+     - ☑️ "Copy items if needed"
+     - ☑️ Add to target: Runner
+-->
+<plist version="1.0">
+<dict>
+	<key>API_KEY</key>
+	<string>[SUBSTITUIR COM VALOR DO FIREBASE]</string>
+	<key>GCM_SENDER_ID</key>
+	<string>[SUBSTITUIR COM VALOR DO FIREBASE]</string>
+	<key>PLIST_VERSION</key>
+	<string>1</string>
+	<key>BUNDLE_ID</key>
+	<string>com.gmonteiro.lazzo</string>
+	<key>PROJECT_ID</key>
+	<string>[SUBSTITUIR COM VALOR DO FIREBASE]</string>
+	<key>STORAGE_BUCKET</key>
+	<string>[SUBSTITUIR COM VALOR DO FIREBASE]</string>
+	<key>IS_ADS_ENABLED</key>
+	<false/>
+	<key>IS_ANALYTICS_ENABLED</key>
+	<false/>
+	<key>IS_APPINVITE_ENABLED</key>
+	<true/>
+	<key>IS_GCM_ENABLED</key>
+	<true/>
+	<key>IS_SIGNIN_ENABLED</key>
+	<true/>
+	<key>GOOGLE_APP_ID</key>
+	<string>[SUBSTITUIR COM VALOR DO FIREBASE]</string>
+</dict>
+</plist>
