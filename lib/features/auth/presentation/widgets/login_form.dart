@@ -1,11 +1,8 @@
 import 'package:app/features/auth/presentation/widgets/signup_prompt.dart';
 import 'package:flutter/material.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-import '../../../../shared/components/buttons/continue_with.dart';
 import '../../../../shared/components/buttons/green_button.dart';
 import '../../../../shared/constants/spacing.dart';
 import 'email_input.dart';
-import 'or_divider.dart';
 
 class LoginForm extends StatelessWidget {
   final TextEditingController? nameController;
@@ -39,37 +36,38 @@ class LoginForm extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        if (!isLogin) ...[
-          // Social Login Buttons
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: Gaps.sm),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Expanded(
-                  child: ContinueWith(
-                    text: 'Google',
-                    icon: FontAwesomeIcons.google,
-                    onPressed: onGoogleSignIn,
-                  ),
-                ),
-                const SizedBox(width: Gaps.md),
-                Expanded(
-                  child: ContinueWith(
-                    text: 'Apple',
-                    icon: FontAwesomeIcons.apple,
-                    onPressed: onAppleSignIn,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: Gaps.lg),
-
-          // OR Divider
-          const OrDivider(),
-          const SizedBox(height: Gaps.lg),
-        ],
+        // ❌ REMOVED: Google/Apple login buttons (kept params for future use)
+        // if (!isLogin) ...[
+        //   // Social Login Buttons
+        //   Padding(
+        //     padding: const EdgeInsets.symmetric(horizontal: Gaps.sm),
+        //     child: Row(
+        //       mainAxisAlignment: MainAxisAlignment.center,
+        //       children: [
+        //         Expanded(
+        //           child: ContinueWith(
+        //             text: 'Google',
+        //             icon: FontAwesomeIcons.google,
+        //             onPressed: onGoogleSignIn,
+        //           ),
+        //         ),
+        //         const SizedBox(width: Gaps.md),
+        //         Expanded(
+        //           child: ContinueWith(
+        //             text: 'Apple',
+        //             icon: FontAwesomeIcons.apple,
+        //             onPressed: onAppleSignIn,
+        //           ),
+        //         ),
+        //       ],
+        //     ),
+        //   ),
+        //   const SizedBox(height: Gaps.lg),
+        //
+        //   // OR Divider
+        //   const OrDivider(),
+        //   const SizedBox(height: Gaps.lg),
+        // ],
 
         // Email Form
         if (!isLogin) const SizedBox(height: Gaps.md),

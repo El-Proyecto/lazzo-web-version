@@ -10,6 +10,7 @@ import '../widgets/otp_verification/verify_footer.dart';
 import '../widgets/otp_verification/resend_otp_button.dart';
 import '../../../../shared/components/sections/lazzo_header.dart';
 import '../../../../shared/themes/colors.dart';
+import '../../../../shared/constants/spacing.dart';
 
 class OtpVerificationPage extends ConsumerStatefulWidget {
   const OtpVerificationPage({super.key, required this.email, this.name});
@@ -68,24 +69,24 @@ class _OtpVerificationPageState extends ConsumerState<OtpVerificationPage> {
     });
 
     try {
-       // Debug
-      
+      // Debug
+
       // Pass name directly to verifyOtp method
       await _authDatasource.verifyOtp(
-        email: widget.email, 
+        email: widget.email,
         token: _code,
         name: widget.name?.trim(),
       );
 
-       // Debug
+      // Debug
 
       if (!mounted) return;
       Navigator.pushNamedAndRemoveUntil(context, '/main', (_) => false);
     } on AuthException catch (e) {
-       // Debug
+      // Debug
       setState(() => _bannerMessage = e.message);
     } catch (e) {
-       // Debug
+      // Debug
       setState(() => _bannerMessage = 'Erro ao verificar: $e');
     } finally {
       if (mounted) setState(() => _busy = false);
@@ -105,18 +106,17 @@ class _OtpVerificationPageState extends ConsumerState<OtpVerificationPage> {
             children: [
               const LazzoHeader(),
               Padding(
-                padding: const EdgeInsets.all(20),
+                padding: const EdgeInsets.all(Insets.screenH),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     const OtpTitle(),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: Gaps.md),
                     OtpSubtitle(email: widget.email),
-                    const SizedBox(height: 32),
+                    const SizedBox(height: Gaps.xl),
                     OtpCodeBoxes(
                       onCompleted: (code) => setState(() => _code = code),
                     ),
-
                     if (_bannerMessage != null) ...[
                       const SizedBox(height: 24),
                       Container(
@@ -138,7 +138,6 @@ class _OtpVerificationPageState extends ConsumerState<OtpVerificationPage> {
                         ),
                       ),
                     ],
-
                     const SizedBox(height: 48),
                     Column(
                       mainAxisSize: MainAxisSize.min,

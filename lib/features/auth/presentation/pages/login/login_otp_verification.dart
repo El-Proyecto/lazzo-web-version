@@ -8,6 +8,7 @@ import '../../widgets/otp_verification/verify_footer.dart';
 import '../../widgets/otp_verification/resend_otp_button.dart';
 import '../../../../../shared/components/sections/lazzo_header.dart';
 import '../../../../../shared/themes/colors.dart';
+import '../../../../../shared/constants/spacing.dart';
 
 // Auth providers (DI)
 import '../../providers/auth_provider.dart';
@@ -87,14 +88,14 @@ class _LoginOtpVerificationPageState
             children: [
               const LazzoHeader(),
               Padding(
-                padding: const EdgeInsets.all(20),
+                padding: const EdgeInsets.all(Insets.screenH),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     const OtpTitle(),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: Gaps.md),
                     OtpSubtitle(email: widget.email),
-                    const SizedBox(height: 32),
+                    const SizedBox(height: Gaps.xl),
                     OtpCodeBoxes(
                       onCompleted: (code) => setState(() => _code = code),
                     ),
@@ -128,7 +129,8 @@ class _LoginOtpVerificationPageState
                           isEnabled: _code.length == 6 && !_busy,
                         ),
                         const SizedBox(height: 16),
-                        ResendOtpButton(onResend: _busy ? null : _resend, isBusy: _busy),
+                        ResendOtpButton(
+                            onResend: _busy ? null : _resend, isBusy: _busy),
                       ],
                     ),
                   ],

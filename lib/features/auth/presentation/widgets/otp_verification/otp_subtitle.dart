@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../../../../../shared/constants/text_styles.dart';
+import '../../../../../shared/themes/colors.dart';
 
 class OtpSubtitle extends StatelessWidget {
   final String email;
@@ -7,37 +9,22 @@ class OtpSubtitle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return SizedBox(
-      width: 370,
-      child: Text.rich(
-        TextSpan(
-          children: [
-            TextSpan(
-              text: 'We sent a link to ',
-              style: TextStyle(
-                color: theme.colorScheme.onSurface.withValues(alpha: 0.65),
-                fontSize: 16,
-                fontFamily: 'Roboto',
-                fontWeight: FontWeight.w400,
-                height: 1.50,
-                letterSpacing: 0.50,
-              ),
+    return Text.rich(
+      TextSpan(
+        children: [
+          TextSpan(
+            text: 'We sent a code to ',
+            style: AppText.bodyMedium.copyWith(
+              color: BrandColors.text2,
             ),
-            TextSpan(
-              text: email,
-              style: TextStyle(
-                color: theme.colorScheme.onSurface,
-                fontSize: 16,
-                fontFamily: 'Roboto',
-                fontWeight: FontWeight.w400,
-                height: 1.50,
-                letterSpacing: 0.50,
-              ),
+          ),
+          TextSpan(
+            text: email,
+            style: AppText.bodyMediumEmph.copyWith(
+              color: BrandColors.text1,
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

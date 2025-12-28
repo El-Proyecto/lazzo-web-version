@@ -74,7 +74,7 @@ class _AuthPageState extends ConsumerState<AuthPage> {
         );
       }
 
-       // Debug
+      // Debug
 
       Navigator.push(
         context,
@@ -97,31 +97,33 @@ class _AuthPageState extends ConsumerState<AuthPage> {
     }
   }
 
-  Future<void> _handleGoogleSignIn() async {
-    try {
-      setState(() {
-        _isLoading = true;
-        _pendingOAuth = true; // a iniciar OAuth
-      });
+  // ❌ COMMENTED: Google login temporarily disabled
+  // Future<void> _handleGoogleSignIn() async {
+  //   try {
+  //     setState(() {
+  //       _isLoading = true;
+  //       _pendingOAuth = true; // a iniciar OAuth
+  //     });
+  //
+  //     await ref.read(authProvider.notifier).signInWithGoogle();
+  //     // Navegação acontece no listener no build
+  //   } catch (e) {
+  //     _pendingOAuth = false;
+  //     if (mounted) {
+  //       TopBanner.showError(
+  //         context,
+  //         message: 'Google Sign In failed: $e',
+  //       );
+  //     }
+  //   } finally {
+  //     if (mounted) setState(() => _isLoading = false);
+  //   }
+  // }
 
-      await ref.read(authProvider.notifier).signInWithGoogle();
-      // Navegação acontece no listener no build
-    } catch (e) {
-      _pendingOAuth = false;
-      if (mounted) {
-        TopBanner.showError(
-          context,
-          message: 'Google Sign In failed: $e',
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
-    }
-  }
-
-  void _handleAppleSignIn() {
-    // TODO: Implement Apple sign in when needed
-  }
+  // ❌ COMMENTED: Apple login temporarily disabled
+  // void _handleAppleSignIn() {
+  //   // TODO: Implement Apple sign in when needed
+  // }
 
   void _handleLogin() {
     Navigator.pushReplacement(
@@ -174,8 +176,9 @@ class _AuthPageState extends ConsumerState<AuthPage> {
                 onCreateAccount:
                     _canSubmit && !_isLoading ? _handleSubmit : null,
                 isLoading: _isLoading,
-                onGoogleSignIn: _handleGoogleSignIn,
-                onAppleSignIn: _handleAppleSignIn,
+                // ❌ COMMENTED: Social login disabled
+                // onGoogleSignIn: _handleGoogleSignIn,
+                // onAppleSignIn: _handleAppleSignIn,
                 onLoginTap: _handleLogin,
               ),
             ],
