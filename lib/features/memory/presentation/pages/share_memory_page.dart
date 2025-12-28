@@ -360,11 +360,13 @@ class _ShareMemoryPageState extends ConsumerState<ShareMemoryPage> {
       }
 
       if (!mounted) return;
+      if (!context.mounted) return;
       final renderObject = context.findRenderObject();
       final boundary = renderObject as RenderRepaintBoundary?;
 
       if (boundary == null) {
-        if (mounted) {
+        if (!mounted) return;
+        if (context.mounted) {
           setState(() {
             _isGeneratingImage = false;
           });

@@ -437,7 +437,9 @@ class _LocationSectionState extends State<LocationSection>
 
       // Get current position
       final position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+        ),
       );
 
       // Reverse geocode to get address
@@ -1134,7 +1136,9 @@ class _ExpandedLocationPickerState extends State<ExpandedLocationPicker> {
 
       // Get current position
       final position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+        ),
       );
 
       // Reverse geocode to get address

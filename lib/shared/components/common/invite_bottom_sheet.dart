@@ -94,9 +94,11 @@ class InviteBottomSheet extends StatelessWidget {
                     'Join my $entityType "$entityName" on Lazzo!\n\n$inviteUrl';
 
                 try {
-                  await Share.share(
-                    shareText,
-                    subject: 'Join $entityName on Lazzo',
+                  await SharePlus.instance.share(
+                    ShareParams(
+                      text: shareText,
+                      subject: 'Join $entityName on Lazzo',
+                    ),
                   );
                 } catch (e) {
                   if (context.mounted) {

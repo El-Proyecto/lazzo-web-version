@@ -267,16 +267,22 @@ class _EditEventPageState extends ConsumerState<EditEventPage> {
       return false;
     }
 
+    final now = DateTime.now();
+    final startDateTime = DateTime(
+      _selectedDate!.year,
+      _selectedDate!.month,
+      _selectedDate!.day,
+      _selectedTime!.hour,
+      _selectedTime!.minute,
+    );
+
+    // Check if start date/time is in the past
+    if (startDateTime.isBefore(now)) {
+      return false;
+    }
+
     // If end date/time is set, validate that end > start
     if ((_endDate != null && _endTime != null)) {
-      final startDateTime = DateTime(
-        _selectedDate!.year,
-        _selectedDate!.month,
-        _selectedDate!.day,
-        _selectedTime!.hour,
-        _selectedTime!.minute,
-      );
-
       final endDateTime = DateTime(
         _endDate!.year,
         _endDate!.month,
@@ -301,6 +307,20 @@ class _EditEventPageState extends ConsumerState<EditEventPage> {
 
     if (_selectedDate == null || _selectedTime == null) {
       return 'Please set start date and time';
+    }
+
+    // Check if start date/time is in the past
+    final now = DateTime.now();
+    final startDateTime = DateTime(
+      _selectedDate!.year,
+      _selectedDate!.month,
+      _selectedDate!.day,
+      _selectedTime!.hour,
+      _selectedTime!.minute,
+    );
+
+    if (startDateTime.isBefore(now)) {
+      return 'Event date cannot be in the past';
     }
 
     if ((_endDate != null && _endTime != null) && !_isDateTimeValid) {

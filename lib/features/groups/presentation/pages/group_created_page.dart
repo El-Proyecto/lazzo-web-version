@@ -31,7 +31,6 @@ class _GroupCreatedPageState extends ConsumerState<GroupCreatedPage> {
     super.initState();
     qrCodeData = 'https://lazzo.app/groups/${widget.group.id}';
 
-                
     // Salvar QR code no Supabase (funciona como backup se não foi salvo na criação)
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _saveQrCode();
@@ -40,23 +39,20 @@ class _GroupCreatedPageState extends ConsumerState<GroupCreatedPage> {
 
   Future<void> _saveQrCode() async {
     try {
-            
       // Validar se o grupo tem ID
       if (widget.group.id == null || widget.group.id!.isEmpty) {
-                        return;
+        return;
       }
 
       // Se o grupo já tem QR code, não precisamos salvar novamente
       if (widget.group.qrCode != null && widget.group.qrCode!.isNotEmpty) {
-                return;
+        return;
       }
 
       final saveQrCode = ref.read(saveGroupQrCodeProvider);
 
-            await saveQrCode(widget.group.id!, qrCodeData);
-
-          } catch (e) {
-            
+      await saveQrCode(widget.group.id!, qrCodeData);
+    } catch (e) {
       // Não mostrar erro ao usuário, pois o QR code visual ainda funciona
       // O importante é que a funcionalidade visual esteja ok
     }
@@ -138,9 +134,11 @@ class _GroupCreatedPageState extends ConsumerState<GroupCreatedPage> {
                     'Join my group "${widget.group.name}" on Lazzo!\n\n$qrCodeData';
 
                 try {
-                  await Share.share(
-                    shareText,
-                    subject: 'Join ${widget.group.name} on Lazzo',
+                  await SharePlus.instance.share(
+                    ShareParams(
+                      text: shareText,
+                      subject: 'Join ${widget.group.name} on Lazzo',
+                    ),
                   );
                 } catch (e) {
                   // Fallback if share fails

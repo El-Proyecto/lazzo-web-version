@@ -4,6 +4,7 @@ import '../../constants/spacing.dart';
 import '../../constants/text_styles.dart';
 import '../../themes/colors.dart';
 import '../widgets/votes_bottom_sheet.dart';
+import '../widgets/photos_bottom_sheet.dart';
 
 /// Event full card state for group hub
 /// Planning phase: pending (chip bg3) or confirmed (green chip)
@@ -237,9 +238,16 @@ class _EventFullCardState extends State<EventFullCard> {
   }
 
   Widget _buildAttendeeInfo(BuildContext context) {
-    // Show votes bottom sheet when tapping on attendee info
+    // Show photos bottom sheet for Living/Recap, votes for Pending/Confirmed
     return InkWell(
-      onTap: () => _showVotesBottomSheet(context),
+      onTap: () {
+        if (widget.state == EventFullCardState.living ||
+            widget.state == EventFullCardState.recap) {
+          _showPhotosBottomSheet(context);
+        } else {
+          _showVotesBottomSheet(context);
+        }
+      },
       borderRadius: BorderRadius.circular(Radii.sm),
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: Gaps.xxs),
@@ -264,6 +272,15 @@ class _EventFullCardState extends State<EventFullCard> {
           ],
         ),
       ),
+    );
+  }
+
+  void _showPhotosBottomSheet(BuildContext context) {
+    PhotosBottomSheet.show(
+      context: context,
+      participants: _currentEvent.participantPhotos,
+      totalPhotos: _currentEvent.photoCount,
+      maxPhotos: _currentEvent.maxPhotos,
     );
   }
 

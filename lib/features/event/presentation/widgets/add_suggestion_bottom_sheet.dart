@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../../shared/components/inputs/segmented_control.dart';
 import '../../../../shared/components/common/top_banner.dart';
 import '../../../../shared/constants/spacing.dart';
@@ -503,16 +504,118 @@ class _AddSuggestionBottomSheetState
   }
 
   Widget _buildLocationContent() {
-    return _buildLocationInput();
+    if (_selectedLocation != null) {
+      // Show location with address field filled and clear button
+      return _buildLocationWithMap();
+    } else {
+      // Show location input form
+      return _buildLocationInput();
+    }
+  }
+
+  Widget _buildLocationWithMap() {
+    final location = _selectedLocation!;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Location Name Field (Optional)
+        _buildTextField(
+          hintText: 'Location name',
+          icon: Icons.edit_location_alt,
+          controller: _locationNameController,
+          onChanged: (value) => _updateLocationName(value),
+        ),
+
+        const SizedBox(height: Gaps.md),
+
+        // Address field with clear button (full width)
+        Row(
+          children: [
+            Expanded(
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: Pads.ctlH,
+                  vertical: Pads.ctlV,
+                ),
+                decoration: BoxDecoration(
+                  color: BrandColors.bg3,
+                  borderRadius: BorderRadius.circular(Radii.smAlt),
+                  border: Border.all(
+                    color: BrandColors.text2.withValues(alpha: 0.2),
+                    width: 1,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.search,
+                      color: BrandColors.text2,
+                      size: 18,
+                    ),
+                    const SizedBox(width: Gaps.xs),
+                    Expanded(
+                      child: Text(
+                        location.formattedAddress,
+                        style: AppText.bodyMedium.copyWith(
+                          color: BrandColors.text1,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(width: Gaps.xs),
+                    GestureDetector(
+                      onTap: _resetLocationForEditing,
+                      child: const Icon(
+                        Icons.close,
+                        color: BrandColors.text2,
+                        size: 18,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+
+        const SizedBox(height: Gaps.md),
+
+        // Map preview (clickable)
+        GestureDetector(
+          onTap: () => _openInMaps(location),
+          child: Container(
+            width: double.infinity,
+            height: 120,
+            decoration: BoxDecoration(
+              color: BrandColors.bg3,
+              borderRadius: BorderRadius.circular(Radii.smAlt),
+              border: Border.all(
+                color: BrandColors.text2.withValues(alpha: 0.2),
+                width: 1,
+              ),
+            ),
+            child: const Stack(
+              alignment: Alignment.center,
+              children: [
+                Icon(Icons.map, size: 40, color: BrandColors.text2),
+                Icon(Icons.place, size: 30, color: BrandColors.planning),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
   }
 
   Widget _buildLocationInput() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Location name field
+        // Location Name Field (Optional)
         _buildTextField(
-          hintText: 'Location name (optional)',
+          hintText: 'Location name',
           icon: Icons.edit_location_alt,
           controller: _locationNameController,
           onChanged: (value) {
@@ -524,22 +627,50 @@ class _AddSuggestionBottomSheetState
           },
         ),
 
-        const SizedBox(height: Gaps.sm),
+        const SizedBox(height: Gaps.md),
 
-        // Address search field
-        _buildTextField(
-          hintText: 'Search address or place',
-          icon: Icons.search,
-          controller: _addressSearchController,
-          onChanged: (value) {
-            if (_showValidationError) {
-              setState(() {
-                _showValidationError = false;
-              });
-            }
-            _handleAddressSearch(value);
-          },
-          onSubmitted: (value) => _handleEnterKeyPressed(),
+        // Search Address Field with Current Location button
+        Row(
+          children: [
+            Expanded(
+              child: _buildTextField(
+                hintText: 'Search address or place',
+                icon: Icons.search,
+                controller: _addressSearchController,
+                onChanged: (value) {
+                  if (_showValidationError) {
+                    setState(() {
+                      _showValidationError = false;
+                    });
+                  }
+                  _handleAddressSearch(value);
+                },
+                onSubmitted: (value) => _handleEnterKeyPressed(),
+                readOnly: false,
+              ),
+            ),
+            const SizedBox(width: Gaps.sm),
+            // Current Location button
+            GestureDetector(
+              onTap: _useCurrentLocation,
+              child: Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: BrandColors.bg3,
+                  borderRadius: BorderRadius.circular(Radii.smAlt),
+                  border: Border.all(
+                    color: BrandColors.text2.withValues(alpha: 0.2),
+                    width: 1,
+                  ),
+                ),
+                child: const Icon(
+                  Icons.my_location,
+                  color: BrandColors.text1,
+                  size: 20,
+                ),
+              ),
+            ),
+          ],
         ),
 
         // Suggestions list
@@ -548,61 +679,47 @@ class _AddSuggestionBottomSheetState
           _buildSuggestionsList(),
         ],
 
+        // Always show map area
         const SizedBox(height: Gaps.md),
-
-        // Action Buttons
-        Row(
-          children: [
-            Expanded(
-              child: _buildActionButton(
-                icon: Icons.my_location,
-                text: 'Current location',
-                onTap: () => _useCurrentLocation(),
-              ),
-            ),
-            const SizedBox(width: Gaps.sm),
-            Expanded(
-              child: _buildActionButton(
-                icon: Icons.map_outlined,
-                text: 'Pick on map',
-                onTap: () => _pickOnMap(),
-              ),
-            ),
-          ],
-        ),
-
-        // Map preview (always visible)
-        if (_selectedLocation != null) ...[
-          const SizedBox(height: Gaps.md),
-          _buildMapPreview(),
-        ],
-
-        const SizedBox(height: Gaps.lg),
+        _buildMapArea(),
       ],
     );
   }
 
-  Widget _buildMapPreview() {
-    return Container(
-      width: double.infinity,
-      height: 150,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(Radii.sm),
-        border: Border.all(color: BrandColors.border, width: 1),
-        color: BrandColors.bg3,
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Icon(Icons.map, size: 48, color: BrandColors.text2),
-          const SizedBox(height: Gaps.xs),
-          Text(
-            'Map Preview',
-            style: AppText.bodyMedium.copyWith(color: BrandColors.text2),
+  /// Build map area - shows empty state or location map
+  Widget _buildMapArea() {
+    final hasLocation = _selectedLocation != null &&
+        _selectedLocation!.formattedAddress.isNotEmpty;
+
+    return GestureDetector(
+      onTap: hasLocation ? () => _openInMaps(_selectedLocation!) : null,
+      child: Container(
+        width: double.infinity,
+        height: 120,
+        decoration: BoxDecoration(
+          color: BrandColors.bg3,
+          borderRadius: BorderRadius.circular(Radii.smAlt),
+          border: Border.all(
+            color: BrandColors.text2.withValues(alpha: 0.2),
+            width: 1,
           ),
-          // TODO: P2 - Integrate with Google Maps to show actual location preview
-          // TODO: P2 - Add tap functionality to open in external Maps app
-        ],
+        ),
+        child: hasLocation
+            ? const Stack(
+                alignment: Alignment.center,
+                children: [
+                  Icon(Icons.map, size: 40, color: BrandColors.text2),
+                  Icon(Icons.place, size: 30, color: BrandColors.planning),
+                ],
+              )
+            : Center(
+                child: Text(
+                  'Add address first',
+                  style: AppText.bodyMedium.copyWith(
+                    color: BrandColors.text2,
+                  ),
+                ),
+              ),
       ),
     );
   }
@@ -897,52 +1014,74 @@ class _AddSuggestionBottomSheetState
     );
   }
 
-  Widget _buildActionButton({
-    required IconData icon,
-    required String text,
-    required VoidCallback onTap,
-    bool isSecondary = false,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(
-          horizontal: Pads.ctlH - 2,
-          vertical: Pads.ctlV,
-        ),
-        decoration: BoxDecoration(
-          color: BrandColors.bg3,
-          borderRadius: BorderRadius.circular(Radii.sm),
-          border: Border.all(
-            color: isSecondary
-                ? BrandColors.text2.withValues(alpha: 0.3)
-                : BrandColors.planning,
-            width: 1,
-          ),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              icon,
-              color: isSecondary ? BrandColors.text2 : BrandColors.planning,
-              size: 16,
-            ),
-            const SizedBox(width: Gaps.xs),
-            Flexible(
-              child: Text(
-                text,
-                style: AppText.bodyMedium.copyWith(
-                  color: isSecondary ? BrandColors.text1 : BrandColors.planning,
-                  fontWeight: FontWeight.w500,
-                ),
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          ],
-        ),
-      ),
+  void _updateLocationName(String name) {
+    if (_selectedLocation != null) {
+      setState(() {
+        _selectedLocation = LocationInfo(
+          id: _selectedLocation!.id,
+          displayName: name.isEmpty ? null : name,
+          formattedAddress: _selectedLocation!.formattedAddress,
+          latitude: _selectedLocation!.latitude,
+          longitude: _selectedLocation!.longitude,
+        );
+      });
+    }
+  }
+
+  void _resetLocationForEditing() {
+    setState(() {
+      _selectedLocation = null;
+      _locationNameController.clear();
+      _addressSearchController.clear();
+      _showSuggestions = false;
+      _searchResults.clear();
+    });
+  }
+
+  void _openInMaps(LocationInfo location) async {
+    final lat = location.latitude;
+    final lng = location.longitude;
+    final label = Uri.encodeComponent(
+      location.displayName ?? location.formattedAddress,
     );
+
+    final appleMapsUrl =
+        Uri.parse('https://maps.apple.com/?q=$label&ll=$lat,$lng');
+    final googleMapsUrl =
+        Uri.parse('https://www.google.com/maps/search/?api=1&query=$lat,$lng');
+
+    try {
+      if (await canLaunchUrl(appleMapsUrl)) {
+        await launchUrl(appleMapsUrl, mode: LaunchMode.externalApplication);
+      } else if (await canLaunchUrl(googleMapsUrl)) {
+        await launchUrl(googleMapsUrl, mode: LaunchMode.externalApplication);
+      } else {
+        throw 'Could not open maps';
+      }
+    } catch (e) {
+      if (mounted) {
+        TopBanner.showError(
+          context,
+          message: 'Could not open maps app',
+        );
+      }
+    }
+  }
+
+  String _generateLocationNameFromAddress(String address) {
+    final parts = address.split(',').map((s) => s.trim()).toList();
+
+    if (parts.length >= 3) {
+      final area = parts[1];
+      final city = parts[2];
+      return '$area ($city)';
+    } else if (parts.length == 2) {
+      return '${parts[0]} (${parts[1]})';
+    } else if (parts.isNotEmpty) {
+      return parts[0];
+    }
+
+    return 'Selected Location';
   }
 
   Widget _buildSuggestionsList() {
@@ -1227,11 +1366,13 @@ class _AddSuggestionBottomSheetState
   }
 
   void _selectSuggestion(LocationSuggestion suggestion) {
+    String? displayName = _locationNameController.text.isNotEmpty
+        ? _locationNameController.text
+        : _generateLocationNameFromAddress(suggestion.address);
+
     final location = LocationInfo(
       id: suggestion.id,
-      displayName: _locationNameController.text.isNotEmpty
-          ? _locationNameController.text
-          : null,
+      displayName: displayName,
       formattedAddress: suggestion.address,
       latitude: suggestion.latitude,
       longitude: suggestion.longitude,
@@ -1241,13 +1382,12 @@ class _AddSuggestionBottomSheetState
       _selectedLocation = location;
       _showSuggestions = false;
       _searchResults.clear();
-      _showValidationError = false; // Reset validation error
+      _showValidationError = false;
     });
   }
 
   Future<void> _useCurrentLocation() async {
     try {
-      // Check location permissions
       LocationPermission permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
@@ -1262,12 +1402,12 @@ class _AddSuggestionBottomSheetState
         return;
       }
 
-      // Get current position
       final position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+        ),
       );
 
-      // Reverse geocode to get address
       final placemarks = await placemarkFromCoordinates(
         position.latitude,
         position.longitude,
@@ -1275,14 +1415,16 @@ class _AddSuggestionBottomSheetState
 
       if (placemarks.isNotEmpty) {
         final placemark = placemarks.first;
-        final address = _formatAddress(placemark);
+        final formattedAddr = _formatAddress(placemark);
+
+        String? displayName = _locationNameController.text.isNotEmpty
+            ? _locationNameController.text
+            : _generateLocationNameFromAddress(formattedAddr);
 
         final currentLocation = LocationInfo(
           id: 'current-location-${DateTime.now().millisecondsSinceEpoch}',
-          displayName: _locationNameController.text.isNotEmpty
-              ? _locationNameController.text
-              : placemark.name ?? 'Current Location',
-          formattedAddress: address,
+          displayName: displayName,
+          formattedAddress: formattedAddr,
           latitude: position.latitude,
           longitude: position.longitude,
         );
@@ -1323,43 +1465,6 @@ class _AddSuggestionBottomSheetState
         message: message,
       );
     }
-  }
-
-  void _pickOnMap() {
-    // For P1, show dialog about P2 implementation
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: BrandColors.bg2,
-        title: Text(
-          'Pick on Map',
-          style: AppText.titleMediumEmph.copyWith(color: BrandColors.text1),
-        ),
-        content: Text(
-          'Map picking functionality will be implemented in P2 phase. For now, using default location.',
-          style: AppText.bodyMedium.copyWith(color: BrandColors.text2),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: Text(
-              'Cancel',
-              style: AppText.labelLarge.copyWith(color: BrandColors.text2),
-            ),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-              _useCurrentLocation(); // Use default location
-            },
-            child: Text(
-              'Use Default',
-              style: AppText.labelLarge.copyWith(color: BrandColors.planning),
-            ),
-          ),
-        ],
-      ),
-    );
   }
 
   Widget _buildSegmentedControl() {

@@ -82,6 +82,19 @@ class EventDetail {
   /// Returns true when start date is set, regardless of location
   bool get hasDefinedDate => startDateTime != null;
 
+  /// Check if event date has expired
+  /// Returns true when event is in pending status and start date has passed
+  bool get isExpired {
+    final hasStartDate = startDateTime != null;
+
+    if (hasStartDate) {
+                                        }
+
+    if (status != EventStatus.pending) return false;
+    if (startDateTime == null) return false;
+    return DateTime.now().isAfter(startDateTime!);
+  }
+
   /// Planning status for conditional UI rendering
   /// Determines which widgets to show (RSVP vs HelpPlan)
   EventPlanningStatus get planningStatus {

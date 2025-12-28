@@ -105,12 +105,20 @@ class _ConfirmEventBottomSheetState
         throw Exception('Failed to get created event ID');
       }
 
+      // Chamar callback antes de fechar o dialog para garantir execução única
+      final eventId = createdEvent.id;
+
       // Fechar dialog
       if (mounted) {
         Navigator.of(context).pop();
 
-        // Chamar callback com o eventId
-        widget.onEventCreated?.call(createdEvent.id);
+        // Aguardar um frame para garantir que o dialog foi fechado
+        await Future.delayed(const Duration(milliseconds: 100));
+
+        // Chamar callback apenas se ainda montado
+        if (mounted) {
+          widget.onEventCreated?.call(eventId);
+        }
       }
     } catch (e) {
       // Mostrar erro

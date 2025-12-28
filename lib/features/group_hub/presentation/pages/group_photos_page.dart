@@ -86,6 +86,7 @@ class _GroupPhotosPageState extends ConsumerState<GroupPhotosPage> {
             files.add(XFile(filePath));
           }
         } catch (e) {
+          // Ignore individual download failures
         }
       }
 
@@ -101,9 +102,11 @@ class _GroupPhotosPageState extends ConsumerState<GroupPhotosPage> {
       }
 
       // Share the files
-      await Share.shareXFiles(
-        files,
-        text: 'Check out these photos from ${widget.eventName}',
+      await SharePlus.instance.share(
+        ShareParams(
+          text: 'Check out these photos from ${widget.eventName}',
+          files: files,
+        ),
       );
 
       // Exit selection mode after sharing
@@ -154,23 +157,24 @@ class _GroupPhotosPageState extends ConsumerState<GroupPhotosPage> {
             final filePath = path.join(tempDir.path, fileName);
             final file = File(filePath);
             await file.writeAsBytes(response.bodyBytes);
-            
+
             // Save to device gallery using Gal package
             // Android: Saves to Pictures/ folder (visible in Gallery/Photos app)
             // iOS: Saves to Photos app
             try {
               await Gal.putImage(filePath, album: 'Lazzo');
               successCount++;
-                          } catch (e) {
-                            // Gallery permission might be needed, but file is downloaded
+            } catch (e) {
+              // Gallery permission might be needed, but file is downloaded
             }
           }
         } catch (e) {
-                  }
+          // Ignore individual save failures
+        }
       }
 
       if (!mounted) return;
-      
+
       if (successCount > 0) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -337,7 +341,8 @@ class _GroupPhotosPageState extends ConsumerState<GroupPhotosPage> {
                                   ),
                                 );
                               },
-                              loadingBuilder: (context, child, loadingProgress) {
+                              loadingBuilder:
+                                  (context, child, loadingProgress) {
                                 if (loadingProgress == null) return child;
                                 return Container(
                                   color: BrandColors.bg2,
@@ -427,7 +432,8 @@ class _GroupPhotosPageState extends ConsumerState<GroupPhotosPage> {
                                         ),
                                       )
                                     : Row(
-                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
                                         children: [
                                           const Icon(
                                             Icons.ios_share,
@@ -454,7 +460,8 @@ class _GroupPhotosPageState extends ConsumerState<GroupPhotosPage> {
                                 height: 48,
                                 decoration: BoxDecoration(
                                   color: _isProcessing
-                                      ? BrandColors.planning.withValues(alpha: 0.5)
+                                      ? BrandColors.planning
+                                          .withValues(alpha: 0.5)
                                       : BrandColors.planning,
                                   borderRadius: BorderRadius.circular(Radii.md),
                                 ),
@@ -470,7 +477,8 @@ class _GroupPhotosPageState extends ConsumerState<GroupPhotosPage> {
                                         ),
                                       )
                                     : Row(
-                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
                                         children: [
                                           const Icon(
                                             Icons.download_rounded,

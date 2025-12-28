@@ -32,18 +32,18 @@ dependencies:
     sdk: flutter
   supabase_flutter: ^2.10.0
   mocktail: ^1.0.3
-  flutter_riverpod: ^2.5.1
+  flutter_riverpod: ^2.6.1
   http: ^1.4.0
   sign_in_with_apple: ^7.0.1
   font_awesome_flutter: ^10.6.0
   image_picker: ^1.0.7
-  intl: ^0.19.0
+  intl: ^0.20.2
   faker: ^2.1.0
   # Native platform integrations for P2 handoff
   url_launcher: ^6.1.0
-  geocoding: ^3.0.0
+  geocoding: ^4.0.0
   # Location services for current location and map functionality
-  geolocator: ^12.0.0
+  geolocator: ^14.0.2
   google_maps_flutter: ^2.9.0
   # QR Code generation for group invitations
   qr_flutter: ^4.1.0
@@ -51,7 +51,7 @@ dependencies:
   add_2_calendar: ^3.0.1
   # Native share functionality
   shared_preferences: ^2.2.2
-  share_plus: ^10.0.3
+  share_plus: ^12.0.1
   # Image processing and compression
   image: ^4.2.0
   flutter_image_compress: ^2.3.0
@@ -64,8 +64,8 @@ dependencies:
   # Modern alternative to image_gallery_saver with better Android support
   gal: ^2.3.0
   # Push notifications (FCM for Android, APNs for iOS)
-  firebase_core: ^3.8.1
-  firebase_messaging: ^15.1.5
+  firebase_core: ^4.3.0
+  firebase_messaging: ^16.1.0
   integration_test:
     sdk: flutter
   # The following adds the Cupertino Icons font to your application.
