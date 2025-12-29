@@ -5,6 +5,8 @@ import '../../../../shared/components/nav/common_app_bar.dart';
 import '../../../../shared/components/dialogs/confirmation_dialog.dart';
 import '../../../../shared/components/common/top_banner.dart';
 import '../../../../shared/components/common/invite_bottom_sheet.dart';
+import 'package:app/config/app_config.dart';
+import '../../../group_invites/presentation/providers/group_invites_providers.dart';
 import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/constants/text_styles.dart';
 import '../../../../shared/themes/colors.dart';
@@ -223,7 +225,7 @@ class GroupDetailsPage extends ConsumerWidget {
               icon: Icons.person_add_outlined,
               label: 'Invite',
               onTap: () {
-                _showInviteBottomSheet(context);
+                _showInviteBottomSheet(context, ref);
               },
             ),
           ),
@@ -420,18 +422,31 @@ class GroupDetailsPage extends ConsumerWidget {
     );
   }
 
-  void _showInviteBottomSheet(BuildContext context) {
-    // For P1, using fake data
-    final fakeInviteUrl = 'https://lazzo.app/groups/$groupId';
-    final fakeGroupName =
-        'Group Name'; // This will be replaced with real data in P2
+  void _showInviteBottomSheet(BuildContext context, WidgetRef ref) async {
+    try {
+      final createInvite = ref.read(createGroupInviteLinkProvider);
+      final result = await createInvite.call(groupId: groupId);
 
-    InviteBottomSheet.show(
-      context: context,
-      inviteUrl: fakeInviteUrl,
-      entityName: fakeGroupName,
-      entityType: 'group',
-    );
+      final inviteUrl = '${AppConfig.invitesBaseUrl}/invite/${result.token}';
+      final groupName = ref.read(groupDetailsProvider(groupId)).value?.name ?? 'Group Name';
+
+      InviteBottomSheet.show(
+        context: context,
+        inviteUrl: inviteUrl,
+        entityName: groupName,
+        entityType: 'group',
+      );
+    } catch (e) {
+      // Fallback to simple URL if RPC fails
+      final fallback = '${AppConfig.invitesBaseUrl}/invite';
+      InviteBottomSheet.show(
+        context: context,
+        inviteUrl: fallback,
+        entityName: ref.read(groupDetailsProvider(groupId)).value?.name ?? 'Group Name',
+        entityType: 'group',
+      );
+      TopBanner.showInfo(context, message: 'Unable to generate invite link');
+    }
   }
 
   void _showLeaveGroupDialog(BuildContext context, WidgetRef ref) {

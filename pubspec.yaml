@@ -38,6 +38,8 @@ dependencies:
   intl: ^0.20.2
   # Native platform integrations for P2 handoff
   url_launcher: ^6.1.0
+  app_links: ^6.4.1
+  # uni_links removed in favor of app_links
   geocoding: ^4.0.0
   # Location services for current location and map functionality
   geolocator: ^14.0.2

@@ -5,6 +5,9 @@ import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/components/nav/common_app_bar.dart';
 import '../../../../shared/components/inputs/search_bar.dart' as custom;
 import '../../../../shared/components/cards/group_card.dart';
+import 'package:app/config/app_config.dart';
+import 'package:app/features/group_invites/presentation/providers/group_invites_providers.dart';
+import 'package:app/shared/components/common/invite_bottom_sheet.dart';
 import '../widgets/group_context_menu.dart';
 import '../../../../shared/models/group_enums.dart';
 import '../../../../shared/components/chips/filter_chip.dart';
@@ -351,7 +354,51 @@ class _GroupsPageState extends ConsumerState<GroupsPage>
   }
 
   void _handleInvite(String groupId) {
-    // TODO: Implement invite functionality
+    // Create invite link and show bottom sheet
+    try {
+      final createInvite = ref.read(createGroupInviteLinkProvider);
+      // fire-and-forget: create invite then show bottom sheet
+      createInvite.call(groupId: groupId).then((result) {
+        final inviteUrl = '${AppConfig.invitesBaseUrl}/invite/${result.token}';
+        final groupsAsync = _selectedFilter == GroupFilter.archived
+            ? ref.read(archivedGroupsProvider)
+            : ref.read(groupsProvider);
+        final groups = groupsAsync.value ?? [];
+        final group = groups.firstWhere(
+          (g) => g.id == groupId,
+          orElse: () => const Group(
+            id: '',
+            name: '',
+            status: GroupStatus.active,
+            memberCount: 0,
+          ),
+        );
+
+        InviteBottomSheet.show(
+          context: context,
+          inviteUrl: inviteUrl,
+          entityName: group.name.isNotEmpty ? group.name : 'Group',
+          entityType: 'group',
+        );
+      }).catchError((_) {
+        // fallback: show basic invite path
+        final inviteUrl = '${AppConfig.invitesBaseUrl}/invite';
+        InviteBottomSheet.show(
+          context: context,
+          inviteUrl: inviteUrl,
+          entityName: 'Group',
+          entityType: 'group',
+        );
+      });
+    } catch (e) {
+      final inviteUrl = '${AppConfig.invitesBaseUrl}/invite';
+      InviteBottomSheet.show(
+        context: context,
+        inviteUrl: inviteUrl,
+        entityName: 'Group',
+        entityType: 'group',
+      );
+    }
   }
 
   // MVP: Actions removed, preserved for P2 implementation

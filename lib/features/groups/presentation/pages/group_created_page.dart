@@ -3,6 +3,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:app/config/app_config.dart';
+import 'package:app/features/group_invites/presentation/providers/group_invites_providers.dart';
 
 import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/constants/text_styles.dart';
@@ -29,15 +31,16 @@ class _GroupCreatedPageState extends ConsumerState<GroupCreatedPage> {
   @override
   void initState() {
     super.initState();
-    qrCodeData = 'https://lazzo.app/groups/${widget.group.id}';
+    // Default/fallback invite URL
+    qrCodeData = '${AppConfig.invitesBaseUrl}/invite';
 
     // Salvar QR code no Supabase (funciona como backup se não foi salvo na criação)
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _saveQrCode();
+      _createInviteAndSaveQrCode();
     });
   }
 
-  Future<void> _saveQrCode() async {
+  Future<void> _createInviteAndSaveQrCode() async {
     try {
       // Validar se o grupo tem ID
       if (widget.group.id == null || widget.group.id!.isEmpty) {
@@ -49,8 +52,17 @@ class _GroupCreatedPageState extends ConsumerState<GroupCreatedPage> {
         return;
       }
 
-      final saveQrCode = ref.read(saveGroupQrCodeProvider);
+      try {
+        final createInvite = ref.read(createGroupInviteLinkProvider);
+        final result = await createInvite.call(groupId: widget.group.id!);
+        // Build full invite URL and save
+        qrCodeData = '${AppConfig.invitesBaseUrl}/invite/${result.token}';
+      } catch (_) {
+        // Fallback: use simple invite path including group ID
+        qrCodeData = '${AppConfig.invitesBaseUrl}/groups/${widget.group.id}';
+      }
 
+      final saveQrCode = ref.read(saveGroupQrCodeProvider);
       await saveQrCode(widget.group.id!, qrCodeData);
     } catch (e) {
       // Não mostrar erro ao usuário, pois o QR code visual ainda funciona
