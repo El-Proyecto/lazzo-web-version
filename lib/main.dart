@@ -1,12 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
 import 'env.dart';
 
 import 'package:app/app.dart';
-import 'services/push_notification_service.dart';
 
 // MEMORY (Home recent memories - different from manage_memory)
 import '../features/home/data/data_sources/memory_remote_data_source.dart';
@@ -14,10 +11,13 @@ import '../features/home/data/repositories/memory_repository_impl.dart';
 import '../features/home/presentation/providers/memory_providers.dart';
 
 // MEMORY MANAGEMENT (upload & manage photos)
-import '../features/memory/presentation/providers/memory_providers.dart' as memory_manage;
-import '../features/memory/data/data_sources/memory_data_source.dart' as memory_ds;
+import '../features/memory/presentation/providers/memory_providers.dart'
+    as memory_manage;
+import '../features/memory/data/data_sources/memory_data_source.dart'
+    as memory_ds;
 import '../features/memory/data/data_sources/memory_photo_data_source.dart';
-import '../features/memory/data/repositories/memory_repository_impl.dart' as memory_repo;
+import '../features/memory/data/repositories/memory_repository_impl.dart'
+    as memory_repo;
 import '../services/storage_service.dart';
 
 // HOME EVENTS
@@ -144,16 +144,6 @@ import '../features/settings/data/repositories/suggestion_repository_impl.dart'
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Inicialização do Firebase (MUST be before Supabase)
-  try {
-    await Firebase.initializeApp();
-        
-    // Register background message handler
-    FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
-      } catch (e) {
-        // Continue anyway - push won't work but app should still function
-  }
-
   // Inicialização do Supabase
   try {
     await Supabase.initialize(
@@ -163,8 +153,8 @@ void main() async {
         authFlowType: AuthFlowType.pkce, // garante fluxo mobile correto
       ),
     );
-      } catch (e) {
-        rethrow;
+  } catch (e) {
+    rethrow;
   }
   runApp(
     ProviderScope(
@@ -190,7 +180,8 @@ void main() async {
           // Get user ID from auth state
           final userId = client.auth.currentUser?.id;
           if (userId == null) {
-            throw Exception('User must be authenticated to fetch recent memories');
+            throw Exception(
+                'User must be authenticated to fetch recent memories');
           }
           final dataSource = RecentMemoryDataSource(client);
           final storageService = StorageService(client);
@@ -331,7 +322,8 @@ void main() async {
         eventExpenseRepositoryProvider.overrideWith((ref) {
           final client = Supabase.instance.client;
           final notificationService = ref.watch(notificationServiceProvider);
-          final dataSource = EventExpenseRemoteDataSource(client, notificationService);
+          final dataSource =
+              EventExpenseRemoteDataSource(client, notificationService);
           return EventExpenseRepositoryImpl(dataSource);
         }),
 
