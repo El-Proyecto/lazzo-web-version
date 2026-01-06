@@ -1,9 +1,9 @@
 // lib/app.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:app/routes/app_router.dart';
-import 'package:app/shared/themes/app_theme.dart';
-import 'package:app/features/auth/presentation/providers/auth_provider.dart';
+import 'package:lazzo/routes/app_router.dart';
+import 'package:lazzo/shared/themes/app_theme.dart';
+import 'package:lazzo/features/auth/presentation/providers/auth_provider.dart';
 
 class LazzoApp extends ConsumerStatefulWidget {
   const LazzoApp({super.key});
@@ -18,6 +18,7 @@ class _LazzoAppState extends ConsumerState<LazzoApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      title: 'Lazzo',
       navigatorKey: _navigatorKey,
       theme: buildDarkTheme(),
       darkTheme: buildDarkTheme(),

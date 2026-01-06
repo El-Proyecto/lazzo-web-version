@@ -1,19 +1,19 @@
 import 'package:mocktail/mocktail.dart';
 
 // Auth Feature Mocks
-import 'package:app/features/auth/domain/repositories/auth_repository.dart';
+import 'package:lazzo/features/auth/domain/repositories/auth_repository.dart';
 
 // Home Feature Mocks
-import 'package:app/features/home/domain/repositories/memory_repository.dart';
+import 'package:lazzo/features/home/domain/repositories/memory_repository.dart';
 
 // Create Event Feature Mocks
-import 'package:app/features/create_event/domain/repositories/event_repository.dart';
+import 'package:lazzo/features/create_event/domain/repositories/event_repository.dart';
 
 // Groups Feature Mocks
-import 'package:app/features/groups/domain/repositories/group_repository.dart';
+import 'package:lazzo/features/groups/domain/repositories/group_repository.dart';
 
 // Profile Feature Mocks
-import 'package:app/features/profile/domain/repositories/profile_repository.dart';
+import 'package:lazzo/features/profile/domain/repositories/profile_repository.dart';
 
 /// Mock repository classes for testing
 ///

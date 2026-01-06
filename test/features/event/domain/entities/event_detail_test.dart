@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:app/features/event/domain/entities/event_detail.dart';
+import 'package:lazzo/features/event/domain/entities/event_detail.dart';
 
 void main() {
   group('EventDetail Planning Status', () {

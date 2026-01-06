@@ -3,11 +3,11 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 // Ajusta estes imports para os teus paths reais:
-import 'package:app/features/create_event/presentation/pages/create_event_page.dart';
-import 'package:app/features/create_event/presentation/widgets/confirm_event_dialog.dart';
-import 'package:app/features/groups/presentation/providers/groups_provider.dart';
-import 'package:app/features/groups/domain/entities/group.dart';
-import 'package:app/shared/models/group_enums.dart';
+import 'package:lazzo/features/create_event/presentation/pages/create_event_page.dart';
+import 'package:lazzo/features/create_event/presentation/widgets/confirm_event_dialog.dart';
+import 'package:lazzo/features/groups/presentation/providers/groups_provider.dart';
+import 'package:lazzo/features/groups/domain/entities/group.dart';
+import 'package:lazzo/shared/models/group_enums.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();

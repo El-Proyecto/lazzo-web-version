@@ -1,4 +1,4 @@
-import 'package:app/features/auth/presentation/widgets/signup_prompt.dart';
+import 'package:lazzo/features/auth/presentation/widgets/signup_prompt.dart';
 import 'package:flutter/material.dart';
 import '../../../../shared/components/buttons/green_button.dart';
 import '../../../../shared/constants/spacing.dart';
