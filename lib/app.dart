@@ -1,12 +1,17 @@
 // lib/app.dart
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:app_links/app_links.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:lazzo/routes/app_router.dart';
 import 'package:lazzo/shared/themes/app_theme.dart';
 import 'package:lazzo/features/auth/presentation/providers/auth_provider.dart';
 import 'package:lazzo/shared/components/loading/app_loading_screen.dart';
 import 'package:lazzo/features/home/presentation/providers/home_event_providers.dart';
 import 'package:lazzo/features/groups/presentation/providers/groups_provider.dart';
+import 'package:lazzo/config/app_config.dart';
+import 'package:lazzo/features/group_invites/presentation/providers/accept_group_invites_providers.dart';
 
 class LazzoApp extends ConsumerStatefulWidget {
   const LazzoApp({super.key});

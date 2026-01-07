@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter/foundation.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:share_plus/share_plus.dart';
-import 'package:app/config/app_config.dart';
-import 'package:app/features/group_invites/presentation/providers/group_invites_providers.dart';
+import 'package:lazzo/config/app_config.dart';
+import 'package:lazzo/features/group_invites/presentation/providers/group_invites_providers.dart';
 
 import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/constants/text_styles.dart';

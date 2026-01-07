@@ -1,14 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter/foundation.dart';
 import '../../../../shared/themes/colors.dart';
 import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/components/nav/common_app_bar.dart';
 import '../../../../shared/components/inputs/search_bar.dart' as custom;
 import '../../../../shared/components/cards/group_card.dart';
-import 'package:app/config/app_config.dart';
-import 'package:app/features/group_invites/presentation/providers/group_invites_providers.dart';
-import 'package:app/shared/components/common/invite_bottom_sheet.dart';
+import 'package:lazzo/config/app_config.dart';
+import 'package:lazzo/features/group_invites/presentation/providers/group_invites_providers.dart';
+import 'package:lazzo/shared/components/common/invite_bottom_sheet.dart';
 import '../widgets/group_context_menu.dart';
 import '../../../../shared/models/group_enums.dart';
 import '../../../../shared/components/chips/filter_chip.dart';
@@ -354,49 +353,42 @@ class _GroupsPageState extends ConsumerState<GroupsPage>
     ).pushNamed('/create-event', arguments: {'groupId': groupId});
   }
 
-  void _handleInvite(String groupId) {
+  void _handleInvite(String groupId) async {
     // Create invite link and show bottom sheet
     try {
       final createInvite = ref.read(createGroupInviteLinkProvider);
-      // fire-and-forget: create invite then show bottom sheet
-      createInvite.call(groupId: groupId).then((result) {
-        debugPrint('CreateGroupInvite result token: ${result.token}');
-        final inviteUrl = '${AppConfig.invitesBaseUrl}/i/${result.token}';
-        debugPrint('Built inviteUrl: $inviteUrl');
-        final groupsAsync = _selectedFilter == GroupFilter.archived
-            ? ref.read(archivedGroupsProvider)
-            : ref.read(groupsProvider);
-        final groups = groupsAsync.value ?? [];
-        final group = groups.firstWhere(
-          (g) => g.id == groupId,
-          orElse: () => const Group(
-            id: '',
-            name: '',
-            status: GroupStatus.active,
-            memberCount: 0,
-          ),
-        );
+      final result = await createInvite.call(groupId: groupId);
+      
+      debugPrint('CreateGroupInvite result token: ${result.token}');
+      final inviteUrl = '${AppConfig.invitesBaseUrl}/i/${result.token}';
+      debugPrint('Built inviteUrl: $inviteUrl');
+      
+      final groupsAsync = _selectedFilter == GroupFilter.archived
+          ? ref.read(archivedGroupsProvider)
+          : ref.read(groupsProvider);
+      final groups = groupsAsync.value ?? [];
+      final group = groups.firstWhere(
+        (g) => g.id == groupId,
+        orElse: () => const Group(
+          id: '',
+          name: '',
+          status: GroupStatus.active,
+          memberCount: 0,
+        ),
+      );
 
-        InviteBottomSheet.show(
-          context: context,
-          inviteUrl: inviteUrl,
-          entityName: group.name.isNotEmpty ? group.name : 'Group',
-          entityType: 'group',
-        );
-      }).catchError((error) {
-        // fallback: show basic invite path
-        debugPrint('CreateGroupInvite failed, using fallback invite path');
-        final inviteUrl = '${AppConfig.invitesBaseUrl}/i';
-        InviteBottomSheet.show(
-          context: context,
-          inviteUrl: inviteUrl,
-          entityName: 'Group',
-          entityType: 'group',
-        );
-      });
+      if (!mounted) return;
+      InviteBottomSheet.show(
+        context: context,
+        inviteUrl: inviteUrl,
+        entityName: group.name.isNotEmpty ? group.name : 'Group',
+        entityType: 'group',
+      );
     } catch (e) {
-      debugPrint('Exception creating invite, showing fallback invite path');
+      // fallback: show basic invite path
+      debugPrint('CreateGroupInvite failed or exception, using fallback invite path: $e');
       final inviteUrl = '${AppConfig.invitesBaseUrl}/i';
+      if (!mounted) return;
       InviteBottomSheet.show(
         context: context,
         inviteUrl: inviteUrl,

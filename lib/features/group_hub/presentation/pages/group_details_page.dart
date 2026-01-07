@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter/foundation.dart';
 import '../../../../routes/app_router.dart';
 import '../../../../shared/components/nav/common_app_bar.dart';
 import '../../../../shared/components/dialogs/confirmation_dialog.dart';
 import '../../../../shared/components/common/top_banner.dart';
 import '../../../../shared/components/common/invite_bottom_sheet.dart';
-import 'package:app/config/app_config.dart';
+import 'package:lazzo/config/app_config.dart';
 import '../../../group_invites/presentation/providers/group_invites_providers.dart';
 import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/constants/text_styles.dart';
@@ -433,6 +432,7 @@ class GroupDetailsPage extends ConsumerWidget {
       debugPrint('Built inviteUrl (group details): $inviteUrl');
       final groupName = ref.read(groupDetailsProvider(groupId)).value?.name ?? 'Group Name';
 
+      if (!context.mounted) return;
       InviteBottomSheet.show(
         context: context,
         inviteUrl: inviteUrl,
@@ -443,12 +443,14 @@ class GroupDetailsPage extends ConsumerWidget {
       // Fallback to simple URL if RPC fails
       debugPrint('Create invite failed in group details; using fallback');
       final fallback = '${AppConfig.invitesBaseUrl}/i';
+      if (!context.mounted) return;
       InviteBottomSheet.show(
         context: context,
         inviteUrl: fallback,
         entityName: ref.read(groupDetailsProvider(groupId)).value?.name ?? 'Group Name',
         entityType: 'group',
       );
+      if (!context.mounted) return;
       TopBanner.showInfo(context, message: 'Unable to generate invite link');
     }
   }

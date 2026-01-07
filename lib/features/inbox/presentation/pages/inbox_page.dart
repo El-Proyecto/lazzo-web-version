@@ -476,34 +476,38 @@ class _InboxPageState extends ConsumerState<InboxPage>
         // Wait for tab switch to complete
         await Future.delayed(const Duration(milliseconds: 600));
         
+        if (!mounted) return;
+        
         // Try to find and show the payment details bottom sheet if expenseId exists
-        if (notification.expenseId != null && mounted) {
-          await _tryShowExpenseBottomSheet(context, notification.expenseId!);
+        if (notification.expenseId != null) {
+          await _tryShowExpenseBottomSheet(notification.expenseId!);
         }
       } else {
         // For active events (pending/confirmed/living), navigate to event page
-        if (mounted) {
-          Navigator.pushNamed(
-            context,
-            '/event',
-            arguments: {'eventId': eventId},
-          );
-        }
-      }
-    } catch (e) {
-      // On error, fallback to navigating to event
-      if (mounted) {
+        if (!mounted) return;
+        // Safe: mounted check performed immediately above, no await between check and usage
+        // ignore: use_build_context_synchronously
         Navigator.pushNamed(
           context,
           '/event',
           arguments: {'eventId': eventId},
         );
       }
+    } catch (e) {
+      // On error, fallback to navigating to event
+      if (!mounted) return;
+      // Safe: mounted check performed immediately above, no await between check and usage
+      // ignore: use_build_context_synchronously
+      Navigator.pushNamed(
+        context,
+        '/event',
+        arguments: {'eventId': eventId},
+      );
     }
   }
 
   /// Try to show expense bottom sheet for a specific expenseId
-  Future<void> _tryShowExpenseBottomSheet(BuildContext context, String expenseId) async {
+  Future<void> _tryShowExpenseBottomSheet(String expenseId) async {
     // Force refresh providers to ensure we have latest data
     await ref.read(paymentsOwedToUserProvider.notifier).refresh();
     await ref.read(paymentsUserOwesProvider.notifier).refresh();
@@ -576,6 +580,8 @@ class _InboxPageState extends ConsumerState<InboxPage>
       totalAmount: userPayments.fold(0.0, (sum, p) => sum + p.amount),
       isOwedToUser: isOwedToUser,
     );
+    
+    if (!mounted) return;
     
     // Show bottom sheet
     await PaymentDetailsBottomSheet.show(
