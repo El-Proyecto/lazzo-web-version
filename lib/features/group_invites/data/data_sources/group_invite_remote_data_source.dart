@@ -11,33 +11,89 @@ class GroupInviteRemoteDataSource {
     int? maxUses,
     int expiresInHours = 48,
   }) async {
+    
     final response = await _client.rpc(
-      'create_group_invite_link',
+      'get_or_create_group_invite_link',
       params: {
         'p_group_id': groupId,
-        'p_max_uses': maxUses,
         'p_expires_in_hours': expiresInHours,
       },
     );
 
-    if (response is List && response.isNotEmpty) {
-      final data = response.first as Map<String, dynamic>;
-      return GroupInviteLinkModel.fromJson(data);
+    Map<String, dynamic>? data;
+
+    try {
+      if (response is List && response.isNotEmpty) {
+        final first = response.first;
+        if (first is Map<String, dynamic>) {
+          data = first;
+        } else if (first is Map) {
+          data = Map<String, dynamic>.from(first);
+        } else if (first is String) {
+          data = {
+            'token': first,
+            'expires_at': DateTime.now()
+                .add(Duration(hours: expiresInHours))
+                .toIso8601String()
+          };
+        }
+      } else if (response is Map<String, dynamic>) {
+        data = response;
+      } else if (response is Map) {
+        data = Map<String, dynamic>.from(response);
+      } else if (response is String && response.isNotEmpty) {
+        data = {
+          'token': response,
+          'expires_at': DateTime.now()
+              .add(Duration(hours: expiresInHours))
+              .toIso8601String()
+        };
+      }
+    } catch (e) {
+      // Error during parsing
     }
 
-    throw Exception('Failed to create invite link');
+    if (data != null && data.containsKey('token')) {
+      final model = GroupInviteLinkModel.fromJson(data);
+      return model;
+    }
+
+    throw Exception('Failed to get or create invite link — unexpected RPC response: $response');
   }
 
   Future<String> acceptInviteByToken(String token) async {
-    final response = await _client.rpc(
-      'accept_group_invite_by_token',
-      params: {'p_token': token},
-    );
+    
+    try {
+      final response = await _client.rpc(
+        'accept_group_invite_by_token',
+        params: {'p_token': token},
+      );
 
-    if (response is String && response.isNotEmpty) {
-      return response;
+
+      // Common shapes: plain string groupId, list with map, or map
+      if (response is String && response.isNotEmpty) {
+        return response;
+      }
+
+      if (response is List && response.isNotEmpty) {
+        final first = response.first;
+        if (first is String && first.isNotEmpty) {
+          return first;
+        }
+        if (first is Map && first.containsKey('group_id')) {
+          final groupId = first['group_id'] as String;
+          return groupId;
+        }
+      }
+
+      if (response is Map && response.containsKey('group_id')) {
+        final groupId = response['group_id'] as String;
+        return groupId;
+      }
+
+      throw Exception('Failed to accept invite — unexpected RPC response');
+    } catch (e) {
+      rethrow;
     }
-
-    throw Exception('Failed to accept invite');
   }
 }

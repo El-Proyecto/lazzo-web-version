@@ -13,8 +13,6 @@ class AuthRemoteDatasource {
 
       // Verifica se o usuário existe antes de enviar OTP
 
-      print('Verifying existence of user with email: $trimmedEmail');
-
       final existingUser = await client
           .from('users')
           .select('id')
@@ -26,8 +24,6 @@ class AuthRemoteDatasource {
           'User Not Found. Please register before logging in.',
         );
       }
-
-      print('User exists. Sending OTP to email: $trimmedEmail');
 
       // Envia OTP apenas para usuários existentes
       await client.auth.signInWithOtp(

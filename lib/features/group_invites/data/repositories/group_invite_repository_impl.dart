@@ -19,7 +19,8 @@ class GroupInviteRepositoryImpl implements GroupInviteRepository {
         maxUses: maxUses,
         expiresInHours: expiresInHours,
       );
-      return model.toEntity();
+      final entity = model.toEntity();
+      return entity;
     } catch (e) {
       throw Exception('Failed to create invite link: $e');
     }
@@ -28,7 +29,8 @@ class GroupInviteRepositoryImpl implements GroupInviteRepository {
   @override
   Future<String> acceptInviteByToken(String token) async {
     try {
-      return await _dataSource.acceptInviteByToken(token);
+      final groupId = await _dataSource.acceptInviteByToken(token);
+      return groupId;
     } catch (e) {
       throw Exception('Failed to accept invite: $e');
     }

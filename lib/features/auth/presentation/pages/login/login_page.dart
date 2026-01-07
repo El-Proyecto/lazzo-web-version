@@ -49,11 +49,8 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     try {
       final authNotifier = ref.read(authProvider.notifier);
 
-      print('Attempting login for email: $email');
       // Envia o código OTP
       await authNotifier.login(email);
-
-      print('Login OTP sent for email: $email');
       
       if (!mounted) return;
 

@@ -64,14 +64,21 @@ class _LazzoAppState extends ConsumerState<LazzoApp> {
   Future<void> _handleInitialAppLink() async {
     try {
       final initial = await (_appLinks as dynamic).getInitialAppLink();
-      if (initial != null) _handleIncomingLink(Uri.parse(initial.toString()));
-    } catch (_) {}
+      if (initial != null) {
+        _handleIncomingLink(Uri.parse(initial.toString()));
+      }
+    } catch (e) {
+      debugPrint('Error getting initial link: $e');
+    }
   }
 
   Future<void> _handleIncomingLink(Uri uri) async {
     try {
       final segments = uri.pathSegments;
-      if (segments.isEmpty) return;
+      
+      if (segments.isEmpty) {
+        return;
+      }
 
       // Support /i/<token> and /invite/<token>
       if (segments.length >= 2 && (segments[0] == 'i' || segments[0] == 'invite')) {
@@ -97,7 +104,9 @@ class _LazzoAppState extends ConsumerState<LazzoApp> {
           }
         }
       }
-    } catch (_) {}
+    } catch (e) {
+      debugPrint('ERROR handling incoming link: $e');
+    }
   }
 }
 

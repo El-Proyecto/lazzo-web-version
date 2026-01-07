@@ -67,6 +67,9 @@ class _NoUpcomingEventsCardState extends State<NoUpcomingEventsCard> {
 
   void _updateFadeVisibility() {
     if (!mounted) return;
+    
+    // Check if controller is attached before accessing position
+    if (!_scrollController.hasClients) return;
 
     final position = _scrollController.position;
     setState(() {

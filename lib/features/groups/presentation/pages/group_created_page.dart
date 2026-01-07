@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/foundation.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:app/config/app_config.dart';
@@ -32,7 +33,7 @@ class _GroupCreatedPageState extends ConsumerState<GroupCreatedPage> {
   void initState() {
     super.initState();
     // Default/fallback invite URL
-    qrCodeData = '${AppConfig.invitesBaseUrl}/invite';
+    qrCodeData = '${AppConfig.invitesBaseUrl}/i';
 
     // Salvar QR code no Supabase (funciona como backup se não foi salvo na criação)
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -55,9 +56,11 @@ class _GroupCreatedPageState extends ConsumerState<GroupCreatedPage> {
       try {
         final createInvite = ref.read(createGroupInviteLinkProvider);
         final result = await createInvite.call(groupId: widget.group.id!);
+        debugPrint('CreateGroupInvite result token: ${result.token}');
         // Build full invite URL and save
-        qrCodeData = '${AppConfig.invitesBaseUrl}/invite/${result.token}';
-      } catch (_) {
+        qrCodeData = '${AppConfig.invitesBaseUrl}/i/${result.token}';
+        debugPrint('QR code data set to: $qrCodeData');
+      } catch (e) {
         // Fallback: use simple invite path including group ID
         qrCodeData = '${AppConfig.invitesBaseUrl}/groups/${widget.group.id}';
       }
