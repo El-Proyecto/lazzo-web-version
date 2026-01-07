@@ -1,4 +1,4 @@
-import 'package:app/features/auth/presentation/widgets/login_form.dart';
+import 'package:lazzo/features/auth/presentation/widgets/login_form.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../../shared/components/common/top_banner.dart';

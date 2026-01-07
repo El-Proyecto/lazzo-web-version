@@ -1,5 +1,5 @@
-name: app
-description: "A new Flutter project."
+name: lazzo
+description: "Lazzo - Connect, share memories, and live unforgettable moments together."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
@@ -61,9 +61,6 @@ dependencies:
   # Save images/videos to device gallery (Android & iOS)
   # Modern alternative to image_gallery_saver with better Android support
   gal: ^2.3.0
-  # Push notifications (FCM for Android, APNs for iOS)
-  firebase_core: ^4.3.0
-  firebase_messaging: ^16.1.0
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
@@ -76,6 +73,8 @@ dev_dependencies:
   faker: ^2.1.0
   integration_test:
     sdk: flutter
+  # Icon generation for all platforms
+  flutter_launcher_icons: ^0.13.1
 
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is
@@ -98,6 +97,7 @@ flutter:
   # To add assets to your application, add an assets section, like this:
   assets:
     - assets/wallpaper.jpg
+    - assets/app_icon_background.png
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
@@ -124,3 +124,18 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
+
+# Flutter Launcher Icons configuration
+flutter_launcher_icons:
+  android: true
+  ios: true
+  web:
+    generate: true
+    image_path: "assets/app_icon.png"
+    background_color: "#121212"
+    theme_color: "#169C3E"
+  image_path: "assets/app_icon.png"
+  adaptive_icon_background: "#121212"
+  adaptive_icon_foreground: "assets/app_icon.png"
+  min_sdk_android: 21
+  remove_alpha_ios: true

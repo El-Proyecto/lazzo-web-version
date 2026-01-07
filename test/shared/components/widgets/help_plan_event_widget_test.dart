@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:app/shared/components/widgets/help_plan_event_widget.dart';
+import 'package:lazzo/shared/components/widgets/help_plan_event_widget.dart';
 
 void main() {
   group('HelpPlanEventWidget', () {

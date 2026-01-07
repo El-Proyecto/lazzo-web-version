@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:app/shared/components/dialogs/missing_fields_confirmation_dialog.dart';
+import 'package:lazzo/shared/components/dialogs/missing_fields_confirmation_dialog.dart';
 
 void main() {
   group('MissingFieldsConfirmationDialog', () {

@@ -1,17 +1,12 @@
 // lib/app.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:app/routes/app_router.dart';
-import 'package:app/shared/themes/app_theme.dart';
-import 'package:app/features/auth/presentation/providers/auth_provider.dart';
-import 'package:app/config/app_config.dart';
-import 'package:app/features/group_invites/presentation/providers/accept_group_invites_providers.dart';
-//import 'package:app/services/notification_service.dart';
-
-// Deep link packages
-import 'dart:async';
-import 'package:app_links/app_links.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:lazzo/routes/app_router.dart';
+import 'package:lazzo/shared/themes/app_theme.dart';
+import 'package:lazzo/features/auth/presentation/providers/auth_provider.dart';
+import 'package:lazzo/shared/components/loading/app_loading_screen.dart';
+import 'package:lazzo/features/home/presentation/providers/home_event_providers.dart';
+import 'package:lazzo/features/groups/presentation/providers/groups_provider.dart';
 
 class LazzoApp extends ConsumerStatefulWidget {
   const LazzoApp({super.key});
@@ -28,6 +23,7 @@ class _LazzoAppState extends ConsumerState<LazzoApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      title: 'Lazzo',
       navigatorKey: _navigatorKey,
       theme: buildDarkTheme(),
       darkTheme: buildDarkTheme(),
@@ -111,6 +107,7 @@ class _LazzoAppState extends ConsumerState<LazzoApp> {
 }
 
 /// Widget que gerencia a navegação baseada no estado de autenticação
+/// e aguarda o carregamento inicial dos dados da home
 class AuthWrapper extends ConsumerWidget {
   const AuthWrapper({super.key});
 
@@ -119,40 +116,45 @@ class AuthWrapper extends ConsumerWidget {
     final authState = ref.watch(authProvider);
 
     return authState.when(
-      loading: () => const Scaffold(
-        body: Center(
-          child: CircularProgressIndicator(),
-        ),
-      ),
+      loading: () => const AppLoadingScreen(),
       error: (error, stackTrace) {
         // Em caso de erro, vai para a página de auth
         WidgetsBinding.instance.addPostFrameCallback((_) {
           Navigator.of(context).pushReplacementNamed(AppRouter.auth);
         });
-        return const Scaffold(
-          body: Center(
-            child: CircularProgressIndicator(),
-          ),
-        );
+        return const AppLoadingScreen();
       },
       data: (user) {
-        // Se o usuário está logado, vai para o layout principal
         // Se não está logado, vai para a página de auth
-        if (user != null) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            Navigator.of(context).pushReplacementNamed(AppRouter.mainLayout);
-          });
-        } else {
+        if (user == null) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             Navigator.of(context).pushReplacementNamed(AppRouter.auth);
           });
+          return const AppLoadingScreen();
         }
 
-        return const Scaffold(
-          body: Center(
-            child: CircularProgressIndicator(),
-          ),
-        );
+        // Se o usuário está logado, aguarda carregamento inicial dos dados
+        final nextEventAsync = ref.watch(nextEventControllerProvider);
+        final confirmedEventsAsync =
+            ref.watch(confirmedEventsControllerProvider);
+        final groupsAsync = ref.watch(groupsProvider);
+
+        // Verifica se os dados principais ainda estão carregando
+        final isLoadingHomeData = nextEventAsync.isLoading ||
+            confirmedEventsAsync.isLoading ||
+            groupsAsync.isLoading;
+
+        if (isLoadingHomeData) {
+          // Mantém loading screen enquanto dados da home carregam
+          return const AppLoadingScreen();
+        }
+
+        // Dados carregados, navega para mainLayout
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          Navigator.of(context).pushReplacementNamed(AppRouter.mainLayout);
+        });
+
+        return const AppLoadingScreen();
       },
     );
   }
