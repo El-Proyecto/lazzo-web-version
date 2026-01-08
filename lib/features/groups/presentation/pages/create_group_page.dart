@@ -221,7 +221,6 @@ class _CreateGroupPageState extends ConsumerState<CreateGroupPage> {
             } else {
               // Navigate to Group Created page
               // Store navigator before any potential async work
-              print('[CreateGroup] Navigating to GroupCreatedPage with group: ${createdGroup.id}');
               final navigator = Navigator.of(context);
               if (!mounted) return;
               navigator.pushNamed(

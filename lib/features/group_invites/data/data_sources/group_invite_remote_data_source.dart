@@ -20,12 +20,9 @@ class GroupInviteRemoteDataSource {
     if (cached != null) {
       final cacheAge = DateTime.now().difference(cached.cachedAt);
       if (cacheAge.inMinutes < 5 && cached.model.expiresAt.isAfter(DateTime.now())) {
-        print('[GroupInviteDataSource] Using cached token for group $groupId');
         return cached.model;
       }
     }
-
-    print('[GroupInviteDataSource] Calling RPC get_or_create_group_invite_link for group $groupId');
     
     try {
       // Call RPC to get or create token
@@ -36,9 +33,6 @@ class GroupInviteRemoteDataSource {
           'p_expires_in_hours': expiresInHours,
         },
       );
-
-      print('[GroupInviteDataSource] RPC response type: ${response.runtimeType}');
-      print('[GroupInviteDataSource] RPC response: $response');
 
       Map<String, dynamic>? data;
 
@@ -71,7 +65,6 @@ class GroupInviteRemoteDataSource {
           };
         }
       } catch (e) {
-        print('[GroupInviteDataSource] Parse error: $e');
         throw Exception('Failed to parse invite link response: $e');
       }
 
@@ -80,21 +73,17 @@ class GroupInviteRemoteDataSource {
         
         // Validate token is URL-safe
         if (model.token.contains('/') || model.token.contains('+') || model.token.contains('=')) {
-          print('[GroupInviteDataSource] Token has non-URL-safe chars: ${model.token}');
           throw Exception('Invalid token format: contains non-URL-safe characters');
         }
         
         // Cache the result
         _cache[groupId] = (model: model, cachedAt: DateTime.now());
-        print('[GroupInviteDataSource] Token created/retrieved successfully: ${model.token}');
         
         return model;
       }
 
-      print('[GroupInviteDataSource] No token in response: $response');
       throw Exception('Failed to get or create invite link — unexpected RPC response: $response');
     } catch (e) {
-      print('[GroupInviteDataSource] RPC call failed: $e');
       rethrow;
     }
   }

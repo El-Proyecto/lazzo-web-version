@@ -82,8 +82,6 @@ class AppRouter {
     groupCreated: (context) {
       final args =
           ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
-      print('[AppRouter] GroupCreated route - args: $args');
-      print('[AppRouter] Group from args: ${args['group']}');
       return GroupCreatedPage(group: args['group']);
     },
     createEvent: (context) => const CreateEventPage(),

@@ -361,7 +361,6 @@ class _GroupsPageState extends ConsumerState<GroupsPage>
       // fire-and-forget: create invite then show bottom sheet
       createInvite.call(groupId: groupId).then((result) {
         final inviteUrl = '${AppConfig.invitesBaseUrl}/i/${result.token}';
-        print('[GroupsPage] Invite URL with token: $inviteUrl');
         
         final groupsAsync = _selectedFilter == GroupFilter.archived
             ? ref.read(archivedGroupsProvider)
@@ -384,10 +383,8 @@ class _GroupsPageState extends ConsumerState<GroupsPage>
           entityType: 'group',
         );
       }).catchError((error) {
-        print('[GroupsPage] ERROR creating invite link: $error');
         // fallback: use group ID path
         final inviteUrl = '${AppConfig.invitesBaseUrl}/groups/$groupId';
-        print('[GroupsPage] Using fallback URL: $inviteUrl');
         
         InviteBottomSheet.show(
           context: context,
@@ -397,9 +394,7 @@ class _GroupsPageState extends ConsumerState<GroupsPage>
         );
       });
     } catch (e) {
-      print('[GroupsPage] Exception creating invite: $e');
       final inviteUrl = '${AppConfig.invitesBaseUrl}/groups/$groupId';
-      print('[GroupsPage] Using fallback URL: $inviteUrl');
       
       InviteBottomSheet.show(
         context: context,
