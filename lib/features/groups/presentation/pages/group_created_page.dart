@@ -32,42 +32,83 @@ class _GroupCreatedPageState extends ConsumerState<GroupCreatedPage> {
   @override
   void initState() {
     super.initState();
+    print('[GroupCreated] ========== INIT STATE CALLED ==========');
+    print('[GroupCreated] Widget group: ${widget.group}');
+    
     // Default/fallback invite URL
     qrCodeData = '${AppConfig.invitesBaseUrl}/i';
 
     // Salvar QR code no Supabase (funciona como backup se não foi salvo na criação)
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      print('[GroupCreated] PostFrameCallback executing...');
       _createInviteAndSaveQrCode();
     });
   }
 
   Future<void> _createInviteAndSaveQrCode() async {
+    print('[GroupCreated] === FUNCTION CALLED ===');
+    print('[GroupCreated] Group ID: ${widget.group.id}');
+    print('[GroupCreated] Existing QR code: ${widget.group.qrCode}');
+    
     try {
       // Validar se o grupo tem ID
       if (widget.group.id == null || widget.group.id!.isEmpty) {
+        print('[GroupCreated] ABORT: Group has no ID');
         return;
       }
 
-      // Se o grupo já tem QR code, não precisamos salvar novamente
+      // Se o grupo já tem QR code, verificar se é o formato antigo ou novo
       if (widget.group.qrCode != null && widget.group.qrCode!.isNotEmpty) {
-        return;
+        // Se já tem token (formato novo), não precisamos regenerar
+        if (widget.group.qrCode!.contains('/i/')) {
+          print('[GroupCreated] ABORT: Group already has QR code with token');
+          return;
+        }
+        // Tem QR code mas é formato antigo (sem token), vamos substituir
+        print('[GroupCreated] Group has old format QR code, will replace with token-based');
       }
+
+      print('[GroupCreated] Proceeding to create invite link...');
 
       try {
+        // Small delay to ensure group_members insert is committed
+        await Future.delayed(const Duration(milliseconds: 500));
+        
+        print('[GroupCreated] Delay complete, calling RPC...');
         final createInvite = ref.read(createGroupInviteLinkProvider);
         final result = await createInvite.call(groupId: widget.group.id!);
 
-        // Build full invite URL and save
-        qrCodeData = '${AppConfig.invitesBaseUrl}/i/${result.token}';
-        debugPrint('QR code data set to: $qrCodeData');
+        // Build full invite URL and update UI
+        final newQrCodeData = '${AppConfig.invitesBaseUrl}/i/${result.token}';
+        print('[GroupCreated] QR code with token: $newQrCodeData');
+        
+        // Update state to rebuild UI with new QR code
+        if (mounted) {
+          setState(() {
+            qrCodeData = newQrCodeData;
+          });
+          print('[GroupCreated] UI updated with token-based QR code');
+        }
       } catch (e) {
+        print('[GroupCreated] ERROR creating invite link: $e');
+        print('[GroupCreated] Error type: ${e.runtimeType}');
         // Fallback: use simple invite path including group ID
-        qrCodeData = '${AppConfig.invitesBaseUrl}/groups/${widget.group.id}';
+        final fallbackUrl = '${AppConfig.invitesBaseUrl}/groups/${widget.group.id}';
+        print('[GroupCreated] Using fallback URL: $fallbackUrl');
+        
+        if (mounted) {
+          setState(() {
+            qrCodeData = fallbackUrl;
+          });
+        }
       }
 
+      print('[GroupCreated] Saving QR code to database...');
       final saveQrCode = ref.read(saveGroupQrCodeProvider);
       await saveQrCode(widget.group.id!, qrCodeData);
+      print('[GroupCreated] QR code saved successfully');
     } catch (e) {
+      print('[GroupCreated] OUTER CATCH: $e');
       // Não mostrar erro ao usuário, pois o QR code visual ainda funciona
       // O importante é que a funcionalidade visual esteja ok
     }
@@ -193,6 +234,8 @@ class _ShareLinkSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    print('[GroupCreated] _ShareLinkSection - linkUrl: $linkUrl');
+    
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(Insets.screenH),
@@ -293,6 +336,8 @@ class _QrCodeSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    print('[GroupCreated] _QrCodeSection - QR code data: $data');
+    
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(Gaps.md),

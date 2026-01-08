@@ -431,6 +431,8 @@ class GroupDetailsPage extends ConsumerWidget {
       final inviteUrl = '${AppConfig.invitesBaseUrl}/i/${result.token}';
       final groupName = ref.read(groupDetailsProvider(groupId)).value?.name ?? 'Group Name';
 
+      print('[GroupDetails] Invite URL with token: $inviteUrl');
+
       InviteBottomSheet.show(
         context: context,
         inviteUrl: inviteUrl,
@@ -438,15 +440,18 @@ class GroupDetailsPage extends ConsumerWidget {
         entityType: 'group',
       );
     } catch (e) {
-      // Fallback to simple URL if RPC fails
-      final fallback = '${AppConfig.invitesBaseUrl}/i';
+      print('[GroupDetails] ERROR creating invite link: $e');
+      // Fallback: use group ID path (backend can handle this)
+      final fallback = '${AppConfig.invitesBaseUrl}/groups/$groupId';
+      print('[GroupDetails] Using fallback URL: $fallback');
+      
       InviteBottomSheet.show(
         context: context,
         inviteUrl: fallback,
         entityName: ref.read(groupDetailsProvider(groupId)).value?.name ?? 'Group Name',
         entityType: 'group',
       );
-      TopBanner.showInfo(context, message: 'Unable to generate invite link');
+      TopBanner.showInfo(context, message: 'Using temporary invite link');
     }
   }
 

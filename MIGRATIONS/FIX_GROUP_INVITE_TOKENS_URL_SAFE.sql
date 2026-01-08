@@ -216,6 +216,58 @@ GRANT EXECUTE ON FUNCTION get_or_create_group_invite_link(UUID, INTEGER) TO auth
 GRANT EXECUTE ON FUNCTION accept_group_invite_by_token(TEXT) TO authenticated;
 
 -- =====================================================
+-- PART 5.5: RLS Policies (CRITICAL for INSERT to work)
+-- =====================================================
+
+-- Check if RLS is enabled
+DO $$
+BEGIN
+  -- Enable RLS if not already enabled
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_tables 
+    WHERE schemaname = 'public' 
+    AND tablename = 'group_invite_links' 
+    AND rowsecurity = true
+  ) THEN
+    ALTER TABLE group_invite_links ENABLE ROW LEVEL SECURITY;
+  END IF;
+END $$;
+
+-- Drop existing restrictive policies if they block our RPC
+DROP POLICY IF EXISTS "authenticated_can_insert_via_rpc" ON group_invite_links;
+DROP POLICY IF EXISTS "members_can_read_own_group_invites" ON group_invite_links;
+
+-- Policy 1: Allow authenticated users to insert (RPC validates membership)
+CREATE POLICY "authenticated_can_insert_via_rpc" ON group_invite_links
+  FOR INSERT 
+  TO authenticated
+  WITH CHECK (true);
+
+-- Policy 2: Allow members to read their own group's invite links
+CREATE POLICY "members_can_read_own_group_invites" ON group_invite_links
+  FOR SELECT 
+  TO authenticated
+  USING (
+    group_id IN (
+      SELECT group_id FROM group_members WHERE user_id = auth.uid()
+    )
+  );
+
+-- Policy 3: Allow creator to update/revoke their own links
+CREATE POLICY "creator_can_update_own_invites" ON group_invite_links
+  FOR UPDATE
+  TO authenticated
+  USING (created_by = auth.uid())
+  WITH CHECK (created_by = auth.uid());
+
+-- Policy 3: Allow creator to update/revoke their own links
+CREATE POLICY "creator_can_update_own_invites" ON group_invite_links
+  FOR UPDATE
+  TO authenticated
+  USING (created_by = auth.uid())
+  WITH CHECK (created_by = auth.uid());
+
+-- =====================================================
 -- PART 6: Optional - Revoke old non-URL-safe tokens
 -- =====================================================
 

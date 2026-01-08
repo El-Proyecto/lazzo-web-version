@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter/foundation.dart';
+//import 'package:flutter/foundation.dart';
 import '../../../../shared/themes/colors.dart';
 import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/components/nav/common_app_bar.dart';
@@ -361,6 +361,8 @@ class _GroupsPageState extends ConsumerState<GroupsPage>
       // fire-and-forget: create invite then show bottom sheet
       createInvite.call(groupId: groupId).then((result) {
         final inviteUrl = '${AppConfig.invitesBaseUrl}/i/${result.token}';
+        print('[GroupsPage] Invite URL with token: $inviteUrl');
+        
         final groupsAsync = _selectedFilter == GroupFilter.archived
             ? ref.read(archivedGroupsProvider)
             : ref.read(groupsProvider);
@@ -382,8 +384,11 @@ class _GroupsPageState extends ConsumerState<GroupsPage>
           entityType: 'group',
         );
       }).catchError((error) {
-        // fallback: show basic invite path
-        final inviteUrl = '${AppConfig.invitesBaseUrl}/i';
+        print('[GroupsPage] ERROR creating invite link: $error');
+        // fallback: use group ID path
+        final inviteUrl = '${AppConfig.invitesBaseUrl}/groups/$groupId';
+        print('[GroupsPage] Using fallback URL: $inviteUrl');
+        
         InviteBottomSheet.show(
           context: context,
           inviteUrl: inviteUrl,
@@ -392,8 +397,10 @@ class _GroupsPageState extends ConsumerState<GroupsPage>
         );
       });
     } catch (e) {
-      debugPrint('Exception creating invite, showing fallback invite path');
-      final inviteUrl = '${AppConfig.invitesBaseUrl}/i';
+      print('[GroupsPage] Exception creating invite: $e');
+      final inviteUrl = '${AppConfig.invitesBaseUrl}/groups/$groupId';
+      print('[GroupsPage] Using fallback URL: $inviteUrl');
+      
       InviteBottomSheet.show(
         context: context,
         inviteUrl: inviteUrl,
