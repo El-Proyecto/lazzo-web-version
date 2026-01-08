@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter/foundation.dart';
+//import 'package:flutter/foundation.dart';
 import '../../../../routes/app_router.dart';
 import '../../../../shared/components/nav/common_app_bar.dart';
 import '../../../../shared/components/dialogs/confirmation_dialog.dart';
@@ -428,9 +428,7 @@ class GroupDetailsPage extends ConsumerWidget {
     try {
       final createInvite = ref.read(createGroupInviteLinkProvider);
       final result = await createInvite.call(groupId: groupId);
-      debugPrint('CreateGroupInvite result token: ${result.token}');
       final inviteUrl = '${AppConfig.invitesBaseUrl}/i/${result.token}';
-      debugPrint('Built inviteUrl (group details): $inviteUrl');
       final groupName = ref.read(groupDetailsProvider(groupId)).value?.name ?? 'Group Name';
 
       InviteBottomSheet.show(
@@ -441,7 +439,6 @@ class GroupDetailsPage extends ConsumerWidget {
       );
     } catch (e) {
       // Fallback to simple URL if RPC fails
-      debugPrint('Create invite failed in group details; using fallback');
       final fallback = '${AppConfig.invitesBaseUrl}/i';
       InviteBottomSheet.show(
         context: context,

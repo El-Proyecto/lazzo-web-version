@@ -56,7 +56,7 @@ class _GroupCreatedPageState extends ConsumerState<GroupCreatedPage> {
       try {
         final createInvite = ref.read(createGroupInviteLinkProvider);
         final result = await createInvite.call(groupId: widget.group.id!);
-        debugPrint('CreateGroupInvite result token: ${result.token}');
+
         // Build full invite URL and save
         qrCodeData = '${AppConfig.invitesBaseUrl}/i/${result.token}';
         debugPrint('QR code data set to: $qrCodeData');

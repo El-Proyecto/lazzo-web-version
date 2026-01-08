@@ -360,9 +360,7 @@ class _GroupsPageState extends ConsumerState<GroupsPage>
       final createInvite = ref.read(createGroupInviteLinkProvider);
       // fire-and-forget: create invite then show bottom sheet
       createInvite.call(groupId: groupId).then((result) {
-        debugPrint('CreateGroupInvite result token: ${result.token}');
         final inviteUrl = '${AppConfig.invitesBaseUrl}/i/${result.token}';
-        debugPrint('Built inviteUrl: $inviteUrl');
         final groupsAsync = _selectedFilter == GroupFilter.archived
             ? ref.read(archivedGroupsProvider)
             : ref.read(groupsProvider);
@@ -385,7 +383,6 @@ class _GroupsPageState extends ConsumerState<GroupsPage>
         );
       }).catchError((error) {
         // fallback: show basic invite path
-        debugPrint('CreateGroupInvite failed, using fallback invite path');
         final inviteUrl = '${AppConfig.invitesBaseUrl}/i';
         InviteBottomSheet.show(
           context: context,
