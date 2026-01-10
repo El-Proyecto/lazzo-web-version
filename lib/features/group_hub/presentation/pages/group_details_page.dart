@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+//import 'package:flutter/foundation.dart';
 import '../../../../routes/app_router.dart';
 import '../../../../shared/components/nav/common_app_bar.dart';
 import '../../../../shared/components/dialogs/confirmation_dialog.dart';
@@ -427,9 +428,7 @@ class GroupDetailsPage extends ConsumerWidget {
     try {
       final createInvite = ref.read(createGroupInviteLinkProvider);
       final result = await createInvite.call(groupId: groupId);
-      debugPrint('CreateGroupInvite result token: ${result.token}');
       final inviteUrl = '${AppConfig.invitesBaseUrl}/i/${result.token}';
-      debugPrint('Built inviteUrl (group details): $inviteUrl');
       final groupName = ref.read(groupDetailsProvider(groupId)).value?.name ?? 'Group Name';
 
       if (!context.mounted) return;
@@ -440,18 +439,16 @@ class GroupDetailsPage extends ConsumerWidget {
         entityType: 'group',
       );
     } catch (e) {
-      // Fallback to simple URL if RPC fails
-      debugPrint('Create invite failed in group details; using fallback');
-      final fallback = '${AppConfig.invitesBaseUrl}/i';
-      if (!context.mounted) return;
+      // Fallback: use group ID path (backend can handle this)
+      final fallback = '${AppConfig.invitesBaseUrl}/groups/$groupId';
+      
       InviteBottomSheet.show(
         context: context,
         inviteUrl: fallback,
         entityName: ref.read(groupDetailsProvider(groupId)).value?.name ?? 'Group Name',
         entityType: 'group',
       );
-      if (!context.mounted) return;
-      TopBanner.showInfo(context, message: 'Unable to generate invite link');
+      TopBanner.showInfo(context, message: 'Using temporary invite link');
     }
   }
 

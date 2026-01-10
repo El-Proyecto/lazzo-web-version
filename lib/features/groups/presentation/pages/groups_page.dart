@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+//import 'package:flutter/foundation.dart';
 import '../../../../shared/themes/colors.dart';
 import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/components/nav/common_app_bar.dart';
@@ -357,38 +358,44 @@ class _GroupsPageState extends ConsumerState<GroupsPage>
     // Create invite link and show bottom sheet
     try {
       final createInvite = ref.read(createGroupInviteLinkProvider);
-      final result = await createInvite.call(groupId: groupId);
-      
-      debugPrint('CreateGroupInvite result token: ${result.token}');
-      final inviteUrl = '${AppConfig.invitesBaseUrl}/i/${result.token}';
-      debugPrint('Built inviteUrl: $inviteUrl');
-      
-      final groupsAsync = _selectedFilter == GroupFilter.archived
-          ? ref.read(archivedGroupsProvider)
-          : ref.read(groupsProvider);
-      final groups = groupsAsync.value ?? [];
-      final group = groups.firstWhere(
-        (g) => g.id == groupId,
-        orElse: () => const Group(
-          id: '',
-          name: '',
-          status: GroupStatus.active,
-          memberCount: 0,
-        ),
-      );
+      // fire-and-forget: create invite then show bottom sheet
+      createInvite.call(groupId: groupId).then((result) {
+        final inviteUrl = '${AppConfig.invitesBaseUrl}/i/${result.token}';
+        
+        final groupsAsync = _selectedFilter == GroupFilter.archived
+            ? ref.read(archivedGroupsProvider)
+            : ref.read(groupsProvider);
+        final groups = groupsAsync.value ?? [];
+        final group = groups.firstWhere(
+          (g) => g.id == groupId,
+          orElse: () => const Group(
+            id: '',
+            name: '',
+            status: GroupStatus.active,
+            memberCount: 0,
+          ),
+        );
 
-      if (!mounted) return;
-      InviteBottomSheet.show(
-        context: context,
-        inviteUrl: inviteUrl,
-        entityName: group.name.isNotEmpty ? group.name : 'Group',
-        entityType: 'group',
-      );
+        InviteBottomSheet.show(
+          context: context,
+          inviteUrl: inviteUrl,
+          entityName: group.name.isNotEmpty ? group.name : 'Group',
+          entityType: 'group',
+        );
+      }).catchError((error) {
+        // fallback: use group ID path
+        final inviteUrl = '${AppConfig.invitesBaseUrl}/groups/$groupId';
+        
+        InviteBottomSheet.show(
+          context: context,
+          inviteUrl: inviteUrl,
+          entityName: 'Group',
+          entityType: 'group',
+        );
+      });
     } catch (e) {
-      // fallback: show basic invite path
-      debugPrint('CreateGroupInvite failed or exception, using fallback invite path: $e');
-      final inviteUrl = '${AppConfig.invitesBaseUrl}/i';
-      if (!mounted) return;
+      final inviteUrl = '${AppConfig.invitesBaseUrl}/groups/$groupId';
+      
       InviteBottomSheet.show(
         context: context,
         inviteUrl: inviteUrl,

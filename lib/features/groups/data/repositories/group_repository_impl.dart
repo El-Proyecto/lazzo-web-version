@@ -28,11 +28,10 @@ class GroupRepositoryImpl implements GroupRepository {
       // Converter entidade para formato do data source (nova estrutura)
       final groupData = GroupEntityModel.toDataSourceFormat(group, user.id);
       
-      // Gerar QR code e group URL desde a criação
-      final tempGroupId = 'temp_${DateTime.now().millisecondsSinceEpoch}';
-      final qrCodeData = 'https://lazzo.app/groups/$tempGroupId';
-      groupData['qr_code'] = qrCodeData;
-      groupData['group_url'] = qrCodeData;
+      // DON'T generate QR code here - let GroupCreatedPage handle it with token
+      // This allows the page to create proper invite links with URL-safe tokens
+      // groupData['qr_code'] = null;
+      // groupData['group_url'] = null;
       
             
       // Handle photo upload BEFORE creating group in database
@@ -64,11 +63,10 @@ class GroupRepositoryImpl implements GroupRepository {
       // Criar grupo
       final createdGroupData = await _dataSource.createGroup(user.id, groupData);
       
-      // Atualizar QR code com ID real
+      // Don't update QR code here - let GroupCreatedPage create it with token
       final realGroupId = createdGroupData['id'].toString();
-      final realQrCodeData = 'https://lazzo.app/groups/$realGroupId';
-      
-            await _dataSource.saveGroupQrCode(realGroupId, realQrCodeData);
+      // final realQrCodeData = 'https://lazzo.app/groups/$realGroupId';
+      // await _dataSource.saveGroupQrCode(realGroupId, realQrCodeData);
       
       // If we uploaded a photo with temporary ID, we need to move it to the correct group folder
       if (uploadedPhotoPath != null && uploadedPhotoPath.contains('temp_')) {
@@ -92,9 +90,9 @@ class GroupRepositoryImpl implements GroupRepository {
         }
       }
 
-      // Certificar que a resposta tem QR code atualizado
-      createdGroupData['qr_code'] = realQrCodeData;
-      createdGroupData['group_url'] = realQrCodeData;
+      // Don't set QR code in response - let GroupCreatedPage handle it
+      // createdGroupData['qr_code'] = realQrCodeData;
+      // createdGroupData['group_url'] = realQrCodeData;
       
       // Converter resposta para entidade
       return GroupEntityModel.fromJson(createdGroupData);

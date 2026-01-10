@@ -31,6 +31,7 @@ class _GroupCreatedPageState extends ConsumerState<GroupCreatedPage> {
   @override
   void initState() {
     super.initState();
+    
     // Default/fallback invite URL
     qrCodeData = '${AppConfig.invitesBaseUrl}/i';
 
@@ -47,21 +48,40 @@ class _GroupCreatedPageState extends ConsumerState<GroupCreatedPage> {
         return;
       }
 
-      // Se o grupo já tem QR code, não precisamos salvar novamente
+      // Se o grupo já tem QR code, verificar se é o formato antigo ou novo
       if (widget.group.qrCode != null && widget.group.qrCode!.isNotEmpty) {
-        return;
+        // Se já tem token (formato novo), não precisamos regenerar
+        if (widget.group.qrCode!.contains('/i/')) {
+          return;
+        }
+        // Tem QR code mas é formato antigo (sem token), vamos substituir
       }
 
       try {
+        // Small delay to ensure group_members insert is committed
+        await Future.delayed(const Duration(milliseconds: 500));
+        
         final createInvite = ref.read(createGroupInviteLinkProvider);
         final result = await createInvite.call(groupId: widget.group.id!);
-        debugPrint('CreateGroupInvite result token: ${result.token}');
-        // Build full invite URL and save
-        qrCodeData = '${AppConfig.invitesBaseUrl}/i/${result.token}';
-        debugPrint('QR code data set to: $qrCodeData');
+
+        // Build full invite URL and update UI
+        final newQrCodeData = '${AppConfig.invitesBaseUrl}/i/${result.token}';
+        
+        // Update state to rebuild UI with new QR code
+        if (mounted) {
+          setState(() {
+            qrCodeData = newQrCodeData;
+          });
+        }
       } catch (e) {
         // Fallback: use simple invite path including group ID
-        qrCodeData = '${AppConfig.invitesBaseUrl}/groups/${widget.group.id}';
+        final fallbackUrl = '${AppConfig.invitesBaseUrl}/groups/${widget.group.id}';
+        
+        if (mounted) {
+          setState(() {
+            qrCodeData = fallbackUrl;
+          });
+        }
       }
 
       final saveQrCode = ref.read(saveGroupQrCodeProvider);
