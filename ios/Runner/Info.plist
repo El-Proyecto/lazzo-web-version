@@ -24,8 +24,29 @@
 	<string>????</string>
 	<key>CFBundleVersion</key>
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>googlemaps</string>
+		<string>comgooglemaps</string>
+		<string>google.navigation</string>
+		<string>maps</string>
+		<string>waze</string>
+		<string>geo</string>
+		<string>http</string>
+		<string>https</string>
+	</array>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSCalendarsUsageDescription</key>
+	<string>Este app precisa de acesso ao calendário para adicionar eventos.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Este app precisa de acesso à câmera para tirar fotos das memórias do evento.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Este app precisa de acesso à sua localização para definir a localização do evento automaticamente.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Este app precisa de permissão para guardar fotos das memórias do evento.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Este app precisa de acesso às suas fotos para escolher imagens para as memórias do evento.</string>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>UILaunchStoryboardName</key>
@@ -45,35 +66,5 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
-	<!-- Configurações para abrir Google Maps e outras apps de mapas -->
-	<key>LSApplicationQueriesSchemes</key>
-	<array>
-		<!-- Google Maps -->
-		<string>googlemaps</string>
-		<string>comgooglemaps</string>
-		<string>google.navigation</string>
-		<!-- Apple Maps (built-in) -->
-		<string>maps</string>
-		<!-- Waze -->
-		<string>waze</string>
-		<!-- Generic schemes -->
-		<string>geo</string>
-		<!-- Web fallback -->
-		<string>http</string>
-		<string>https</string>
-	</array>
-	<!-- Permissões de localização para funcionalidade Current Location -->
-	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>Este app precisa de acesso à sua localização para definir a localização do evento automaticamente.</string>
-	<!-- Permissões para adicionar eventos ao calendário -->
-	<key>NSCalendarsUsageDescription</key>
-	<string>Este app precisa de acesso ao calendário para adicionar eventos.</string>
-	<!-- Permissões para câmera e fotos -->
-	<key>NSCameraUsageDescription</key>
-	<string>Este app precisa de acesso à câmera para tirar fotos das memórias do evento.</string>
-	<key>NSPhotoLibraryUsageDescription</key>
-	<string>Este app precisa de acesso às suas fotos para escolher imagens para as memórias do evento.</string>
-	<key>NSPhotoLibraryAddUsageDescription</key>
-	<string>Este app precisa de permissão para guardar fotos das memórias do evento.</string>
 </dict>
 </plist>
