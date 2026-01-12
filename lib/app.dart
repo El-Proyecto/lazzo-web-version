@@ -22,8 +22,8 @@ class LazzoApp extends ConsumerStatefulWidget {
 
 class _LazzoAppState extends ConsumerState<LazzoApp> {
   final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
-  late final dynamic _appLinks;
-  StreamSubscription<dynamic>? _appLinksSub;
+  late final AppLinks _appLinks;
+  StreamSubscription<Uri>? _uriLinkSub;
 
   @override
   Widget build(BuildContext context) {
@@ -43,70 +43,98 @@ class _LazzoAppState extends ConsumerState<LazzoApp> {
   void initState() {
     super.initState();
     _appLinks = AppLinks();
-    _handleInitialAppLink();
 
-    try {
-      final stream = (_appLinks as dynamic).appLinksStream as Stream<dynamic>?;
-      if (stream != null) {
-        _appLinksSub = stream.listen((dynamic link) {
-          if (link != null) _handleIncomingLink(Uri.parse(link.toString()));
-        }, onError: (_) {});
-      }
-    } catch (_) {
-      // If the runtime API differs, we silently ignore subscription setup.
-    }
+    // Handle initial link (cold start)
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _handleInitialLink();
+    });
+
+    // Listen to incoming links (warm start)
+    _uriLinkSub = _appLinks.uriLinkStream.listen(
+      _handleIncomingLink,
+      onError: (error) {
+        debugPrint('[DeepLinks] Error on uri stream: $error');
+      },
+    );
   }
 
   @override
   void dispose() {
-    _appLinksSub?.cancel();
+    _uriLinkSub?.cancel();
     super.dispose();
   }
-  Future<void> _handleInitialAppLink() async {
+
+  /// Handles initial link on cold start
+  Future<void> _handleInitialLink() async {
     try {
-      final initial = await (_appLinks as dynamic).getInitialAppLink();
-      if (initial != null) {
-        _handleIncomingLink(Uri.parse(initial.toString()));
+      final initialLink = await _appLinks.getInitialLink();
+      if (initialLink != null) {
+        debugPrint('[DeepLinks] Initial link received: $initialLink');
+        _handleIncomingLink(initialLink);
       }
     } catch (e) {
-      debugPrint('Error getting initial link: $e');
+      debugPrint('[DeepLinks] Error getting initial link: $e');
     }
   }
 
+  /// Handles incoming link from stream (warm start) or initial link
   Future<void> _handleIncomingLink(Uri uri) async {
     try {
-      final segments = uri.pathSegments;
-      
-      if (segments.isEmpty) {
+      debugPrint('[DeepLinks] Handling incoming link: ${uri.toString()}');
+
+      final pathSegments = uri.pathSegments;
+
+      if (pathSegments.isEmpty) {
+        debugPrint('[DeepLinks] Empty path segments, ignoring');
         return;
       }
 
       // Support /i/<token> and /invite/<token>
-      if (segments.length >= 2 && (segments[0] == 'i' || segments[0] == 'invite')) {
-        final token = segments[1];
+      if (pathSegments.length >= 2 &&
+          (pathSegments[0] == 'i' || pathSegments[0] == 'invite')) {
+        final token = pathSegments[1];
+        debugPrint('[DeepLinks] Extracted token: $token');
 
-        // Attempt to accept invite
+        // Attempt to accept invite via provider
         try {
           final accept = ref.read(acceptGroupInviteProvider);
+          debugPrint(
+              '[DeepLinks] Calling acceptGroupInviteProvider with token: $token');
+
           final groupId = await accept.call(token);
 
-          // Navigate to group hub
-          _navigatorKey.currentState?.pushNamed(
-            AppRouter.groupHub,
-            arguments: {'groupId': groupId},
-          );
+          debugPrint(
+              '[DeepLinks] Invite accepted. GroupId: $groupId. Navigating...');
+
+          // Navigate to group hub after first frame to ensure navigation stack is ready
+          if (mounted) {
+            _navigatorKey.currentState?.pushNamed(
+              AppRouter.groupHub,
+              arguments: {'groupId': groupId},
+            );
+            debugPrint('[DeepLinks] Navigation to group hub completed');
+          }
           return;
         } catch (e) {
+          debugPrint(
+              '[DeepLinks] Error accepting invite: $e. Opening fallback landing page...');
+
           // If accepting failed, open landing page as fallback
           final landing = '${AppConfig.invitesBaseUrl}/i/$token';
           final uriLanding = Uri.parse(landing);
           if (await canLaunchUrl(uriLanding)) {
+            debugPrint('[DeepLinks] Launching fallback landing page: $landing');
             await launchUrl(uriLanding, mode: LaunchMode.externalApplication);
+          } else {
+            debugPrint('[DeepLinks] Cannot launch fallback URL: $landing');
           }
         }
+      } else {
+        debugPrint(
+            '[DeepLinks] Path does not match /i/<token> or /invite/<token> pattern');
       }
     } catch (e) {
-      debugPrint('ERROR handling incoming link: $e');
+      debugPrint('[DeepLinks] ERROR handling incoming link: $e');
     }
   }
 }
