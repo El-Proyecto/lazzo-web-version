@@ -53,7 +53,7 @@ class _LazzoAppState extends ConsumerState<LazzoApp> {
     _uriLinkSub = _appLinks.uriLinkStream.listen(
       _handleIncomingLink,
       onError: (error) {
-        debugPrint('[DeepLinks] Error on uri stream: $error');
+        // Silently handle errors - don't crash the app
       },
     );
   }
@@ -69,23 +69,19 @@ class _LazzoAppState extends ConsumerState<LazzoApp> {
     try {
       final initialLink = await _appLinks.getInitialLink();
       if (initialLink != null) {
-        debugPrint('[DeepLinks] Initial link received: $initialLink');
         _handleIncomingLink(initialLink);
       }
     } catch (e) {
-      debugPrint('[DeepLinks] Error getting initial link: $e');
+      // Silently fail - don't crash on deep link errors
     }
   }
 
   /// Handles incoming link from stream (warm start) or initial link
   Future<void> _handleIncomingLink(Uri uri) async {
     try {
-      debugPrint('[DeepLinks] Handling incoming link: ${uri.toString()}');
-
       final pathSegments = uri.pathSegments;
 
       if (pathSegments.isEmpty) {
-        debugPrint('[DeepLinks] Empty path segments, ignoring');
         return;
       }
 
@@ -93,48 +89,61 @@ class _LazzoAppState extends ConsumerState<LazzoApp> {
       if (pathSegments.length >= 2 &&
           (pathSegments[0] == 'i' || pathSegments[0] == 'invite')) {
         final token = pathSegments[1];
-        debugPrint('[DeepLinks] Extracted token: $token');
 
-        // Attempt to accept invite via provider
-        try {
-          final accept = ref.read(acceptGroupInviteProvider);
-          debugPrint(
-              '[DeepLinks] Calling acceptGroupInviteProvider with token: $token');
-
-          final groupId = await accept.call(token);
-
-          debugPrint(
-              '[DeepLinks] Invite accepted. GroupId: $groupId. Navigating...');
-
-          // Navigate to group hub after first frame to ensure navigation stack is ready
-          if (mounted) {
-            _navigatorKey.currentState?.pushNamed(
-              AppRouter.groupHub,
-              arguments: {'groupId': groupId},
-            );
-            debugPrint('[DeepLinks] Navigation to group hub completed');
-          }
-          return;
-        } catch (e) {
-          debugPrint(
-              '[DeepLinks] Error accepting invite: $e. Opening fallback landing page...');
-
-          // If accepting failed, open landing page as fallback
+        // Wait for user to be authenticated before processing invite
+        final authState = ref.read(authProvider);
+        if (!authState.hasValue || authState.value == null) {
           final landing = '${AppConfig.invitesBaseUrl}/i/$token';
           final uriLanding = Uri.parse(landing);
           if (await canLaunchUrl(uriLanding)) {
-            debugPrint('[DeepLinks] Launching fallback landing page: $landing');
             await launchUrl(uriLanding, mode: LaunchMode.externalApplication);
-          } else {
-            debugPrint('[DeepLinks] Cannot launch fallback URL: $landing');
+          }
+          return;
+        }
+
+        // User is authenticated, attempt to accept invite
+        try {
+          final accept = ref.read(acceptGroupInviteProvider);
+          final groupId = await accept.call(token);
+
+          // Refresh groups to include the new group (if user just joined)
+          ref.invalidate(groupsProvider);
+
+          // Give navigation stack time to initialize
+          await Future.delayed(const Duration(milliseconds: 500));
+
+          // Navigate to group hub
+          if (mounted && _navigatorKey.currentState != null) {
+            _navigatorKey.currentState!.pushNamed(
+              AppRouter.groupHub,
+              arguments: {'groupId': groupId},
+            );
+          }
+          return;
+        } catch (e) {
+          final errorMessage = e.toString().toLowerCase();
+
+          // Check if it's an authentication error
+          if (errorMessage.contains('not authenticated') ||
+              errorMessage.contains('unauthorized')) {
+            final landing = '${AppConfig.invitesBaseUrl}/i/$token';
+            final uriLanding = Uri.parse(landing);
+            if (await canLaunchUrl(uriLanding)) {
+              await launchUrl(uriLanding, mode: LaunchMode.externalApplication);
+            }
+            return;
+          }
+
+          // For other errors (invalid token, expired, etc.), redirect to web
+          final landing = '${AppConfig.invitesBaseUrl}/i/$token';
+          final uriLanding = Uri.parse(landing);
+          if (await canLaunchUrl(uriLanding)) {
+            await launchUrl(uriLanding, mode: LaunchMode.externalApplication);
           }
         }
-      } else {
-        debugPrint(
-            '[DeepLinks] Path does not match /i/<token> or /invite/<token> pattern');
       }
     } catch (e) {
-      debugPrint('[DeepLinks] ERROR handling incoming link: $e');
+      // Silently fail - deep link errors should not crash the app
     }
   }
 }
