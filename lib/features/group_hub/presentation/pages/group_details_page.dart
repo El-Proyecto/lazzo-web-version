@@ -318,8 +318,12 @@ class GroupDetailsPage extends ConsumerWidget {
                 isCurrentUserAdmin: isCurrentUserAdmin,
                 onTap: () {
                   if (member.isCurrentUser) {
-                    // Navigate to own profile
-                    Navigator.pushNamed(context, AppRouter.profile);
+                    // Navigate to own profile with back button
+                    Navigator.pushNamed(
+                      context,
+                      AppRouter.profile,
+                      arguments: {'showBackButton': true},
+                    );
                   } else {
                     // Navigate to other user profile
                     Navigator.pushNamed(
@@ -424,12 +428,12 @@ class GroupDetailsPage extends ConsumerWidget {
   }
 
   void _showInviteBottomSheet(BuildContext context, WidgetRef ref) async {
-    
     try {
       final createInvite = ref.read(createGroupInviteLinkProvider);
       final result = await createInvite.call(groupId: groupId);
       final inviteUrl = '${AppConfig.invitesBaseUrl}/i/${result.token}';
-      final groupName = ref.read(groupDetailsProvider(groupId)).value?.name ?? 'Group Name';
+      final groupName =
+          ref.read(groupDetailsProvider(groupId)).value?.name ?? 'Group Name';
 
       if (!context.mounted) return;
       InviteBottomSheet.show(
@@ -441,11 +445,12 @@ class GroupDetailsPage extends ConsumerWidget {
     } catch (e) {
       // Fallback: use group ID path (backend can handle this)
       final fallback = '${AppConfig.invitesBaseUrl}/groups/$groupId';
-      
+
       InviteBottomSheet.show(
         context: context,
         inviteUrl: fallback,
-        entityName: ref.read(groupDetailsProvider(groupId)).value?.name ?? 'Group Name',
+        entityName:
+            ref.read(groupDetailsProvider(groupId)).value?.name ?? 'Group Name',
         entityType: 'group',
       );
       TopBanner.showInfo(context, message: 'Using temporary invite link');
