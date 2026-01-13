@@ -254,72 +254,32 @@ class EventRepositoryImpl implements EventRepository {
         status: event.status.toString().split('.').last,
       );
 
-      // CRITICAL: Sync the initial date suggestion created by host/admin
-      // When an event is created with a date, we auto-create a suggestion
-      // When editing, we must also UPDATE that suggestion to avoid showing it as "alternate"
+      // CRITICAL: Delete ALL date suggestions when admin sets/changes event date
+      // Admin edit = overwrite (not vote), so remove suggestions to avoid confusion
       try {
-        // Find the initial suggestion created by the event creator (host)
-        final initialSuggestions = await _client
-            .from('event_date_options')
-            .select('id')
-            .eq('event_id', event.id)
-            .eq('created_by', userId)
-            .order('created_at', ascending: true)
-            .limit(1);
-
-        if (initialSuggestions.isNotEmpty && event.startDateTime != null) {
-          // Update the initial suggestion to match the new event date
-          final suggestionId = initialSuggestions[0]['id'];
-          await _client.from('event_date_options').update({
-            'starts_at': event.startDateTime!.toIso8601String(),
-            'ends_at': event.endDateTime?.toIso8601String(),
-          }).eq('id', suggestionId);
-        } else if (initialSuggestions.isNotEmpty &&
-            event.startDateTime == null) {
-          // Event changed to "Decide Later" - delete the suggestion
-          final suggestionId = initialSuggestions[0]['id'];
+        if (event.startDateTime != null) {
+          // Event has date set - delete all date suggestions
           await _client
               .from('event_date_options')
               .delete()
-              .eq('id', suggestionId);
+              .eq('event_id', event.id);
         }
       } catch (e) {
-        // Don't fail the update if suggestion sync fails
+        // Don't fail the update if suggestion deletion fails
       }
 
-      // CRITICAL: Sync the initial location suggestion created by host/admin
+      // CRITICAL: Delete ALL location suggestions when admin sets/changes event location
+      // Admin edit = overwrite (not vote), so remove suggestions to avoid confusion
       try {
-        // Find the initial location suggestion created by the event creator
-        final initialLocationSuggestions = await _client
-            .from('location_suggestions')
-            .select('id')
-            .eq('event_id', event.id)
-            .eq('user_id', userId)
-            .order('created_at', ascending: true)
-            .limit(1);
-
-        if (initialLocationSuggestions.isNotEmpty &&
-            event.location != null &&
-            locationId != null) {
-          // Update the initial suggestion to match the new event location
-          final suggestionId = initialLocationSuggestions[0]['id'];
-          await _client.from('location_suggestions').update({
-            'location_name': event.location!.displayName,
-            'address': event.location!.formattedAddress,
-            'latitude': event.location!.latitude,
-            'longitude': event.location!.longitude,
-          }).eq('id', suggestionId);
-        } else if (initialLocationSuggestions.isNotEmpty &&
-            event.location == null) {
-          // Event changed to "Decide Later" for location - delete the suggestion
-          final suggestionId = initialLocationSuggestions[0]['id'];
+        if (event.location != null && locationId != null) {
+          // Event has location set - delete all location suggestions
           await _client
               .from('location_suggestions')
               .delete()
-              .eq('id', suggestionId);
+              .eq('event_id', event.id);
         }
       } catch (e) {
-        // Don't fail the update if location suggestion sync fails
+        // Don't fail the update if location suggestion deletion fails
       }
 
       // Fetch location if present in updated event
