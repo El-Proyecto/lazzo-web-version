@@ -107,6 +107,7 @@ final groupDetailsProvider = StateNotifierProvider.family<
 ) {
   return GroupDetailsController(
     ref.watch(getGroupDetailsUseCaseProvider),
+    ref.watch(toggleGroupMuteUseCaseProvider),
     groupId,
   );
 });
@@ -221,10 +222,14 @@ class GroupMemoriesController
 class GroupDetailsController
     extends StateNotifier<AsyncValue<GroupDetailsEntity>> {
   final GetGroupDetails _getGroupDetails;
+  final ToggleGroupMute _toggleGroupMute;
   final String _groupId;
 
-  GroupDetailsController(this._getGroupDetails, this._groupId)
-      : super(const AsyncValue.loading()) {
+  GroupDetailsController(
+    this._getGroupDetails,
+    this._toggleGroupMute,
+    this._groupId,
+  ) : super(const AsyncValue.loading()) {
     loadDetails();
   }
 
@@ -242,12 +247,28 @@ class GroupDetailsController
     await loadDetails();
   }
 
-  /// Toggle mute status and update state optimistically
-  void toggleMute() {
+  /// Toggle mute status: update UI optimistically and persist to backend
+  Future<void> toggleMute() async {
+    // 1. Optimistic update - immediately update UI
+    final currentIsMuted = state.value?.isMuted ?? false;
+    final newIsMuted = !currentIsMuted;
+
     state.whenData((details) {
-      final newDetails = details.copyWith(isMuted: !details.isMuted);
+      final newDetails = details.copyWith(isMuted: newIsMuted);
       state = AsyncValue.data(newDetails);
     });
+
+    // 2. Persist to backend
+    try {
+      await _toggleGroupMute(_groupId, newIsMuted);
+    } catch (error) {
+      // Rollback on error
+      state.whenData((details) {
+        final rolledBackDetails = details.copyWith(isMuted: currentIsMuted);
+        state = AsyncValue.data(rolledBackDetails);
+      });
+      rethrow;
+    }
   }
 }
 
@@ -290,7 +311,7 @@ class GroupMembersController
         }
         return member;
       }).toList();
-      
+
       state = AsyncValue.data(updatedMembers);
     });
   }
@@ -298,7 +319,8 @@ class GroupMembersController
   /// Optimistic remove: immediately removes member from UI before server confirms
   void removeMemberOptimistically(String userId) {
     state.whenData((members) {
-      final updatedMembers = members.where((member) => member.id != userId).toList();
+      final updatedMembers =
+          members.where((member) => member.id != userId).toList();
       state = AsyncValue.data(updatedMembers);
     });
   }
