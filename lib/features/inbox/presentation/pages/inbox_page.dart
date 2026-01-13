@@ -29,7 +29,7 @@ class InboxPage extends ConsumerStatefulWidget {
 class _InboxPageState extends ConsumerState<InboxPage>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  
+
   // Track notifications being optimistically removed
   final Set<String> _deletingNotificationIds = {};
 
@@ -106,118 +106,123 @@ class _InboxPageState extends ConsumerState<InboxPage>
   }
 
   Widget _buildNotificationsTab() {
-        final notificationsState = ref.watch(notificationsProvider);
-        
+    final notificationsState = ref.watch(notificationsProvider);
 
-        
     return notificationsState.when(
       data: (notifications) {
-                if (notifications.isNotEmpty) {
-                  }
-        
+        if (notifications.isNotEmpty) {}
+
         // Filter out notifications that should ONLY appear in push (not in inbox)
         // Also filter out payment requests and paid confirmations (they appear in Payments tab)
         // paymentsAddedYouOwe now appears in Notifications tab (navigates to event)
         // Also filter out notifications being optimistically deleted
         final inboxNotifications = notifications.where((n) {
           return n.type != NotificationType.eventLive &&
-                 n.type != NotificationType.eventEndsSoon &&
-                 n.type != NotificationType.chatMention &&
-                 // ✅ Payment requests and confirmations stay in Payments tab
-                 n.type != NotificationType.paymentsRequest &&
-                 n.type != NotificationType.paymentsPaidYou &&
-                 !_deletingNotificationIds.contains(n.id);
+              n.type != NotificationType.eventEndsSoon &&
+              n.type != NotificationType.chatMention &&
+              // ✅ Payment requests and confirmations stay in Payments tab
+              n.type != NotificationType.paymentsRequest &&
+              n.type != NotificationType.paymentsPaidYou &&
+              !_deletingNotificationIds.contains(n.id);
         }).toList();
-        
-                
+
         return NotificationsSection(
           notifications: inboxNotifications,
           onRefresh: () => ref.read(notificationsProvider.notifier).refresh(),
           onNotificationTap: (notification) {
-                        _handleNotificationTap(notification);
+            _handleNotificationTap(notification);
           },
           onActionTap: (notification) {
-                        _handleActionButtonTap(notification);
+            _handleActionButtonTap(notification);
           },
           onAcceptInvite: (groupId) async {
-                        final userId = Supabase.instance.client.auth.currentUser?.id;
+            final userId = Supabase.instance.client.auth.currentUser?.id;
             if (userId == null) {
-                            _showSnackBar('Error: Not logged in', isError: true);
+              _showSnackBar('Error: Not logged in', isError: true);
               return;
             }
 
             final acceptUseCase = ref.read(acceptGroupInviteProvider);
-            final success = await acceptUseCase(userId: userId, groupId: groupId);
-            
+            final success =
+                await acceptUseCase(userId: userId, groupId: groupId);
+
             if (success) {
-                            
               // Find and mark the notification as read to hide it
               final notificationsState = ref.read(notificationsProvider);
               notificationsState.whenData((notifications) {
                 final inviteNotification = notifications.firstWhere(
-                  (n) => n.groupId == groupId && n.type == NotificationType.groupInviteReceived,
+                  (n) =>
+                      n.groupId == groupId &&
+                      n.type == NotificationType.groupInviteReceived,
                   orElse: () => notifications.first,
                 );
                 // Mark as read to remove from inbox
-                ref.read(markNotificationAsReadUseCaseProvider).call(inviteNotification.id);
+                ref
+                    .read(markNotificationAsReadUseCaseProvider)
+                    .call(inviteNotification.id);
               });
-              
+
               _showSnackBar('Joined group successfully!');
               // Refresh notifications to show updated list
               ref.read(notificationsProvider.notifier).refresh();
             } else {
-                            _showSnackBar('Failed to join group', isError: true);
+              _showSnackBar('Failed to join group', isError: true);
             }
           },
           onDeclineInvite: (groupId) async {
-                        final userId = Supabase.instance.client.auth.currentUser?.id;
+            final userId = Supabase.instance.client.auth.currentUser?.id;
             if (userId == null) {
-                            _showSnackBar('Error: Not logged in', isError: true);
+              _showSnackBar('Error: Not logged in', isError: true);
               return;
             }
 
             final declineUseCase = ref.read(declineGroupInviteProvider);
-            final success = await declineUseCase(userId: userId, groupId: groupId);
-            
+            final success =
+                await declineUseCase(userId: userId, groupId: groupId);
+
             if (success) {
-                            
               // Find and mark the notification as read to hide it
               final notificationsState = ref.read(notificationsProvider);
               notificationsState.whenData((notifications) {
                 final inviteNotification = notifications.firstWhere(
-                  (n) => n.groupId == groupId && n.type == NotificationType.groupInviteReceived,
+                  (n) =>
+                      n.groupId == groupId &&
+                      n.type == NotificationType.groupInviteReceived,
                   orElse: () => notifications.first,
                 );
                 // Mark as read to remove from inbox
-                ref.read(markNotificationAsReadUseCaseProvider).call(inviteNotification.id);
+                ref
+                    .read(markNotificationAsReadUseCaseProvider)
+                    .call(inviteNotification.id);
               });
-              
+
               _showSnackBar('Invite declined');
               // Refresh notifications to show updated list
               ref.read(notificationsProvider.notifier).refresh();
             } else {
-                            _showSnackBar('Failed to decline invite', isError: true);
+              _showSnackBar('Failed to decline invite', isError: true);
             }
           },
           onMarkPaymentPaid: (notificationId) async {
-                        
             try {
               // Optimistic UI: Add to deleting set to hide immediately
               setState(() {
                 _deletingNotificationIds.add(notificationId);
               });
-              
+
               // Show TopBanner immediately
               if (mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     content: Row(
                       children: [
-                        const Icon(Icons.check_circle, color: Colors.white, size: 20),
+                        const Icon(Icons.check_circle,
+                            color: Colors.white, size: 20),
                         const SizedBox(width: 8),
                         Text(
                           'Payment marked as paid!',
-                          style: AppText.bodyMedium.copyWith(color: Colors.white),
+                          style:
+                              AppText.bodyMedium.copyWith(color: Colors.white),
                         ),
                       ],
                     ),
@@ -231,24 +236,25 @@ class _InboxPageState extends ConsumerState<InboxPage>
                   ),
                 );
               }
-              
+
               // P2: Mark expense split as paid + mark notification as read in background
-              await ref.read(markExpenseAsPaidFromNotificationUseCaseProvider).call(notificationId);
-              
+              await ref
+                  .read(markExpenseAsPaidFromNotificationUseCaseProvider)
+                  .call(notificationId);
+
               // Refresh to sync with server (notification will be gone)
               ref.read(notificationsProvider.notifier).refresh();
-              
+
               // Clean up deleting set after refresh
               setState(() {
                 _deletingNotificationIds.remove(notificationId);
               });
             } catch (e) {
-                            
               // Revert optimistic update on error
               setState(() {
                 _deletingNotificationIds.remove(notificationId);
               });
-              
+
               if (mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
@@ -258,7 +264,8 @@ class _InboxPageState extends ConsumerState<InboxPage>
                         const SizedBox(width: 8),
                         Text(
                           'Failed to mark as paid',
-                          style: AppText.bodyMedium.copyWith(color: Colors.white),
+                          style:
+                              AppText.bodyMedium.copyWith(color: Colors.white),
                         ),
                       ],
                     ),
@@ -277,16 +284,17 @@ class _InboxPageState extends ConsumerState<InboxPage>
         );
       },
       loading: () {
-                return const NotificationsSection(notifications: [], isLoading: true);
+        return const NotificationsSection(notifications: [], isLoading: true);
       },
       error: (error, stack) {
-                        return Center(
+        return Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Text(
                 'Error loading notifications',
-                style: AppText.titleMediumEmph.copyWith(color: BrandColors.text1),
+                style:
+                    AppText.titleMediumEmph.copyWith(color: BrandColors.text1),
               ),
               const SizedBox(height: Gaps.md),
               TextButton(
@@ -294,7 +302,8 @@ class _InboxPageState extends ConsumerState<InboxPage>
                     ref.read(notificationsProvider.notifier).refresh(),
                 child: Text(
                   'Try again',
-                  style: AppText.labelLarge.copyWith(color: BrandColors.planning),
+                  style:
+                      AppText.labelLarge.copyWith(color: BrandColors.planning),
                 ),
               ),
             ],
@@ -315,17 +324,16 @@ class _InboxPageState extends ConsumerState<InboxPage>
   }
 
   void _handleNotificationTap(NotificationEntity notification) {
-        
     // Mark as read
     ref.read(markNotificationAsReadUseCaseProvider).call(notification.id);
-    
+
     // Navigate based on notification type
     switch (notification.type) {
       // Event notifications → Navigate to event page
       case NotificationType.eventStartsSoon:
       case NotificationType.eventExtended:
         if (notification.eventId != null) {
-                    Navigator.pushNamed(
+          Navigator.pushNamed(
             context,
             '/event',
             arguments: {'eventId': notification.eventId},
@@ -336,7 +344,7 @@ class _InboxPageState extends ConsumerState<InboxPage>
       // Memory ready → Navigate to memory viewer
       case NotificationType.memoryReady:
         if (notification.eventId != null) {
-                    Navigator.pushNamed(
+          Navigator.pushNamed(
             context,
             '/memory-viewer',
             arguments: {'eventId': notification.eventId},
@@ -348,7 +356,7 @@ class _InboxPageState extends ConsumerState<InboxPage>
       case NotificationType.uploadsOpen:
       case NotificationType.uploadsClosing:
         if (notification.eventId != null) {
-                    Navigator.pushNamed(
+          Navigator.pushNamed(
             context,
             '/event',
             arguments: {'eventId': notification.eventId},
@@ -360,9 +368,9 @@ class _InboxPageState extends ConsumerState<InboxPage>
       // Payment notifications → Navigate based on type
       case NotificationType.paymentsRequest:
       case NotificationType.paymentsPaidYou:
-                ref.read(inboxTabIndexProvider.notifier).state = 1; // Payments tab
+        ref.read(inboxTabIndexProvider.notifier).state = 1; // Payments tab
         break;
-      
+
       // Expense added notification → Navigate based on event status
       case NotificationType.paymentsAddedYouOwe:
         if (notification.eventId != null) {
@@ -375,7 +383,7 @@ class _InboxPageState extends ConsumerState<InboxPage>
       case NotificationType.groupInviteReceived:
       case NotificationType.groupPhotoChanged:
         if (notification.groupId != null) {
-                    Navigator.pushNamed(
+          Navigator.pushNamed(
             context,
             '/group-hub',
             arguments: {'groupId': notification.groupId},
@@ -393,7 +401,7 @@ class _InboxPageState extends ConsumerState<InboxPage>
       case NotificationType.eventConfirmed:
       case NotificationType.eventEndsSoon:
         if (notification.eventId != null) {
-                    Navigator.pushNamed(
+          Navigator.pushNamed(
             context,
             '/event',
             arguments: {'eventId': notification.eventId},
@@ -405,7 +413,7 @@ class _InboxPageState extends ConsumerState<InboxPage>
       case NotificationType.dateSuggestionAdded:
       case NotificationType.suggestionAdded:
         if (notification.eventId != null) {
-                    Navigator.pushNamed(
+          Navigator.pushNamed(
             context,
             '/event',
             arguments: {
@@ -419,7 +427,7 @@ class _InboxPageState extends ConsumerState<InboxPage>
       // Group member notifications → Navigate to group
       case NotificationType.groupInviteAccepted:
         if (notification.groupId != null) {
-                    Navigator.pushNamed(
+          Navigator.pushNamed(
             context,
             '/group-hub',
             arguments: {'groupId': notification.groupId},
@@ -430,7 +438,7 @@ class _InboxPageState extends ConsumerState<InboxPage>
       // RSVP notifications → Navigate to event (show participants)
       case NotificationType.rsvpUpdated:
         if (notification.eventId != null) {
-                    Navigator.pushNamed(
+          Navigator.pushNamed(
             context,
             '/event',
             arguments: {
@@ -442,7 +450,7 @@ class _InboxPageState extends ConsumerState<InboxPage>
         break;
 
       default:
-            }
+    }
   }
 
   /// Handle expense notification tap - navigate based on event status
@@ -465,27 +473,25 @@ class _InboxPageState extends ConsumerState<InboxPage>
 
       // Check if event is NOT active (pending, confirmed, living)
       // If event is recap, ended, cancelled, etc., navigate to Payments tab
-      final isActiveEvent = eventStatus == 'pending' || 
-                           eventStatus == 'confirmed' || 
-                           eventStatus == 'living';
-      
+      final isActiveEvent = eventStatus == 'pending' ||
+          eventStatus == 'confirmed' ||
+          eventStatus == 'living';
+
       if (!isActiveEvent) {
         // Switch to Payments tab for non-active events
         ref.read(inboxTabIndexProvider.notifier).state = 1;
-        
+
         // Wait for tab switch to complete
         await Future.delayed(const Duration(milliseconds: 600));
-        
-        if (!mounted) return;
-        
+
         // Try to find and show the payment details bottom sheet if expenseId exists
         if (notification.expenseId != null) {
+          // ignore: use_build_context_synchronously
           await _tryShowExpenseBottomSheet(notification.expenseId!);
         }
       } else {
         // For active events (pending/confirmed/living), navigate to event page
         if (!mounted) return;
-        // Safe: mounted check performed immediately above, no await between check and usage
         // ignore: use_build_context_synchronously
         Navigator.pushNamed(
           context,
@@ -496,7 +502,6 @@ class _InboxPageState extends ConsumerState<InboxPage>
     } catch (e) {
       // On error, fallback to navigating to event
       if (!mounted) return;
-      // Safe: mounted check performed immediately above, no await between check and usage
       // ignore: use_build_context_synchronously
       Navigator.pushNamed(
         context,
@@ -508,31 +513,32 @@ class _InboxPageState extends ConsumerState<InboxPage>
 
   /// Try to show expense bottom sheet for a specific expenseId
   Future<void> _tryShowExpenseBottomSheet(String expenseId) async {
+    if (!mounted) return;
     // Force refresh providers to ensure we have latest data
     await ref.read(paymentsOwedToUserProvider.notifier).refresh();
     await ref.read(paymentsUserOwesProvider.notifier).refresh();
-    
+
     // Wait a bit for data to settle
     await Future.delayed(const Duration(milliseconds: 300));
-    
+
     if (!mounted) {
       return;
     }
-    
+
     // Get current payments from providers
     final owedToUserState = ref.read(paymentsOwedToUserProvider);
     final userOwesState = ref.read(paymentsUserOwesProvider);
-    
+
     final owedToUser = owedToUserState.asData?.value ?? <PaymentEntity>[];
     final userOwes = userOwesState.asData?.value ?? <PaymentEntity>[];
-    
+
     // Combine all payments
     final allPayments = [...owedToUser, ...userOwes];
-    
+
     if (allPayments.isEmpty) {
       return;
     }
-    
+
     // Find payment with matching expense ID
     // Note: PaymentEntity.id format is "expenseId_userId"
     PaymentEntity? matchingPayment;
@@ -544,34 +550,33 @@ class _InboxPageState extends ConsumerState<InboxPage>
       // No matching payment found
       return;
     }
-    
+
     // Get current user ID to determine payment group
     final currentUserId = Supabase.instance.client.auth.currentUser?.id ?? '';
-    
+
     // Find which list contains this payment to determine direction
     final isOwedToUser = owedToUser.any((p) => p.id == matchingPayment!.id);
-    
+
     // Get the other user ID (the one who isn't current user)
-    final otherUserId = isOwedToUser 
-        ? matchingPayment.fromUserId 
-        : matchingPayment.toUserId;
-    
+    final otherUserId =
+        isOwedToUser ? matchingPayment.fromUserId : matchingPayment.toUserId;
+
     if (otherUserId == null) {
       return;
     }
-    
+
     // Get user name
     final otherUserName = isOwedToUser
         ? matchingPayment.fromUserName ?? 'Unknown'
         : matchingPayment.toUserName ?? 'Unknown';
-    
+
     // Filter payments for this specific user
     final userPayments = allPayments.where((p) {
       return isOwedToUser
           ? (p.fromUserId == otherUserId && p.toUserId == currentUserId)
           : (p.toUserId == otherUserId && p.fromUserId == currentUserId);
     }).toList();
-    
+
     // Create payment group for this user
     final paymentGroup = PaymentGroup(
       userId: otherUserId,
@@ -580,9 +585,9 @@ class _InboxPageState extends ConsumerState<InboxPage>
       totalAmount: userPayments.fold(0.0, (sum, p) => sum + p.amount),
       isOwedToUser: isOwedToUser,
     );
-    
+
     if (!mounted) return;
-    
+
     // Show bottom sheet
     await PaymentDetailsBottomSheet.show(
       context: context,
@@ -594,7 +599,6 @@ class _InboxPageState extends ConsumerState<InboxPage>
   }
 
   void _handleActionButtonTap(NotificationEntity notification) {
-        
     switch (notification.type) {
       case NotificationType.uploadsOpen:
       case NotificationType.uploadsClosing:

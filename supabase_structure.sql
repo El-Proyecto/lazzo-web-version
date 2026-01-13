@@ -319,6 +319,21 @@ CREATE TABLE public.user_notification_settings (
   CONSTRAINT user_notification_settings_pkey PRIMARY KEY (user_id),
   CONSTRAINT user_notification_settings_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
 );
+CREATE TABLE public.user_push_tokens (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  device_token text NOT NULL,
+  platform text NOT NULL CHECK (platform = ANY (ARRAY['ios'::text, 'android'::text])),
+  environment text NOT NULL CHECK (environment = ANY (ARRAY['production'::text, 'sandbox'::text])),
+  device_name text,
+  app_version text,
+  is_active boolean NOT NULL DEFAULT true,
+  last_used_at timestamp with time zone DEFAULT now(),
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  updated_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT user_push_tokens_pkey PRIMARY KEY (id),
+  CONSTRAINT user_push_tokens_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
+);
 CREATE TABLE public.user_settings (
   user_id uuid NOT NULL,
   notifications_enabled boolean NOT NULL DEFAULT true,

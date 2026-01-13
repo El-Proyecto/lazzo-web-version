@@ -1,6 +1,19 @@
 # Notificações - Status de Implementação (Resumo)
 
-**Última atualização:** 23 Dez 2024
+**Última atualização:** 13 Jan 2026
+
+---
+
+## 🚀 NEW: iOS Push Notifications via APNs
+
+**Status:** 📋 Implementation guides created (not yet implemented)
+
+Comprehensive guides for iOS push notifications using APNs (zero-cost, Firebase-free):
+- `APNS_PUSH_NOTIFICATIONS_SUMMARY.md` - Overview and project roadmap
+- `APNS_PUSH_NOTIFICATIONS_PART1_BACKEND.md` - Backend setup (P2)
+- `APNS_PUSH_NOTIFICATIONS_PART2_FLUTTER.md` - Flutter implementation (Agent)
+
+**Next:** P2 developer configures APNs credentials and deploys Edge Function.
 
 ---
 

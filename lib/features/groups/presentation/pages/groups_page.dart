@@ -361,7 +361,7 @@ class _GroupsPageState extends ConsumerState<GroupsPage>
       // fire-and-forget: create invite then show bottom sheet
       createInvite.call(groupId: groupId).then((result) {
         final inviteUrl = '${AppConfig.invitesBaseUrl}/i/${result.token}';
-        
+
         final groupsAsync = _selectedFilter == GroupFilter.archived
             ? ref.read(archivedGroupsProvider)
             : ref.read(groupsProvider);
@@ -376,6 +376,7 @@ class _GroupsPageState extends ConsumerState<GroupsPage>
           ),
         );
 
+        if (!mounted) return;
         InviteBottomSheet.show(
           context: context,
           inviteUrl: inviteUrl,
@@ -385,7 +386,8 @@ class _GroupsPageState extends ConsumerState<GroupsPage>
       }).catchError((error) {
         // fallback: use group ID path
         final inviteUrl = '${AppConfig.invitesBaseUrl}/groups/$groupId';
-        
+
+        if (!mounted) return;
         InviteBottomSheet.show(
           context: context,
           inviteUrl: inviteUrl,
@@ -395,7 +397,7 @@ class _GroupsPageState extends ConsumerState<GroupsPage>
       });
     } catch (e) {
       final inviteUrl = '${AppConfig.invitesBaseUrl}/groups/$groupId';
-      
+
       InviteBottomSheet.show(
         context: context,
         inviteUrl: inviteUrl,
