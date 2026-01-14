@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../constants/spacing.dart';
 import '../../themes/colors.dart';
+import 'notification_badge.dart';
 
 enum NavBarState { planning, living, recap }
 
@@ -8,12 +9,14 @@ class NavigationBar extends StatelessWidget {
   final NavBarState state;
   final int currentIndex;
   final Function(int) onTap;
+  final int unreadNotificationCount;
 
   const NavigationBar({
     super.key,
     this.state = NavBarState.planning,
     required this.currentIndex,
     required this.onTap,
+    this.unreadNotificationCount = 0,
   });
 
   @override
@@ -34,19 +37,35 @@ class NavigationBar extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          _buildNavItem(0, Icons.home_outlined, Icons.home),
-          _buildNavItem(1, Icons.group_outlined, Icons.group),
+          _buildNavItem(0, Icons.home_outlined, Icons.home, false),
+          _buildNavItem(1, Icons.group_outlined, Icons.group, false),
           _buildCenterButton(),
-          _buildNavItem(3, Icons.mail_outline, Icons.mail),
-          _buildNavItem(4, Icons.person_outline, Icons.person),
+          _buildNavItem(3, Icons.mail_outline, Icons.mail, true),
+          _buildNavItem(4, Icons.person_outline, Icons.person, false),
         ],
       ),
     );
   }
 
-  Widget _buildNavItem(int index, IconData iconOutlined, IconData iconFilled) {
+  Widget _buildNavItem(
+      int index, IconData iconOutlined, IconData iconFilled, bool showBadge) {
     final isSelected = currentIndex == index;
     final opacity = isSelected ? 1.0 : 0.6;
+    final hasUnread = showBadge && unreadNotificationCount > 0;
+
+    // Determine badge color based on NavBar state
+    Color badgeColor;
+    switch (state) {
+      case NavBarState.planning:
+        badgeColor = BrandColors.planning;
+        break;
+      case NavBarState.living:
+        badgeColor = BrandColors.living;
+        break;
+      case NavBarState.recap:
+        badgeColor = BrandColors.recap;
+        break;
+    }
 
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
@@ -56,12 +75,23 @@ class NavigationBar extends StatelessWidget {
         child: SizedBox(
           width: 48,
           height: 48,
-          child: Center(
-            child: Icon(
-              isSelected ? iconFilled : iconOutlined,
-              color: BrandColors.text1,
-              size: 28,
-            ),
+          child: Stack(
+            children: [
+              Center(
+                child: Icon(
+                  isSelected ? iconFilled : iconOutlined,
+                  color: BrandColors.text1,
+                  size: 28,
+                ),
+              ),
+              if (hasUnread)
+                NotificationBadge(
+                  color: badgeColor,
+                  size: 8,
+                  positionTop: 8,
+                  positionRight: 8,
+                ),
+            ],
           ),
         ),
       ),

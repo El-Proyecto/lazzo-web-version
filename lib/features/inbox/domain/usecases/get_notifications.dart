@@ -11,7 +11,7 @@ class GetNotifications {
     int offset = 0,
     bool unreadOnly = false,
   }) {
-        return repository.getNotifications(
+    return repository.getNotifications(
       limit: limit,
       offset: offset,
       unreadOnly: unreadOnly,
@@ -36,5 +36,15 @@ class GetUnreadNotificationCount {
 
   Future<int> call() {
     return repository.getUnreadCount();
+  }
+}
+
+class MarkAllNotificationsAsRead {
+  final NotificationRepository repository;
+
+  const MarkAllNotificationsAsRead(this.repository);
+
+  Future<void> call() {
+    return repository.markAllAsRead();
   }
 }

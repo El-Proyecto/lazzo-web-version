@@ -42,6 +42,7 @@ class _InboxPageState extends ConsumerState<InboxPage>
     // Check for pending tab change after frame
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _checkPendingTabChange();
+      _markNotificationsAsRead();
     });
   }
 
@@ -61,6 +62,22 @@ class _InboxPageState extends ConsumerState<InboxPage>
           ref.read(inboxTabIndexProvider.notifier).state = null;
         }
       });
+    }
+  }
+
+  Future<void> _markNotificationsAsRead() async {
+    try {
+      final markAllAsReadUseCase =
+          ref.read(markAllNotificationsAsReadUseCaseProvider);
+      await markAllAsReadUseCase();
+
+      // Reset unread count to 0
+      ref.read(unreadCountProvider.notifier).resetCount();
+
+      // Refresh notifications list to reflect read status
+      await ref.read(notificationsProvider.notifier).refresh();
+    } catch (e) {
+      // Silently fail - not critical for user experience
     }
   }
 
