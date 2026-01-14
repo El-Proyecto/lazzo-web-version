@@ -193,6 +193,8 @@ class NotificationModel {
       // NOTIFICATIONS (feed)
       case 'groupInviteAccepted':
         return 'Invite Accepted';
+      case 'groupMemberAdded':
+        return 'New Member';
       case 'groupRenamed':
         return 'Group Renamed';
       case 'groupPhotoChanged':
@@ -215,8 +217,14 @@ class NotificationModel {
         return 'New Suggestion';
       case 'dateSuggestionAdded':
         return 'Date Suggested';
+      case 'locationSuggestionAdded':
+        return 'Location Suggested';
       case 'rsvpUpdated':
         return 'RSVP Updated';
+      case 'eventRsvpReminder':
+        return 'Event Starting Soon';
+      case 'paymentsReceived':
+        return 'Payment Received';
       case 'memoryShared':
         return 'Memory Shared';
 
@@ -275,6 +283,8 @@ class NotificationModel {
       // NOTIFICATIONS (feed)
       case 'groupInviteAccepted':
         return '{user} joined {group}.';
+      case 'groupMemberAdded':
+        return '{user} joined {group}.';
       case 'groupRenamed':
         return '{group} has a new name.';
       case 'groupPhotoChanged':
@@ -295,6 +305,12 @@ class NotificationModel {
         return '{user} suggested {place} for {event}.';
       case 'dateSuggestionAdded':
         return '{user} suggested {date} at {time} for {event}.';
+      case 'locationSuggestionAdded':
+        return '{user} suggested {place} for {event}.';
+      case 'paymentsReceived':
+        return '{user} paid you {amount}.';
+      case 'eventRsvpReminder':
+        return 'Don\'t forget to confirm your attendance for {event} starting in {mins} min!';
       case 'memoryShared':
         return '{user} shared a memory from {event} with you.';
 
@@ -352,6 +368,8 @@ class NotificationModel {
       // NOTIFICATIONS (12 types - removed eventLocationSet, eventDetailsUpdated)
       case 'groupInviteAccepted':
         return NotificationType.groupInviteAccepted;
+      case 'groupMemberAdded':
+        return NotificationType.groupMemberAdded;
       case 'groupRenamed':
         return NotificationType.groupRenamed;
       case 'groupPhotoChanged':
@@ -370,8 +388,14 @@ class NotificationModel {
         return NotificationType.suggestionAdded;
       case 'dateSuggestionAdded':
         return NotificationType.dateSuggestionAdded;
+      case 'locationSuggestionAdded':
+        return NotificationType.locationSuggestionAdded;
       case 'rsvpUpdated':
         return NotificationType.rsvpUpdated;
+      case 'paymentsReceived':
+        return NotificationType.paymentsReceived;
+      case 'eventRsvpReminder':
+        return NotificationType.eventRsvpReminder;
       case 'memoryShared':
         return NotificationType.memoryShared;
 

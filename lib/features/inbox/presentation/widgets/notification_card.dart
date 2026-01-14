@@ -413,6 +413,7 @@ class NotificationCard extends StatelessWidget {
 
       // NOTIFICATIONS (feed)
       case NotificationType.groupInviteAccepted:
+      case NotificationType.groupMemberAdded:
       case NotificationType.groupRenamed:
       case NotificationType.groupPhotoChanged:
         return '👥';
@@ -421,12 +422,16 @@ class NotificationCard extends StatelessWidget {
       case NotificationType.eventCanceled:
       case NotificationType.eventRestored:
       case NotificationType.eventConfirmed:
+      case NotificationType.eventRsvpReminder:
         return '📅';
       case NotificationType.suggestionAdded:
       case NotificationType.dateSuggestionAdded:
+      case NotificationType.locationSuggestionAdded:
         return '💡';
       case NotificationType.rsvpUpdated:
         return '✅';
+      case NotificationType.paymentsReceived:
+        return '💰';
       case NotificationType.memoryShared:
         return '🎞️';
 

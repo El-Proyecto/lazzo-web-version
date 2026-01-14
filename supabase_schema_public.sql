@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict cwaWARRmmNi4jqO51TJDzhlJnCKwCUJ6l4y4CtnpQQKzp5HcjLfpB2F8dsXZP3y
+\restrict 1KhcoGlbqIxQCWhOssLlgkCNsQYch4p28znJXMMd0VERivOcUc0whgRUTCprQhM
 
 -- Dumped from database version 17.4
 -- Dumped by pg_dump version 18.1
@@ -1320,9 +1320,23 @@ TODO: Filtrar users que estão ativos no chat para não enviar notificação.';
 --
 
 CREATE FUNCTION public.notify_date_suggestion_added() RETURNS trigger
-    LANGUAGE plpgsql
+    LANGUAGE plpgsql SECURITY DEFINER
     AS $$
+DECLARE
+  v_suggester_name TEXT;
+  v_event_name TEXT;
+  v_event_emoji TEXT;
 BEGIN
+  -- Buscar dados do evento e suggester
+  SELECT e.name, e.emoji INTO v_event_name, v_event_emoji
+  FROM events e
+  WHERE e.id = NEW.event_id;
+  
+  SELECT u.name INTO v_suggester_name
+  FROM users u
+  WHERE u.id = NEW.created_by;
+
+  -- Notificar todos os participantes do evento (exceto quem sugeriu)
   INSERT INTO notifications (
     recipient_user_id,
     type,
@@ -1330,30 +1344,40 @@ BEGIN
     priority,
     user_name,
     date,
+    time,
     event_name,
+    event_emoji,
     event_id,
     deeplink
   )
   SELECT 
-    ep.user_id,
-    'suggestionAdded',
-    'notifications',
-    'low',
-    suggester.name,
-    TO_CHAR(NEW.starts_at, 'Mon DD'),
-    e.name,
-    NEW.event_id,
-    'lazzo://event/' || NEW.event_id::text
+    ep.user_id,                                    -- participantes do evento
+    'dateSuggestionAdded',                         -- tipo
+    'notifications',                               -- categoria
+    'low',                                         -- prioridade
+    v_suggester_name,                              -- quem sugeriu
+    TO_CHAR(NEW.starts_at, 'DD Mon'),             -- data formatada (ex: "15 Jan")
+    TO_CHAR(NEW.starts_at, 'HH24:MI'),            -- hora formatada (ex: "20:00")
+    v_event_name,                                  -- nome do evento
+    v_event_emoji,                                 -- emoji do evento
+    NEW.event_id,                                  -- event_id
+    'lazzo://events/' || NEW.event_id || '/dates' -- deeplink
   FROM event_participants ep
-  JOIN users suggester ON suggester.id = NEW.created_by
-  JOIN events e ON e.id = NEW.event_id
   WHERE ep.pevent_id = NEW.event_id
-    AND ep.user_id != NEW.created_by
-    AND should_send_notification(ep.user_id, e.group_id);
+    AND ep.user_id != NEW.created_by              -- não notificar quem sugeriu
+  ON CONFLICT (dedup_key, dedup_bucket) DO NOTHING;
   
   RETURN NEW;
 END;
 $$;
+
+
+--
+-- Name: FUNCTION notify_date_suggestion_added(); Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON FUNCTION public.notify_date_suggestion_added() IS 'Notifica participantes quando alguém sugere uma data.
+Inbox text: "João Silva suggested 15 Jan at 20:00 for Birthday Party"';
 
 
 --
@@ -1864,7 +1888,7 @@ BEGIN
     e.name,                                        -- nome do evento
     es.amount::TEXT || '€',                       -- FORMATO: "25.00€" (símbolo no final)
     NEW.id,                                        -- expense_id
-    NEW.title                                      -- NOVO: expense_name
+    NEW.title                                      -- expense_name (nome da despesa)
   FROM expense_splits es
   JOIN event_expenses ee ON ee.id = es.expense_id
   JOIN events e ON e.id = ee.event_id
@@ -1903,8 +1927,8 @@ BEGIN
     e.name,                                        -- nome do evento
     es.amount::TEXT || '€',                       -- FORMATO: "25.00€" (símbolo no final)
     NEW.id,                                        -- expense_id
-    NEW.title,                                     -- NOVO: expense_name
-    u_debtor.name                                  -- NOVO: person_name (quem deve)
+    NEW.title,                                     -- expense_name (nome da despesa)
+    u_debtor.name                                  -- person_name (quem deve)
   FROM expense_splits es
   JOIN event_expenses ee ON ee.id = es.expense_id
   JOIN events e ON e.id = ee.event_id
@@ -1924,9 +1948,10 @@ $$;
 -- Name: FUNCTION notify_expense_added(); Type: COMMENT; Schema: public; Owner: -
 --
 
-COMMENT ON FUNCTION public.notify_expense_added() IS 'Trigger que cria notificações quando uma despesa é adicionada. 
-Envia "You Owe" para devedores e "Owes You" para o criador.
-Formato do amount: "25.00€" (símbolo no final).';
+COMMENT ON FUNCTION public.notify_expense_added() IS 'Trigger que cria notificações quando uma despesa é adicionada.
+- paymentsAddedYouOwe: notifica quem deve (com expense_name)
+- paymentsAddedOwesYou: notifica criador sobre quem lhe deve (com expense_name e person_name)
+Campos preenchidos: expense_name (título da despesa) e person_name (nome de quem deve)';
 
 
 --
@@ -1966,10 +1991,35 @@ $$;
 --
 
 CREATE FUNCTION public.notify_group_invite_accepted() RETURNS trigger
-    LANGUAGE plpgsql
+    LANGUAGE plpgsql SECURITY DEFINER
     AS $$
+DECLARE
+  v_invited_by UUID;
+  v_accepter_name TEXT;
+  v_group_name TEXT;
 BEGIN
-  -- Notify group admins
+  -- Buscar quem convidou (do último convite pendente)
+  SELECT invited_by INTO v_invited_by
+  FROM group_invites
+  WHERE invited_id = NEW.user_id AND group_id = NEW.group_id
+  ORDER BY created_at DESC
+  LIMIT 1;
+  
+  -- Se não encontrou quem convidou, não fazer nada
+  IF v_invited_by IS NULL THEN
+    RETURN NEW;
+  END IF;
+  
+  -- Buscar nome de quem aceitou e do grupo
+  SELECT u.name INTO v_accepter_name
+  FROM users u
+  WHERE u.id = NEW.user_id;
+  
+  SELECT g.name INTO v_group_name
+  FROM groups g
+  WHERE g.id = NEW.group_id;
+
+  -- Notificar quem convidou
   INSERT INTO notifications (
     recipient_user_id,
     type,
@@ -1980,28 +2030,29 @@ BEGIN
     group_id,
     deeplink
   )
-  SELECT 
-    gm.user_id,
-    'groupInviteAccepted',
-    'notifications',
-    'low',
-    accepter.name,
-    g.name,
-    NEW.group_id,
-    'lazzo://group/' || NEW.group_id::text
-  FROM group_members gm
-  CROSS JOIN users accepter
-  CROSS JOIN groups g
-  WHERE gm.group_id = NEW.group_id
-    AND gm.role = 'admin'
-    AND gm.user_id != NEW.user_id
-    AND accepter.id = NEW.user_id
-    AND g.id = NEW.group_id
-    AND should_send_notification(gm.user_id, NEW.group_id);
+  VALUES (
+    v_invited_by,                                  -- quem convidou
+    'groupInviteAccepted',                         -- tipo
+    'push',                                        -- categoria PUSH (ephemeral)
+    'medium',                                      -- prioridade
+    v_accepter_name,                               -- quem aceitou
+    v_group_name,                                  -- nome do grupo
+    NEW.group_id,                                  -- group_id
+    'lazzo://groups/' || NEW.group_id              -- deeplink
+  )
+  ON CONFLICT (dedup_key, dedup_bucket) DO NOTHING;
   
   RETURN NEW;
 END;
 $$;
+
+
+--
+-- Name: FUNCTION notify_group_invite_accepted(); Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON FUNCTION public.notify_group_invite_accepted() IS 'Notifica quem convidou quando convite é aceito (INSERT em group_members).
+Push only (não aparece no inbox): "João Silva joined Friends"';
 
 
 --
@@ -2041,6 +2092,129 @@ BEGIN
   RETURN NEW;
 END;
 $$;
+
+
+--
+-- Name: notify_group_member_added(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.notify_group_member_added() RETURNS trigger
+    LANGUAGE plpgsql SECURITY DEFINER
+    AS $$
+DECLARE
+  v_group_name TEXT;
+  v_new_member_name TEXT;
+BEGIN
+  -- Buscar dados do grupo e do novo membro
+  SELECT g.name INTO v_group_name
+  FROM groups g
+  WHERE g.id = NEW.group_id;
+  
+  SELECT u.name INTO v_new_member_name
+  FROM users u
+  WHERE u.id = NEW.user_id;
+
+  -- Notificar todos os membros existentes do grupo (exceto o novo membro)
+  INSERT INTO notifications (
+    recipient_user_id,
+    type,
+    category,
+    priority,
+    user_name,
+    group_name,
+    group_id,
+    deeplink
+  )
+  SELECT 
+    gm.user_id,                                    -- membros existentes
+    'groupMemberAdded',                            -- tipo
+    'push',                                        -- categoria PUSH (ephemeral)
+    'medium',                                      -- prioridade
+    v_new_member_name,                             -- nome do novo membro
+    v_group_name,                                  -- nome do grupo
+    NEW.group_id,                                  -- group_id
+    'lazzo://groups/' || NEW.group_id              -- deeplink
+  FROM group_members gm
+  WHERE gm.group_id = NEW.group_id
+    AND gm.user_id != NEW.user_id                 -- não notificar o novo membro
+    AND gm.joined_at < NEW.joined_at              -- só membros anteriores
+  ON CONFLICT (dedup_key, dedup_bucket) DO NOTHING;
+  
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: FUNCTION notify_group_member_added(); Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON FUNCTION public.notify_group_member_added() IS 'Notifica membros existentes quando alguém novo entra no grupo.
+Push only (não aparece no inbox): "João Silva joined Friends"';
+
+
+--
+-- Name: notify_location_suggestion_added(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.notify_location_suggestion_added() RETURNS trigger
+    LANGUAGE plpgsql SECURITY DEFINER
+    AS $$
+DECLARE
+  v_suggester_name TEXT;
+  v_event_name TEXT;
+  v_event_emoji TEXT;
+BEGIN
+  -- Buscar dados do evento
+  SELECT e.name, e.emoji INTO v_event_name, v_event_emoji
+  FROM events e
+  WHERE e.id = NEW.event_id;
+  
+  -- Buscar nome de quem sugeriu
+  SELECT u.name INTO v_suggester_name
+  FROM users u
+  WHERE u.id = NEW.user_id;
+
+  -- Notificar todos os participantes do evento (exceto quem sugeriu)
+  INSERT INTO notifications (
+    recipient_user_id,
+    type,
+    category,
+    priority,
+    user_name,
+    place,
+    event_name,
+    event_emoji,
+    event_id,
+    deeplink
+  )
+  SELECT 
+    ep.user_id,                                       -- participantes do evento
+    'locationSuggestionAdded',                        -- tipo
+    'notifications',                                  -- categoria
+    'low',                                            -- prioridade
+    v_suggester_name,                                 -- quem sugeriu
+    NEW.location_name,                                -- nome do local (da tabela location_suggestions)
+    v_event_name,                                     -- nome do evento
+    v_event_emoji,                                    -- emoji do evento
+    NEW.event_id,                                     -- event_id
+    'lazzo://events/' || NEW.event_id || '/location' -- deeplink
+  FROM event_participants ep
+  WHERE ep.pevent_id = NEW.event_id
+    AND ep.user_id != NEW.user_id                    -- não notificar quem sugeriu
+  ON CONFLICT (dedup_key, dedup_bucket) DO NOTHING;
+  
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: FUNCTION notify_location_suggestion_added(); Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON FUNCTION public.notify_location_suggestion_added() IS 'Notifica participantes quando alguém sugere um local via location_suggestions.
+Inbox text: "João Silva suggested Parque das Nações for Birthday Party"';
 
 
 --
@@ -2135,6 +2309,81 @@ BEGIN
   RETURN OLD;
 END;
 $$;
+
+
+--
+-- Name: notify_payment_received(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.notify_payment_received() RETURNS trigger
+    LANGUAGE plpgsql SECURITY DEFINER
+    AS $$
+DECLARE
+  v_payer_name TEXT;
+  v_event_emoji TEXT;
+  v_event_name TEXT;
+  v_expense_title TEXT;
+  v_created_by UUID;
+BEGIN
+  -- Se não foi marcado como pago, não fazer nada
+  IF NEW.has_paid = FALSE OR OLD.has_paid = TRUE THEN
+    RETURN NEW;
+  END IF;
+
+  -- Buscar dados da expense e evento
+  SELECT ee.title, ee.created_by, e.emoji, e.name
+  INTO v_expense_title, v_created_by, v_event_emoji, v_event_name
+  FROM event_expenses ee
+  JOIN events e ON e.id = ee.event_id
+  WHERE ee.id = NEW.expense_id;
+  
+  -- Buscar nome de quem pagou
+  SELECT u.name INTO v_payer_name
+  FROM users u
+  WHERE u.id = NEW.user_id;
+
+  -- Notificar quem criou a expense
+  INSERT INTO notifications (
+    recipient_user_id,
+    type,
+    category,
+    priority,
+    user_name,
+    amount,
+    expense_name,
+    event_emoji,
+    event_name,
+    event_id,
+    expense_id,
+    deeplink
+  )
+  SELECT
+    v_created_by,                                  -- quem criou a expense
+    'paymentsReceived',                            -- tipo
+    'notifications',                               -- categoria
+    'high',                                        -- prioridade
+    v_payer_name,                                  -- quem pagou
+    NEW.amount::TEXT || '€',                      -- amount com símbolo no final
+    v_expense_title,                               -- nome da expense
+    v_event_emoji,                                 -- emoji do evento
+    v_event_name,                                  -- nome do evento
+    (SELECT event_id FROM event_expenses WHERE id = NEW.expense_id),
+    NEW.expense_id,                                -- expense_id
+    'lazzo://events/' || (SELECT event_id FROM event_expenses WHERE id = NEW.expense_id) || '/expenses'
+  WHERE v_created_by != NEW.user_id               -- não notificar se pagou a si próprio
+  ON CONFLICT (dedup_key, dedup_bucket) DO NOTHING;
+  
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: FUNCTION notify_payment_received(); Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON FUNCTION public.notify_payment_received() IS 'Notifica criador da expense quando alguém paga.
+Inbox text: "João Silva paid you 25.00€" (verde)';
 
 
 --
@@ -2590,6 +2839,60 @@ begin
   where token = p_token;
 end;
 $$;
+
+
+--
+-- Name: send_event_rsvp_reminders(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.send_event_rsvp_reminders() RETURNS void
+    LANGUAGE plpgsql SECURITY DEFINER
+    AS $$
+BEGIN
+  -- Criar notificações para eventos que começam em 25-35 minutos
+  -- (janela de 10 min para garantir que não perde o timing)
+  INSERT INTO notifications (
+    recipient_user_id,
+    type,
+    category,
+    priority,
+    event_name,
+    event_emoji,
+    event_id,
+    mins,
+    deeplink
+  )
+  SELECT 
+    ep.user_id,                                    -- participantes
+    'eventRsvpReminder',                           -- tipo
+    'push',                                        -- categoria PUSH (ephemeral)
+    'high',                                        -- prioridade
+    e.name,                                        -- nome do evento
+    e.emoji,                                       -- emoji do evento
+    e.id,                                          -- event_id
+    EXTRACT(EPOCH FROM (e.start_datetime - NOW())) / 60, -- minutos restantes
+    'lazzo://events/' || e.id                     -- deeplink
+  FROM events e
+  JOIN event_participants ep ON ep.pevent_id = e.id
+  WHERE e.start_datetime IS NOT NULL
+    AND e.start_datetime > NOW()
+    AND e.start_datetime <= NOW() + INTERVAL '35 minutes'
+    AND e.start_datetime >= NOW() + INTERVAL '25 minutes'
+    AND ep.rsvp = 'pending'                       -- só quem não confirmou
+    AND e.status IN ('confirmed', 'planning')     -- eventos ativos
+  ON CONFLICT (dedup_key, dedup_bucket) DO NOTHING;
+  
+END;
+$$;
+
+
+--
+-- Name: FUNCTION send_event_rsvp_reminders(); Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON FUNCTION public.send_event_rsvp_reminders() IS 'Cron job que envia lembretes 30 mins antes do evento para quem não confirmou RSVP.
+Push notification: "Birthday Party starts in 30 min - Please confirm attendance"
+Executar a cada 5 minutos.';
 
 
 --
@@ -4752,10 +5055,24 @@ CREATE TRIGGER group_invite_notification AFTER INSERT ON public.group_invites FO
 
 
 --
+-- Name: group_members group_member_added_notification; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER group_member_added_notification AFTER INSERT ON public.group_members FOR EACH ROW EXECUTE FUNCTION public.notify_group_member_added();
+
+
+--
 -- Name: group_members group_member_joined_notification; Type: TRIGGER; Schema: public; Owner: -
 --
 
 CREATE TRIGGER group_member_joined_notification AFTER INSERT ON public.group_members FOR EACH ROW EXECUTE FUNCTION public.notify_group_invite_accepted();
+
+
+--
+-- Name: location_suggestions location_suggestion_added_notification; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER location_suggestion_added_notification AFTER INSERT ON public.location_suggestions FOR EACH ROW EXECUTE FUNCTION public.notify_location_suggestion_added();
 
 
 --
@@ -4802,6 +5119,13 @@ CREATE TRIGGER on_notification_insert_send_push AFTER INSERT ON public.notificat
 --
 
 CREATE TRIGGER participants_changed AFTER INSERT OR DELETE OR UPDATE ON public.event_participants FOR EACH STATEMENT EXECUTE FUNCTION public.auto_refresh_group_cache();
+
+
+--
+-- Name: expense_splits payment_received_notification; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER payment_received_notification AFTER UPDATE OF has_paid ON public.expense_splits FOR EACH ROW WHEN (((new.has_paid = true) AND (old.has_paid = false))) EXECUTE FUNCTION public.notify_payment_received();
 
 
 --
@@ -6395,5 +6719,5 @@ CREATE POLICY users_can_view_group_photos ON public.group_photos FOR SELECT USIN
 -- PostgreSQL database dump complete
 --
 
-\unrestrict cwaWARRmmNi4jqO51TJDzhlJnCKwCUJ6l4y4CtnpQQKzp5HcjLfpB2F8dsXZP3y
+\unrestrict 1KhcoGlbqIxQCWhOssLlgkCNsQYch4p28znJXMMd0VERivOcUc0whgRUTCprQhM
 

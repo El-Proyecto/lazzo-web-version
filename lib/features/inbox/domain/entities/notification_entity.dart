@@ -50,6 +50,8 @@ enum NotificationType {
   general,
   // New specific types based on catalog
   groupInviteReceived,
+  groupInviteAccepted,
+  groupMemberAdded, // NEW: When someone joins a group
   eventStartsSoon,
   eventLive,
   eventEndsSoon,
@@ -60,11 +62,11 @@ enum NotificationType {
   paymentsRequest,
   paymentsAddedYouOwe,
   paymentsAddedOwesYou, // NEW: Split from paymentsAddedYouOwe
+  paymentsReceived, // NEW: When someone pays you
   paymentsPaidYou,
   chatMention,
   chatMessage, // NEW: Chat messages notification
   securityNewLogin,
-  groupInviteAccepted,
   groupRenamed,
   groupPhotoChanged,
   eventCreated,
@@ -73,8 +75,10 @@ enum NotificationType {
   eventCanceled,
   eventRestored,
   suggestionAdded,
-  dateSuggestionAdded,
+  dateSuggestionAdded, // Already exists
+  locationSuggestionAdded, // NEW: Location suggestion
   rsvpUpdated,
+  eventRsvpReminder, // NEW: Reminder 30 mins before event
   memoryShared,
   // Removed: eventLocationSet, eventDetailsUpdated (not in updated spec)
 }
