@@ -83,8 +83,6 @@ class GroupEventModel {
   /// Helper to convert RSVP status string to enum
   static RsvpVoteStatus _parseRsvpStatus(String status) {
     switch (status.toLowerCase()) {
-      case 'going':
-      case 'yes':
       case 'attending':
       case 'accepted':
         return RsvpVoteStatus.going;
