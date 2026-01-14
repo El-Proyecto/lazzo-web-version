@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict 8mYgrl76NCISt6hPI8ruBCIkXgxCpsDMUVieAKszksNafchvQIFQsSFooGJT2VJ
+\restrict cwaWARRmmNi4jqO51TJDzhlJnCKwCUJ6l4y4CtnpQQKzp5HcjLfpB2F8dsXZP3y
 
 -- Dumped from database version 17.4
 -- Dumped by pg_dump version 18.1
@@ -1253,6 +1253,69 @@ $$;
 
 
 --
+-- Name: notify_chat_message(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.notify_chat_message() RETURNS trigger
+    LANGUAGE plpgsql SECURITY DEFINER
+    AS $$
+DECLARE
+  v_event_emoji TEXT;
+  v_event_name TEXT;
+BEGIN
+  -- Buscar dados do evento
+  SELECT emoji, name 
+  INTO v_event_emoji, v_event_name
+  FROM events 
+  WHERE id = NEW.event_id;
+
+  -- Criar notificação para todos os participantes do evento (exceto o sender)
+  -- Categoria 'push' = ephemeral (não aparece no inbox, só push notification)
+  INSERT INTO notifications (
+    recipient_user_id,
+    type,
+    category,
+    priority,
+    user_name,
+    event_name,
+    event_emoji,
+    event_id,
+    deeplink
+  )
+  SELECT 
+    ep.user_id,                                    -- participante do evento
+    'chatMessage',                                 -- tipo
+    'push',                                        -- categoria PUSH (ephemeral)
+    'low',                                         -- prioridade baixa
+    sender.name,                                   -- quem enviou
+    v_event_name,                                  -- nome do evento
+    v_event_emoji,                                 -- emoji do evento
+    NEW.event_id,                                  -- event_id
+    'lazzo://events/' || NEW.event_id || '/chat'  -- deeplink para o chat
+  FROM event_participants ep
+  CROSS JOIN users sender
+  WHERE sender.id = NEW.user_id                   -- dados do sender
+    AND ep.pevent_id = NEW.event_id               -- participantes do evento
+    AND ep.user_id != NEW.user_id                 -- não notificar o sender
+    -- TODO: Adicionar lógica para verificar se user está ativo no chat
+    -- Exemplo: AND NOT is_user_active_in_chat(ep.user_id, NEW.event_id)
+  ON CONFLICT (dedup_key, dedup_bucket) DO NOTHING;
+  
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: FUNCTION notify_chat_message(); Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON FUNCTION public.notify_chat_message() IS 'Trigger que cria notificações push (ephemeral) quando alguém envia mensagem no chat.
+Categoria "push" = não aparece no inbox, apenas como push notification.
+TODO: Filtrar users que estão ativos no chat para não enviar notificação.';
+
+
+--
 -- Name: notify_date_suggestion_added(); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -1303,24 +1366,30 @@ CREATE FUNCTION public.notify_event_canceled() RETURNS trigger
 DECLARE
   participant_record RECORD;
 BEGIN
-  -- Send notification to all participants who confirmed attendance (RSVP = 'going')
-  -- Exclude the user who deleted the event (created_by)
+  -- ✅ FIXED: Changed rsvp = 'going' to rsvp = 'yes'
+  -- Send notification to all participants who confirmed attendance (RSVP = 'yes')
   FOR participant_record IN
-    SELECT user_id 
-    FROM event_participants 
-    WHERE pevent_id = OLD.id 
-      AND rsvp = 'going'
-      AND user_id != OLD.created_by
+    SELECT ep.user_id, u.name
+    FROM event_participants ep
+    JOIN users u ON u.id = ep.user_id
+    WHERE ep.pevent_id = OLD.id
+      AND ep.rsvp = 'yes'  -- ✅ FIXED: was 'going'
+      AND ep.user_id != OLD.created_by
   LOOP
-    PERFORM create_notification_secure(
-      p_recipient_user_id := participant_record.user_id,
-      p_type := 'eventCanceled',
-      p_category := 'notifications',
-      p_priority := 'high',
-      p_deeplink := 'lazzo://events/' || OLD.id::text,
-      p_event_id := OLD.id,
-      p_event_name := OLD.name,
-      p_event_emoji := OLD.emoji
+    -- Insert notification logic here (depends on your notification structure)
+    -- This is a placeholder - adjust based on actual implementation
+    INSERT INTO notifications (
+      recipient_user_id,
+      type,
+      category,
+      event_id,
+      group_id
+    ) VALUES (
+      participant_record.user_id,
+      'eventCanceled',
+      'push',
+      OLD.id,
+      OLD.group_id
     );
   END LOOP;
   
@@ -1768,34 +1837,96 @@ CREATE FUNCTION public.notify_expense_added() RETURNS trigger
     LANGUAGE plpgsql SECURITY DEFINER
     AS $$
 BEGIN
-  -- Set-based INSERT for expense splits
+  -- Criar notificação "You Owe" para cada participante que deve dinheiro
   INSERT INTO notifications (
-    recipient_user_id, type, category, priority, deeplink,
-    event_id, event_emoji, user_name, event_name, amount
+    recipient_user_id, 
+    type, 
+    category, 
+    priority, 
+    deeplink,
+    event_id, 
+    event_emoji, 
+    user_name, 
+    event_name, 
+    amount,
+    expense_id,
+    expense_name
   )
   SELECT
-    es.user_id,
-    'paymentsAddedYouOwe',
-    'push',
-    'high',
-    'lazzo://events/' || e.id || '/expenses',
-    e.id,
-    e.emoji,
-    u.name,
-    e.name,
-    es.amount::TEXT
+    es.user_id,                                    -- quem deve
+    'paymentsAddedYouOwe',                        -- tipo
+    'notifications',                               -- categoria (aparece no inbox)
+    'high',                                        -- prioridade
+    'lazzo://events/' || e.id || '/expenses',     -- deeplink
+    e.id,                                          -- event_id
+    e.emoji,                                       -- emoji do evento
+    u.name,                                        -- nome de quem criou
+    e.name,                                        -- nome do evento
+    es.amount::TEXT || '€',                       -- FORMATO: "25.00€" (símbolo no final)
+    NEW.id,                                        -- expense_id
+    NEW.title                                      -- NOVO: expense_name
   FROM expense_splits es
   JOIN event_expenses ee ON ee.id = es.expense_id
   JOIN events e ON e.id = ee.event_id
   JOIN users u ON u.id = ee.created_by
-  WHERE es.expense_id = NEW.expense_id
-    AND es.user_id != ee.created_by
+  WHERE es.expense_id = NEW.id
+    AND es.user_id != ee.created_by               -- não notificar quem criou
+    AND es.has_paid = FALSE                        -- só quem ainda não pagou
+  ON CONFLICT (dedup_key, dedup_bucket) DO NOTHING;
+
+  -- Criar notificação "Owes You" para o criador da despesa
+  -- (informando quem lhe deve dinheiro)
+  INSERT INTO notifications (
+    recipient_user_id, 
+    type, 
+    category, 
+    priority, 
+    deeplink,
+    event_id, 
+    event_emoji, 
+    user_name, 
+    event_name, 
+    amount,
+    expense_id,
+    expense_name,
+    person_name
+  )
+  SELECT
+    ee.created_by,                                 -- quem criou a despesa (recebe notif)
+    'paymentsAddedOwesYou',                       -- tipo
+    'notifications',                               -- categoria
+    'high',                                        -- prioridade
+    'lazzo://events/' || e.id || '/expenses',     -- deeplink
+    e.id,                                          -- event_id
+    e.emoji,                                       -- emoji do evento
+    u_creator.name,                                -- nome do criador (ele próprio)
+    e.name,                                        -- nome do evento
+    es.amount::TEXT || '€',                       -- FORMATO: "25.00€" (símbolo no final)
+    NEW.id,                                        -- expense_id
+    NEW.title,                                     -- NOVO: expense_name
+    u_debtor.name                                  -- NOVO: person_name (quem deve)
+  FROM expense_splits es
+  JOIN event_expenses ee ON ee.id = es.expense_id
+  JOIN events e ON e.id = ee.event_id
+  JOIN users u_creator ON u_creator.id = ee.created_by
+  JOIN users u_debtor ON u_debtor.id = es.user_id
+  WHERE es.expense_id = NEW.id
+    AND es.user_id != ee.created_by               -- só notificar sobre outras pessoas
     AND es.has_paid = FALSE
   ON CONFLICT (dedup_key, dedup_bucket) DO NOTHING;
   
   RETURN NEW;
 END;
 $$;
+
+
+--
+-- Name: FUNCTION notify_expense_added(); Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON FUNCTION public.notify_expense_added() IS 'Trigger que cria notificações quando uma despesa é adicionada. 
+Envia "You Owe" para devedores e "Owes You" para o criador.
+Formato do amount: "25.00€" (símbolo no final).';
 
 
 --
@@ -1958,50 +2089,49 @@ DECLARE
   participant_record RECORD;
   event_group_name TEXT;
 BEGIN
-  -- OLD contém os dados do evento ANTES de ser deletado
+  -- OLD contains event data BEFORE deletion
   
-  -- Buscar o nome do grupo
-  SELECT name INTO event_group_name
-  FROM groups
-  WHERE id = OLD.group_id;
+  -- Get group name if exists
+  IF OLD.group_id IS NOT NULL THEN
+    SELECT name INTO event_group_name
+    FROM groups
+    WHERE id = OLD.group_id;
+  END IF;
 
-  -- Criar notificação para cada participante do evento
-  FOR participant_record IN 
-    SELECT DISTINCT user_id 
-    FROM event_participants 
-    WHERE pevent_id = OLD.id
-      AND user_id != OLD.created_by  -- Não notificar o próprio host
+  -- ✅ FIXED: Changed rsvp = 'going' to rsvp = 'yes'
+  -- Notify all participants who confirmed attendance (RSVP = 'yes')
+  FOR participant_record IN
+    SELECT ep.user_id, u.name as user_name
+    FROM event_participants ep
+    JOIN users u ON u.id = ep.user_id
+    WHERE ep.pevent_id = OLD.id
+      AND ep.rsvp = 'yes'  -- ✅ FIXED: was 'going'
+      AND ep.user_id != OLD.created_by  -- Don't notify the creator
   LOOP
+    -- Create notification for each confirmed participant
     INSERT INTO notifications (
       recipient_user_id,
       type,
       category,
       priority,
       event_id,
-      event_emoji,
-      event_name,
       group_id,
+      event_name,
       group_name,
-      user_name,  -- Nome do host que cancelou
-      deeplink
-    )
-    SELECT 
+      created_at
+    ) VALUES (
       participant_record.user_id,
       'eventCanceled',
-      'events',
+      'push',
       'high',
       OLD.id,
-      OLD.emoji,
-      OLD.name,
       OLD.group_id,
+      OLD.name,
       event_group_name,
-      u.name,  -- Nome do criador/host
-      '/event/' || OLD.id
-    FROM users u
-    WHERE u.id = OLD.created_by;
+      NOW()
+    );
   END LOOP;
 
-  -- IMPORTANTE: Retornar OLD para permitir que o DELETE continue
   RETURN OLD;
 END;
 $$;
@@ -3392,8 +3522,24 @@ CREATE TABLE public.notifications (
     note text,
     dedup_bucket timestamp with time zone DEFAULT (date_trunc('minute'::text, now()) + '00:05:00'::interval) NOT NULL,
     dedup_key text GENERATED ALWAYS AS ((((((((recipient_user_id)::text || ':'::text) || type) || ':'::text) || COALESCE((group_id)::text, ''::text)) || ':'::text) || COALESCE((event_id)::text, ''::text))) STORED,
-    expense_id uuid
+    expense_id uuid,
+    expense_name text,
+    person_name text
 );
+
+
+--
+-- Name: COLUMN notifications.expense_name; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.notifications.expense_name IS 'Nome da despesa associada (usado em notificações de pagamento)';
+
+
+--
+-- Name: COLUMN notifications.person_name; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON COLUMN public.notifications.person_name IS 'Nome da pessoa associada (usado em notificações de dívida/crédito)';
 
 
 --
@@ -3941,13 +4087,6 @@ CREATE INDEX group_photos_with_uploader_event_id_idx ON public.group_photos_with
 --
 
 CREATE UNIQUE INDEX group_photos_with_uploader_id_idx ON public.group_photos_with_uploader USING btree (id);
-
-
---
--- Name: group_photos_with_uploader_uploader_id_idx; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX group_photos_with_uploader_uploader_id_idx ON public.group_photos_with_uploader USING btree (uploader_id);
 
 
 --
@@ -4508,6 +4647,13 @@ CREATE TRIGGER chat_mention_notification AFTER INSERT ON public.chat_messages FO
 
 
 --
+-- Name: chat_messages chat_message_notification; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER chat_message_notification AFTER INSERT ON public.chat_messages FOR EACH ROW EXECUTE FUNCTION public.notify_chat_message();
+
+
+--
 -- Name: chat_messages chat_messages_updated_at_trigger; Type: TRIGGER; Schema: public; Owner: -
 --
 
@@ -4582,6 +4728,13 @@ CREATE TRIGGER events_changed AFTER INSERT OR DELETE OR UPDATE ON public.events 
 --
 
 CREATE TRIGGER expense_added_notification AFTER INSERT ON public.event_expenses FOR EACH ROW EXECUTE FUNCTION public.notify_payments_added_you_owe();
+
+
+--
+-- Name: expense_splits expense_added_notification; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER expense_added_notification AFTER INSERT ON public.expense_splits FOR EACH ROW EXECUTE FUNCTION public.notify_expense_added();
 
 
 --
@@ -4783,14 +4936,6 @@ ALTER TABLE ONLY public.chat_messages
 
 
 --
--- Name: event_date_votes edv_option_same_event; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.event_date_votes
-    ADD CONSTRAINT edv_option_same_event FOREIGN KEY (event_id, option_id) REFERENCES public.event_date_options(event_id, id) ON DELETE CASCADE;
-
-
---
 -- Name: event_date_options event_date_options_created_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -4804,6 +4949,14 @@ ALTER TABLE ONLY public.event_date_options
 
 ALTER TABLE ONLY public.event_date_options
     ADD CONSTRAINT event_date_options_event_id_fkey FOREIGN KEY (event_id) REFERENCES public.events(id) ON DELETE CASCADE;
+
+
+--
+-- Name: event_date_votes event_date_votes_option_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.event_date_votes
+    ADD CONSTRAINT event_date_votes_option_id_fkey FOREIGN KEY (option_id) REFERENCES public.event_date_options(id) ON DELETE CASCADE;
 
 
 --
@@ -5107,7 +5260,7 @@ ALTER TABLE ONLY public.group_messages
 --
 
 ALTER TABLE ONLY public.notifications
-    ADD CONSTRAINT notifications_event_id_fkey FOREIGN KEY (event_id) REFERENCES public.events(id) ON DELETE CASCADE;
+    ADD CONSTRAINT notifications_event_id_fkey FOREIGN KEY (event_id) REFERENCES public.events(id) ON DELETE SET NULL;
 
 
 --
@@ -6242,5 +6395,5 @@ CREATE POLICY users_can_view_group_photos ON public.group_photos FOR SELECT USIN
 -- PostgreSQL database dump complete
 --
 
-\unrestrict 8mYgrl76NCISt6hPI8ruBCIkXgxCpsDMUVieAKszksNafchvQIFQsSFooGJT2VJ
+\unrestrict cwaWARRmmNi4jqO51TJDzhlJnCKwCUJ6l4y4CtnpQQKzp5HcjLfpB2F8dsXZP3y
 

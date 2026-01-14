@@ -161,34 +161,7 @@ class FakeNotificationRepository implements NotificationRepository {
       isRead: true,
     ),
 
-    NotificationEntity(
-      id: '12',
-      title: 'Location Set',
-      description: 'Location confirmed for **{event}**: {place}.',
-      type: NotificationType.eventLocationSet,
-      category: NotificationCategory.notifications,
-      priority: NotificationPriority.medium,
-      createdAt: DateTime.now().subtract(const Duration(days: 1, hours: 2)),
-      eventName: 'Hiking Trip',
-      place: 'Sintra Mountains',
-      eventId: 'event6',
-      eventEmoji: '🥾',
-      isRead: true,
-    ),
-
-    NotificationEntity(
-      id: '13',
-      title: 'Event Updated',
-      description: '**{event}** was updated. Check the new details.',
-      type: NotificationType.eventDetailsUpdated,
-      category: NotificationCategory.notifications,
-      priority: NotificationPriority.medium,
-      createdAt: DateTime.now().subtract(const Duration(days: 2)),
-      eventName: 'Concert Night',
-      eventId: 'event2',
-      eventEmoji: '🎵',
-      isRead: true,
-    ),
+    // Removed: eventLocationSet and eventDetailsUpdated per NOTIFICATIONS_REFERENCE.md
   ];
 
   @override
@@ -209,9 +182,8 @@ class FakeNotificationRepository implements NotificationRepository {
     }
 
     if (category != null) {
-      notifications = notifications
-          .where((n) => n.category == category)
-          .toList();
+      notifications =
+          notifications.where((n) => n.category == category).toList();
     }
 
     return notifications.skip(offset).take(limit).toList();

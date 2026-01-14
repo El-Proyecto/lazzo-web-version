@@ -45,6 +45,7 @@ class NotificationService {
   Future<String?> sendExpenseAddedYouOwe({
     required String recipientUserId,
     required String creatorName,
+    required String expenseName,
     required String amount,
     required String eventId,
     String? eventEmoji,
@@ -53,13 +54,42 @@ class NotificationService {
     return await _client.rpc('create_notification_secure', params: {
       'p_recipient_user_id': recipientUserId,
       'p_type': 'paymentsAddedYouOwe',
-      'p_category': 'push',
+      'p_category': 'notifications',
       'p_priority': 'high',
       'p_deeplink': 'lazzo://events/$eventId/expenses',
       'p_event_id': eventId,
       'p_event_emoji': eventEmoji,
       'p_user_name': creatorName,
       'p_event_name': eventName,
+      'p_expense_name': expenseName,
+      'p_amount': amount,
+    });
+  }
+
+  /// Send expense added notification (someone owes you)
+  /// Triggered when: Someone creates an expense where another person owes you
+  Future<String?> sendExpenseAddedOwesYou({
+    required String recipientUserId,
+    required String creatorName,
+    required String expenseName,
+    required String debtorName,
+    required String amount,
+    required String eventId,
+    String? eventEmoji,
+    String? eventName,
+  }) async {
+    return await _client.rpc('create_notification_secure', params: {
+      'p_recipient_user_id': recipientUserId,
+      'p_type': 'paymentsAddedOwesYou',
+      'p_category': 'notifications',
+      'p_priority': 'high',
+      'p_deeplink': 'lazzo://events/$eventId/expenses',
+      'p_event_id': eventId,
+      'p_event_emoji': eventEmoji,
+      'p_user_name': creatorName,
+      'p_event_name': eventName,
+      'p_expense_name': expenseName,
+      'p_person_name': debtorName,
       'p_amount': amount,
     });
   }
@@ -69,6 +99,7 @@ class NotificationService {
   Future<String?> sendPaymentRequest({
     required String recipientUserId,
     required String requesterName,
+    required String expenseName,
     required String amount,
     required String eventId,
     String? eventEmoji,
@@ -78,13 +109,14 @@ class NotificationService {
     return await _client.rpc('create_notification_secure', params: {
       'p_recipient_user_id': recipientUserId,
       'p_type': 'paymentsRequest',
-      'p_category': 'push',
+      'p_category': 'actions',
       'p_priority': 'high',
       'p_deeplink': 'lazzo://events/$eventId/expenses',
       'p_event_id': eventId,
       'p_event_emoji': eventEmoji,
       'p_user_name': requesterName,
       'p_event_name': eventName,
+      'p_expense_name': expenseName,
       'p_amount': amount,
       'p_note': note ?? 'expense',
     });
@@ -151,6 +183,32 @@ class NotificationService {
       'p_event_emoji': eventEmoji,
       'p_user_name': mentionerName,
       'p_event_name': eventName,
+    });
+  }
+
+  /// Send chat message notification
+  /// Triggered when: New message in event chat (only if chat not muted)
+  /// Note: Only send to other users, not sender
+  Future<String?> sendChatMessage({
+    required String recipientUserId,
+    required String senderName,
+    required String message,
+    required String eventName,
+    required String eventId,
+    String? eventEmoji,
+  }) async {
+    return await _client.rpc('create_notification_secure', params: {
+      'p_recipient_user_id': recipientUserId,
+      'p_type': 'chatMessage',
+      'p_category': 'push',
+      'p_priority': 'medium',
+      'p_deeplink': 'lazzo://events/$eventId/chat',
+      'p_event_id': eventId,
+      'p_event_emoji': eventEmoji,
+      'p_user_name': senderName,
+      'p_event_name': eventName,
+      'p_message':
+          message.length > 100 ? '${message.substring(0, 100)}...' : message,
     });
   }
 
@@ -357,28 +415,6 @@ class NotificationService {
     });
   }
 
-  /// Send event location set notification
-  /// Triggered when: Event location is set/confirmed
-  Future<String?> sendEventLocationSet({
-    required String recipientUserId,
-    required String eventName,
-    required String eventId,
-    required String locationName,
-    String? eventEmoji,
-  }) async {
-    return await _client.rpc('create_notification_secure', params: {
-      'p_recipient_user_id': recipientUserId,
-      'p_type': 'eventLocationSet',
-      'p_category': 'notifications',
-      'p_priority': 'medium',
-      'p_deeplink': 'lazzo://events/$eventId',
-      'p_event_id': eventId,
-      'p_event_emoji': eventEmoji,
-      'p_event_name': eventName,
-      'p_place': locationName,
-    });
-  }
-
   /// Send RSVP updated notification
   /// Triggered when: Someone updates their RSVP (useful for host)
   Future<String?> sendRsvpUpdated({
@@ -474,28 +510,6 @@ class NotificationService {
       'p_date': date,
       'p_time': time,
       'p_place': locationName,
-    });
-  }
-
-  /// Send event details updated notification
-  /// Triggered when: Event name, emoji, or other details are updated
-  Future<String?> sendEventDetailsUpdated({
-    required String recipientUserId,
-    required String eventName,
-    required String eventId,
-    String? eventEmoji,
-    String? note, // What changed: "name", "emoji", "details"
-  }) async {
-    return await _client.rpc('create_notification_secure', params: {
-      'p_recipient_user_id': recipientUserId,
-      'p_type': 'eventDetailsUpdated',
-      'p_category': 'notifications',
-      'p_priority': 'low',
-      'p_deeplink': 'lazzo://events/$eventId',
-      'p_event_id': eventId,
-      'p_event_emoji': eventEmoji,
-      'p_event_name': eventName,
-      'p_note': note ?? 'details',
     });
   }
 

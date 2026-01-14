@@ -14,8 +14,8 @@ CREATE TABLE public.chat_messages (
   updated_at timestamp with time zone DEFAULT now(),
   CONSTRAINT chat_messages_pkey PRIMARY KEY (id),
   CONSTRAINT chat_messages_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id),
-  CONSTRAINT chat_messages_reply_to_id_fkey FOREIGN KEY (reply_to_id) REFERENCES public.chat_messages(id),
-  CONSTRAINT chat_messages_event_id_fkey FOREIGN KEY (event_id) REFERENCES public.events(id)
+  CONSTRAINT chat_messages_event_id_fkey FOREIGN KEY (event_id) REFERENCES public.events(id),
+  CONSTRAINT chat_messages_reply_to_id_fkey FOREIGN KEY (reply_to_id) REFERENCES public.chat_messages(id)
 );
 CREATE TABLE public.event_date_options (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -34,10 +34,7 @@ CREATE TABLE public.event_date_votes (
   voted_at timestamp with time zone DEFAULT now(),
   event_id uuid NOT NULL,
   CONSTRAINT event_date_votes_pkey PRIMARY KEY (option_id, user_id),
-  CONSTRAINT edv_option_same_event FOREIGN KEY (option_id) REFERENCES public.event_date_options(id),
-  CONSTRAINT edv_option_same_event FOREIGN KEY (event_id) REFERENCES public.event_date_options(id),
-  CONSTRAINT edv_option_same_event FOREIGN KEY (option_id) REFERENCES public.event_date_options(event_id),
-  CONSTRAINT edv_option_same_event FOREIGN KEY (event_id) REFERENCES public.event_date_options(event_id),
+  CONSTRAINT event_date_votes_option_id_fkey FOREIGN KEY (option_id) REFERENCES public.event_date_options(id),
   CONSTRAINT event_date_votes_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
 );
 CREATE TABLE public.event_expenses (
@@ -176,8 +173,8 @@ CREATE TABLE public.groups (
   group_url text,
   CONSTRAINT groups_pkey PRIMARY KEY (id),
   CONSTRAINT groups_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.users(id),
-  CONSTRAINT groups_event_id_fkey FOREIGN KEY (event_id) REFERENCES public.events(id),
-  CONSTRAINT groups_memory_id_fkey FOREIGN KEY (memory_id) REFERENCES public.memories(mem_id)
+  CONSTRAINT groups_memory_id_fkey FOREIGN KEY (memory_id) REFERENCES public.memories(mem_id),
+  CONSTRAINT groups_event_id_fkey FOREIGN KEY (event_id) REFERENCES public.events(id)
 );
 CREATE TABLE public.location_suggestion_votes (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -185,8 +182,8 @@ CREATE TABLE public.location_suggestion_votes (
   user_id uuid NOT NULL,
   created_at timestamp with time zone DEFAULT now(),
   CONSTRAINT location_suggestion_votes_pkey PRIMARY KEY (id),
-  CONSTRAINT location_suggestion_votes_suggestion_id_fkey FOREIGN KEY (suggestion_id) REFERENCES public.location_suggestions(id),
-  CONSTRAINT location_suggestion_votes_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
+  CONSTRAINT location_suggestion_votes_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id),
+  CONSTRAINT location_suggestion_votes_suggestion_id_fkey FOREIGN KEY (suggestion_id) REFERENCES public.location_suggestions(id)
 );
 CREATE TABLE public.location_suggestions (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -198,8 +195,8 @@ CREATE TABLE public.location_suggestions (
   longitude double precision,
   created_at timestamp with time zone DEFAULT now(),
   CONSTRAINT location_suggestions_pkey PRIMARY KEY (id),
-  CONSTRAINT location_suggestions_event_id_fkey FOREIGN KEY (event_id) REFERENCES public.events(id),
-  CONSTRAINT location_suggestions_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
+  CONSTRAINT location_suggestions_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id),
+  CONSTRAINT location_suggestions_event_id_fkey FOREIGN KEY (event_id) REFERENCES public.events(id)
 );
 CREATE TABLE public.locations (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -262,6 +259,8 @@ CREATE TABLE public.notifications (
   dedup_bucket timestamp with time zone NOT NULL DEFAULT (date_trunc('minute'::text, now()) + '00:05:00'::interval),
   dedup_key text DEFAULT (((((((recipient_user_id)::text || ':'::text) || type) || ':'::text) || COALESCE((group_id)::text, ''::text)) || ':'::text) || COALESCE((event_id)::text, ''::text)),
   expense_id uuid,
+  expense_name text,
+  person_name text,
   CONSTRAINT notifications_pkey PRIMARY KEY (id),
   CONSTRAINT notifications_recipient_user_id_fkey FOREIGN KEY (recipient_user_id) REFERENCES public.users(id),
   CONSTRAINT notifications_group_id_fkey FOREIGN KEY (group_id) REFERENCES public.groups(id),

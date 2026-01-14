@@ -390,9 +390,22 @@ class _InboxPageState extends ConsumerState<InboxPage>
 
       // Expense added notification → Navigate based on event status
       case NotificationType.paymentsAddedYouOwe:
+      case NotificationType.paymentsAddedOwesYou:
         if (notification.eventId != null) {
           // Check event status to decide navigation
           _handleExpenseNotificationTap(context, notification);
+        }
+        break;
+
+      // Chat notifications → Navigate to event chat
+      case NotificationType.chatMention:
+      case NotificationType.chatMessage:
+        if (notification.eventId != null) {
+          Navigator.pushNamed(
+            context,
+            '/event-chat',
+            arguments: {'eventId': notification.eventId},
+          );
         }
         break;
 
@@ -411,8 +424,6 @@ class _InboxPageState extends ConsumerState<InboxPage>
       // Event info notifications → Navigate to event
       case NotificationType.eventCreated:
       case NotificationType.eventDateSet:
-      case NotificationType.eventLocationSet:
-      case NotificationType.eventDetailsUpdated:
       case NotificationType.eventCanceled:
       case NotificationType.eventRestored:
       case NotificationType.eventConfirmed:

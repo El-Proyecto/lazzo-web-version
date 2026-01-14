@@ -59,23 +59,24 @@ enum NotificationType {
   memoryReady,
   paymentsRequest,
   paymentsAddedYouOwe,
+  paymentsAddedOwesYou, // NEW: Split from paymentsAddedYouOwe
   paymentsPaidYou,
   chatMention,
+  chatMessage, // NEW: Chat messages notification
   securityNewLogin,
   groupInviteAccepted,
   groupRenamed,
   groupPhotoChanged,
   eventCreated,
   eventDateSet,
-  eventLocationSet,
-  eventDetailsUpdated,
+  eventConfirmed,
   eventCanceled,
   eventRestored,
-  eventConfirmed,
   suggestionAdded,
   dateSuggestionAdded,
   rsvpUpdated,
   memoryShared,
+  // Removed: eventLocationSet, eventDetailsUpdated (not in updated spec)
 }
 
 enum NotificationPriority { low, medium, high }
@@ -108,6 +109,8 @@ class NotificationEntity {
   final String? device; // For {device} placeholder
   final String? note; // For payment notes
   final String? expenseId; // Link to expense for payment notifications
+  final String? expenseName; // For expense name in payment notifications
+  final String? personName; // For person who owes in payment notifications
 
   const NotificationEntity({
     required this.id,
@@ -136,6 +139,8 @@ class NotificationEntity {
     this.device,
     this.note,
     this.expenseId,
+    this.expenseName,
+    this.personName,
   });
 
   NotificationEntity copyWith({
@@ -165,6 +170,8 @@ class NotificationEntity {
     String? device,
     String? note,
     String? expenseId,
+    String? expenseName,
+    String? personName,
   }) {
     return NotificationEntity(
       id: id ?? this.id,
@@ -193,6 +200,8 @@ class NotificationEntity {
       device: device ?? this.device,
       note: note ?? this.note,
       expenseId: expenseId ?? this.expenseId,
+      expenseName: expenseName ?? this.expenseName,
+      personName: personName ?? this.personName,
     );
   }
 
@@ -209,7 +218,11 @@ class NotificationEntity {
     if (eventName != null) {
       message = message.replaceAll('{event}', '**$eventName**');
     }
-    if (amount != null) message = message.replaceAll('{amount}', '**$amount**');
+    if (amount != null) {
+      // Ensure amount always has € symbol at the end
+      final formattedAmount = amount!.endsWith('€') ? amount! : '$amount€';
+      message = message.replaceAll('{amount}', '**$formattedAmount**');
+    }
     if (hours != null) message = message.replaceAll('{hours}', '**$hours**');
     if (mins != null) message = message.replaceAll('{mins}', '**$mins**');
     if (date != null) message = message.replaceAll('{date}', '**$date**');
@@ -217,6 +230,12 @@ class NotificationEntity {
     if (place != null) message = message.replaceAll('{place}', '**$place**');
     if (device != null) message = message.replaceAll('{device}', '**$device**');
     if (note != null) message = message.replaceAll('{note}', note!);
+    if (expenseName != null) {
+      message = message.replaceAll('{expense_name}', '**$expenseName**');
+    }
+    if (personName != null) {
+      message = message.replaceAll('{person_name}', '**$personName**');
+    }
 
     return message;
   }
@@ -239,12 +258,11 @@ class NotificationEntity {
       case NotificationType.eventExtended:
       case NotificationType.eventCreated:
       case NotificationType.eventDateSet:
-      case NotificationType.eventLocationSet:
-      case NotificationType.eventDetailsUpdated:
       case NotificationType.eventRestored:
       case NotificationType.eventConfirmed:
       case NotificationType.suggestionAdded:
       case NotificationType.chatMention:
+      case NotificationType.chatMessage:
         return eventId != null ? 'lazzo://event/$eventId' : null;
 
       case NotificationType.uploadsOpen:
@@ -253,6 +271,7 @@ class NotificationEntity {
 
       case NotificationType.paymentsRequest:
       case NotificationType.paymentsAddedYouOwe:
+      case NotificationType.paymentsAddedOwesYou:
       case NotificationType.paymentsPaidYou:
         return 'lazzo://payments';
 

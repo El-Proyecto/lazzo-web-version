@@ -25,7 +25,7 @@ class NotificationCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final shouldShowActionButtons = _shouldShowActionButtons();
-    
+
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -57,18 +57,19 @@ class NotificationCard extends StatelessWidget {
       ),
     );
   }
-  
+
   bool _shouldShowActionButtons() {
     final type = notification.type;
-    
+
     // Group invite has buttons
-    if (type == NotificationType.groupInviteReceived && notification.groupId != null) {
+    if (type == NotificationType.groupInviteReceived &&
+        notification.groupId != null) {
       return true;
     }
-    
+
     // paymentsAddedYouOwe no longer shows action button (just taps to event)
     // Payment requests still have action buttons
-    
+
     // Some PUSH notifications have action buttons
     if ([
       NotificationType.uploadsOpen,
@@ -77,15 +78,16 @@ class NotificationCard extends StatelessWidget {
     ].contains(type)) {
       return true;
     }
-    
+
     return false;
   }
 
   Widget _buildActionButtons(BuildContext context) {
     final type = notification.type;
-    
+
     // Uploads: View Event button
-    if (type == NotificationType.uploadsOpen || type == NotificationType.uploadsClosing) {
+    if (type == NotificationType.uploadsOpen ||
+        type == NotificationType.uploadsClosing) {
       return SizedBox(
         width: double.infinity,
         child: ElevatedButton(
@@ -109,7 +111,7 @@ class NotificationCard extends StatelessWidget {
         ),
       );
     }
-    
+
     // Payment Request: View Payments button
     if (type == NotificationType.paymentsRequest) {
       return SizedBox(
@@ -135,9 +137,10 @@ class NotificationCard extends StatelessWidget {
         ),
       );
     }
-    
+
     // Group invite: Accept/Decline
-    if (type == NotificationType.groupInviteReceived && notification.groupId != null) {
+    if (type == NotificationType.groupInviteReceived &&
+        notification.groupId != null) {
       return Row(
         children: [
           Expanded(
@@ -182,10 +185,10 @@ class NotificationCard extends StatelessWidget {
         ],
       );
     }
-    
+
     // No action button for paymentsAddedYouOwe anymore
     // Just tap on card to navigate to event
-    
+
     return const SizedBox.shrink();
   }
 
@@ -318,19 +321,30 @@ class NotificationCard extends StatelessWidget {
         spans.add(TextSpan(text: normalText));
       }
 
-      // Add bold text
-      // Check if this is the amount in a payment notification (last bold element)
-      final isPaymentAmount = notification.type == NotificationType.paymentsAddedYouOwe &&
-          match.end == text.length;
-      
+      // Add bold text with color if it's an amount
+      final boldText = match.group(1) ?? '';
+      Color? textColor;
+      FontWeight fontWeight = FontWeight.w600;
+
+      // Identify if this is an amount (contains € or currency symbol)
+      final isAmount = boldText.contains('€') || boldText.contains('\$');
+
+      if (isAmount) {
+        // Check notification type to determine color
+        if (notification.type == NotificationType.paymentsAddedYouOwe ||
+            notification.type == NotificationType.paymentsRequest) {
+          textColor = const Color(0xFFFF4444); // Red for debts
+        } else if (notification.type == NotificationType.paymentsAddedOwesYou) {
+          textColor = const Color(0xFF4CAF50); // Green for receivables
+        }
+      }
+
       spans.add(
         TextSpan(
-          text: match.group(1),
+          text: boldText,
           style: AppText.bodyMedium.copyWith(
-            color: isPaymentAmount 
-                ? const Color(0xFFFF4444) // Red for amount you owe
-                : BrandColors.text1,
-            fontWeight: FontWeight.w600,
+            color: textColor ?? BrandColors.text1,
+            fontWeight: fontWeight,
           ),
         ),
       );
@@ -388,13 +402,15 @@ class NotificationCard extends StatelessWidget {
         return '🎞️';
       case NotificationType.paymentsRequest:
       case NotificationType.paymentsAddedYouOwe:
+      case NotificationType.paymentsAddedOwesYou:
       case NotificationType.paymentsPaidYou:
         return '💰';
       case NotificationType.chatMention:
+      case NotificationType.chatMessage:
         return '💬';
       case NotificationType.securityNewLogin:
         return '🔐';
-      
+
       // NOTIFICATIONS (feed)
       case NotificationType.groupInviteAccepted:
       case NotificationType.groupRenamed:
@@ -402,8 +418,6 @@ class NotificationCard extends StatelessWidget {
         return '👥';
       case NotificationType.eventCreated:
       case NotificationType.eventDateSet:
-      case NotificationType.eventLocationSet:
-      case NotificationType.eventDetailsUpdated:
       case NotificationType.eventCanceled:
       case NotificationType.eventRestored:
       case NotificationType.eventConfirmed:
@@ -415,9 +429,8 @@ class NotificationCard extends StatelessWidget {
         return '✅';
       case NotificationType.memoryShared:
         return '🎞️';
-      
-      // ACTIONS (to-dos)
 
+      // ACTIONS (to-dos)
     }
   }
 

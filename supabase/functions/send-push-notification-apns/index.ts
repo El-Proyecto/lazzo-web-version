@@ -115,85 +115,85 @@ const getLocalizedMessage = (
   type: string,
   data: Record<string, string>
 ): { title: string; body: string } => {
-  const { user_name, group_name, event_name, event_emoji, amount, mins, hours, date, time, place } = data;
+  const { user_name, group_name, event_name, event_emoji, amount, expense_name, person_name, mins, hours, date, time, place, message, note } = data;
   const emoji = event_emoji || "📅";
 
   const messages: Record<string, { title: string; body: string }> = {
     groupInviteReceived: {
-      title: "Group Invite",
-      body: `${user_name} invited you to join ${group_name}`,
+      title: group_name || "Group Invite",
+      body: `${user_name} invited you to join`,
     },
     paymentsAddedYouOwe: {
-      title: "New Expense",
-      body: `${user_name} added an expense: ${amount}`,
+      title: `${emoji} ${event_name}`,
+      body: `${user_name} added the expense "${expense_name}"`,
+    },
+    paymentsAddedOwesYou: {
+      title: `${emoji} ${event_name}`,
+      body: `${user_name} added the expense "${expense_name}"`,
     },
     paymentsRequest: {
-      title: "Payment Request",
-      body: `${user_name} is requesting ${amount}`,
+      title: `${emoji} ${event_name}`,
+      body: `${user_name} requested ${amount} for ${expense_name}`,
     },
     eventStartsSoon: {
-      title: `${emoji} Event Starting Soon`,
-      body: `${event_name} starts in ${mins} minutes`,
+      title: `${emoji} ${event_name}`,
+      body: `Starts in ${mins} min`,
     },
     eventLive: {
-      title: `${emoji} Event is Live!`,
-      body: `${event_name} has started`,
+      title: `${emoji} ${event_name}`,
+      body: `It's live now!`,
     },
     chatMention: {
-      title: `${emoji} Mentioned in Chat`,
-      body: `${user_name} mentioned you in ${event_name}`,
+      title: `${emoji} ${event_name}`,
+      body: `${user_name} mentioned you in chat`,
+    },
+    chatMessage: {
+      title: `${emoji} ${event_name}`,
+      body: `${user_name}: ${message}`,
     },
     securityNewLogin: {
       title: "New Login Detected",
       body: `Logged in from ${place || "unknown location"}`,
     },
     uploadsClosing: {
-      title: `${emoji} Upload Window Closing`,
-      body: `Upload photos for ${event_name} (${mins} min left)`,
+      title: `${emoji} ${event_name}`,
+      body: `Upload photos (${mins} min left)`,
     },
     memoryReady: {
-      title: `${emoji} Memory Ready`,
-      body: `Your memory for ${event_name} is ready to view`,
+      title: `${emoji} ${event_name}`,
+      body: `Your memory is ready to view!`,
     },
     eventEndsSoon: {
-      title: `${emoji} Event Ending Soon`,
-      body: `${event_name} ends in ${mins} minutes`,
+      title: `${emoji} ${event_name}`,
+      body: `The event ends in ${mins} minutes`,
     },
     eventCreated: {
-      title: "New Event",
-      body: `${user_name} created ${emoji} ${event_name} in ${group_name}`,
+      title: group_name || "New Event",
+      body: `${user_name} created an event in ${group_name}`,
     },
     eventDateSet: {
-      title: `${emoji} Date Confirmed`,
-      body: `${event_name} is on ${date} at ${time}`,
-    },
-    eventLocationSet: {
-      title: `${emoji} Location Set`,
-      body: `${event_name} will be at ${place}`,
+      title: `${emoji} ${event_name}`,
+      body: `Event date is set to ${date} at ${time}`,
     },
     eventExtended: {
-      title: `${emoji} Event Extended`,
-      body: `${event_name} extended by ${hours} hours`,
+      title: `${emoji} ${event_name}`,
+      body: `Event extended by ${hours}h`,
     },
     uploadsOpen: {
-      title: `${emoji} Upload Photos`,
-      body: `Upload photos for ${event_name} (${hours} hours left)`,
+      title: `${emoji} ${event_name}`,
+      body: `Uploads are open (${hours}h left)`,
     },
     rsvpUpdated: {
-      title: `${emoji} RSVP Updated`,
-      body: `${user_name} is ${data.note} for ${event_name}`,
+      title: `${emoji} ${event_name}`,
+      body: `${user_name} is ${note} to the event`,
     },
     eventConfirmed: {
-      title: `${emoji} Event Confirmed`,
-      body: `${event_name} on ${date} at ${time}`,
-    },
-    eventDetailsUpdated: {
-      title: `${emoji} Event Updated`,
-      body: `${event_name} details changed`,
+      title: `${emoji} ${event_name}`,
+      body: `Event confirmed for ${date} at ${time}`,
     },
     eventCanceled: {
-      title: `${emoji} Event Canceled`,
-      body: `${event_name} has been canceled`,
+      title: `${emoji} ${event_name}`,
+      body: `The Event was canceled!`,
     },
   };
 

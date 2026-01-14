@@ -32,11 +32,11 @@ class EventExpenseRemoteDataSource {
           .single();
 
       final expenseId = expenseResponse['id'] as String;
-      
+
       // Step 2: Insert expense_splits (who owes)
       if (participantsOwe.isNotEmpty) {
-                final amountPerPerson = amount / participantsOwe.length;
-                
+        final amountPerPerson = amount / participantsOwe.length;
+
         await _client.from('expense_splits').insert(
               participantsOwe
                   .map((userId) => {
@@ -48,45 +48,45 @@ class EventExpenseRemoteDataSource {
                       })
                   .toList(),
             );
-                
+
         // Step 3: Send notifications to participants who owe money (excluding payer)
         try {
-                    final creatorData = await _client
+          final creatorData = await _client
               .from('users')
               .select('name')
               .eq('id', paidBy)
               .single();
-          
+
           final eventData = await _client
               .from('events')
               .select('name, emoji')
               .eq('id', eventId)
               .single();
-          
+
           final creatorName = creatorData['name'] ?? 'Someone';
           final eventName = eventData['name'];
           final eventEmoji = eventData['emoji'];
-                    
+
           // Send notification to each participant (except the payer)
-                    for (final userId in participantsOwe) {
+          for (final userId in participantsOwe) {
             if (userId != paidBy) {
-                            await _notificationService.sendExpenseAddedYouOwe(
+              await _notificationService.sendExpenseAddedYouOwe(
                 recipientUserId: userId,
                 creatorName: creatorName,
-                amount: amountPerPerson.toStringAsFixed(2),
+                expenseName: description,
+                amount: '${amountPerPerson.toStringAsFixed(2)}€',
                 eventId: eventId,
                 eventEmoji: eventEmoji,
                 eventName: eventName,
               );
-                          }
+            }
           }
         } catch (notifError) {
           // Don't fail expense creation if notifications fail
-                            }
-      } else {
-              }
+        }
+      } else {}
 
-            return EventExpenseDto.fromJson(expenseResponse);
+      return EventExpenseDto.fromJson(expenseResponse);
     } catch (e) {
       throw Exception('Failed to create expense: $e');
     }
