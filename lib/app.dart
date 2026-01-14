@@ -12,6 +12,7 @@ import 'package:lazzo/features/home/presentation/providers/home_event_providers.
 import 'package:lazzo/features/groups/presentation/providers/groups_provider.dart';
 import 'package:lazzo/config/app_config.dart';
 import 'package:lazzo/features/group_invites/presentation/providers/accept_group_invites_providers.dart';
+import 'package:lazzo/services/push_notification_initializer.dart';
 
 class LazzoApp extends ConsumerStatefulWidget {
   const LazzoApp({super.key});
@@ -27,6 +28,9 @@ class _LazzoAppState extends ConsumerState<LazzoApp> {
 
   @override
   Widget build(BuildContext context) {
+    // Initialize push notifications (watches auth state automatically)
+    ref.watch(pushNotificationInitializerProvider);
+
     return MaterialApp(
       title: 'Lazzo',
       navigatorKey: _navigatorKey,

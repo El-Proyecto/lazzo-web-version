@@ -321,8 +321,12 @@ class GroupDetailsPage extends ConsumerWidget {
                 isCurrentUserAdmin: isCurrentUserAdmin,
                 onTap: () {
                   if (member.isCurrentUser) {
-                    // Navigate to own profile
-                    Navigator.pushNamed(context, AppRouter.profile);
+                    // Navigate to own profile with back button
+                    Navigator.pushNamed(
+                      context,
+                      AppRouter.profile,
+                      arguments: {'showBackButton': true},
+                    );
                   } else {
                     // Navigate to other user profile
                     Navigator.pushNamed(

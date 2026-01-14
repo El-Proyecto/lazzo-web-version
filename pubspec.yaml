@@ -61,6 +61,8 @@ dependencies:
   # Save images/videos to device gallery (Android & iOS)
   # Modern alternative to image_gallery_saver with better Android support
   gal: ^2.3.0
+  # Device info for push token registration
+  package_info_plus: ^8.0.0
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8

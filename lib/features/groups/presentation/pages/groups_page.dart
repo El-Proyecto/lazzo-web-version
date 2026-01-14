@@ -377,6 +377,7 @@ class _GroupsPageState extends ConsumerState<GroupsPage>
           ),
         );
 
+        if (!mounted) return;
         InviteBottomSheet.show(
           context: context,
           inviteUrl: inviteUrl,
