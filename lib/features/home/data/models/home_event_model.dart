@@ -327,10 +327,10 @@ class _HomeEventModel {
   static bool? _mapUserVote(String? rsvp) {
     if (rsvp == null) return null;
     final s = rsvp.toLowerCase();
-    if (s == 'going' || s == 'yes' || s == 'attending' || s == 'accepted') {
+    if (s == 'yes' || s == 'going' || s == 'attending' || s == 'accepted') {
       return true;
     }
-    if (s == 'not_going' || s == 'no' || s == 'declined' || s == 'rejected') {
+    if (s == 'no' || s == 'not_going' || s == 'declined' || s == 'rejected') {
       return false;
     }
     return null; // pending/invited

@@ -386,7 +386,7 @@ class NotificationService {
     required String userName,
     required String eventName,
     required String eventId,
-    required String rsvpStatus, // 'going', 'maybe', 'cant_go'
+    required String rsvpStatus, // 'yes', 'no', 'pending'
     String? eventEmoji,
   }) async {
     return await _client.rpc('create_notification_secure', params: {

@@ -199,7 +199,7 @@ class HomeEventRemoteDataSource {
         {
           'pevent_id': eventId,
           'user_id': userId,
-          'rsvp': isGoing ? 'going' : 'not_going',
+          'rsvp': isGoing ? 'yes' : 'no',
           'confirmed_at': DateTime.now().toIso8601String(),
         },
         onConflict: 'pevent_id,user_id',

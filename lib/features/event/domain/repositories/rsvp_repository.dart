@@ -16,7 +16,7 @@ abstract class RsvpRepository {
   Future<List<Rsvp>> getRsvpsByStatus(String eventId, RsvpStatus status);
 
   /// Reset RSVP votes based on suggestion voters
-  /// Sets suggestion voters to 'going' and all others to 'pending'
+  /// Sets suggestion voters to 'yes' (confirmed) and all others to 'pending'
   Future<void> resetRsvpVotesFromSuggestion(
     String eventId,
     List<String> suggestionVoterUserIds,
