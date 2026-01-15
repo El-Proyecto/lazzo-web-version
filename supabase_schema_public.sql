@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict 1KhcoGlbqIxQCWhOssLlgkCNsQYch4p28znJXMMd0VERivOcUc0whgRUTCprQhM
+\restrict tCjrWlB56p5dfjFfB6cWhIeiuQhjZTDhs5dGgyxHvcTwxcOGF5bdPfPhmCR3nKi
 
 -- Dumped from database version 17.4
 -- Dumped by pg_dump version 18.1
@@ -538,10 +538,10 @@ $$;
 
 
 --
--- Name: create_notification_secure(uuid, text, public.notification_category, public.notification_priority, text, uuid, uuid, text, text, text, text, text, text, text, text, text, text, text, text); Type: FUNCTION; Schema: public; Owner: -
+-- Name: create_notification_secure(uuid, text, public.notification_category, public.notification_priority, text, uuid, uuid, text, text, text, text, text, text, text, text, text, text, text, text, uuid); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.create_notification_secure(p_recipient_user_id uuid, p_type text, p_category public.notification_category, p_priority public.notification_priority DEFAULT 'medium'::public.notification_priority, p_deeplink text DEFAULT NULL::text, p_group_id uuid DEFAULT NULL::uuid, p_event_id uuid DEFAULT NULL::uuid, p_event_emoji text DEFAULT NULL::text, p_user_name text DEFAULT NULL::text, p_group_name text DEFAULT NULL::text, p_event_name text DEFAULT NULL::text, p_amount text DEFAULT NULL::text, p_hours text DEFAULT NULL::text, p_mins text DEFAULT NULL::text, p_date text DEFAULT NULL::text, p_time text DEFAULT NULL::text, p_place text DEFAULT NULL::text, p_device text DEFAULT NULL::text, p_note text DEFAULT NULL::text) RETURNS uuid
+CREATE FUNCTION public.create_notification_secure(p_recipient_user_id uuid, p_type text, p_category public.notification_category, p_priority public.notification_priority DEFAULT 'medium'::public.notification_priority, p_deeplink text DEFAULT NULL::text, p_group_id uuid DEFAULT NULL::uuid, p_event_id uuid DEFAULT NULL::uuid, p_event_emoji text DEFAULT NULL::text, p_user_name text DEFAULT NULL::text, p_group_name text DEFAULT NULL::text, p_event_name text DEFAULT NULL::text, p_amount text DEFAULT NULL::text, p_hours text DEFAULT NULL::text, p_mins text DEFAULT NULL::text, p_date text DEFAULT NULL::text, p_time text DEFAULT NULL::text, p_place text DEFAULT NULL::text, p_device text DEFAULT NULL::text, p_note text DEFAULT NULL::text, p_expense_id uuid DEFAULT NULL::uuid) RETURNS uuid
     LANGUAGE plpgsql SECURITY DEFINER
     AS $$
 DECLARE
@@ -602,16 +602,17 @@ BEGIN
     RETURN NULL;
   END IF;
   
-  -- Insert notification with atomic deduplication
-  -- ON CONFLICT DO NOTHING prevents race conditions
+  -- ✅ UPDATED: Insert notification com expense_id
   INSERT INTO notifications (
     recipient_user_id, type, category, priority, deeplink,
     group_id, event_id, event_emoji, user_name, group_name,
-    event_name, amount, hours, mins, date, time, place, device, note
+    event_name, amount, hours, mins, date, time, place, device, note,
+    expense_id  -- ✅ NOVO CAMPO
   ) VALUES (
     p_recipient_user_id, p_type, p_category, p_priority, p_deeplink,
     p_group_id, p_event_id, p_event_emoji, p_user_name, p_group_name,
-    p_event_name, p_amount, p_hours, p_mins, p_date, p_time, p_place, p_device, p_note
+    p_event_name, p_amount, p_hours, p_mins, p_date, p_time, p_place, p_device, p_note,
+    p_expense_id  -- ✅ NOVO VALOR
   )
   ON CONFLICT (dedup_key, dedup_bucket) DO NOTHING
   RETURNING id INTO v_notification_id;
@@ -619,6 +620,13 @@ BEGIN
   RETURN v_notification_id; -- NULL if duplicate
 END;
 $$;
+
+
+--
+-- Name: FUNCTION create_notification_secure(p_recipient_user_id uuid, p_type text, p_category public.notification_category, p_priority public.notification_priority, p_deeplink text, p_group_id uuid, p_event_id uuid, p_event_emoji text, p_user_name text, p_group_name text, p_event_name text, p_amount text, p_hours text, p_mins text, p_date text, p_time text, p_place text, p_device text, p_note text, p_expense_id uuid); Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON FUNCTION public.create_notification_secure(p_recipient_user_id uuid, p_type text, p_category public.notification_category, p_priority public.notification_priority, p_deeplink text, p_group_id uuid, p_event_id uuid, p_event_emoji text, p_user_name text, p_group_name text, p_event_name text, p_amount text, p_hours text, p_mins text, p_date text, p_time text, p_place text, p_device text, p_note text, p_expense_id uuid) IS 'Creates notifications with server-side filtering (muting, quiet hours, etc).';
 
 
 --
@@ -1860,85 +1868,91 @@ $$;
 CREATE FUNCTION public.notify_expense_added() RETURNS trigger
     LANGUAGE plpgsql SECURITY DEFINER
     AS $$
+DECLARE
+  v_payer_name TEXT;
+  v_event_name TEXT;
+  v_event_emoji TEXT;
 BEGIN
-  -- Criar notificação "You Owe" para cada participante que deve dinheiro
+  -- Buscar dados do evento e do pagador (usa created_by, NÃO payer_user_id)
+  SELECT 
+    e.name,
+    e.emoji,
+    u.name
+  INTO v_event_name, v_event_emoji, v_payer_name
+  FROM events e
+  LEFT JOIN users u ON u.id = NEW.created_by
+  WHERE e.id = NEW.event_id;
+
+  -- ========================================================================
+  -- Notificar cada pessoa que DEVE dinheiro (paymentsAddedYouOwe)
+  -- ========================================================================
   INSERT INTO notifications (
-    recipient_user_id, 
-    type, 
-    category, 
-    priority, 
-    deeplink,
-    event_id, 
-    event_emoji, 
-    user_name, 
-    event_name, 
+    recipient_user_id,
+    type,
+    category,
+    priority,
+    user_name,
+    event_name,
+    event_emoji,
     amount,
-    expense_id,
-    expense_name
+    event_id,
+    expense_id,  -- ✅ CRITICAL: Preencher expense_id para permitir JOINs
+    deeplink
   )
   SELECT
-    es.user_id,                                    -- quem deve
-    'paymentsAddedYouOwe',                        -- tipo
-    'notifications',                               -- categoria (aparece no inbox)
-    'high',                                        -- prioridade
-    'lazzo://events/' || e.id || '/expenses',     -- deeplink
-    e.id,                                          -- event_id
-    e.emoji,                                       -- emoji do evento
-    u.name,                                        -- nome de quem criou
-    e.name,                                        -- nome do evento
-    es.amount::TEXT || '€',                       -- FORMATO: "25.00€" (símbolo no final)
-    NEW.id,                                        -- expense_id
-    NEW.title                                      -- expense_name (nome da despesa)
+    es.user_id,
+    'paymentsAddedYouOwe',
+    'inbox',
+    'high',
+    v_payer_name,
+    v_event_name,
+    v_event_emoji,
+    es.amount_owed::text,
+    NEW.event_id,
+    NEW.id,  -- ✅ expense_id vem do NEW.id (event_expenses.id)
+    'lazzo://event/' || NEW.event_id
   FROM expense_splits es
-  JOIN event_expenses ee ON ee.id = es.expense_id
-  JOIN events e ON e.id = ee.event_id
-  JOIN users u ON u.id = ee.created_by
   WHERE es.expense_id = NEW.id
-    AND es.user_id != ee.created_by               -- não notificar quem criou
-    AND es.has_paid = FALSE                        -- só quem ainda não pagou
+  AND es.user_id != NEW.created_by
   ON CONFLICT (dedup_key, dedup_bucket) DO NOTHING;
 
-  -- Criar notificação "Owes You" para o criador da despesa
-  -- (informando quem lhe deve dinheiro)
-  INSERT INTO notifications (
-    recipient_user_id, 
-    type, 
-    category, 
-    priority, 
-    deeplink,
-    event_id, 
-    event_emoji, 
-    user_name, 
-    event_name, 
-    amount,
-    expense_id,
-    expense_name,
-    person_name
-  )
-  SELECT
-    ee.created_by,                                 -- quem criou a despesa (recebe notif)
-    'paymentsAddedOwesYou',                       -- tipo
-    'notifications',                               -- categoria
-    'high',                                        -- prioridade
-    'lazzo://events/' || e.id || '/expenses',     -- deeplink
-    e.id,                                          -- event_id
-    e.emoji,                                       -- emoji do evento
-    u_creator.name,                                -- nome do criador (ele próprio)
-    e.name,                                        -- nome do evento
-    es.amount::TEXT || '€',                       -- FORMATO: "25.00€" (símbolo no final)
-    NEW.id,                                        -- expense_id
-    NEW.title,                                     -- expense_name (nome da despesa)
-    u_debtor.name                                  -- person_name (quem deve)
-  FROM expense_splits es
-  JOIN event_expenses ee ON ee.id = es.expense_id
-  JOIN events e ON e.id = ee.event_id
-  JOIN users u_creator ON u_creator.id = ee.created_by
-  JOIN users u_debtor ON u_debtor.id = es.user_id
-  WHERE es.expense_id = NEW.id
-    AND es.user_id != ee.created_by               -- só notificar sobre outras pessoas
-    AND es.has_paid = FALSE
-  ON CONFLICT (dedup_key, dedup_bucket) DO NOTHING;
-  
+  -- ========================================================================
+  -- Notificar o PAGADOR sobre quem lhe deve (paymentsAddedOwesYou)
+  -- ========================================================================
+  -- Só notifica se houver pessoas que devem (evita notificações vazias)
+  IF EXISTS (
+    SELECT 1 FROM expense_splits 
+    WHERE expense_id = NEW.id 
+    AND user_id != NEW.created_by
+  ) THEN
+    INSERT INTO notifications (
+      recipient_user_id,
+      type,
+      category,
+      priority,
+      user_name,
+      event_name,
+      event_emoji,
+      amount,
+      event_id,
+      expense_id,  -- ✅ CRITICAL: Preencher expense_id para permitir JOINs
+      deeplink
+    ) VALUES (
+      NEW.created_by,
+      'paymentsAddedOwesYou',
+      'inbox',
+      'medium',
+      v_payer_name,
+      v_event_name,
+      v_event_emoji,
+      NEW.total_amount::text,
+      NEW.event_id,
+      NEW.id,  -- ✅ expense_id vem do NEW.id (event_expenses.id)
+      'lazzo://event/' || NEW.event_id
+    )
+    ON CONFLICT (dedup_key, dedup_bucket) DO NOTHING;
+  END IF;
+
   RETURN NEW;
 END;
 $$;
@@ -1949,9 +1963,232 @@ $$;
 --
 
 COMMENT ON FUNCTION public.notify_expense_added() IS 'Trigger que cria notificações quando uma despesa é adicionada.
-- paymentsAddedYouOwe: notifica quem deve (com expense_name)
-- paymentsAddedOwesYou: notifica criador sobre quem lhe deve (com expense_name e person_name)
-Campos preenchidos: expense_name (título da despesa) e person_name (nome de quem deve)';
+- paymentsAddedYouOwe: notifica quem deve
+- paymentsAddedOwesYou: notifica criador sobre quem lhe deve
+Campos: expense_id sempre preenchido. expense_name e people_count obtidos via JOINs no Flutter.';
+
+
+--
+-- Name: notify_expense_split_added(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.notify_expense_split_added() RETURNS trigger
+    LANGUAGE plpgsql SECURITY DEFINER
+    AS $$
+DECLARE
+  v_payer_name TEXT;
+  v_event_name TEXT;
+  v_event_emoji TEXT;
+  v_expense_title TEXT;
+  v_payer_user_id UUID;
+  v_event_id UUID;
+  v_total_amount NUMERIC;
+BEGIN
+  -- Buscar dados da despesa, evento e pagador
+  SELECT 
+    ee.title,
+    ee.total_amount,
+    ee.created_by,  -- ✅ CORRETO: event_expenses só tem created_by
+    ee.event_id,
+    e.name,
+    e.emoji,
+    u.name
+  INTO 
+    v_expense_title,
+    v_total_amount,
+    v_payer_user_id,
+    v_event_id,
+    v_event_name,
+    v_event_emoji,
+    v_payer_name
+  FROM event_expenses ee
+  JOIN events e ON e.id = ee.event_id
+  LEFT JOIN users u ON u.id = ee.created_by
+  WHERE ee.id = NEW.expense_id;
+
+  -- ========================================================================
+  -- Notificar a pessoa que DEVE dinheiro (paymentsAddedYouOwe)
+  -- ========================================================================
+  -- Só notifica se NÃO for o pagador
+  IF NEW.user_id != v_payer_user_id THEN
+    INSERT INTO notifications (
+      recipient_user_id,
+      type,
+      category,
+      priority,
+      user_name,
+      event_name,
+      event_emoji,
+      amount,
+      event_id,
+      expense_id,
+      deeplink
+    ) VALUES (
+      NEW.user_id,
+      'paymentsAddedYouOwe',
+      'inbox',
+      'high',
+      v_payer_name,
+      v_event_name,
+      v_event_emoji,
+      NEW.amount::text,  -- ✅ CORRETO: expense_splits.amount (não amount_owed)
+      v_event_id,
+      NEW.expense_id,
+      'lazzo://event/' || v_event_id
+    )
+    ON CONFLICT (dedup_key, dedup_bucket) DO NOTHING;
+  END IF;
+
+  -- ========================================================================
+  -- Notificar o PAGADOR sobre quem lhe deve (paymentsAddedOwesYou)
+  -- ========================================================================
+  -- Só cria UMA notificação para o pagador (não uma por split)
+  -- Usa ON CONFLICT para evitar duplicados
+  
+  IF NEW.user_id != v_payer_user_id THEN
+    INSERT INTO notifications (
+      recipient_user_id,
+      type,
+      category,
+      priority,
+      user_name,
+      event_name,
+      event_emoji,
+      amount,
+      event_id,
+      expense_id,
+      deeplink
+    ) VALUES (
+      v_payer_user_id,
+      'paymentsAddedOwesYou',
+      'inbox',
+      'medium',
+      v_payer_name,
+      v_event_name,
+      v_event_emoji,
+      v_total_amount::text,
+      v_event_id,
+      NEW.expense_id,
+      'lazzo://event/' || v_event_id
+    )
+    ON CONFLICT (dedup_key, dedup_bucket) DO NOTHING;
+  END IF;
+
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: FUNCTION notify_expense_split_added(); Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON FUNCTION public.notify_expense_split_added() IS 'Trigger que cria notificações quando um split de despesa é adicionado pelo Flutter.
+- paymentsAddedYouOwe: notifica quem deve
+- paymentsAddedOwesYou: notifica criador sobre quem lhe deve (apenas uma notificação)
+✅ CORRIGIDO: usa amount (não amount_owed) e created_by (não payer_user_id)';
+
+
+--
+-- Name: notify_expense_split_simple(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.notify_expense_split_simple() RETURNS trigger
+    LANGUAGE plpgsql SECURITY DEFINER
+    AS $$
+DECLARE
+  v_payer_id UUID;
+  v_event_id UUID;
+  v_event_name TEXT;
+  v_event_emoji TEXT;
+  v_payer_name TEXT;
+  v_total_amount NUMERIC;
+BEGIN
+  -- Buscar dados da expense e do evento
+  SELECT 
+    ee.created_by,
+    ee.event_id,
+    ee.total_amount,
+    e.name,
+    e.emoji,
+    u.name
+  INTO 
+    v_payer_id,
+    v_event_id,
+    v_total_amount,
+    v_event_name,
+    v_event_emoji,
+    v_payer_name
+  FROM event_expenses ee
+  JOIN events e ON e.id = ee.event_id
+  LEFT JOIN users u ON u.id = ee.created_by
+  WHERE ee.id = NEW.expense_id;
+
+  -- ========================================================================
+  -- Notificar QUEM DEVE (paymentsAddedYouOwe)
+  -- ========================================================================
+  IF NEW.user_id != v_payer_id THEN
+    INSERT INTO notifications (
+      recipient_user_id,
+      type,
+      category,
+      priority,
+      user_name,
+      event_name,
+      event_emoji,
+      amount,
+      event_id,
+      expense_id,  -- ✅ CRITICAL: expense_id preenchido
+      deeplink
+    ) VALUES (
+      NEW.user_id,
+      'paymentsAddedYouOwe',
+      'inbox',
+      'high',
+      v_payer_name,
+      v_event_name,
+      v_event_emoji,
+      NEW.amount::text,
+      v_event_id,
+      NEW.expense_id,  -- ✅ ID da expense
+      'lazzo://event/' || v_event_id
+    )
+    ON CONFLICT (dedup_key, dedup_bucket) DO NOTHING;
+
+    -- ========================================================================
+    -- Notificar PAGADOR (paymentsAddedOwesYou) - UMA VEZ APENAS
+    -- ========================================================================
+    INSERT INTO notifications (
+      recipient_user_id,
+      type,
+      category,
+      priority,
+      user_name,
+      event_name,
+      event_emoji,
+      amount,
+      event_id,
+      expense_id,  -- ✅ CRITICAL: expense_id preenchido
+      deeplink
+    ) VALUES (
+      v_payer_id,
+      'paymentsAddedOwesYou',
+      'inbox',
+      'medium',
+      v_payer_name,
+      v_event_name,
+      v_event_emoji,
+      v_total_amount::text,
+      v_event_id,
+      NEW.expense_id,  -- ✅ ID da expense
+      'lazzo://event/' || v_event_id
+    )
+    ON CONFLICT (dedup_key, dedup_bucket) DO NOTHING;
+  END IF;
+
+  RETURN NEW;
+END;
+$$;
 
 
 --
@@ -2320,58 +2557,48 @@ CREATE FUNCTION public.notify_payment_received() RETURNS trigger
     AS $$
 DECLARE
   v_payer_name TEXT;
-  v_event_emoji TEXT;
-  v_event_name TEXT;
-  v_expense_title TEXT;
-  v_created_by UUID;
+  v_event_id UUID;
+  v_recipient_user_id UUID;
 BEGIN
-  -- Se não foi marcado como pago, não fazer nada
-  IF NEW.has_paid = FALSE OR OLD.has_paid = TRUE THEN
-    RETURN NEW;
+  -- Só notifica se mudou de não pago para pago
+  IF OLD.has_paid = FALSE AND NEW.has_paid = TRUE THEN
+    
+    -- Buscar dados
+    -- ✅ CORRIGIDO: usa created_by (não payer_user_id)
+    SELECT 
+      u.name,
+      ee.event_id,
+      ee.created_by
+    INTO v_payer_name, v_event_id, v_recipient_user_id
+    FROM event_expenses ee
+    LEFT JOIN users u ON u.id = NEW.user_id
+    WHERE ee.id = NEW.expense_id;
+    
+    -- Notificar quem recebeu o pagamento
+    INSERT INTO notifications (
+      recipient_user_id,
+      type,
+      category,
+      priority,
+      user_name,
+      amount,
+      event_id,
+      expense_id,
+      deeplink
+    ) VALUES (
+      v_recipient_user_id,
+      'paymentReceived',
+      'inbox',
+      'medium',
+      v_payer_name,
+      NEW.amount::text, -- ✅ CORRIGIDO: amount (não amount_owed)
+      v_event_id,
+      NEW.expense_id,
+      'lazzo://event/' || v_event_id
+    )
+    ON CONFLICT (dedup_key, dedup_bucket) DO NOTHING;
+    
   END IF;
-
-  -- Buscar dados da expense e evento
-  SELECT ee.title, ee.created_by, e.emoji, e.name
-  INTO v_expense_title, v_created_by, v_event_emoji, v_event_name
-  FROM event_expenses ee
-  JOIN events e ON e.id = ee.event_id
-  WHERE ee.id = NEW.expense_id;
-  
-  -- Buscar nome de quem pagou
-  SELECT u.name INTO v_payer_name
-  FROM users u
-  WHERE u.id = NEW.user_id;
-
-  -- Notificar quem criou a expense
-  INSERT INTO notifications (
-    recipient_user_id,
-    type,
-    category,
-    priority,
-    user_name,
-    amount,
-    expense_name,
-    event_emoji,
-    event_name,
-    event_id,
-    expense_id,
-    deeplink
-  )
-  SELECT
-    v_created_by,                                  -- quem criou a expense
-    'paymentsReceived',                            -- tipo
-    'notifications',                               -- categoria
-    'high',                                        -- prioridade
-    v_payer_name,                                  -- quem pagou
-    NEW.amount::TEXT || '€',                      -- amount com símbolo no final
-    v_expense_title,                               -- nome da expense
-    v_event_emoji,                                 -- emoji do evento
-    v_event_name,                                  -- nome do evento
-    (SELECT event_id FROM event_expenses WHERE id = NEW.expense_id),
-    NEW.expense_id,                                -- expense_id
-    'lazzo://events/' || (SELECT event_id FROM event_expenses WHERE id = NEW.expense_id) || '/expenses'
-  WHERE v_created_by != NEW.user_id               -- não notificar se pagou a si próprio
-  ON CONFLICT (dedup_key, dedup_bucket) DO NOTHING;
   
   RETURN NEW;
 END;
@@ -2382,8 +2609,8 @@ $$;
 -- Name: FUNCTION notify_payment_received(); Type: COMMENT; Schema: public; Owner: -
 --
 
-COMMENT ON FUNCTION public.notify_payment_received() IS 'Notifica criador da expense quando alguém paga.
-Inbox text: "João Silva paid you 25.00€" (verde)';
+COMMENT ON FUNCTION public.notify_payment_received() IS 'Notifica quando alguém marca um split como pago.
+✅ CORRIGIDO: usa amount (não amount_owed)';
 
 
 --
@@ -2697,6 +2924,68 @@ BEGIN
     SET is_pinned = FALSE, updated_at = NOW()
     WHERE id = message_id;
   END IF;
+END;
+$$;
+
+
+--
+-- Name: populate_expense_notification_data(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.populate_expense_notification_data() RETURNS trigger
+    LANGUAGE plpgsql
+    AS $$
+DECLARE
+    v_expense_name TEXT;
+    v_person_name TEXT;
+    v_people_count INT;
+BEGIN
+    -- Só processa se for notificação de expense (tipos paymentsAddedOwesYou ou paymentsAddedYouOwe)
+    IF NEW.type IN ('paymentsAddedOwesYou', 'paymentsAddedYouOwe') AND NEW.expense_id IS NOT NULL THEN
+        
+        -- Obter o nome da despesa
+        SELECT title INTO v_expense_name
+        FROM event_expenses
+        WHERE id = NEW.expense_id;
+        
+        -- Contar quantas pessoas devem (excluindo quem pagou)
+        SELECT COUNT(*) INTO v_people_count
+        FROM expense_splits
+        WHERE expense_id = NEW.expense_id
+        AND user_id != (
+            SELECT payer_user_id 
+            FROM event_expenses 
+            WHERE id = NEW.expense_id
+        );
+        
+        -- Se for apenas 1 pessoa, obter o nome dela
+        IF v_people_count = 1 THEN
+            SELECT u.name INTO v_person_name
+            FROM expense_splits es
+            JOIN users u ON u.id = es.user_id
+            WHERE es.expense_id = NEW.expense_id
+            AND es.user_id != (
+                SELECT payer_user_id 
+                FROM event_expenses 
+                WHERE id = NEW.expense_id
+            )
+            LIMIT 1;
+        END IF;
+        
+        -- Atualizar a notificação com os dados
+        UPDATE notifications
+        SET 
+            expense_name = v_expense_name,
+            person_name = CASE 
+                WHEN v_people_count = 1 THEN v_person_name 
+                ELSE NULL 
+            END,
+            people_count = v_people_count
+        WHERE id = NEW.id;
+        
+    END IF;
+    
+    RETURN NEW;
 END;
 $$;
 
@@ -3266,6 +3555,28 @@ CREATE FUNCTION public.user_exists_by_email(p_email text) RETURNS boolean
 $$;
 
 
+--
+-- Name: validate_expense(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.validate_expense() RETURNS trigger
+    LANGUAGE plpgsql SECURITY DEFINER
+    AS $$
+BEGIN
+  -- Apenas permite o INSERT sem fazer nada
+  -- Splits serão criados pelo Flutter DEPOIS
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: FUNCTION validate_expense(); Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON FUNCTION public.validate_expense() IS 'Valida INSERT em event_expenses. Não cria notificações nem splits.';
+
+
 SET default_tablespace = '';
 
 SET default_table_access_method = heap;
@@ -3825,24 +4136,8 @@ CREATE TABLE public.notifications (
     note text,
     dedup_bucket timestamp with time zone DEFAULT (date_trunc('minute'::text, now()) + '00:05:00'::interval) NOT NULL,
     dedup_key text GENERATED ALWAYS AS ((((((((recipient_user_id)::text || ':'::text) || type) || ':'::text) || COALESCE((group_id)::text, ''::text)) || ':'::text) || COALESCE((event_id)::text, ''::text))) STORED,
-    expense_id uuid,
-    expense_name text,
-    person_name text
+    expense_id uuid
 );
-
-
---
--- Name: COLUMN notifications.expense_name; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.notifications.expense_name IS 'Nome da despesa associada (usado em notificações de pagamento)';
-
-
---
--- Name: COLUMN notifications.person_name; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.notifications.person_name IS 'Nome da pessoa associada (usado em notificações de dívida/crédito)';
 
 
 --
@@ -5027,24 +5322,10 @@ CREATE TRIGGER events_changed AFTER INSERT OR DELETE OR UPDATE ON public.events 
 
 
 --
--- Name: event_expenses expense_added_notification; Type: TRIGGER; Schema: public; Owner: -
---
-
-CREATE TRIGGER expense_added_notification AFTER INSERT ON public.event_expenses FOR EACH ROW EXECUTE FUNCTION public.notify_payments_added_you_owe();
-
-
---
--- Name: expense_splits expense_added_notification; Type: TRIGGER; Schema: public; Owner: -
---
-
-CREATE TRIGGER expense_added_notification AFTER INSERT ON public.expense_splits FOR EACH ROW EXECUTE FUNCTION public.notify_expense_added();
-
-
---
 -- Name: expense_splits expense_paid_notification; Type: TRIGGER; Schema: public; Owner: -
 --
 
-CREATE TRIGGER expense_paid_notification AFTER UPDATE ON public.expense_splits FOR EACH ROW EXECUTE FUNCTION public.notify_payments_paid_you();
+CREATE TRIGGER expense_paid_notification AFTER UPDATE ON public.expense_splits FOR EACH ROW EXECUTE FUNCTION public.notify_payment_received();
 
 
 --
@@ -5119,13 +5400,6 @@ CREATE TRIGGER on_notification_insert_send_push AFTER INSERT ON public.notificat
 --
 
 CREATE TRIGGER participants_changed AFTER INSERT OR DELETE OR UPDATE ON public.event_participants FOR EACH STATEMENT EXECUTE FUNCTION public.auto_refresh_group_cache();
-
-
---
--- Name: expense_splits payment_received_notification; Type: TRIGGER; Schema: public; Owner: -
---
-
-CREATE TRIGGER payment_received_notification AFTER UPDATE OF has_paid ON public.expense_splits FOR EACH ROW WHEN (((new.has_paid = true) AND (old.has_paid = false))) EXECUTE FUNCTION public.notify_payment_received();
 
 
 --
@@ -6719,5 +6993,5 @@ CREATE POLICY users_can_view_group_photos ON public.group_photos FOR SELECT USIN
 -- PostgreSQL database dump complete
 --
 
-\unrestrict 1KhcoGlbqIxQCWhOssLlgkCNsQYch4p28znJXMMd0VERivOcUc0whgRUTCprQhM
+\unrestrict tCjrWlB56p5dfjFfB6cWhIeiuQhjZTDhs5dGgyxHvcTwxcOGF5bdPfPhmCR3nKi
 

@@ -259,8 +259,6 @@ CREATE TABLE public.notifications (
   dedup_bucket timestamp with time zone NOT NULL DEFAULT (date_trunc('minute'::text, now()) + '00:05:00'::interval),
   dedup_key text DEFAULT (((((((recipient_user_id)::text || ':'::text) || type) || ':'::text) || COALESCE((group_id)::text, ''::text)) || ':'::text) || COALESCE((event_id)::text, ''::text)),
   expense_id uuid,
-  expense_name text,
-  person_name text,
   CONSTRAINT notifications_pkey PRIMARY KEY (id),
   CONSTRAINT notifications_recipient_user_id_fkey FOREIGN KEY (recipient_user_id) REFERENCES public.users(id),
   CONSTRAINT notifications_group_id_fkey FOREIGN KEY (group_id) REFERENCES public.groups(id),
