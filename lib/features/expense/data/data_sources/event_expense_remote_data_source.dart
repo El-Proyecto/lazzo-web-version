@@ -76,6 +76,7 @@ class EventExpenseRemoteDataSource {
                 expenseName: description,
                 amount: '${amountPerPerson.toStringAsFixed(2)}€',
                 eventId: eventId,
+                expenseId: expenseId,
                 eventEmoji: eventEmoji,
                 eventName: eventName,
               );

@@ -48,6 +48,7 @@ class NotificationService {
     required String expenseName,
     required String amount,
     required String eventId,
+    required String expenseId,
     String? eventEmoji,
     String? eventName,
   }) async {
@@ -61,8 +62,9 @@ class NotificationService {
       'p_event_emoji': eventEmoji,
       'p_user_name': creatorName,
       'p_event_name': eventName,
-      'p_expense_name': expenseName,
+      'p_note': expenseName,
       'p_amount': amount,
+      'p_expense_id': expenseId,
     });
   }
 
