@@ -113,8 +113,6 @@ class NotificationEntity {
   final String? device; // For {device} placeholder
   final String? note; // For payment notes
   final String? expenseId; // Link to expense for payment notifications
-  final String? expenseName; // For expense name in payment notifications
-  final String? personName; // For person who owes in payment notifications
 
   const NotificationEntity({
     required this.id,
@@ -143,8 +141,6 @@ class NotificationEntity {
     this.device,
     this.note,
     this.expenseId,
-    this.expenseName,
-    this.personName,
   });
 
   NotificationEntity copyWith({
@@ -174,8 +170,6 @@ class NotificationEntity {
     String? device,
     String? note,
     String? expenseId,
-    String? expenseName,
-    String? personName,
   }) {
     return NotificationEntity(
       id: id ?? this.id,
@@ -204,8 +198,6 @@ class NotificationEntity {
       device: device ?? this.device,
       note: note ?? this.note,
       expenseId: expenseId ?? this.expenseId,
-      expenseName: expenseName ?? this.expenseName,
-      personName: personName ?? this.personName,
     );
   }
 
@@ -234,12 +226,6 @@ class NotificationEntity {
     if (place != null) message = message.replaceAll('{place}', '**$place**');
     if (device != null) message = message.replaceAll('{device}', '**$device**');
     if (note != null) message = message.replaceAll('{note}', note!);
-    if (expenseName != null) {
-      message = message.replaceAll('{expense_name}', '**$expenseName**');
-    }
-    if (personName != null) {
-      message = message.replaceAll('{person_name}', '**$personName**');
-    }
 
     return message;
   }

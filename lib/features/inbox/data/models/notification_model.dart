@@ -26,8 +26,6 @@ class NotificationModel {
   final String? device;
   final String? note;
   final String? expenseId; // ✅ Link to expense for payment notifications
-  final String? expenseName; // Name of expense for payment notifications
-  final String? personName; // Person who owes for payment notifications
 
   const NotificationModel({
     required this.id,
@@ -54,8 +52,6 @@ class NotificationModel {
     this.device,
     this.note,
     this.expenseId,
-    this.expenseName,
-    this.personName,
   });
 
   factory NotificationModel.fromJson(Map<String, dynamic> json) {
@@ -85,8 +81,6 @@ class NotificationModel {
       device: json['device'] as String?,
       note: json['note'] as String?,
       expenseId: json['expense_id'] as String?,
-      expenseName: json['expense_name'] as String?,
-      personName: json['person_name'] as String?,
     );
   }
 
@@ -117,8 +111,6 @@ class NotificationModel {
       'device': device,
       'note': note,
       'expense_id': expenseId,
-      'expense_name': expenseName,
-      'person_name': personName,
     };
   }
 
@@ -154,8 +146,6 @@ class NotificationModel {
       device: device,
       note: note,
       expenseId: expenseId,
-      expenseName: expenseName,
-      personName: personName,
     );
   }
 
@@ -266,11 +256,11 @@ class NotificationModel {
       case 'memoryReady':
         return '{event} memory is ready to view!';
       case 'paymentsRequest':
-        return '{user} requested {amount} for {expense_name}.';
+        return '{user} requested {amount} for {note}.';
       case 'paymentsAddedYouOwe':
-        return '{user} added the expense "{expense_name}". You owe {amount}.';
+        return '{user} added the expense "{note}". You owe {amount}.';
       case 'paymentsAddedOwesYou':
-        return '{user} added the expense "{expense_name}". {person_name} owes you {amount}.';
+        return '{user} added the expense "{note}". Someone owes you {amount}.';
       case 'paymentsPaidYou':
         return '{user} paid you {amount}.';
       case 'chatMention':

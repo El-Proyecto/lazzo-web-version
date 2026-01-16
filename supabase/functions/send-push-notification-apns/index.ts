@@ -115,7 +115,7 @@ const getLocalizedMessage = (
   type: string,
   data: Record<string, string>
 ): { title: string; body: string } => {
-  const { user_name, group_name, event_name, event_emoji, amount, expense_name, person_name, mins, hours, date, time, place, message, note } = data;
+  const { user_name, group_name, event_name, event_emoji, amount, mins, hours, date, time, place, message, note } = data;
   const emoji = event_emoji || "📅";
 
   const messages: Record<string, { title: string; body: string }> = {
@@ -125,15 +125,15 @@ const getLocalizedMessage = (
     },
     paymentsAddedYouOwe: {
       title: `${emoji} ${event_name}`,
-      body: `${user_name} added the expense "${expense_name}"`,
+      body: `${user_name} added the expense "${note}"`,
     },
     paymentsAddedOwesYou: {
       title: `${emoji} ${event_name}`,
-      body: `${user_name} added the expense "${expense_name}"`,
+      body: `${user_name} added the expense "${note}"`,
     },
     paymentsRequest: {
       title: `${emoji} ${event_name}`,
-      body: `${user_name} requested ${amount} for ${expense_name}`,
+      body: `${user_name} requested ${amount} for ${note}`,
     },
     eventStartsSoon: {
       title: `${emoji} ${event_name}`,
