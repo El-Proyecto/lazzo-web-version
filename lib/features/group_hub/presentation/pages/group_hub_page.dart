@@ -159,6 +159,8 @@ class _GroupHubPageState extends ConsumerState<GroupHubPage>
           onRefresh: _handleRefresh,
           color: BrandColors.planning,
           backgroundColor: BrandColors.bg2,
+          notificationPredicate: (notification) =>
+              notification.depth == 0 && notification.metrics.extentBefore == 0,
           child: GestureDetector(
             // Detect vertical drag up to snap when not snapped
             onVerticalDragUpdate: (details) {
