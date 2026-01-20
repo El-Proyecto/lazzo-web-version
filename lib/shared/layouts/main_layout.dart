@@ -7,6 +7,7 @@ import '../components/common/top_banner.dart';
 import '../components/dialogs/event_selection_menu.dart';
 import '../../features/groups/presentation/pages/groups_page.dart';
 import '../../features/inbox/presentation/pages/inbox_page.dart';
+import '../../features/inbox/presentation/providers/notifications_provider.dart';
 import '../../features/profile/presentation/pages/profile_page.dart';
 import '../../features/home/presentation/pages/home.dart';
 import '../../features/home/presentation/providers/home_event_providers.dart';
@@ -88,8 +89,7 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
 
         if (livingEvents.length > 1) {
           // Multiple events - show selection menu
-                    for (var _ in livingEvents) {
-                      }
+          for (var _ in livingEvents) {}
           if (mounted) {
             EventSelectionMenu.show(
               context: context,
@@ -133,8 +133,7 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
 
         if (recapEvents.length > 1) {
           // Multiple events - show selection menu
-                    for (var _ in recapEvents) {
-                      }
+          for (var _ in recapEvents) {}
           if (mounted) {
             EventSelectionMenu.show(
               context: context,
@@ -351,6 +350,13 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
     // Get NavBar state from next event status
     final nextEventStatus = ref.watch(navBarStateProvider);
 
+    // Get unread notification count
+    final unreadCountAsync = ref.watch(unreadCountProvider);
+    final unreadCount = unreadCountAsync.maybeWhen(
+      data: (count) => count,
+      orElse: () => 0,
+    );
+
     // Map event status to NavBar state
     // Pending events also show Planning (green button with +)
     nav.NavBarState navBarState;
@@ -369,6 +375,7 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
         state: navBarState,
         currentIndex: navBarIndex,
         onTap: _onNavTap,
+        unreadNotificationCount: unreadCount,
       ),
     );
   }

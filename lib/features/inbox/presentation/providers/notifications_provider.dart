@@ -8,7 +8,8 @@ import '../../../expense/presentation/providers/event_expense_providers.dart';
 
 // Repository provider - overridden in main.dart with real Supabase implementation
 final notificationRepositoryProvider = Provider<NotificationRepository>((ref) {
-  throw UnimplementedError('NotificationRepository must be overridden in main.dart');
+  throw UnimplementedError(
+      'NotificationRepository must be overridden in main.dart');
 });
 
 // Use case providers
@@ -22,7 +23,8 @@ final markNotificationAsReadUseCaseProvider = Provider<MarkNotificationAsRead>((
   return MarkNotificationAsRead(ref.watch(notificationRepositoryProvider));
 });
 
-final markExpenseAsPaidFromNotificationUseCaseProvider = Provider<MarkExpenseAsPaidFromNotification>((ref) {
+final markExpenseAsPaidFromNotificationUseCaseProvider =
+    Provider<MarkExpenseAsPaidFromNotification>((ref) {
   return MarkExpenseAsPaidFromNotification(
     notificationRepository: ref.watch(notificationRepositoryProvider),
     expenseRepository: ref.watch(eventExpenseRepositoryProvider),
@@ -30,52 +32,58 @@ final markExpenseAsPaidFromNotificationUseCaseProvider = Provider<MarkExpenseAsP
   );
 });
 
+final markAllNotificationsAsReadUseCaseProvider =
+    Provider<MarkAllNotificationsAsRead>((ref) {
+  return MarkAllNotificationsAsRead(
+    ref.watch(notificationRepositoryProvider),
+  );
+});
+
 final getUnreadNotificationCountUseCaseProvider =
     Provider<GetUnreadNotificationCount>((ref) {
-      return GetUnreadNotificationCount(
-        ref.watch(notificationRepositoryProvider),
-      );
-    });
+  return GetUnreadNotificationCount(
+    ref.watch(notificationRepositoryProvider),
+  );
+});
 
 // State providers
-final notificationsProvider =
-    StateNotifierProvider<
-      NotificationsController,
-      AsyncValue<List<NotificationEntity>>
-    >((ref) {
-      return NotificationsController(
-        ref.watch(getNotificationsUseCaseProvider),
-      );
-    });
+final notificationsProvider = StateNotifierProvider<NotificationsController,
+    AsyncValue<List<NotificationEntity>>>((ref) {
+  return NotificationsController(
+    ref.watch(getNotificationsUseCaseProvider),
+  );
+});
 
 final unreadCountProvider =
     StateNotifierProvider<UnreadCountController, AsyncValue<int>>((ref) {
-      return UnreadCountController(
-        ref.watch(getUnreadNotificationCountUseCaseProvider),
-      );
-    });
+  return UnreadCountController(
+    ref.watch(getUnreadNotificationCountUseCaseProvider),
+  );
+});
 
 class NotificationsController
     extends StateNotifier<AsyncValue<List<NotificationEntity>>> {
   final GetNotifications _getNotifications;
 
   NotificationsController(this._getNotifications)
-    : super(const AsyncValue.loading()) {
+      : super(const AsyncValue.loading()) {
     loadNotifications();
   }
 
   Future<void> loadNotifications() async {
-        state = const AsyncValue.loading();
-    
+    state = const AsyncValue.loading();
+
     try {
-            final notifications = await _getNotifications();
-      
-            if (notifications.isNotEmpty) {
-              }
-      
+      // ✅ CRITICAL: Only fetch 'notifications' category (exclude ephemeral 'push')
+      final notifications = await _getNotifications(
+        category: NotificationCategory.notifications,
+      );
+
+      if (notifications.isNotEmpty) {}
+
       state = AsyncValue.data(notifications);
-          } catch (error, stackTrace) {
-                        state = AsyncValue.error(error, stackTrace);
+    } catch (error, stackTrace) {
+      state = AsyncValue.error(error, stackTrace);
     }
   }
 
@@ -88,7 +96,7 @@ class UnreadCountController extends StateNotifier<AsyncValue<int>> {
   final GetUnreadNotificationCount _getUnreadCount;
 
   UnreadCountController(this._getUnreadCount)
-    : super(const AsyncValue.loading()) {
+      : super(const AsyncValue.loading()) {
     loadUnreadCount();
   }
 
@@ -104,5 +112,17 @@ class UnreadCountController extends StateNotifier<AsyncValue<int>> {
 
   Future<void> refresh() async {
     await loadUnreadCount();
+  }
+
+  void decrementCount() {
+    state.whenData((count) {
+      if (count > 0) {
+        state = AsyncValue.data(count - 1);
+      }
+    });
+  }
+
+  void resetCount() {
+    state = const AsyncValue.data(0);
   }
 }

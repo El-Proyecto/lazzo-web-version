@@ -212,35 +212,38 @@ class EventRemoteDataSource {
 
       // Send "Event Location Set" notification to all participants except host
       try {
+        // TODO: Location notification removed from spec
+        // Consider re-adding if needed in future
+        //
         // Get event details for notification
-        final eventResponse = await _supabaseClient
-            .from('events')
-            .select('name, emoji, created_by')
-            .eq('id', eventId)
-            .single();
-        
-        final eventName = eventResponse['name'] as String;
-        final eventEmoji = eventResponse['emoji'] as String?;
-        final hostUserId = eventResponse['created_by'] as String;
-        
+        // final eventResponse = await _supabaseClient
+        //     .from('events')
+        //     .select('name, emoji, created_by')
+        //     .eq('id', eventId)
+        //     .single();
+        //
+        // final eventName = eventResponse['name'] as String;
+        // final eventEmoji = eventResponse['emoji'] as String?;
+        // final hostUserId = eventResponse['created_by'] as String;
+        //
         // Get all participants except the host
-        final participantsResponse = await _supabaseClient
-            .from('event_participants')
-            .select('user_id')
-            .eq('pevent_id', eventId)
-            .neq('user_id', hostUserId);
-        
+        // final participantsResponse = await _supabaseClient
+        //     .from('event_participants')
+        //     .select('user_id')
+        //     .eq('pevent_id', eventId)
+        //     .neq('user_id', hostUserId);
+        //
         // Send notification to each participant
-        for (final participant in participantsResponse) {
-          final participantId = participant['user_id'] as String;
-          await _notificationService.sendEventLocationSet(
-            recipientUserId: participantId,
-            eventName: eventName,
-            eventId: eventId,
-            locationName: locationName,
-            eventEmoji: eventEmoji,
-          );
-        }
+        // for (final participant in participantsResponse) {
+        //   final participantId = participant['user_id'] as String;
+        //   await _notificationService.sendEventLocationSet(
+        //     recipientUserId: participantId,
+        //     eventName: eventName,
+        //     eventId: eventId,
+        //     locationName: locationName,
+        //     eventEmoji: eventEmoji,
+        //   );
+        // }
       } catch (e) {
         // Don't fail location update if notification fails
       }
@@ -314,24 +317,26 @@ class EventRemoteDataSource {
               .select('name, emoji, created_by, start_datetime')
               .eq('id', eventId)
               .single();
-          
+
           final eventName = eventResponse['name'] as String;
           final eventEmoji = eventResponse['emoji'] as String?;
           final hostUserId = eventResponse['created_by'] as String;
           final startDateTimeStr = eventResponse['start_datetime'] as String?;
-          
+
           if (startDateTimeStr != null) {
             final startDateTime = DateTime.parse(startDateTimeStr);
-            final date = '${startDateTime.day}/${startDateTime.month}/${startDateTime.year}';
-            final time = '${startDateTime.hour.toString().padLeft(2, '0')}:${startDateTime.minute.toString().padLeft(2, '0')}';
-            
+            final date =
+                '${startDateTime.day}/${startDateTime.month}/${startDateTime.year}';
+            final time =
+                '${startDateTime.hour.toString().padLeft(2, '0')}:${startDateTime.minute.toString().padLeft(2, '0')}';
+
             // Get all participants except the host
             final participantsResponse = await _supabaseClient
                 .from('event_participants')
                 .select('user_id')
                 .eq('pevent_id', eventId)
                 .neq('user_id', hostUserId);
-            
+
             // Send notification to each participant
             for (final participant in participantsResponse) {
               final participantId = participant['user_id'] as String;
@@ -369,9 +374,9 @@ class EventRemoteDataSource {
 
       return updatedEvent;
     } on PostgrestException catch (e) {
-                        throw Exception('Failed to update event status: ${e.message}');
+      throw Exception('Failed to update event status: ${e.message}');
     } catch (e) {
-                  throw Exception('Failed to update event status: $e');
+      throw Exception('Failed to update event status: $e');
     }
   }
 
@@ -407,7 +412,6 @@ class EventRemoteDataSource {
           user['id'] as String: user as Map<String, dynamic>,
       };
 
-      
       // Combine participants with their user data and generate signed URLs for avatars
       final participants = await Future.wait(
         (participantsResponse as List).map((participant) async {
@@ -425,7 +429,7 @@ class EventRemoteDataSource {
 
           final displayName = userData['name'] as String? ?? 'Unknown User';
           final avatarPath = userData['avatar_url'] as String?;
-          
+
           // Generate signed URL for avatar if path exists
           String? signedAvatarUrl;
           if (avatarPath != null && avatarPath.isNotEmpty) {
@@ -437,7 +441,7 @@ class EventRemoteDataSource {
               // Failed to generate signed URL, avatar will be null
             }
           }
-          
+
           return EventParticipantEntity(
             userId: userId,
             displayName: displayName,
@@ -449,9 +453,9 @@ class EventRemoteDataSource {
 
       return participants;
     } on PostgrestException catch (e) {
-                        throw Exception('Failed to get event participants: ${e.message}');
+      throw Exception('Failed to get event participants: ${e.message}');
     } catch (e) {
-                  throw Exception('Failed to get event participants: $e');
+      throw Exception('Failed to get event participants: $e');
     }
   }
 
@@ -470,16 +474,14 @@ class EventRemoteDataSource {
       final newEndTime = currentEndTime.add(Duration(minutes: minutes));
 
       // Update event in database
-      await _supabaseClient
-          .from('events')
-          .update({'end_datetime': newEndTime.toIso8601String()})
-          .eq('id', eventId);
+      await _supabaseClient.from('events').update(
+          {'end_datetime': newEndTime.toIso8601String()}).eq('id', eventId);
 
       // CRITICAL: Send notifications to all participants (except host)
       try {
         final currentUserId = _supabaseClient.auth.currentUser?.id;
         final additionalHours = (minutes / 60).ceil();
-        
+
         if (currentUserId != null) {
           // Get all participants of this event (except current user/host)
           final participants = await _supabaseClient
@@ -487,11 +489,11 @@ class EventRemoteDataSource {
               .select('user_id')
               .eq('pevent_id', eventId)
               .neq('user_id', currentUserId);
-          
+
           // Send notification to each participant
           for (final participant in participants) {
             final participantId = participant['user_id'] as String;
-            
+
             await _notificationService.sendEventExtended(
               recipientUserId: participantId,
               eventName: currentEvent.name,
@@ -522,8 +524,7 @@ class EventRemoteDataSource {
 
       await _supabaseClient
           .from('events')
-          .update({'end_datetime': now.toIso8601String()})
-          .eq('id', eventId);
+          .update({'end_datetime': now.toIso8601String()}).eq('id', eventId);
 
       // Return updated event
       return await getEventDetail(eventId);

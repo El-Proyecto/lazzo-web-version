@@ -55,7 +55,6 @@ class NotificationModel {
   });
 
   factory NotificationModel.fromJson(Map<String, dynamic> json) {
-        
     return NotificationModel(
       id: json['id'] as String,
       // title & description removed - V2 doesn't have these fields
@@ -116,12 +115,10 @@ class NotificationModel {
   }
 
   NotificationEntity toEntity() {
-        
     // Generate temporary title/description (will be replaced by i18n in UI)
     final tempTitle = _generateTitle();
     final tempDescription = _generateDescription();
-    
-            
+
     return NotificationEntity(
       id: id,
       title: tempTitle,
@@ -156,44 +153,85 @@ class NotificationModel {
   String _generateTitle() {
     switch (type) {
       // PUSH notifications
-      case 'groupInviteReceived': return 'Group Invite';
-      case 'eventStartsSoon': return 'Event Starting Soon';
-      case 'eventLive': return 'Event Live';
-      case 'eventEndsSoon': return 'Event Ending Soon';
-      case 'eventExtended': return 'Event Extended';
-      case 'uploadsOpen': return 'Uploads Open';
-      case 'uploadsClosing': return 'Uploads Closing Soon';
-      case 'memoryReady': return 'Memory Ready';
-      case 'paymentsRequest': return 'Payment Request';
-      case 'paymentsAddedYouOwe': return 'New Expense';
-      case 'paymentsPaidYou': return 'Payment Received';
-      case 'chatMention': return 'Mentioned in Chat';
-      case 'securityNewLogin': return 'New Login';
-      
+      case 'groupInviteReceived':
+        return 'Group Invite';
+      case 'eventStartsSoon':
+        return 'Event Starting Soon';
+      case 'eventLive':
+        return 'Event Live';
+      case 'eventEndsSoon':
+        return 'Event Ending Soon';
+      case 'eventExtended':
+        return 'Event Extended';
+      case 'uploadsOpen':
+        return 'Uploads Open';
+      case 'uploadsClosing':
+        return 'Uploads Closing Soon';
+      case 'memoryReady':
+        return 'Memory Ready';
+      case 'paymentsRequest':
+        return 'Payment Request';
+      case 'paymentsAddedYouOwe':
+        return 'New Expense';
+      case 'paymentsPaidYou':
+        return 'Payment Received';
+      case 'chatMention':
+        return 'Mentioned in Chat';
+      case 'securityNewLogin':
+        return 'New Login';
+
       // NOTIFICATIONS (feed)
-      case 'groupInviteAccepted': return 'Invite Accepted';
-      case 'groupRenamed': return 'Group Renamed';
-      case 'groupPhotoChanged': return 'Group Photo Changed';
-      case 'eventCreated': return 'New Event';
-      case 'eventDateSet': return 'Event Date Set';
-      case 'eventLocationSet': return 'Event Location Set';
-      case 'eventDetailsUpdated': return 'Event Updated';
-      case 'eventCanceled': return 'Event Canceled';
-      case 'eventRestored': return 'Event Restored';
-      case 'eventConfirmed': return 'Event Confirmed';
-      case 'suggestionAdded': return 'New Suggestion';
-      case 'dateSuggestionAdded': return 'Date Suggested';
-      case 'rsvpUpdated': return 'RSVP Updated';
-      case 'memoryShared': return 'Memory Shared';
-      
+      case 'groupInviteAccepted':
+        return 'Invite Accepted';
+      case 'groupMemberAdded':
+        return 'New Member';
+      case 'groupRenamed':
+        return 'Group Renamed';
+      case 'groupPhotoChanged':
+        return 'Group Photo Changed';
+      case 'eventCreated':
+        return 'New Event';
+      case 'eventDateSet':
+        return 'Event Date Set';
+      case 'eventLocationSet':
+        return 'Event Location Set';
+      case 'eventDetailsUpdated':
+        return 'Event Updated';
+      case 'eventCanceled':
+        return 'Event Canceled';
+      case 'eventRestored':
+        return 'Event Restored';
+      case 'eventConfirmed':
+        return 'Event Confirmed';
+      case 'suggestionAdded':
+        return 'New Suggestion';
+      case 'dateSuggestionAdded':
+        return 'Date Suggested';
+      case 'locationSuggestionAdded':
+        return 'Location Suggested';
+      case 'rsvpUpdated':
+        return 'RSVP Updated';
+      case 'eventRsvpReminder':
+        return 'Event Starting Soon';
+      case 'paymentsReceived':
+        return 'Payment Received';
+      case 'memoryShared':
+        return 'Memory Shared';
+
       // ACTIONS (to-dos)
-      case 'voteDate': return 'Vote on Date';
-      case 'votePlace': return 'Vote on Place';
-      case 'confirmAttendance': return 'Confirm Attendance';
-      case 'completeDetails': return 'Complete Event Details';
-      case 'addPhotos': return 'Add Photos';
-      
-      default: return 'Notification';
+      case 'voteDate':
+        return 'Vote on Date';
+      case 'votePlace':
+        return 'Vote on Place';
+      case 'confirmAttendance':
+        return 'Confirm Attendance';
+      case 'completeDetails':
+        return 'Complete Event Details';
+      case 'addPhotos':
+        return 'Add Photos';
+
+      default:
+        return 'Notification';
     }
   }
 
@@ -202,74 +240,82 @@ class NotificationModel {
     switch (type) {
       // PUSH notifications
       case 'groupInviteReceived':
-        return '${userName ?? 'Someone'} invited you to join ${groupName ?? 'a group'}';
+        return '{user} invited you to join {group}';
       case 'eventStartsSoon':
-        return '${eventName ?? 'Event'} starts in ${mins ?? '?'} min!';
+        return '{event} starts in {mins} min!';
       case 'eventLive':
-        return '${eventEmoji ?? '🎉'} ${eventName ?? 'Event'} is live now.';
+        return '{event} is live now.';
       case 'eventEndsSoon':
-        return '${eventEmoji ?? '🎉'} ${eventName ?? 'Event'} ends in ${mins ?? '?'} min.';
+        return '{event} ends in {mins} min.';
       case 'eventExtended':
-        return ' ${eventName ?? 'Event'} was extended by ${hours ?? '?'}h.';
+        return '{event} was extended by {hours}h.';
       case 'uploadsOpen':
-        return 'Add your photos to ${eventEmoji ?? '🎉'} ${eventName ?? 'event'} · ${hours ?? '?'}h left.';
+        return 'Add your photos to {event} · {hours}h left.';
       case 'uploadsClosing':
-        return 'Last call to add photos to ${eventEmoji ?? '🎉'} ${eventName ?? 'event'} · ${hours ?? '?'}h left.';
+        return 'Last call to add photos to {event} · {mins} min left.';
       case 'memoryReady':
-        return 'Your memory for ${eventName ?? 'event'} is ready to share.';
+        return '{event} memory is ready to view!';
       case 'paymentsRequest':
-        return '${userName ?? 'Someone'} requested ${amount ?? '?'}${note != null ? ' for $note' : ''}.';
+        return '{user} requested {amount} for {note}.';
       case 'paymentsAddedYouOwe':
-        return '${userName ?? 'Someone'} added **${note ?? 'an expense'}** in ${eventName ?? 'event'}. **${amount ?? '?'}**';
+        return '{user} added the expense "{note}". You owe {amount}.';
+      case 'paymentsAddedOwesYou':
+        return '{user} added the expense "{note}". Someone owes you {amount}.';
       case 'paymentsPaidYou':
-        return '${userName ?? 'Someone'} paid you ${amount ?? '?'}.';
+        return '{user} paid you {amount}.';
       case 'chatMention':
-        return '${userName ?? 'Someone'} mentioned you in ${eventEmoji ?? '🎉'} ${eventName ?? 'event'}.';
+        return '{user} mentioned you in chat.';
+      case 'chatMessage':
+        return '{user}: {note}';
       case 'securityNewLogin':
-        return 'New sign-in on ${device ?? 'unknown device'}. Was this you?';
-      
+        return 'New sign-in on {device}. Was this you?';
+
       // NOTIFICATIONS (feed)
       case 'groupInviteAccepted':
-        return '${userName ?? 'Someone'} joined ${groupName ?? 'a group'}.';
+        return '{user} joined {group}.';
+      case 'groupMemberAdded':
+        return '{user} joined {group}.';
       case 'groupRenamed':
-        return '${groupName ?? 'A group'} has a new name.';
+        return '{group} has a new name.';
       case 'groupPhotoChanged':
-        return '${groupName ?? 'A group'} has a new photo.';
+        return '{group} has a new photo.';
       case 'eventCreated':
-        return 'New event ${eventEmoji ?? '🎉'} ${eventName ?? ''} in ${groupName ?? 'a group'}.';
+        return '{user} created {event} in {group}.';
       case 'eventDateSet':
-        return 'Date confirmed for ${eventEmoji ?? '🎉'} ${eventName ?? 'event'}: ${date ?? '?'}, ${time ?? '?'}.';
-      case 'eventLocationSet':
-        return 'Location confirmed for ${eventEmoji ?? '🎉'} ${eventName ?? 'event'}: ${place ?? '?'}.';
-      case 'eventDetailsUpdated':
-        return '${eventEmoji ?? '🎉'} ${eventName ?? 'Event'} was updated. Check the new details.';
+        return '{event} is set for {date} at {time}.';
       case 'eventCanceled':
-        return '${eventEmoji ?? '🎉'} ${eventName ?? 'Event'} was canceled.';
+        return '{event} was canceled.';
       case 'eventRestored':
-        return '${eventEmoji ?? '🎉'} ${eventName ?? 'Event'} is back on.';
+        return '{event} is back on.';
       case 'eventConfirmed':
-        return '${eventEmoji ?? '🎉'} ${eventName ?? 'Event'} is confirmed to happen.';
-      case 'suggestionAdded':
-        return '${userName ?? 'Someone'} suggested ${place ?? date ?? 'something'} for ${eventName ?? 'event'}.';
-      case 'dateSuggestionAdded':
-        return '${userName ?? 'Someone'} suggested ${date ?? 'a date'} at ${time ?? '?'} for ${eventName ?? 'event'}.';
+        return '{event} confirmed for {date} at {time}.';
       case 'rsvpUpdated':
-        return '${userName ?? 'Someone'} is now ${note ?? 'attending'} ${eventName ?? 'event'}.';
+        return '{user} is {note} to {event}.';
+      case 'suggestionAdded':
+        return '{user} suggested {place} for {event}.';
+      case 'dateSuggestionAdded':
+        return '{user} suggested {date} at {time} for {event}.';
+      case 'locationSuggestionAdded':
+        return '{user} suggested {place} for {event}.';
+      case 'paymentsReceived':
+        return '{user} paid you {amount}.';
+      case 'eventRsvpReminder':
+        return 'Don\'t forget to confirm your attendance for {event} starting in {mins} min!';
       case 'memoryShared':
-        return '${userName ?? 'Someone'} shared a memory from ${eventName ?? 'event'} with you.';
-      
+        return '{user} shared a memory from {event} with you.';
+
       // ACTIONS (to-dos)
       case 'voteDate':
-        return 'Vote on a date for ${eventName ?? 'event'} · closes ${date ?? 'soon'}';
+        return 'Vote on a date for {event} · closes {date}';
       case 'votePlace':
-        return 'Vote on a place for ${eventName ?? 'event'} · closes ${date ?? 'soon'}';
+        return 'Vote on a place for {event} · closes {date}';
       case 'confirmAttendance':
-        return 'Confirm your attendance for ${eventName ?? 'event'} · ${date ?? '?'}d left';
+        return 'Confirm your attendance for {event} · {date}d left';
       case 'completeDetails':
-        return 'Complete event details (date/location) for ${eventName ?? 'event'}';
+        return 'Complete event details (date/location) for {event}';
       case 'addPhotos':
-        return 'Add your photos to ${eventName ?? 'event'} · ${hours ?? '?'}h left';
-      
+        return 'Add your photos to {event} · {hours}h left';
+
       default:
         return 'You have a new notification';
     }
@@ -278,37 +324,73 @@ class NotificationModel {
   NotificationType _parseNotificationType(String type) {
     switch (type) {
       // PUSH (13 types)
-      case 'groupInviteReceived': return NotificationType.groupInviteReceived;
-      case 'eventStartsSoon': return NotificationType.eventStartsSoon;
-      case 'eventLive': return NotificationType.eventLive;
-      case 'eventEndsSoon': return NotificationType.eventEndsSoon;
-      case 'eventExtended': return NotificationType.eventExtended;
-      case 'uploadsOpen': return NotificationType.uploadsOpen;
-      case 'uploadsClosing': return NotificationType.uploadsClosing;
-      case 'memoryReady': return NotificationType.memoryReady;
-      case 'paymentsRequest': return NotificationType.paymentsRequest;
-      case 'paymentsAddedYouOwe': return NotificationType.paymentsAddedYouOwe;
-      case 'paymentsPaidYou': return NotificationType.paymentsPaidYou;
-      case 'chatMention': return NotificationType.chatMention;
-      case 'securityNewLogin': return NotificationType.securityNewLogin;
-      
-      // NOTIFICATIONS (14 types)
-      case 'groupInviteAccepted': return NotificationType.groupInviteAccepted;
-      case 'groupRenamed': return NotificationType.groupRenamed;
-      case 'groupPhotoChanged': return NotificationType.groupPhotoChanged;
-      case 'eventCreated': return NotificationType.eventCreated;
-      case 'eventDateSet': return NotificationType.eventDateSet;
-      case 'eventLocationSet': return NotificationType.eventLocationSet;
-      case 'eventDetailsUpdated': return NotificationType.eventDetailsUpdated;
-      case 'eventCanceled': return NotificationType.eventCanceled;
-      case 'eventRestored': return NotificationType.eventRestored;
-      case 'eventConfirmed': return NotificationType.eventConfirmed;
-      case 'suggestionAdded': return NotificationType.suggestionAdded;
-      case 'dateSuggestionAdded': return NotificationType.dateSuggestionAdded;
-      case 'rsvpUpdated': return NotificationType.rsvpUpdated;
-      case 'memoryShared': return NotificationType.memoryShared;
-      
-      default: return NotificationType.general;
+      case 'groupInviteReceived':
+        return NotificationType.groupInviteReceived;
+      case 'eventStartsSoon':
+        return NotificationType.eventStartsSoon;
+      case 'eventLive':
+        return NotificationType.eventLive;
+      case 'eventEndsSoon':
+        return NotificationType.eventEndsSoon;
+      case 'eventExtended':
+        return NotificationType.eventExtended;
+      case 'uploadsOpen':
+        return NotificationType.uploadsOpen;
+      case 'uploadsClosing':
+        return NotificationType.uploadsClosing;
+      case 'memoryReady':
+        return NotificationType.memoryReady;
+      case 'paymentsRequest':
+        return NotificationType.paymentsRequest;
+      case 'paymentsAddedYouOwe':
+        return NotificationType.paymentsAddedYouOwe;
+      case 'paymentsAddedOwesYou':
+        return NotificationType.paymentsAddedOwesYou;
+      case 'paymentsPaidYou':
+        return NotificationType.paymentsPaidYou;
+      case 'chatMention':
+        return NotificationType.chatMention;
+      case 'chatMessage':
+        return NotificationType.chatMessage;
+      case 'securityNewLogin':
+        return NotificationType.securityNewLogin;
+
+      // NOTIFICATIONS (12 types - removed eventLocationSet, eventDetailsUpdated)
+      case 'groupInviteAccepted':
+        return NotificationType.groupInviteAccepted;
+      case 'groupMemberAdded':
+        return NotificationType.groupMemberAdded;
+      case 'groupRenamed':
+        return NotificationType.groupRenamed;
+      case 'groupPhotoChanged':
+        return NotificationType.groupPhotoChanged;
+      case 'eventCreated':
+        return NotificationType.eventCreated;
+      case 'eventDateSet':
+        return NotificationType.eventDateSet;
+      case 'eventCanceled':
+        return NotificationType.eventCanceled;
+      case 'eventRestored':
+        return NotificationType.eventRestored;
+      case 'eventConfirmed':
+        return NotificationType.eventConfirmed;
+      case 'suggestionAdded':
+        return NotificationType.suggestionAdded;
+      case 'dateSuggestionAdded':
+        return NotificationType.dateSuggestionAdded;
+      case 'locationSuggestionAdded':
+        return NotificationType.locationSuggestionAdded;
+      case 'rsvpUpdated':
+        return NotificationType.rsvpUpdated;
+      case 'paymentsReceived':
+        return NotificationType.paymentsReceived;
+      case 'eventRsvpReminder':
+        return NotificationType.eventRsvpReminder;
+      case 'memoryShared':
+        return NotificationType.memoryShared;
+
+      default:
+        return NotificationType.general;
     }
   }
 

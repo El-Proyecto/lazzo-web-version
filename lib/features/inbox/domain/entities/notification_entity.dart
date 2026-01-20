@@ -50,6 +50,8 @@ enum NotificationType {
   general,
   // New specific types based on catalog
   groupInviteReceived,
+  groupInviteAccepted,
+  groupMemberAdded, // NEW: When someone joins a group
   eventStartsSoon,
   eventLive,
   eventEndsSoon,
@@ -59,23 +61,26 @@ enum NotificationType {
   memoryReady,
   paymentsRequest,
   paymentsAddedYouOwe,
+  paymentsAddedOwesYou, // NEW: Split from paymentsAddedYouOwe
+  paymentsReceived, // NEW: When someone pays you
   paymentsPaidYou,
   chatMention,
+  chatMessage, // NEW: Chat messages notification
   securityNewLogin,
-  groupInviteAccepted,
   groupRenamed,
   groupPhotoChanged,
   eventCreated,
   eventDateSet,
-  eventLocationSet,
-  eventDetailsUpdated,
+  eventConfirmed,
   eventCanceled,
   eventRestored,
-  eventConfirmed,
   suggestionAdded,
-  dateSuggestionAdded,
+  dateSuggestionAdded, // Already exists
+  locationSuggestionAdded, // NEW: Location suggestion
   rsvpUpdated,
+  eventRsvpReminder, // NEW: Reminder 30 mins before event
   memoryShared,
+  // Removed: eventLocationSet, eventDetailsUpdated (not in updated spec)
 }
 
 enum NotificationPriority { low, medium, high }
@@ -209,7 +214,11 @@ class NotificationEntity {
     if (eventName != null) {
       message = message.replaceAll('{event}', '**$eventName**');
     }
-    if (amount != null) message = message.replaceAll('{amount}', '**$amount**');
+    if (amount != null) {
+      // Ensure amount always has € symbol at the end
+      final formattedAmount = amount!.endsWith('€') ? amount! : '$amount€';
+      message = message.replaceAll('{amount}', '**$formattedAmount**');
+    }
     if (hours != null) message = message.replaceAll('{hours}', '**$hours**');
     if (mins != null) message = message.replaceAll('{mins}', '**$mins**');
     if (date != null) message = message.replaceAll('{date}', '**$date**');
@@ -239,12 +248,11 @@ class NotificationEntity {
       case NotificationType.eventExtended:
       case NotificationType.eventCreated:
       case NotificationType.eventDateSet:
-      case NotificationType.eventLocationSet:
-      case NotificationType.eventDetailsUpdated:
       case NotificationType.eventRestored:
       case NotificationType.eventConfirmed:
       case NotificationType.suggestionAdded:
       case NotificationType.chatMention:
+      case NotificationType.chatMessage:
         return eventId != null ? 'lazzo://event/$eventId' : null;
 
       case NotificationType.uploadsOpen:
@@ -253,6 +261,7 @@ class NotificationEntity {
 
       case NotificationType.paymentsRequest:
       case NotificationType.paymentsAddedYouOwe:
+      case NotificationType.paymentsAddedOwesYou:
       case NotificationType.paymentsPaidYou:
         return 'lazzo://payments';
 

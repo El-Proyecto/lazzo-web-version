@@ -14,7 +14,7 @@ class NotificationRemoteDataSource {
     bool unreadOnly = false,
     String? category,
   }) async {
-                    try {
+    try {
       var query = _client
           .from('notifications')
           .select()
@@ -28,18 +28,18 @@ class NotificationRemoteDataSource {
         query = query.eq('category', category);
       }
 
-            final response = await query
+      final response = await query
           .order('created_at', ascending: false)
           .range(offset, offset + limit - 1);
 
-                        
       final models = (response as List)
-          .map((json) => NotificationModel.fromJson(json as Map<String, dynamic>))
+          .map((json) =>
+              NotificationModel.fromJson(json as Map<String, dynamic>))
           .toList();
-      
-            return models;
+
+      return models;
     } catch (e) {
-                  rethrow;
+      rethrow;
     }
   }
 
@@ -55,9 +55,7 @@ class NotificationRemoteDataSource {
         .eq('recipient_user_id', userId)
         .maybeSingle();
 
-    return response != null
-        ? NotificationModel.fromJson(response)
-        : null;
+    return response != null ? NotificationModel.fromJson(response) : null;
   }
 
   /// Mark single notification as read
@@ -78,7 +76,9 @@ class NotificationRemoteDataSource {
         .from('notifications')
         .update({'is_read': true})
         .eq('recipient_user_id', userId)
-        .eq('is_read', false);
+        .eq('is_read', false)
+        .eq('category',
+            'notifications'); // ✅ Only mark inbox notifications, not ephemeral push
   }
 
   /// Get unread notification count
@@ -88,6 +88,8 @@ class NotificationRemoteDataSource {
         .select('id')
         .eq('recipient_user_id', userId)
         .eq('is_read', false)
+        .eq('category',
+            'notifications') // ✅ CRITICAL: Exclude ephemeral 'push' notifications
         .count();
 
     return response.count;
@@ -116,9 +118,8 @@ class NotificationRemoteDataSource {
         .eq('recipient_user_id', userId)
         .order('created_at', ascending: false)
         .limit(limit)
-        .map((data) => data
-            .map((json) => NotificationModel.fromJson(json))
-            .toList());
+        .map((data) =>
+            data.map((json) => NotificationModel.fromJson(json)).toList());
   }
 
   /// Create notification manually (programmatic usage)
@@ -150,34 +151,35 @@ class NotificationRemoteDataSource {
   }) async {
     try {
       // Use RPC function that includes deduplication check
-      final response = await _client.rpc('create_notification_if_not_duplicate',
-          params: {
-            'p_recipient_user_id': recipientUserId,
-            'p_type': type,
-            'p_title': title,
-            'p_description': description,
-            'p_category': category,
-            'p_priority': priority,
-            'p_action_text': actionText,
-            'p_action_url': actionUrl,
-            'p_deeplink': deeplink,
-            'p_group_id': groupId,
-            'p_event_id': eventId,
-            'p_event_emoji': eventEmoji,
-            'p_user_name': userName,
-            'p_group_name': groupName,
-            'p_event_name': eventName,
-            'p_amount': amount,
-            'p_hours': hours,
-            'p_mins': mins,
-            'p_date': date,
-            'p_time': time,
-            'p_place': place,
-            'p_device': device,
-            'p_note': note,
-          });
+      final response =
+          await _client.rpc('create_notification_if_not_duplicate', params: {
+        'p_recipient_user_id': recipientUserId,
+        'p_type': type,
+        'p_title': title,
+        'p_description': description,
+        'p_category': category,
+        'p_priority': priority,
+        'p_action_text': actionText,
+        'p_action_url': actionUrl,
+        'p_deeplink': deeplink,
+        'p_group_id': groupId,
+        'p_event_id': eventId,
+        'p_event_emoji': eventEmoji,
+        'p_user_name': userName,
+        'p_group_name': groupName,
+        'p_event_name': eventName,
+        'p_amount': amount,
+        'p_hours': hours,
+        'p_mins': mins,
+        'p_date': date,
+        'p_time': time,
+        'p_place': place,
+        'p_device': device,
+        'p_note': note,
+      });
 
-      return response as String?; // Returns notification ID or null if duplicate
+      return response
+          as String?; // Returns notification ID or null if duplicate
     } catch (e) {
       throw Exception('Failed to create notification: $e');
     }

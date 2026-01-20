@@ -42,6 +42,7 @@ class _InboxPageState extends ConsumerState<InboxPage>
     // Check for pending tab change after frame
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _checkPendingTabChange();
+      _markNotificationsAsRead();
     });
   }
 
@@ -61,6 +62,22 @@ class _InboxPageState extends ConsumerState<InboxPage>
           ref.read(inboxTabIndexProvider.notifier).state = null;
         }
       });
+    }
+  }
+
+  Future<void> _markNotificationsAsRead() async {
+    try {
+      final markAllAsReadUseCase =
+          ref.read(markAllNotificationsAsReadUseCaseProvider);
+      await markAllAsReadUseCase();
+
+      // Reset unread count to 0
+      ref.read(unreadCountProvider.notifier).resetCount();
+
+      // Refresh notifications list to reflect read status
+      await ref.read(notificationsProvider.notifier).refresh();
+    } catch (e) {
+      // Silently fail - not critical for user experience
     }
   }
 
@@ -373,9 +390,22 @@ class _InboxPageState extends ConsumerState<InboxPage>
 
       // Expense added notification → Navigate based on event status
       case NotificationType.paymentsAddedYouOwe:
+      case NotificationType.paymentsAddedOwesYou:
         if (notification.eventId != null) {
           // Check event status to decide navigation
           _handleExpenseNotificationTap(context, notification);
+        }
+        break;
+
+      // Chat notifications → Navigate to event chat
+      case NotificationType.chatMention:
+      case NotificationType.chatMessage:
+        if (notification.eventId != null) {
+          Navigator.pushNamed(
+            context,
+            '/event-chat',
+            arguments: {'eventId': notification.eventId},
+          );
         }
         break;
 
@@ -394,8 +424,6 @@ class _InboxPageState extends ConsumerState<InboxPage>
       // Event info notifications → Navigate to event
       case NotificationType.eventCreated:
       case NotificationType.eventDateSet:
-      case NotificationType.eventLocationSet:
-      case NotificationType.eventDetailsUpdated:
       case NotificationType.eventCanceled:
       case NotificationType.eventRestored:
       case NotificationType.eventConfirmed:

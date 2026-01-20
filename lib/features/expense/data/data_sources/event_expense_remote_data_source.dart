@@ -19,24 +19,32 @@ class EventExpenseRemoteDataSource {
     required List<String> participantsPaid,
   }) async {
     try {
+      // Get current user ID (the creator of the expense)
+      final currentUserId = _client.auth.currentUser?.id;
+      if (currentUserId == null) {
+        throw Exception('User not authenticated');
+      }
+
       // Step 1: Create expense record
       final expenseResponse = await _client
           .from('event_expenses')
           .insert({
             'event_id': eventId,
-            'title': description, // ✅ Corrected: title not description
-            'total_amount': amount, // ✅ Corrected: total_amount not amount
-            'created_by': paidBy, // ✅ Corrected: created_by not paid_by
+            'title': description,
+            'total_amount': amount,
+            'created_by':
+                currentUserId, // ✅ Who created the expense (current user)
+            'paid_by': paidBy, // ✅ Who paid the expense (can be different)
           })
           .select()
           .single();
 
       final expenseId = expenseResponse['id'] as String;
-      
+
       // Step 2: Insert expense_splits (who owes)
       if (participantsOwe.isNotEmpty) {
-                final amountPerPerson = amount / participantsOwe.length;
-                
+        final amountPerPerson = amount / participantsOwe.length;
+
         await _client.from('expense_splits').insert(
               participantsOwe
                   .map((userId) => {
@@ -48,45 +56,87 @@ class EventExpenseRemoteDataSource {
                       })
                   .toList(),
             );
-                
+
         // Step 3: Send notifications to participants who owe money (excluding payer)
         try {
-                    final creatorData = await _client
+          // ✅ Fetch payer's name (not creator's name)
+          final payerData = await _client
               .from('users')
               .select('name')
               .eq('id', paidBy)
               .single();
-          
+
           final eventData = await _client
               .from('events')
               .select('name, emoji')
               .eq('id', eventId)
               .single();
-          
-          final creatorName = creatorData['name'] ?? 'Someone';
+
+          final payerName = payerData['name'] ?? 'Someone';
           final eventName = eventData['name'];
           final eventEmoji = eventData['emoji'];
-                    
+
           // Send notification to each participant (except the payer)
-                    for (final userId in participantsOwe) {
+          for (final userId in participantsOwe) {
             if (userId != paidBy) {
-                            await _notificationService.sendExpenseAddedYouOwe(
+              await _notificationService.sendExpenseAddedYouOwe(
                 recipientUserId: userId,
-                creatorName: creatorName,
-                amount: amountPerPerson.toStringAsFixed(2),
+                creatorName: payerName, // ✅ Use payer's name, not creator's
+                expenseName: description,
+                amount: '${amountPerPerson.toStringAsFixed(2)}€',
                 eventId: eventId,
+                expenseId: expenseId,
                 eventEmoji: eventEmoji,
                 eventName: eventName,
               );
-                          }
+            }
+          }
+
+          // ✅ If payer is different from creator, notify payer about who owes them
+          if (paidBy != currentUserId && participantsOwe.contains(paidBy)) {
+            // Payer is also a participant but paid for others
+            // Send "Owes You" notification to the payer
+            final currentUserData = await _client
+                .from('users')
+                .select('name')
+                .eq('id', currentUserId)
+                .single();
+
+            final creatorName = currentUserData['name'] ?? 'Someone';
+
+            // Get all debtors (participants except the payer)
+            final debtors =
+                participantsOwe.where((id) => id != paidBy).toList();
+
+            // Send one notification per debtor to the payer
+            for (final debtorId in debtors) {
+              final debtorData = await _client
+                  .from('users')
+                  .select('name')
+                  .eq('id', debtorId)
+                  .single();
+
+              final debtorName = debtorData['name'] ?? 'Someone';
+
+              await _notificationService.sendExpenseAddedOwesYou(
+                recipientUserId: paidBy,
+                creatorName: creatorName, // Who created the expense
+                expenseName: description,
+                debtorName: debtorName, // Who owes the payer
+                amount: '${amountPerPerson.toStringAsFixed(2)}€',
+                eventId: eventId,
+                expenseId: expenseId,
+                eventEmoji: eventEmoji,
+                eventName: eventName,
+              );
+            }
           }
         } catch (notifError) {
           // Don't fail expense creation if notifications fail
-                            }
-      } else {
-              }
+        }
+      } else {}
 
-            return EventExpenseDto.fromJson(expenseResponse);
+      return EventExpenseDto.fromJson(expenseResponse);
     } catch (e) {
       throw Exception('Failed to create expense: $e');
     }
