@@ -268,10 +268,11 @@ class SettingsPage extends ConsumerWidget {
     }
   }
 
-  void _showLogoutDialog(BuildContext context, WidgetRef ref) {
-    showDialog(
+  void _showLogoutDialog(BuildContext context, WidgetRef ref) async {
+    await showDialog(
       context: context,
-      builder: (BuildContext context) {
+      barrierDismissible: false,
+      builder: (BuildContext dialogContext) {
         return ConfirmationDialog(
           title: 'Log Out',
           message: 'Are you sure you want to log out?',
@@ -279,6 +280,7 @@ class SettingsPage extends ConsumerWidget {
           cancelText: 'Cancel',
           isDestructive: true,
           onConfirm: () async {
+            // Dialog is already closed by ConfirmationDialog
             try {
               await ref.read(settingsControllerProvider.notifier).logOut();
 

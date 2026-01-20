@@ -561,9 +561,7 @@ class _GroupHubPageState extends ConsumerState<GroupHubPage>
 
         return ListView.separated(
           controller: _eventsScrollController,
-          physics: _isSnapped
-              ? const AlwaysScrollableScrollPhysics()
-              : const NeverScrollableScrollPhysics(),
+          physics: const AlwaysScrollableScrollPhysics(),
           padding: EdgeInsets.only(
             left: Insets.screenH,
             right: Insets.screenH,
@@ -758,11 +756,7 @@ class _GroupHubPageState extends ConsumerState<GroupHubPage>
 
         return SingleChildScrollView(
           controller: _memoriesScrollController,
-          physics: _isSnapped
-              ? const BouncingScrollPhysics(
-                  parent: AlwaysScrollableScrollPhysics(),
-                )
-              : const NeverScrollableScrollPhysics(),
+          physics: const AlwaysScrollableScrollPhysics(),
           padding: EdgeInsets.only(
             left: Insets.screenH,
             right: Insets.screenH,
