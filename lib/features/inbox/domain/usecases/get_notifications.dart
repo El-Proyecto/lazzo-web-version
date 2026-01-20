@@ -10,11 +10,13 @@ class GetNotifications {
     int limit = 20,
     int offset = 0,
     bool unreadOnly = false,
+    NotificationCategory? category,
   }) {
     return repository.getNotifications(
       limit: limit,
       offset: offset,
       unreadOnly: unreadOnly,
+      category: category,
     );
   }
 }

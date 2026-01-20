@@ -115,7 +115,7 @@ const getLocalizedMessage = (
   type: string,
   data: Record<string, string>
 ): { title: string; body: string } => {
-  const { user_name, group_name, event_name, event_emoji, amount, mins, hours, date, time, place, message, note } = data;
+  const { user_name, group_name, event_name, event_emoji, amount, mins, hours, date, time, place, note } = data;
   const emoji = event_emoji || "📅";
 
   const messages: Record<string, { title: string; body: string }> = {
@@ -149,7 +149,7 @@ const getLocalizedMessage = (
     },
     chatMessage: {
       title: `${emoji} ${event_name}`,
-      body: `${user_name}: ${message}`,
+      body: `${user_name}: ${note}`,
     },
     securityNewLogin: {
       title: "New Login Detected",

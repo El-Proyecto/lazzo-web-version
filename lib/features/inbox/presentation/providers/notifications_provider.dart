@@ -74,7 +74,10 @@ class NotificationsController
     state = const AsyncValue.loading();
 
     try {
-      final notifications = await _getNotifications();
+      // ✅ CRITICAL: Only fetch 'notifications' category (exclude ephemeral 'push')
+      final notifications = await _getNotifications(
+        category: NotificationCategory.notifications,
+      );
 
       if (notifications.isNotEmpty) {}
 

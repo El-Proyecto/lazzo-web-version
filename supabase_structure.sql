@@ -44,9 +44,11 @@ CREATE TABLE public.event_expenses (
   total_amount numeric NOT NULL,
   created_at timestamp with time zone DEFAULT now(),
   created_by uuid,
+  paid_by uuid NOT NULL,
   CONSTRAINT event_expenses_pkey PRIMARY KEY (id),
   CONSTRAINT event_expenses_event_id_fkey FOREIGN KEY (event_id) REFERENCES public.events(id),
-  CONSTRAINT event_expenses_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.users(id)
+  CONSTRAINT event_expenses_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.users(id),
+  CONSTRAINT event_expenses_paid_by_fkey FOREIGN KEY (paid_by) REFERENCES public.users(id)
 );
 CREATE TABLE public.event_participants (
   pevent_id uuid NOT NULL DEFAULT gen_random_uuid(),

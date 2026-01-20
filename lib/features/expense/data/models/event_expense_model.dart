@@ -30,7 +30,7 @@ class EventExpenseDto {
       description: json['title'] as String, // ✅ DB column is 'title'
       amount: (json['total_amount'] as num)
           .toDouble(), // ✅ DB column is 'total_amount'
-      paidBy: json['created_by'] as String, // ✅ DB column is 'created_by'
+      paidBy: json['paid_by'] as String, // ✅ DB column is 'paid_by' (who paid)
       participantsOwe: [], // ✅ Not in event_expenses table, loaded separately
       participantsPaid: [], // ✅ Not in event_expenses table, loaded separately
       createdAt: DateTime.parse(json['created_at'] as String),

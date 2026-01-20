@@ -77,6 +77,7 @@ class NotificationService {
     required String debtorName,
     required String amount,
     required String eventId,
+    required String expenseId,
     String? eventEmoji,
     String? eventName,
   }) async {
@@ -90,9 +91,10 @@ class NotificationService {
       'p_event_emoji': eventEmoji,
       'p_user_name': creatorName,
       'p_event_name': eventName,
-      'p_expense_name': expenseName,
-      'p_person_name': debtorName,
+      'p_note': expenseName, // ✅ Use p_note for expense name
       'p_amount': amount,
+      'p_expense_id': expenseId, // ✅ Add expense_id
+      // Note: debtorName is shown in UI but stored in notification display logic
     });
   }
 
