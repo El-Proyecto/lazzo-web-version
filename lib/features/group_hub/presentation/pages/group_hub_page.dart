@@ -250,7 +250,8 @@ class _GroupHubPageState extends ConsumerState<GroupHubPage>
   }
 
   Widget _buildNormalView() {
-    return Column(
+    return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
       children: [
         // Group information section
         _buildGroupInfo(),
@@ -260,8 +261,9 @@ class _GroupHubPageState extends ConsumerState<GroupHubPage>
         _buildSegmentedControl(),
         const SizedBox(height: Gaps.md),
 
-        // Content sections
-        Expanded(
+        // Content sections - fixed height for TabBarView
+        SizedBox(
+          height: MediaQuery.of(context).size.height * 0.6,
           child: TabBarView(
             controller: _tabController,
             children: [
