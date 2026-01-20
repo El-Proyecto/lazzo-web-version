@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/constants/text_styles.dart';
+import '../../../../shared/constants/event_emojis.dart';
 import '../../../../shared/themes/colors.dart';
 import '../../../../shared/components/widgets/grabber_bar.dart';
+import '../../../../shared/services/emoji_recents_service.dart';
 
 /// Bottom sheet para seleção de emoji
 /// Exibe grid de emojis organizados por categorias com seleção por toque
+/// Inclui secção de Recents (últimos 8 usados) e Defaults (mais populares)
 class EmojiSelectorBottomSheet extends StatefulWidget {
   final String? selectedEmoji;
   final Function(String)? onEmojiSelected;
@@ -25,285 +28,23 @@ class _EmojiSelectorBottomSheetState extends State<EmojiSelectorBottomSheet>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   final PageController _pageController = PageController();
+  final EmojiRecentsService _recentsService = EmojiRecentsService();
+  
+  List<String> _recentEmojis = [];
+  bool _isLoadingRecents = true;
 
-  // Lista de categorias de emoji
-  final List<EmojiCategory> _categories = [
-    EmojiCategory(
-      name: 'Recent',
-      icon: Icons.access_time,
-      emojis: ['🎉', '🎊', '🎈', '🍰', '🎁', '🥳', '🎭', '🎪'],
-    ),
-    EmojiCategory(
-      name: 'Smileys',
-      icon: Icons.sentiment_satisfied,
-      emojis: [
-        '😀',
-        '😃',
-        '😄',
-        '😁',
-        '😆',
-        '😅',
-        '😂',
-        '🤣',
-        '😊',
-        '😇',
-        '🙂',
-        '🙃',
-        '😉',
-        '😌',
-        '😍',
-        '🥰',
-        '😘',
-        '😗',
-        '😙',
-        '😚',
-        '😋',
-        '😛',
-        '😝',
-        '😜',
-        '🤪',
-        '🤨',
-        '🧐',
-        '🤓',
-        '😎',
-        '🤩',
-        '🥳',
-        '😏',
-      ],
-    ),
-    EmojiCategory(
-      name: 'Gestures',
-      icon: Icons.pan_tool,
-      emojis: [
-        '👋',
-        '🤚',
-        '🖐️',
-        '✋',
-        '🖖',
-        '👌',
-        '🤌',
-        '🤏',
-        '✌️',
-        '🤞',
-        '🫰',
-        '🤟',
-        '🤘',
-        '🤙',
-        '👈',
-        '👉',
-        '👆',
-        '🖕',
-        '👇',
-        '☝️',
-        '🫵',
-        '👍',
-        '👎',
-        '👊',
-        '✊',
-        '🤛',
-        '🤜',
-        '👏',
-        '🙌',
-        '🫶',
-        '👐',
-        '🤲',
-      ],
-    ),
-    EmojiCategory(
-      name: 'Activities',
-      icon: Icons.sports_soccer,
-      emojis: [
-        '⚽',
-        '🏀',
-        '🏈',
-        '⚾',
-        '🥎',
-        '🎾',
-        '🏐',
-        '🏉',
-        '🥏',
-        '🎱',
-        '🪀',
-        '🏓',
-        '🏸',
-        '🏒',
-        '🏑',
-        '🥍',
-        '🏏',
-        '🪃',
-        '🥅',
-        '⛳',
-        '🪁',
-        '🏹',
-        '🎣',
-        '🤿',
-        '🥊',
-        '🥋',
-        '🎽',
-        '🛹',
-        '🛼',
-        '🛷',
-        '⛸️',
-        '🥌',
-      ],
-    ),
-    EmojiCategory(
-      name: 'Food',
-      icon: Icons.restaurant,
-      emojis: [
-        '🍎',
-        '🍏',
-        '🍐',
-        '🍊',
-        '🍋',
-        '🍌',
-        '🍉',
-        '🍇',
-        '🍓',
-        '🫐',
-        '🍈',
-        '🍒',
-        '🍑',
-        '🥭',
-        '🍍',
-        '🥥',
-        '🥝',
-        '🍅',
-        '🍆',
-        '🥑',
-        '🥦',
-        '🥬',
-        '🥒',
-        '🌶️',
-        '🫑',
-        '🌽',
-        '🥕',
-        '🫒',
-        '🧄',
-        '🧅',
-        '🥔',
-        '🍠',
-      ],
-    ),
-    EmojiCategory(
-      name: 'Travel',
-      icon: Icons.directions_car,
-      emojis: [
-        '🚗',
-        '🚕',
-        '🚙',
-        '🚌',
-        '🚎',
-        '🏎️',
-        '🚓',
-        '🚑',
-        '🚒',
-        '🚐',
-        '🛻',
-        '🚚',
-        '🚛',
-        '🚜',
-        '🏍️',
-        '🛵',
-        '🚲',
-        '🛴',
-        '🛹',
-        '🛼',
-        '🚁',
-        '🛸',
-        '✈️',
-        '🛩️',
-        '🛫',
-        '🛬',
-        '🪂',
-        '💺',
-        '🚀',
-        '🛰️',
-        '🚢',
-        '⛵',
-      ],
-    ),
-    EmojiCategory(
-      name: 'Objects',
-      icon: Icons.phone_android,
-      emojis: [
-        '📱',
-        '📲',
-        '💻',
-        '⌨️',
-        '🖥️',
-        '🖨️',
-        '🖱️',
-        '🖲️',
-        '💽',
-        '💾',
-        '💿',
-        '📀',
-        '📼',
-        '📷',
-        '📸',
-        '📹',
-        '🎥',
-        '📽️',
-        '🎞️',
-        '📞',
-        '☎️',
-        '📟',
-        '📠',
-        '📺',
-        '📻',
-        '🎙️',
-        '🎚️',
-        '🎛️',
-        '🧭',
-        '⏱️',
-        '⏲️',
-        '⏰',
-      ],
-    ),
-    EmojiCategory(
-      name: 'Flags',
-      icon: Icons.flag,
-      emojis: [
-        '🇵🇹', // Portugal
-        '🇪🇸', // Spain
-        '🇫🇷', // France
-        '🇮🇹', // Italy
-        '🇩🇪', // Germany
-        '🇬🇧', // United Kingdom
-        '🇳🇱', // Netherlands
-        '🇧🇪', // Belgium
-        '🇨🇭', // Switzerland
-        '🇦🇹', // Austria
-        '🇵🇱', // Poland
-        '🇨🇿', // Czech Republic
-        '🇷🇴', // Romania
-        '🇬🇷', // Greece
-        '🇸🇮', // Slovenia
-        '🇸🇪', // Sweden
-        '🇳🇴', // Norway
-        '🇩🇰', // Denmark
-        '🇫🇮', // Finland
-        '🇮🇪', // Ireland
-        '🇺🇸', // United States
-        '🇨🇦', // Canada
-        '🇧🇷', // Brazil
-        '🇦🇷', // Argentina
-        '🇲🇽', // Mexico
-        '🇯🇵', // Japan
-        '🇰🇷', // South Korea
-        '🇨🇳', // China
-        '🇮🇳', // India
-        '🇦🇺', // Australia
-        '🇿🇦', // South Africa
-        '🇪🇬', // Egypt
-      ],
-    ),
-  ];
+  // Lista de categorias de emoji (carregadas dos constants)
+  List<EmojiCategory> _categories = [];
 
   @override
   void initState() {
     super.initState();
+
+    // Load recent emojis from storage
+    _loadRecents();
+
+    // Build categories from constants
+    _buildCategories();
 
     // Find the category that contains the selected emoji
     int initialIndex = 0;
@@ -328,6 +69,102 @@ class _EmojiSelectorBottomSheetState extends State<EmojiSelectorBottomSheet>
         _pageController.jumpToPage(initialIndex);
       }
     });
+  }
+
+  /// Load recent emojis from storage
+  Future<void> _loadRecents() async {
+    final recents = await _recentsService.getRecents();
+    setState(() {
+      _recentEmojis = recents;
+      _isLoadingRecents = false;
+      // Rebuild categories with loaded recents
+      _buildCategories();
+    });
+  }
+
+  /// Build category list from constants + recents
+  void _buildCategories() {
+    _categories = [
+      // Recent emojis (first tab)
+      EmojiCategory(
+        name: 'Recents',
+        icon: Icons.access_time,
+        emojis: _isLoadingRecents 
+          ? EventEmojis.defaults.take(8).toList()
+          : _recentEmojis,
+      ),
+      // Defaults (second tab - most popular)
+      EmojiCategory(
+        name: 'Defaults',
+        icon: Icons.star,
+        emojis: EventEmojis.defaults,
+      ),
+      // All other categories from constants
+      EmojiCategory(
+        name: 'Celebration',
+        icon: Icons.celebration,
+        emojis: EventEmojis.celebration,
+      ),
+      EmojiCategory(
+        name: 'Food',
+        icon: Icons.restaurant,
+        emojis: EventEmojis.foodAndDrink,
+      ),
+      EmojiCategory(
+        name: 'Activities',
+        icon: Icons.sports_soccer,
+        emojis: EventEmojis.activities,
+      ),
+      EmojiCategory(
+        name: 'Travel',
+        icon: Icons.directions_car,
+        emojis: EventEmojis.travel,
+      ),
+      EmojiCategory(
+        name: 'Entertainment',
+        icon: Icons.movie,
+        emojis: EventEmojis.entertainment,
+      ),
+      EmojiCategory(
+        name: 'Nature',
+        icon: Icons.wb_sunny,
+        emojis: EventEmojis.nature,
+      ),
+      EmojiCategory(
+        name: 'Smileys',
+        icon: Icons.sentiment_satisfied,
+        emojis: EventEmojis.smileys,
+      ),
+      EmojiCategory(
+        name: 'Gestures',
+        icon: Icons.pan_tool,
+        emojis: EventEmojis.gestures,
+      ),
+      EmojiCategory(
+        name: 'Objects',
+        icon: Icons.phone_android,
+        emojis: EventEmojis.objects,
+      ),
+      EmojiCategory(
+        name: 'Flags',
+        icon: Icons.flag,
+        emojis: EventEmojis.flags,
+      ),
+    ];
+  }
+
+  /// Handle emoji selection and save to recents
+  Future<void> _onEmojiTap(String emoji) async {
+    // Save to recents
+    await _recentsService.addRecent(emoji);
+    
+    // Call callback
+    widget.onEmojiSelected?.call(emoji);
+    
+    // Close bottom sheet
+    if (mounted) {
+      Navigator.of(context).pop();
+    }
   }
 
   @override
@@ -469,10 +306,7 @@ class _EmojiSelectorBottomSheetState extends State<EmojiSelectorBottomSheet>
                       final isSelected = emoji == widget.selectedEmoji;
 
                       return GestureDetector(
-                        onTap: () {
-                          widget.onEmojiSelected?.call(emoji);
-                          Navigator.of(context).pop();
-                        },
+                        onTap: () => _onEmojiTap(emoji),
                         child: Container(
                           decoration: BoxDecoration(
                             color: isSelected

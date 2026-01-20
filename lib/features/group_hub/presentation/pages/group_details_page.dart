@@ -239,6 +239,9 @@ class GroupDetailsPage extends ConsumerWidget {
               label: isMuted ? 'Unmute' : 'Mute',
               onTap: () {
                 ref.read(groupDetailsProvider(groupId).notifier).toggleMute();
+                // Invalidate groups list to sync mute state
+                ref.invalidate(groups.groupsProvider);
+                ref.invalidate(groups.archivedGroupsProvider);
                 _showMuteBanner(context, !isMuted);
               },
             ),

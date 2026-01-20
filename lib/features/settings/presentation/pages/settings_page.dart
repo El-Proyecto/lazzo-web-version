@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../../shared/components/common/simple_selection_sheet.dart';
 import '../../../../shared/components/common/top_banner.dart';
 import '../../../../shared/components/dialogs/confirmation_dialog.dart';
@@ -11,7 +12,7 @@ import '../../../../routes/app_router.dart';
 import '../../../profile/presentation/providers/profile_providers.dart';
 import '../providers/settings_providers.dart';
 import '../widgets/settings_profile_section.dart';
-import '../widgets/settings_invite_banner.dart';
+// import '../widgets/settings_invite_banner.dart'; // REMOVED - not used
 import '../widgets/settings_section.dart';
 import '../widgets/settings_option_item.dart';
 
@@ -63,17 +64,16 @@ class SettingsPage extends ConsumerWidget {
 
                   const SizedBox(height: Gaps.lg),
 
-                  // Invite Banner
-                  SettingsInviteBanner(
-                    invitesCount: settings.earlyAccessInvites,
-                    onShare: () {
-                      ref
-                          .read(settingsControllerProvider.notifier)
-                          .shareInvite();
-                    },
-                  ),
-
-                  const SizedBox(height: Gaps.lg),
+                  // Invite Banner - REMOVED per user request
+                  // SettingsInviteBanner(
+                  //   invitesCount: settings.earlyAccessInvites,
+                  //   onShare: () {
+                  //     ref
+                  //         .read(settingsControllerProvider.notifier)
+                  //         .shareInvite();
+                  //   },
+                  // ),
+                  // const SizedBox(height: Gaps.lg),
 
                   // Preferences Section
                   SettingsSection(
@@ -120,15 +120,16 @@ class SettingsPage extends ConsumerWidget {
                   SettingsSection(
                     title: 'Feedback & Help',
                     children: [
-                      SettingsOptionItem(
-                        icon: Icons.help_outline,
-                        title: 'FAQ',
-                        trailing: SettingsOptionTrailing.arrow(
-                          onTap: () {
-                            // TODO P2: Navigate to FAQ
-                          },
-                        ),
-                      ),
+                      // FAQ - COMMENTED OUT per user request (may be useful later)
+                      // SettingsOptionItem(
+                      //   icon: Icons.help_outline,
+                      //   title: 'FAQ',
+                      //   trailing: SettingsOptionTrailing.arrow(
+                      //     onTap: () {
+                      //       // TODO P2: Navigate to FAQ
+                      //     },
+                      //   ),
+                      // ),
                       SettingsOptionItem(
                         icon: Icons.bug_report_outlined,
                         title: 'Report a problem',
@@ -164,20 +165,31 @@ class SettingsPage extends ConsumerWidget {
                         icon: Icons.privacy_tip_outlined,
                         title: 'Privacy Policy',
                         trailing: SettingsOptionTrailing.arrow(
-                          onTap: () {
-                            // TODO P2: Navigate to privacy policy
+                          onTap: () async {
+                            final url = Uri.parse('https://lazzo-invites-web.vercel.app/privacy');
+                            if (await canLaunchUrl(url)) {
+                              await launchUrl(url, mode: LaunchMode.externalApplication);
+                            } else {
+                              if (context.mounted) {
+                                TopBanner.showError(
+                                  context,
+                                  message: 'Could not open Privacy Policy',
+                                );
+                              }
+                            }
                           },
                         ),
                       ),
-                      SettingsOptionItem(
-                        icon: Icons.description_outlined,
-                        title: 'Terms & Conditions',
-                        trailing: SettingsOptionTrailing.arrow(
-                          onTap: () {
-                            // TODO P2: Navigate to terms & conditions
-                          },
-                        ),
-                      ),
+                      // Terms & Conditions - COMMENTED OUT per user request (may be useful later)
+                      // SettingsOptionItem(
+                      //   icon: Icons.description_outlined,
+                      //   title: 'Terms & Conditions',
+                      //   trailing: SettingsOptionTrailing.arrow(
+                      //     onTap: () {
+                      //       // TODO P2: Navigate to terms & conditions
+                      //     },
+                      //   ),
+                      // ),
                     ],
                   ),
 
@@ -256,10 +268,11 @@ class SettingsPage extends ConsumerWidget {
     }
   }
 
-  void _showLogoutDialog(BuildContext context, WidgetRef ref) {
-    showDialog(
+  void _showLogoutDialog(BuildContext context, WidgetRef ref) async {
+    await showDialog(
       context: context,
-      builder: (BuildContext context) {
+      barrierDismissible: false,
+      builder: (BuildContext dialogContext) {
         return ConfirmationDialog(
           title: 'Log Out',
           message: 'Are you sure you want to log out?',
@@ -267,6 +280,7 @@ class SettingsPage extends ConsumerWidget {
           cancelText: 'Cancel',
           isDestructive: true,
           onConfirm: () async {
+            
             try {
               await ref.read(settingsControllerProvider.notifier).logOut();
 

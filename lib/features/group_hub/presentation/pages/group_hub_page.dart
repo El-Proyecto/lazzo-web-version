@@ -159,6 +159,8 @@ class _GroupHubPageState extends ConsumerState<GroupHubPage>
           onRefresh: _handleRefresh,
           color: BrandColors.planning,
           backgroundColor: BrandColors.bg2,
+          notificationPredicate: (notification) =>
+              notification.depth == 0 && notification.metrics.extentBefore == 0,
           child: GestureDetector(
             // Detect vertical drag up to snap when not snapped
             onVerticalDragUpdate: (details) {
@@ -248,7 +250,8 @@ class _GroupHubPageState extends ConsumerState<GroupHubPage>
   }
 
   Widget _buildNormalView() {
-    return Column(
+    return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
       children: [
         // Group information section
         _buildGroupInfo(),
@@ -258,8 +261,9 @@ class _GroupHubPageState extends ConsumerState<GroupHubPage>
         _buildSegmentedControl(),
         const SizedBox(height: Gaps.md),
 
-        // Content sections
-        Expanded(
+        // Content sections - fixed height for TabBarView
+        SizedBox(
+          height: MediaQuery.of(context).size.height * 0.6,
           child: TabBarView(
             controller: _tabController,
             children: [
@@ -559,9 +563,7 @@ class _GroupHubPageState extends ConsumerState<GroupHubPage>
 
         return ListView.separated(
           controller: _eventsScrollController,
-          physics: _isSnapped
-              ? const AlwaysScrollableScrollPhysics()
-              : const NeverScrollableScrollPhysics(),
+          physics: const AlwaysScrollableScrollPhysics(),
           padding: EdgeInsets.only(
             left: Insets.screenH,
             right: Insets.screenH,
@@ -756,11 +758,7 @@ class _GroupHubPageState extends ConsumerState<GroupHubPage>
 
         return SingleChildScrollView(
           controller: _memoriesScrollController,
-          physics: _isSnapped
-              ? const BouncingScrollPhysics(
-                  parent: AlwaysScrollableScrollPhysics(),
-                )
-              : const NeverScrollableScrollPhysics(),
+          physics: const AlwaysScrollableScrollPhysics(),
           padding: EdgeInsets.only(
             left: Insets.screenH,
             right: Insets.screenH,

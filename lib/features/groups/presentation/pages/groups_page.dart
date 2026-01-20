@@ -15,6 +15,7 @@ import '../../../../shared/components/chips/filter_chip.dart';
 import '../../domain/entities/group.dart';
 import '../providers/groups_provider.dart';
 import '../../../../routes/app_router.dart';
+import '../../../group_hub/presentation/providers/group_hub_providers.dart';
 
 class GroupsPage extends ConsumerStatefulWidget {
   const GroupsPage({super.key});
@@ -387,7 +388,6 @@ class _GroupsPageState extends ConsumerState<GroupsPage>
         // fallback: use group ID path
         final inviteUrl = '${AppConfig.invitesBaseUrl}/groups/$groupId';
 
-        if (!mounted) return;
         InviteBottomSheet.show(
           context: context,
           inviteUrl: inviteUrl,
@@ -428,6 +428,9 @@ class _GroupsPageState extends ConsumerState<GroupsPage>
     // Toggle: se está muted, vai unmute (false), se não está muted, vai mute (true)
     final newMutedState = !group.isMuted;
     controller.toggleMute(groupId, newMutedState);
+
+    // Invalidate group details to sync mute state
+    ref.invalidate(groupDetailsProvider(groupId));
   }
 
   void _handleLeaveGroup(String groupId) {

@@ -35,7 +35,7 @@ class GroupEventModel {
     final userRsvp = json['current_user_rsvp'] as String?;
     final userVote = userRsvp == null || userRsvp == 'pending' || userRsvp == 'invited'
         ? null
-        : (userRsvp == 'going' || userRsvp == 'yes' || userRsvp == 'attending' || userRsvp == 'accepted');
+        : (userRsvp == 'yes' || userRsvp == 'going' || userRsvp == 'attending' || userRsvp == 'accepted');
 
     // Parse all votes if provided
     final allVotes = rsvps?.map((r) {
@@ -83,15 +83,15 @@ class GroupEventModel {
   /// Helper to convert RSVP status string to enum
   static RsvpVoteStatus _parseRsvpStatus(String status) {
     switch (status.toLowerCase()) {
-      case 'going':
       case 'yes':
       case 'attending':
       case 'accepted':
+      case 'going':
         return RsvpVoteStatus.going;
+      case 'no':
       case 'notgoing':
       case 'not_going':
       case 'declined':
-      case 'no':
       case 'rejected':
         return RsvpVoteStatus.notGoing;
       case 'pending':

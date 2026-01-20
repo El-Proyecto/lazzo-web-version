@@ -104,7 +104,7 @@ class SupabaseGroupEventDataSource implements GroupEventDataSource {
     final goingUsers = event['going_users'] as List? ?? [];
     for (final user in goingUsers) {
       if (user['user_id'] == userId) {
-        return 'going';
+        return 'yes';
       }
     }
 
@@ -112,7 +112,7 @@ class SupabaseGroupEventDataSource implements GroupEventDataSource {
     final notGoingUsers = event['not_going_users'] as List? ?? [];
     for (final user in notGoingUsers) {
       if (user['user_id'] == userId) {
-        return 'not_going';
+        return 'no';
       }
     }
 
@@ -204,7 +204,7 @@ class SupabaseGroupEventDataSource implements GroupEventDataSource {
           'user_id': userId,
           'user_name': userName,
           'user_avatar': userAvatar,
-          'status': 'going',
+          'status': 'yes',
           'voted_at': user['voted_at'],
         });
       }
