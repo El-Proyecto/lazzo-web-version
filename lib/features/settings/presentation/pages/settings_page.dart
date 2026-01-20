@@ -280,7 +280,7 @@ class SettingsPage extends ConsumerWidget {
           cancelText: 'Cancel',
           isDestructive: true,
           onConfirm: () async {
-            // Dialog is already closed by ConfirmationDialog
+            
             try {
               await ref.read(settingsControllerProvider.notifier).logOut();
 
