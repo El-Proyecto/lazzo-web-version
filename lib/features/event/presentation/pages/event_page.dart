@@ -1576,7 +1576,6 @@ class _EventPageState extends ConsumerState<EventPage> {
     required int goingCount,
     required String? currentUserId,
   }) {
-                
     // Filter suggestions that are DIFFERENT from current event date
     final alternateSuggestions = suggestions.where((s) {
       if (event.startDateTime == null || event.endDateTime == null) {
@@ -1588,7 +1587,6 @@ class _EventPageState extends ConsumerState<EventPage> {
       return isDifferent;
     }).toList();
 
-    
     final List<DateTimeSuggestion> dateTimeSuggestions = [];
 
     // Only add current event date if NOT expired
@@ -1597,7 +1595,7 @@ class _EventPageState extends ConsumerState<EventPage> {
     if (event.startDateTime != null &&
         event.endDateTime != null &&
         !event.isExpired) {
-            currentEventOption = DateTimeSuggestion(
+      currentEventOption = DateTimeSuggestion(
         id: 'current_event_date',
         startDateTime: event.startDateTime!,
         endDateTime: event.endDateTime!,
@@ -1606,8 +1604,7 @@ class _EventPageState extends ConsumerState<EventPage> {
         votes: [],
       );
       dateTimeSuggestions.add(currentEventOption);
-    } else if (event.isExpired) {
-          }
+    } else if (event.isExpired) {}
 
     // Add all ALTERNATIVE suggestions (different from current date)
     dateTimeSuggestions.addAll(alternateSuggestions.map((suggestion) {
@@ -1633,7 +1630,6 @@ class _EventPageState extends ConsumerState<EventPage> {
       );
     }));
 
-        
     return DateTimeSuggestionsData(
       suggestions: dateTimeSuggestions,
       hasAlternatives: alternateSuggestions.isNotEmpty,

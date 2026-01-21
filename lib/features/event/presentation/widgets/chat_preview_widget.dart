@@ -577,6 +577,7 @@ ChatMessage _adaptPreviewToMessage(ChatMessagePreview preview) {
     isPinned: preview.isPinned,
     isDeleted: preview.isDeleted,
     isPending: preview.isPending,
+    isReadBySomeone: preview.isReadBySomeone,
     replyTo: preview.replyTo != null
         ? ChatMessage(
             id: '${preview.replyTo!.userId}_${preview.replyTo!.timestamp.millisecondsSinceEpoch}',
@@ -586,6 +587,7 @@ ChatMessage _adaptPreviewToMessage(ChatMessagePreview preview) {
             userAvatar: preview.replyTo!.userAvatar,
             content: preview.replyTo!.content,
             createdAt: preview.replyTo!.timestamp,
+            isReadBySomeone: preview.replyTo!.isReadBySomeone,
           )
         : null,
   );
