@@ -325,6 +325,29 @@ class _EventFullCardState extends State<EventFullCard> {
     const avatarSize = 24.0;
     const overlap = 8.0;
 
+    // Check if event is expired (pending status + date passed)
+    final isExpired = widget.state == EventFullCardState.pending &&
+        _currentEvent.date != null &&
+        DateTime.now().isAfter(_currentEvent.date!);
+
+    // If expired, show expired state text instead of avatars
+    if (isExpired) {
+      return Container(
+        padding: const EdgeInsets.all(Gaps.xs),
+        decoration: BoxDecoration(
+          color: BrandColors.bg3,
+          borderRadius: BorderRadius.circular(Radii.sm),
+        ),
+        child: Text(
+          'Event date expired',
+          style: AppText.labelLarge.copyWith(
+            color: BrandColors.text2,
+            fontStyle: FontStyle.italic,
+          ),
+        ),
+      );
+    }
+
     if (_currentEvent.attendeeAvatars.isEmpty) {
       return const SizedBox.shrink();
     }
