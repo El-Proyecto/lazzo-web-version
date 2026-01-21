@@ -8,7 +8,6 @@ import '../../../../shared/components/nav/common_app_bar.dart';
 import '../../../../shared/components/common/top_banner.dart';
 import '../../../../routes/app_router.dart';
 import '../../domain/entities/group_entity.dart';
-import '../widgets/group_permissions_section.dart';
 import '../widgets/group_photo_selector_with_camera.dart';
 import '../providers/create_group_provider.dart';
 import '../providers/groups_provider.dart';
@@ -25,9 +24,6 @@ class _CreateGroupPageState extends ConsumerState<CreateGroupPage> {
   final _nameController = TextEditingController();
   final _descriptionController = TextEditingController();
 
-  bool _canEditSettings = false;
-  bool _canAddMembers = false;
-  bool _canSendMessages = false;
   String? _selectedPhotoPath;
   String? _nameError;
   bool _fromCreateEvent = false;
@@ -112,9 +108,6 @@ class _CreateGroupPageState extends ConsumerState<CreateGroupPage> {
                 ? _descriptionController.text.trim()
                 : null,
             photoPath: _selectedPhotoPath,
-            canEditSettings: _canEditSettings,
-            canAddMembers: _canAddMembers,
-            canSendMessages: _canSendMessages,
           );
     }
     // If form is invalid, errors are now visible due to _validateFields call
@@ -332,33 +325,23 @@ class _CreateGroupPageState extends ConsumerState<CreateGroupPage> {
             ),
 
             const SizedBox(height: Gaps.md),
-
-            // Permissions section
-            GroupPermissionsSection(
-              canEditSettings: _canEditSettings,
-              canAddMembers: _canAddMembers,
-              canSendMessages: _canSendMessages,
-              onEditSettingsChanged: (value) {
-                setState(() => _canEditSettings = value);
-              },
-              onAddMembersChanged: (value) {
-                setState(() => _canAddMembers = value);
-              },
-              onSendMessagesChanged: (value) {
-                setState(() => _canSendMessages = value);
-              },
-            ),
-
-            const SizedBox(height: Gaps.xl),
-
-            // Create button
-            SizedBox(
-              width: double.infinity,
-              child: _buildCreateButton(createGroupState),
-            ),
-
-            const SizedBox(height: Gaps.md),
           ],
+        ),
+      ),
+      // Fixed button at the bottom
+      bottomNavigationBar: Container(
+        padding: const EdgeInsets.all(Insets.screenH),
+        decoration: BoxDecoration(
+          color: BrandColors.bg1,
+          border: Border(
+            top: BorderSide(
+              color: BrandColors.bg3,
+              width: 1,
+            ),
+          ),
+        ),
+        child: SafeArea(
+          child: _buildCreateButton(createGroupState),
         ),
       ),
     );

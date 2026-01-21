@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict vADaN4I1hhVmSZaYTcmfVPwhZtbCS0FEF9LML94qpZ4jt0zlBlqFnuRuiR7dewZ
+\restrict AcKjGFjIKuasGB7naqtwwrAN8wMJ5WhNqUMwav2NufDDoyPaQ9FPNfe0hZf7qNS
 
 -- Dumped from database version 17.4
 -- Dumped by pg_dump version 18.1
@@ -573,10 +573,11 @@ BEGIN
     CASE p_category
       WHEN 'push' THEN
         CASE 
-          WHEN p_type = 'groupInviteReceived' THEN push_enabled_for_invites
-          WHEN p_type IN ('paymentsRequest', 'paymentsAddedYouOwe') THEN push_enabled_for_payments
-          WHEN p_type = 'chatMention' THEN push_enabled_for_chat
-          ELSE push_enabled_for_events
+          WHEN p_type = 'chatMessage' THEN chat_enabled
+          WHEN p_type = 'chatMention' THEN chat_enabled
+          WHEN p_type LIKE 'event%' THEN events_enabled
+          WHEN p_type LIKE 'payment%' THEN payments_enabled
+          ELSE TRUE
         END
       ELSE TRUE -- Feed/actions notifications always allowed
     END AS category_enabled
@@ -591,10 +592,10 @@ BEGIN
     v_should_notify := TRUE;
   END IF;
   
-  -- Skip push notifications during quiet hours (but create inbox entry)
+  -- ✅ FIX: Skip ephemeral push notifications during quiet hours
+  -- Don't downgrade to inbox - ephemeral notifications should never persist
   IF v_in_quiet_hours AND p_category = 'push' THEN
-    -- Downgrade to 'notifications' category (inbox only, no push)
-    p_category := 'notifications';
+    RETURN NULL; -- Skip notification entirely during quiet hours
   END IF;
   
   -- Skip entirely if category disabled
@@ -602,17 +603,17 @@ BEGIN
     RETURN NULL;
   END IF;
   
-  -- ✅ UPDATED: Insert notification com expense_id
+  -- Insert notification
   INSERT INTO notifications (
     recipient_user_id, type, category, priority, deeplink,
     group_id, event_id, event_emoji, user_name, group_name,
     event_name, amount, hours, mins, date, time, place, device, note,
-    expense_id  -- ✅ NOVO CAMPO
+    expense_id
   ) VALUES (
     p_recipient_user_id, p_type, p_category, p_priority, p_deeplink,
     p_group_id, p_event_id, p_event_emoji, p_user_name, p_group_name,
     p_event_name, p_amount, p_hours, p_mins, p_date, p_time, p_place, p_device, p_note,
-    p_expense_id  -- ✅ NOVO VALOR
+    p_expense_id
   )
   ON CONFLICT (dedup_key, dedup_bucket) DO NOTHING
   RETURNING id INTO v_notification_id;
@@ -626,7 +627,7 @@ $$;
 -- Name: FUNCTION create_notification_secure(p_recipient_user_id uuid, p_type text, p_category public.notification_category, p_priority public.notification_priority, p_deeplink text, p_group_id uuid, p_event_id uuid, p_event_emoji text, p_user_name text, p_group_name text, p_event_name text, p_amount text, p_hours text, p_mins text, p_date text, p_time text, p_place text, p_device text, p_note text, p_expense_id uuid); Type: COMMENT; Schema: public; Owner: -
 --
 
-COMMENT ON FUNCTION public.create_notification_secure(p_recipient_user_id uuid, p_type text, p_category public.notification_category, p_priority public.notification_priority, p_deeplink text, p_group_id uuid, p_event_id uuid, p_event_emoji text, p_user_name text, p_group_name text, p_event_name text, p_amount text, p_hours text, p_mins text, p_date text, p_time text, p_place text, p_device text, p_note text, p_expense_id uuid) IS 'Creates notifications with server-side filtering (muting, quiet hours, etc).';
+COMMENT ON FUNCTION public.create_notification_secure(p_recipient_user_id uuid, p_type text, p_category public.notification_category, p_priority public.notification_priority, p_deeplink text, p_group_id uuid, p_event_id uuid, p_event_emoji text, p_user_name text, p_group_name text, p_event_name text, p_amount text, p_hours text, p_mins text, p_date text, p_time text, p_place text, p_device text, p_note text, p_expense_id uuid) IS 'Creates notifications with server-side filtering (muting, quiet hours, etc). Push notifications are ephemeral and never downgraded to inbox.';
 
 
 --
@@ -1271,44 +1272,56 @@ DECLARE
   v_event_emoji TEXT;
   v_event_name TEXT;
 BEGIN
-  -- Buscar dados do evento
-  SELECT emoji, name 
-  INTO v_event_emoji, v_event_name
-  FROM events 
-  WHERE id = NEW.event_id;
+  -- ✅ CRITICAL FIX: Wrap notification logic in exception handler
+  -- This prevents notification errors from blocking message INSERT
+  BEGIN
+    -- Buscar dados do evento
+    SELECT emoji, name 
+    INTO v_event_emoji, v_event_name
+    FROM events 
+    WHERE id = NEW.event_id;
 
-  -- Criar notificação para todos os participantes do evento (exceto o sender)
-  -- Categoria 'push' = ephemeral (não aparece no inbox, só push notification)
-  INSERT INTO notifications (
-    recipient_user_id,
-    type,
-    category,
-    priority,
-    user_name,
-    event_name,
-    event_emoji,
-    event_id,
-    deeplink
-  )
-  SELECT 
-    ep.user_id,                                    -- participante do evento
-    'chatMessage',                                 -- tipo
-    'push',                                        -- categoria PUSH (ephemeral)
-    'low',                                         -- prioridade baixa
-    sender.name,                                   -- quem enviou
-    v_event_name,                                  -- nome do evento
-    v_event_emoji,                                 -- emoji do evento
-    NEW.event_id,                                  -- event_id
-    'lazzo://events/' || NEW.event_id || '/chat'  -- deeplink para o chat
-  FROM event_participants ep
-  CROSS JOIN users sender
-  WHERE sender.id = NEW.user_id                   -- dados do sender
-    AND ep.pevent_id = NEW.event_id               -- participantes do evento
-    AND ep.user_id != NEW.user_id                 -- não notificar o sender
-    -- TODO: Adicionar lógica para verificar se user está ativo no chat
-    -- Exemplo: AND NOT is_user_active_in_chat(ep.user_id, NEW.event_id)
-  ON CONFLICT (dedup_key, dedup_bucket) DO NOTHING;
+    -- Criar notificação para todos os participantes do evento (exceto o sender)
+    -- Categoria 'push' = ephemeral (não aparece no inbox, só push notification)
+    INSERT INTO notifications (
+      recipient_user_id,
+      type,
+      category,
+      priority,
+      user_name,
+      event_name,
+      event_emoji,
+      event_id,
+      note,           -- ✅ ADDED: Store message content
+      deeplink
+    )
+    SELECT 
+      ep.user_id,                                    -- participante do evento
+      'chatMessage',                                 -- tipo
+      'push',                                        -- categoria PUSH (ephemeral)
+      'low',                                         -- prioridade baixa
+      sender.name,                                   -- quem enviou
+      v_event_name,                                  -- nome do evento
+      v_event_emoji,                                 -- emoji do evento
+      NEW.event_id,                                  -- event_id
+      NEW.content,                                   -- ✅ ADDED: mensagem do chat
+      'lazzo://events/' || NEW.event_id || '/chat'  -- deeplink para o chat
+    FROM event_participants ep
+    CROSS JOIN users sender
+    WHERE sender.id = NEW.user_id                   -- dados do sender
+      AND ep.pevent_id = NEW.event_id               -- ✅ CORRECT: pevent_id IS the event FK
+      AND ep.user_id != NEW.user_id                 -- não notificar o sender
+      -- TODO: Adicionar lógica para verificar se user está ativo no chat
+      -- Exemplo: AND NOT is_user_active_in_chat(ep.user_id, NEW.event_id)
+    ON CONFLICT (dedup_key, dedup_bucket) DO NOTHING;
+
+  EXCEPTION
+    WHEN OTHERS THEN
+      -- ✅ Log error but don't block message insert
+      RAISE WARNING 'notify_chat_message failed: %', SQLERRM;
+  END;
   
+  -- ✅ ALWAYS return NEW to allow message insert
   RETURN NEW;
 END;
 $$;
@@ -1320,6 +1333,8 @@ $$;
 
 COMMENT ON FUNCTION public.notify_chat_message() IS 'Trigger que cria notificações push (ephemeral) quando alguém envia mensagem no chat.
 Categoria "push" = não aparece no inbox, apenas como push notification.
+Inclui conteúdo da mensagem no campo "note".
+Wrapped in exception handler to prevent blocking message inserts.
 TODO: Filtrar users que estão ativos no chat para não enviar notificação.';
 
 
@@ -2297,38 +2312,49 @@ Push only (não aparece no inbox): "João Silva joined Friends"';
 --
 
 CREATE FUNCTION public.notify_group_invite_received() RETURNS trigger
-    LANGUAGE plpgsql
+    LANGUAGE plpgsql SECURITY DEFINER
+    SET search_path TO 'public'
     AS $$
 BEGIN
-  -- Only if user has notifications enabled
-  IF should_send_notification(NEW.invited_id, NEW.group_id) THEN
-    INSERT INTO notifications (
-      recipient_user_id,
-      type,
-      category,
-      priority,
-      user_name,
-      group_name,
-      group_id,
-      deeplink
-    )
-    SELECT 
-      NEW.invited_id,
-      'groupInviteReceived',
-      'push',
-      'high',
-      inviter.name,
-      g.name,
-      NEW.group_id,
-      'lazzo://group/' || NEW.group_id::text
-    FROM users inviter
-    JOIN groups g ON g.id = NEW.group_id
-    WHERE inviter.id = NEW.invited_by;
-  END IF;
+  -- Always create notification (no should_send_notification check)
+  -- Category 'actions' = inbox notification that requires user action
+  -- ON CONFLICT DO NOTHING allows reinvites to same group
+  INSERT INTO notifications (
+    recipient_user_id,
+    type,
+    category,
+    priority,
+    user_name,
+    group_name,
+    group_id,
+    deeplink
+  )
+  SELECT 
+    NEW.invited_id,
+    'groupInviteReceived',
+    'actions',
+    'high',
+    inviter.name,
+    g.name,
+    NEW.group_id,
+    'lazzo://groups/' || NEW.group_id::text
+  FROM users inviter
+  JOIN groups g ON g.id = NEW.group_id
+  WHERE inviter.id = NEW.invited_by
+  ON CONFLICT (dedup_key, dedup_bucket) DO NOTHING;  -- ✅ Allow duplicate notifications
   
   RETURN NEW;
 END;
 $$;
+
+
+--
+-- Name: FUNCTION notify_group_invite_received(); Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON FUNCTION public.notify_group_invite_received() IS 'Trigger function that creates action notification when user is invited to group.
+Uses SECURITY DEFINER to bypass RLS policies (standard pattern for notification triggers).
+Category "actions" ensures notification always appears in inbox regardless of push settings.';
 
 
 --
@@ -3319,6 +3345,35 @@ end $$;
 
 
 --
+-- Name: trigger_reset_expired_rsvp(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.trigger_reset_expired_rsvp() RETURNS trigger
+    LANGUAGE plpgsql SECURITY DEFINER
+    AS $$
+BEGIN
+  -- Only run if event is pending and start_datetime just passed
+  IF NEW.status = 'pending' 
+     AND NEW.start_datetime IS NOT NULL 
+     AND NEW.start_datetime < NOW() 
+  THEN
+    -- Reset RSVPs for this specific event
+    UPDATE event_participants
+    SET 
+      rsvp = 'pending',
+      confirmed_at = NULL,
+      updated_at = NOW()
+    WHERE 
+      pevent_id = NEW.id
+      AND rsvp != 'pending';
+  END IF;
+  
+  RETURN NEW;
+END;
+$$;
+
+
+--
 -- Name: trigger_send_push(); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -3955,9 +4010,9 @@ CREATE TABLE public.groups (
     expense uuid,
     event_id uuid,
     memory_id uuid,
-    members_can_invite boolean DEFAULT false,
-    members_can_create_events boolean DEFAULT false,
-    members_can_add_members boolean DEFAULT false,
+    members_can_invite boolean DEFAULT true,
+    members_can_create_events boolean DEFAULT true,
+    members_can_add_members boolean DEFAULT true,
     photo_url text,
     qr_code text,
     photo_updated_at timestamp with time zone,
@@ -4247,20 +4302,40 @@ CREATE TABLE public.user_notification_settings (
 --
 
 CREATE VIEW public.user_payment_debts_view AS
- SELECT es.user_id,
+ SELECT ((es.expense_id || '_'::text) || es.user_id) AS payment_id,
+    es.expense_id,
+    es.user_id AS debtor_user_id,
     ee.paid_by AS paid_by_user_id,
     ee.event_id,
-    ee.id AS expense_id,
-    ee.title AS expense_title,
-    es.amount,
+    es.amount AS debt_amount,
     es.has_paid,
-    u.name AS user_name,
-    payer.name AS paid_by_name
-   FROM (((public.expense_splits es
-     JOIN public.event_expenses ee ON ((es.expense_id = ee.id)))
-     JOIN public.users u ON ((es.user_id = u.id)))
-     JOIN public.users payer ON ((ee.paid_by = payer.id)))
-  WHERE (es.has_paid = false);
+    ee.title AS expense_title,
+    ee.total_amount AS expense_total_amount,
+    ee.created_at,
+    ee.created_by AS expense_created_by,
+    debtor.name AS debtor_user_name,
+    debtor.avatar_url AS debtor_avatar_url,
+    creditor.name AS paid_by_user_name,
+    creditor.avatar_url AS paid_by_avatar_url,
+    e.name AS event_name,
+    e.emoji AS event_emoji,
+    e.group_id,
+    g.name AS group_name
+   FROM (((((public.expense_splits es
+     JOIN public.event_expenses ee ON ((ee.id = es.expense_id)))
+     JOIN public.events e ON ((e.id = ee.event_id)))
+     JOIN public.users debtor ON ((debtor.id = es.user_id)))
+     JOIN public.users creditor ON ((creditor.id = ee.paid_by)))
+     LEFT JOIN public.groups g ON ((g.id = e.group_id)))
+  WHERE (es.has_paid = false)
+  ORDER BY ee.created_at DESC;
+
+
+--
+-- Name: VIEW user_payment_debts_view; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON VIEW public.user_payment_debts_view IS 'Denormalized view of unpaid payment debts for Inbox Payments feature. Shows who owes whom with full context (event, amounts, names). Filtering by user is done in application queries.';
 
 
 --
@@ -5387,6 +5462,13 @@ ALTER TABLE public.groups DISABLE TRIGGER on_group_created;
 
 
 --
+-- Name: group_invites on_group_invite_notify; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER on_group_invite_notify AFTER INSERT ON public.group_invites FOR EACH ROW EXECUTE FUNCTION public.notify_group_invite_received();
+
+
+--
 -- Name: notifications on_notification_insert_send_push; Type: TRIGGER; Schema: public; Owner: -
 --
 
@@ -6097,9 +6179,8 @@ CREATE POLICY "Members can add photos to their groups" ON public.group_photos FO
 --
 
 CREATE POLICY "Members can invite users to groups" ON public.group_invites FOR INSERT WITH CHECK ((EXISTS ( SELECT 1
-   FROM (public.group_members gm
-     JOIN public.groups g ON ((g.id = gm.group_id)))
-  WHERE ((gm.group_id = group_invites.group_id) AND (gm.user_id = auth.uid()) AND ((g.members_can_invite = true) OR (gm.role = 'admin'::public.member_role))))));
+   FROM public.group_members gm
+  WHERE ((gm.group_id = group_invites.group_id) AND (gm.user_id = auth.uid())))));
 
 
 --
@@ -6841,6 +6922,15 @@ CREATE POLICY groups_select ON public.groups FOR SELECT USING (((created_by = au
 
 
 --
+-- Name: groups groups_update; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY groups_update ON public.groups FOR UPDATE USING (((created_by = auth.uid()) OR (EXISTS ( SELECT 1
+   FROM public.group_members
+  WHERE ((group_members.group_id = groups.id) AND (group_members.user_id = auth.uid()) AND (group_members.role = 'admin'::public.member_role))))));
+
+
+--
 -- Name: locations loc_delete_own; Type: POLICY; Schema: public; Owner: -
 --
 
@@ -6999,5 +7089,5 @@ CREATE POLICY users_can_view_group_photos ON public.group_photos FOR SELECT USIN
 -- PostgreSQL database dump complete
 --
 
-\unrestrict vADaN4I1hhVmSZaYTcmfVPwhZtbCS0FEF9LML94qpZ4jt0zlBlqFnuRuiR7dewZ
+\unrestrict AcKjGFjIKuasGB7naqtwwrAN8wMJ5WhNqUMwav2NufDDoyPaQ9FPNfe0hZf7qNS
 

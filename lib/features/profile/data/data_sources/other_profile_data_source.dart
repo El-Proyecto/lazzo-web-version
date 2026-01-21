@@ -28,7 +28,7 @@ class OtherProfileDataSource {
     required String currentUserId,
     required String targetUserId,
   }) async {
-try {
+    try {
       // Step 1: Get groups where current user is member
       final currentUserGroups = await _client
           .from('group_members')
@@ -36,12 +36,11 @@ try {
           .eq('user_id', currentUserId);
 
       if ((currentUserGroups as List).isEmpty) {
-return [];
+        return [];
       }
 
-      final currentGroupIds = currentUserGroups
-          .map((g) => g['group_id'] as String)
-          .toList();
+      final currentGroupIds =
+          currentUserGroups.map((g) => g['group_id'] as String).toList();
 // Step 2: Get groups where target user is also member (intersection)
       final targetUserGroups = await _client
           .from('group_members')
@@ -54,7 +53,7 @@ return [];
           .toList();
 
       if (sharedGroupIds.isEmpty) {
-return [];
+        return [];
       }
 // Step 3: Query events for shared groups with status 'recap' or 'ended'
       // Following EXACT same logic as profile_memory_data_source.dart
@@ -74,11 +73,11 @@ return [];
           .order('end_datetime', ascending: false);
 
       if ((eventsResponse as List).isEmpty) {
-return [];
+        return [];
       }
 // Step 4: Process each event to add cover photo (same logic as profile)
       final List<Map<String, dynamic>> memoriesWithCovers = [];
-      
+
       for (final event in eventsResponse) {
         final eventMap = Map<String, dynamic>.from(event);
         String? coverStoragePath;
@@ -144,19 +143,19 @@ return [];
 
         // Only add event if we found a valid cover photo
         if (coverStoragePath != null) {
-memoriesWithCovers.add({
+          memoriesWithCovers.add({
             'id': eventId,
             'title': eventMap['name'] as String? ?? 'Untitled',
             'date': eventMap['end_datetime'],
-            'location': (eventMap['locations'] as Map?)?['display_name'] as String?,
+            'location':
+                (eventMap['locations'] as Map?)?['display_name'] as String?,
             'cover_storage_path': coverStoragePath,
           });
-        } else {
-}
+        } else {}
       }
-return memoriesWithCovers;
+      return memoriesWithCovers;
     } catch (e) {
-rethrow;
+      rethrow;
     }
   }
 
@@ -172,9 +171,8 @@ rethrow;
         .select('group_id')
         .eq('user_id', currentUserId);
 
-    final currentGroupIds = (currentUserGroups as List)
-        .map((g) => g['group_id'] as String)
-        .toSet();
+    final currentGroupIds =
+        (currentUserGroups as List).map((g) => g['group_id'] as String).toSet();
 
     if (currentGroupIds.isEmpty) {
       return [];
@@ -186,9 +184,8 @@ rethrow;
         .eq('user_id', targetUserId)
         .inFilter('group_id', currentGroupIds.toList());
 
-    final sharedGroupIds = (targetUserGroups as List)
-        .map((g) => g['group_id'] as String)
-        .toList();
+    final sharedGroupIds =
+        (targetUserGroups as List).map((g) => g['group_id'] as String).toList();
 
     if (sharedGroupIds.isEmpty) {
       return [];
@@ -197,7 +194,8 @@ rethrow;
     // Get confirmed/living events
     final events = await _client
         .from('events')
-        .select('id, name, emoji, start_datetime, end_datetime, status, locations(display_name)')
+        .select(
+            'id, name, emoji, start_datetime, end_datetime, status, locations(display_name)')
         .inFilter('group_id', sharedGroupIds)
         .inFilter('status', ['confirmed', 'living'])
         .gte('start_datetime', DateTime.now().toIso8601String())
@@ -226,9 +224,8 @@ rethrow;
       return [];
     }
 
-    final currentGroupIds = currentUserGroups
-        .map((g) => g['group_id'] as String)
-        .toList();
+    final currentGroupIds =
+        currentUserGroups.map((g) => g['group_id'] as String).toList();
 
     // Get groups where target user is already member
     final targetUserGroups = await _client
@@ -237,23 +234,21 @@ rethrow;
         .eq('user_id', targetUserId)
         .inFilter('group_id', currentGroupIds);
 
-    final targetGroupIds = (targetUserGroups as List)
-        .map((g) => g['group_id'] as String)
-        .toSet();
+    final targetGroupIds =
+        (targetUserGroups as List).map((g) => g['group_id'] as String).toSet();
 
     // Filter out groups where target is already member
-    final eligibleGroupIds = currentGroupIds
-        .where((id) => !targetGroupIds.contains(id))
-        .toList();
+    final eligibleGroupIds =
+        currentGroupIds.where((id) => !targetGroupIds.contains(id)).toList();
 
     if (eligibleGroupIds.isEmpty) {
       return [];
     }
 
-    // Get group details for eligible groups
+    // Get group details for eligible groups (removed members_can_invite)
     final groups = await _client
         .from('groups')
-        .select('id, name, photo_url, members_can_invite')
+        .select('id, name, photo_url')
         .inFilter('id', eligibleGroupIds);
 
     // Get member counts for all eligible groups
@@ -266,47 +261,45 @@ rethrow;
       memberCounts[groupId] = (membersResponse as List).length;
     }
 
-    // Filter based on permissions
-        final invitableGroups = <Map<String, dynamic>>[];
+    // Add member counts to all eligible groups (no permission filtering needed)
+    final invitableGroups = <Map<String, dynamic>>[];
     for (final group in groups) {
       final groupId = group['id'] as String;
-      
-      // Check if members can invite or current user is admin
-      final membersCanInvite = group['members_can_invite'] as bool? ?? false;
-      
-      if (membersCanInvite) {
-final groupWithCount = Map<String, dynamic>.from(group);
-        groupWithCount['member_count'] = memberCounts[groupId] ?? 0;
-        invitableGroups.add(groupWithCount);
-      } else {
-        // Check if current user is admin
-        final membership = currentUserGroups.firstWhere(
-          (m) => m['group_id'] == groupId,
-          orElse: () => {},
-        );
-        
-        if (membership['role'] == 'admin') {
-final groupWithCount = Map<String, dynamic>.from(group);
-          groupWithCount['member_count'] = memberCounts[groupId] ?? 0;
-          invitableGroups.add(groupWithCount);
-        } else {
-}
-      }
+      final groupWithCount = Map<String, dynamic>.from(group);
+      groupWithCount['member_count'] = memberCounts[groupId] ?? 0;
+      invitableGroups.add(groupWithCount);
     }
-return invitableGroups;
+
+    return invitableGroups;
   }
+
   Future<void> inviteToGroup({
     required String userId,
     required String groupId,
     required String invitedBy,
   }) async {
-        try {
-      await _client.from('group_invites').insert({
+    try {
+                        
+      final result = await _client.from('group_invites').insert({
         'group_id': groupId,
         'invited_id': userId,
         'invited_by': invitedBy,
         'created_at': DateTime.now().toIso8601String(),
       });
+
+            
+      // Check if notification was created
+      await Future.delayed(const Duration(milliseconds: 500));
+      final notificationCheck = await _client
+          .from('notifications')
+          .select('id, type, category')
+          .eq('recipient_user_id', userId)
+          .eq('group_id', groupId)
+          .eq('type', 'groupInviteReceived')
+          .order('created_at', ascending: false)
+          .limit(1)
+          .maybeSingle();
+
           } catch (e) {
                   rethrow;
     }
@@ -318,14 +311,14 @@ return invitableGroups;
     required String userId,
     required String groupId,
   }) async {
-        try {
+    try {
       // Use RPC to accept invite (bypasses RLS + atomic operation)
       await _client.rpc('accept_group_invite', params: {
         'p_group_id': groupId,
         'p_user_id': userId,
       });
-          } catch (e) {
-                  rethrow;
+    } catch (e) {
+      rethrow;
     }
   }
 
@@ -335,14 +328,14 @@ return invitableGroups;
     required String userId,
     required String groupId,
   }) async {
-        try {
+    try {
       await _client
           .from('group_invites')
           .delete()
           .eq('group_id', groupId)
           .eq('invited_id', userId);
-          } catch (e) {
-                  rethrow;
+    } catch (e) {
+      rethrow;
     }
   }
 }

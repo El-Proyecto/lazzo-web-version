@@ -6,17 +6,17 @@ import '../../../../shared/themes/colors.dart';
 import '../../domain/entities/invite_group_entity.dart';
 
 /// Bottom sheet for inviting user to groups
-/// Shows list of groups with checkbox selection (multi-select)
+/// Shows list of groups with radio button selection (single-select)
 class InviteToGroupBottomSheet extends StatefulWidget {
   final String userName;
   final List<InviteGroupEntity> groups;
-  final Function(List<String> groupIds) onGroupsSelected;
+  final Function(String groupId) onGroupSelected;
 
   const InviteToGroupBottomSheet({
     super.key,
     required this.userName,
     required this.groups,
-    required this.onGroupsSelected,
+    required this.onGroupSelected,
   });
 
   /// Show the invite to group bottom sheet
@@ -24,7 +24,7 @@ class InviteToGroupBottomSheet extends StatefulWidget {
     required BuildContext context,
     required String userName,
     required List<InviteGroupEntity> groups,
-    required Function(List<String> groupIds) onGroupsSelected,
+    required Function(String groupId) onGroupSelected,
   }) {
     return CommonBottomSheet.show(
       context: context,
@@ -32,7 +32,7 @@ class InviteToGroupBottomSheet extends StatefulWidget {
       content: InviteToGroupBottomSheet(
         userName: userName,
         groups: groups,
-        onGroupsSelected: onGroupsSelected,
+        onGroupSelected: onGroupSelected,
       ),
       contentPadding: EdgeInsets.zero,
     );
@@ -44,7 +44,7 @@ class InviteToGroupBottomSheet extends StatefulWidget {
 }
 
 class _InviteToGroupBottomSheetState extends State<InviteToGroupBottomSheet> {
-  final Set<String> _selectedGroupIds = {};
+  String? _selectedGroupId;
 
   @override
   Widget build(BuildContext context) {
@@ -98,14 +98,14 @@ class _InviteToGroupBottomSheetState extends State<InviteToGroupBottomSheet> {
           child: SizedBox(
             width: double.infinity,
             child: ElevatedButton(
-              onPressed: _selectedGroupIds.isNotEmpty
+              onPressed: _selectedGroupId != null
                   ? () {
                       Navigator.of(context).pop();
-                      widget.onGroupsSelected(_selectedGroupIds.toList());
+                      widget.onGroupSelected(_selectedGroupId!);
                     }
                   : null,
               style: ElevatedButton.styleFrom(
-                backgroundColor: _selectedGroupIds.isNotEmpty
+                backgroundColor: _selectedGroupId != null
                     ? BrandColors.planning
                     : BrandColors.bg3,
                 foregroundColor: Colors.white,
@@ -119,7 +119,7 @@ class _InviteToGroupBottomSheetState extends State<InviteToGroupBottomSheet> {
               child: Text(
                 'Send Invitation',
                 style: AppText.labelLarge.copyWith(
-                  color: _selectedGroupIds.isNotEmpty
+                  color: _selectedGroupId != null
                       ? Colors.white
                       : BrandColors.text2,
                   fontWeight: FontWeight.w600,
@@ -135,16 +135,12 @@ class _InviteToGroupBottomSheetState extends State<InviteToGroupBottomSheet> {
   }
 
   Widget _buildGroupItem(InviteGroupEntity group) {
-    final isSelected = _selectedGroupIds.contains(group.id);
+    final isSelected = _selectedGroupId == group.id;
 
     return InkWell(
       onTap: () {
         setState(() {
-          if (isSelected) {
-            _selectedGroupIds.remove(group.id);
-          } else {
-            _selectedGroupIds.add(group.id);
-          }
+          _selectedGroupId = group.id;
         });
       },
       child: Padding(
@@ -205,7 +201,7 @@ class _InviteToGroupBottomSheetState extends State<InviteToGroupBottomSheet> {
 
             const SizedBox(width: Gaps.md),
 
-            // Checkbox button (aligned to the right)
+            // Radio button (aligned to the right)
             Container(
               width: 24,
               height: 24,
@@ -218,10 +214,10 @@ class _InviteToGroupBottomSheetState extends State<InviteToGroupBottomSheet> {
                 color: isSelected ? BrandColors.planning : Colors.transparent,
               ),
               child: isSelected
-                  ? const Center(
-                      child: Icon(
-                        Icons.check,
-                        size: 16,
+                  ? Container(
+                      margin: const EdgeInsets.all(4),
+                      decoration: const BoxDecoration(
+                        shape: BoxShape.circle,
                         color: Colors.white,
                       ),
                     )

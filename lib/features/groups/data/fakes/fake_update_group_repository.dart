@@ -10,23 +10,20 @@ class FakeUpdateGroupRepository implements UpdateGroupRepository {
     required String name,
     String? description,
     String? photoPath,
-    required bool canEditSettings,
-    required bool canAddMembers,
-    required bool canSendMessages,
   }) async {
     // Simulate network delay
     await Future.delayed(const Duration(milliseconds: 800));
 
-    // Return updated group entity
+    // Return updated group entity with default permissions (all true)
     return GroupEntity(
       id: groupId,
       name: name,
       description: description,
       photoUrl: photoPath, // In real impl, this would be storage URL
-      permissions: GroupPermissions(
-        membersCanInvite: canEditSettings,
-        membersCanAddMembers: canAddMembers,
-        membersCanCreateEvents: canSendMessages,
+      permissions: const GroupPermissions(
+        membersCanInvite: true,
+        membersCanAddMembers: true,
+        membersCanCreateEvents: true,
       ),
       createdAt: DateTime.now().subtract(const Duration(days: 30)),
     );

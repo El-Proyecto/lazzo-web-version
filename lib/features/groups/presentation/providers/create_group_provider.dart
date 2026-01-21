@@ -13,11 +13,11 @@ final createGroupUseCaseProvider = Provider<CreateGroup>((ref) {
 /// Provider for create group state management
 final createGroupProvider =
     StateNotifierProvider<CreateGroupController, AsyncValue<GroupEntity?>>((
-      ref,
-    ) {
-      final useCase = ref.watch(createGroupUseCaseProvider);
-      return CreateGroupController(useCase);
-    });
+  ref,
+) {
+  final useCase = ref.watch(createGroupUseCaseProvider);
+  return CreateGroupController(useCase);
+});
 
 /// Controller for managing create group state
 class CreateGroupController extends StateNotifier<AsyncValue<GroupEntity?>> {
@@ -30,9 +30,6 @@ class CreateGroupController extends StateNotifier<AsyncValue<GroupEntity?>> {
     required String name,
     String? description,
     String? photoPath,
-    required bool canEditSettings,
-    required bool canAddMembers,
-    required bool canSendMessages,
   }) async {
     state = const AsyncValue.loading();
 
@@ -41,10 +38,10 @@ class CreateGroupController extends StateNotifier<AsyncValue<GroupEntity?>> {
         name: name,
         description: description,
         photoUrl: photoPath,
-        permissions: GroupPermissions(
-          membersCanInvite: canAddMembers,
-          membersCanAddMembers: canEditSettings,
-          membersCanCreateEvents: canSendMessages,
+        permissions: const GroupPermissions(
+          membersCanInvite: true,
+          membersCanAddMembers: true,
+          membersCanCreateEvents: true,
         ),
       );
 

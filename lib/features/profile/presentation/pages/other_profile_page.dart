@@ -178,8 +178,8 @@ class OtherProfilePage extends ConsumerWidget {
           context: context,
           userName: profile.name,
           groups: groups,
-          onGroupsSelected: (groupIds) =>
-              _handleGroupsSelected(context, ref, groupIds, profile.name),
+          onGroupSelected: (groupId) =>
+              _handleGroupSelected(context, ref, groupId, profile.name),
         );
       }
     } catch (e) {
@@ -194,52 +194,50 @@ class OtherProfilePage extends ConsumerWidget {
     }
   }
 
-  void _handleGroupsSelected(
+  void _handleGroupSelected(
     BuildContext context,
     WidgetRef ref,
-    List<String> groupIds,
+    String groupId,
     String userName,
   ) async {
     try {
+                        
       final inviteUseCase = ref.read(inviteToGroupProvider);
+      
+      final success = await inviteUseCase(
+        userId: userId,
+        groupId: groupId,
+      );
 
-      // Send invitations to all selected groups
-      int successCount = 0;
-      for (final groupId in groupIds) {
-        final success = await inviteUseCase(
-          userId: userId,
-          groupId: groupId,
-        );
-        if (success) successCount++;
-      }
-
+      
       if (context.mounted) {
-        if (successCount == groupIds.length) {
-          final message = groupIds.length == 1
-              ? 'Invitation sent to $userName'
-              : '$successCount invitations sent to $userName';
-          TopBanner.showSuccess(
+        if (success) {
+                    TopBanner.showSuccess(
             context,
-            message: message,
-          );
-        } else if (successCount > 0) {
-          TopBanner.showInfo(
-            context,
-            message: '$successCount of ${groupIds.length} invitations sent',
+            message: 'Invitation sent to $userName',
           );
         } else {
-          TopBanner.showError(
+                    TopBanner.showError(
             context,
-            message: 'Failed to send invitations',
+            message: 'Failed to send invitation',
           );
         }
       }
     } catch (e) {
+            
       if (context.mounted) {
-        TopBanner.showError(
-          context,
-          message: 'Error sending invitations',
-        );
+        // Check for duplicate invite error
+        if (e.toString().contains('DUPLICATE_INVITE')) {
+                    TopBanner.showInfo(
+            context,
+            message: 'Invitation already sent to $userName',
+          );
+        } else {
+          TopBanner.showError(
+            context,
+            message: 'Error sending invitation',
+          );
+        }
       }
     }
   }

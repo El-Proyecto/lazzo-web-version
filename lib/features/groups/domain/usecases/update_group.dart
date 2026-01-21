@@ -13,18 +13,12 @@ class UpdateGroup {
     required String name,
     String? description,
     String? photoPath,
-    required bool canEditSettings,
-    required bool canAddMembers,
-    required bool canSendMessages,
   }) {
     return repository.updateGroup(
       groupId: groupId,
       name: name,
       description: description,
       photoPath: photoPath,
-      canEditSettings: canEditSettings,
-      canAddMembers: canAddMembers,
-      canSendMessages: canSendMessages,
     );
   }
 }

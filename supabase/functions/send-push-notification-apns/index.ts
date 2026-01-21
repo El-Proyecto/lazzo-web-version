@@ -195,6 +195,22 @@ const getLocalizedMessage = (
       title: `${emoji} ${event_name}`,
       body: `The Event was canceled!`,
     },
+    groupInviteReceived: {
+      title: group_name || "Group Invitation",
+      body: `${user_name} invited you to join ${group_name}`,
+    },
+    groupMemberAdded: {
+      title: group_name || "Group",
+      body: `${user_name} joined ${group_name}`,
+    },
+    paymentsRequest: {
+      title: `${emoji} ${event_name}`,
+      body: `${user_name} requested payment: ${amount}`,
+    },
+    paymentsAddedYouOwe: {
+      title: `${emoji} ${event_name}`,
+      body: `You owe ${amount} to ${user_name}`,
+    },
   };
 
   return messages[type] || { title: "Notification", body: "You have a new notification" };
@@ -286,11 +302,13 @@ serve(async (req: Request) => {
       );
     }
 
-    // Only send push for 'push' category
-    if (notification.category !== "push") {
-      console.log(`[APNs] Skipping non-push notification (category: ${notification.category})`);
+    // Send push for 'push' and 'actions' categories
+    // 'push' = ephemeral alerts (event live, chat mentions)
+    // 'actions' = persistent inbox items that need action (group invites, payment requests)
+    if (notification.category !== "push" && notification.category !== "actions") {
+      console.log(`[APNs] Skipping notification (category: ${notification.category}) - only 'push' and 'actions' sent`);
       return new Response(
-        JSON.stringify({ message: "Not a push notification", skipped: true }),
+        JSON.stringify({ message: "Not a push/action notification", skipped: true }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }

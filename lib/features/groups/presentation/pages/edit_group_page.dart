@@ -7,7 +7,6 @@ import '../../../../shared/themes/colors.dart';
 import '../../../../shared/components/nav/common_app_bar.dart';
 import '../../../../shared/components/common/top_banner.dart';
 import '../../domain/entities/group_entity.dart';
-import '../widgets/group_permissions_section.dart';
 import '../widgets/group_photo_selector_with_camera.dart';
 import '../providers/update_group_provider.dart';
 
@@ -28,9 +27,6 @@ class _EditGroupPageState extends ConsumerState<EditGroupPage> {
   late TextEditingController _nameController;
   late TextEditingController _descriptionController;
 
-  late bool _canEditSettings;
-  late bool _canAddMembers;
-  late bool _canSendMessages;
   String? _selectedPhotoPath;
   bool _hasPhotoChanged = false;
   String? _nameError;
@@ -38,9 +34,6 @@ class _EditGroupPageState extends ConsumerState<EditGroupPage> {
   // Store initial values for comparison
   late final String _initialName;
   late final String _initialDescription;
-  late final bool _initialCanEditSettings;
-  late final bool _initialCanAddMembers;
-  late final bool _initialCanSendMessages;
   late final String? _initialPhotoPath;
 
   @override
@@ -50,18 +43,11 @@ class _EditGroupPageState extends ConsumerState<EditGroupPage> {
     // Store initial values
     _initialName = widget.group.name;
     _initialDescription = widget.group.description ?? '';
-    _initialCanEditSettings = widget.group.permissions.membersCanInvite;
-    _initialCanAddMembers = widget.group.permissions.membersCanAddMembers;
-    _initialCanSendMessages = widget.group.permissions.membersCanCreateEvents;
     _initialPhotoPath = widget.group.photoUrl;
 
     // Initialize controllers with existing group data
     _nameController = TextEditingController(text: _initialName);
     _descriptionController = TextEditingController(text: _initialDescription);
-
-    _canEditSettings = _initialCanEditSettings;
-    _canAddMembers = _initialCanAddMembers;
-    _canSendMessages = _initialCanSendMessages;
 
     _selectedPhotoPath = _initialPhotoPath;
 
@@ -77,9 +63,6 @@ class _EditGroupPageState extends ConsumerState<EditGroupPage> {
 
     return currentName != _initialName ||
         currentDescription != _initialDescription ||
-        _canEditSettings != _initialCanEditSettings ||
-        _canAddMembers != _initialCanAddMembers ||
-        _canSendMessages != _initialCanSendMessages ||
         _hasPhotoChanged;
   }
 
@@ -128,12 +111,6 @@ class _EditGroupPageState extends ConsumerState<EditGroupPage> {
     setState(() {
       _selectedPhotoPath = null;
       _hasPhotoChanged = true;
-    });
-  }
-
-  void _handlePermissionChange() {
-    setState(() {
-      // Trigger rebuild to re-evaluate _hasUnsavedChanges
     });
   }
 
@@ -255,9 +232,6 @@ class _EditGroupPageState extends ConsumerState<EditGroupPage> {
                 ? _descriptionController.text.trim()
                 : null,
             photoPath: _hasPhotoChanged ? _selectedPhotoPath : null,
-            canEditSettings: _canEditSettings,
-            canAddMembers: _canAddMembers,
-            canSendMessages: _canSendMessages,
           );
     }
   }
@@ -459,36 +433,23 @@ class _EditGroupPageState extends ConsumerState<EditGroupPage> {
               ),
 
               const SizedBox(height: Gaps.md),
-
-              // Permissions section
-              GroupPermissionsSection(
-                canEditSettings: _canEditSettings,
-                canAddMembers: _canAddMembers,
-                canSendMessages: _canSendMessages,
-                onEditSettingsChanged: (value) {
-                  setState(() => _canEditSettings = value);
-                  _handlePermissionChange();
-                },
-                onAddMembersChanged: (value) {
-                  setState(() => _canAddMembers = value);
-                  _handlePermissionChange();
-                },
-                onSendMessagesChanged: (value) {
-                  setState(() => _canSendMessages = value);
-                  _handlePermissionChange();
-                },
-              ),
-
-              const SizedBox(height: Gaps.xl),
-
-              // Save button
-              SizedBox(
-                width: double.infinity,
-                child: _buildSaveButton(updateGroupState),
-              ),
-
-              const SizedBox(height: Gaps.md),
             ],
+          ),
+        ),
+        // Fixed button at the bottom
+        bottomNavigationBar: Container(
+          padding: const EdgeInsets.all(Insets.screenH),
+          decoration: BoxDecoration(
+            color: BrandColors.bg1,
+            border: Border(
+              top: BorderSide(
+                color: BrandColors.bg3,
+                width: 1,
+              ),
+            ),
+          ),
+          child: SafeArea(
+            child: _buildSaveButton(updateGroupState),
           ),
         ),
       ),

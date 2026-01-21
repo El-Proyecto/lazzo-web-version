@@ -43,12 +43,12 @@ lib/
 - Supabase queries & DTOs → `features/<f>/data/...`
 
 **Database documentation**
-- **Source of truth (raw schema):** `supabase_structure.sql`and `supabase_schema_public.sql`**(supabase completed dump)** — auto-exported from Supabase, updated by P2 team
+- **Source of truth (raw schema):** `supabase_structure.sql`and `supabase_schema.sql`**(supabase completed dump)** — auto-exported from Supabase, updated by P2 team
 - **Human-readable docs:** `SUPABASE_DATABASE_STRUCTURE.md` — comprehensive guide with 21 tables, relationships, indexes, triggers, views, RLS policies, performance guidelines, and pending features
 - **When to use which:**
-  - Use `supabase_structure.sql` and `supabase_schema_public.sql`**(supabase completed dump)** for quick schema lookups and precise field definitions
+  - Use `supabase_structure.sql` and `supabase_schema.sql`**(supabase completed dump)** for quick schema lookups and precise field definitions
   - Use `SUPABASE_DATABASE_STRUCTURE.md` for understanding relationships, query patterns, optimization strategies, and pending work
-- **Critical:** When `supabase_structure.sql` or `supabase_schema_public.sql` changes, `SUPABASE_DATABASE_STRUCTURE.md` must be updated to match
+- **Critical:** When `supabase_structure.sql` or `supabase_schema.sql` changes, `SUPABASE_DATABASE_STRUCTURE.md` must be updated to match
 
 ---
 
@@ -113,7 +113,7 @@ lib/
 - **Indexes**: sort & filter by indexed columns; always `limit`.
 - **Storage**: path convention `/groupId/eventId/userId/uuid.jpg` + metadata (uploader, type, ts).
 - **RPC/Triggers**: live in DB; expose via repository method signatures.
-- **Database reference**: See `supabase_structure.sql` and `supabase_schema_public.sql`**(supabase completed dump)** for current schema (source of truth) and `SUPABASE_DATABASE_STRUCTURE.md` for comprehensive documentation with relationships, query patterns, indexes, triggers, and RLS policies.
+- **Database reference**: See `supabase_structure.sql` and `supabase_schema.sql`**(supabase completed dump)** for current schema (source of truth) and `SUPABASE_DATABASE_STRUCTURE.md` for comprehensive documentation with relationships, query patterns, indexes, triggers, and RLS policies.
 
 **Performance & Optimization (Always Recommend When Possible):**
 - **Query optimization**: Select only required columns; use indexed columns for filtering/sorting; always add `LIMIT`; leverage materialized views for complex aggregations; batch operations to reduce round trips.

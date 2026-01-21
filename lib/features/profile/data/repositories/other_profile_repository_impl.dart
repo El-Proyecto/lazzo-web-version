@@ -199,41 +199,26 @@ class OtherProfileRepositoryImpl implements OtherProfileRepository {
     required String groupId,
   }) async {
     try {
+                        
       await _dataSource.inviteToGroup(
         userId: userId,
         groupId: groupId,
         invitedBy: _currentUserId,
       );
 
-      // Send notification to invited user
-      try {
-        // Get inviter name and group name from Supabase
-        final client = Supabase.instance.client;
-        final inviterData = await client
-            .from('users')
-            .select('name')
-            .eq('id', _currentUserId)
-            .single();
-
-        final groupData = await client
-            .from('groups')
-            .select('name')
-            .eq('id', groupId)
-            .single();
-
-        await _notificationService.sendGroupInvite(
-          recipientUserId: userId,
-          inviterName: inviterData['name'] ?? 'Someone',
-          groupName: groupData['name'] ?? 'a group',
-          groupId: groupId,
-        );
-      } catch (notifError) {
-        // Don't fail the whole operation if notification fails
+                  return true;
+    } on PostgrestException catch (e) {
+      
+      // Check for duplicate invite constraint violation
+      if (e.code == '23505' &&
+          e.message.contains('group_invites_unique_invite')) {
+                // Rethrow with custom message type
+        throw Exception('DUPLICATE_INVITE');
       }
 
-      return true;
+            return false;
     } catch (e) {
-      return false;
+                        return false;
     }
   }
 
