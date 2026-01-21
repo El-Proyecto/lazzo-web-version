@@ -44,6 +44,14 @@ class HomeEventEntity {
     this.participantPhotos = const [],
   });
 
+  /// Check if event date has expired
+  /// Returns true when event is in pending status and start date has passed
+  bool get isExpired {
+    if (status != HomeEventStatus.pending) return false;
+    if (date == null) return false;
+    return DateTime.now().isAfter(date!);
+  }
+
   HomeEventEntity copyWith({
     String? id,
     String? name,

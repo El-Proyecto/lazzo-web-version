@@ -56,6 +56,20 @@ class HomeEventRemoteDataSource {
 
       final events = await Future.wait(eventsFutures);
 
+      // ✅ Filter out expired pending events (should only appear in Pending Events section)
+      final now = DateTime.now();
+      final nonExpiredEvents = events.where((event) {
+        // Keep confirmed/living/recap events always
+        if (event.status != HomeEventStatus.pending) return true;
+        
+        // For pending events: exclude if date is in the past (expired)
+        if (event.date == null) return true; // Keep pending without date
+        return event.date!.isAfter(now); // Only keep future pending events
+      }).toList();
+
+      if (nonExpiredEvents.isEmpty) {
+        return null;
+      }
 
       // Priority order: living (4) > recap (3) > confirmed (2) > pending (1)
       final priorityMap = {
@@ -65,13 +79,13 @@ class HomeEventRemoteDataSource {
         HomeEventStatus.pending: 1,
       };
 
-      events.sort((a, b) {
+      nonExpiredEvents.sort((a, b) {
         final aPriority = priorityMap[a.status] ?? 0;
         final bPriority = priorityMap[b.status] ?? 0;
         return bPriority.compareTo(aPriority); // Descending (highest first)
       });
 
-      final nextEvent = events.first;
+      final nextEvent = nonExpiredEvents.first;
             return nextEvent;
     } catch (e) {
       return null;
