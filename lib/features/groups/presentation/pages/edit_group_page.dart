@@ -439,7 +439,7 @@ class _EditGroupPageState extends ConsumerState<EditGroupPage> {
         // Fixed button at the bottom
         bottomNavigationBar: Container(
           padding: const EdgeInsets.all(Insets.screenH),
-          decoration: BoxDecoration(
+          decoration: const BoxDecoration(
             color: BrandColors.bg1,
             border: Border(
               top: BorderSide(

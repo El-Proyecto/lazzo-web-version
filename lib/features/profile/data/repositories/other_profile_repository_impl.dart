@@ -6,7 +6,6 @@ import '../../../group_hub/domain/entities/group_event_entity.dart';
 import '../data_sources/other_profile_data_source.dart';
 import '../models/other_profile_model.dart';
 import '../../../../services/storage_service.dart';
-import '../../../../services/notification_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 /// Implementation of OtherProfileRepository using Supabase
@@ -14,17 +13,14 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 class OtherProfileRepositoryImpl implements OtherProfileRepository {
   final OtherProfileDataSource _dataSource;
   final StorageService _storageService;
-  final NotificationService _notificationService;
   final String _currentUserId;
 
   OtherProfileRepositoryImpl({
     required OtherProfileDataSource dataSource,
     required StorageService storageService,
-    required NotificationService notificationService,
     required String currentUserId,
   })  : _dataSource = dataSource,
         _storageService = storageService,
-        _notificationService = notificationService,
         _currentUserId = currentUserId;
 
   @override
@@ -199,26 +195,24 @@ class OtherProfileRepositoryImpl implements OtherProfileRepository {
     required String groupId,
   }) async {
     try {
-                        
       await _dataSource.inviteToGroup(
         userId: userId,
         groupId: groupId,
         invitedBy: _currentUserId,
       );
 
-                  return true;
+      return true;
     } on PostgrestException catch (e) {
-      
       // Check for duplicate invite constraint violation
       if (e.code == '23505' &&
           e.message.contains('group_invites_unique_invite')) {
-                // Rethrow with custom message type
+        // Rethrow with custom message type
         throw Exception('DUPLICATE_INVITE');
       }
 
-            return false;
+      return false;
     } catch (e) {
-                        return false;
+      return false;
     }
   }
 

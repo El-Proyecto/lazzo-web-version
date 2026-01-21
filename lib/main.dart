@@ -297,11 +297,9 @@ void main() async {
           final currentUserId = client.auth.currentUser?.id ?? '';
           final dataSource = OtherProfileDataSource(client);
           final storageService = StorageService(client);
-          final notificationService = ref.watch(notificationServiceProvider);
           return OtherProfileRepositoryImpl(
             dataSource: dataSource,
             storageService: storageService,
-            notificationService: notificationService,
             currentUserId: currentUserId,
           );
         }),

@@ -56,6 +56,8 @@
 	<string>Este app precisa de acesso à câmera para tirar fotos das memórias do evento.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Este app precisa de acesso à sua localização para definir a localização do evento automaticamente.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>Este app precisa de acesso à sua localização para definir a localização do evento automaticamente.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>Este app precisa de permissão para guardar fotos das memórias do evento.</string>
 	<key>NSPhotoLibraryUsageDescription</key>

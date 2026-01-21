@@ -52,13 +52,12 @@ class PushNotificationManager {
           await _handleNotificationTapped(deeplink);
           break;
         default:
-                }
+      }
     });
   }
 
   /// Handle token received from APNs
   Future<void> _handleTokenReceived(String token) async {
-    
     try {
       // Get device info
       final packageInfo = await PackageInfo.fromPlatform();
@@ -72,20 +71,21 @@ class PushNotificationManager {
         appVersion: appVersion,
       );
     } catch (e) {
-          }
+      // Silently handle token registration errors
+    }
   }
 
   /// Handle notification tap (deep link navigation)
   Future<void> _handleNotificationTapped(String deeplink) async {
-    
     try {
-      final uri = Uri.parse(deeplink);
+      Uri.parse(deeplink);
       // Parse the deep link and trigger app_links to handle navigation
       // The AppLinks instance in app.dart will process this URI
       // This could navigate to events, groups, inbox, etc.
       // Note: app_links package handles lazzo:// scheme automatically
-          } catch (e) {
-          }
+    } catch (e) {
+      // Silently handle deep link parsing errors
+    }
   }
 
   /// Manually refresh token (useful for debugging or after permission changes)
@@ -95,6 +95,7 @@ class PushNotificationManager {
     try {
       await _channel.invokeMethod('refreshToken');
     } catch (e) {
-          }
+      // Silently handle token refresh errors
+    }
   }
 }
