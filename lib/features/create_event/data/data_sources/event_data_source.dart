@@ -7,32 +7,32 @@ class EventDataSource {
 
   EventDataSource(this._client);
 
-
-  String _calculateEventStatus(DateTime? startDateTime, DateTime? endDateTime, String currentStatus) {
+  String _calculateEventStatus(
+      DateTime? startDateTime, DateTime? endDateTime, String currentStatus) {
     // If dates are not set, keep current status (draft/pending)
     if (startDateTime == null || endDateTime == null) {
       return currentStatus;
     }
-    
+
     final now = DateTime.now().toUtc();
     final startUtc = startDateTime.toUtc();
     final endUtc = endDateTime.toUtc();
-    
+
     // Event has ended → recap
     if (now.isAfter(endUtc)) {
       return 'recap';
     }
-    
+
     // Event is happening now → living
     if (now.isAfter(startUtc) && now.isBefore(endUtc)) {
       return 'living';
     }
-    
+
     // Event hasn't started yet → confirmed (or keep pending/draft)
     if (currentStatus == 'draft' || currentStatus == 'pending') {
       return currentStatus;
     }
-    
+
     return 'confirmed';
   }
 
@@ -53,20 +53,24 @@ class EventDataSource {
     String finalStatus = status;
     if (status == 'confirmed' || status == 'living' || status == 'recap') {
       finalStatus = _calculateEventStatus(startDateTime, endDateTime, status);
-      if (finalStatus != status) {
-              }
+      if (finalStatus != status) {}
     }
-    
-    final response = await _client.from('events').insert({
-      'name': name,
-      'emoji': emoji,
-      'group_id': groupId,
-      'start_datetime': startDateTime?.toIso8601String(),
-      'end_datetime': endDateTime?.toIso8601String(),
-      'location_id': locationId,
-      'status': finalStatus,
-      'created_by': createdBy,
-    }).select('id, name, emoji, group_id, start_datetime, end_datetime, location_id, status, created_by, created_at').single();
+
+    final response = await _client
+        .from('events')
+        .insert({
+          'name': name,
+          'emoji': emoji,
+          'group_id': groupId,
+          'start_datetime': startDateTime?.toIso8601String(),
+          'end_datetime': endDateTime?.toIso8601String(),
+          'location_id': locationId,
+          'status': finalStatus,
+          'created_by': createdBy,
+        })
+        .select(
+            'id, name, emoji, group_id, start_datetime, end_datetime, location_id, status, created_by, created_at')
+        .single();
 
     return response;
   }
@@ -102,10 +106,9 @@ class EventDataSource {
     String finalStatus = status;
     if (status == 'confirmed' || status == 'living' || status == 'recap') {
       finalStatus = _calculateEventStatus(startDateTime, endDateTime, status);
-      if (finalStatus != status) {
-              }
+      if (finalStatus != status) {}
     }
-    
+
     // Build update data - include ALL fields to allow clearing nullable ones
     final updateData = <String, dynamic>{
       'name': name,
@@ -141,19 +144,14 @@ class EventDataSource {
   /// Delete an event
   /// Respects RLS - user can only delete events they created
   Future<void> deleteEvent(String id) async {
-    
     try {
-     
-      final response = await _client.from('events').delete().eq('id', id);
-                      } catch (e) {
-                        
+      await _client.from('events').delete().eq('id', id);
+    } catch (e) {
       if (e is PostgrestException) {
-                                                
         if (e.code == '23503') {
-                  } else if (e.code == '22P02') {
-                  }
+        } else if (e.code == '22P02') {}
       }
-      
+
       rethrow;
     }
   }

@@ -279,18 +279,16 @@ class OtherProfileDataSource {
     required String invitedBy,
   }) async {
     try {
-                        
-      final result = await _client.from('group_invites').insert({
+      await _client.from('group_invites').insert({
         'group_id': groupId,
         'invited_id': userId,
         'invited_by': invitedBy,
         'created_at': DateTime.now().toIso8601String(),
       });
 
-            
       // Check if notification was created
       await Future.delayed(const Duration(milliseconds: 500));
-      final notificationCheck = await _client
+      await _client
           .from('notifications')
           .select('id, type, category')
           .eq('recipient_user_id', userId)
@@ -299,9 +297,8 @@ class OtherProfileDataSource {
           .order('created_at', ascending: false)
           .limit(1)
           .maybeSingle();
-
-          } catch (e) {
-                  rethrow;
+    } catch (e) {
+      rethrow;
     }
   }
 

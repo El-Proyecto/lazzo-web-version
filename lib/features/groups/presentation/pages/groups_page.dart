@@ -378,6 +378,7 @@ class _GroupsPageState extends ConsumerState<GroupsPage>
         );
 
         if (!mounted) return;
+        // ignore: use_build_context_synchronously
         InviteBottomSheet.show(
           context: context,
           inviteUrl: inviteUrl,
@@ -388,6 +389,7 @@ class _GroupsPageState extends ConsumerState<GroupsPage>
         // fallback: use group ID path
         final inviteUrl = '${AppConfig.invitesBaseUrl}/groups/$groupId';
 
+        // ignore: use_build_context_synchronously
         InviteBottomSheet.show(
           context: context,
           inviteUrl: inviteUrl,
@@ -398,6 +400,7 @@ class _GroupsPageState extends ConsumerState<GroupsPage>
     } catch (e) {
       final inviteUrl = '${AppConfig.invitesBaseUrl}/groups/$groupId';
 
+      // ignore: use_build_context_synchronously
       InviteBottomSheet.show(
         context: context,
         inviteUrl: inviteUrl,
@@ -477,6 +480,7 @@ class _GroupsPageState extends ConsumerState<GroupsPage>
             ),
             TextButton(
               onPressed: () async {
+                if (!context.mounted) return;
                 Navigator.of(context).pop();
 
                 // OPTIMISTIC UI: Remove group from list immediately
