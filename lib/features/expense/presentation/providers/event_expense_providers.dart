@@ -45,6 +45,7 @@ class EventExpensesController
   final CreateEventExpense _createEventExpense;
   final MarkExpenseAsPaid _markExpenseAsPaid;
   final String _eventId;
+  bool _isAddingExpense = false;
 
   EventExpensesController(
     this._getEventExpenses,
@@ -76,8 +77,11 @@ class EventExpensesController
     required List<String> participantsOwe,
     required List<String> participantsPaid,
   }) async {
-    try {
+    // Prevent duplicate calls while already adding
+    if (_isAddingExpense) return;
 
+    _isAddingExpense = true;
+    try {
       await _createEventExpense(
         eventId: _eventId,
         description: description,
@@ -90,6 +94,9 @@ class EventExpensesController
       await loadExpenses();
     } catch (error, stackTrace) {
       state = AsyncValue.error(error, stackTrace);
+      rethrow; // Allow UI to handle error
+    } finally {
+      _isAddingExpense = false;
     }
   }
 

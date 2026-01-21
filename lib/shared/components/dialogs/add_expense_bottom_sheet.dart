@@ -81,6 +81,8 @@ class _AddExpenseBottomSheetState extends State<AddExpenseBottomSheet> {
   String? _paidByError;
   String? _splitWithError;
 
+  bool _isAdding = false;
+
   @override
   void initState() {
     super.initState();
@@ -130,6 +132,9 @@ class _AddExpenseBottomSheetState extends State<AddExpenseBottomSheet> {
   }
 
   Future<void> _handleAddExpense() async {
+    // Prevent double-tap
+    if (_isAdding) return;
+
     if (!_isValid) {
       _validateFields();
       setState(() {
@@ -138,15 +143,29 @@ class _AddExpenseBottomSheetState extends State<AddExpenseBottomSheet> {
       return;
     }
 
-    await widget.onAddExpense(
-      _titleController.text.trim(),
-      _selectedPaidBy!,
-      _selectedParticipants,
-      _totalAmount,
-    );
+    setState(() {
+      _isAdding = true;
+    });
 
-    if (mounted) {
-      Navigator.of(context).pop();
+    try {
+      await widget.onAddExpense(
+        _titleController.text.trim(),
+        _selectedPaidBy!,
+        _selectedParticipants,
+        _totalAmount,
+      );
+
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
+    } catch (e) {
+      // Reset adding state on error
+      if (mounted) {
+        setState(() {
+          _isAdding = false;
+        });
+      }
+      rethrow; // Allow parent to handle error
     }
   }
 
@@ -308,16 +327,18 @@ class _AddExpenseBottomSheetState extends State<AddExpenseBottomSheet> {
               ),
             ),
 
-            // Add Expense Button - pinned at bottom
+            // Add Expense Button - pinned at bottom with optimistic UI
             Padding(
               padding: const EdgeInsets.all(Pads.sectionH),
               child: SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: _handleAddExpense,
+                  onPressed:
+                      (_isAdding || !_isValid) ? null : _handleAddExpense,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor:
-                        _isValid ? BrandColors.planning : BrandColors.bg3,
+                    backgroundColor: _isAdding
+                        ? BrandColors.planning.withOpacity(0.5)
+                        : (_isValid ? BrandColors.planning : BrandColors.bg3),
                     foregroundColor: BrandColors.text1,
                     padding: const EdgeInsets.symmetric(
                       vertical: Gaps.md,
@@ -325,13 +346,41 @@ class _AddExpenseBottomSheetState extends State<AddExpenseBottomSheet> {
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(Radii.md),
                     ),
+                    disabledBackgroundColor: _isAdding
+                        ? BrandColors.planning.withOpacity(0.5)
+                        : BrandColors.bg3,
                   ),
-                  child: Text(
-                    'Add Expense',
-                    style: AppText.labelLarge.copyWith(
-                      color: _isValid ? BrandColors.text1 : BrandColors.text2,
-                    ),
-                  ),
+                  child: _isAdding
+                      ? Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  BrandColors.text1,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: Gaps.sm),
+                            Text(
+                              'Adding...',
+                              style: AppText.labelLarge.copyWith(
+                                color: BrandColors.text1,
+                              ),
+                            ),
+                          ],
+                        )
+                      : Text(
+                          'Add Expense',
+                          style: AppText.labelLarge.copyWith(
+                            color: _isValid
+                                ? BrandColors.text1
+                                : BrandColors.text2,
+                          ),
+                        ),
                 ),
               ),
             ),
