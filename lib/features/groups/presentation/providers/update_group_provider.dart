@@ -36,9 +36,6 @@ class UpdateGroupController extends StateNotifier<AsyncValue<GroupEntity?>> {
     required String name,
     String? description,
     String? photoPath,
-    required bool canEditSettings,
-    required bool canAddMembers,
-    required bool canSendMessages,
   }) async {
     state = const AsyncValue.loading();
 
@@ -48,9 +45,6 @@ class UpdateGroupController extends StateNotifier<AsyncValue<GroupEntity?>> {
         name: name,
         description: description,
         photoPath: photoPath,
-        canEditSettings: canEditSettings,
-        canAddMembers: canAddMembers,
-        canSendMessages: canSendMessages,
       );
       state = AsyncValue.data(updatedGroup);
     } catch (error, stack) {

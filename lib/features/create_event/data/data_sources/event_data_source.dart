@@ -145,26 +145,13 @@ class EventDataSource {
     try {
      
       final response = await _client.from('events').delete().eq('id', id);
-      print('[EventDataSource] ✅ DELETE query executed');
-      print('[EventDataSource] 📊 Response: $response');
-      print('[EventDataSource] 📊 Response type: ${response.runtimeType}');
-    } catch (e) {
-      print('[EventDataSource] ❌ ERROR in DELETE query: $e');
-      print('[EventDataSource] 📋 Error type: ${e.runtimeType}');
-      print('[EventDataSource] 🔍 Error details: ${e.toString()}');
-      
+                      } catch (e) {
+                        
       if (e is PostgrestException) {
-        print('[EventDataSource] 🚨 PostgrestException detected!');
-        print('[EventDataSource] 📋 Code: ${e.code}');
-        print('[EventDataSource] 📋 Message: ${e.message}');
-        print('[EventDataSource] 📋 Details: ${e.details}');
-        print('[EventDataSource] 📋 Hint: ${e.hint}');
-        
+                                                
         if (e.code == '23503') {
-          print('[EventDataSource] 🔗 FOREIGN KEY CONSTRAINT ERROR!');
-        } else if (e.code == '22P02') {
-          print('[EventDataSource] 🔤 INVALID ENUM VALUE ERROR!');
-        }
+                  } else if (e.code == '22P02') {
+                  }
       }
       
       rethrow;

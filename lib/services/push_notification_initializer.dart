@@ -13,17 +13,14 @@ final pushNotificationInitializerProvider = Provider<void>((ref) {
 
     if (session != null) {
       // User logged in - initialize push notifications
-      print('[PushInit] User logged in, initializing push notifications');
-      pushManager.initialize();
+            pushManager.initialize();
     } else {
       // User logged out - cleanup handled by PushTokenService if needed
-      print('[PushInit] User logged out');
-    }
+          }
   });
 
   // Also initialize immediately if user is already logged in
   if (client.auth.currentUser != null) {
-    print('[PushInit] User already logged in, initializing push notifications');
-    pushManager.initialize();
+        pushManager.initialize();
   }
 });

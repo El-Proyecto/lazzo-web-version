@@ -343,14 +343,10 @@ class EventRepositoryImpl implements EventRepository {
 
   @override
   Future<void> deleteEvent(String id) async {
-    print('[EventRepository] 🔴 Deleting event: $id');
-    try {
+        try {
       await _dataSource.deleteEvent(id);
-      print('[EventRepository] ✅ Event deleted successfully');
-    } catch (e) {
-      print('[EventRepository] ❌ ERROR deleting event: $e');
-      print('[EventRepository] 📋 Error type: ${e.runtimeType}');
-      rethrow;
+          } catch (e) {
+                  rethrow;
     }
   }
 

@@ -12,6 +12,7 @@ Este documento descreve todas as notificações implementadas na app Lazzo, incl
 | # | Tipo de Notificação | Categoria | Inbox | Push | Prioridade |
 |---|---------------------|-----------|-------|------|------------|
 | 1 | Group Invite Received | actions | ✓ | ✓ | medium |
+| 1.5 | Group Member Added | push | - | ✓ | medium |
 | 2 | Payment Added (You Owe) | notifications | ✓ | ✓ | high |
 | 3 | Payment Added (Owes You) | notifications | ✓ | ✓ | high |
 | 4 | Payment Request | actions | ✓ | ✓ | high |
@@ -55,6 +56,30 @@ Este documento descreve todas as notificações implementadas na app Lazzo, incl
 - `group_name`: Nome do grupo
 - `group_id`: ID do grupo
 - `deeplink`: `lazzo://groups/{group_id}`
+
+---
+
+### 1.5. Group Member Added
+**Type:** `groupMemberAdded`  
+**Category:** `push`  
+**Priority:** `medium`
+
+**Push Notification:**
+- **Título:** "{group_name}"
+- **Corpo:** "{user_name} joined {group_name}"
+
+**Inbox:**
+- NÃO aparece (categoria `push` = ephemeral)
+
+**Dados Necessários:**
+- `user_name`: Nome de quem entrou no grupo
+- `group_name`: Nome do grupo
+- `group_id`: ID do grupo
+- `deeplink`: `lazzo://groups/{group_id}`
+
+**Trigger:** INSERT em `group_members` (notifica membros existentes)
+
+**Nota:** Esta notificação é enviada aos membros existentes do grupo quando alguém novo se junta. O novo membro não recebe esta notificação sobre si próprio.
 
 ---
 

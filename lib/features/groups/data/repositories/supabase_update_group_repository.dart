@@ -16,13 +16,10 @@ class SupabaseUpdateGroupRepository implements UpdateGroupRepository {
     required String name,
     String? description,
     String? photoPath,
-    required bool canEditSettings,
-    required bool canAddMembers,
-    required bool canSendMessages,
   }) async {
     try {
-String? photoUrl;
-      
+      String? photoUrl;
+
       // Upload photo to storage if provided
       if (photoPath != null && photoPath.isNotEmpty) {
         final file = File(photoPath);
@@ -35,7 +32,6 @@ String? photoUrl;
         final extension = photoPath.split('.').last.toLowerCase();
         final fileName = '$groupId/$timestamp.$extension';
 
-                
         // Determine MIME type
         String mimeType;
         switch (extension) {
@@ -57,9 +53,7 @@ String? photoUrl;
         }
 
         // Upload to storage
-        await _supabase.storage
-            .from('group-photos')
-            .upload(
+        await _supabase.storage.from('group-photos').upload(
               fileName,
               file,
               fileOptions: FileOptions(
@@ -68,23 +62,18 @@ String? photoUrl;
               ),
             );
 
-        
         // Get public URL
-        photoUrl = _supabase.storage
-            .from('group-photos')
-            .getPublicUrl(fileName);
-
-              }
+        photoUrl =
+            _supabase.storage.from('group-photos').getPublicUrl(fileName);
+      }
 
       // Update group in database
-            
+
       final updateData = {
         'name': name,
-        'members_can_invite': canEditSettings,
-        'members_can_add_members': canAddMembers,
-        'members_can_create_events': canSendMessages,
         if (photoUrl != null) 'photo_url': photoUrl,
-        if (photoUrl != null) 'photo_updated_at': DateTime.now().toIso8601String(),
+        if (photoUrl != null)
+          'photo_updated_at': DateTime.now().toIso8601String(),
       };
 
       final response = await _supabase
@@ -101,10 +90,8 @@ String? photoUrl;
             qr_code,
             group_url,
             created_at
-          ''')
-          .single();
+          ''').single();
 
-      
       // Convert to GroupEntity
       return GroupEntity(
         id: response['id'] as String,
@@ -113,15 +100,17 @@ String? photoUrl;
         photoUrl: response['photo_url'] as String?,
         permissions: GroupPermissions(
           membersCanInvite: response['members_can_invite'] as bool? ?? false,
-          membersCanAddMembers: response['members_can_add_members'] as bool? ?? false,
-          membersCanCreateEvents: response['members_can_create_events'] as bool? ?? false,
+          membersCanAddMembers:
+              response['members_can_add_members'] as bool? ?? false,
+          membersCanCreateEvents:
+              response['members_can_create_events'] as bool? ?? false,
         ),
         qrCode: response['qr_code'] as String?,
         groupUrl: response['group_url'] as String?,
         createdAt: DateTime.parse(response['created_at'] as String),
       );
     } catch (e) {
-        throw Exception('Failed to update group: $e');
+      throw Exception('Failed to update group: $e');
     }
   }
 }

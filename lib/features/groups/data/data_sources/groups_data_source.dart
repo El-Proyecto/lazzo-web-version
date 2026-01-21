@@ -6,7 +6,8 @@ import '../../../../shared/utils/image_compression_service.dart';
 
 /// Data source for group operations with Supabase
 abstract class GroupsDataSource {
-  Future<Map<String, dynamic>> createGroup(String userId, Map<String, dynamic> groupData);
+  Future<Map<String, dynamic>> createGroup(
+      String userId, Map<String, dynamic> groupData);
   Future<String> uploadGroupCoverPhoto(Uint8List imageBytes, String groupId);
   Future<String> getGroupCoverSignedUrl(String photoPath);
   Future<void> saveGroupQrCode(String groupId, String qrCodeData);
@@ -14,107 +15,109 @@ abstract class GroupsDataSource {
   Future<List<Map<String, dynamic>>> getUserGroups(String userId);
   Future<List<Map<String, dynamic>>> getArchivedGroups(String userId);
   Future<void> leaveGroup(String groupId, String userId);
-  Future<void> updateGroupMemberState(String groupId, String userId, String state);
+  Future<void> updateGroupMemberState(
+      String groupId, String userId, String state);
   Future<void> toggleMute(String groupId, String userId, bool isMuted);
   Future<void> togglePin(String groupId, String userId, bool isPinned);
   Future<void> toggleArchive(String groupId, String userId);
-  Future<String> ensureStoragePath({required String input, required String groupId, String bucket});
+  Future<String> ensureStoragePath(
+      {required String input, required String groupId, String bucket});
   Future<List<Map<String, dynamic>>> getGroupMembers(String groupId);
 }
 
 class SupabaseGroupsDataSource implements GroupsDataSource {
   final SupabaseClient _client;
-  static const String _bucketName = 'group-photos'; // bucket para fotos de grupos
+  static const String _bucketName =
+      'group-photos'; // bucket para fotos de grupos
 
   SupabaseGroupsDataSource(this._client);
 
   @override
-  Future<Map<String, dynamic>> createGroup(String userId, Map<String, dynamic> groupData) async {
+  Future<Map<String, dynamic>> createGroup(
+      String userId, Map<String, dynamic> groupData) async {
     try {
       // Insere o grupo na tabela groups (sem configurações de usuário)
       final response = await _client
           .from('groups')
           .insert({
             'name': groupData['name'],
-            'photo_url': groupData['photo_url'], // novo campo - armazena apenas path
-            'photo_updated_at': groupData['photo_updated_at'], // novo campo - timestamp
+            'photo_url':
+                groupData['photo_url'], // novo campo - armazena apenas path
+            'photo_updated_at':
+                groupData['photo_updated_at'], // novo campo - timestamp
             'qr_code': groupData['qr_code'], // QR code data
             'group_url': groupData['group_url'], // Group URL for sharing
             'created_by': userId,
             'created_at': DateTime.now().toIso8601String(),
-            // Permissões armazenadas como campos separados
-            'members_can_invite': groupData['members_can_invite'] ?? false,
-            'members_can_add_members': groupData['members_can_add_members'] ?? false,
-            'members_can_create_events': groupData['members_can_create_events'] ?? false,
+            // Permissions: all members can invite, add members, and create events by default
+            'members_can_invite': true,
+            'members_can_add_members': true,
+            'members_can_create_events': true,
           })
           .select()
           .single();
 
       // Adiciona o criador como membro do grupo
-      await _client
-          .from('group_members')
-          .insert({
-            'group_id': response['id'],
-            'user_id': userId,
-            'role': 'admin',
-            'joined_at': DateTime.now().toIso8601String(),
-          });
+      await _client.from('group_members').insert({
+        'group_id': response['id'],
+        'user_id': userId,
+        'role': 'admin',
+        'joined_at': DateTime.now().toIso8601String(),
+      });
 
       // Cria configurações padrão para o criador do grupo
-      await _client
-          .from('group_user_settings')
-          .insert({
-            'group_id': response['id'],
-            'user_id': userId,
-            'is_muted': false,
-            'is_pinned': false,
-            'group_state': 'active',
-          });
+      await _client.from('group_user_settings').insert({
+        'group_id': response['id'],
+        'user_id': userId,
+        'is_muted': false,
+        'is_pinned': false,
+        'group_state': 'active',
+      });
 
       return response;
     } catch (e) {
-            throw Exception('Failed to create group: $e');
+      throw Exception('Failed to create group: $e');
     }
   }
 
   @override
-  Future<String> uploadGroupCoverPhoto(Uint8List imageBytes, String groupId) async {
+  Future<String> uploadGroupCoverPhoto(
+      Uint8List imageBytes, String groupId) async {
     try {
       final timestamp = DateTime.now().millisecondsSinceEpoch;
       final fileName = '$groupId/cover_$timestamp.webp';
-      
-      await _client.storage
-          .from(_bucketName)
-          .uploadBinary(fileName, imageBytes, fileOptions: const FileOptions(
+
+      await _client.storage.from(_bucketName).uploadBinary(fileName, imageBytes,
+          fileOptions: const FileOptions(
             contentType: 'image/webp',
             upsert: true, // Permitir substituir foto existente
           ));
-      
+
       return fileName; // Retorna apenas o path, não a URL completa
     } catch (e) {
-            throw Exception('Failed to upload group cover photo: $e');
+      throw Exception('Failed to upload group cover photo: $e');
     }
   }
 
   @override
   Future<String> getGroupCoverSignedUrl(String photoPath) async {
     try {
-      
       // Validate that it's a storage path, not a local path
       if (photoPath.contains('cache') || photoPath.contains('data/user')) {
-                throw Exception('Invalid photo path - local paths are not supported');
+        throw Exception('Invalid photo path - local paths are not supported');
       }
-      
+
       // Normalize path - remove leading slash if present (storage paths shouldn't have leading /)
-      final normalizedPath = photoPath.startsWith('/') ? photoPath.substring(1) : photoPath;
-      
+      final normalizedPath =
+          photoPath.startsWith('/') ? photoPath.substring(1) : photoPath;
+
       final signedUrl = await _client.storage
           .from(_bucketName)
           .createSignedUrl(normalizedPath, 3600); // 1 hora de validade
-      
+
       return signedUrl;
     } catch (e) {
-            throw Exception('Failed to get signed URL: $e');
+      throw Exception('Failed to get signed URL: $e');
     }
   }
 
@@ -132,37 +135,37 @@ class SupabaseGroupsDataSource implements GroupsDataSource {
 
     // 2) Is local? Upload and return object path
     final isLocal = input.startsWith('/') ||
-                    input.startsWith('file://') ||
-                    input.startsWith('content://') ||
-                    input.contains('/data/') ||
-                    input.contains('cache');
-    
+        input.startsWith('file://') ||
+        input.startsWith('content://') ||
+        input.contains('/data/') ||
+        input.contains('cache');
+
     if (isLocal) {
-      
       // Check if file exists
       final file = File(input.replaceFirst('file://', ''));
       if (!await file.exists()) {
         throw Exception('Local file does not exist: $input');
       }
-      
+
       // Create XFile and compress using existing service
       final xFile = XFile(input);
-      final compressedBytes = await ImageCompressionService.compressToWebP(xFile);
-      
+      final compressedBytes =
+          await ImageCompressionService.compressToWebP(xFile);
+
       // Create object path with timestamp for versioning
       final timestamp = DateTime.now().millisecondsSinceEpoch;
       final objectPath = 'groups/$groupId/cover_$timestamp.webp';
-      
+
       // Upload to storage
       await _client.storage.from(bucket).uploadBinary(
-        objectPath, 
-        compressedBytes,
-        fileOptions: const FileOptions(
-          contentType: 'image/webp',
-          upsert: true,
-        ),
-      );
-      
+            objectPath,
+            compressedBytes,
+            fileOptions: const FileOptions(
+              contentType: 'image/webp',
+              upsert: true,
+            ),
+          );
+
       return objectPath; // Return just the object path
     }
 
@@ -181,26 +184,21 @@ class SupabaseGroupsDataSource implements GroupsDataSource {
   @override
   Future<void> saveGroupQrCode(String groupId, String qrCodeData) async {
     try {
-      
       // Primeiro, tenta salvar qr_code e group_url
-      await _client
-          .from('groups')
-          .update({
-            'qr_code': qrCodeData,
-            'group_url': 'https://lazzo.app/g/$groupId', // URL do grupo para compartilhamento
-          })
-          .eq('id', groupId);
-      
+      await _client.from('groups').update({
+        'qr_code': qrCodeData,
+        'group_url':
+            'https://lazzo.app/g/$groupId', // URL do grupo para compartilhamento
+      }).eq('id', groupId);
     } catch (e) {
       // Se falhar, tenta salvar apenas o qr_code (para compatibilidade)
       if (e.toString().contains('group_url')) {
         try {
           await _client
               .from('groups')
-              .update({'qr_code': qrCodeData})
-              .eq('id', groupId);
+              .update({'qr_code': qrCodeData}).eq('id', groupId);
         } catch (e2) {
-                    throw Exception('Failed to save QR code: $e2');
+          throw Exception('Failed to save QR code: $e2');
         }
       } else {
         throw Exception('Failed to save QR code: $e');
@@ -211,17 +209,12 @@ class SupabaseGroupsDataSource implements GroupsDataSource {
   @override
   Future<void> updateGroupPhoto(String groupId, String photoPath) async {
     try {
-      
-      await _client
-          .from('groups')
-          .update({
-            'photo_url': photoPath,
-            'photo_updated_at': DateTime.now().toIso8601String(),
-          })
-          .eq('id', groupId);
-      
+      await _client.from('groups').update({
+        'photo_url': photoPath,
+        'photo_updated_at': DateTime.now().toIso8601String(),
+      }).eq('id', groupId);
     } catch (e) {
-            throw Exception('Failed to update group photo: $e');
+      throw Exception('Failed to update group photo: $e');
     }
   }
 
@@ -239,9 +232,8 @@ class SupabaseGroupsDataSource implements GroupsDataSource {
       }
 
       // Extrai apenas os IDs dos grupos
-      final groupIds = memberResponse
-          .map((member) => member['group_id'] as String)
-          .toList();
+      final groupIds =
+          memberResponse.map((member) => member['group_id'] as String).toList();
 
       // STEP 2: Busca os detalhes dos grupos com JOIN das configurações do usuário
       final groupsResponse = await _client
@@ -270,43 +262,47 @@ class SupabaseGroupsDataSource implements GroupsDataSource {
           .order('created_at', ascending: false);
 
       // Processa os resultados para achatar as configurações do usuário
-      final processedGroups = groupsResponse.map((group) {
-        final userSettings = group['group_user_settings'] as List?;
-        
-        // Filtra para pegar apenas as configurações do usuário atual
-        Map<String, dynamic>? currentUserSettings;
-        if (userSettings != null && userSettings.isNotEmpty) {
-          for (final setting in userSettings) {
-            if (setting['user_id'] == userId) {
-              currentUserSettings = setting;
-              break;
+      final processedGroups = groupsResponse
+          .map((group) {
+            final userSettings = group['group_user_settings'] as List?;
+
+            // Filtra para pegar apenas as configurações do usuário atual
+            Map<String, dynamic>? currentUserSettings;
+            if (userSettings != null && userSettings.isNotEmpty) {
+              for (final setting in userSettings) {
+                if (setting['user_id'] == userId) {
+                  currentUserSettings = setting;
+                  break;
+                }
+              }
             }
-          }
-        }
-        
-        // Se não encontrou configurações, usa defaults
-        currentUserSettings ??= {
-          'is_muted': false, 
-          'is_pinned': false, 
-          'group_state': 'active'
-        };
 
-        // Extrai member count da resposta agregada
-        final membersList = group['group_members'] as List?;
-        final memberCount = membersList?.isNotEmpty == true 
-            ? (membersList!.first['count'] as int? ?? 0)
-            : 0;
+            // Se não encontrou configurações, usa defaults
+            currentUserSettings ??= {
+              'is_muted': false,
+              'is_pinned': false,
+              'group_state': 'active'
+            };
 
-        // Remove a configuração aninhada e adiciona os campos na raiz
-        group.remove('group_user_settings');
-        group.remove('group_members');
-        group['is_muted'] = currentUserSettings['is_muted'] ?? false;
-        group['is_pinned'] = currentUserSettings['is_pinned'] ?? false;
-        group['group_state'] = currentUserSettings['group_state'] ?? 'active';
-        group['member_count'] = memberCount;
+            // Extrai member count da resposta agregada
+            final membersList = group['group_members'] as List?;
+            final memberCount = membersList?.isNotEmpty == true
+                ? (membersList!.first['count'] as int? ?? 0)
+                : 0;
 
-        return group;
-      }).where((group) => group['group_state'] != 'archived').toList(); // Filtra arquivados
+            // Remove a configuração aninhada e adiciona os campos na raiz
+            group.remove('group_user_settings');
+            group.remove('group_members');
+            group['is_muted'] = currentUserSettings['is_muted'] ?? false;
+            group['is_pinned'] = currentUserSettings['is_pinned'] ?? false;
+            group['group_state'] =
+                currentUserSettings['group_state'] ?? 'active';
+            group['member_count'] = memberCount;
+
+            return group;
+          })
+          .where((group) => group['group_state'] != 'archived')
+          .toList(); // Filtra arquivados
 
       return List<Map<String, dynamic>>.from(processedGroups);
     } catch (e) {
@@ -317,7 +313,6 @@ class SupabaseGroupsDataSource implements GroupsDataSource {
   @override
   Future<List<Map<String, dynamic>>> getArchivedGroups(String userId) async {
     try {
-
       // STEP 1: Busca os IDs dos grupos onde o usuário é membro
       final memberResponse = await _client
           .from('group_members')
@@ -329,13 +324,12 @@ class SupabaseGroupsDataSource implements GroupsDataSource {
       }
 
       // Extrai apenas os IDs dos grupos
-      final groupIds = memberResponse
-          .map((member) => member['group_id'] as String)
-          .toList();
+      final groupIds =
+          memberResponse.map((member) => member['group_id'] as String).toList();
 
       // STEP 2: Busca apenas grupos onde o usuário tem group_state = 'archived'
       final archivedGroupIds = <String>[];
-      
+
       // Busca configurações do usuário para identificar grupos arquivados
       final userSettings = await _client
           .from('group_user_settings')
@@ -343,15 +337,15 @@ class SupabaseGroupsDataSource implements GroupsDataSource {
           .filter('user_id', 'eq', userId)
           .filter('group_id', 'in', '(${groupIds.join(',')})')
           .filter('group_state', 'eq', 'archived');
-      
+
       for (final setting in userSettings) {
         archivedGroupIds.add(setting['group_id'] as String);
       }
-      
+
       if (archivedGroupIds.isEmpty) {
         return [];
       }
-      
+
       // STEP 3: Busca detalhes dos grupos arquivados com LEFT JOIN para configurações
       final groupsResponse = await _client
           .from('groups')
@@ -381,7 +375,7 @@ class SupabaseGroupsDataSource implements GroupsDataSource {
       // Processa os resultados para achatar as configurações do usuário
       final processedGroups = groupsResponse.map((group) {
         final userSettings = group['group_user_settings'] as List?;
-        
+
         // Filtra para pegar apenas as configurações do usuário atual
         Map<String, dynamic>? currentUserSettings;
         if (userSettings != null && userSettings.isNotEmpty) {
@@ -392,17 +386,17 @@ class SupabaseGroupsDataSource implements GroupsDataSource {
             }
           }
         }
-        
+
         // Se não encontrou configurações, usa defaults (mas para archived deve ter)
         currentUserSettings ??= {
-          'is_muted': false, 
-          'is_pinned': false, 
+          'is_muted': false,
+          'is_pinned': false,
           'group_state': 'archived'
         };
 
         // Extrai member count da resposta agregada
         final membersList = group['group_members'] as List?;
-        final memberCount = membersList?.isNotEmpty == true 
+        final memberCount = membersList?.isNotEmpty == true
             ? (membersList!.first['count'] as int? ?? 0)
             : 0;
 
@@ -419,7 +413,7 @@ class SupabaseGroupsDataSource implements GroupsDataSource {
 
       return List<Map<String, dynamic>>.from(processedGroups);
     } catch (e) {
-            throw Exception('Failed to fetch archived groups: $e');
+      throw Exception('Failed to fetch archived groups: $e');
     }
   }
 
@@ -432,71 +426,109 @@ class SupabaseGroupsDataSource implements GroupsDataSource {
           .delete()
           .eq('group_id', groupId)
           .eq('user_id', userId);
-      
+
       // STEP 2: Remove configurações do usuário para este grupo
       await _client
           .from('group_user_settings')
           .delete()
           .eq('group_id', groupId)
           .eq('user_id', userId);
-      
+
       // STEP 3: Verificar quantos membros restam APÓS remoção
       final remainingMembers = await _client
           .from('group_members')
           .select('user_id')
           .eq('group_id', groupId)
           .count();
-      
+
       // STEP 4: Se não há mais membros, apagar TUDO (grupo + eventos + dados)
       if (remainingMembers.count == 0) {
         // STEP 4.1: Buscar todos os eventos do grupo para deletar dados relacionados
-        final events = await _client
-            .from('events')
-            .select('id')
-            .eq('group_id', groupId);
-        
-        final eventIds = (events as List).map((e) => e['id'] as String).toList();
-        
+        final events =
+            await _client.from('events').select('id').eq('group_id', groupId);
+
+        final eventIds =
+            (events as List).map((e) => e['id'] as String).toList();
+
         // STEP 4.2: Deletar dados de CADA evento (na ordem correta das FKs)
         if (eventIds.isNotEmpty) {
           // 4.2.1: message_reads (FK para events + chat_messages)
-          await _client.from('message_reads').delete().inFilter('event_id', eventIds);
-          
+          await _client
+              .from('message_reads')
+              .delete()
+              .inFilter('event_id', eventIds);
+
           // 4.2.2: chat_messages (FK para events)
-          await _client.from('chat_messages').delete().inFilter('event_id', eventIds);
-          
+          await _client
+              .from('chat_messages')
+              .delete()
+              .inFilter('event_id', eventIds);
+
           // 4.2.3: event_date_votes (FK para event_date_options)
-          await _client.from('event_date_votes').delete().inFilter('event_id', eventIds);
-          
+          await _client
+              .from('event_date_votes')
+              .delete()
+              .inFilter('event_id', eventIds);
+
           // 4.2.4: event_date_options (FK para events)
-          await _client.from('event_date_options').delete().inFilter('event_id', eventIds);
-          
+          await _client
+              .from('event_date_options')
+              .delete()
+              .inFilter('event_id', eventIds);
+
           // 4.2.5: event_participants (FK para events)
-          await _client.from('event_participants').delete().inFilter('pevent_id', eventIds);
-          
+          await _client
+              .from('event_participants')
+              .delete()
+              .inFilter('pevent_id', eventIds);
+
           // 4.2.6: expense_splits (FK para event_expenses)
-          final expenses = await _client.from('event_expenses').select('id').inFilter('event_id', eventIds);
-          final expenseIds = (expenses as List).map((e) => e['id'] as String).toList();
+          final expenses = await _client
+              .from('event_expenses')
+              .select('id')
+              .inFilter('event_id', eventIds);
+          final expenseIds =
+              (expenses as List).map((e) => e['id'] as String).toList();
           if (expenseIds.isNotEmpty) {
-            await _client.from('expense_splits').delete().inFilter('expense_id', expenseIds);
+            await _client
+                .from('expense_splits')
+                .delete()
+                .inFilter('expense_id', expenseIds);
           }
-          
+
           // 4.2.7: event_expenses (FK para events)
-          await _client.from('event_expenses').delete().inFilter('event_id', eventIds);
-          
+          await _client
+              .from('event_expenses')
+              .delete()
+              .inFilter('event_id', eventIds);
+
           // 4.2.8: location_suggestion_votes (FK para location_suggestions)
-          final suggestions = await _client.from('location_suggestions').select('id').inFilter('event_id', eventIds);
-          final suggestionIds = (suggestions as List).map((s) => s['id'] as String).toList();
+          final suggestions = await _client
+              .from('location_suggestions')
+              .select('id')
+              .inFilter('event_id', eventIds);
+          final suggestionIds =
+              (suggestions as List).map((s) => s['id'] as String).toList();
           if (suggestionIds.isNotEmpty) {
-            await _client.from('location_suggestion_votes').delete().inFilter('suggestion_id', suggestionIds);
+            await _client
+                .from('location_suggestion_votes')
+                .delete()
+                .inFilter('suggestion_id', suggestionIds);
           }
-          
+
           // 4.2.9: location_suggestions (FK para events)
-          await _client.from('location_suggestions').delete().inFilter('event_id', eventIds);
-          
+          await _client
+              .from('location_suggestions')
+              .delete()
+              .inFilter('event_id', eventIds);
+
           // 4.2.10: group_photos (FK para events) + storage files
-          final photos = await _client.from('group_photos').select('storage_path').inFilter('event_id', eventIds);
-          final photoPaths = (photos as List).map((p) => p['storage_path'] as String).toList();
+          final photos = await _client
+              .from('group_photos')
+              .select('storage_path')
+              .inFilter('event_id', eventIds);
+          final photoPaths =
+              (photos as List).map((p) => p['storage_path'] as String).toList();
           if (photoPaths.isNotEmpty) {
             try {
               await _client.storage.from(_bucketName).remove(photoPaths);
@@ -504,64 +536,58 @@ class SupabaseGroupsDataSource implements GroupsDataSource {
               // Continue mesmo se falhar a remoção do storage
             }
           }
-          await _client.from('group_photos').delete().inFilter('event_id', eventIds);
-          
+          await _client
+              .from('group_photos')
+              .delete()
+              .inFilter('event_id', eventIds);
+
           // 4.2.11: photos (FK para events)
           await _client.from('photos').delete().inFilter('event_id', eventIds);
-          
+
           // 4.2.12: notifications relacionadas aos eventos
-          await _client.from('notifications').delete().inFilter('event_id', eventIds);
-          
+          await _client
+              .from('notifications')
+              .delete()
+              .inFilter('event_id', eventIds);
+
           // 4.2.13: events (FK para groups)
           await _client.from('events').delete().inFilter('id', eventIds);
         }
-        
+
         // STEP 4.3: Apagar TODOS os ficheiros do folder do grupo no storage
         try {
           final filesList = await _client.storage
               .from(_bucketName)
               .list(path: 'groups/$groupId');
-          
+
           if (filesList.isNotEmpty) {
             final filePaths = filesList
                 .map((file) => 'groups/$groupId/${file.name}')
                 .toList();
-            
+
             await _client.storage.from(_bucketName).remove(filePaths);
           }
         } catch (_) {
           // Continue mesmo se falhar a remoção do storage
         }
-        
+
         // STEP 4.4: Remove todas as configurações restantes do grupo
         await _client
             .from('group_user_settings')
             .delete()
             .eq('group_id', groupId);
-        
+
         // STEP 4.5: Remove todos os convites pendentes (FK constraint)
-        await _client
-            .from('group_invites')
-            .delete()
-            .eq('group_id', groupId);
-        
+        await _client.from('group_invites').delete().eq('group_id', groupId);
+
         // STEP 4.6: Remove mensagens do grupo (se existirem)
-        await _client
-            .from('group_messages')
-            .delete()
-            .eq('group_id', groupId);
-        
+        await _client.from('group_messages').delete().eq('group_id', groupId);
+
         // STEP 4.7: Remove notificações do grupo (se existirem)
-        await _client
-            .from('notifications')
-            .delete()
-            .eq('group_id', groupId);
-        
+        await _client.from('notifications').delete().eq('group_id', groupId);
+
         // STEP 4.8: Remove o grupo da tabela groups (último passo)
-        await _client
-            .from('groups')
-            .delete()
-            .eq('id', groupId);
+        await _client.from('groups').delete().eq('id', groupId);
       }
     } catch (e) {
       throw Exception('Failed to leave group: $e');
@@ -569,19 +595,16 @@ class SupabaseGroupsDataSource implements GroupsDataSource {
   }
 
   @override
-  Future<void> updateGroupMemberState(String groupId, String userId, String state) async {
+  Future<void> updateGroupMemberState(
+      String groupId, String userId, String state) async {
     try {
-      
       // Upsert na tabela group_user_settings
-      await _client
-          .from('group_user_settings')
-          .upsert({
-            'group_id': groupId,
-            'user_id': userId,
-            'group_state': state,
-            'updated_at': DateTime.now().toIso8601String(),
-          });
-      
+      await _client.from('group_user_settings').upsert({
+        'group_id': groupId,
+        'user_id': userId,
+        'group_state': state,
+        'updated_at': DateTime.now().toIso8601String(),
+      });
     } catch (e) {
       throw Exception('Failed to update group state: $e');
     }
@@ -590,17 +613,13 @@ class SupabaseGroupsDataSource implements GroupsDataSource {
   @override
   Future<void> toggleMute(String groupId, String userId, bool isMuted) async {
     try {
-      
       // Upsert na tabela group_user_settings
-      await _client
-          .from('group_user_settings')
-          .upsert({
-            'group_id': groupId,
-            'user_id': userId,
-            'is_muted': isMuted,
-            'updated_at': DateTime.now().toIso8601String(),
-          });
-      
+      await _client.from('group_user_settings').upsert({
+        'group_id': groupId,
+        'user_id': userId,
+        'is_muted': isMuted,
+        'updated_at': DateTime.now().toIso8601String(),
+      });
     } catch (e) {
       throw Exception('Failed to toggle mute: $e');
     }
@@ -609,17 +628,13 @@ class SupabaseGroupsDataSource implements GroupsDataSource {
   @override
   Future<void> togglePin(String groupId, String userId, bool isPinned) async {
     try {
-      
       // Upsert na tabela group_user_settings
-      await _client
-          .from('group_user_settings')
-          .upsert({
-            'group_id': groupId,
-            'user_id': userId,
-            'is_pinned': isPinned,
-            'updated_at': DateTime.now().toIso8601String(),
-          });
-      
+      await _client.from('group_user_settings').upsert({
+        'group_id': groupId,
+        'user_id': userId,
+        'is_pinned': isPinned,
+        'updated_at': DateTime.now().toIso8601String(),
+      });
     } catch (e) {
       throw Exception('Failed to toggle pin: $e');
     }
@@ -628,7 +643,6 @@ class SupabaseGroupsDataSource implements GroupsDataSource {
   @override
   Future<void> toggleArchive(String groupId, String userId) async {
     try {
-      
       // Primeiro, busca o estado atual do grupo para o usuário
       final currentSettings = await _client
           .from('group_user_settings')
@@ -636,22 +650,18 @@ class SupabaseGroupsDataSource implements GroupsDataSource {
           .eq('group_id', groupId)
           .eq('user_id', userId)
           .maybeSingle();
-      
+
       // Determina o novo estado (toggle entre 'active' e 'archived')
       final currentState = currentSettings?['group_state'] ?? 'active';
       final newState = currentState == 'archived' ? 'active' : 'archived';
-      
-      
+
       // Upsert na tabela group_user_settings
-      await _client
-          .from('group_user_settings')
-          .upsert({
-            'group_id': groupId,
-            'user_id': userId,
-            'group_state': newState,
-            'updated_at': DateTime.now().toIso8601String(),
-          });
-      
+      await _client.from('group_user_settings').upsert({
+        'group_id': groupId,
+        'user_id': userId,
+        'group_state': newState,
+        'updated_at': DateTime.now().toIso8601String(),
+      });
     } catch (e) {
       throw Exception('Failed to toggle archive: $e');
     }
@@ -660,7 +670,6 @@ class SupabaseGroupsDataSource implements GroupsDataSource {
   @override
   Future<List<Map<String, dynamic>>> getGroupMembers(String groupId) async {
     try {
-      
       final response = await _client
           .from('group_members')
           .select('''
