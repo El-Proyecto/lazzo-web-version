@@ -43,8 +43,16 @@ class ConfirmEventBottomSheet extends ConsumerStatefulWidget {
 
 class _ConfirmEventBottomSheetState
     extends ConsumerState<ConfirmEventBottomSheet> {
+  bool _isCreating = false;
+
   /// Cria o evento usando os providers do Riverpod
   Future<void> _createEvent() async {
+    // Prevent double-tap
+    if (_isCreating) return;
+
+    setState(() {
+      _isCreating = true;
+    });
     final controller = ref.read(createEventControllerProvider.notifier);
 
     try {
@@ -121,8 +129,11 @@ class _ConfirmEventBottomSheetState
         }
       }
     } catch (e) {
-      // Mostrar erro
+      // Reset creating state on error
       if (mounted) {
+        setState(() {
+          _isCreating = false;
+        });
         TopBanner.showError(
           context,
           message: 'Error creating event: ${e.toString()}',
@@ -174,26 +185,52 @@ class _ConfirmEventBottomSheetState
 
           const SizedBox(height: 24),
 
-          // Create button
+          // Create button with optimistic UI
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
-              onPressed: () => _createEvent(),
+              onPressed: _isCreating ? null : () => _createEvent(),
               style: ElevatedButton.styleFrom(
-                backgroundColor: BrandColors.planning,
+                backgroundColor: _isCreating
+                    ? BrandColors.planning.withOpacity(0.5)
+                    : BrandColors.planning,
                 padding: const EdgeInsets.symmetric(
                   vertical: 12,
                 ),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
                 ),
+                disabledBackgroundColor: BrandColors.planning.withOpacity(0.5),
               ),
-              child: Text(
-                'Create',
-                style: AppText.titleMediumEmph.copyWith(
-                  color: BrandColors.text1,
-                ),
-              ),
+              child: _isCreating
+                  ? Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              BrandColors.text1,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: Gaps.sm),
+                        Text(
+                          'Creating...',
+                          style: AppText.titleMediumEmph.copyWith(
+                            color: BrandColors.text1,
+                          ),
+                        ),
+                      ],
+                    )
+                  : Text(
+                      'Create',
+                      style: AppText.titleMediumEmph.copyWith(
+                        color: BrandColors.text1,
+                      ),
+                    ),
             ),
           ),
         ],

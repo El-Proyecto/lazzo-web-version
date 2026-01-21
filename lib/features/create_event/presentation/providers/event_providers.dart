@@ -38,10 +38,10 @@ final deleteEventUseCaseProvider = Provider<DeleteEventUseCase>((ref) {
 /// Create Event Controller provider for managing form state
 final createEventControllerProvider =
     StateNotifierProvider<CreateEventController, CreateEventState>((ref) {
-      return CreateEventController(
-        createEventUseCase: ref.watch(createEventUseCaseProvider),
-      );
-    });
+  return CreateEventController(
+    createEventUseCase: ref.watch(createEventUseCaseProvider),
+  );
+});
 
 /// State class for create event form
 class CreateEventState {
@@ -73,11 +73,15 @@ class CreateEventController extends StateNotifier<CreateEventState> {
   final CreateEventUseCase _createEventUseCase;
 
   CreateEventController({required CreateEventUseCase createEventUseCase})
-    : _createEventUseCase = createEventUseCase,
-      super(const CreateEventState());
+      : _createEventUseCase = createEventUseCase,
+        super(const CreateEventState());
 
   /// Create a new event
+  /// Prevents duplicate calls by checking isLoading state
   Future<void> createEvent(Event event) async {
+    // Prevent duplicate calls while already creating
+    if (state.isLoading) return;
+
     state = state.copyWith(isLoading: true, error: null);
 
     try {
@@ -92,6 +96,7 @@ class CreateEventController extends StateNotifier<CreateEventState> {
       state = state.copyWith(isLoading: false, createdEvent: createdEvent);
     } catch (e) {
       state = state.copyWith(isLoading: false, error: e.toString());
+      rethrow; // Rethrow to allow UI to handle error
     }
   }
 
@@ -104,11 +109,11 @@ class CreateEventController extends StateNotifier<CreateEventState> {
 /// Edit Event Controller provider for managing edit operations
 final editEventControllerProvider =
     StateNotifierProvider<EditEventController, EditEventState>((ref) {
-      return EditEventController(
-        updateEventUseCase: ref.watch(updateEventUseCaseProvider),
-        deleteEventUseCase: ref.watch(deleteEventUseCaseProvider),
-      );
-    });
+  return EditEventController(
+    updateEventUseCase: ref.watch(updateEventUseCaseProvider),
+    deleteEventUseCase: ref.watch(deleteEventUseCaseProvider),
+  );
+});
 
 /// State class for edit event form
 class EditEventState {
@@ -151,9 +156,9 @@ class EditEventController extends StateNotifier<EditEventState> {
   EditEventController({
     required UpdateEventUseCase updateEventUseCase,
     required DeleteEventUseCase deleteEventUseCase,
-  }) : _updateEventUseCase = updateEventUseCase,
-       _deleteEventUseCase = deleteEventUseCase,
-       super(const EditEventState());
+  })  : _updateEventUseCase = updateEventUseCase,
+        _deleteEventUseCase = deleteEventUseCase,
+        super(const EditEventState());
 
   /// Update an existing event
   Future<void> updateEvent({
@@ -213,11 +218,11 @@ final eventsForGroupProvider = FutureProvider.family<List<Event>, String>((
 /// Provider for searching locations
 final locationSearchProvider =
     FutureProvider.family<List<EventLocation>, String>((ref, query) async {
-      if (query.isEmpty) return [];
+  if (query.isEmpty) return [];
 
-      final repository = ref.watch(eventRepositoryProvider);
-      return repository.searchLocations(query);
-    });
+  final repository = ref.watch(eventRepositoryProvider);
+  return repository.searchLocations(query);
+});
 
 /// Provider for getting current location
 final currentLocationProvider = FutureProvider<EventLocation?>((ref) async {
