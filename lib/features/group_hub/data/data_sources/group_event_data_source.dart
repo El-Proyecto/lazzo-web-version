@@ -1,4 +1,5 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../../../services/avatar_cache_service.dart';
 
 /// Data source for group events from Supabase
 abstract class GroupEventDataSource {
@@ -15,39 +16,9 @@ abstract class GroupEventDataSource {
 /// Supabase implementation using group_hub_events_view
 class SupabaseGroupEventDataSource implements GroupEventDataSource {
   final SupabaseClient _client;
-  static const String _avatarBucketName = 'users-profile-pic';
+  final AvatarCacheService _avatarCache = AvatarCacheService();
 
   SupabaseGroupEventDataSource(this._client);
-
-  /// Convert storage path to authenticated URL for private bucket
-  /// Returns empty string if path is null/empty
-  /// Uses createSignedUrl for private bucket access with 1 hour expiry
-  /// Normalizes storage path by removing leading slashes
-  Future<String> _getAuthenticatedAvatarUrl(String? storagePath) async {
-    if (storagePath == null || storagePath.isEmpty) {
-      return '';
-    }
-
-    // Already a full URL, return as is
-    if (storagePath.startsWith('http://') ||
-        storagePath.startsWith('https://')) {
-      return storagePath;
-    }
-
-    try {
-      // Normalize path - remove leading slash if present
-      final normalizedPath = storagePath.startsWith('/') ? storagePath.substring(1) : storagePath;
-      
-      // Storage path - convert to signed URL for private bucket
-      // Valid for 1 hour (3600 seconds)
-      final url = await _client.storage
-          .from(_avatarBucketName)
-          .createSignedUrl(normalizedPath, 3600);
-      return url;
-    } catch (e) {
-      return '';
-    }
-  }
 
   @override
   Future<List<Map<String, dynamic>>> getGroupEvents(String groupId) async {
@@ -65,17 +36,31 @@ class SupabaseGroupEventDataSource implements GroupEventDataSource {
       // Get current user ID to determine their vote status
       final currentUserId = _client.auth.currentUser?.id;
 
-      // Enrich each event with current_user_rsvp field and convert avatar URLs
+      // ✅ OPTIMIZATION: Collect all unique avatar paths first
+      final avatarPaths = <String>{};
+      for (final event in events) {
+        _collectAvatarPaths(event, 'going_users', avatarPaths);
+        _collectAvatarPaths(event, 'not_going_users', avatarPaths);
+        _collectAvatarPaths(event, 'no_response_users', avatarPaths);
+      }
+
+      // ✅ Batch fetch all avatar signed URLs in parallel
+      final signedUrls = await _avatarCache.batchGetAvatarUrls(
+        _client,
+        avatarPaths.toList(),
+      );
+
+      // Enrich each event with current_user_rsvp field and apply cached avatar URLs
       for (final event in events) {
         if (currentUserId != null) {
           event['current_user_rsvp'] =
               _getCurrentUserRsvp(event, currentUserId);
         }
 
-        // Convert avatar URLs in all user arrays
-        await _convertAvatarUrlsInUserArray(event, 'going_users');
-        await _convertAvatarUrlsInUserArray(event, 'not_going_users');
-        await _convertAvatarUrlsInUserArray(event, 'no_response_users');
+        // ✅ Apply cached signed URLs to all user arrays
+        _applyAvatarUrls(event, 'going_users', signedUrls);
+        _applyAvatarUrls(event, 'not_going_users', signedUrls);
+        _applyAvatarUrls(event, 'no_response_users', signedUrls);
       }
 
       return events;
@@ -84,16 +69,34 @@ class SupabaseGroupEventDataSource implements GroupEventDataSource {
     }
   }
 
-  /// Helper to convert avatar URLs in a user array within an event
-  Future<void> _convertAvatarUrlsInUserArray(
-      Map<String, dynamic> event, String arrayKey) async {
+  /// Collect unique avatar paths from a user array
+  void _collectAvatarPaths(
+      Map<String, dynamic> event, String arrayKey, Set<String> paths) {
     final users = event[arrayKey] as List?;
     if (users == null) return;
 
     for (final user in users) {
-      if (user is Map<String, dynamic> && user['avatar_url'] != null) {
-        user['avatar_url'] =
-            await _getAuthenticatedAvatarUrl(user['avatar_url']);
+      if (user is Map<String, dynamic>) {
+        final avatarPath = user['avatar_url'] as String?;
+        if (avatarPath != null && avatarPath.isNotEmpty) {
+          paths.add(avatarPath);
+        }
+      }
+    }
+  }
+
+  /// Apply cached signed URLs to a user array
+  void _applyAvatarUrls(Map<String, dynamic> event, String arrayKey,
+      Map<String, String> signedUrls) {
+    final users = event[arrayKey] as List?;
+    if (users == null) return;
+
+    for (final user in users) {
+      if (user is Map<String, dynamic>) {
+        final avatarPath = user['avatar_url'] as String?;
+        if (avatarPath != null && signedUrls.containsKey(avatarPath)) {
+          user['avatar_url'] = signedUrls[avatarPath];
+        }
       }
     }
   }
@@ -165,10 +168,20 @@ class SupabaseGroupEventDataSource implements GroupEventDataSource {
               _getCurrentUserRsvp(response, currentUserId);
         }
 
-        // Convert avatar URLs in all user arrays (same as getGroupEvents)
-        await _convertAvatarUrlsInUserArray(response, 'going_users');
-        await _convertAvatarUrlsInUserArray(response, 'not_going_users');
-        await _convertAvatarUrlsInUserArray(response, 'no_response_users');
+        // ✅ OPTIMIZATION: Batch convert avatar URLs
+        final avatarPaths = <String>{};
+        _collectAvatarPaths(response, 'going_users', avatarPaths);
+        _collectAvatarPaths(response, 'not_going_users', avatarPaths);
+        _collectAvatarPaths(response, 'no_response_users', avatarPaths);
+
+        final signedUrls = await _avatarCache.batchGetAvatarUrls(
+          _client,
+          avatarPaths.toList(),
+        );
+
+        _applyAvatarUrls(response, 'going_users', signedUrls);
+        _applyAvatarUrls(response, 'not_going_users', signedUrls);
+        _applyAvatarUrls(response, 'no_response_users', signedUrls);
       }
 
       return response;
@@ -188,6 +201,8 @@ class SupabaseGroupEventDataSource implements GroupEventDataSource {
       final notGoingUsers = event['not_going_users'] as List? ?? [];
       final noResponseUsers = event['no_response_users'] as List? ?? [];
 
+      // ✅ OPTIMIZATION: Avatar URLs are already converted by getEventById batch processing
+      // No need to call _getAuthenticatedAvatarUrl here
       final allVotes = <Map<String, dynamic>>[];
 
       // Add going votes
@@ -195,10 +210,7 @@ class SupabaseGroupEventDataSource implements GroupEventDataSource {
         final userId = user['user_id'];
         final userName =
             user['name'] ?? user['full_name'] ?? user['display_name'] ?? 'User';
-        final rawAvatar = user['avatar_url'];
-
-        // Convert storage path to authenticated URL
-        final userAvatar = await _getAuthenticatedAvatarUrl(rawAvatar);
+        final userAvatar = user['avatar_url']; // ✅ Already signed URL
 
         allVotes.add({
           'user_id': userId,
@@ -213,8 +225,7 @@ class SupabaseGroupEventDataSource implements GroupEventDataSource {
       for (final user in notGoingUsers) {
         final userName =
             user['name'] ?? user['full_name'] ?? user['display_name'] ?? 'User';
-        final rawAvatar = user['avatar_url'];
-        final userAvatar = await _getAuthenticatedAvatarUrl(rawAvatar);
+        final userAvatar = user['avatar_url']; // ✅ Already signed URL
 
         allVotes.add({
           'user_id': user['user_id'],
@@ -229,8 +240,7 @@ class SupabaseGroupEventDataSource implements GroupEventDataSource {
       for (final user in noResponseUsers) {
         final userName =
             user['name'] ?? user['full_name'] ?? user['display_name'] ?? 'User';
-        final rawAvatar = user['avatar_url'];
-        final userAvatar = await _getAuthenticatedAvatarUrl(rawAvatar);
+        final userAvatar = user['avatar_url']; // ✅ Already signed URL
 
         allVotes.add({
           'user_id': user['user_id'],

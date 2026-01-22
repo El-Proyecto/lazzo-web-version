@@ -1,5 +1,6 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../shared/components/widgets/rsvp_widget.dart';
+import '../../../../services/avatar_cache_service.dart';
 import '../../domain/entities/home_event.dart';
 import '../../domain/entities/participant_photo.dart';
 
@@ -167,6 +168,25 @@ class _HomeEventModel {
         return [];
       }
 
+      // ✅ OPTIMIZATION: Collect all unique avatar paths first
+      final avatarPaths = <String>{};
+      for (final row in response as List<dynamic>) {
+        if (row is! Map<String, dynamic>) continue;
+        final userData = row['users'];
+        if (userData is! Map<String, dynamic>) continue;
+        final avatarPath = userData['avatar_url'] as String?;
+        if (avatarPath != null && avatarPath.isNotEmpty) {
+          avatarPaths.add(avatarPath);
+        }
+      }
+
+      // ✅ Batch fetch all avatar signed URLs in parallel
+      final avatarCache = AvatarCacheService();
+      final signedUrls = await avatarCache.batchGetAvatarUrls(
+        supabaseClient,
+        avatarPaths.toList(),
+      );
+
       // Group photos by uploader
       final Map<String, ParticipantPhoto> participantsMap = {};
 
@@ -182,20 +202,8 @@ class _HomeEventModel {
         final displayName = userData['display_name'] as String? ?? 'Unknown';
         final avatarPath = userData['avatar_url'] as String?;
 
-        // Get signed URL for avatar
-        String? avatarUrl;
-        if (avatarPath != null && avatarPath.isNotEmpty) {
-          try {
-            final normalizedPath = avatarPath.startsWith('/')
-                ? avatarPath.substring(1)
-                : avatarPath;
-            avatarUrl = await supabaseClient.storage
-                .from('users-profile-pic')
-                .createSignedUrl(normalizedPath, 3600);
-          } catch (e) {
-            avatarUrl = null;
-          }
-        }
+        // ✅ Get signed URL from batch result (already fetched)
+        final avatarUrl = avatarPath != null ? signedUrls[avatarPath] : null;
 
         // Add or update participant
         if (participantsMap.containsKey(uploaderId)) {
@@ -235,22 +243,10 @@ class _HomeEventModel {
       if (u is Map<String, dynamic>) {
         final userId = _asString(u['user_id']) ?? '';
         final displayName = _asString(u['display_name']) ?? 'Unknown';
-        final avatarPath = _asString(u['avatar_url']);
 
-        // Convert avatar to signed URL if present
-        String? signedAvatarUrl;
-        if (avatarPath != null && avatarPath.isNotEmpty) {
-          try {
-            final normalizedPath = avatarPath.startsWith('/')
-                ? avatarPath.substring(1)
-                : avatarPath;
-            signedAvatarUrl = await supabaseClient.storage
-                .from('users-profile-pic')
-                .createSignedUrl(normalizedPath, 3600);
-          } catch (e) {
-            signedAvatarUrl = null;
-          }
-        }
+        // ✅ OPTIMIZATION: Avatar URL is already signed by batch processing in data source
+        // No need to call createSignedUrl here anymore
+        final signedAvatarUrl = _asString(u['avatar_url']);
 
         // Use "You" for current user
         final userName = userId == currentUserId ? 'You' : displayName;

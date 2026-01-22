@@ -1,6 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/home_event_model.dart';
 import '../../domain/entities/home_event.dart';
+import '../../../../services/avatar_cache_service.dart';
 
 /// Remote data source for home events
 /// Fetches events from Supabase and maps to entities
@@ -8,6 +9,7 @@ class HomeEventRemoteDataSource {
   static const String _eventsView = 'home_events_view';
 
   final SupabaseClient client;
+  final AvatarCacheService _avatarCache = AvatarCacheService();
 
   HomeEventRemoteDataSource(this.client);
 
@@ -15,7 +17,7 @@ class HomeEventRemoteDataSource {
   /// Priority: living (4) > recap (3) > confirmed (2) > pending (1)
   Future<HomeEventEntity?> fetchNextEvent(String userId) async {
     try {
-            // ✅ Fetch multiple events and choose highest priority on frontend
+      // ✅ Fetch multiple events and choose highest priority on frontend
       // This allows proper priority calculation: living > recap > confirmed
       final response = await client
           .from(_eventsView)
@@ -40,10 +42,14 @@ class HomeEventRemoteDataSource {
         return null;
       }
 
+      // ✅ OPTIMIZATION: Batch convert avatar paths to signed URLs BEFORE entity creation
+      final rawData = data.cast<Map<String, dynamic>>();
+      await _batchConvertAvatarUrls(rawData);
+
       // ✅ Convert all events and find highest priority
       // Pass callback to persist status changes
-      final eventsFutures = data.map((e) => homeEventFromMap(
-            e as Map<String, dynamic>,
+      final eventsFutures = rawData.map((e) => homeEventFromMap(
+            e,
             onStatusMismatch: (eventId, newStatus) {
               // Persist status change asynchronously (fire and forget)
               updateEventStatus(eventId, newStatus).catchError((error) {
@@ -61,7 +67,7 @@ class HomeEventRemoteDataSource {
       final nonExpiredEvents = events.where((event) {
         // Keep confirmed/living/recap events always
         if (event.status != HomeEventStatus.pending) return true;
-        
+
         // For pending events: exclude if date is in the past (expired)
         if (event.date == null) return true; // Keep pending without date
         return event.date!.isAfter(now); // Only keep future pending events
@@ -86,7 +92,7 @@ class HomeEventRemoteDataSource {
       });
 
       final nextEvent = nonExpiredEvents.first;
-            return nextEvent;
+      return nextEvent;
     } catch (e) {
       return null;
     }
@@ -95,7 +101,7 @@ class HomeEventRemoteDataSource {
   /// Fetch confirmed events (user voted yes, not next event)
   Future<List<HomeEventEntity>> fetchConfirmedEvents(String userId) async {
     try {
-            final response = await client
+      final response = await client
           .from(_eventsView)
           .select('''
             event_id, event_name, emoji,
@@ -114,9 +120,12 @@ class HomeEventRemoteDataSource {
 
       final data = response as List<dynamic>;
 
+      // ✅ OPTIMIZATION: Batch convert avatar paths to signed URLs BEFORE entity creation
+      final rawData = data.cast<Map<String, dynamic>>();
+      await _batchConvertAvatarUrls(rawData);
 
-      final eventsFutures = data.map((e) => homeEventFromMap(
-            e as Map<String, dynamic>,
+      final eventsFutures = rawData.map((e) => homeEventFromMap(
+            e,
             onStatusMismatch: (eventId, newStatus) {
               updateEventStatus(eventId, newStatus).catchError((error) {
                 return false;
@@ -127,7 +136,7 @@ class HomeEventRemoteDataSource {
           ));
 
       final events = await Future.wait(eventsFutures);
-      
+
       // Filter out past events (keep future and null dates)
       final now = DateTime.now();
       final filteredEvents = events.where((event) {
@@ -137,7 +146,7 @@ class HomeEventRemoteDataSource {
         final isFuture = event.date!.isAfter(now);
         return isFuture; // Keep future events
       }).toList();
-      
+
       // Sort: future dates first (ascending), null dates last
       filteredEvents.sort((a, b) {
         if (a.date == null && b.date == null) return 0;
@@ -147,7 +156,7 @@ class HomeEventRemoteDataSource {
       });
 
       final result = filteredEvents.take(10).toList();
-            return result;
+      return result;
     } catch (e) {
       return [];
     }
@@ -156,7 +165,7 @@ class HomeEventRemoteDataSource {
   /// Fetch pending events (awaiting user vote or date confirmation)
   Future<List<HomeEventEntity>> fetchPendingEvents(String userId) async {
     try {
-            final response = await client
+      final response = await client
           .from(_eventsView)
           .select('''
             event_id, event_name, emoji,
@@ -175,10 +184,13 @@ class HomeEventRemoteDataSource {
 
       final data = response as List<dynamic>;
 
+      // ✅ OPTIMIZATION: Batch convert avatar paths to signed URLs BEFORE entity creation
+      final rawData = data.cast<Map<String, dynamic>>();
+      await _batchConvertAvatarUrls(rawData);
 
       // Convert to entities with status persistence
-      final eventsFutures = data.map((e) => homeEventFromMap(
-            e as Map<String, dynamic>,
+      final eventsFutures = rawData.map((e) => homeEventFromMap(
+            e,
             onStatusMismatch: (eventId, newStatus) {
               updateEventStatus(eventId, newStatus).catchError((error) {
                 return false;
@@ -190,7 +202,6 @@ class HomeEventRemoteDataSource {
 
       final events = await Future.wait(eventsFutures);
 
-
       // Sort: future dates first (ascending), null dates last
       events.sort((a, b) {
         if (a.date == null && b.date == null) return 0;
@@ -200,7 +211,7 @@ class HomeEventRemoteDataSource {
       });
 
       final result = events.take(10).toList();
-            return result;
+      return result;
     } catch (e) {
       return [];
     }
@@ -267,9 +278,13 @@ class HomeEventRemoteDataSource {
         return [];
       }
 
+      // ✅ OPTIMIZATION: Batch convert avatar paths to signed URLs BEFORE entity creation
+      final rawData = data.cast<Map<String, dynamic>>();
+      await _batchConvertAvatarUrls(rawData);
+
       // Convert to entities with status persistence
-      final eventsFutures = data.map((e) => homeEventFromMap(
-            e as Map<String, dynamic>,
+      final eventsFutures = rawData.map((e) => homeEventFromMap(
+            e,
             onStatusMismatch: (eventId, newStatus) {
               updateEventStatus(eventId, newStatus).catchError((error) {
                 return false;
@@ -281,7 +296,6 @@ class HomeEventRemoteDataSource {
 
       final events = await Future.wait(eventsFutures);
 
-
       // Sort by end_datetime (soonest to end first)
       events.sort((a, b) {
         if (a.endDate == null && b.endDate == null) return 0;
@@ -290,9 +304,79 @@ class HomeEventRemoteDataSource {
         return a.endDate!.compareTo(b.endDate!);
       });
 
-            return events;
+      return events;
     } catch (e) {
       return [];
+    }
+  }
+
+  /// Batch process avatar URLs for all events
+  /// Collects all unique avatar paths and fetches them in parallel
+  /// Much more efficient than fetching one by one
+  Future<void> _batchConvertAvatarUrls(
+      List<Map<String, dynamic>> events) async {
+    if (events.isEmpty) return;
+
+    // 1. Collect all unique avatar paths from all events
+    final allPaths = <String>{};
+
+    for (final event in events) {
+      _collectAvatarPaths(event, 'going_users', allPaths);
+      _collectAvatarPaths(event, 'not_going_users', allPaths);
+      _collectAvatarPaths(event, 'no_response_users', allPaths);
+    }
+
+    if (allPaths.isEmpty) return;
+
+    // 2. Batch fetch all URLs in parallel (from cache or storage)
+    final urlMap = await _avatarCache.batchGetAvatarUrls(
+      client,
+      allPaths.toList(),
+    );
+
+    // 3. Apply fetched URLs back to all events
+    for (final event in events) {
+      _applyAvatarUrls(event, 'going_users', urlMap);
+      _applyAvatarUrls(event, 'not_going_users', urlMap);
+      _applyAvatarUrls(event, 'no_response_users', urlMap);
+    }
+  }
+
+  /// Collect avatar paths from a user array into the set
+  void _collectAvatarPaths(
+    Map<String, dynamic> event,
+    String arrayKey,
+    Set<String> paths,
+  ) {
+    final users = event[arrayKey] as List?;
+    if (users == null) return;
+
+    for (final user in users) {
+      if (user is Map<String, dynamic>) {
+        final avatarUrl = user['avatar_url'];
+        if (avatarUrl != null && avatarUrl is String && avatarUrl.isNotEmpty) {
+          paths.add(avatarUrl);
+        }
+      }
+    }
+  }
+
+  /// Apply fetched avatar URLs to a user array
+  void _applyAvatarUrls(
+    Map<String, dynamic> event,
+    String arrayKey,
+    Map<String, String> urlMap,
+  ) {
+    final users = event[arrayKey] as List?;
+    if (users == null) return;
+
+    for (final user in users) {
+      if (user is Map<String, dynamic>) {
+        final avatarUrl = user['avatar_url'];
+        if (avatarUrl != null && avatarUrl is String) {
+          user['avatar_url'] = urlMap[avatarUrl] ?? '';
+        }
+      }
     }
   }
 }
