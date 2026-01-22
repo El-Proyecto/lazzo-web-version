@@ -609,4 +609,56 @@ class FakeHomeEventRepository implements HomeEventRepository {
     // To test multiple living/recap events, you can return mock data here
     return [];
   }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // COUNT & PAGINATION METHODS (for "See All" functionality)
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  @override
+  Future<int> getConfirmedEventsCount() async {
+    await Future.delayed(const Duration(milliseconds: 100));
+    if (mockEmptyState == 'no-events') return 0;
+    // Return count from fake confirmed events
+    final events = await getConfirmedEvents();
+    return events.length;
+  }
+
+  @override
+  Future<int> getPendingEventsCount() async {
+    await Future.delayed(const Duration(milliseconds: 100));
+    if (mockEmptyState == 'no-events') return 0;
+    // Return count from fake pending events
+    final events = await getPendingEvents();
+    return events.length;
+  }
+
+  @override
+  Future<List<HomeEventEntity>> getConfirmedEventsPaginated({
+    required int limit,
+    required int offset,
+  }) async {
+    await Future.delayed(const Duration(milliseconds: 300));
+    if (mockEmptyState == 'no-events') return [];
+    final allEvents = await getConfirmedEvents();
+    // Apply pagination
+    if (offset >= allEvents.length) return [];
+    final end =
+        (offset + limit) > allEvents.length ? allEvents.length : offset + limit;
+    return allEvents.sublist(offset, end);
+  }
+
+  @override
+  Future<List<HomeEventEntity>> getPendingEventsPaginated({
+    required int limit,
+    required int offset,
+  }) async {
+    await Future.delayed(const Duration(milliseconds: 300));
+    if (mockEmptyState == 'no-events') return [];
+    final allEvents = await getPendingEvents();
+    // Apply pagination
+    if (offset >= allEvents.length) return [];
+    final end =
+        (offset + limit) > allEvents.length ? allEvents.length : offset + limit;
+    return allEvents.sublist(offset, end);
+  }
 }

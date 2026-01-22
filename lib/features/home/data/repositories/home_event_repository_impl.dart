@@ -58,4 +58,50 @@ class HomeEventRepositoryImpl implements HomeEventRepository {
     }
     return await dataSource.fetchLivingAndRecapEvents(userId);
   }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // COUNT & PAGINATION METHODS
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  @override
+  Future<int> getConfirmedEventsCount() async {
+    final userId = _currentUserId;
+    if (userId == null) return 0;
+    return await dataSource.getConfirmedEventsCount(userId);
+  }
+
+  @override
+  Future<int> getPendingEventsCount() async {
+    final userId = _currentUserId;
+    if (userId == null) return 0;
+    return await dataSource.getPendingEventsCount(userId);
+  }
+
+  @override
+  Future<List<HomeEventEntity>> getConfirmedEventsPaginated({
+    required int limit,
+    required int offset,
+  }) async {
+    final userId = _currentUserId;
+    if (userId == null) return [];
+    return await dataSource.fetchConfirmedEventsPaginated(
+      userId,
+      limit: limit,
+      offset: offset,
+    );
+  }
+
+  @override
+  Future<List<HomeEventEntity>> getPendingEventsPaginated({
+    required int limit,
+    required int offset,
+  }) async {
+    final userId = _currentUserId;
+    if (userId == null) return [];
+    return await dataSource.fetchPendingEventsPaginated(
+      userId,
+      limit: limit,
+      offset: offset,
+    );
+  }
 }

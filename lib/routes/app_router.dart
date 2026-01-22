@@ -33,11 +33,14 @@ import '../features/memory/presentation/pages/share_memory_page.dart';
 import '../features/settings/presentation/pages/settings_page.dart';
 import '../features/settings/presentation/pages/report_problem_page.dart';
 import '../features/settings/presentation/pages/share_suggestion_page.dart';
+import '../features/home/presentation/pages/events_list_page.dart';
 // share_memory_preview_page import removed - uses direct navigation
 
 class AppRouter {
   static const String home = '/home';
   static const String homeSearch = '/home-search';
+  static const String confirmedEventsList = '/confirmed-events-list';
+  static const String pendingEventsList = '/pending-events-list';
   static const String auth = '/auth';
   static const String mainLayout = '/main';
   static const String groups = '/groups';
@@ -76,6 +79,10 @@ class AppRouter {
     auth: (context) => const AuthPage(),
     home: (context) => const HomePage(),
     homeSearch: (context) => const HomeSearchPage(),
+    confirmedEventsList: (context) =>
+        const EventsListPage(type: EventsListType.confirmed),
+    pendingEventsList: (context) =>
+        const EventsListPage(type: EventsListType.pending),
     mainLayout: (context) => const MainLayout(),
     groups: (context) => const GroupsPage(),
     createGroup: (context) => const CreateGroupPage(),

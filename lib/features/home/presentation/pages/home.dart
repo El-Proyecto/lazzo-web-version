@@ -92,6 +92,11 @@ class _HomePageState extends ConsumerState<HomePage> {
   String _formatEventDate(DateTime? date) {
     if (date == null) return 'Date and Location to be decided';
 
+    // Check if event date has expired
+    if (date.isBefore(DateTime.now())) {
+      return 'Event date expired!';
+    }
+
     final months = [
       'Jan',
       'Feb',
@@ -127,6 +132,12 @@ class _HomePageState extends ConsumerState<HomePage> {
       case HomeEventStatus.recap:
         return HomeEventCardState.recap;
     }
+  }
+
+  /// Check if event date has expired
+  bool _isEventExpired(DateTime? date) {
+    if (date == null) return false;
+    return date.isBefore(DateTime.now());
   }
 
   EventSmallCardState _mapStatusToSmallCardState(HomeEventStatus status) {
@@ -202,17 +213,10 @@ class _HomePageState extends ConsumerState<HomePage> {
     final nextEventStatus = ref.watch(navBarStateProvider);
 
     // Debug prints to check data received
-    nextEventAsync.whenData((event) {
-          });
-    confirmedEventsAsync.whenData((events) {
-
-    });
-    pendingEventsAsync.whenData((events) {
-
-    });
-    livingAndRecapEventsAsync.whenData((events) {
-
-    });
+    nextEventAsync.whenData((event) {});
+    confirmedEventsAsync.whenData((events) {});
+    pendingEventsAsync.whenData((events) {});
+    livingAndRecapEventsAsync.whenData((events) {});
 
     // Calculate empty states based on provider data
     // IMPORTANT: Only show empty states when data is LOADED, not during loading
@@ -403,7 +407,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                                   state:
                                       _mapStatusToHomeCardState(event.status),
                                   onTap: () async {
-                                                                        await Navigator.pushNamed(
+                                    await Navigator.pushNamed(
                                       context,
                                       AppRouter.event,
                                       arguments: {'eventId': event.id},
@@ -466,7 +470,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                                       event: livingEvents.first,
                                       state: HomeEventCardState.living,
                                       onTap: () async {
-                                                                                await Navigator.pushNamed(
+                                        await Navigator.pushNamed(
                                           context,
                                           AppRouter.eventLiving,
                                           arguments: {
@@ -547,7 +551,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                                         event: recapEvents.first,
                                         state: HomeEventCardState.recap,
                                         onTap: () async {
-                                                                                    await Navigator.pushNamed(
+                                          await Navigator.pushNamed(
                                             context,
                                             AppRouter.memory,
                                             arguments: {
@@ -750,28 +754,52 @@ class _HomePageState extends ConsumerState<HomePage> {
                     if (events.isEmpty) {
                       return const SizedBox.shrink();
                     }
+                    // Limit to 10 events for home display
+                    final displayEvents = events.take(10).toList();
+                    final hasMore = events.length > 10;
+
                     return Column(
                       children: [
                         SectionBlock(
                           title: 'Confirmed Events',
+                          // Show "See All" button when there are more than 10 events
+                          trailing: hasMore
+                              ? GestureDetector(
+                                  onTap: () {
+                                    Navigator.pushNamed(
+                                      context,
+                                      AppRouter.confirmedEventsList,
+                                    );
+                                  },
+                                  child: Text(
+                                    'See All',
+                                    style: AppText.labelLarge.copyWith(
+                                      color:
+                                          Theme.of(context).colorScheme.primary,
+                                    ),
+                                  ),
+                                )
+                              : null,
                           child: Column(
-                            children: events.asMap().entries.map((entry) {
+                            children:
+                                displayEvents.asMap().entries.map((entry) {
                               final index = entry.key;
                               final event = entry.value;
+                              final isExpired = _isEventExpired(event.date);
                               return Column(
                                 children: [
                                   EventSmallCard(
                                     emoji: event.emoji,
                                     title: event.name,
                                     dateTime: _formatEventDate(event.date),
-                                    location: event.date == null
-                                        ? null // Don't show location when date is TBD
+                                    location: (event.date == null || isExpired)
+                                        ? null // Don't show location when date is TBD or expired
                                         : (event.location ??
                                             'Location to be decided'),
                                     state: _mapStatusToSmallCardState(
                                         event.status),
                                     onTap: () async {
-                                                                            // ✅ Navigate based on actual calculated status
+                                      // ✅ Navigate based on actual calculated status
                                       if (event.status ==
                                           HomeEventStatus.living) {
                                         await Navigator.pushNamed(
@@ -796,7 +824,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                                       }
                                     },
                                   ),
-                                  if (index < events.length - 1)
+                                  if (index < displayEvents.length - 1)
                                     const SizedBox(height: Gaps.sm),
                                 ],
                               );
@@ -822,28 +850,52 @@ class _HomePageState extends ConsumerState<HomePage> {
                     if (events.isEmpty) {
                       return const SizedBox.shrink();
                     }
+                    // Limit to 10 events for home display
+                    final displayEvents = events.take(10).toList();
+                    final hasMore = events.length > 10;
+
                     return Column(
                       children: [
                         SectionBlock(
                           title: 'Pending Events',
+                          // Show "See All" button when there are more than 10 events
+                          trailing: hasMore
+                              ? GestureDetector(
+                                  onTap: () {
+                                    Navigator.pushNamed(
+                                      context,
+                                      AppRouter.pendingEventsList,
+                                    );
+                                  },
+                                  child: Text(
+                                    'See All',
+                                    style: AppText.labelLarge.copyWith(
+                                      color:
+                                          Theme.of(context).colorScheme.primary,
+                                    ),
+                                  ),
+                                )
+                              : null,
                           child: Column(
-                            children: events.asMap().entries.map((entry) {
+                            children:
+                                displayEvents.asMap().entries.map((entry) {
                               final index = entry.key;
                               final event = entry.value;
+                              final isExpired = _isEventExpired(event.date);
                               return Column(
                                 children: [
                                   EventSmallCard(
                                     emoji: event.emoji,
                                     title: event.name,
                                     dateTime: _formatEventDate(event.date),
-                                    location: event.date == null
-                                        ? null // Don't show location when date is TBD
+                                    location: (event.date == null || isExpired)
+                                        ? null // Don't show location when date is TBD or expired
                                         : (event.location ??
                                             'Location to be decided'),
                                     state: _mapStatusToSmallCardState(
                                         event.status),
                                     onTap: () async {
-                                                                            // ✅ Navigate based on actual calculated status
+                                      // ✅ Navigate based on actual calculated status
                                       if (event.status ==
                                           HomeEventStatus.living) {
                                         await Navigator.pushNamed(
@@ -868,7 +920,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                                       }
                                     },
                                   ),
-                                  if (index < events.length - 1)
+                                  if (index < displayEvents.length - 1)
                                     const SizedBox(height: Gaps.sm),
                                 ],
                               );

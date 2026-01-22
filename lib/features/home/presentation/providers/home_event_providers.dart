@@ -186,6 +186,170 @@ final livingAndRecapEventsControllerProvider =
   return await useCase();
 });
 
+// ═══════════════════════════════════════════════════════════════════════════
+// COUNT PROVIDERS (for "See All" button visibility)
+// ═══════════════════════════════════════════════════════════════════════════
+
+/// Total count of confirmed events (for showing "See All" when > 10)
+final confirmedEventsCountProvider =
+    FutureProvider.autoDispose<int>((ref) async {
+  final repo = ref.watch(homeEventRepositoryProvider);
+  return await repo.getConfirmedEventsCount();
+});
+
+/// Total count of pending events (for showing "See All" when > 10)
+final pendingEventsCountProvider = FutureProvider.autoDispose<int>((ref) async {
+  final repo = ref.watch(homeEventRepositoryProvider);
+  return await repo.getPendingEventsCount();
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// PAGINATION STATE & CONTROLLERS (for Events List Page)
+// ═══════════════════════════════════════════════════════════════════════════
+
+/// State class for paginated events list
+class PaginatedHomeEventsState {
+  final List<HomeEventEntity> events;
+  final bool hasMore;
+  final bool isLoading;
+  final bool isLoadingMore;
+  final String? error;
+
+  const PaginatedHomeEventsState({
+    this.events = const [],
+    this.hasMore = true,
+    this.isLoading = false,
+    this.isLoadingMore = false,
+    this.error,
+  });
+
+  PaginatedHomeEventsState copyWith({
+    List<HomeEventEntity>? events,
+    bool? hasMore,
+    bool? isLoading,
+    bool? isLoadingMore,
+    String? error,
+  }) {
+    return PaginatedHomeEventsState(
+      events: events ?? this.events,
+      hasMore: hasMore ?? this.hasMore,
+      isLoading: isLoading ?? this.isLoading,
+      isLoadingMore: isLoadingMore ?? this.isLoadingMore,
+      error: error,
+    );
+  }
+}
+
+/// Controller for paginated confirmed events (See All page)
+class ConfirmedEventsListController
+    extends StateNotifier<PaginatedHomeEventsState> {
+  final HomeEventRepository _repository;
+  static const int _pageSize = 20;
+
+  ConfirmedEventsListController(this._repository)
+      : super(const PaginatedHomeEventsState());
+
+  Future<void> loadInitial() async {
+    if (state.isLoading) return;
+    state = state.copyWith(isLoading: true, error: null, events: []);
+
+    try {
+      final events = await _repository.getConfirmedEventsPaginated(
+        limit: _pageSize,
+        offset: 0,
+      );
+      state = state.copyWith(
+        events: events,
+        hasMore: events.length >= _pageSize,
+        isLoading: false,
+      );
+    } catch (e) {
+      state = state.copyWith(isLoading: false, error: e.toString());
+    }
+  }
+
+  Future<void> loadMore() async {
+    if (state.isLoadingMore || !state.hasMore || state.isLoading) return;
+    state = state.copyWith(isLoadingMore: true);
+
+    try {
+      final moreEvents = await _repository.getConfirmedEventsPaginated(
+        limit: _pageSize,
+        offset: state.events.length,
+      );
+      state = state.copyWith(
+        events: [...state.events, ...moreEvents],
+        hasMore: moreEvents.length >= _pageSize,
+        isLoadingMore: false,
+      );
+    } catch (e) {
+      state = state.copyWith(isLoadingMore: false, error: e.toString());
+    }
+  }
+}
+
+/// Controller for paginated pending events (See All page)
+class PendingEventsListController
+    extends StateNotifier<PaginatedHomeEventsState> {
+  final HomeEventRepository _repository;
+  static const int _pageSize = 20;
+
+  PendingEventsListController(this._repository)
+      : super(const PaginatedHomeEventsState());
+
+  Future<void> loadInitial() async {
+    if (state.isLoading) return;
+    state = state.copyWith(isLoading: true, error: null, events: []);
+
+    try {
+      final events = await _repository.getPendingEventsPaginated(
+        limit: _pageSize,
+        offset: 0,
+      );
+      state = state.copyWith(
+        events: events,
+        hasMore: events.length >= _pageSize,
+        isLoading: false,
+      );
+    } catch (e) {
+      state = state.copyWith(isLoading: false, error: e.toString());
+    }
+  }
+
+  Future<void> loadMore() async {
+    if (state.isLoadingMore || !state.hasMore || state.isLoading) return;
+    state = state.copyWith(isLoadingMore: true);
+
+    try {
+      final moreEvents = await _repository.getPendingEventsPaginated(
+        limit: _pageSize,
+        offset: state.events.length,
+      );
+      state = state.copyWith(
+        events: [...state.events, ...moreEvents],
+        hasMore: moreEvents.length >= _pageSize,
+        isLoadingMore: false,
+      );
+    } catch (e) {
+      state = state.copyWith(isLoadingMore: false, error: e.toString());
+    }
+  }
+}
+
+/// Provider for confirmed events list controller
+final confirmedEventsListControllerProvider = StateNotifierProvider.autoDispose<
+    ConfirmedEventsListController, PaginatedHomeEventsState>((ref) {
+  final repo = ref.watch(homeEventRepositoryProvider);
+  return ConfirmedEventsListController(repo);
+});
+
+/// Provider for pending events list controller
+final pendingEventsListControllerProvider = StateNotifierProvider.autoDispose<
+    PendingEventsListController, PaginatedHomeEventsState>((ref) {
+  final repo = ref.watch(homeEventRepositoryProvider);
+  return PendingEventsListController(repo);
+});
+
 // NavBar state provider - calculates state based on next event status
 // Planning: default state or when next event is pending/confirmed
 // Living: when next event is living
