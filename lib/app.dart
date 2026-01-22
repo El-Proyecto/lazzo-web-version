@@ -112,10 +112,23 @@ class _LazzoAppState extends ConsumerState<LazzoApp> {
         return;
       }
 
-      // Wait for user to be authenticated before processing invite
+      debugPrint('✅ Token extraído: $token');
+
+      // Wait for authentication to be ready (max 5 seconds)
+      for (int i = 0; i < 10; i++) {
+        final authState = ref.read(authProvider);
+        if (authState.hasValue && authState.value != null) {
+          debugPrint('✅ User autenticado, processando convite...');
+          break;
+        }
+        debugPrint('⏳ Aguardando autenticação... (tentativa ${i + 1}/10)');
+        await Future.delayed(const Duration(milliseconds: 500));
+      }
+
+      // Check final auth state
       final authState = ref.read(authProvider);
       if (!authState.hasValue || authState.value == null) {
-        debugPrint('⚠️ User não autenticado, redirecionando para web');
+        debugPrint('⚠️ User não autenticado após espera, redirecionando para web');
         final landing = '${AppConfig.invitesBaseUrl}/i/$token';
         final uriLanding = Uri.parse(landing);
         if (await canLaunchUrl(uriLanding)) {
@@ -125,49 +138,54 @@ class _LazzoAppState extends ConsumerState<LazzoApp> {
       }
 
       // User is authenticated, attempt to accept invite
-      debugPrint('✅ User autenticado, aceitando convite...');
+      debugPrint('✅ Aceitando convite...');
       try {
         final accept = ref.read(acceptGroupInviteProvider);
         final groupId = await accept.call(token);
         debugPrint('✅ Convite aceito! Group ID: $groupId');
 
-          // Refresh groups to include the new group (if user just joined)
-          ref.invalidate(groupsProvider);
+        // Refresh groups to include the new group
+        ref.invalidate(groupsProvider);
 
-          // Give navigation stack time to initialize
+        // Wait for navigator to be ready (max 5 seconds)
+        for (int i = 0; i < 10; i++) {
+          if (_navigatorKey.currentState?.mounted == true) {
+            debugPrint('✅ Navigator ready');
+            break;
+          }
+          debugPrint('⏳ Aguardando navigator... (tentativa ${i + 1}/10)');
           await Future.delayed(const Duration(milliseconds: 500));
+        }
 
         // Navigate to group hub
-        if (mounted && _navigatorKey.currentState != null) {
+        if (_navigatorKey.currentState?.mounted == true) {
           debugPrint('✅ Navegando para group hub...');
           _navigatorKey.currentState!.pushNamed(
             AppRouter.groupHub,
             arguments: {'groupId': groupId},
           );
+        } else {
+          debugPrint('❌ Navigator não disponível');
         }
         return;
       } catch (e) {
         debugPrint('❌ Erro ao aceitar convite: $e');
-        final errorMessage = e.toString().toLowerCase();
         
-        // Check if it's an authentication error
-        if (errorMessage.contains('not authenticated') ||
+        // Only redirect to web if invite acceptance actually failed
+        // Don't redirect on navigation errors
+        final errorMessage = e.toString().toLowerCase();
+        if (errorMessage.contains('already a member') ||
+            errorMessage.contains('invalid token') ||
+            errorMessage.contains('expired') ||
+            errorMessage.contains('not found') ||
+            errorMessage.contains('not authenticated') ||
             errorMessage.contains('unauthorized')) {
-          debugPrint('⚠️ Erro de autenticação, redirecionando para web');
+          debugPrint('⚠️ Erro no convite, redirecionando para web');
           final landing = '${AppConfig.invitesBaseUrl}/i/$token';
           final uriLanding = Uri.parse(landing);
           if (await canLaunchUrl(uriLanding)) {
             await launchUrl(uriLanding, mode: LaunchMode.externalApplication);
           }
-          return;
-        }
-
-        // For other errors (invalid token, expired, etc.), redirect to web
-        debugPrint('⚠️ Erro no convite, redirecionando para web');
-        final landing = '${AppConfig.invitesBaseUrl}/i/$token';
-        final uriLanding = Uri.parse(landing);
-        if (await canLaunchUrl(uriLanding)) {
-          await launchUrl(uriLanding, mode: LaunchMode.externalApplication);
         }
       }
     } catch (e) {
