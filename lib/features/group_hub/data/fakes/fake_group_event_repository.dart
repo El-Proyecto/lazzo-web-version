@@ -158,7 +158,8 @@ class FakeGroupEventRepository implements GroupEventRepository {
       id: '1',
       name: 'Beach Sunset',
       emoji: '🌅',
-      date: DateTime.now().subtract(const Duration(hours: 1)), // Started 1 hour ago
+      date: DateTime.now()
+          .subtract(const Duration(hours: 1)), // Started 1 hour ago
       endDate: DateTime.now().add(const Duration(hours: 2)), // Ends in 2 hours
       location: 'Guincho Beach',
       status: GroupEventStatus.living,
@@ -213,14 +214,16 @@ class FakeGroupEventRepository implements GroupEventRepository {
         ),
       ],
     ),
-    
+
     // Recap Event - Hiking Adventure (21 hours left)
     GroupEventEntity(
       id: '2',
       name: 'Hiking Adventure',
       emoji: '⛰️',
-      date: DateTime.now().subtract(const Duration(hours: 3)), // Started 3 hours ago
-      endDate: DateTime.now().add(const Duration(hours: 21)), // Ends in 21 hours
+      date: DateTime.now()
+          .subtract(const Duration(hours: 3)), // Started 3 hours ago
+      endDate:
+          DateTime.now().add(const Duration(hours: 21)), // Ends in 21 hours
       location: 'Sintra Mountains',
       status: GroupEventStatus.recap,
       goingCount: 5,
@@ -300,7 +303,7 @@ class FakeGroupEventRepository implements GroupEventRepository {
         ),
       ],
     ),
-    
+
     // Confirmed Event - Beach Day (3 days from now)
     GroupEventEntity(
       id: '3',
@@ -387,7 +390,7 @@ class FakeGroupEventRepository implements GroupEventRepository {
         ),
       ],
     ),
-    
+
     // Confirmed Event - BBQ Party (5 days from now)
     GroupEventEntity(
       id: '4',
@@ -411,7 +414,16 @@ class FakeGroupEventRepository implements GroupEventRepository {
         'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&h=150&fit=crop&crop=face',
         'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&h=150&fit=crop&crop=face',
       ],
-      attendeeNames: ['You', 'Sarah', 'Mike', 'Emma', 'Tom', 'Lisa', 'Mark', 'Anna'],
+      attendeeNames: [
+        'You',
+        'Sarah',
+        'Mike',
+        'Emma',
+        'Tom',
+        'Lisa',
+        'Mark',
+        'Anna'
+      ],
       userVote: true,
       allVotes: [
         RsvpVote(
@@ -499,10 +511,27 @@ class FakeGroupEventRepository implements GroupEventRepository {
   ];
 
   @override
-  Future<List<GroupEventEntity>> getGroupEvents(String groupId) async {
+  Future<List<GroupEventEntity>> getGroupEvents(
+    String groupId, {
+    int pageSize = 20,
+    int offset = 0,
+  }) async {
     // Simulate network delay
     await Future.delayed(const Duration(milliseconds: 500));
-    return _events;
+
+    // Return paginated slice
+    if (offset >= _events.length) {
+      return [];
+    }
+    final end = (offset + pageSize).clamp(0, _events.length);
+    return _events.sublist(offset, end);
+  }
+
+  @override
+  Future<int> getGroupEventsCount(String groupId) async {
+    // Simulate network delay
+    await Future.delayed(const Duration(milliseconds: 100));
+    return _events.length;
   }
 
   @override

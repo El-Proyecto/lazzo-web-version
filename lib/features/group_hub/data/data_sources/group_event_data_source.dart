@@ -3,8 +3,15 @@ import '../../../../services/avatar_cache_service.dart';
 
 /// Data source for group events from Supabase
 abstract class GroupEventDataSource {
-  /// Get all events for a specific group using optimized view
-  Future<List<Map<String, dynamic>>> getGroupEvents(String groupId);
+  /// Get paginated events for a specific group using optimized view
+  Future<List<Map<String, dynamic>>> getGroupEvents(
+    String groupId, {
+    int pageSize = 20,
+    int offset = 0,
+  });
+
+  /// Get total count of non-ended events in group
+  Future<int> getGroupEventsCount(String groupId);
 
   /// Get a specific event by ID with all RSVP details
   Future<Map<String, dynamic>?> getEventById(String eventId);
@@ -21,7 +28,11 @@ class SupabaseGroupEventDataSource implements GroupEventDataSource {
   SupabaseGroupEventDataSource(this._client);
 
   @override
-  Future<List<Map<String, dynamic>>> getGroupEvents(String groupId) async {
+  Future<List<Map<String, dynamic>>> getGroupEvents(
+    String groupId, {
+    int pageSize = 20,
+    int offset = 0,
+  }) async {
     try {
       final response = await _client
           .from('group_hub_events_view')
@@ -29,7 +40,8 @@ class SupabaseGroupEventDataSource implements GroupEventDataSource {
           .eq('group_id', groupId)
           .neq('computed_status', 'ended')
           .order('priority', ascending: false)
-          .order('start_datetime', ascending: true);
+          .order('start_datetime', ascending: true)
+          .range(offset, offset + pageSize - 1); // ✅ Paginação
 
       final events = List<Map<String, dynamic>>.from(response as List);
 
@@ -66,6 +78,21 @@ class SupabaseGroupEventDataSource implements GroupEventDataSource {
       return events;
     } catch (e) {
       return [];
+    }
+  }
+
+  @override
+  Future<int> getGroupEventsCount(String groupId) async {
+    try {
+      final response = await _client
+          .from('group_hub_events_view')
+          .select('event_id')
+          .eq('group_id', groupId)
+          .neq('computed_status', 'ended');
+
+      return (response as List).length;
+    } catch (e) {
+      return 0;
     }
   }
 

@@ -10,46 +10,111 @@ class GroupEventRepositoryImpl implements GroupEventRepository {
   GroupEventRepositoryImpl(this._dataSource);
 
   @override
-  Future<List<GroupEventEntity>> getGroupEvents(String groupId) async {
+  Future<List<GroupEventEntity>> getGroupEvents(
+    String groupId, {
+    int pageSize = 20,
+    int offset = 0,
+  }) async {
     try {
-            
-      final jsonList = await _dataSource.getGroupEvents(groupId);
-      
-            
-      // Fetch RSVPs for each event to populate allVotes
+      final jsonList = await _dataSource.getGroupEvents(
+        groupId,
+        pageSize: pageSize,
+        offset: offset,
+      );
+
+      // ✅ OPTIMIZATION: Extract RSVPs directly from JSON (no extra queries!)
+      // The view already returns going_users, not_going_users, no_response_users
       final events = <GroupEventEntity>[];
       for (final json in jsonList) {
-        final eventId = json['event_id'] as String?;
-        if (eventId != null) {
-          final rsvps = await _dataSource.getEventRsvps(eventId);
-          events.add(GroupEventModel.fromJson(json, rsvps: rsvps));
-        } else {
-          events.add(GroupEventModel.fromJson(json));
-        }
+        // Extract RSVPs from the JSON itself instead of fetching separately
+        final rsvps = _extractRsvpsFromJson(json);
+        events.add(GroupEventModel.fromJson(json, rsvps: rsvps));
       }
-      
+
       return events;
     } catch (e) {
-                  return [];
+      return [];
     }
+  }
+
+  /// Extract RSVPs from the JSON response (going_users, not_going_users, no_response_users)
+  /// This avoids N+1 queries by using data already in the response
+  List<Map<String, dynamic>> _extractRsvpsFromJson(Map<String, dynamic> json) {
+    final allVotes = <Map<String, dynamic>>[];
+
+    // Parse going users
+    final goingUsers = json['going_users'] as List? ?? [];
+    for (final user in goingUsers) {
+      if (user is Map<String, dynamic>) {
+        allVotes.add({
+          'user_id': user['user_id'] ?? '',
+          'user_name': user['full_name'] ??
+              user['display_name'] ??
+              user['name'] ??
+              'User',
+          'user_avatar': user['avatar_url'],
+          'status': 'yes',
+          'voted_at': user['voted_at'],
+        });
+      }
+    }
+
+    // Parse not going users
+    final notGoingUsers = json['not_going_users'] as List? ?? [];
+    for (final user in notGoingUsers) {
+      if (user is Map<String, dynamic>) {
+        allVotes.add({
+          'user_id': user['user_id'] ?? '',
+          'user_name': user['full_name'] ??
+              user['display_name'] ??
+              user['name'] ??
+              'User',
+          'user_avatar': user['avatar_url'],
+          'status': 'notGoing',
+          'voted_at': user['voted_at'],
+        });
+      }
+    }
+
+    // Parse no response users
+    final noResponseUsers = json['no_response_users'] as List? ?? [];
+    for (final user in noResponseUsers) {
+      if (user is Map<String, dynamic>) {
+        allVotes.add({
+          'user_id': user['user_id'] ?? '',
+          'user_name': user['full_name'] ??
+              user['display_name'] ??
+              user['name'] ??
+              'User',
+          'user_avatar': user['avatar_url'],
+          'status': 'pending',
+          'voted_at': null,
+        });
+      }
+    }
+
+    return allVotes;
+  }
+
+  @override
+  Future<int> getGroupEventsCount(String groupId) {
+    return _dataSource.getGroupEventsCount(groupId);
   }
 
   @override
   Future<GroupEventEntity?> getEventById(String eventId) async {
     try {
-            
       final json = await _dataSource.getEventById(eventId);
       if (json == null) {
-                return null;
+        return null;
       }
-      
-      // Fetch RSVPs separately and merge
-      final rsvps = await _dataSource.getEventRsvps(eventId);
-      
-            
+
+      // Extract RSVPs from the JSON itself
+      final rsvps = _extractRsvpsFromJson(json);
+
       return GroupEventModel.fromJson(json, rsvps: rsvps);
     } catch (e) {
-                  return null;
+      return null;
     }
   }
 }

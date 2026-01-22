@@ -477,13 +477,18 @@ class _GroupHubPageState extends ConsumerState<GroupHubPage>
   }
 
   Widget _buildEventsSection() {
-    final eventsAsync = ref.watch(groupEventsProvider(widget.groupId));
+    final eventsState = ref.watch(groupEventsProvider(widget.groupId));
 
-    return eventsAsync.when(
-      loading: () => const Center(
+    // Loading state
+    if (eventsState.isLoading && eventsState.events.isEmpty) {
+      return const Center(
         child: CircularProgressIndicator(color: BrandColors.planning),
-      ),
-      error: (error, stackTrace) => Center(
+      );
+    }
+
+    // Error state
+    if (eventsState.error != null && eventsState.events.isEmpty) {
+      return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -511,203 +516,231 @@ class _GroupHubPageState extends ConsumerState<GroupHubPage>
             ),
           ],
         ),
-      ),
-      data: (events) {
-        if (events.isEmpty) {
-          return _buildEmptyState(
-            icon: Icons.event_outlined,
-            title: 'No events yet',
-            subtitle: 'Events will appear here when created',
-          );
+      );
+    }
+
+    // Empty state
+    if (eventsState.events.isEmpty) {
+      return _buildEmptyState(
+        icon: Icons.event_outlined,
+        title: 'No events yet',
+        subtitle: 'Events will appear here when created',
+      );
+    }
+
+    final events = eventsState.events;
+
+    // Sort events: Living (max 1) > Recap (multiple) > Confirmed > Pending
+    final sortedEvents = List<GroupEventEntity>.from(events)
+      ..sort((a, b) {
+        // Living has highest priority
+        if (a.status == GroupEventStatus.living &&
+            b.status != GroupEventStatus.living) {
+          return -1;
+        }
+        if (b.status == GroupEventStatus.living &&
+            a.status != GroupEventStatus.living) {
+          return 1;
         }
 
-        // Sort events: Living (max 1) > Recap (multiple) > Confirmed > Pending
-        final sortedEvents = List<GroupEventEntity>.from(events)
-          ..sort((a, b) {
-            // Living has highest priority
-            if (a.status == GroupEventStatus.living &&
-                b.status != GroupEventStatus.living) {
-              return -1;
-            }
-            if (b.status == GroupEventStatus.living &&
-                a.status != GroupEventStatus.living) {
-              return 1;
-            }
+        // Recap has second priority
+        if (a.status == GroupEventStatus.recap &&
+            b.status != GroupEventStatus.recap) {
+          return -1;
+        }
+        if (b.status == GroupEventStatus.recap &&
+            a.status != GroupEventStatus.recap) {
+          return 1;
+        }
 
-            // Recap has second priority
-            if (a.status == GroupEventStatus.recap &&
-                b.status != GroupEventStatus.recap) {
-              return -1;
-            }
-            if (b.status == GroupEventStatus.recap &&
-                a.status != GroupEventStatus.recap) {
-              return 1;
-            }
+        // Confirmed has third priority
+        if (a.status == GroupEventStatus.confirmed &&
+            b.status != GroupEventStatus.confirmed) {
+          return -1;
+        }
+        if (b.status == GroupEventStatus.confirmed &&
+            a.status != GroupEventStatus.confirmed) {
+          return 1;
+        }
 
-            // Confirmed has third priority
-            if (a.status == GroupEventStatus.confirmed &&
-                b.status != GroupEventStatus.confirmed) {
-              return -1;
-            }
-            if (b.status == GroupEventStatus.confirmed &&
-                a.status != GroupEventStatus.confirmed) {
-              return 1;
-            }
+        // Within same status, sort by date (earlier dates first)
+        if (a.date != null && b.date != null) {
+          return a.date!.compareTo(b.date!);
+        }
+        return 0;
+      });
 
-            // Within same status, sort by date (earlier dates first)
-            if (a.date != null && b.date != null) {
-              return a.date!.compareTo(b.date!);
-            }
-            return 0;
-          });
+    // ✅ Add scroll listener for infinite scroll
+    _eventsScrollController.addListener(_onEventsScroll);
 
-        return ListView.separated(
-          controller: _eventsScrollController,
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: EdgeInsets.only(
-            left: Insets.screenH,
-            right: Insets.screenH,
-            top: _isSnapped ? Gaps.md : 0,
-            bottom: Gaps.md,
-          ),
-          itemCount: sortedEvents.length + 1,
-          separatorBuilder: (context, index) {
-            if (index == sortedEvents.length - 1) {
-              // After last event, no separator (bottom padding handled below)
-              return const SizedBox.shrink();
-            }
-            return const SizedBox(height: Gaps.md);
-          },
-          itemBuilder: (context, index) {
-            if (index < events.length) {
-              final event = events[index];
-              final currentUser = Supabase.instance.client.auth.currentUser;
-              final currentUserId = currentUser?.id;
-
-              // Try to get avatar from the event's vote list (more reliable than userMetadata)
-              String? currentUserAvatar;
-              if (currentUserId != null && event.allVotes.isNotEmpty) {
-                try {
-                  final userVote = event.allVotes.firstWhere(
-                    (vote) => vote.userId == currentUserId,
-                  );
-                  currentUserAvatar = userVote.userAvatar;
-                } catch (e) {
-                  // User vote not found - will use fallback avatar
-                }
-              }
-              // Fallback to userMetadata if not found in votes
-              final fallbackAvatar =
-                  currentUser?.userMetadata?['avatar_url'] as String?;
-              currentUserAvatar ??= fallbackAvatar;
-
-              // Map GroupEventStatus to EventFullCardState
-              EventFullCardState cardState;
-              switch (event.status) {
-                case GroupEventStatus.confirmed:
-                  cardState = EventFullCardState.confirmed;
-                case GroupEventStatus.living:
-                  cardState = EventFullCardState.living;
-                case GroupEventStatus.recap:
-                  cardState = EventFullCardState.recap;
-                case GroupEventStatus.pending:
-                  cardState = EventFullCardState.pending;
-              }
-
-              // Create a modified event with default location text if location is null
-              final displayEvent =
-                  event.location == null || event.location!.isEmpty
-                      ? GroupEventEntity(
-                          id: event.id,
-                          name: event.name,
-                          emoji: event.emoji,
-                          date: event.date,
-                          endDate: event.endDate,
-                          location: 'Location to be decided',
-                          status: event.status,
-                          goingCount: event.goingCount,
-                          participantCount: event.participantCount,
-                          attendeeAvatars: event.attendeeAvatars,
-                          attendeeNames: event.attendeeNames,
-                          allVotes: event.allVotes,
-                          userVote: event.userVote,
-                          photoCount: event.photoCount,
-                          maxPhotos: event.maxPhotos,
-                          participantPhotos: event.participantPhotos,
-                        )
-                      : event;
-
-              return EventFullCard(
-                event: displayEvent,
-                state: cardState,
-                onTap: () async {
-                  // Navigate based on event status
-                  if (event.status == GroupEventStatus.living) {
-                    // Living event → EventLivingPage
-                    await Navigator.pushNamed(
-                      context,
-                      AppRouter.eventLiving,
-                      arguments: {'eventId': event.id},
-                    );
-                  } else if (event.status == GroupEventStatus.recap) {
-                    await Navigator.pushNamed(
-                      context,
-                      '/memory',
-                      arguments: {'memoryId': event.id},
-                    );
-                  } else {
-                    // Other statuses → EventPage (planning/confirmed/recap)
-                    await Navigator.pushNamed(
-                      context,
-                      AppRouter.event,
-                      arguments: {'eventId': event.id},
-                    );
-                  }
-
-                  // Refresh only this specific event instead of entire list
-                  // This will fetch updated status, votes, and participant counts
-                  await ref
-                      .read(groupEventsProvider(widget.groupId).notifier)
-                      .refreshSingleEvent(event.id);
-                },
-                onVoteChanged: (eventId, vote) async {
-                  // Persist RSVP to Supabase
-                  try {
-                    final rsvpRepo = ref.read(rsvpRepositoryProvider);
-                    final userId =
-                        Supabase.instance.client.auth.currentUser?.id;
-
-                    if (userId == null) {
-                      return;
-                    }
-
-                    // Convert vote to RsvpStatus
-                    final status = vote == null
-                        ? RsvpStatus.pending
-                        : (vote ? RsvpStatus.going : RsvpStatus.notGoing);
-
-                    await rsvpRepo.submitRsvp(eventId, userId, status);
-
-                    // Refresh ONLY this specific event (no full page reload)
-                    await ref
-                        .read(groupEventsProvider(widget.groupId).notifier)
-                        .refreshSingleEvent(eventId);
-
-                    // Also invalidate event-specific providers for consistency
-                    ref.invalidate(eventRsvpsProvider(eventId));
-                    ref.invalidate(userRsvpProvider(eventId));
-                  } catch (e) {
-                    // Failed to invalidate providers - UI will update on next load
-                  }
-                },
-              );
-            } else {
-              return const SizedBox(height: Gaps.md);
-            }
-          },
-        );
+    return NotificationListener<ScrollNotification>(
+      onNotification: (notification) {
+        // Load more when 200px from bottom
+        if (notification is ScrollEndNotification &&
+            _eventsScrollController.position.extentAfter < 200) {
+          ref.read(groupEventsProvider(widget.groupId).notifier).loadMore();
+        }
+        return false;
       },
+      child: ListView.separated(
+        controller: _eventsScrollController,
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: EdgeInsets.only(
+          left: Insets.screenH,
+          right: Insets.screenH,
+          top: _isSnapped ? Gaps.md : 0,
+          bottom: Gaps.md,
+        ),
+        // +1 for loading indicator at the bottom
+        itemCount: sortedEvents.length + (eventsState.hasMore ? 1 : 0),
+        separatorBuilder: (context, index) {
+          if (index == sortedEvents.length - 1 && !eventsState.hasMore) {
+            // After last event, no separator (bottom padding handled below)
+            return const SizedBox.shrink();
+          }
+          return const SizedBox(height: Gaps.md);
+        },
+        itemBuilder: (context, index) {
+          // Loading indicator at the bottom
+          if (index >= sortedEvents.length) {
+            return Padding(
+              padding: const EdgeInsets.symmetric(vertical: Gaps.lg),
+              child: Center(
+                child: eventsState.isLoadingMore
+                    ? const CircularProgressIndicator(
+                        color: BrandColors.planning)
+                    : const SizedBox.shrink(),
+              ),
+            );
+          }
+
+          final event = sortedEvents[index];
+          final currentUser = Supabase.instance.client.auth.currentUser;
+          final currentUserId = currentUser?.id;
+
+          // Try to get avatar from the event's vote list (more reliable than userMetadata)
+          String? currentUserAvatar;
+          if (currentUserId != null && event.allVotes.isNotEmpty) {
+            try {
+              final userVote = event.allVotes.firstWhere(
+                (vote) => vote.userId == currentUserId,
+              );
+              currentUserAvatar = userVote.userAvatar;
+            } catch (e) {
+              // User vote not found - will use fallback avatar
+            }
+          }
+          // Fallback to userMetadata if not found in votes
+          final fallbackAvatar =
+              currentUser?.userMetadata?['avatar_url'] as String?;
+          currentUserAvatar ??= fallbackAvatar;
+
+          // Map GroupEventStatus to EventFullCardState
+          EventFullCardState cardState;
+          switch (event.status) {
+            case GroupEventStatus.confirmed:
+              cardState = EventFullCardState.confirmed;
+            case GroupEventStatus.living:
+              cardState = EventFullCardState.living;
+            case GroupEventStatus.recap:
+              cardState = EventFullCardState.recap;
+            case GroupEventStatus.pending:
+              cardState = EventFullCardState.pending;
+          }
+
+          // Create a modified event with default location text if location is null
+          final displayEvent = event.location == null || event.location!.isEmpty
+              ? GroupEventEntity(
+                  id: event.id,
+                  name: event.name,
+                  emoji: event.emoji,
+                  date: event.date,
+                  endDate: event.endDate,
+                  location: 'Location to be decided',
+                  status: event.status,
+                  goingCount: event.goingCount,
+                  participantCount: event.participantCount,
+                  attendeeAvatars: event.attendeeAvatars,
+                  attendeeNames: event.attendeeNames,
+                  allVotes: event.allVotes,
+                  userVote: event.userVote,
+                  photoCount: event.photoCount,
+                  maxPhotos: event.maxPhotos,
+                  participantPhotos: event.participantPhotos,
+                )
+              : event;
+
+          return EventFullCard(
+            event: displayEvent,
+            state: cardState,
+            onTap: () async {
+              // Navigate based on event status
+              if (event.status == GroupEventStatus.living) {
+                // Living event → EventLivingPage
+                await Navigator.pushNamed(
+                  context,
+                  AppRouter.eventLiving,
+                  arguments: {'eventId': event.id},
+                );
+              } else if (event.status == GroupEventStatus.recap) {
+                await Navigator.pushNamed(
+                  context,
+                  '/memory',
+                  arguments: {'memoryId': event.id},
+                );
+              } else {
+                // Other statuses → EventPage (planning/confirmed/recap)
+                await Navigator.pushNamed(
+                  context,
+                  AppRouter.event,
+                  arguments: {'eventId': event.id},
+                );
+              }
+
+              // Refresh only this specific event instead of entire list
+              // This will fetch updated status, votes, and participant counts
+              await ref
+                  .read(groupEventsProvider(widget.groupId).notifier)
+                  .refreshSingleEvent(event.id);
+            },
+            onVoteChanged: (eventId, vote) async {
+              // Persist RSVP to Supabase
+              try {
+                final rsvpRepo = ref.read(rsvpRepositoryProvider);
+                final userId = Supabase.instance.client.auth.currentUser?.id;
+
+                if (userId == null) {
+                  return;
+                }
+
+                // Convert vote to RsvpStatus
+                final status = vote == null
+                    ? RsvpStatus.pending
+                    : (vote ? RsvpStatus.going : RsvpStatus.notGoing);
+
+                await rsvpRepo.submitRsvp(eventId, userId, status);
+
+                // Refresh ONLY this specific event (no full page reload)
+                await ref
+                    .read(groupEventsProvider(widget.groupId).notifier)
+                    .refreshSingleEvent(eventId);
+
+                // Also invalidate event-specific providers for consistency
+                ref.invalidate(eventRsvpsProvider(eventId));
+                ref.invalidate(userRsvpProvider(eventId));
+              } catch (e) {
+                // Failed to invalidate providers - UI will update on next load
+              }
+            },
+          );
+        },
+      ),
     );
+  }
+
+  /// Scroll listener for infinite scroll
+  void _onEventsScroll() {
+    // This is now handled by NotificationListener above
   }
 
   Widget _buildMemoriesSection() {

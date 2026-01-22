@@ -78,7 +78,7 @@ final removeMemberUseCaseProvider = Provider<RemoveMember>((ref) {
 
 // State providers
 final groupEventsProvider = StateNotifierProvider.family<GroupEventsController,
-    AsyncValue<List<GroupEventEntity>>, String>((
+    PaginatedEventsState, String>((
   ref,
   groupId,
 ) {
@@ -134,40 +134,112 @@ final groupPhotosProvider = StateNotifierProvider.family<GroupPhotosController,
   );
 });
 
+/// Paginated events state
+class PaginatedEventsState {
+  final List<GroupEventEntity> events;
+  final bool hasMore;
+  final bool isLoading;
+  final bool isLoadingMore;
+  final String? error;
+
+  const PaginatedEventsState({
+    this.events = const [],
+    this.hasMore = true,
+    this.isLoading = false,
+    this.isLoadingMore = false,
+    this.error,
+  });
+
+  PaginatedEventsState copyWith({
+    List<GroupEventEntity>? events,
+    bool? hasMore,
+    bool? isLoading,
+    bool? isLoadingMore,
+    String? error,
+  }) {
+    return PaginatedEventsState(
+      events: events ?? this.events,
+      hasMore: hasMore ?? this.hasMore,
+      isLoading: isLoading ?? this.isLoading,
+      isLoadingMore: isLoadingMore ?? this.isLoadingMore,
+      error: error,
+    );
+  }
+}
+
 // Controllers
-class GroupEventsController
-    extends StateNotifier<AsyncValue<List<GroupEventEntity>>> {
+
+/// Paginated events controller with infinite scroll support
+class GroupEventsController extends StateNotifier<PaginatedEventsState> {
   final GetGroupEvents _getGroupEvents;
   final GroupEventRepository _repository;
   final String _groupId;
+  static const int _pageSize = 20;
 
   GroupEventsController(
     this._getGroupEvents,
     this._repository,
     this._groupId,
-  ) : super(const AsyncValue.loading()) {
-    loadEvents();
+  ) : super(const PaginatedEventsState()) {
+    loadInitial();
   }
 
-  Future<void> loadEvents() async {
-    state = const AsyncValue.loading();
+  Future<void> loadInitial() async {
+    state = state.copyWith(isLoading: true, error: null);
+
     try {
-      final events = await _getGroupEvents(_groupId);
-      state = AsyncValue.data(events);
-    } catch (error, stackTrace) {
-      state = AsyncValue.error(error, stackTrace);
+      final events = await _getGroupEvents(
+        _groupId,
+        pageSize: _pageSize,
+        offset: 0,
+      );
+
+      state = state.copyWith(
+        events: events,
+        hasMore: events.length >= _pageSize,
+        isLoading: false,
+      );
+    } catch (e) {
+      state = state.copyWith(
+        isLoading: false,
+        error: e.toString(),
+      );
+    }
+  }
+
+  Future<void> loadMore() async {
+    if (state.isLoadingMore || !state.hasMore || state.isLoading) return;
+
+    state = state.copyWith(isLoadingMore: true);
+
+    try {
+      final newEvents = await _getGroupEvents(
+        _groupId,
+        pageSize: _pageSize,
+        offset: state.events.length,
+      );
+
+      state = state.copyWith(
+        events: [...state.events, ...newEvents],
+        hasMore: newEvents.length >= _pageSize,
+        isLoadingMore: false,
+      );
+    } catch (e) {
+      state = state.copyWith(
+        isLoadingMore: false,
+        error: e.toString(),
+      );
     }
   }
 
   Future<void> refresh() async {
-    await loadEvents();
+    await loadInitial();
   }
 
   /// Refresh only a specific event without reloading the entire list
   /// This maintains scroll position and improves UX
   Future<void> refreshSingleEvent(String eventId) async {
-    final currentState = state;
-    if (!currentState.hasValue) {
+    if (state.events.isEmpty) {
       return;
     }
 
@@ -180,14 +252,14 @@ class GroupEventsController
       }
 
       // Update only the specific event in the list
-      final updatedList = currentState.value!.map((event) {
+      final updatedList = state.events.map((event) {
         if (event.id == eventId) {
           return updatedEvent;
         }
         return event;
       }).toList();
 
-      state = AsyncValue.data(updatedList);
+      state = state.copyWith(events: updatedList);
     } catch (error) {
       // On error, keep current state instead of showing error
     }
