@@ -1,5 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:http/http.dart' as http;
+import 'package:path_provider/path_provider.dart';
+import 'package:path/path.dart' as path;
+import 'package:gal/gal.dart';
+import 'dart:io';
 import '../../../../shared/themes/colors.dart';
 import '../../domain/entities/group_photo_entity.dart';
 import '../widgets/group_photo_viewer_app_bar.dart';
@@ -24,15 +29,77 @@ class GroupPhotoViewerPage extends StatefulWidget {
 
 class _GroupPhotoViewerPageState extends State<GroupPhotoViewerPage> {
   late PageController _pageController;
+  int _currentIndex = 0;
+  bool _isDownloading = false;
 
   @override
   void initState() {
     super.initState();
+    _currentIndex = widget.initialIndex;
     _pageController = PageController(initialPage: widget.initialIndex);
+    _pageController.addListener(_onPageChanged);
+  }
+
+  void _onPageChanged() {
+    final page = _pageController.page?.round();
+    if (page != null && page != _currentIndex) {
+      setState(() {
+        _currentIndex = page;
+      });
+    }
+  }
+
+  Future<void> _handleDownloadCurrentPhoto() async {
+    if (_isDownloading) return;
+
+    setState(() => _isDownloading = true);
+
+    try {
+      final currentPhoto = widget.photos[_currentIndex];
+
+      // Download photo to temporary directory
+      final response = await http.get(Uri.parse(currentPhoto.url));
+      if (response.statusCode == 200) {
+        final timestamp = DateTime.now().millisecondsSinceEpoch;
+        final tempDir = await getTemporaryDirectory();
+        final fileName = 'lazzo_$timestamp.jpg';
+        final filePath = path.join(tempDir.path, fileName);
+        final file = File(filePath);
+        await file.writeAsBytes(response.bodyBytes);
+
+        // Save to device gallery
+        await Gal.putImage(filePath, album: 'Lazzo');
+
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Photo saved to gallery!'),
+            backgroundColor: BrandColors.planning,
+            duration: Duration(seconds: 2),
+          ),
+        );
+      } else {
+        throw Exception('Failed to download photo');
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to save photo: $e'),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 3),
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isDownloading = false);
+      }
+    }
   }
 
   @override
   void dispose() {
+    _pageController.removeListener(_onPageChanged);
     _pageController.dispose();
     super.dispose();
   }
@@ -45,6 +112,7 @@ class _GroupPhotoViewerPageState extends State<GroupPhotoViewerPage> {
         title: widget.eventName,
         subtitle: widget.locationAndDate,
         onBackPressed: () => Navigator.of(context).pop(),
+        onDownloadPressed: _isDownloading ? null : _handleDownloadCurrentPhoto,
       ),
       body: PageView.builder(
         controller: _pageController,

@@ -58,7 +58,7 @@ class SupabaseGroupEventDataSource implements GroupEventDataSource {
           .eq('group_id', groupId)
           .neq('computed_status', 'ended')
           .order('priority', ascending: false)
-          .order('start_datetime', ascending: true);
+          .order('start_datetime', ascending: false);
 
       final events = List<Map<String, dynamic>>.from(response as List);
 

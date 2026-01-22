@@ -10,12 +10,14 @@ class GroupPhotoViewerAppBar extends StatelessWidget
   final String title;
   final String? subtitle;
   final VoidCallback onBackPressed;
+  final VoidCallback? onDownloadPressed;
 
   const GroupPhotoViewerAppBar({
     super.key,
     required this.title,
     this.subtitle,
     required this.onBackPressed,
+    this.onDownloadPressed,
   });
 
   @override
@@ -71,15 +73,20 @@ class GroupPhotoViewerAppBar extends StatelessWidget
 
                     const SizedBox(width: Gaps.sm),
 
-                    // Download button (placeholder for now)
-                    Container(
-                      width: 32,
-                      height: 32,
-                      alignment: Alignment.center,
-                      child: const Icon(
-                        Icons.download_rounded,
-                        color: BrandColors.text1,
-                        size: 24,
+                    // Download button
+                    GestureDetector(
+                      onTap: onDownloadPressed,
+                      child: Container(
+                        width: 32,
+                        height: 32,
+                        alignment: Alignment.center,
+                        child: Icon(
+                          Icons.download_rounded,
+                          color: onDownloadPressed != null
+                              ? BrandColors.text1
+                              : BrandColors.text2,
+                          size: 24,
+                        ),
                       ),
                     ),
                   ],
