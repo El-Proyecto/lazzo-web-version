@@ -55,52 +55,55 @@ class CoverMosaic extends StatelessWidget {
 
       return Padding(
         padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
-        child: SizedBox(
-          width: width,
-          height: height,
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(16),
-                child: Image.network(
-                  cover.imageUrl,
-                  fit: BoxFit.cover,
-                  alignment: Alignment.center,
-                  color: Colors.black.withAlpha((0.30 * 255).round()),
-                  colorBlendMode: BlendMode.darken,
-                  filterQuality: FilterQuality.low,
-                  width: width,
-                  height: height,
-                ),
-              ),
-              if (cover.isPortrait)
-                Center(
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(16),
-                    child: AspectRatio(
-                      aspectRatio: 4 / 5,
-                      child: FractionallySizedBox(
-                        widthFactor: 0.7,
-                        child: Image.network(
-                          cover.imageUrl,
-                          fit: BoxFit.cover,
-                          alignment: Alignment.center,
-                        ),
-                      ),
-                    ),
-                  ),
-                )
-              else
+        child: GestureDetector(
+          onTap: onPhotoTap != null ? () => onPhotoTap!(cover.id) : null,
+          child: SizedBox(
+            width: width,
+            height: height,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
                 ClipRRect(
                   borderRadius: BorderRadius.circular(16),
                   child: Image.network(
                     cover.imageUrl,
                     fit: BoxFit.cover,
                     alignment: Alignment.center,
+                    color: Colors.black.withAlpha((0.30 * 255).round()),
+                    colorBlendMode: BlendMode.darken,
+                    filterQuality: FilterQuality.low,
+                    width: width,
+                    height: height,
                   ),
                 ),
-            ],
+                if (cover.isPortrait)
+                  Center(
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(16),
+                      child: AspectRatio(
+                        aspectRatio: 4 / 5,
+                        child: FractionallySizedBox(
+                          widthFactor: 0.7,
+                          child: Image.network(
+                            cover.imageUrl,
+                            fit: BoxFit.cover,
+                            alignment: Alignment.center,
+                          ),
+                        ),
+                      ),
+                    ),
+                  )
+                else
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: Image.network(
+                      cover.imageUrl,
+                      fit: BoxFit.cover,
+                      alignment: Alignment.center,
+                    ),
+                  ),
+              ],
+            ),
           ),
         ),
       );

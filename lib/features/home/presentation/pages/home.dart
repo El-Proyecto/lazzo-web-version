@@ -982,45 +982,98 @@ class _HomePageState extends ConsumerState<HomePage> {
                       ),
                       const SizedBox(height: Gaps.md),
 
-                      // Payment cards - 2 per row
+                      // Payment cards - 2 per row, always aligned left
                       Padding(
                         padding: const EdgeInsets.symmetric(
                           horizontal: Insets.screenH,
                         ),
-                        child: Wrap(
-                          spacing: Gaps.sm,
-                          runSpacing: Gaps.sm,
-                          children: payments.take(4).map((payment) {
-                            return SizedBox(
-                              width: (MediaQuery.of(context).size.width -
-                                      (Insets.screenH * 2) -
-                                      Gaps.sm) /
-                                  2,
-                              child: PaymentSummaryCard(
-                                payment: payment,
-                                onTap: () {
-                                  // Set inbox internal tab to Payments (index 1, since Notifications is 0)
-                                  ref
-                                      .read(inboxTabIndexProvider.notifier)
-                                      .state = 1;
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            for (int i = 0; i < payments.take(4).length; i += 2)
+                              Padding(
+                                padding: EdgeInsets.only(
+                                  bottom: i + 2 < payments.take(4).length
+                                      ? Gaps.sm
+                                      : 0,
+                                ),
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    // First payment card
+                                    Expanded(
+                                      child: PaymentSummaryCard(
+                                        payment: payments.take(4).toList()[i],
+                                        onTap: () {
+                                          final payment =
+                                              payments.take(4).toList()[i];
+                                          // Set inbox internal tab to Payments (index 1, since Notifications is 0)
+                                          ref
+                                              .read(inboxTabIndexProvider
+                                                  .notifier)
+                                              .state = 1;
 
-                                  // Store selected payment user ID
-                                  ref
-                                      .read(selectedPaymentUserIdProvider
-                                          .notifier)
-                                      .state = payment.userId;
+                                          // Store selected payment user ID
+                                          ref
+                                              .read(
+                                                  selectedPaymentUserIdProvider
+                                                      .notifier)
+                                              .state = payment.userId;
 
-                                  // Navigate to Inbox main tab (index 2) after a frame
-                                  WidgetsBinding.instance
-                                      .addPostFrameCallback((_) {
-                                    ref
-                                        .read(mainLayoutTabProvider.notifier)
-                                        .state = 2;
-                                  });
-                                },
+                                          // Navigate to Inbox main tab (index 2) after a frame
+                                          WidgetsBinding.instance
+                                              .addPostFrameCallback((_) {
+                                            ref
+                                                .read(mainLayoutTabProvider
+                                                    .notifier)
+                                                .state = 2;
+                                          });
+                                        },
+                                      ),
+                                    ),
+
+                                    // Second payment card (if exists)
+                                    if (i + 1 < payments.take(4).length) ...[
+                                      const SizedBox(width: Gaps.sm),
+                                      Expanded(
+                                        child: PaymentSummaryCard(
+                                          payment:
+                                              payments.take(4).toList()[i + 1],
+                                          onTap: () {
+                                            final payment = payments
+                                                .take(4)
+                                                .toList()[i + 1];
+                                            // Set inbox internal tab to Payments (index 1, since Notifications is 0)
+                                            ref
+                                                .read(inboxTabIndexProvider
+                                                    .notifier)
+                                                .state = 1;
+
+                                            // Store selected payment user ID
+                                            ref
+                                                .read(
+                                                    selectedPaymentUserIdProvider
+                                                        .notifier)
+                                                .state = payment.userId;
+
+                                            // Navigate to Inbox main tab (index 2) after a frame
+                                            WidgetsBinding.instance
+                                                .addPostFrameCallback((_) {
+                                              ref
+                                                  .read(mainLayoutTabProvider
+                                                      .notifier)
+                                                  .state = 2;
+                                            });
+                                          },
+                                        ),
+                                      ),
+                                    ] else
+                                      // Empty space to maintain alignment
+                                      const Expanded(child: SizedBox()),
+                                  ],
+                                ),
                               ),
-                            );
-                          }).toList(),
+                          ],
                         ),
                       ),
                       const SizedBox(height: Gaps.lg),

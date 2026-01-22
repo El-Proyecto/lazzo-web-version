@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict AcKjGFjIKuasGB7naqtwwrAN8wMJ5WhNqUMwav2NufDDoyPaQ9FPNfe0hZf7qNS
+\restrict QWnpbHDFhp0qBECc5Ncpb945cyjxU2rMh0om3pntQQxNuIbgTXzzgVqj3ueiEAk
 
 -- Dumped from database version 17.4
 -- Dumped by pg_dump version 18.1
@@ -396,6 +396,27 @@ BEGIN
   SELECT NEW.id, gm.user_id, 'pending'
   FROM group_members gm
   WHERE gm.group_id = NEW.group_id;
+  
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: add_new_member_to_group_events(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.add_new_member_to_group_events() RETURNS trigger
+    LANGUAGE plpgsql SECURITY DEFINER
+    AS $$
+BEGIN
+  -- Add new member as participant to all active events in the group
+  INSERT INTO event_participants (pevent_id, user_id, rsvp)
+  SELECT e.id, NEW.user_id, 'pending'
+  FROM events e
+  WHERE e.group_id = NEW.group_id
+    AND e.status IN ('pending', 'confirmed', 'living', 'recap')
+  ON CONFLICT (pevent_id, user_id) DO NOTHING;
   
   RETURN NEW;
 END;
@@ -2337,11 +2358,11 @@ BEGIN
     inviter.name,
     g.name,
     NEW.group_id,
-    'lazzo://groups/' || NEW.group_id::text
+    'lazzo://inbox'  -- ✅ CHANGED: Points to inbox (was lazzo://groups/{id})
   FROM users inviter
   JOIN groups g ON g.id = NEW.group_id
   WHERE inviter.id = NEW.invited_by
-  ON CONFLICT (dedup_key, dedup_bucket) DO NOTHING;  -- ✅ Allow duplicate notifications
+  ON CONFLICT (dedup_key, dedup_bucket) DO NOTHING;
   
   RETURN NEW;
 END;
@@ -2353,8 +2374,9 @@ $$;
 --
 
 COMMENT ON FUNCTION public.notify_group_invite_received() IS 'Trigger function that creates action notification when user is invited to group.
-Uses SECURITY DEFINER to bypass RLS policies (standard pattern for notification triggers).
-Category "actions" ensures notification always appears in inbox regardless of push settings.';
+Uses SECURITY DEFINER to bypass RLS policies.
+ON CONFLICT DO NOTHING prevents duplicate errors.
+Deeplink points to inbox where user can accept/decline the invite.';
 
 
 --
@@ -4081,7 +4103,7 @@ CREATE VIEW public.home_events_view WITH (security_invoker='on') AS
            FROM (public.event_participants ep2
              LEFT JOIN public.users p ON ((p.id = ep2.user_id)))
           WHERE (ep2.pevent_id = e.id)) agg ON (true))
-  WHERE (((e.start_datetime IS NULL) OR (e.end_datetime IS NULL) OR (e.start_datetime >= now()) OR (e.end_datetime >= now()) OR (e.end_datetime >= (now() - '24:00:00'::interval))) AND ((e.status)::text <> 'ended'::text))
+  WHERE ((e.status = 'pending'::public.event_state) OR (((e.start_datetime IS NULL) OR (e.end_datetime IS NULL) OR (e.start_datetime >= now()) OR (e.end_datetime >= now()) OR (e.end_datetime >= (now() - '24:00:00'::interval))) AND ((e.status)::text <> 'ended'::text)))
   ORDER BY
         CASE
             WHEN (e.status = 'living'::public.event_state) THEN 4
@@ -5453,6 +5475,13 @@ CREATE TRIGGER on_event_created_add_participants AFTER INSERT ON public.events F
 
 
 --
+-- Name: events on_event_update_reset_expired_rsvp; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER on_event_update_reset_expired_rsvp AFTER UPDATE ON public.events FOR EACH ROW EXECUTE FUNCTION public.trigger_reset_expired_rsvp();
+
+
+--
 -- Name: groups on_group_created; Type: TRIGGER; Schema: public; Owner: -
 --
 
@@ -5466,6 +5495,13 @@ ALTER TABLE public.groups DISABLE TRIGGER on_group_created;
 --
 
 CREATE TRIGGER on_group_invite_notify AFTER INSERT ON public.group_invites FOR EACH ROW EXECUTE FUNCTION public.notify_group_invite_received();
+
+
+--
+-- Name: group_members on_new_group_member_add_to_events; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER on_new_group_member_add_to_events AFTER INSERT ON public.group_members FOR EACH ROW EXECUTE FUNCTION public.add_new_member_to_group_events();
 
 
 --
@@ -7089,5 +7125,5 @@ CREATE POLICY users_can_view_group_photos ON public.group_photos FOR SELECT USIN
 -- PostgreSQL database dump complete
 --
 
-\unrestrict AcKjGFjIKuasGB7naqtwwrAN8wMJ5WhNqUMwav2NufDDoyPaQ9FPNfe0hZf7qNS
+\unrestrict QWnpbHDFhp0qBECc5Ncpb945cyjxU2rMh0om3pntQQxNuIbgTXzzgVqj3ueiEAk
 
