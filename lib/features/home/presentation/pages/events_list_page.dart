@@ -48,8 +48,7 @@ class _EventsListPageState extends ConsumerState<EventsListPage> {
   }
 
   void _loadInitial() {
-    print('[EventsListPage] Loading initial ${widget.type.name} events');
-    if (widget.type == EventsListType.confirmed) {
+        if (widget.type == EventsListType.confirmed) {
       ref.read(confirmedEventsListControllerProvider.notifier).loadInitial();
     } else {
       ref.read(pendingEventsListControllerProvider.notifier).loadInitial();
@@ -57,8 +56,7 @@ class _EventsListPageState extends ConsumerState<EventsListPage> {
   }
 
   Future<void> _handleRefresh() async {
-    print('[EventsListPage] Refreshing ${widget.type.name} events');
-    if (widget.type == EventsListType.confirmed) {
+        if (widget.type == EventsListType.confirmed) {
       await ref
           .read(confirmedEventsListControllerProvider.notifier)
           .loadInitial();
@@ -152,21 +150,13 @@ class _EventsListPageState extends ConsumerState<EventsListPage> {
         ? ref.watch(confirmedEventsListControllerProvider)
         : ref.watch(pendingEventsListControllerProvider);
 
-    print(
-        '[EventsListPage] Building ${widget.type.name} page with ${state.events.length} events');
-    if (state.events.isNotEmpty) {
-      print(
-          '[EventsListPage] First event: ${state.events.first.name}, date: ${state.events.first.date}');
-      print(
-          '[EventsListPage] Last event: ${state.events.last.name}, date: ${state.events.last.date}');
-      // Check for expired events
+        if (state.events.isNotEmpty) {
+                  // Check for expired events
       final now = DateTime.now();
       final expiredCount = state.events
           .where((e) => e.date != null && e.date!.isBefore(now))
           .length;
-      print(
-          '[EventsListPage] Expired events count: $expiredCount / ${state.events.length}');
-    }
+          }
 
     return Scaffold(
       backgroundColor: BrandColors.bg1,

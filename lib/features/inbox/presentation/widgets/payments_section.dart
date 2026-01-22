@@ -320,8 +320,19 @@ class _PaymentsSectionState extends ConsumerState<PaymentsSection> {
       context: context,
       paymentGroup: group,
       onPaymentTap: (payment) {
-        // Handle individual payment tap if needed
-        Navigator.of(context).pop();
+        // Navigation is handled by PaymentDetailsBottomSheet._navigateToEvent
+        // which closes the bottom sheet and navigates based on event status
+      },
+      onMarkAsPaid: (payments) async {
+        // Mark all payments as paid
+        for (final payment in payments) {
+          widget.onMarkAsPaid?.call(payment);
+        }
+        // Wait a bit for the database updates to complete
+        await Future.delayed(const Duration(milliseconds: 500));
+        // Refresh payment lists to reflect the changes
+        ref.invalidate(paymentsOwedToUserProvider);
+        ref.invalidate(paymentsUserOwesProvider);
       },
     );
   }

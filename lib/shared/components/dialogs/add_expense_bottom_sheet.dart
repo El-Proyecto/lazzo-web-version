@@ -488,8 +488,15 @@ class _AddExpenseBottomSheetState extends State<AddExpenseBottomSheet> {
                       const TextInputType.numberWithOptions(decimal: true),
                   style: AppText.bodyMedium.copyWith(color: BrandColors.text1),
                   inputFormatters: [
+                    // Allow digits, dot, and comma (comma will be converted to dot)
                     FilteringTextInputFormatter.allow(
-                        RegExp(r'^\d+\.?\d{0,2}')),
+                        RegExp(r'^\d*[.,]?\d{0,2}')),
+                    // Convert comma to dot for iOS keyboards
+                    TextInputFormatter.withFunction((oldValue, newValue) {
+                      return newValue.copyWith(
+                        text: newValue.text.replaceAll(',', '.'),
+                      );
+                    }),
                   ],
                   onChanged: onChanged,
                   decoration: InputDecoration(

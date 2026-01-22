@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../domain/entities/payment_entity.dart';
 import '../../domain/entities/payment_group.dart';
 import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/constants/text_styles.dart';
 import '../../../../shared/themes/colors.dart';
 import '../../../../shared/components/widgets/grabber_bar.dart';
+import '../../../../routes/app_router.dart';
 
 class PaymentDetailsBottomSheet extends StatelessWidget {
   final PaymentGroup paymentGroup;
@@ -20,7 +22,18 @@ class PaymentDetailsBottomSheet extends StatelessWidget {
     required BuildContext context,
     required PaymentGroup paymentGroup,
     Function(PaymentEntity)? onPaymentTap,
+    Function(List<PaymentEntity>)? onMarkAsPaid,
   }) {
+    // Calculate how much the current user owes (for Mark as Paid button)
+    // Even if they're in "Owed to you" section (net positive), user might still owe some expenses
+    final currentUserId = Supabase.instance.client.auth.currentUser?.id ?? '';
+    final paymentsUserOwes = paymentGroup.payments
+        .where((p) =>
+            p.fromUserId == currentUserId && p.status != PaymentStatus.paid)
+        .toList();
+    final amountUserOwes =
+        paymentsUserOwes.fold(0.0, (sum, p) => sum + p.amount);
+
     return showModalBottomSheet<void>(
       context: context,
       isDismissible: true,
@@ -29,7 +42,7 @@ class PaymentDetailsBottomSheet extends StatelessWidget {
       isScrollControlled: true,
       builder: (context) => Container(
         constraints: BoxConstraints(
-          maxHeight: MediaQuery.of(context).size.height * 0.7,
+          maxHeight: MediaQuery.of(context).size.height * 0.9,
         ),
         decoration: const BoxDecoration(
           color: BrandColors.bg2,
@@ -67,22 +80,33 @@ class PaymentDetailsBottomSheet extends StatelessWidget {
               ),
             ),
 
-            // Content
+            // Content - List of payments (shrinkWrap for dynamic height)
             Flexible(
-              child: SingleChildScrollView(
+              child: ListView.separated(
+                shrinkWrap: true,
                 padding: const EdgeInsets.only(
-                    left: Pads.sectionH,
-                    right: Pads.sectionH,
-                    bottom: Pads.sectionH),
-                child: PaymentDetailsBottomSheet(
-                  paymentGroup: paymentGroup,
-                  onPaymentTap: onPaymentTap,
+                  left: Pads.sectionH,
+                  right: Pads.sectionH,
+                  bottom: Pads.sectionH,
                 ),
+                itemCount: paymentGroup.payments.length,
+                separatorBuilder: (context, index) =>
+                    const SizedBox(height: Gaps.md),
+                itemBuilder: (context, index) {
+                  final payment = paymentGroup.payments[index];
+                  return _buildPaymentItem(
+                    payment: payment,
+                    currentUserId: paymentGroup.userId,
+                    context: context,
+                    onPaymentTap: onPaymentTap,
+                  );
+                },
               ),
             ),
 
-            // Mark as paid button (only show if user owes money)
-            if (!paymentGroup.isOwedToUser)
+            // Mark as paid button - show if user owes any amount to this person
+            // (even if net balance shows they owe us more)
+            if (amountUserOwes > 0)
               Padding(
                 padding: const EdgeInsets.only(
                   left: Pads.sectionH,
@@ -93,7 +117,10 @@ class PaymentDetailsBottomSheet extends StatelessWidget {
                   width: double.infinity,
                   child: ElevatedButton(
                     onPressed: () {
-                      // TODO: Implement mark all as paid functionality
+                      // Mark all payments where user owes as paid
+                      if (onMarkAsPaid != null && paymentsUserOwes.isNotEmpty) {
+                        onMarkAsPaid(paymentsUserOwes);
+                      }
                       Navigator.of(context).pop();
                     },
                     style: ElevatedButton.styleFrom(
@@ -107,7 +134,7 @@ class PaymentDetailsBottomSheet extends StatelessWidget {
                       ),
                     ),
                     child: Text(
-                      'Mark ${paymentGroup.totalAmount.toStringAsFixed(2)}€ as paid',
+                      'Mark ${amountUserOwes.toStringAsFixed(2)}€ as paid',
                       style: AppText.labelLarge.copyWith(
                         color: BrandColors.text1,
                       ),
@@ -124,32 +151,32 @@ class PaymentDetailsBottomSheet extends StatelessWidget {
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return ListView.separated(
-      shrinkWrap: true,
-      padding: EdgeInsets.zero,
-      itemCount: paymentGroup.payments.length,
-      separatorBuilder: (context, index) => const SizedBox(height: Gaps.md),
-      itemBuilder: (context, index) {
-        final payment = paymentGroup.payments[index];
-        return _buildPaymentItem(payment);
-      },
-    );
-  }
-
-  Widget _buildPaymentItem(PaymentEntity payment) {
+  static Widget _buildPaymentItem({
+    required PaymentEntity payment,
+    required String currentUserId,
+    required BuildContext context,
+    Function(PaymentEntity)? onPaymentTap,
+  }) {
     // Each individual payment has its own direction
     // Check if current user is the creditor (toUserId) = they owe us = green/+
     // Or if current user is the debtor (fromUserId) = we owe them = red/-
-    final currentUserId = paymentGroup.userId; // This is the OTHER person's ID
-
     // If payment.fromUserId == other person → they owe us (green, +)
     // If payment.toUserId == other person → we owe them (red, -)
     final paymentIsOwedToUser = payment.fromUserId == currentUserId;
 
     return GestureDetector(
-      onTap: () => onPaymentTap?.call(payment),
+      onTap: () async {
+        print(
+            '[PaymentBottomSheet] Card tapped - payment: ${payment.id}, eventId: ${payment.eventId}');
+        onPaymentTap?.call(payment);
+        if (payment.eventId != null) {
+          print(
+              '[PaymentBottomSheet] Calling _navigateToEvent with eventId: ${payment.eventId}');
+          await _navigateToEvent(context, payment.eventId!);
+        } else {
+          print('[PaymentBottomSheet] No eventId, skipping navigation');
+        }
+      },
       child: Container(
         padding: const EdgeInsets.all(Pads.ctlH),
         decoration: BoxDecoration(
@@ -171,8 +198,11 @@ class PaymentDetailsBottomSheet extends StatelessWidget {
                       color: BrandColors.text1,
                       fontWeight: FontWeight.w600,
                     ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
+                const SizedBox(width: Gaps.sm),
                 Text(
                   '${payment.amount.toStringAsFixed(2)}€',
                   style: AppText.bodyMediumEmph.copyWith(
@@ -192,19 +222,29 @@ class PaymentDetailsBottomSheet extends StatelessWidget {
               children: [
                 const Icon(Icons.event, size: 14, color: BrandColors.text2),
                 const SizedBox(width: Gaps.xs / 2),
-                Text(
-                  payment.eventName ?? 'Event',
-                  style: AppText.bodyMedium.copyWith(
-                    color: BrandColors.text2,
+                Flexible(
+                  flex: 1,
+                  child: Text(
+                    payment.eventName ?? 'Event',
+                    style: AppText.bodyMedium.copyWith(
+                      color: BrandColors.text2,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
                 const SizedBox(width: Gaps.sm),
                 const Icon(Icons.group, size: 14, color: BrandColors.text2),
                 const SizedBox(width: Gaps.xs / 2),
-                Text(
-                  payment.groupName ?? 'Group',
-                  style: AppText.bodyMedium.copyWith(
-                    color: BrandColors.text2,
+                Flexible(
+                  flex: 1,
+                  child: Text(
+                    payment.groupName ?? 'Group',
+                    style: AppText.bodyMedium.copyWith(
+                      color: BrandColors.text2,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
                 const Spacer(),
@@ -222,7 +262,7 @@ class PaymentDetailsBottomSheet extends StatelessWidget {
     );
   }
 
-  String _formatDate(DateTime date) {
+  static String _formatDate(DateTime date) {
     final now = DateTime.now();
     final difference = now.difference(date);
 
@@ -235,5 +275,77 @@ class PaymentDetailsBottomSheet extends StatelessWidget {
     } else {
       return '${date.day}/${date.month}/${date.year}';
     }
+  }
+
+  /// Navigate to event based on its current status
+  /// pending/confirmed → event page
+  /// living → eventLiving page
+  /// recap/ended → memory page (both have memories)
+  static Future<void> _navigateToEvent(
+      BuildContext context, String eventId) async {
+    print(
+        '[PaymentBottomSheet] _navigateToEvent called with eventId: $eventId');
+    try {
+      // Fetch event status from events table
+      print('[PaymentBottomSheet] Fetching event status from Supabase...');
+      final response = await Supabase.instance.client
+          .from('events')
+          .select('status')
+          .eq('id', eventId)
+          .maybeSingle();
+
+      print('[PaymentBottomSheet] Supabase response: $response');
+
+      if (response == null || !context.mounted) {
+        print(
+            '[PaymentBottomSheet] Response null or context not mounted, returning');
+        return;
+      }
+
+      final status = response['status'] as String?;
+      print('[PaymentBottomSheet] Event status: $status');
+
+      // Close bottom sheet first
+      print('[PaymentBottomSheet] Closing bottom sheet before navigation');
+      Navigator.of(context).pop();
+
+      // Navigate based on status
+      // Event lifecycle: pending → confirmed → living → recap → ended
+      // Both recap and ended have memories and go to memory page
+      if (status == 'living') {
+        print('[PaymentBottomSheet] Navigating to eventLiving page');
+        await Navigator.pushNamed(
+          context,
+          AppRouter.eventLiving,
+          arguments: {'eventId': eventId},
+        );
+      } else if (status == 'recap' || status == 'ended') {
+        print('[PaymentBottomSheet] Navigating to memory page');
+        await Navigator.pushNamed(
+          context,
+          AppRouter.memory,
+          arguments: {'memoryId': eventId},
+        );
+      } else if (status == 'pending' || status == 'confirmed') {
+        print('[PaymentBottomSheet] Navigating to event planning page');
+        await Navigator.pushNamed(
+          context,
+          AppRouter.event,
+          arguments: {'eventId': eventId},
+        );
+      } else {
+        print('[PaymentBottomSheet] Unknown status: $status, no navigation');
+      }
+    } catch (e) {
+      print('[PaymentBottomSheet] ERROR in _navigateToEvent: $e');
+      // Silent fail - if can't fetch event status, don't navigate
+      return;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // This widget is no longer used directly, keeping for compatibility
+    return const SizedBox.shrink();
   }
 }
