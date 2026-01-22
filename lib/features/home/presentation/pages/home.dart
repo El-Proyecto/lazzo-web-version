@@ -92,11 +92,6 @@ class _HomePageState extends ConsumerState<HomePage> {
   String _formatEventDate(DateTime? date) {
     if (date == null) return 'Date and Location to be decided';
 
-    // Check if event date has expired
-    if (date.isBefore(DateTime.now())) {
-      return 'Event date expired!';
-    }
-
     final months = [
       'Jan',
       'Feb',
@@ -132,12 +127,6 @@ class _HomePageState extends ConsumerState<HomePage> {
       case HomeEventStatus.recap:
         return HomeEventCardState.recap;
     }
-  }
-
-  /// Check if event date has expired
-  bool _isEventExpired(DateTime? date) {
-    if (date == null) return false;
-    return date.isBefore(DateTime.now());
   }
 
   EventSmallCardState _mapStatusToSmallCardState(HomeEventStatus status) {
@@ -785,19 +774,21 @@ class _HomePageState extends ConsumerState<HomePage> {
                                 displayEvents.asMap().entries.map((entry) {
                               final index = entry.key;
                               final event = entry.value;
-                              final isExpired = _isEventExpired(event.date);
+                              final isExpired = event.date != null &&
+                                  event.date!.isBefore(DateTime.now());
                               return Column(
                                 children: [
                                   EventSmallCard(
                                     emoji: event.emoji,
                                     title: event.name,
                                     dateTime: _formatEventDate(event.date),
-                                    location: (event.date == null || isExpired)
-                                        ? null // Don't show location when date is TBD or expired
+                                    location: event.date == null
+                                        ? null // Don't show location when date is TBD
                                         : (event.location ??
                                             'Location to be decided'),
                                     state: _mapStatusToSmallCardState(
                                         event.status),
+                                    isExpired: isExpired,
                                     onTap: () async {
                                       // ✅ Navigate based on actual calculated status
                                       if (event.status ==
@@ -881,19 +872,21 @@ class _HomePageState extends ConsumerState<HomePage> {
                                 displayEvents.asMap().entries.map((entry) {
                               final index = entry.key;
                               final event = entry.value;
-                              final isExpired = _isEventExpired(event.date);
+                              final isExpired = event.date != null &&
+                                  event.date!.isBefore(DateTime.now());
                               return Column(
                                 children: [
                                   EventSmallCard(
                                     emoji: event.emoji,
                                     title: event.name,
                                     dateTime: _formatEventDate(event.date),
-                                    location: (event.date == null || isExpired)
-                                        ? null // Don't show location when date is TBD or expired
+                                    location: event.date == null
+                                        ? null // Don't show location when date is TBD
                                         : (event.location ??
                                             'Location to be decided'),
                                     state: _mapStatusToSmallCardState(
                                         event.status),
+                                    isExpired: isExpired,
                                     onTap: () async {
                                       // ✅ Navigate based on actual calculated status
                                       if (event.status ==

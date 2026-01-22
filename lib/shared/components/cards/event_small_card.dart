@@ -19,6 +19,8 @@ class EventSmallCard extends StatelessWidget {
   final String dateTime;
   final String? location; // Nullable to support "Date TBD" without location
   final EventSmallCardState state;
+  final bool
+      isExpired; // If true, shows "Event date expired!" text but keeps chip as Pending
   final VoidCallback? onTap;
 
   const EventSmallCard({
@@ -28,6 +30,7 @@ class EventSmallCard extends StatelessWidget {
     required this.dateTime,
     this.location, // Optional
     required this.state,
+    this.isExpired = false,
     this.onTap,
   });
 
@@ -56,6 +59,14 @@ class EventSmallCard extends StatelessWidget {
       return BrandColors.text1;
     }
     return Colors.white;
+  }
+
+  /// Get the date/time display text
+  String _getDateTimeDisplay() {
+    if (isExpired) {
+      return 'Event date expired!';
+    }
+    return dateTime;
   }
 
   String _getStatusLabel() {
@@ -130,10 +141,16 @@ class EventSmallCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: Gaps.xxs),
-            // Date and location
+            // Date and location (or "Event date expired!" for expired events)
             Text(
-              location != null ? '$dateTime • $location' : dateTime,
-              style: AppText.bodyMedium.copyWith(color: BrandColors.text2),
+              isExpired
+                  ? (location != null
+                      ? '${_getDateTimeDisplay()} • $location'
+                      : _getDateTimeDisplay())
+                  : (location != null ? '$dateTime • $location' : dateTime),
+              style: AppText.bodyMedium.copyWith(
+                color: BrandColors.text2,
+              ),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),

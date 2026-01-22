@@ -48,10 +48,24 @@ class _EventsListPageState extends ConsumerState<EventsListPage> {
   }
 
   void _loadInitial() {
+    print('[EventsListPage] Loading initial ${widget.type.name} events');
     if (widget.type == EventsListType.confirmed) {
       ref.read(confirmedEventsListControllerProvider.notifier).loadInitial();
     } else {
       ref.read(pendingEventsListControllerProvider.notifier).loadInitial();
+    }
+  }
+
+  Future<void> _handleRefresh() async {
+    print('[EventsListPage] Refreshing ${widget.type.name} events');
+    if (widget.type == EventsListType.confirmed) {
+      await ref
+          .read(confirmedEventsListControllerProvider.notifier)
+          .loadInitial();
+    } else {
+      await ref
+          .read(pendingEventsListControllerProvider.notifier)
+          .loadInitial();
     }
   }
 
@@ -102,11 +116,6 @@ class _EventsListPageState extends ConsumerState<EventsListPage> {
   String _formatEventDate(DateTime? date) {
     if (date == null) return 'Date and Location to be decided';
 
-    // Check if event date has expired
-    if (date.isBefore(DateTime.now())) {
-      return 'Event date expired!';
-    }
-
     final months = [
       'Jan',
       'Feb',
@@ -143,12 +152,37 @@ class _EventsListPageState extends ConsumerState<EventsListPage> {
         ? ref.watch(confirmedEventsListControllerProvider)
         : ref.watch(pendingEventsListControllerProvider);
 
+    print(
+        '[EventsListPage] Building ${widget.type.name} page with ${state.events.length} events');
+    if (state.events.isNotEmpty) {
+      print(
+          '[EventsListPage] First event: ${state.events.first.name}, date: ${state.events.first.date}');
+      print(
+          '[EventsListPage] Last event: ${state.events.last.name}, date: ${state.events.last.date}');
+      // Check for expired events
+      final now = DateTime.now();
+      final expiredCount = state.events
+          .where((e) => e.date != null && e.date!.isBefore(now))
+          .length;
+      print(
+          '[EventsListPage] Expired events count: $expiredCount / ${state.events.length}');
+    }
+
     return Scaffold(
-      appBar: CommonAppBar.createEvent(
+      backgroundColor: BrandColors.bg1,
+      appBar: CommonAppBar(
         title: _title,
-        onBackPressed: () => Navigator.pop(context),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: BrandColors.text1),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
       ),
-      body: _buildBody(state),
+      body: RefreshIndicator(
+        onRefresh: _handleRefresh,
+        color: BrandColors.planning,
+        backgroundColor: BrandColors.bg2,
+        child: _buildBody(state),
+      ),
     );
   }
 
@@ -164,7 +198,7 @@ class _EventsListPageState extends ConsumerState<EventsListPage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
+            const Icon(
               Icons.error_outline,
               size: 48,
               color: BrandColors.text2,
@@ -189,7 +223,7 @@ class _EventsListPageState extends ConsumerState<EventsListPage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
+            const Icon(
               Icons.event_available,
               size: 48,
               color: BrandColors.text2,
@@ -236,10 +270,11 @@ class _EventsListPageState extends ConsumerState<EventsListPage> {
             emoji: event.emoji,
             title: event.name,
             dateTime: _formatEventDate(event.date),
-            location: (event.date == null || isExpired)
-                ? null // Don't show location when date is TBD or expired
+            location: event.date == null
+                ? null // Don't show location when date is TBD
                 : (event.location ?? 'Location to be decided'),
             state: _mapStatusToSmallCardState(event.status),
+            isExpired: isExpired,
             onTap: () => _navigateToEvent(event),
           );
         },

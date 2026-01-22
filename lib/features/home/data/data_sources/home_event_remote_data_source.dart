@@ -167,6 +167,8 @@ class HomeEventRemoteDataSource {
   /// Shows ALL pending events regardless of user vote status
   Future<List<HomeEventEntity>> fetchPendingEvents(String userId) async {
     try {
+      print(
+          '[HomeEventDataSource] fetchPendingEvents START for userId: $userId');
       final response = await client
           .from(_eventsView)
           .select('''
@@ -185,6 +187,16 @@ class HomeEventRemoteDataSource {
           .limit(50); // Increased limit to show all events
 
       final data = response as List<dynamic>;
+      print(
+          '[HomeEventDataSource] fetchPendingEvents: Received ${data.length} rows from Supabase');
+      if (data.isNotEmpty) {
+        print('[HomeEventDataSource] First 3 event IDs from Supabase:');
+        for (int i = 0; i < data.length && i < 3; i++) {
+          final row = data[i] as Map<String, dynamic>;
+          print(
+              '  - ${row['event_name']}: ${row['event_id']}, date: ${row['start_datetime']}');
+        }
+      }
 
       // ✅ OPTIMIZATION: Batch convert avatar paths to signed URLs BEFORE entity creation
       final rawData = data.cast<Map<String, dynamic>>();
@@ -204,29 +216,44 @@ class HomeEventRemoteDataSource {
 
       final events = await Future.wait(eventsFutures);
 
-      // Sort: future dates first (ascending), expired dates last, null dates at end
+      print(
+          '[HomeEventDataSource] fetchPendingEvents: Loaded ${events.length} pending events from DB');
+      // Check for expired events
       final now = DateTime.now();
+      final expiredEvents =
+          events.where((e) => e.date != null && e.date!.isBefore(now)).toList();
+      print(
+          '[HomeEventDataSource] Expired pending events: ${expiredEvents.length}');
+      if (expiredEvents.isNotEmpty) {
+        print(
+            '[HomeEventDataSource] First expired: ${expiredEvents.first.name}, date: ${expiredEvents.first.date}');
+      }
+
+      // ✅ DO NOT filter out past events - show expired pending events with "Event date expired!" label
+      // Sort: future dates first (ascending), past dates last, null dates at the end
       events.sort((a, b) {
-        // Handle null dates - put at the end
+        final aIsPast = a.date != null && a.date!.isBefore(now);
+        final bIsPast = b.date != null && b.date!.isBefore(now);
+
+        // Both null dates go to the end
         if (a.date == null && b.date == null) return 0;
         if (a.date == null) return 1; // a (null) goes after b
         if (b.date == null) return -1; // b (null) goes after a
 
-        // Check if events are expired
-        final aExpired = a.date!.isBefore(now);
-        final bExpired = b.date!.isBefore(now);
+        // Future events before past events
+        if (!aIsPast && bIsPast) return -1;
+        if (aIsPast && !bIsPast) return 1;
 
-        // Future events come before expired events
-        if (!aExpired && bExpired) return -1; // a (future) before b (expired)
-        if (aExpired && !bExpired) return 1; // a (expired) after b (future)
-
-        // Both future or both expired - sort by date ascending
+        // Within same category, sort by date
         return a.date!.compareTo(b.date!);
       });
 
-      // ✅ Return ALL events including expired - UI will handle display
+      // ✅ Return ALL events - home.dart will handle the .take(10) and "See All" logic
+      print(
+          '[HomeEventDataSource] Returning ${events.length} pending events after sorting');
       return events;
     } catch (e) {
+      print('[HomeEventDataSource] Error fetching pending events: $e');
       return [];
     }
   }
