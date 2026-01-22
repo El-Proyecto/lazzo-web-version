@@ -15,6 +15,7 @@ Este documento descreve todas as notificações implementadas na app Lazzo, incl
 | 1.5 | Group Member Added | push | - | ✓ | medium |
 | 2 | Payment Added (You Owe) | notifications | ✓ | ✓ | high |
 | 3 | Payment Added (Owes You) | notifications | ✓ | ✓ | high |
+| 3.5 | Payment Received | notifications | ✓ | ✓ | high |
 | 4 | Payment Request | actions | ✓ | ✓ | high |
 | 5 | Event Starts Soon | push | - | ✓ | high |
 | 6 | Event Live | push | - | ✓ | high |
@@ -139,6 +140,34 @@ Este documento descreve todas as notificações implementadas na app Lazzo, incl
 - `deeplink`: `lazzo://events/{event_id}/expenses/{expense_id}`
 
 **Trigger:** INSERT em `payments` onde outra pessoa deve ao current_user
+
+---
+
+### 3.5. Payment Received
+**Type:** `paymentReceived`  
+**Category:** `notifications`  
+**Priority:** `high`
+
+**Push Notification:**
+- **Título:** "{event_emoji} {event_name}"
+- **Corpo:** "{user_name} paid you {amount}"
+
+**Inbox:**
+- Aparece no tab "Notifications"
+- **Texto:** "**{user_name}** paid you **<span style="color:green">{amount}</span>**"
+- **Icon:** {event_emoji}
+- Action: Ver detalhes do pagamento
+
+**Dados Necessários:**
+- `user_name`: Nome de quem pagou
+- `amount`: Valor recebido (ex: "€0.50")
+- `event_emoji`: Emoji do evento
+- `event_name`: Nome do evento
+- `event_id`: ID do evento
+- `expense_id`: ID da expense
+- `deeplink`: `lazzo://events/{event_id}/expenses/{expense_id}`
+
+**Trigger:** UPDATE em `expense_splits` quando `has_paid` muda para `true` e o current_user é o `to_user_id` no payment correspondente
 
 ---
 

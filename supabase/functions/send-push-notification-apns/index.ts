@@ -211,6 +211,10 @@ const getLocalizedMessage = (
       title: `${emoji} ${event_name}`,
       body: `You owe ${amount} to ${user_name}`,
     },
+    paymentReceived: {
+      title: `${emoji} ${event_name}`,
+      body: `${user_name} paid you ${amount}`,
+    },
   };
 
   return messages[type] || { title: "Notification", body: "You have a new notification" };

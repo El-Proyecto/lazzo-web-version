@@ -263,6 +263,8 @@ class NotificationModel {
         return '{user} added the expense "{note}". Someone owes you {amount}.';
       case 'paymentsPaidYou':
         return '{user} paid you {amount}.';
+      case 'paymentReceived':
+        return '{user} paid you {amount}.';
       case 'chatMention':
         return '{user} mentioned you in chat.';
       case 'chatMessage':
