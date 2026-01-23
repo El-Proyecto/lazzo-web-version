@@ -20,75 +20,82 @@ class OtpCodeBoxes extends StatefulWidget {
 }
 
 class _OtpCodeBoxesState extends State<OtpCodeBoxes> {
-  late final List<TextEditingController> _controllers;
-  late final List<FocusNode> _focusNodes;
-
-  @override
-  void initState() {
-    super.initState();
-    _controllers = List.generate(widget.length, (_) => TextEditingController());
-    _focusNodes = List.generate(widget.length, (_) => FocusNode());
-  }
+  final TextEditingController _controller = TextEditingController();
+  final FocusNode _focusNode = FocusNode();
 
   @override
   void dispose() {
-    for (final c in _controllers) {
-      c.dispose();
-    }
-    for (final f in _focusNodes) {
-      f.dispose();
-    }
+    _controller.dispose();
+    _focusNode.dispose();
     super.dispose();
   }
 
-  void _onChanged(int index, String value) {
-    if (value.isNotEmpty) {
-      // Auto-advance: move to next box after typing
-      if (index < widget.length - 1) {
-        _focusNodes[index + 1].requestFocus();
-      } else {
-        // Last box - unfocus keyboard
-        _focusNodes[index].unfocus();
-      }
-    }
+  void _onChanged(String value) {
+    setState(() {}); // Rebuild to update visual boxes
 
-    // Notify when complete
-    final code = _controllers.map((c) => c.text).join();
-    if (code.length == widget.length) {
-      widget.onCompleted?.call(code);
-    }
-  }
-
-  void _onKeyEvent(int index, KeyEvent event) {
-    // Handle backspace: if current box is empty, move to previous and clear it
-    if (event is KeyDownEvent &&
-        event.logicalKey == LogicalKeyboardKey.backspace) {
-      if (_controllers[index].text.isEmpty && index > 0) {
-        _focusNodes[index - 1].requestFocus();
-        _controllers[index - 1].clear();
-      }
+    // Notify when complete (6 digits entered)
+    if (value.length == widget.length) {
+      widget.onCompleted?.call(value);
+      // Optionally dismiss keyboard
+      _focusNode.unfocus();
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: Gaps.sm),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: List.generate(widget.length, (i) {
-          return Flexible(
-            child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: Gaps.xs / 2),
-              child: _OtpBox(
-                controller: _controllers[i],
-                focusNode: _focusNodes[i],
-                onChanged: (v) => _onChanged(i, v),
-                onKeyEvent: (event) => _onKeyEvent(i, event),
+    final currentCode = _controller.text;
+
+    return GestureDetector(
+      onTap: () => _focusNode.requestFocus(),
+      child: Stack(
+        children: [
+          // Visual boxes (decorative only)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: Gaps.sm),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: List.generate(widget.length, (i) {
+                final hasDigit = i < currentCode.length;
+                final digit = hasDigit ? currentCode[i] : '';
+                final isActive = i == currentCode.length;
+
+                return Flexible(
+                  child: Padding(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: Gaps.xs / 2),
+                    child: _OtpBox(
+                      digit: digit,
+                      isActive: isActive,
+                    ),
+                  ),
+                );
+              }),
+            ),
+          ),
+          // Invisible TextField that captures all input
+          Positioned.fill(
+            child: Opacity(
+              opacity: 0.01, // Nearly invisible but still focusable
+              child: TextField(
+                controller: _controller,
+                focusNode: _focusNode,
+                keyboardType: TextInputType.number,
+                textInputAction: TextInputAction.done,
+                autofocus: true,
+                maxLength: widget.length,
+                decoration: const InputDecoration(
+                  counterText: '',
+                  border: InputBorder.none,
+                ),
+                inputFormatters: [
+                  FilteringTextInputFormatter.digitsOnly,
+                  LengthLimitingTextInputFormatter(widget.length),
+                ],
+                onChanged: _onChanged,
               ),
             ),
-          );
-        }),
+          ),
+        ],
       ),
     );
   }
@@ -96,54 +103,34 @@ class _OtpCodeBoxesState extends State<OtpCodeBoxes> {
 
 class _OtpBox extends StatelessWidget {
   const _OtpBox({
-    required this.controller,
-    required this.focusNode,
-    required this.onChanged,
-    required this.onKeyEvent,
+    required this.digit,
+    required this.isActive,
   });
 
-  final TextEditingController controller;
-  final FocusNode focusNode;
-  final ValueChanged<String> onChanged;
-  final ValueChanged<KeyEvent> onKeyEvent;
+  final String digit;
+  final bool isActive;
 
   @override
   Widget build(BuildContext context) {
     return AspectRatio(
       aspectRatio: 0.6,
-      child: KeyboardListener(
-        focusNode: FocusNode(),
-        onKeyEvent: onKeyEvent,
-        child: Container(
-          decoration: ShapeDecoration(
-            color: BrandColors.bg3,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(Radii.md),
-            ),
+      child: Container(
+        decoration: ShapeDecoration(
+          color: BrandColors.bg3,
+          shape: RoundedRectangleBorder(
+            borderRadius: const BorderRadius.all(Radius.circular(Radii.md)),
+            side: isActive
+                ? const BorderSide(color: BrandColors.planning, width: 2)
+                : BorderSide.none,
           ),
-          alignment: Alignment.center,
-          child: TextField(
-            controller: controller,
-            focusNode: focusNode,
-            keyboardType: TextInputType.number,
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              color: BrandColors.text1,
-              fontSize: 28,
-              fontWeight: FontWeight.w600,
-            ),
-            maxLength: 1,
-            decoration: const InputDecoration(
-              counterText: '',
-              border: InputBorder.none,
-              isCollapsed: true,
-              contentPadding: EdgeInsets.zero,
-            ),
-            inputFormatters: [
-              FilteringTextInputFormatter.digitsOnly,
-              LengthLimitingTextInputFormatter(1),
-            ],
-            onChanged: onChanged,
+        ),
+        alignment: Alignment.center,
+        child: Text(
+          digit,
+          style: const TextStyle(
+            color: BrandColors.text1,
+            fontSize: 28,
+            fontWeight: FontWeight.w600,
           ),
         ),
       ),
