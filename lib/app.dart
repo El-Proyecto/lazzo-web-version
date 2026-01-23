@@ -26,6 +26,9 @@ class _LazzoAppState extends ConsumerState<LazzoApp> {
   late final AppLinks _appLinks;
   StreamSubscription<Uri>? _uriLinkSub;
 
+  /// Pending invite token to process after login
+  String? _pendingInviteToken;
+
   @override
   Widget build(BuildContext context) {
     // Initialize push notifications (watches auth state automatically)
@@ -83,8 +86,9 @@ class _LazzoAppState extends ConsumerState<LazzoApp> {
   /// Handles incoming link from stream (warm start) or initial link
   Future<void> _handleIncomingLink(Uri uri) async {
     try {
-      debugPrint('🔗 Deep link recebido: $uri (scheme: ${uri.scheme}, host: ${uri.host}, path: ${uri.path})');
-      
+      debugPrint(
+          '🔗 Deep link recebido: $uri (scheme: ${uri.scheme}, host: ${uri.host}, path: ${uri.path})');
+
       final pathSegments = uri.pathSegments;
 
       if (pathSegments.isEmpty) {
@@ -95,8 +99,10 @@ class _LazzoAppState extends ConsumerState<LazzoApp> {
       // Support /i/<token> and /invite/<token>
       // Also support custom scheme: lazzo://invite/TOKEN
       String? token;
-      
-      if (uri.scheme == 'lazzo' && uri.host == 'invite' && pathSegments.isNotEmpty) {
+
+      if (uri.scheme == 'lazzo' &&
+          uri.host == 'invite' &&
+          pathSegments.isNotEmpty) {
         // Custom scheme: lazzo://invite/TOKEN
         token = pathSegments.first;
         debugPrint('✅ Token extraído de custom scheme: $token');
@@ -106,7 +112,7 @@ class _LazzoAppState extends ConsumerState<LazzoApp> {
         token = pathSegments[1];
         debugPrint('✅ Token extraído de universal link: $token');
       }
-      
+
       if (token == null) {
         debugPrint('❌ Não foi possível extrair token do deep link');
         return;
@@ -128,7 +134,9 @@ class _LazzoAppState extends ConsumerState<LazzoApp> {
       // Check final auth state
       final authState = ref.read(authProvider);
       if (!authState.hasValue || authState.value == null) {
-        debugPrint('⚠️ User não autenticado após espera, redirecionando para web');
+        debugPrint('⚠️ User não autenticado - redirecionando para web');
+        // User is not logged in - redirect to web landing page
+        // This is the ONLY case where we redirect to web
         final landing = '${AppConfig.invitesBaseUrl}/i/$token';
         final uriLanding = Uri.parse(landing);
         if (await canLaunchUrl(uriLanding)) {
@@ -147,50 +155,85 @@ class _LazzoAppState extends ConsumerState<LazzoApp> {
         // Refresh groups to include the new group
         ref.invalidate(groupsProvider);
 
-        // Wait for navigator to be ready (max 5 seconds)
-        for (int i = 0; i < 10; i++) {
-          if (_navigatorKey.currentState?.mounted == true) {
-            debugPrint('✅ Navigator ready');
-            break;
-          }
-          debugPrint('⏳ Aguardando navigator... (tentativa ${i + 1}/10)');
-          await Future.delayed(const Duration(milliseconds: 500));
-        }
-
         // Navigate to group hub
-        if (_navigatorKey.currentState?.mounted == true) {
-          debugPrint('✅ Navegando para group hub...');
-          _navigatorKey.currentState!.pushNamed(
-            AppRouter.groupHub,
-            arguments: {'groupId': groupId},
-          );
-        } else {
-          debugPrint('❌ Navigator não disponível');
-        }
+        await _navigateToGroupHub(groupId);
         return;
       } catch (e) {
         debugPrint('❌ Erro ao aceitar convite: $e');
-        
-        // Only redirect to web if invite acceptance actually failed
-        // Don't redirect on navigation errors
+
+        // Handle specific errors - NEVER redirect to web as it creates loops
+        // The app should handle all invite states gracefully
         final errorMessage = e.toString().toLowerCase();
-        if (errorMessage.contains('already a member') ||
-            errorMessage.contains('invalid token') ||
+
+        // For invalid/expired/revoked tokens, show error in-app
+        // Don't redirect to web - the user already has the app
+        if (errorMessage.contains('invalid token') ||
             errorMessage.contains('expired') ||
-            errorMessage.contains('not found') ||
-            errorMessage.contains('not authenticated') ||
-            errorMessage.contains('unauthorized')) {
-          debugPrint('⚠️ Erro no convite, redirecionando para web');
-          final landing = '${AppConfig.invitesBaseUrl}/i/$token';
-          final uriLanding = Uri.parse(landing);
-          if (await canLaunchUrl(uriLanding)) {
-            await launchUrl(uriLanding, mode: LaunchMode.externalApplication);
-          }
+            errorMessage.contains('revoked') ||
+            errorMessage.contains('not found')) {
+          debugPrint('⚠️ Token inválido/expirado - mostrando erro na app');
+          // User will see the normal app state
+          // Could show a snackbar/banner here if needed
+          return;
         }
+
+        // For auth errors, the AuthWrapper will handle navigation to login
+        if (errorMessage.contains('not authenticated') ||
+            errorMessage.contains('unauthorized')) {
+          debugPrint('⚠️ Erro de autenticação - AuthWrapper vai tratar');
+          return;
+        }
+
+        // For any other unexpected errors, stay in app
+        debugPrint('⚠️ Erro inesperado - permanecendo na app');
       }
     } catch (e) {
       debugPrint('❌ Erro geral ao processar deep link: $e');
       // Silently fail - deep link errors should not crash the app
+    }
+  }
+
+  /// Navigate to group hub with retry logic for navigator availability
+  Future<void> _navigateToGroupHub(String groupId) async {
+    // Wait for navigator to be ready (max 5 seconds)
+    for (int i = 0; i < 10; i++) {
+      if (_navigatorKey.currentState?.mounted == true) {
+        debugPrint('✅ Navigator ready');
+        break;
+      }
+      debugPrint('⏳ Aguardando navigator... (tentativa ${i + 1}/10)');
+      await Future.delayed(const Duration(milliseconds: 500));
+    }
+
+    // Navigate to group hub
+    if (_navigatorKey.currentState?.mounted == true) {
+      debugPrint('✅ Navegando para group hub...');
+      _navigatorKey.currentState!.pushNamed(
+        AppRouter.groupHub,
+        arguments: {'groupId': groupId},
+      );
+    } else {
+      debugPrint('❌ Navigator não disponível após espera');
+    }
+  }
+
+  /// Process pending invite token (called after successful login)
+  Future<void> processPendingInvite() async {
+    final token = _pendingInviteToken;
+    if (token == null) return;
+
+    _pendingInviteToken = null; // Clear to avoid reprocessing
+    debugPrint('✅ Processando convite pendente: $token');
+
+    try {
+      final accept = ref.read(acceptGroupInviteProvider);
+      final groupId = await accept.call(token);
+      debugPrint('✅ Convite pendente aceito! Group ID: $groupId');
+
+      ref.invalidate(groupsProvider);
+      await _navigateToGroupHub(groupId);
+    } catch (e) {
+      debugPrint('❌ Erro ao processar convite pendente: $e');
     }
   }
 }

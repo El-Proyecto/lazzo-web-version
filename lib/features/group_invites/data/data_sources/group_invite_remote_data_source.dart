@@ -4,9 +4,10 @@ import '../models/group_invite_link_model.dart';
 
 class GroupInviteRemoteDataSource {
   final SupabaseClient _client;
-  
+
   // In-memory cache: groupId -> (model, timestamp)
-  final Map<String, ({GroupInviteLinkModel model, DateTime cachedAt})> _cache = {};
+  final Map<String, ({GroupInviteLinkModel model, DateTime cachedAt})> _cache =
+      {};
 
   GroupInviteRemoteDataSource(this._client);
 
@@ -19,11 +20,12 @@ class GroupInviteRemoteDataSource {
     final cached = _cache[groupId];
     if (cached != null) {
       final cacheAge = DateTime.now().difference(cached.cachedAt);
-      if (cacheAge.inMinutes < 5 && cached.model.expiresAt.isAfter(DateTime.now())) {
+      if (cacheAge.inMinutes < 5 &&
+          cached.model.expiresAt.isAfter(DateTime.now())) {
         return cached.model;
       }
     }
-    
+
     try {
       // Call RPC to get or create token
       final response = await _client.rpc(
@@ -70,42 +72,44 @@ class GroupInviteRemoteDataSource {
 
       if (data != null && data.containsKey('token')) {
         final model = GroupInviteLinkModel.fromJson(data);
-        
+
         // Validate token is URL-safe
-        if (model.token.contains('/') || model.token.contains('+') || model.token.contains('=')) {
-          throw Exception('Invalid token format: contains non-URL-safe characters');
+        if (model.token.contains('/') ||
+            model.token.contains('+') ||
+            model.token.contains('=')) {
+          throw Exception(
+              'Invalid token format: contains non-URL-safe characters');
         }
-        
+
         // Cache the result
         _cache[groupId] = (model: model, cachedAt: DateTime.now());
-        
+
         return model;
       }
 
-      throw Exception('Failed to get or create invite link — unexpected RPC response: $response');
+      throw Exception(
+          'Failed to get or create invite link — unexpected RPC response: $response');
     } catch (e) {
       rethrow;
     }
   }
-  
+
   /// Clear cache for a specific group (useful after revoking invite)
   void clearCache(String groupId) {
     _cache.remove(groupId);
   }
-  
+
   /// Clear all cached invites
   void clearAllCache() {
     _cache.clear();
   }
 
   Future<String> acceptInviteByToken(String token) async {
-    
     try {
       final response = await _client.rpc(
         'accept_group_invite_by_token',
         params: {'p_token': token},
       );
-
 
       // Common shapes: plain string groupId, list with map, or map
       if (response is String && response.isNotEmpty) {
@@ -117,12 +121,24 @@ class GroupInviteRemoteDataSource {
         if (first is String && first.isNotEmpty) {
           return first;
         }
+        // ✅ Updated to read 'result_group_id' instead of 'group_id'
+        if (first is Map && first.containsKey('result_group_id')) {
+          final groupId = first['result_group_id'] as String;
+          return groupId;
+        }
+        // Fallback for old column name (backward compatibility)
         if (first is Map && first.containsKey('group_id')) {
           final groupId = first['group_id'] as String;
           return groupId;
         }
       }
 
+      if (response is Map && response.containsKey('result_group_id')) {
+        final groupId = response['result_group_id'] as String;
+        return groupId;
+      }
+
+      // Fallback for old column name (backward compatibility)
       if (response is Map && response.containsKey('group_id')) {
         final groupId = response['group_id'] as String;
         return groupId;

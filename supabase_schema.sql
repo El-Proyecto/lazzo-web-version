@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict QWnpbHDFhp0qBECc5Ncpb945cyjxU2rMh0om3pntQQxNuIbgTXzzgVqj3ueiEAk
+\restrict pS7oMXSDnOcRheAqkUrkYKzyvVdUmohbmFwUFCElrDpXmO3URuBrydzRLAISvXE
 
 -- Dumped from database version 17.4
 -- Dumped by pg_dump version 18.1
@@ -283,64 +283,101 @@ CREATE FUNCTION public.accept_group_invite_by_token(p_token text) RETURNS TABLE(
     AS $$
 DECLARE
   v_user_id UUID;
-  v_invite RECORD;
+  v_invite_id UUID;
+  v_invite_group_id UUID;
+  v_invite_expires_at TIMESTAMPTZ;
+  v_invite_revoked_at TIMESTAMPTZ;
+  v_already_member BOOLEAN;
 BEGIN
+  RAISE NOTICE '========== START accept_group_invite_by_token ==========';
+  RAISE NOTICE 'Token: %', p_token;
+  
   -- Get authenticated user
   v_user_id := auth.uid();
+  RAISE NOTICE 'User ID: %', v_user_id;
+  
   IF v_user_id IS NULL THEN
     RAISE EXCEPTION 'Not authenticated';
   END IF;
 
   -- Find and validate invite link
-  SELECT 
-    gil.id,
-    gil.group_id,
-    gil.expires_at,
-    gil.revoked_at
-  INTO v_invite
-  FROM group_invite_links gil
-  WHERE gil.token = p_token;
-
-  -- Token doesn't exist
-  IF v_invite.id IS NULL THEN
-    RAISE EXCEPTION 'Invalid invite token';
-  END IF;
+  RAISE NOTICE 'Searching for token...';
+  BEGIN
+    SELECT 
+      gil.id,
+      gil.group_id,
+      gil.expires_at,
+      gil.revoked_at
+    INTO STRICT
+      v_invite_id,
+      v_invite_group_id,
+      v_invite_expires_at,
+      v_invite_revoked_at
+    FROM group_invite_links gil
+    WHERE gil.token = p_token;
+    
+    RAISE NOTICE 'Token found! Invite ID: %, Group ID: %', v_invite_id, v_invite_group_id;
+  EXCEPTION
+    WHEN NO_DATA_FOUND THEN
+      RAISE EXCEPTION 'Invalid invite token';
+    WHEN TOO_MANY_ROWS THEN
+      RAISE EXCEPTION 'Duplicate token found (should not happen)';
+  END;
 
   -- Token expired
-  IF v_invite.expires_at < NOW() THEN
+  IF v_invite_expires_at < NOW() THEN
+    RAISE NOTICE 'Token expired at: %', v_invite_expires_at;
     RAISE EXCEPTION 'Invite link has expired';
   END IF;
 
   -- Token revoked
-  IF v_invite.revoked_at IS NOT NULL THEN
+  IF v_invite_revoked_at IS NOT NULL THEN
+    RAISE NOTICE 'Token revoked at: %', v_invite_revoked_at;
     RAISE EXCEPTION 'Invite link has been revoked';
   END IF;
 
   -- Check if user is already a member
-  IF EXISTS (
-    SELECT 1 FROM group_members
-    WHERE group_members.group_id = v_invite.group_id
-    AND group_members.user_id = v_user_id
-  ) THEN
-    -- Already member, just return group_id
-    RETURN QUERY SELECT v_invite.group_id;
+  RAISE NOTICE 'Checking if user is already member...';
+  SELECT EXISTS (
+    SELECT 1 FROM group_members gm
+    WHERE gm.group_id = v_invite_group_id
+      AND gm.user_id = v_user_id
+  ) INTO v_already_member;
+  
+  RAISE NOTICE 'Already member: %', v_already_member;
+
+  IF v_already_member THEN
+    RAISE NOTICE 'User already member, returning group_id: %', v_invite_group_id;
+    RETURN QUERY SELECT v_invite_group_id;
     RETURN;
   END IF;
 
   -- Add user to group
-  INSERT INTO group_members (
-    group_id,
-    user_id,
-    role
-  )
-  VALUES (
-    v_invite.group_id,
-    v_user_id,
-    'member'
-  )
-  ON CONFLICT (group_id, user_id) DO NOTHING;
+  RAISE NOTICE 'Adding user to group...';
+  BEGIN
+    INSERT INTO group_members (
+      group_id,
+      user_id,
+      role
+    )
+    VALUES (
+      v_invite_group_id,
+      v_user_id,
+      'member'
+    )
+    ON CONFLICT (group_id, user_id) DO NOTHING;
+    
+    RAISE NOTICE 'User added successfully!';
+  EXCEPTION
+    WHEN OTHERS THEN
+      RAISE NOTICE 'ERROR during INSERT: % - %', SQLSTATE, SQLERRM;
+      RAISE;
+  END;
 
-  RETURN QUERY SELECT v_invite.group_id;
+  RAISE NOTICE 'Returning group_id: %', v_invite_group_id;
+  RETURN QUERY SELECT v_invite_group_id;
+  
+  RAISE NOTICE '========== END accept_group_invite_by_token ==========';
 END;
 $$;
 
@@ -2606,20 +2643,29 @@ CREATE FUNCTION public.notify_payment_received() RETURNS trigger
 DECLARE
   v_payer_name TEXT;
   v_event_id UUID;
+  v_event_name TEXT;
+  v_event_emoji TEXT;
   v_recipient_user_id UUID;
 BEGIN
   -- Só notifica se mudou de não pago para pago
   IF OLD.has_paid = FALSE AND NEW.has_paid = TRUE THEN
     
-    -- Buscar dados
-    -- ✅ CORRIGIDO: usa created_by (não payer_user_id)
+    -- Buscar dados do pagador, evento e quem recebe
     SELECT 
       u.name,
       ee.event_id,
+      e.name,
+      e.emoji,
       ee.created_by
-    INTO v_payer_name, v_event_id, v_recipient_user_id
+    INTO 
+      v_payer_name, 
+      v_event_id, 
+      v_event_name,
+      v_event_emoji,
+      v_recipient_user_id
     FROM event_expenses ee
     LEFT JOIN users u ON u.id = NEW.user_id
+    LEFT JOIN events e ON e.id = ee.event_id
     WHERE ee.id = NEW.expense_id;
     
     -- Notificar quem recebeu o pagamento
@@ -2631,16 +2677,20 @@ BEGIN
       user_name,
       amount,
       event_id,
+      event_name,
+      event_emoji,
       expense_id,
       deeplink
     ) VALUES (
       v_recipient_user_id,
       'paymentReceived',
-      'inbox',
-      'medium',
+      'notifications',  -- ✅ FIXED: was 'inbox' (invalid enum)
+      'high',           -- ✅ CHANGED: from 'medium' to 'high' (payment notifications should be high priority)
       v_payer_name,
-      NEW.amount::text, -- ✅ CORRIGIDO: amount (não amount_owed)
+      NEW.amount::text,
       v_event_id,
+      v_event_name,      -- ✅ ADDED
+      v_event_emoji,     -- ✅ ADDED
       NEW.expense_id,
       'lazzo://event/' || v_event_id
     )
@@ -2657,8 +2707,10 @@ $$;
 -- Name: FUNCTION notify_payment_received(); Type: COMMENT; Schema: public; Owner: -
 --
 
-COMMENT ON FUNCTION public.notify_payment_received() IS 'Notifica quando alguém marca um split como pago.
-✅ CORRIGIDO: usa amount (não amount_owed)';
+COMMENT ON FUNCTION public.notify_payment_received() IS 'Notifies recipient when someone marks a payment as paid.
+✅ FIXED: Added event_name and event_emoji
+✅ FIXED: Changed category from inbox to notifications
+✅ CHANGED: Priority from medium to high';
 
 
 --
@@ -7125,5 +7177,5 @@ CREATE POLICY users_can_view_group_photos ON public.group_photos FOR SELECT USIN
 -- PostgreSQL database dump complete
 --
 
-\unrestrict QWnpbHDFhp0qBECc5Ncpb945cyjxU2rMh0om3pntQQxNuIbgTXzzgVqj3ueiEAk
+\unrestrict pS7oMXSDnOcRheAqkUrkYKzyvVdUmohbmFwUFCElrDpXmO3URuBrydzRLAISvXE
 

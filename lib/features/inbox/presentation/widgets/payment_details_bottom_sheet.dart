@@ -166,16 +166,11 @@ class PaymentDetailsBottomSheet extends StatelessWidget {
 
     return GestureDetector(
       onTap: () async {
-        print(
-            '[PaymentBottomSheet] Card tapped - payment: ${payment.id}, eventId: ${payment.eventId}');
-        onPaymentTap?.call(payment);
+                onPaymentTap?.call(payment);
         if (payment.eventId != null) {
-          print(
-              '[PaymentBottomSheet] Calling _navigateToEvent with eventId: ${payment.eventId}');
-          await _navigateToEvent(context, payment.eventId!);
+                    await _navigateToEvent(context, payment.eventId!);
         } else {
-          print('[PaymentBottomSheet] No eventId, skipping navigation');
-        }
+                  }
       },
       child: Container(
         padding: const EdgeInsets.all(Pads.ctlH),
@@ -283,62 +278,49 @@ class PaymentDetailsBottomSheet extends StatelessWidget {
   /// recap/ended → memory page (both have memories)
   static Future<void> _navigateToEvent(
       BuildContext context, String eventId) async {
-    print(
-        '[PaymentBottomSheet] _navigateToEvent called with eventId: $eventId');
-    try {
+        try {
       // Fetch event status from events table
-      print('[PaymentBottomSheet] Fetching event status from Supabase...');
-      final response = await Supabase.instance.client
+            final response = await Supabase.instance.client
           .from('events')
           .select('status')
           .eq('id', eventId)
           .maybeSingle();
 
-      print('[PaymentBottomSheet] Supabase response: $response');
-
+      
       if (response == null || !context.mounted) {
-        print(
-            '[PaymentBottomSheet] Response null or context not mounted, returning');
-        return;
+                return;
       }
 
       final status = response['status'] as String?;
-      print('[PaymentBottomSheet] Event status: $status');
-
+      
       // Close bottom sheet first
-      print('[PaymentBottomSheet] Closing bottom sheet before navigation');
-      Navigator.of(context).pop();
+            Navigator.of(context).pop();
 
       // Navigate based on status
       // Event lifecycle: pending → confirmed → living → recap → ended
       // Both recap and ended have memories and go to memory page
       if (status == 'living') {
-        print('[PaymentBottomSheet] Navigating to eventLiving page');
-        await Navigator.pushNamed(
+                await Navigator.pushNamed(
           context,
           AppRouter.eventLiving,
           arguments: {'eventId': eventId},
         );
       } else if (status == 'recap' || status == 'ended') {
-        print('[PaymentBottomSheet] Navigating to memory page');
-        await Navigator.pushNamed(
+                await Navigator.pushNamed(
           context,
           AppRouter.memory,
           arguments: {'memoryId': eventId},
         );
       } else if (status == 'pending' || status == 'confirmed') {
-        print('[PaymentBottomSheet] Navigating to event planning page');
-        await Navigator.pushNamed(
+                await Navigator.pushNamed(
           context,
           AppRouter.event,
           arguments: {'eventId': eventId},
         );
       } else {
-        print('[PaymentBottomSheet] Unknown status: $status, no navigation');
-      }
+              }
     } catch (e) {
-      print('[PaymentBottomSheet] ERROR in _navigateToEvent: $e');
-      // Silent fail - if can't fetch event status, don't navigate
+            // Silent fail - if can't fetch event status, don't navigate
       return;
     }
   }
