@@ -387,7 +387,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                             return const SizedBox.shrink();
                           }
 
-                          return Column(
+                                                    return Column(
                             children: [
                               SectionBlock(
                                 title: 'Next Event',
@@ -435,13 +435,13 @@ class _HomePageState extends ConsumerState<HomePage> {
                     }
 
                     // Separate living and recap events
-                    final livingEvents = allLivingAndRecapEvents
+                                        final livingEvents = allLivingAndRecapEvents
                         .where((e) => e.status == HomeEventStatus.living)
                         .toList();
                     final recapEvents = allLivingAndRecapEvents
                         .where((e) => e.status == HomeEventStatus.recap)
                         .toList();
-
+                    
                     return Column(
                       children: [
                         // Live Events section

@@ -18,7 +18,8 @@ class HomeEventRemoteDataSource {
   Future<HomeEventEntity?> fetchNextEvent(String userId) async {
     try {
       // ✅ Fetch multiple events and choose highest priority on frontend
-      // This allows proper priority calculation: living > recap > confirmed
+      // Order by priority (DESC) first, then by date (ASC)
+      // This ensures living/recap/confirmed events come before pending
       final response = await client
           .from(_eventsView)
           .select('''
@@ -29,21 +30,44 @@ class HomeEventRemoteDataSource {
             user_rsvp, voted_at,
             going_count, going_users,
             not_going_users, no_response_users,
-            participants_total, voters_total
+            participants_total, voters_total,
+            priority
           ''')
           .eq('user_id', userId)
-          .eq('user_rsvp', 'yes') // Only show events where user voted "yes"
-          .order('start_datetime', ascending: true)
-          .limit(10); // Fetch top 10 to find highest priority
+          .neq('user_rsvp',
+              'no') // Exclude events where user voted "Can't" - same logic as fetchConfirmedEvents
+          .order('priority',
+              ascending:
+                  false) // ✅ Priority first: living(4) > recap(3) > confirmed(2) > pending(1)
+          .order('start_datetime',
+              ascending: true) // Then by date (soonest first)
+          .limit(10); // Fetch top 10 highest priority events
 
       final data = response as List<dynamic>;
+
+      // Debug: Show first 3 events to see what's being returned
+      if (data.isNotEmpty) {
+        for (var i = 0; i < data.length && i < 3; i++) {
+          final e = data[i] as Map<String, dynamic>;
+        }
+      }
 
       if (data.isEmpty) {
         return null;
       }
 
-      // ✅ OPTIMIZATION: Batch convert avatar paths to signed URLs BEFORE entity creation
+      // Count events by status from raw data
       final rawData = data.cast<Map<String, dynamic>>();
+      final statusCount = <String, int>{};
+      for (var raw in rawData) {
+        final status = raw['event_status'] as String?;
+        statusCount[status ?? 'null'] =
+            (statusCount[status ?? 'null'] ?? 0) + 1;
+      }
+
+      if (statusCount['confirmed'] == 0) {}
+
+      // ✅ OPTIMIZATION: Batch convert avatar paths to signed URLs BEFORE entity creation
       await _batchConvertAvatarUrls(rawData);
 
       // ✅ Convert all events and find highest priority
@@ -62,16 +86,30 @@ class HomeEventRemoteDataSource {
 
       final events = await Future.wait(eventsFutures);
 
+      // Count confirmed events after conversion
+      final confirmedCount =
+          events.where((e) => e.status == HomeEventStatus.confirmed).length;
+      if (confirmedCount > 0) {
+        for (var e
+            in events.where((e) => e.status == HomeEventStatus.confirmed)) {}
+      }
+
       // ✅ Filter out expired pending events (should only appear in Pending Events section)
-      final now = DateTime.now();
+      final now = DateTime.now().toUtc();
       final nonExpiredEvents = events.where((event) {
         // Keep confirmed/living/recap events always
         if (event.status != HomeEventStatus.pending) return true;
 
         // For pending events: exclude if date is in the past (expired)
-        if (event.date == null) return true; // Keep pending without date
-        return event.date!.isAfter(now); // Only keep future pending events
+        if (event.date == null) return true;
+        return event.date!.toUtc().isAfter(now);
       }).toList();
+
+      final confirmedAfterFilter = nonExpiredEvents
+          .where((e) => e.status == HomeEventStatus.confirmed)
+          .length;
+
+      if (confirmedCount > 0 && confirmedAfterFilter == 0) {}
 
       if (nonExpiredEvents.isEmpty) {
         return null;
@@ -88,10 +126,23 @@ class HomeEventRemoteDataSource {
       nonExpiredEvents.sort((a, b) {
         final aPriority = priorityMap[a.status] ?? 0;
         final bPriority = priorityMap[b.status] ?? 0;
-        return bPriority.compareTo(aPriority); // Descending (highest first)
+
+        // First sort by priority (highest first)
+        final priorityComparison = bPriority.compareTo(aPriority);
+        if (priorityComparison != 0) return priorityComparison;
+
+        // If same priority, sort by date (soonest first)
+        if (a.date == null && b.date == null) return 0;
+        if (a.date == null) return 1; // Events without date go last
+        if (b.date == null) return -1;
+        return a.date!.compareTo(b.date!); // Ascending (soonest first)
       });
 
       final nextEvent = nonExpiredEvents.first;
+
+      if (nextEvent.status != HomeEventStatus.confirmed &&
+          confirmedAfterFilter > 0) {}
+
       return nextEvent;
     } catch (e) {
       return null;
@@ -167,7 +218,7 @@ class HomeEventRemoteDataSource {
   /// Shows ALL pending events regardless of user vote status
   Future<List<HomeEventEntity>> fetchPendingEvents(String userId) async {
     try {
-            final response = await client
+      final response = await client
           .from(_eventsView)
           .select('''
             event_id, event_name, emoji,
@@ -185,10 +236,10 @@ class HomeEventRemoteDataSource {
           .limit(50); // Increased limit to show all events
 
       final data = response as List<dynamic>;
-            if (data.isNotEmpty) {
-                for (int i = 0; i < data.length && i < 3; i++) {
+      if (data.isNotEmpty) {
+        for (int i = 0; i < data.length && i < 3; i++) {
           final row = data[i] as Map<String, dynamic>;
-                  }
+        }
       }
 
       // ✅ OPTIMIZATION: Batch convert avatar paths to signed URLs BEFORE entity creation
@@ -209,12 +260,11 @@ class HomeEventRemoteDataSource {
 
       final events = await Future.wait(eventsFutures);
 
-            // Check for expired events
+      // Check for expired events
       final now = DateTime.now();
       final expiredEvents =
           events.where((e) => e.date != null && e.date!.isBefore(now)).toList();
-            if (expiredEvents.isNotEmpty) {
-              }
+      if (expiredEvents.isNotEmpty) {}
 
       // ✅ DO NOT filter out past events - show expired pending events with "Event date expired!" label
       // Sort: future dates first (ascending), past dates last, null dates at the end
@@ -236,9 +286,9 @@ class HomeEventRemoteDataSource {
       });
 
       // ✅ Return ALL events - home.dart will handle the .take(10) and "See All" logic
-            return events;
+      return events;
     } catch (e) {
-            return [];
+      return [];
     }
   }
 
