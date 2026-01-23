@@ -150,14 +150,6 @@ class _EventsListPageState extends ConsumerState<EventsListPage> {
         ? ref.watch(confirmedEventsListControllerProvider)
         : ref.watch(pendingEventsListControllerProvider);
 
-        if (state.events.isNotEmpty) {
-                  // Check for expired events
-      final now = DateTime.now();
-      final expiredCount = state.events
-          .where((e) => e.date != null && e.date!.isBefore(now))
-          .length;
-          }
-
     return Scaffold(
       backgroundColor: BrandColors.bg1,
       appBar: CommonAppBar(

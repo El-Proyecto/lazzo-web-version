@@ -63,13 +63,6 @@ class HomeEventRemoteDataSource {
 
       final data = response as List<dynamic>;
 
-      // Debug: Show first 3 events to see what's being returned
-      if (data.isNotEmpty) {
-        for (var i = 0; i < data.length && i < 3; i++) {
-          final e = data[i] as Map<String, dynamic>;
-        }
-      }
-
       if (data.isEmpty) {
         return null;
       }
@@ -107,10 +100,6 @@ class HomeEventRemoteDataSource {
       // Count confirmed events after conversion
       final confirmedCount =
           events.where((e) => e.status == HomeEventStatus.confirmed).length;
-      if (confirmedCount > 0) {
-        for (var e
-            in events.where((e) => e.status == HomeEventStatus.confirmed)) {}
-      }
 
       // ✅ Filter out expired pending events (should only appear in Pending Events section)
       final now = DateTime.now().toUtc();
@@ -254,11 +243,6 @@ class HomeEventRemoteDataSource {
           .limit(50); // Increased limit to show all events
 
       final data = response as List<dynamic>;
-      if (data.isNotEmpty) {
-        for (int i = 0; i < data.length && i < 3; i++) {
-          final row = data[i] as Map<String, dynamic>;
-        }
-      }
 
       // ✅ OPTIMIZATION: Batch convert avatar paths to signed URLs BEFORE entity creation
       final rawData = data.cast<Map<String, dynamic>>();
@@ -295,12 +279,6 @@ class HomeEventRemoteDataSource {
           ));
 
       final events = await Future.wait(eventsFutures);
-
-      // Check for expired events
-      final now = DateTime.now();
-      final expiredEvents =
-          events.where((e) => e.date != null && e.date!.isBefore(now)).toList();
-      if (expiredEvents.isNotEmpty) {}
 
       // ✅ DO NOT filter out past events - show expired pending events with "Event date expired!" label
       // Sort: future dates first (ascending), past dates last, null dates at the end
