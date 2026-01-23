@@ -11,6 +11,24 @@ class HomeEventRemoteDataSource {
 
   HomeEventRemoteDataSource(this.client);
 
+  /// Reset votes for expired events using Supabase RPC
+  /// RPC checks if event is expired and resets votes if needed
+  Future<void> _resetExpiredPendingVotes(List<String> eventIds) async {
+    if (eventIds.isEmpty) return;
+    
+    try {
+      // Call RPC for each event (RPC handles expired check internally)
+      await Future.wait(
+        eventIds.map((id) => client.rpc(
+          'reset_event_votes_if_expired',
+          params: {'p_event_id': id},
+        )),
+      );
+    } catch (e) {
+      // Best-effort cleanup - don't throw
+    }
+  }
+
   /// Fetch next event (highest priority event user is attending)
   /// Priority: living (4) > recap (3) > confirmed (2) > pending (1)
   Future<HomeEventEntity?> fetchNextEvent(String userId) async {
@@ -175,6 +193,24 @@ class HomeEventRemoteDataSource {
 
       final data = response as List<dynamic>;
 
+      // Identify expired events (pending + date passed)
+      final now = DateTime.now();
+      final expiredEventIds = <String>[];
+      
+      for (final event in data) {
+        final startDateStr = event['start_datetime'] as String?;
+        if (startDateStr != null) {
+          final startDate = DateTime.parse(startDateStr);
+          if (startDate.isBefore(now)) {
+            expiredEventIds.add(event['event_id'] as String);
+          }
+        }
+      }
+      
+      // Reset votes for expired events (fire-and-forget)
+      if (expiredEventIds.isNotEmpty) {
+        _resetExpiredPendingVotes(expiredEventIds);
+      }
 
       // Convert to entities with status persistence
       final eventsFutures = data.map((e) => homeEventFromMap(
