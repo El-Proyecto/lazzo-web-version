@@ -253,22 +253,25 @@ class _EventFullCardState extends State<EventFullCard> {
         padding: const EdgeInsets.symmetric(vertical: Gaps.xxs),
         child: Row(
           children: [
-            // Profile pictures
+            // Profile pictures (or expired message)
             _buildAttendeeAvatars(),
-            const SizedBox(width: Gaps.xs),
-
-            // Going count text with names or photo count
-            Expanded(
-              child: Text(
-                _buildAttendeeText(),
-                style: AppText.bodyMedium.copyWith(
-                  color: BrandColors.text2,
-                  fontWeight: FontWeight.w500,
+            
+            // Only show vote count if not expired
+            if (_buildAttendeeText().isNotEmpty) ...[
+              const SizedBox(width: Gaps.xs),
+              // Going count text with names or photo count
+              Expanded(
+                child: Text(
+                  _buildAttendeeText(),
+                  style: AppText.bodyMedium.copyWith(
+                    color: BrandColors.text2,
+                    fontWeight: FontWeight.w500,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
               ),
-            ),
+            ],
           ],
         ),
       ),
@@ -302,6 +305,16 @@ class _EventFullCardState extends State<EventFullCard> {
   }
 
   String _buildAttendeeText() {
+    // Check if event is expired (pending status + date passed)
+    final isExpired = widget.state == EventFullCardState.pending &&
+        _currentEvent.date != null &&
+        DateTime.now().isAfter(_currentEvent.date!);
+
+    // If expired, don't show any vote counts (avatars section shows expired message)
+    if (isExpired) {
+      return '';
+    }
+
     // For Living/Recap states: show photo count
     if (widget.state == EventFullCardState.living ||
         widget.state == EventFullCardState.recap) {

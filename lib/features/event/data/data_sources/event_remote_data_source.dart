@@ -12,6 +12,19 @@ class EventRemoteDataSource {
   EventRemoteDataSource(this._supabaseClient)
       : _notificationService = NotificationService(_supabaseClient);
 
+  /// Reset votes if event is expired (status=pending + date passed)
+  /// Uses Supabase RPC to centralize logic
+  Future<void> _resetExpiredEventVotes(String eventId) async {
+    try {
+      await _supabaseClient.rpc(
+        'reset_event_votes_if_expired',
+        params: {'p_event_id': eventId},
+      );
+    } catch (e) {
+      // Best-effort - silently fail
+    }
+  }
+
   /// Get event details by ID
   /// Includes: RSVP counts, suggestion counts, location suggestion counts, poll count, host info
   Future<EventDetailModel> getEventDetail(String eventId) async {
@@ -29,6 +42,10 @@ class EventRemoteDataSource {
             created_by,
             created_at
           ''').eq('id', eventId).single();
+
+      // Reset votes if event is expired (RPC checks internally)
+      // Fire-and-forget - RPC handles all logic
+      _resetExpiredEventVotes(eventId);
 
       // Get group name if exists
       String? groupName;
