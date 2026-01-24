@@ -69,13 +69,13 @@ class _OtpVerificationPageState extends ConsumerState<OtpVerificationPage> {
     });
 
     try {
-      // Debug
-
       // Pass name directly to verifyOtp method
+      // isSignup: true because this is the signup flow (shouldCreateUser: true)
       await _authDatasource.verifyOtp(
         email: widget.email,
         token: _code,
         name: widget.name?.trim(),
+        isSignup: true,
       );
 
       // Debug

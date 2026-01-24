@@ -5,7 +5,11 @@ abstract class AuthRepository {
   Future<void> register({required String email});
   Future<User?> getCurrentUser();
   Future<void> logout();
-  Future<User?> verifyOtp(
-      {required String email, required String otp, String? name});
+  Future<User?> verifyOtp({
+    required String email,
+    required String otp,
+    String? name,
+    bool isSignup = false,
+  });
   Future<void> ensureUsersRow(String id, String email, {String? name});
 }

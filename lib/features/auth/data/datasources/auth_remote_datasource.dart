@@ -61,14 +61,47 @@ class AuthRemoteDatasource {
     }
   }
 
-  // 3) Utilizador autenticado atual → lê row de `users` (se não existir, cria mínima)
+  // 3) Utilizador autenticado atual → lê row de `users`
+  // Se o user não existe na BD (ex: após TRUNCATE), força logout
+  // Se a sessão foi invalidada no servidor, força logout local
   Future<UserModel?> getCurrentUser() async {
     final u = client.auth.currentUser;
     if (u == null) return null;
 
-    final row = await _getUsersRow(u.id) ??
-        await _upsertUsersRow(id: u.id, email: u.email ?? '');
-    return UserModel.fromUsersRow(row);
+    try {
+      // Primeiro verifica se há uma sessão local
+      final session = client.auth.currentSession;
+      if (session == null) {
+        await client.auth.signOut();
+        return null;
+      }
+
+      // Tenta refrescar a sessão com o servidor
+      // Isto falhará se a sessão foi eliminada no Supabase (ex: DELETE FROM auth.sessions)
+      try {
+        await client.auth.refreshSession();
+      } catch (refreshError) {
+        // Refresh falhou = sessão inválida no servidor
+        await client.auth.signOut();
+        return null;
+      }
+
+      // Verifica se o user existe na tabela public.users
+      final row = await _getUsersRow(u.id);
+      
+      // Se user existe na auth mas não na tabela users, força logout
+      // Isto acontece após TRUNCATE ou se os dados foram apagados
+      if (row == null) {
+        await client.auth.signOut();
+        return null;
+      }
+      
+      return UserModel.fromUsersRow(row);
+    } catch (e) {
+      // Em caso de erro de BD (conexão, RLS, etc), força logout para evitar estado inconsistente
+      await client.auth.signOut();
+      return null;
+    }
   }
 
   // 4) Logout
@@ -82,22 +115,23 @@ class AuthRemoteDatasource {
   }
 */
   // Verifica OTP + garante row em `users`
+  // isSignup: true para novos users (signup), false para login existente
   Future<UserModel> verifyOtp({
     required String email,
     required String token,
     String? name,
+    bool isSignup = false,
   }) async {
     try {
-      // Debug
+      // Usar o tipo correto de OTP:
+      // - OtpType.signup para shouldCreateUser: true (signup)
+      // - OtpType.email para shouldCreateUser: false (login)
+      final otpType = isSignup ? OtpType.signup : OtpType.email;
 
-      // 1) Verificar estado atual
-      //final currentUser = client.auth.currentUser;
-
-      // 2) Verificar OTP
       final AuthResponse response = await client.auth.verifyOTP(
         email: email.trim().toLowerCase(),
         token: token.trim(),
-        type: OtpType.email, // Mudado para signup pois é um novo registro
+        type: otpType,
       );
 
       // Debug
