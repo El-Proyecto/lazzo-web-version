@@ -34,6 +34,7 @@ import '../features/settings/presentation/pages/settings_page.dart';
 import '../features/settings/presentation/pages/report_problem_page.dart';
 import '../features/settings/presentation/pages/share_suggestion_page.dart';
 import '../features/home/presentation/pages/events_list_page.dart';
+import '../features/auth/presentation/pages/reviewer_auth_page.dart';
 // share_memory_preview_page import removed - uses direct navigation
 
 class AppRouter {
@@ -74,9 +75,11 @@ class AppRouter {
   static const String settings = '/settings';
   static const String reportProblem = '/report-problem';
   static const String shareSuggestion = '/share-suggestion';
+  static const String reviewerAuth = '/reviewer-auth';
 
   static final routes = <String, WidgetBuilder>{
     auth: (context) => const AuthPage(),
+    reviewerAuth: (context) => const ReviewerAuthPage(),
     home: (context) => const HomePage(),
     homeSearch: (context) => const HomeSearchPage(),
     confirmedEventsList: (context) =>
