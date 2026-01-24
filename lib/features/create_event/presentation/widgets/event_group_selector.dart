@@ -10,7 +10,7 @@ class EventGroupSelector extends StatelessWidget {
   final String eventName;
   final Key? nameFieldKey;
   final Key? groupButtonKey;
-  final String eventEmoji;
+  final String? eventEmoji;
   final GroupInfo? selectedGroup;
   final Function(String)? onEmojiPressed;
   final Function(String)? onEventNameChanged;
@@ -22,7 +22,7 @@ class EventGroupSelector extends StatelessWidget {
   const EventGroupSelector({
     super.key,
     required this.eventName,
-    required this.eventEmoji,
+    this.eventEmoji,
     this.selectedGroup,
     this.nameFieldKey,
     this.groupButtonKey,
@@ -52,7 +52,13 @@ class EventGroupSelector extends StatelessWidget {
                   borderRadius: BorderRadius.circular(Radii.smAlt),
                 ),
                 child: Center(
-                  child: Text(eventEmoji, style: const TextStyle(fontSize: 32)),
+                  child: eventEmoji != null
+                      ? Text(eventEmoji!, style: const TextStyle(fontSize: 32))
+                      : const Icon(
+                          Icons.add_reaction_outlined,
+                          color: BrandColors.text2,
+                          size: 24,
+                        ),
                 ),
               ),
             ),
