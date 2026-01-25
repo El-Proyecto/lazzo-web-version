@@ -3,16 +3,15 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:app_links/app_links.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:lazzo/routes/app_router.dart';
 import 'package:lazzo/shared/themes/app_theme.dart';
 import 'package:lazzo/features/auth/presentation/providers/auth_provider.dart';
 import 'package:lazzo/shared/components/loading/app_loading_screen.dart';
 import 'package:lazzo/features/home/presentation/providers/home_event_providers.dart';
 import 'package:lazzo/features/groups/presentation/providers/groups_provider.dart';
-import 'package:lazzo/config/app_config.dart';
 import 'package:lazzo/features/group_invites/presentation/providers/accept_group_invites_providers.dart';
 import 'package:lazzo/services/push_notification_initializer.dart';
+import 'package:lazzo/services/pending_invite_service.dart';
 
 class LazzoApp extends ConsumerStatefulWidget {
   const LazzoApp({super.key});
@@ -86,13 +85,9 @@ class _LazzoAppState extends ConsumerState<LazzoApp> {
   /// Handles incoming link from stream (warm start) or initial link
   Future<void> _handleIncomingLink(Uri uri) async {
     try {
-      debugPrint(
-          '🔗 Deep link recebido: $uri (scheme: ${uri.scheme}, host: ${uri.host}, path: ${uri.path})');
-
       final pathSegments = uri.pathSegments;
 
       if (pathSegments.isEmpty) {
-        debugPrint('❌ Path vazio no deep link');
         return;
       }
 
@@ -105,52 +100,46 @@ class _LazzoAppState extends ConsumerState<LazzoApp> {
           pathSegments.isNotEmpty) {
         // Custom scheme: lazzo://invite/TOKEN
         token = pathSegments.first;
-        debugPrint('✅ Token extraído de custom scheme: $token');
       } else if (pathSegments.length >= 2 &&
           (pathSegments[0] == 'i' || pathSegments[0] == 'invite')) {
         // Universal/App Link: https://domain.com/i/TOKEN
         token = pathSegments[1];
-        debugPrint('✅ Token extraído de universal link: $token');
       }
 
       if (token == null) {
-        debugPrint('❌ Não foi possível extrair token do deep link');
         return;
       }
-
-      debugPrint('✅ Token extraído: $token');
 
       // Wait for authentication to be ready (max 5 seconds)
       for (int i = 0; i < 10; i++) {
         final authState = ref.read(authProvider);
         if (authState.hasValue && authState.value != null) {
-          debugPrint('✅ User autenticado, processando convite...');
           break;
         }
-        debugPrint('⏳ Aguardando autenticação... (tentativa ${i + 1}/10)');
         await Future.delayed(const Duration(milliseconds: 500));
       }
 
       // Check final auth state
       final authState = ref.read(authProvider);
       if (!authState.hasValue || authState.value == null) {
-        debugPrint('⚠️ User não autenticado - redirecionando para web');
-        // User is not logged in - redirect to web landing page
-        // This is the ONLY case where we redirect to web
-        final landing = '${AppConfig.invitesBaseUrl}/i/$token';
-        final uriLanding = Uri.parse(landing);
-        if (await canLaunchUrl(uriLanding)) {
-          await launchUrl(uriLanding, mode: LaunchMode.externalApplication);
+        // Save the invite token to be processed after signup/login
+        _pendingInviteToken = token;
+        await PendingInviteService.savePendingToken(token);
+        
+        // Navigate to auth page - user will signup/login and then the invite will be processed
+        if (_navigatorKey.currentState?.mounted == true) {
+          _navigatorKey.currentState!.pushNamedAndRemoveUntil(
+            AppRouter.auth,
+            (route) => false,
+          );
         }
         return;
       }
 
       // User is authenticated, attempt to accept invite
-      debugPrint('✅ Aceitando convite...');
       try {
         final accept = ref.read(acceptGroupInviteProvider);
         final groupId = await accept.call(token);
-        debugPrint('✅ Convite aceito! Group ID: $groupId');
 
         // Refresh groups to include the new group
         ref.invalidate(groupsProvider);
@@ -159,8 +148,6 @@ class _LazzoAppState extends ConsumerState<LazzoApp> {
         await _navigateToGroupHub(groupId);
         return;
       } catch (e) {
-        debugPrint('❌ Erro ao aceitar convite: $e');
-
         // Handle specific errors - NEVER redirect to web as it creates loops
         // The app should handle all invite states gracefully
         final errorMessage = e.toString().toLowerCase();
@@ -171,24 +158,19 @@ class _LazzoAppState extends ConsumerState<LazzoApp> {
             errorMessage.contains('expired') ||
             errorMessage.contains('revoked') ||
             errorMessage.contains('not found')) {
-          debugPrint('⚠️ Token inválido/expirado - mostrando erro na app');
           // User will see the normal app state
-          // Could show a snackbar/banner here if needed
           return;
         }
 
         // For auth errors, the AuthWrapper will handle navigation to login
         if (errorMessage.contains('not authenticated') ||
             errorMessage.contains('unauthorized')) {
-          debugPrint('⚠️ Erro de autenticação - AuthWrapper vai tratar');
           return;
         }
 
         // For any other unexpected errors, stay in app
-        debugPrint('⚠️ Erro inesperado - permanecendo na app');
       }
     } catch (e) {
-      debugPrint('❌ Erro geral ao processar deep link: $e');
       // Silently fail - deep link errors should not crash the app
     }
   }
@@ -198,53 +180,63 @@ class _LazzoAppState extends ConsumerState<LazzoApp> {
     // Wait for navigator to be ready (max 5 seconds)
     for (int i = 0; i < 10; i++) {
       if (_navigatorKey.currentState?.mounted == true) {
-        debugPrint('✅ Navigator ready');
         break;
       }
-      debugPrint('⏳ Aguardando navigator... (tentativa ${i + 1}/10)');
       await Future.delayed(const Duration(milliseconds: 500));
     }
 
     // Navigate to group hub
     if (_navigatorKey.currentState?.mounted == true) {
-      debugPrint('✅ Navegando para group hub...');
       _navigatorKey.currentState!.pushNamed(
         AppRouter.groupHub,
         arguments: {'groupId': groupId},
       );
-    } else {
-      debugPrint('❌ Navigator não disponível após espera');
     }
   }
 
   /// Process pending invite token (called after successful login)
+  /// Checks both in-memory token and persisted token from SharedPreferences
   Future<void> processPendingInvite() async {
-    final token = _pendingInviteToken;
+    // First check in-memory token
+    String? token = _pendingInviteToken;
+    _pendingInviteToken = null;
+    
+    // If no in-memory token, check persisted token (in case app was restarted during signup)
+    if (token == null) {
+      token = await PendingInviteService.getPendingToken();
+    }
+    
     if (token == null) return;
-
-    _pendingInviteToken = null; // Clear to avoid reprocessing
-    debugPrint('✅ Processando convite pendente: $token');
+    
+    // Clear persisted token to avoid reprocessing
+    await PendingInviteService.clearPendingToken();
 
     try {
       final accept = ref.read(acceptGroupInviteProvider);
       final groupId = await accept.call(token);
-      debugPrint('✅ Convite pendente aceito! Group ID: $groupId');
 
       ref.invalidate(groupsProvider);
       await _navigateToGroupHub(groupId);
     } catch (e) {
-      debugPrint('❌ Erro ao processar convite pendente: $e');
+      // Silent failure - user is in app and can retry
     }
   }
 }
 
 /// Widget que gerencia a navegação baseada no estado de autenticação
 /// e aguarda o carregamento inicial dos dados da home
-class AuthWrapper extends ConsumerWidget {
+class AuthWrapper extends ConsumerStatefulWidget {
   const AuthWrapper({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<AuthWrapper> createState() => _AuthWrapperState();
+}
+
+class _AuthWrapperState extends ConsumerState<AuthWrapper> {
+  bool _pendingInviteProcessed = false;
+
+  @override
+  Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
 
     return authState.when(
@@ -259,6 +251,7 @@ class AuthWrapper extends ConsumerWidget {
       data: (user) {
         // Se não está logado, vai para a página de auth
         if (user == null) {
+          _pendingInviteProcessed = false; // Reset for next login
           WidgetsBinding.instance.addPostFrameCallback((_) {
             Navigator.of(context).pushReplacementNamed(AppRouter.auth);
           });
@@ -281,6 +274,15 @@ class AuthWrapper extends ConsumerWidget {
           return const AppLoadingScreen();
         }
 
+        // Process any pending invite token after successful login
+        // Only process once per login session
+        if (!_pendingInviteProcessed) {
+          _pendingInviteProcessed = true;
+          WidgetsBinding.instance.addPostFrameCallback((_) async {
+            await _processPendingInviteAfterLogin();
+          });
+        }
+
         // Dados carregados, navega para mainLayout
         WidgetsBinding.instance.addPostFrameCallback((_) {
           Navigator.of(context).pushReplacementNamed(AppRouter.mainLayout);
@@ -289,5 +291,35 @@ class AuthWrapper extends ConsumerWidget {
         return const AppLoadingScreen();
       },
     );
+  }
+
+  /// Process any pending invite after successful login
+  Future<void> _processPendingInviteAfterLogin() async {
+    // Check for persisted pending invite token
+    final token = await PendingInviteService.getPendingToken();
+    if (token == null) return;
+
+    // Clear the token first to avoid reprocessing
+    await PendingInviteService.clearPendingToken();
+
+    try {
+      final accept = ref.read(acceptGroupInviteProvider);
+      final groupId = await accept.call(token);
+
+      // Refresh groups
+      ref.invalidate(groupsProvider);
+
+      // Navigate to group hub after a small delay to let MainLayout load
+      await Future.delayed(const Duration(milliseconds: 500));
+      
+      if (mounted) {
+        Navigator.of(context).pushNamed(
+          AppRouter.groupHub,
+          arguments: {'groupId': groupId},
+        );
+      }
+    } catch (e) {
+      // User will be in the app normally, they can try accepting again
+    }
   }
 }
