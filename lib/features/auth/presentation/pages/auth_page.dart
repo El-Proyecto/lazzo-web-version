@@ -130,7 +130,7 @@ class _AuthPageState extends ConsumerState<AuthPage> {
                 },
                 child: Center(
                   child: Text(
-                    'v1.0.0',
+                    'v1.0.1',
                     style: TextStyle(
                       color: BrandColors.text2,
                       fontSize: 12,
