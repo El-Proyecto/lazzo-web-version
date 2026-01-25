@@ -30,9 +30,9 @@ final updateProfileUseCaseProvider = Provider<UpdateProfile>((ref) {
 
 /// Provider for current user profile data (shared between all profile screens)
 final currentUserProfileProvider = FutureProvider<ProfileEntity>((ref) async {
-    final getCurrentUserProfile = ref.watch(getCurrentUserProfileUseCaseProvider);
+  final getCurrentUserProfile = ref.watch(getCurrentUserProfileUseCaseProvider);
   final profile = await getCurrentUserProfile.call();
-    return profile;
+  return profile;
 });
 
 /// Edit Profile Controller provider for managing form operations

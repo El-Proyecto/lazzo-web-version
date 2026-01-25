@@ -12,6 +12,8 @@ import '../../../../../shared/constants/spacing.dart';
 
 // Auth providers (DI)
 import '../../providers/auth_provider.dart';
+// Profile provider - needs to be invalidated after login
+import '../../../../profile/presentation/providers/profile_providers.dart';
 // Rotas
 import '../../../../../routes/app_router.dart';
 
@@ -62,9 +64,13 @@ class _LoginOtpVerificationPageState
       // 2) Atualiza estado de sessão no provider (camada de domínio)
       await ref.read(authProvider.notifier).getCurrentUser();
 
+      // 3) CRITICAL: Invalidate profile provider to clear any stale error state
+      // This ensures the new user's profile is fetched fresh
+      ref.invalidate(currentUserProfileProvider);
+
       if (!mounted) return;
 
-      // 3) Navega para o layout principal usando o ROOT navigator
+      // 4) Navega para o layout principal usando o ROOT navigator
       Navigator.of(context, rootNavigator: true).pushNamedAndRemoveUntil(
         AppRouter.mainLayout,
         (route) => false,

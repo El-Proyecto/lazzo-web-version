@@ -7,8 +7,6 @@ import '../../data/fakes/fake_settings_repository.dart';
 
 // Import providers to invalidate on logout
 import '../../../home/presentation/providers/home_event_providers.dart';
-//import '../../../home/presentation/providers/memory_providers.dart';
-import '../../../profile/presentation/providers/profile_providers.dart';
 import '../../../groups/presentation/providers/groups_provider.dart';
 import '../../../inbox/presentation/providers/notifications_provider.dart';
 import '../../../inbox/presentation/providers/payments_provider.dart';
@@ -117,8 +115,9 @@ class SettingsController extends StateNotifier<AsyncValue<SettingsEntity>> {
     ref.invalidate(recentMemoriesControllerProvider);
     ref.invalidate(paymentSummariesControllerProvider);
     
-    // Profile providers
-    ref.invalidate(currentUserProfileProvider);
+    // Profile providers - NOT invalidated here, invalidated on login instead
+    // This prevents the "Error loading profile" flash when switching accounts
+    // ref.invalidate(currentUserProfileProvider);
     
     // Groups providers
     ref.invalidate(groupsProvider);

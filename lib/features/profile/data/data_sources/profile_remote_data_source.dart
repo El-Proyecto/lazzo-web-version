@@ -13,9 +13,16 @@ class ProfileRemoteDataSource {
   ProfileRemoteDataSource(this.client);
 
   /// Fetch current user's profile
+  /// Includes retry logic to handle race conditions after login
   Future<ProfileModel?> fetchCurrentUserProfile() async {
     try {
-      final user = client.auth.currentUser;
+      // Try to get user, with one retry if null (race condition after login)
+      var user = client.auth.currentUser;
+      if (user == null) {
+        // Wait a moment for auth to sync, then try again
+        await Future.delayed(const Duration(milliseconds: 300));
+        user = client.auth.currentUser;
+      }
       if (user == null) return null;
 
       final response = await client
