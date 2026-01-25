@@ -446,17 +446,16 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
 
   Future<void> _removePhoto(ProfileEntity profile) async {
     try {
-      final controller = ref.read(editProfileControllerProvider);
-
-      // Delete the image from storage if it exists
+      // Delete the image from storage and update DB in one call
+      // deleteProfilePicture already sets avatar_url to null in DB
       if (profile.profileImageUrl != null &&
           profile.profileImageUrl!.isNotEmpty) {
         await ref.read(profileRepositoryProvider).deleteProfilePicture();
       }
 
-      // Update profile to remove image reference
-      final updatedProfile = profile.copyWith(profileImageUrl: null);
-      await controller.updateProfile(updatedProfile);
+      // Invalidate provider to force UI refresh with latest DB state
+      // No need to call updateProfile - DB is already updated
+      ref.invalidate(currentUserProfileProvider);
 
       if (mounted) {
         TopBanner.showSuccess(context, message: 'Photo removed successfully');

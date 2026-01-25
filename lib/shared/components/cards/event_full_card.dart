@@ -43,6 +43,17 @@ class _EventFullCardState extends State<EventFullCard> {
   }
 
   @override
+  void didUpdateWidget(covariant EventFullCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Update local state when parent passes new event data (e.g., after voting)
+    if (widget.event != oldWidget.event) {
+      setState(() {
+        _currentEvent = widget.event;
+      });
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: widget.onTap,

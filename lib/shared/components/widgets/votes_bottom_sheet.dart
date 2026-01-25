@@ -116,8 +116,9 @@ class _VotesBottomSheetContentState extends State<_VotesBottomSheetContent> {
   void _updateUserVote(bool vote) {
     final userId = widget.currentUserId ?? 'current_user';
 
-    // Remove existing user vote if any
-    _currentVotes.removeWhere((v) => v.userId == userId);
+    // Remove ALL existing votes from this user (by userId)
+    // This handles the case where user appears with different names (e.g., "João Gomes" vs "You")
+    _currentVotes.removeWhere((v) => v.userId == userId || v.userName == 'You');
 
     // Add new user vote with real avatar
     final newVote = RsvpVote(
@@ -134,8 +135,8 @@ class _VotesBottomSheetContentState extends State<_VotesBottomSheetContent> {
   void _removeUserVote() {
     final userId = widget.currentUserId ?? 'current_user';
 
-    // Remove existing user vote if any
-    _currentVotes.removeWhere((v) => v.userId == userId);
+    // Remove ALL existing votes from this user
+    _currentVotes.removeWhere((v) => v.userId == userId || v.userName == 'You');
 
     // Add user as pending (no response) to show in "No response" section
     final pendingVote = RsvpVote(

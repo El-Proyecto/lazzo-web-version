@@ -5,6 +5,15 @@ import '../../domain/usecases/get_settings.dart';
 import '../../domain/usecases/update_notifications.dart';
 import '../../data/fakes/fake_settings_repository.dart';
 
+// Import providers to invalidate on logout
+import '../../../home/presentation/providers/home_event_providers.dart';
+//import '../../../home/presentation/providers/memory_providers.dart';
+import '../../../profile/presentation/providers/profile_providers.dart';
+import '../../../groups/presentation/providers/groups_provider.dart';
+import '../../../inbox/presentation/providers/notifications_provider.dart';
+import '../../../inbox/presentation/providers/payments_provider.dart';
+import '../../../auth/presentation/providers/auth_provider.dart';
+
 /// Provider for settings repository (fake by default)
 final settingsRepositoryProvider = Provider<SettingsRepository>((ref) {
   return FakeSettingsRepository();
@@ -92,6 +101,35 @@ class SettingsController extends StateNotifier<AsyncValue<SettingsEntity>> {
   Future<void> logOut() async {
     final repository = ref.read(settingsRepositoryProvider);
     await repository.logOut();
+    
+    // CRITICAL: Invalidate all user-specific providers to clear cached data
+    // This prevents stale data from showing when logging in with a different account
+    _invalidateAllUserProviders();
+  }
+
+  /// Invalidate all providers that cache user-specific data
+  void _invalidateAllUserProviders() {
+    // Home providers
+    ref.invalidate(nextEventControllerProvider);
+    ref.invalidate(confirmedEventsControllerProvider);
+    ref.invalidate(homeEventsControllerProvider);
+    ref.invalidate(livingAndRecapEventsControllerProvider);
+    ref.invalidate(recentMemoriesControllerProvider);
+    ref.invalidate(paymentSummariesControllerProvider);
+    
+    // Profile providers
+    ref.invalidate(currentUserProfileProvider);
+    
+    // Groups providers
+    ref.invalidate(groupsProvider);
+    
+    // Inbox providers
+    ref.invalidate(notificationsProvider);
+    ref.invalidate(paymentsOwedToUserProvider);
+    ref.invalidate(paymentsUserOwesProvider);
+    
+    // Auth provider
+    ref.invalidate(authProvider);
   }
 
   Future<void> deleteAccount() async {

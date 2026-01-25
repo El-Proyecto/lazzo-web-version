@@ -56,11 +56,12 @@ class _HomeEventCardState extends ConsumerState<HomeEventCard> {
   @override
   void didUpdateWidget(HomeEventCard oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // Update local state when event changes from parent
-    if (oldWidget.event.id != widget.event.id ||
-        oldWidget.event.name != widget.event.name ||
-        oldWidget.event.date != widget.event.date) {
-      _currentEvent = widget.event;
+    // Update local state when any event property changes from parent
+    // This ensures vote changes are reflected immediately
+    if (widget.event != oldWidget.event) {
+      setState(() {
+        _currentEvent = widget.event;
+      });
     }
   }
 
@@ -354,12 +355,11 @@ class _HomeEventCardState extends ConsumerState<HomeEventCard> {
       return '';
     }
 
-    final participantText =
-        _currentEvent.goingCount == 1 ? 'participant' : 'participants';
-
-    // For Living and Recap states, include photo count
+    // For Living and Recap states, show participants and photo count
     if (widget.state == HomeEventCardState.living ||
         widget.state == HomeEventCardState.recap) {
+      final participantText =
+          _currentEvent.goingCount == 1 ? 'participant' : 'participants';
       final photoInfo = _currentEvent.photoCount == 0
           ? 'No photos yet'
           : '${_currentEvent.photoCount}/${_currentEvent.maxPhotos} ${_currentEvent.photoCount == 1 ? 'photo' : 'photos'}';
@@ -367,8 +367,12 @@ class _HomeEventCardState extends ConsumerState<HomeEventCard> {
       return '${_currentEvent.goingCount} $participantText • $photoInfo';
     }
 
-    // For other states (Pending/Confirmed), show simple participant count
-    return '${_currentEvent.goingCount} $participantText';
+    // For Pending/Confirmed states, show "going" count (not "participants")
+    // This is semantically correct: goingCount = people who voted "Can"
+    if (_currentEvent.goingCount == 0) {
+      return 'Tap to vote!';
+    }
+    return '${_currentEvent.goingCount} going • Tap to vote!';
   }
 
   Widget _buildAttendeeAvatars() {

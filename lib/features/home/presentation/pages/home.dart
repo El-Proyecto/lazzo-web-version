@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../shared/components/nav/common_app_bar.dart';
 import '../../../../shared/components/inputs/search_bar.dart' as custom;
 import '../../../../shared/components/sections/section_block.dart';
@@ -16,6 +17,8 @@ import '../../../../shared/layouts/main_layout_providers.dart';
 import '../../../groups/presentation/providers/groups_provider.dart';
 import '../../../inbox/presentation/providers/payments_provider.dart';
 import '../../../group_hub/domain/entities/group_event_entity.dart';
+import '../../../event/presentation/providers/event_providers.dart';
+import '../../../event/domain/entities/rsvp.dart';
 import '../widgets/no_groups_yet_card.dart';
 import '../widgets/no_upcoming_events_card.dart';
 import '../providers/home_event_providers.dart';
@@ -171,6 +174,35 @@ class _HomePageState extends ConsumerState<HomePage> {
         return GroupEventStatus.living;
       case HomeEventStatus.recap:
         return GroupEventStatus.recap;
+    }
+  }
+
+  /// Handle vote changes from bottom sheets - persists to Supabase and refreshes UI
+  Future<void> _handleVoteChanged(String eventId, bool? vote) async {
+    try {
+      final rsvpRepo = ref.read(rsvpRepositoryProvider);
+      final userId = Supabase.instance.client.auth.currentUser?.id;
+
+      if (userId == null) return;
+
+      // Convert vote to RsvpStatus
+      final status = vote == null
+          ? RsvpStatus.pending
+          : (vote ? RsvpStatus.going : RsvpStatus.notGoing);
+
+      await rsvpRepo.submitRsvp(eventId, userId, status);
+
+      // Refresh home providers to update UI
+      ref.invalidate(nextEventControllerProvider);
+      ref.invalidate(confirmedEventsControllerProvider);
+      ref.invalidate(homeEventsControllerProvider);
+      ref.invalidate(livingAndRecapEventsControllerProvider);
+
+      // Also invalidate event-specific providers for consistency
+      ref.invalidate(eventRsvpsProvider(eventId));
+      ref.invalidate(userRsvpProvider(eventId));
+    } catch (e) {
+      // Failed to persist vote - UI will update on next load
     }
   }
 
@@ -408,9 +440,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                                   onExpensePressed: () {
                                     // Handled inside HomeEventCard
                                   },
-                                  onVoteChanged: (eventId, vote) {
-                                    // Vote changes handled via provider refresh
-                                  },
+                                  onVoteChanged: _handleVoteChanged,
                                 ),
                               ),
                               const SizedBox(height: Gaps.lg),
@@ -473,9 +503,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                                       onExpensePressed: () {
                                         // Handled inside HomeEventCard
                                       },
-                                      onVoteChanged: (eventId, vote) {
-                                        // Vote changes handled via provider refresh
-                                      },
+                                      onVoteChanged: _handleVoteChanged,
                                     ),
 
                                     // Additional living events as EventFullCard
@@ -505,9 +533,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                                                   },
                                                 );
                                               },
-                                              onVoteChanged: (eventId, vote) {
-                                                // Vote changes handled via provider refresh
-                                              },
+                                              onVoteChanged: _handleVoteChanged,
                                             ),
                                             if (index < livingEvents.length - 2)
                                               const SizedBox(height: Gaps.sm),
@@ -554,9 +580,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                                         onExpensePressed: () {
                                           // Handled inside HomeEventCard
                                         },
-                                        onVoteChanged: (eventId, vote) {
-                                          // Vote changes handled via provider refresh
-                                        },
+                                        onVoteChanged: _handleVoteChanged,
                                       ),
 
                                     // Additional recap events as EventFullCard
@@ -585,9 +609,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                                                   },
                                                 );
                                               },
-                                              onVoteChanged: (eventId, vote) {
-                                                // Vote changes handled via provider refresh
-                                              },
+                                              onVoteChanged: _handleVoteChanged,
                                             ),
                                             if (index < recapEvents.length - 1)
                                               const SizedBox(height: Gaps.sm),
@@ -620,9 +642,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                                                   },
                                                 );
                                               },
-                                              onVoteChanged: (eventId, vote) {
-                                                // Vote changes handled via provider refresh
-                                              },
+                                              onVoteChanged: _handleVoteChanged,
                                             ),
                                             if (index < recapEvents.length - 2)
                                               const SizedBox(height: Gaps.sm),
@@ -711,9 +731,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                                 onExpensePressed: () {
                                   // Handled inside HomeEventCard
                                 },
-                                onVoteChanged: (eventId, vote) {
-                                  // Vote changes handled via provider refresh
-                                },
+                                onVoteChanged: _handleVoteChanged,
                               ),
                             ),
                           ],
