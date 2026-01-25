@@ -494,18 +494,24 @@ class _ChatPreviewWidgetState extends State<ChatPreviewWidget> {
                     // Message input
                     Container(
                       margin: const EdgeInsets.only(top: Gaps.xs),
+                      constraints: const BoxConstraints(
+                        maxHeight: 120,
+                      ),
                       decoration: BoxDecoration(
                         color: BrandColors.bg3,
                         borderRadius: BorderRadius.circular(Radii.pill),
                         border: Border.all(color: BrandColors.border),
                       ),
                       child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
                           Expanded(
                             child: TextField(
                               controller: _controller,
                               focusNode: _focusNode,
-                              style: AppText.bodyMedium,
+                              style: AppText.bodyMedium.copyWith(
+                                color: BrandColors.text1,
+                              ),
                               decoration: InputDecoration(
                                 hintText: 'Type a message…',
                                 hintStyle: AppText.bodyMedium.copyWith(
@@ -517,38 +523,57 @@ class _ChatPreviewWidgetState extends State<ChatPreviewWidget> {
                                   vertical: Pads.ctlV,
                                 ),
                               ),
+                              maxLines: null,
+                              maxLength: 500,
+                              inputFormatters: [
+                                LengthLimitingTextInputFormatter(500),
+                              ],
+                              buildCounter: (context,
+                                      {required currentLength,
+                                      required isFocused,
+                                      maxLength}) =>
+                                  null,
                               textCapitalization: TextCapitalization.sentences,
                               onSubmitted: (_) => _sendMessage(),
                             ),
                           ),
-                          Container(
-                            margin: const EdgeInsets.only(right: Gaps.xs),
-                            decoration: BoxDecoration(
-                              color: widget.mode == ChatMode.living
-                                  ? BrandColors.living
-                                  : BrandColors.planning,
-                              borderRadius: BorderRadius.circular(Radii.pill),
-                            ),
-                            child: Material(
-                              color: Colors.transparent,
-                              child: InkWell(
-                                onTap: widget.onSendMessage != null
-                                    ? () {
-                                        _sendMessage();
-                                        HapticFeedback.lightImpact();
-                                      }
-                                    : null,
-                                borderRadius: BorderRadius.circular(Radii.pill),
-                                child: Container(
-                                  padding: const EdgeInsets.all(8),
-                                  child: const Icon(
-                                    Icons.send,
-                                    size: IconSizes.sm,
-                                    color: BrandColors.text1,
+                          ValueListenableBuilder<TextEditingValue>(
+                            valueListenable: _controller,
+                            builder: (context, value, child) {
+                              return Container(
+                                width: 36,
+                                height: 36,
+                                margin: const EdgeInsets.only(
+                                  right: Gaps.xxs,
+                                  bottom: Gaps.xxs,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: widget.mode == ChatMode.living
+                                      ? BrandColors.living
+                                      : BrandColors.planning,
+                                  borderRadius:
+                                      BorderRadius.circular(Radii.pill),
+                                ),
+                                child: Material(
+                                  color: Colors.transparent,
+                                  child: InkWell(
+                                    onTap: widget.onSendMessage != null
+                                        ? () {
+                                            _sendMessage();
+                                            HapticFeedback.lightImpact();
+                                          }
+                                        : null,
+                                    borderRadius:
+                                        BorderRadius.circular(Radii.pill),
+                                    child: const Icon(
+                                      Icons.send,
+                                      size: IconSizes.sm,
+                                      color: BrandColors.text1,
+                                    ),
                                   ),
                                 ),
-                              ),
-                            ),
+                              );
+                            },
                           ),
                         ],
                       ),

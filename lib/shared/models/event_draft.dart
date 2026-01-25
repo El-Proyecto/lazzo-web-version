@@ -7,7 +7,7 @@ import '../../features/create_event/presentation/widgets/date_time_section.dart'
 /// Usado para salvar e carregar estados parciais de criação de eventos
 class EventDraft {
   final String eventName;
-  final String eventEmoji;
+  final String? eventEmoji;
   final GroupInfo? selectedGroup;
   final DateTime? selectedDate;
   final TimeOfDay? selectedTime;
@@ -20,7 +20,7 @@ class EventDraft {
 
   const EventDraft({
     required this.eventName,
-    required this.eventEmoji,
+    this.eventEmoji,
     this.selectedGroup,
     this.selectedDate,
     this.selectedTime,
@@ -35,7 +35,7 @@ class EventDraft {
   /// Verifica se o rascunho tem alterações
   bool get hasChanges {
     return eventName.isNotEmpty ||
-        eventEmoji != '🍖' || // Check if emoji changed from default
+        eventEmoji != null || // Check if emoji was selected
         selectedGroup != null ||
         selectedDate != null ||
         selectedTime != null ||

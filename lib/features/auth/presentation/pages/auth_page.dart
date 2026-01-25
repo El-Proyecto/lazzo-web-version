@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../shared/constants/spacing.dart';
+import '../../../../shared/components/nav/common_app_bar.dart';
+import '../../../../shared/themes/colors.dart';
 import '../widgets/auth_form_widgets.dart';
-import '../../../../shared/components/sections/lazzo_header.dart';
 import '../widgets/welcome_section.dart';
 import '../providers/auth_provider.dart';
 import '../../../../shared/components/common/top_banner.dart';
@@ -101,15 +102,16 @@ class _AuthPageState extends ConsumerState<AuthPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: BrandColors.bg1,
+      appBar: const CommonAppBar(
+        title: 'LAZZO',
+      ),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(Insets.screenH),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Center(child: LazzoHeader()),
-              const SizedBox(height: Gaps.xl),
               const WelcomeSection(),
               const SizedBox(height: Gaps.xl),
               AuthFormWidgets(
@@ -119,6 +121,22 @@ class _AuthPageState extends ConsumerState<AuthPage> {
                     _canSubmit && !_isLoading ? _handleSubmit : null,
                 isLoading: _isLoading,
                 onLoginTap: _handleLogin,
+              ),
+              // Hidden reviewer access - tap logo 5 times to reveal
+              const SizedBox(height: Gaps.xl),
+              GestureDetector(
+                onLongPress: () {
+                  Navigator.pushNamed(context, '/reviewer-auth');
+                },
+                child: Center(
+                  child: Text(
+                    'v1.0.0',
+                    style: TextStyle(
+                      color: BrandColors.text2,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
               ),
             ],
           ),

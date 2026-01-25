@@ -4,11 +4,11 @@ import '../../data/datasources/auth_remote_datasource.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../widgets/otp_verification/otp_title.dart';
+import '../../../../shared/components/nav/common_app_bar.dart';
 import '../widgets/otp_verification/otp_subtitle.dart';
 import '../widgets/otp_verification/otp_boxes.dart';
 import '../widgets/otp_verification/verify_footer.dart';
 import '../widgets/otp_verification/resend_otp_button.dart';
-import '../../../../shared/components/sections/lazzo_header.dart';
 import '../../../../shared/themes/colors.dart';
 import '../../../../shared/constants/spacing.dart';
 
@@ -95,64 +95,58 @@ class _OtpVerificationPageState extends ConsumerState<OtpVerificationPage> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
     return Scaffold(
-      backgroundColor: theme.colorScheme.surface,
+      backgroundColor: BrandColors.bg1,
+      appBar: CommonAppBar(
+        title: 'LAZZO',
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: BrandColors.text1),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+      ),
       body: SafeArea(
         child: SingleChildScrollView(
+          padding: const EdgeInsets.all(Insets.screenH),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const LazzoHeader(),
-              Padding(
-                padding: const EdgeInsets.all(Insets.screenH),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    const OtpTitle(),
-                    const SizedBox(height: Gaps.md),
-                    OtpSubtitle(email: widget.email),
-                    const SizedBox(height: Gaps.xl),
-                    OtpCodeBoxes(
-                      onCompleted: (code) => setState(() => _code = code),
+              const OtpTitle(),
+              const SizedBox(height: Gaps.md),
+              OtpSubtitle(email: widget.email),
+              const SizedBox(height: Gaps.xl),
+              OtpCodeBoxes(
+                onCompleted: (code) => setState(() => _code = code),
+              ),
+              if (_bannerMessage != null) ...[
+                const SizedBox(height: 24),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: ShapeDecoration(
+                    color: BrandColors.bg3,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
                     ),
-                    if (_bannerMessage != null) ...[
-                      const SizedBox(height: 24),
-                      Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: ShapeDecoration(
-                          color: BrandColors.bg3,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                        ),
-                        child: Text(
-                          _bannerMessage!,
-                          style: const TextStyle(
-                            color: BrandColors.cantVote,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w500,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ),
-                    ],
-                    const SizedBox(height: 48),
-                    Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        VerifyFooter(
-                          onSend: _busy ? null : _verify,
-                          isEnabled:
-                              _code.length == 6 && !_busy, // alinhado com Login
-                        ),
-                        const SizedBox(height: 16),
-                        ResendOtpButton(onResend: _resend, isBusy: _busy),
-                      ],
+                  ),
+                  child: Text(
+                    _bannerMessage!,
+                    style: const TextStyle(
+                      color: BrandColors.cantVote,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
                     ),
-                  ],
+                    textAlign: TextAlign.center,
+                  ),
                 ),
+              ],
+              const SizedBox(height: 48),
+              VerifyFooter(
+                onSend: _busy ? null : _verify,
+                isEnabled: _code.length == 6 && !_busy,
+              ),
+              const SizedBox(height: 16),
+              ResendOtpButton(
+                onResend: _resend,
+                isBusy: _busy,
               ),
             ],
           ),

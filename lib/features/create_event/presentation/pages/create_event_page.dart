@@ -34,7 +34,7 @@ class CreateEventPage extends ConsumerStatefulWidget {
 class _CreateEventPageState extends ConsumerState<CreateEventPage> {
   // Estado do evento
   String _eventName = '';
-  String _eventEmoji = '🍖';
+  String? _eventEmoji;
   GroupInfo? _selectedGroup;
   DateTime? _selectedDate;
   TimeOfDay? _selectedTime;

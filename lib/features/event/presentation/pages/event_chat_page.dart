@@ -1230,6 +1230,15 @@ class _ChatInput extends StatelessWidget {
                         ),
                       ),
                       maxLines: null,
+                      maxLength: 500,
+                      inputFormatters: [
+                        LengthLimitingTextInputFormatter(500),
+                      ],
+                      buildCounter: (context,
+                              {required currentLength,
+                              required isFocused,
+                              maxLength}) =>
+                          null,
                       textCapitalization: TextCapitalization.sentences,
                       onSubmitted: (_) => onSend(),
                     ),

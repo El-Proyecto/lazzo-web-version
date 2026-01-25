@@ -5,6 +5,7 @@ import '../../../../shared/components/common/common_bottom_sheet.dart';
 import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/constants/text_styles.dart';
 import '../../../../shared/themes/colors.dart';
+import '../../../../shared/services/emoji_suggestion_service.dart';
 import 'event_group_selector.dart';
 import 'location_section.dart';
 import '../providers/event_providers.dart';
@@ -14,7 +15,7 @@ import '../../domain/entities/event.dart';
 /// Mostra resumo de todas as informações do evento
 class ConfirmEventBottomSheet extends ConsumerStatefulWidget {
   final String eventName;
-  final String eventEmoji;
+  final String? eventEmoji;
   final GroupInfo? selectedGroup;
   final DateTime? selectedDate;
   final TimeOfDay? selectedTime;
@@ -26,7 +27,7 @@ class ConfirmEventBottomSheet extends ConsumerStatefulWidget {
   const ConfirmEventBottomSheet({
     super.key,
     required this.eventName,
-    required this.eventEmoji,
+    this.eventEmoji,
     this.selectedGroup,
     this.selectedDate,
     this.selectedTime,
@@ -44,6 +45,15 @@ class ConfirmEventBottomSheet extends ConsumerStatefulWidget {
 class _ConfirmEventBottomSheetState
     extends ConsumerState<ConfirmEventBottomSheet> {
   bool _isCreating = false;
+  late final String _displayEmoji;
+
+  @override
+  void initState() {
+    super.initState();
+    // Generate emoji once when dialog opens - used for both display and creation
+    _displayEmoji = widget.eventEmoji ??
+        EmojiSuggestionService.suggestOrRandom(widget.eventName);
+  }
 
   /// Cria o evento usando os providers do Riverpod
   Future<void> _createEvent() async {
@@ -92,10 +102,11 @@ class _ConfirmEventBottomSheetState
       }
 
       // Criar entidade do evento
+      // Use the pre-generated emoji (same one shown in UI)
       final event = Event(
         id: '', // Será gerado pelo Supabase
         name: widget.eventName,
-        emoji: widget.eventEmoji,
+        emoji: _displayEmoji,
         groupId: widget.selectedGroup?.id ?? '',
         startDateTime: startDateTime,
         endDateTime: endDateTime,
@@ -259,7 +270,7 @@ class _ConfirmEventBottomSheetState
               ),
               const SizedBox(height: 2),
               Text(
-                '${widget.eventEmoji} ${widget.eventName.isEmpty ? 'Untitled Event' : widget.eventName}',
+                '$_displayEmoji ${widget.eventName.isEmpty ? 'Untitled Event' : widget.eventName}',
                 style: AppText.bodyMedium.copyWith(color: BrandColors.text1),
               ),
             ],

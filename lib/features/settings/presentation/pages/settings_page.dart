@@ -166,9 +166,11 @@ class SettingsPage extends ConsumerWidget {
                         title: 'Privacy Policy',
                         trailing: SettingsOptionTrailing.arrow(
                           onTap: () async {
-                            final url = Uri.parse('https://lazzo-invites-web.vercel.app/privacy');
+                            final url = Uri.parse(
+                                'https://lazzo-invites-web.vercel.app/privacy');
                             if (await canLaunchUrl(url)) {
-                              await launchUrl(url, mode: LaunchMode.externalApplication);
+                              await launchUrl(url,
+                                  mode: LaunchMode.externalApplication);
                             } else {
                               if (context.mounted) {
                                 TopBanner.showError(
@@ -280,7 +282,6 @@ class SettingsPage extends ConsumerWidget {
           cancelText: 'Cancel',
           isDestructive: true,
           onConfirm: () async {
-            
             try {
               await ref.read(settingsControllerProvider.notifier).logOut();
 
@@ -323,9 +324,9 @@ class SettingsPage extends ConsumerWidget {
                   .deleteAccount();
 
               if (context.mounted) {
-                // Navigate to login and clear all previous routes
+                // Navigate to auth (create account) and clear all previous routes
                 Navigator.of(context).pushNamedAndRemoveUntil(
-                  AppRouter.loginPage,
+                  AppRouter.auth,
                   (route) => false,
                 );
               }

@@ -3,9 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../../shared/components/common/top_banner.dart';
 import '../../../../../shared/constants/spacing.dart';
-import '../../../../../shared/components/sections/lazzo_header.dart';
 import '../../../../../shared/constants/text_styles.dart';
 import '../../../../../shared/themes/colors.dart';
+import '../../../../../shared/components/nav/common_app_bar.dart';
 import '../../providers/auth_provider.dart';
 //import '../verifyOTP.dart';
 
@@ -51,7 +51,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 
       // Envia o código OTP
       await authNotifier.login(email);
-      
+
       if (!mounted) return;
 
       // Limpa o campo após o envio bem-sucedido
@@ -86,15 +86,16 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: BrandColors.bg1,
+      appBar: const CommonAppBar(
+        title: 'LAZZO',
+      ),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(Insets.screenH),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Center(child: LazzoHeader()),
-              const SizedBox(height: Gaps.xl),
               Text(
                 'Welcome Back!',
                 style: AppText.headlineMedium.copyWith(
