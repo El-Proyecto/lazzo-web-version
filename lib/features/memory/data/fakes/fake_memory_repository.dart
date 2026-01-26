@@ -212,9 +212,23 @@ MemoryEntity _buildDynamicMemory() {
     location: 'Test Location',
     eventDate: _baseDate,
     photos: photos,
+    status: _mapFakeStatus(FakeMemoryConfig.eventStatus),
+    createdBy: 'fake-host-user-id',
   );
 
   return memory;
+}
+
+/// Map FakeEventStatus to EventStatus
+EventStatus _mapFakeStatus(FakeEventStatus fakeStatus) {
+  switch (fakeStatus) {
+    case FakeEventStatus.living:
+      return EventStatus.living;
+    case FakeEventStatus.recap:
+      return EventStatus.recap;
+    case FakeEventStatus.ended:
+      return EventStatus.ended;
+  }
 }
 
 // Removed unused _buildExpectedPattern function

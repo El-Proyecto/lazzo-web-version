@@ -21,7 +21,8 @@ class PhotoCluster {
 /// 1) L+P / P+L (L full + P)
 /// 2) L½ + L½
 /// 3) P + P + P
-/// 4) L (full) alone [end of cluster only, except special 3L case]
+/// 4) P + P (two portraits side by side)
+/// 5) L (full) alone [end of cluster only, except special 3L case]
 class HybridPhotoGrid extends StatelessWidget {
   final List<PhotoCluster> clusters;
   final Function(String photoId)? onPhotoTap;
@@ -203,7 +204,20 @@ class HybridPhotoGrid extends StatelessWidget {
       );
     }
 
-    // ---- Priority 4: L full alone ----
+    // ---- Priority 4: P + P (two portraits side by side) ----
+    // Handles case when there are 2 consecutive portraits (not 3)
+    if (buffer.length >= 2 && isP(0) && isP(1)) {
+      return _TemplateResult(
+        widget: Padding(
+          padding: EdgeInsets.symmetric(horizontal: innerSidePad),
+          child: _buildRowPP([cand[0], cand[1]], unitW, gap),
+        ),
+        usedIndexes: const [0, 1],
+        penalty: 0,
+      );
+    }
+
+    // ---- Priority 5: L full alone ----
     // Only at end of cluster OR special case of exactly one item left.
     if (buffer.length == 1 && isL(0)) {
       return _TemplateResult(
@@ -313,6 +327,24 @@ class HybridPhotoGrid extends StatelessWidget {
           _buildPhotoTile(photos[1], wP, h, rowHeight: h),
           SizedBox(width: gap),
           _buildPhotoTile(photos[2], wP, h, rowHeight: h),
+        ],
+      ),
+    );
+  }
+
+  /// Row: P + P (two portraits side by side)
+  /// Same width as P+P+P but only 2 photos, centered with gap on right
+  Widget _buildRowPP(List<HybridPhotoData> photos, double unitW, double gap) {
+    final wP = unitW * 2 + gap;
+    final h = wP * 5 / 4; // 4:5
+    return Padding(
+      padding: const EdgeInsets.only(bottom: Gaps.xs),
+      child: Row(
+        children: [
+          _buildPhotoTile(photos[0], wP, h, rowHeight: h),
+          SizedBox(width: gap),
+          _buildPhotoTile(photos[1], wP, h, rowHeight: h),
+          // Empty space on the right (would fit 1 more portrait)
         ],
       ),
     );

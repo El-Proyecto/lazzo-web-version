@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../routes/app_router.dart';
 import '../../../../shared/components/nav/common_app_bar.dart';
 import '../../../../shared/components/nav/app_bar_with_subtitle.dart';
@@ -14,7 +15,6 @@ import '../../../../shared/constants/text_styles.dart';
 import '../../../../shared/themes/colors.dart';
 import '../providers/memory_providers.dart';
 import '../../domain/entities/memory_entity.dart';
-import '../../data/fakes/fake_memory_repository.dart';
 
 /// Memory page displaying event photos with state-based UI
 /// Structure (top to bottom):
@@ -58,51 +58,84 @@ class _MemoryPageState extends ConsumerState<MemoryPage> {
   @override
   Widget build(BuildContext context) {
     final memoryAsync = ref.watch(memoryDetailProvider(widget.memoryId));
+    final currentUserId = Supabase.instance.client.auth.currentUser?.id;
 
-    // Get event status from route arguments or fallback to fake config
-    final args =
-        ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
-    final eventStatus = args?['eventStatus'] as FakeEventStatus? ??
-        FakeMemoryConfig.eventStatus;
-    final isHost = FakeMemoryConfig.isHost;
-    final userHasUploadedPhotos = FakeMemoryConfig.userHasUploadedPhotos;
+    return memoryAsync.when(
+      loading: () => Scaffold(
+        backgroundColor: BrandColors.bg1,
+        appBar: CommonAppBar(
+          title: 'Memory',
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back, color: BrandColors.text1),
+            onPressed: () => Navigator.of(context).pop(),
+          ),
+        ),
+        body: const Center(child: CircularProgressIndicator()),
+      ),
+      error: (error, stack) => Scaffold(
+        backgroundColor: BrandColors.bg1,
+        appBar: CommonAppBar(
+          title: 'Memory',
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back, color: BrandColors.text1),
+            onPressed: () => Navigator.of(context).pop(),
+          ),
+        ),
+        body: Center(child: Text('Error: $error')),
+      ),
+      data: (memory) {
+        if (memory == null) {
+          return Scaffold(
+            backgroundColor: BrandColors.bg1,
+            appBar: CommonAppBar(
+              title: 'Memory',
+              leading: IconButton(
+                icon: const Icon(Icons.arrow_back, color: BrandColors.text1),
+                onPressed: () => Navigator.of(context).pop(),
+              ),
+            ),
+            body: const Center(
+              child: Text(
+                'Memory not found',
+                style: TextStyle(color: BrandColors.text2),
+              ),
+            ),
+          );
+        }
 
-    // Build AppBar based on event status
-    final appBar = _buildAppBar(
-      context,
-      ref,
-      memoryAsync,
-      eventStatus,
-      isHost,
-      userHasUploadedPhotos,
-    );
+        final eventStatus = memory.status;
+        final isHost =
+            currentUserId != null && memory.createdBy == currentUserId;
 
-    return Scaffold(
-      backgroundColor: BrandColors.bg1,
-      appBar: appBar,
-      body: RefreshIndicator(
-        onRefresh: () async {
-          // Invalidate and wait for memory data to refetch
-          _refreshData();
-          await ref.read(memoryDetailProvider(widget.memoryId).future);
-        },
-        color: BrandColors.planning,
-        backgroundColor: BrandColors.bg2,
-        child: memoryAsync.when(
-          data: (memory) {
-            if (memory == null) {
-              return const Center(
-                child: Text(
-                  'Memory not found',
-                  style: TextStyle(color: BrandColors.text2),
-                ),
-              );
-            }
+        // Check if user has uploaded photos
+        final userHasUploadedPhotos = currentUserId != null &&
+            memory.photos.any((photo) => photo.uploaderId == currentUserId);
 
-            final coverPhotos = memory.coverPhotos;
-            final gridPhotos = memory.gridPhotos;
+        final coverPhotos = memory.coverPhotos;
+        final gridPhotos = memory.gridPhotos;
 
-            return SingleChildScrollView(
+        // Build AppBar based on event status
+        final appBar = _buildAppBar(
+          context,
+          ref,
+          eventStatus,
+          isHost,
+          userHasUploadedPhotos,
+          memory,
+        );
+
+        return Scaffold(
+          backgroundColor: BrandColors.bg1,
+          appBar: appBar,
+          body: RefreshIndicator(
+            onRefresh: () async {
+              // Invalidate and wait for memory data to refetch
+              _refreshData();
+              await ref.read(memoryDetailProvider(widget.memoryId).future);
+            },
+            color: BrandColors.planning,
+            backgroundColor: BrandColors.bg2,
+            child: SingleChildScrollView(
               physics: const AlwaysScrollableScrollPhysics(),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -115,7 +148,7 @@ class _MemoryPageState extends ConsumerState<MemoryPage> {
                       padding: const EdgeInsets.symmetric(
                         horizontal: Insets.screenH,
                       ),
-                      child: eventStatus == FakeEventStatus.living
+                      child: eventStatus == EventStatus.living
                           ? AddPhotosCtaCard.living(
                               onPressed: () => _handleAddPhotosFromCta(context),
                             )
@@ -186,31 +219,10 @@ class _MemoryPageState extends ConsumerState<MemoryPage> {
                   const SizedBox(height: Gaps.md),
                 ],
               ),
-            );
-          },
-          loading: () => const Center(
-            child: CircularProgressIndicator(),
-          ),
-          error: (error, stackTrace) => SingleChildScrollView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            child: SizedBox(
-              height: MediaQuery.of(context).size.height * 0.7,
-              child: Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(Insets.screenH),
-                  child: Text(
-                    'Error loading memory: $error',
-                    style: AppText.bodyMedium.copyWith(
-                      color: BrandColors.text2,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-              ),
             ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 
@@ -219,12 +231,11 @@ class _MemoryPageState extends ConsumerState<MemoryPage> {
   /// - User hasn't uploaded photos yet (encourage first upload)
   /// Logic: Host always has edit button, non-host sees CTA if no photos
   bool _shouldShowCtaBanner(
-    FakeEventStatus eventStatus,
+    EventStatus eventStatus,
     bool userHasUploadedPhotos,
   ) {
     // Only show during living or recap phases
-    if (eventStatus != FakeEventStatus.living &&
-        eventStatus != FakeEventStatus.recap) {
+    if (eventStatus != EventStatus.living && eventStatus != EventStatus.recap) {
       return false;
     }
 
@@ -321,10 +332,10 @@ class _MemoryPageState extends ConsumerState<MemoryPage> {
   PreferredSizeWidget _buildAppBar(
     BuildContext context,
     WidgetRef ref,
-    AsyncValue<MemoryEntity?> memoryAsync,
-    FakeEventStatus eventStatus,
+    EventStatus eventStatus,
     bool isHost,
     bool userHasUploadedPhotos,
+    MemoryEntity memory,
   ) {
     final leading = IconButton(
       icon: const Icon(Icons.arrow_back, color: BrandColors.text1),
@@ -342,11 +353,11 @@ class _MemoryPageState extends ConsumerState<MemoryPage> {
     );
 
     // Recap state: show countdown timer with chat button (and edit if applicable)
-    if (eventStatus == FakeEventStatus.recap) {
-      final subtitle = 'Closes in ${FakeMemoryConfig.formattedRemainingTime}';
-      final subtitleColor = FakeMemoryConfig.isLessThanOneHour
-          ? BrandColors.cantVote // Orange/red when <1hr
-          : BrandColors.text2;
+    if (eventStatus == EventStatus.recap) {
+      // TODO: Calculate real remaining time from event end_datetime + 24h window
+      final subtitle =
+          'Closes soon'; // Placeholder until we add end_datetime to entity
+      final subtitleColor = BrandColors.text2;
 
       // Chat button (always present in recap)
       final chatButton = IconButton(
@@ -373,18 +384,13 @@ class _MemoryPageState extends ConsumerState<MemoryPage> {
     }
 
     // Living/Ended: standard AppBar with edit button (if applicable)
-    final trailing = memoryAsync.maybeWhen(
-      data: (memory) => memory != null
-          ? _buildTrailingIcon(
-              context,
-              ref,
-              memory,
-              eventStatus,
-              isHost,
-              userHasUploadedPhotos,
-            )
-          : null,
-      orElse: () => null,
+    final trailing = _buildTrailingIcon(
+      context,
+      ref,
+      memory,
+      eventStatus,
+      isHost,
+      userHasUploadedPhotos,
     );
 
     return CommonAppBar(
@@ -401,12 +407,12 @@ class _MemoryPageState extends ConsumerState<MemoryPage> {
     BuildContext context,
     WidgetRef ref,
     MemoryEntity memory,
-    FakeEventStatus eventStatus,
+    EventStatus eventStatus,
     bool isHost,
     bool userHasUploadedPhotos,
   ) {
     // Ended state: no edit button (read-only)
-    if (eventStatus == FakeEventStatus.ended) {
+    if (eventStatus == EventStatus.ended) {
       return null;
     }
 

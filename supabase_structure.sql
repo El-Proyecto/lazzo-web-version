@@ -303,6 +303,17 @@ CREATE TABLE public.push_tokens (
   CONSTRAINT push_tokens_pkey PRIMARY KEY (id),
   CONSTRAINT push_tokens_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
 );
+CREATE TABLE public.reviewer_auth_sessions (
+  id uuid NOT NULL DEFAULT gen_random_uuid(),
+  reviewer_email text NOT NULL,
+  login_at timestamp with time zone DEFAULT now(),
+  ip_address text,
+  user_agent text,
+  session_id uuid,
+  action text DEFAULT 'login'::text,
+  notes text,
+  CONSTRAINT reviewer_auth_sessions_pkey PRIMARY KEY (id)
+);
 CREATE TABLE public.user_notification_settings (
   user_id uuid NOT NULL,
   push_enabled boolean NOT NULL DEFAULT true,

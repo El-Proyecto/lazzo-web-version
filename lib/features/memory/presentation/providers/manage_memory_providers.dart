@@ -143,7 +143,7 @@ class ManageMemoryNotifier
       // Upload selected photos from gallery (if provided)
       final selectedPhotoPaths = ref.read(selectedPhotoPathsProvider);
       if (selectedPhotoPaths != null && selectedPhotoPaths.isNotEmpty) {
-                // Get current user's profile photo
+        // Get current user's profile photo
         String? currentUserProfileUrl;
         try {
           final userResponse = await Supabase.instance.client
@@ -205,7 +205,6 @@ class ManageMemoryNotifier
               isPortrait: isPortrait,
             );
 
-            
             // Generate signed URL for display (storage path was returned)
             final storagePath = uploadResult['storage_path'] as String;
             final storageService = StorageService(Supabase.instance.client);

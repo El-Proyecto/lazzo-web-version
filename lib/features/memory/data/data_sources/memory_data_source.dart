@@ -29,6 +29,7 @@ class MemoryDataSource {
             status,
             cover_photo_id,
             group_id,
+            created_by,
             locations!location_id (
               display_name
             )

@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict pS7oMXSDnOcRheAqkUrkYKzyvVdUmohbmFwUFCElrDpXmO3URuBrydzRLAISvXE
+\restrict W4g6binxgQxoPjdeLve0GDssPNARmqKkMAhpsjMOeV9cNaaIuhhkh6qCIoQBb2n
 
 -- Dumped from database version 17.4
 -- Dumped by pg_dump version 18.1
@@ -278,106 +278,75 @@ $$;
 -- Name: accept_group_invite_by_token(text); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.accept_group_invite_by_token(p_token text) RETURNS TABLE(group_id uuid)
+CREATE FUNCTION public.accept_group_invite_by_token(p_token text) RETURNS TABLE(result_group_id uuid)
     LANGUAGE plpgsql SECURITY DEFINER
     AS $$
 DECLARE
   v_user_id UUID;
-  v_invite_id UUID;
-  v_invite_group_id UUID;
-  v_invite_expires_at TIMESTAMPTZ;
-  v_invite_revoked_at TIMESTAMPTZ;
-  v_already_member BOOLEAN;
+  v_invite RECORD;
+  v_target_group_id UUID;
 BEGIN
-  RAISE NOTICE '========== START accept_group_invite_by_token ==========';
-  RAISE NOTICE 'Token: %', p_token;
-  
   -- Get authenticated user
   v_user_id := auth.uid();
-  RAISE NOTICE 'User ID: %', v_user_id;
-  
   IF v_user_id IS NULL THEN
     RAISE EXCEPTION 'Not authenticated';
   END IF;
 
   -- Find and validate invite link
-  RAISE NOTICE 'Searching for token...';
-  BEGIN
-    SELECT 
-      gil.id,
-      gil.group_id,
-      gil.expires_at,
-      gil.revoked_at
-    INTO STRICT
-      v_invite_id,
-      v_invite_group_id,
-      v_invite_expires_at,
-      v_invite_revoked_at
-    FROM group_invite_links gil
-    WHERE gil.token = p_token;
-    
-    RAISE NOTICE 'Token found! Invite ID: %, Group ID: %', v_invite_id, v_invite_group_id;
-  EXCEPTION
-    WHEN NO_DATA_FOUND THEN
-      RAISE EXCEPTION 'Invalid invite token';
-    WHEN TOO_MANY_ROWS THEN
-      RAISE EXCEPTION 'Duplicate token found (should not happen)';
-  END;
+  SELECT 
+    gil.id,
+    gil.group_id,
+    gil.expires_at,
+    gil.revoked_at
+  INTO v_invite
+  FROM group_invite_links gil
+  WHERE gil.token = p_token;
+
+  -- Token doesn't exist
+  IF v_invite.id IS NULL THEN
+    RAISE EXCEPTION 'Invalid invite token';
+  END IF;
+
+  -- Store group_id in variable
+  v_target_group_id := v_invite.group_id;
 
   -- Token expired
-  IF v_invite_expires_at < NOW() THEN
-    RAISE NOTICE 'Token expired at: %', v_invite_expires_at;
+  IF v_invite.expires_at < NOW() THEN
     RAISE EXCEPTION 'Invite link has expired';
   END IF;
 
   -- Token revoked
-  IF v_invite_revoked_at IS NOT NULL THEN
-    RAISE NOTICE 'Token revoked at: %', v_invite_revoked_at;
+  IF v_invite.revoked_at IS NOT NULL THEN
     RAISE EXCEPTION 'Invite link has been revoked';
   END IF;
 
   -- Check if user is already a member
-  RAISE NOTICE 'Checking if user is already member...';
-  SELECT EXISTS (
-    SELECT 1 FROM group_members gm
-    WHERE gm.group_id = v_invite_group_id
-      AND gm.user_id = v_user_id
-  ) INTO v_already_member;
-  
-  RAISE NOTICE 'Already member: %', v_already_member;
-
-  IF v_already_member THEN
-    RAISE NOTICE 'User already member, returning group_id: %', v_invite_group_id;
-    RETURN QUERY SELECT v_invite_group_id;
+  IF EXISTS (
+    SELECT 1 
+    FROM group_members gm
+    WHERE gm.group_id = v_target_group_id
+    AND gm.user_id = v_user_id
+  ) THEN
+    -- Already member, return
+    RETURN QUERY SELECT v_target_group_id;
     RETURN;
   END IF;
 
   -- Add user to group
-  RAISE NOTICE 'Adding user to group...';
-  BEGIN
-    INSERT INTO group_members (
-      group_id,
-      user_id,
-      role
-    )
-    VALUES (
-      v_invite_group_id,
-      v_user_id,
-      'member'
-    )
-    ON CONFLICT (group_id, user_id) DO NOTHING;
-    
-    RAISE NOTICE 'User added successfully!';
-  EXCEPTION
-    WHEN OTHERS THEN
-      RAISE NOTICE 'ERROR during INSERT: % - %', SQLSTATE, SQLERRM;
-      RAISE;
-  END;
+  INSERT INTO group_members (
+    group_id,
+    user_id,
+    role
+  )
+  VALUES (
+    v_target_group_id,
+    v_user_id,
+    'member'
+  )
+  ON CONFLICT (group_id, user_id) DO NOTHING;
 
-  RAISE NOTICE 'Returning group_id: %', v_invite_group_id;
-  RETURN QUERY SELECT v_invite_group_id;
-  
-  RAISE NOTICE '========== END accept_group_invite_by_token ==========';
+  -- Return the group_id
+  RETURN QUERY SELECT v_target_group_id;
 END;
 $$;
 
@@ -447,12 +416,12 @@ CREATE FUNCTION public.add_new_member_to_group_events() RETURNS trigger
     LANGUAGE plpgsql SECURITY DEFINER
     AS $$
 BEGIN
-  -- Add new member as participant to all active events in the group
+  -- Add new member as participant to all non-ended events in the group
   INSERT INTO event_participants (pevent_id, user_id, rsvp)
   SELECT e.id, NEW.user_id, 'pending'
   FROM events e
   WHERE e.group_id = NEW.group_id
-    AND e.status IN ('pending', 'confirmed', 'living', 'recap')
+    AND e.status IN ('pending', 'confirmed')  -- Não inclui 'ended'
   ON CONFLICT (pevent_id, user_id) DO NOTHING;
   
   RETURN NEW;
@@ -720,6 +689,46 @@ $$;
 
 
 --
+-- Name: ensure_reviewer_user(text, text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.ensure_reviewer_user(p_reviewer_email text, p_reviewer_name text DEFAULT 'Apple Reviewer'::text) RETURNS uuid
+    LANGUAGE plpgsql SECURITY DEFINER
+    AS $$
+DECLARE
+    v_user_id UUID;
+BEGIN
+    -- Check if user already exists in public.users
+    SELECT id INTO v_user_id
+    FROM public.users
+    WHERE email = lower(p_reviewer_email);
+    
+    IF v_user_id IS NOT NULL THEN
+        RETURN v_user_id;
+    END IF;
+    
+    -- Check if exists in auth.users
+    SELECT id INTO v_user_id
+    FROM auth.users
+    WHERE email = lower(p_reviewer_email);
+    
+    IF v_user_id IS NULL THEN
+        RAISE EXCEPTION 'Reviewer must first be created in auth.users via Supabase Dashboard';
+    END IF;
+    
+    -- Create public.users row
+    INSERT INTO public.users (id, email, name)
+    VALUES (v_user_id, lower(p_reviewer_email), p_reviewer_name)
+    ON CONFLICT (id) DO UPDATE SET
+        name = EXCLUDED.name,
+        updated_at = NOW();
+    
+    RETURN v_user_id;
+END;
+$$;
+
+
+--
 -- Name: generate_invite_token(integer); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -760,6 +769,32 @@ $$;
 
 
 --
+-- Name: get_event_participants_count(uuid, uuid); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.get_event_participants_count(p_event_id uuid, p_exclude_user_id uuid) RETURNS integer
+    LANGUAGE plpgsql SECURITY DEFINER
+    SET search_path TO 'public'
+    AS $$
+BEGIN
+  RETURN (
+    SELECT COUNT(*)::integer
+    FROM event_participants ep
+    WHERE ep.pevent_id = p_event_id
+      AND ep.user_id != p_exclude_user_id
+  );
+END;
+$$;
+
+
+--
+-- Name: FUNCTION get_event_participants_count(p_event_id uuid, p_exclude_user_id uuid); Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON FUNCTION public.get_event_participants_count(p_event_id uuid, p_exclude_user_id uuid) IS 'Returns count of event participants excluding specified user (used for read status calculations)';
+
+
+--
 -- Name: get_group_member_count(uuid); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -780,12 +815,44 @@ $$;
 -- Name: get_messages_with_read_status(uuid, uuid, integer); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.get_messages_with_read_status(p_event_id uuid, p_current_user_id uuid, p_limit integer DEFAULT 50) RETURNS TABLE(id uuid, event_id uuid, user_id uuid, content text, created_at timestamp with time zone, is_pinned boolean, is_deleted boolean, reply_to_id uuid, updated_at timestamp with time zone, user_name text, user_avatar text, is_read_by_someone boolean)
+CREATE FUNCTION public.get_messages_with_read_status(p_event_id uuid, p_current_user_id uuid, p_limit integer DEFAULT 50) RETURNS TABLE(id uuid, event_id uuid, user_id uuid, content text, created_at timestamp with time zone, is_pinned boolean, is_deleted boolean, reply_to_id uuid, updated_at timestamp with time zone, user_name text, user_avatar text, is_read_by_everyone boolean)
     LANGUAGE plpgsql SECURITY DEFINER
     SET search_path TO 'public'
     AS $$
 BEGIN
   RETURN QUERY
+  WITH participant_counts AS (
+    -- Pre-calculate total participants per event (cached in CTE)
+    SELECT 
+      cm.id as message_id,
+      cm.user_id as sender_id,
+      COUNT(DISTINCT ep.user_id)::integer as total_others
+    FROM chat_messages cm
+    INNER JOIN event_participants ep ON (ep.pevent_id = cm.event_id AND ep.user_id != cm.user_id)
+    WHERE cm.event_id = p_event_id
+      AND cm.is_deleted = false
+    GROUP BY cm.id, cm.user_id
+  ),
+  read_counts AS (
+    -- Count how many participants have read each message
+    SELECT 
+      cm.id as message_id,
+      COUNT(DISTINCT CASE 
+        WHEN last_read.created_at >= cm.created_at THEN mr.user_id 
+        ELSE NULL 
+      END)::integer as readers_count
+    FROM (
+      SELECT id, event_id, user_id, created_at
+      FROM chat_messages
+      WHERE event_id = p_event_id AND is_deleted = false
+    ) cm
+    LEFT JOIN message_reads mr ON (
+      mr.event_id = cm.event_id 
+      AND mr.user_id != cm.user_id  -- Exclude sender
+    )
+    LEFT JOIN chat_messages last_read ON (last_read.id = mr.last_read_message_id)
+    GROUP BY cm.id
+  )
   SELECT 
     cm.id,
     cm.event_id,
@@ -798,16 +865,12 @@ BEGIN
     cm.updated_at,
     u.name AS user_name,
     u.avatar_url AS user_avatar,
-    EXISTS (
-      SELECT 1
-      FROM message_reads mr
-      INNER JOIN chat_messages last_read ON (last_read.id = mr.last_read_message_id)
-      WHERE mr.event_id = cm.event_id
-        AND mr.user_id != cm.user_id
-        AND last_read.created_at >= cm.created_at
-    ) AS is_read_by_someone
+    -- ✅ WhatsApp logic: read by everyone = readers_count == total_others
+    COALESCE(rc.readers_count >= pc.total_others, false) AS is_read_by_everyone
   FROM chat_messages cm
   LEFT JOIN users u ON u.id = cm.user_id
+  LEFT JOIN participant_counts pc ON pc.message_id = cm.id
+  LEFT JOIN read_counts rc ON rc.message_id = cm.id
   WHERE cm.event_id = p_event_id
     AND cm.is_deleted = false
   ORDER BY cm.created_at DESC
@@ -820,7 +883,7 @@ $$;
 -- Name: FUNCTION get_messages_with_read_status(p_event_id uuid, p_current_user_id uuid, p_limit integer); Type: COMMENT; Schema: public; Owner: -
 --
 
-COMMENT ON FUNCTION public.get_messages_with_read_status(p_event_id uuid, p_current_user_id uuid, p_limit integer) IS 'Returns messages with is_read_by_someone flag computed. Efficient batch query avoids N+1 problem.';
+COMMENT ON FUNCTION public.get_messages_with_read_status(p_event_id uuid, p_current_user_id uuid, p_limit integer) IS 'Returns messages with is_read_by_everyone flag (WhatsApp-style). Message marked as read ONLY when ALL participants (excluding sender) have read it.';
 
 
 --
@@ -1270,6 +1333,38 @@ BEGIN
     'group_deleted', v_group_deleted,
     'remaining_members', v_member_count
   );
+END;
+$$;
+
+
+--
+-- Name: log_reviewer_access(text, text, text, text, text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.log_reviewer_access(p_email text, p_action text DEFAULT 'login'::text, p_ip_address text DEFAULT NULL::text, p_user_agent text DEFAULT NULL::text, p_notes text DEFAULT NULL::text) RETURNS uuid
+    LANGUAGE plpgsql SECURITY DEFINER
+    AS $$
+DECLARE
+    v_session_id UUID;
+BEGIN
+    INSERT INTO public.reviewer_auth_sessions (
+        reviewer_email,
+        action,
+        ip_address,
+        user_agent,
+        session_id,
+        notes
+    ) VALUES (
+        p_email,
+        p_action,
+        p_ip_address,
+        p_user_agent,
+        auth.uid(),
+        p_notes
+    )
+    RETURNING id INTO v_session_id;
+    
+    RETURN v_session_id;
 END;
 $$;
 
@@ -3188,6 +3283,78 @@ $$;
 
 
 --
+-- Name: reset_event_votes_if_expired(uuid); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.reset_event_votes_if_expired(p_event_id uuid) RETURNS boolean
+    LANGUAGE plpgsql SECURITY DEFINER
+    AS $$
+DECLARE
+  v_is_expired BOOLEAN;
+BEGIN
+  -- Check if event is expired
+  SELECT (status = 'pending' AND start_datetime IS NOT NULL AND start_datetime < NOW())
+  INTO v_is_expired
+  FROM events
+  WHERE id = p_event_id;
+  
+  -- If expired, reset votes
+  IF v_is_expired THEN
+    UPDATE event_participants
+    SET rsvp = 'pending'
+    WHERE pevent_id = p_event_id
+      AND rsvp != 'pending';
+    RETURN TRUE;
+  END IF;
+  
+  RETURN FALSE;
+END;
+$$;
+
+
+--
+-- Name: reset_expired_event_votes(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.reset_expired_event_votes() RETURNS void
+    LANGUAGE plpgsql SECURITY DEFINER
+    AS $$
+BEGIN
+  -- Reset RSVP to 'pending' for events that are:
+  -- 1. Still in 'pending' status (never confirmed)
+  -- 2. Have a start_datetime that has passed
+  -- 3. Currently have non-pending votes
+  UPDATE event_participants ep
+  SET rsvp = 'pending'
+  FROM events e
+  WHERE ep.pevent_id = e.id
+    AND e.status = 'pending'
+    AND e.start_datetime IS NOT NULL
+    AND e.start_datetime < NOW()
+    AND ep.rsvp != 'pending';
+    
+  -- Log the number of votes reset (optional, for monitoring)
+  RAISE NOTICE 'Reset % expired event votes', (SELECT COUNT(*)
+    FROM event_participants ep
+    JOIN events e ON ep.pevent_id = e.id
+    WHERE e.status = 'pending'
+      AND e.start_datetime IS NOT NULL
+      AND e.start_datetime < NOW()
+      AND ep.rsvp != 'pending'
+  );
+END;
+$$;
+
+
+--
+-- Name: FUNCTION reset_expired_event_votes(); Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON FUNCTION public.reset_expired_event_votes() IS 'Resets all RSVP votes to pending for events that expired (status=pending + start_datetime passed). 
+Run via pg_cron or manually when needed. Safe to run repeatedly (idempotent)';
+
+
+--
 -- Name: revoke_group_invite_link(text); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -3227,6 +3394,34 @@ begin
     set revoked_at = now()
   where token = p_token;
 end;
+$$;
+
+
+--
+-- Name: revoke_reviewer_access(text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.revoke_reviewer_access(p_reviewer_email text) RETURNS boolean
+    LANGUAGE plpgsql SECURITY DEFINER
+    AS $$
+BEGIN
+    -- Log revocation
+    INSERT INTO public.reviewer_auth_sessions (
+        reviewer_email,
+        action,
+        notes
+    ) VALUES (
+        p_reviewer_email,
+        'access_revoked',
+        'Manual revocation by admin'
+    );
+    
+    -- Note: To fully revoke, you must also:
+    -- 1. Delete from auth.users via Supabase Dashboard
+    -- 2. Or change password via Dashboard
+    
+    RETURN TRUE;
+END;
 $$;
 
 
@@ -4328,6 +4523,22 @@ CREATE TABLE public.push_tokens (
 
 
 --
+-- Name: reviewer_auth_sessions; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.reviewer_auth_sessions (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    reviewer_email text NOT NULL,
+    login_at timestamp with time zone DEFAULT now(),
+    ip_address text,
+    user_agent text,
+    session_id uuid,
+    action text DEFAULT 'login'::text,
+    notes text
+);
+
+
+--
 -- Name: user_event_expenses; Type: VIEW; Schema: public; Owner: -
 --
 
@@ -4744,6 +4955,14 @@ ALTER TABLE ONLY public.push_tokens
 
 
 --
+-- Name: reviewer_auth_sessions reviewer_auth_sessions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.reviewer_auth_sessions
+    ADD CONSTRAINT reviewer_auth_sessions_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: user_push_tokens unique_device_token; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -4839,6 +5058,13 @@ CREATE INDEX idx_chat_messages_event ON public.chat_messages USING btree (event_
 --
 
 CREATE INDEX idx_chat_messages_event_created ON public.chat_messages USING btree (event_id, created_at DESC);
+
+
+--
+-- Name: idx_chat_messages_event_created_not_deleted; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_chat_messages_event_created_not_deleted ON public.chat_messages USING btree (event_id, created_at DESC) WHERE (is_deleted = false);
 
 
 --
@@ -4951,6 +5177,13 @@ CREATE INDEX idx_event_participants_event ON public.event_participants USING btr
 --
 
 CREATE INDEX idx_event_participants_event_rsvp ON public.event_participants USING btree (pevent_id, rsvp);
+
+
+--
+-- Name: idx_event_participants_event_user; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_event_participants_event_user ON public.event_participants USING btree (pevent_id, user_id);
 
 
 --
@@ -5192,6 +5425,13 @@ CREATE INDEX idx_message_reads_event_id ON public.message_reads USING btree (eve
 
 
 --
+-- Name: idx_message_reads_event_user_last_read; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_message_reads_event_user_last_read ON public.message_reads USING btree (event_id, user_id, last_read_message_id);
+
+
+--
 -- Name: idx_message_reads_last_read_message_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -5273,6 +5513,20 @@ CREATE INDEX idx_problem_reports_user_id ON public.problem_reports USING btree (
 --
 
 CREATE INDEX idx_push_tokens_user ON public.push_tokens USING btree (user_id, is_active) WHERE (is_active = true);
+
+
+--
+-- Name: idx_reviewer_sessions_email; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_reviewer_sessions_email ON public.reviewer_auth_sessions USING btree (reviewer_email);
+
+
+--
+-- Name: idx_reviewer_sessions_login_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_reviewer_sessions_login_at ON public.reviewer_auth_sessions USING btree (login_at DESC);
 
 
 --
@@ -5589,6 +5843,13 @@ CREATE TRIGGER refresh_group_photos_view_on_user AFTER UPDATE OF name, avatar_ur
 --
 
 CREATE TRIGGER suggestion_added_notification AFTER INSERT ON public.location_suggestions FOR EACH ROW EXECUTE FUNCTION public.notify_suggestion_added();
+
+
+--
+-- Name: group_members trg_add_new_member_to_events; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER trg_add_new_member_to_events AFTER INSERT ON public.group_members FOR EACH ROW EXECUTE FUNCTION public.add_new_member_to_group_events();
 
 
 --
@@ -6283,6 +6544,13 @@ CREATE POLICY "Service role can insert notifications" ON public.notifications FO
 --
 
 CREATE POLICY "Service role full access to push tokens" ON public.user_push_tokens USING (((auth.jwt() ->> 'role'::text) = 'service_role'::text));
+
+
+--
+-- Name: reviewer_auth_sessions Service role only; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "Service role only" ON public.reviewer_auth_sessions USING (false);
 
 
 --
@@ -7110,6 +7378,12 @@ ALTER TABLE public.problem_reports ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.push_tokens ENABLE ROW LEVEL SECURITY;
 
 --
+-- Name: reviewer_auth_sessions; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.reviewer_auth_sessions ENABLE ROW LEVEL SECURITY;
+
+--
 -- Name: group_user_settings user_manages_own_settings; Type: POLICY; Schema: public; Owner: -
 --
 
@@ -7177,5 +7451,5 @@ CREATE POLICY users_can_view_group_photos ON public.group_photos FOR SELECT USIN
 -- PostgreSQL database dump complete
 --
 
-\unrestrict pS7oMXSDnOcRheAqkUrkYKzyvVdUmohbmFwUFCElrDpXmO3URuBrydzRLAISvXE
+\unrestrict W4g6binxgQxoPjdeLve0GDssPNARmqKkMAhpsjMOeV9cNaaIuhhkh6qCIoQBb2n
 

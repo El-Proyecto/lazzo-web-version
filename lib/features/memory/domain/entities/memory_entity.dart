@@ -1,3 +1,20 @@
+/// Event status (maps to Supabase event_state enum)
+enum EventStatus {
+  pending,
+  confirmed,
+  living,
+  recap,
+  ended;
+
+  /// Parse from string (Supabase value)
+  static EventStatus fromString(String value) {
+    return EventStatus.values.firstWhere(
+      (e) => e.name == value,
+      orElse: () => EventStatus.ended,
+    );
+  }
+}
+
 /// Memory entity representing a completed event with photos
 class MemoryEntity {
   final String id;
@@ -6,6 +23,8 @@ class MemoryEntity {
   final String? location;
   final DateTime eventDate;
   final List<MemoryPhoto> photos;
+  final EventStatus status; // Event status (living/recap/ended)
+  final String createdBy; // Host user ID
 
   const MemoryEntity({
     required this.id,
@@ -14,6 +33,8 @@ class MemoryEntity {
     this.location,
     required this.eventDate,
     required this.photos,
+    required this.status,
+    required this.createdBy,
   });
 
   /// Get cover photos (up to 3, sorted by votes)

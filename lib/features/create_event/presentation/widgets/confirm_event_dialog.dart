@@ -50,9 +50,8 @@ class _ConfirmEventBottomSheetState
   @override
   void initState() {
     super.initState();
-    // Generate emoji once when dialog opens - used for both display and creation
-    _displayEmoji = widget.eventEmoji ??
-        EmojiSuggestionService.suggestOrRandom(widget.eventName);
+    // Use calendar emoji as default if none selected
+    _displayEmoji = widget.eventEmoji ?? '🗓️';
   }
 
   /// Cria o evento usando os providers do Riverpod
