@@ -211,6 +211,9 @@ MemoryEntity _buildDynamicMemory() {
     title: 'Memory Photos',
     location: 'Test Location',
     eventDate: _baseDate,
+    endDatetime: FakeMemoryConfig.closeTime != null
+        ? _baseDate.add(const Duration(hours: 3))
+        : null,
     photos: photos,
     status: _mapFakeStatus(FakeMemoryConfig.eventStatus),
     createdBy: 'fake-host-user-id',

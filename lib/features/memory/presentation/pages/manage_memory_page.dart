@@ -128,11 +128,11 @@ class _ManageMemoryPageState extends ConsumerState<ManageMemoryPage> {
                     children: [
                       const SizedBox(height: Gaps.lg),
 
-                      // Close recap card (only for hosts in living/recap phase)
+                      // Close recap card (only for hosts in recap phase with photos)
                       // Show only if:
-                      // 1. Event is in living or ended status
+                      // 1. Event is in recap status
                       // 2. Current user is the host
-                      // 3. Still within living/recap window
+                      // 3. Photos have been uploaded (otherwise no memory to end)
                       ...eventAsync.when(
                         data: (event) {
                           final currentUserId =
@@ -140,57 +140,30 @@ class _ManageMemoryPageState extends ConsumerState<ManageMemoryPage> {
                           final isHost = event.hostId == currentUserId;
                           final status =
                               event.status.toString().split('.').last;
-                          final isLiving = status == 'living';
-                          final isEnded = status == 'ended';
+                          final isRecap = status == 'recap';
+                          final hasPhotos = state.allPhotos.isNotEmpty;
 
-                          // Living phase: during the event
-                          // Recap phase: 24h after event ends
-                          if (isHost && (isLiving || isEnded)) {
-                            // Calculate time remaining based on phase
-                            String timeRemaining = '';
-                            bool showCard = false;
+                          // Only show in recap phase for hosts who have photos
+                          if (isHost &&
+                              isRecap &&
+                              hasPhotos &&
+                              event.endDateTime != null) {
+                            // Calculate time remaining until recap window closes
+                            final recapEndTime = event.endDateTime!
+                                .add(const Duration(hours: 24));
+                            final remaining =
+                                recapEndTime.difference(DateTime.now());
 
-                            if (isLiving && event.endDateTime != null) {
-                              // Living phase: show time until event ends
-                              final remaining =
-                                  event.endDateTime!.difference(DateTime.now());
-                              if (remaining.isNegative) {
-                                showCard = false; // Event has ended
-                              } else {
-                                final hours = remaining.inHours;
-                                final minutes =
-                                    remaining.inMinutes.remainder(60);
-                                timeRemaining = '${hours}h${minutes}m';
-                                showCard = true;
-                              }
-                            } else if (isEnded && event.endDateTime != null) {
-                              // Recap phase: show time until recap window closes
-                              final isInRecap = DateTime.now()
-                                      .difference(event.endDateTime!) <
-                                  const Duration(hours: 24);
-                              if (isInRecap) {
-                                final recapEndTime = event.endDateTime!
-                                    .add(const Duration(hours: 24));
-                                final remaining =
-                                    recapEndTime.difference(DateTime.now());
-                                final hours = remaining.inHours;
-                                final minutes =
-                                    remaining.inMinutes.remainder(60);
-                                timeRemaining = '${hours}h${minutes}m';
-                                showCard = true;
-                              } else {
-                                showCard = false;
-                              }
-                            } else {
-                              showCard = false;
-                            }
+                            if (!remaining.isNegative) {
+                              final hours = remaining.inHours;
+                              final minutes = remaining.inMinutes.remainder(60);
+                              final timeRemaining = '${hours}h ${minutes}m';
 
-                            if (showCard && event.endDateTime != null) {
                               return [
                                 CloseRecapCard(
                                   timeRemaining: timeRemaining,
                                   onCloseConfirmed: () => _handleCloseRecap(),
-                                  isLiving: isLiving,
+                                  isLiving: false, // Always recap mode
                                 ),
                                 const SizedBox(height: Gaps.md),
                               ];

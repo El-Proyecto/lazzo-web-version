@@ -11,6 +11,7 @@ class MemoryCard extends StatelessWidget {
   final DateTime date;
   final String? location;
   final VoidCallback? onTap;
+  final Color? borderColor; // Border color for active memories (living/recap)
 
   const MemoryCard({
     super.key,
@@ -19,6 +20,7 @@ class MemoryCard extends StatelessWidget {
     required this.date,
     this.location,
     this.onTap,
+    this.borderColor,
   });
 
   @override
@@ -27,95 +29,106 @@ class MemoryCard extends StatelessWidget {
       onTap: onTap,
       child: AspectRatio(
         aspectRatio: 1.0, // Square aspect ratio
-        child: Stack(
-          children: [
-            // Background Image
-            Container(
-              width: double.infinity,
-              height: double.infinity,
-              decoration: ShapeDecoration(
-                image: coverImageUrl != null && 
-                       coverImageUrl!.isNotEmpty && 
-                       coverImageUrl != 'placeholder'
-                    ? DecorationImage(
-                        image: NetworkImage(coverImageUrl!),
-                        fit: BoxFit.cover,
+        child: Container(
+          decoration: borderColor != null
+              ? BoxDecoration(
+                  borderRadius: BorderRadius.circular(Radii.md),
+                  border: Border.all(
+                    color: borderColor!,
+                    width: 3,
+                  ),
+                )
+              : null,
+          child: Stack(
+            children: [
+              // Background Image
+              Container(
+                width: double.infinity,
+                height: double.infinity,
+                decoration: ShapeDecoration(
+                  image: coverImageUrl != null &&
+                          coverImageUrl!.isNotEmpty &&
+                          coverImageUrl != 'placeholder'
+                      ? DecorationImage(
+                          image: NetworkImage(coverImageUrl!),
+                          fit: BoxFit.cover,
+                        )
+                      : null,
+                  color: coverImageUrl == null ||
+                          coverImageUrl!.isEmpty ||
+                          coverImageUrl == 'placeholder'
+                      ? BrandColors.bg3
+                      : null,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(Radii.md),
+                  ),
+                ),
+                child: coverImageUrl == null ||
+                        coverImageUrl!.isEmpty ||
+                        coverImageUrl == 'placeholder'
+                    ? const Icon(
+                        Icons.image_outlined,
+                        size: 48,
+                        color: BrandColors.text2,
                       )
                     : null,
-                color: coverImageUrl == null || 
-                       coverImageUrl!.isEmpty || 
-                       coverImageUrl == 'placeholder' 
-                    ? BrandColors.bg3 
-                    : null,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(Radii.md),
+              ),
+
+              // Gradient Overlay
+              Container(
+                width: double.infinity,
+                height: double.infinity,
+                decoration: ShapeDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.transparent,
+                      Colors.black.withValues(alpha: 0.5),
+                      Colors.black.withValues(alpha: 0.8),
+                    ],
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(Radii.md),
+                  ),
                 ),
               ),
-              child: coverImageUrl == null || 
-                     coverImageUrl!.isEmpty || 
-                     coverImageUrl == 'placeholder'
-                  ? const Icon(
-                      Icons.image_outlined,
-                      size: 48,
-                      color: BrandColors.text2,
-                    )
-                  : null,
-            ),
 
-            // Gradient Overlay
-            Container(
-              width: double.infinity,
-              height: double.infinity,
-              decoration: ShapeDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    Colors.transparent,
-                    Colors.black.withValues(alpha: 0.5),
-                    Colors.black.withValues(alpha: 0.8),
+              // Content
+              Positioned(
+                left: Pads.ctlH,
+                bottom: Pads.ctlV,
+                right: Pads.ctlH,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Title
+                    Text(
+                      title,
+                      style: AppText.bodyMediumEmph.copyWith(
+                        color: BrandColors.text1,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+
+                    const SizedBox(height: 2),
+
+                    // Location and Date
+                    Text(
+                      _formatLocationAndDate(location, date),
+                      style: AppText.bodyMedium.copyWith(
+                        color: BrandColors.text2,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ],
                 ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(Radii.md),
-                ),
               ),
-            ),
-
-            // Content
-            Positioned(
-              left: Pads.ctlH,
-              bottom: Pads.ctlV,
-              right: Pads.ctlH,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Title
-                  Text(
-                    title,
-                    style: AppText.bodyMediumEmph.copyWith(
-                      color: BrandColors.text1,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-
-                  const SizedBox(height: 2),
-
-                  // Location and Date
-                  Text(
-                    _formatLocationAndDate(location, date),
-                    style: AppText.bodyMedium.copyWith(
-                      color: BrandColors.text2,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

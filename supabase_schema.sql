@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict W4g6binxgQxoPjdeLve0GDssPNARmqKkMAhpsjMOeV9cNaaIuhhkh6qCIoQBb2n
+\restrict uu2MoPQJi5uNv1YX1ZxXhqUGtteykdXKEXsHeava1pfsBrkbAlLKlE8EY3TX6Jq
 
 -- Dumped from database version 17.4
 -- Dumped by pg_dump version 18.1
@@ -459,6 +459,56 @@ $$;
 
 
 --
+-- Name: check_and_end_expired_recaps(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.check_and_end_expired_recaps() RETURNS TABLE(event_id uuid, event_name text, participants_notified integer)
+    LANGUAGE plpgsql SECURITY DEFINER
+    AS $$
+DECLARE
+  v_event_record RECORD;
+  v_notification_count integer;
+BEGIN
+  -- Find and update all expired recaps
+  FOR v_event_record IN
+    SELECT id, name
+    FROM events
+    WHERE status = 'recap'
+      AND end_datetime IS NOT NULL
+      AND (end_datetime + INTERVAL '24 hours') < NOW()
+  LOOP
+    -- Update status to ended (will trigger handle_event_ended automatically)
+    UPDATE events
+    SET status = 'ended',
+        updated_at = NOW()
+    WHERE id = v_event_record.id;
+
+    -- Count notifications that will be created by trigger
+    SELECT COUNT(*) INTO v_notification_count
+    FROM event_participants
+    WHERE pevent_id = v_event_record.id;
+
+    -- Return info about this event
+    event_id := v_event_record.id;
+    event_name := v_event_record.name;
+    participants_notified := v_notification_count;
+    
+    RETURN NEXT;
+    
+    RAISE NOTICE 'Ended expired recap for event % (% participants)', v_event_record.name, v_notification_count;
+  END LOOP;
+END;
+$$;
+
+
+--
+-- Name: FUNCTION check_and_end_expired_recaps(); Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON FUNCTION public.check_and_end_expired_recaps() IS 'Checks for expired recap periods (end_datetime + 24h < now) and transitions them to ended status. Called by existing edge functions like notify-uploads-closing. Trigger automatically sends notifications.';
+
+
+--
 -- Name: cleanup_expired_notifications(); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -815,44 +865,21 @@ $$;
 -- Name: get_messages_with_read_status(uuid, uuid, integer); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.get_messages_with_read_status(p_event_id uuid, p_current_user_id uuid, p_limit integer DEFAULT 50) RETURNS TABLE(id uuid, event_id uuid, user_id uuid, content text, created_at timestamp with time zone, is_pinned boolean, is_deleted boolean, reply_to_id uuid, updated_at timestamp with time zone, user_name text, user_avatar text, is_read_by_everyone boolean)
+CREATE FUNCTION public.get_messages_with_read_status(p_event_id uuid, p_current_user_id uuid, p_limit integer DEFAULT 50) RETURNS TABLE(id uuid, event_id uuid, user_id uuid, content text, created_at timestamp with time zone, is_pinned boolean, is_deleted boolean, reply_to_id uuid, updated_at timestamp with time zone, user_name text, user_avatar text, is_read_by_someone boolean, is_read_by_everyone boolean)
     LANGUAGE plpgsql SECURITY DEFINER
     SET search_path TO 'public'
     AS $$
+DECLARE
+  v_total_other_participants integer;
 BEGIN
+  -- Count participants excluding sender (for "read by everyone" calculation)
+  -- Note: event_participants uses pevent_id, not event_id
+  SELECT COUNT(*) INTO v_total_other_participants
+  FROM event_participants ep
+  WHERE ep.pevent_id = p_event_id
+    AND ep.user_id != p_current_user_id;
+
   RETURN QUERY
-  WITH participant_counts AS (
-    -- Pre-calculate total participants per event (cached in CTE)
-    SELECT 
-      cm.id as message_id,
-      cm.user_id as sender_id,
-      COUNT(DISTINCT ep.user_id)::integer as total_others
-    FROM chat_messages cm
-    INNER JOIN event_participants ep ON (ep.pevent_id = cm.event_id AND ep.user_id != cm.user_id)
-    WHERE cm.event_id = p_event_id
-      AND cm.is_deleted = false
-    GROUP BY cm.id, cm.user_id
-  ),
-  read_counts AS (
-    -- Count how many participants have read each message
-    SELECT 
-      cm.id as message_id,
-      COUNT(DISTINCT CASE 
-        WHEN last_read.created_at >= cm.created_at THEN mr.user_id 
-        ELSE NULL 
-      END)::integer as readers_count
-    FROM (
-      SELECT id, event_id, user_id, created_at
-      FROM chat_messages
-      WHERE event_id = p_event_id AND is_deleted = false
-    ) cm
-    LEFT JOIN message_reads mr ON (
-      mr.event_id = cm.event_id 
-      AND mr.user_id != cm.user_id  -- Exclude sender
-    )
-    LEFT JOIN chat_messages last_read ON (last_read.id = mr.last_read_message_id)
-    GROUP BY cm.id
-  )
   SELECT 
     cm.id,
     cm.event_id,
@@ -865,12 +892,30 @@ BEGIN
     cm.updated_at,
     u.name AS user_name,
     u.avatar_url AS user_avatar,
-    -- ✅ WhatsApp logic: read by everyone = readers_count == total_others
-    COALESCE(rc.readers_count >= pc.total_others, false) AS is_read_by_everyone
+    -- is_read_by_someone: TRUE if at least one other participant has read this message
+    EXISTS (
+      SELECT 1
+      FROM message_reads mr
+      INNER JOIN chat_messages last_read ON (last_read.id = mr.last_read_message_id)
+      WHERE mr.event_id = cm.event_id
+        AND mr.user_id != cm.user_id
+        AND last_read.created_at >= cm.created_at
+    ) AS is_read_by_someone,
+    -- is_read_by_everyone: TRUE only if ALL other participants have read this message
+    CASE 
+      WHEN v_total_other_participants = 0 THEN true  -- No other participants = consider "read"
+      ELSE (
+        SELECT COUNT(*) = v_total_other_participants
+        FROM message_reads mr
+        INNER JOIN chat_messages last_read ON (last_read.id = mr.last_read_message_id)
+        INNER JOIN event_participants ep ON (ep.user_id = mr.user_id AND ep.pevent_id = p_event_id)
+        WHERE mr.event_id = cm.event_id
+          AND mr.user_id != cm.user_id
+          AND last_read.created_at >= cm.created_at
+      )
+    END AS is_read_by_everyone
   FROM chat_messages cm
   LEFT JOIN users u ON u.id = cm.user_id
-  LEFT JOIN participant_counts pc ON pc.message_id = cm.id
-  LEFT JOIN read_counts rc ON rc.message_id = cm.id
   WHERE cm.event_id = p_event_id
     AND cm.is_deleted = false
   ORDER BY cm.created_at DESC
@@ -883,7 +928,9 @@ $$;
 -- Name: FUNCTION get_messages_with_read_status(p_event_id uuid, p_current_user_id uuid, p_limit integer); Type: COMMENT; Schema: public; Owner: -
 --
 
-COMMENT ON FUNCTION public.get_messages_with_read_status(p_event_id uuid, p_current_user_id uuid, p_limit integer) IS 'Returns messages with is_read_by_everyone flag (WhatsApp-style). Message marked as read ONLY when ALL participants (excluding sender) have read it.';
+COMMENT ON FUNCTION public.get_messages_with_read_status(p_event_id uuid, p_current_user_id uuid, p_limit integer) IS 'Returns messages with WhatsApp-style read status:
+- is_read_by_someone: TRUE when at least one participant has read
+- is_read_by_everyone: TRUE when ALL participants have read (double checkmarks)';
 
 
 --
@@ -1066,13 +1113,14 @@ COMMENT ON FUNCTION public.get_unread_message_count(p_event_id uuid, p_user_id u
 -- Name: get_user_memories_with_covers(uuid[]); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.get_user_memories_with_covers(p_group_ids uuid[]) RETURNS TABLE(id uuid, name text, end_datetime timestamp with time zone, display_name text, cover_storage_path text)
+CREATE FUNCTION public.get_user_memories_with_covers(p_group_ids uuid[]) RETURNS TABLE(id uuid, name text, end_datetime timestamp with time zone, status text, display_name text, cover_storage_path text)
     LANGUAGE sql STABLE SECURITY DEFINER
     AS $$
   SELECT 
     e.id,
     e.name,
     e.end_datetime,
+    e.status,  -- NEW: Include event status (living/recap/ended)
     l.display_name,
     COALESCE(
       -- Try 1: Use cover_photo_id if set
@@ -1117,7 +1165,36 @@ $$;
 -- Name: FUNCTION get_user_memories_with_covers(p_group_ids uuid[]); Type: COMMENT; Schema: public; Owner: -
 --
 
-COMMENT ON FUNCTION public.get_user_memories_with_covers(p_group_ids uuid[]) IS 'Optimized function to fetch user memories with cover photos. Uses COALESCE for automatic fallback: cover_photo_id → portrait → any photo. Called by Profile page to eliminate N+1 queries.';
+COMMENT ON FUNCTION public.get_user_memories_with_covers(p_group_ids uuid[]) IS 'Optimized function to fetch user memories with cover photos and status. Uses COALESCE for automatic fallback: cover_photo_id → portrait → any photo. Returns status field for colored borders in UI (living=purple, recap=orange). Called by Profile page to eliminate N+1 queries.';
+
+
+--
+-- Name: handle_event_ended(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.handle_event_ended() RETURNS trigger
+    LANGUAGE plpgsql SECURITY DEFINER
+    AS $$
+BEGIN
+  -- Only trigger if status changed TO 'ended'
+  IF NEW.status = 'ended' AND (OLD.status IS DISTINCT FROM 'ended') THEN
+    -- Log the transition
+    RAISE NOTICE 'Event % transitioned to ended (from %)', NEW.id, OLD.status;
+    
+    -- Send "Memory Ready" notifications to all participants
+    PERFORM notify_memory_ready(NEW.id);
+  END IF;
+
+  RETURN NEW;
+END;
+$$;
+
+
+--
+-- Name: FUNCTION handle_event_ended(); Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON FUNCTION public.handle_event_ended() IS 'Trigger function that automatically sends "Memory Ready" notifications when an event transitions to ended status (from living/recap). Called by event_status_ended_trigger.';
 
 
 --
@@ -1292,6 +1369,37 @@ $$;
 
 
 --
+-- Name: leave_chat_presence(uuid); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.leave_chat_presence(p_event_id uuid) RETURNS void
+    LANGUAGE plpgsql SECURITY DEFINER
+    SET search_path TO 'public'
+    AS $$
+DECLARE
+  v_user_id UUID;
+BEGIN
+  v_user_id := auth.uid();
+  
+  IF v_user_id IS NULL THEN
+    RAISE EXCEPTION 'User not authenticated';
+  END IF;
+  
+  -- Remove presence for this user in this chat
+  DELETE FROM chat_active_users
+  WHERE event_id = p_event_id AND user_id = v_user_id;
+END;
+$$;
+
+
+--
+-- Name: FUNCTION leave_chat_presence(p_event_id uuid); Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON FUNCTION public.leave_chat_presence(p_event_id uuid) IS 'Removes user presence from a chat. Called when leaving chat page or app goes to background.';
+
+
+--
 -- Name: leave_group(uuid, uuid); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -1420,62 +1528,74 @@ $$;
 
 CREATE FUNCTION public.notify_chat_message() RETURNS trigger
     LANGUAGE plpgsql SECURITY DEFINER
+    SET search_path TO 'public'
     AS $$
 DECLARE
   v_event_emoji TEXT;
   v_event_name TEXT;
+  v_sender_name TEXT;
 BEGIN
-  -- ✅ CRITICAL FIX: Wrap notification logic in exception handler
-  -- This prevents notification errors from blocking message INSERT
   BEGIN
-    -- Buscar dados do evento
-    SELECT emoji, name 
-    INTO v_event_emoji, v_event_name
-    FROM events 
+    -- Get event details
+    SELECT emoji, name INTO v_event_emoji, v_event_name
+    FROM events
     WHERE id = NEW.event_id;
+    
+    -- Get sender name
+    SELECT name INTO v_sender_name
+    FROM users
+    WHERE id = NEW.user_id;
 
-    -- Criar notificação para todos os participantes do evento (exceto o sender)
-    -- Categoria 'push' = ephemeral (não aparece no inbox, só push notification)
+    -- ✅ Set-based INSERT (no loop) with active user filtering
+    -- Notifies all event participants EXCEPT:
+    -- 1. The message sender (ep.user_id != NEW.user_id)
+    -- 2. Users actively viewing this chat (NOT EXISTS in chat_active_users with recent last_seen)
     INSERT INTO notifications (
       recipient_user_id,
       type,
       category,
       priority,
+      deeplink,
+      event_id,
+      event_emoji,
       user_name,
       event_name,
-      event_emoji,
-      event_id,
-      note,           -- ✅ ADDED: Store message content
-      deeplink
+      note
     )
     SELECT 
-      ep.user_id,                                    -- participante do evento
-      'chatMessage',                                 -- tipo
-      'push',                                        -- categoria PUSH (ephemeral)
-      'low',                                         -- prioridade baixa
-      sender.name,                                   -- quem enviou
-      v_event_name,                                  -- nome do evento
-      v_event_emoji,                                 -- emoji do evento
-      NEW.event_id,                                  -- event_id
-      NEW.content,                                   -- ✅ ADDED: mensagem do chat
-      'lazzo://events/' || NEW.event_id || '/chat'  -- deeplink para o chat
+      ep.user_id,
+      'chatMessage',
+      'push'::notification_category,
+      'low'::notification_priority,
+      'lazzo://events/' || NEW.event_id || '/chat',  -- ✅ FIXED: correct deeplink scheme
+      NEW.event_id,
+      v_event_emoji,
+      v_sender_name,
+      v_event_name,
+      NEW.content  -- Full content (truncation handled by push service)
     FROM event_participants ep
     CROSS JOIN users sender
-    WHERE sender.id = NEW.user_id                   -- dados do sender
-      AND ep.pevent_id = NEW.event_id               -- ✅ CORRECT: pevent_id IS the event FK
-      AND ep.user_id != NEW.user_id                 -- não notificar o sender
-      -- TODO: Adicionar lógica para verificar se user está ativo no chat
-      -- Exemplo: AND NOT is_user_active_in_chat(ep.user_id, NEW.event_id)
-    ON CONFLICT (dedup_key, dedup_bucket) DO NOTHING;
+    WHERE sender.id = NEW.user_id
+      AND ep.pevent_id = NEW.event_id
+      AND ep.user_id != NEW.user_id -- Exclude sender
+      -- ✅ NEW: Exclude users actively viewing this chat (last_seen within 30 seconds)
+      AND NOT EXISTS (
+        SELECT 1 
+        FROM chat_active_users cau
+        WHERE cau.event_id = NEW.event_id
+          AND cau.user_id = ep.user_id
+          AND cau.last_seen > NOW() - INTERVAL '30 seconds'
+      )
+    ON CONFLICT (dedup_key, dedup_bucket) DO NOTHING;  -- ✅ ADDED: prevent duplicates
 
+    RETURN NEW;
   EXCEPTION
     WHEN OTHERS THEN
-      -- ✅ Log error but don't block message insert
+      -- ✅ CRITICAL: Never block message inserts due to notification failures
+      -- Log error but continue (graceful degradation)
       RAISE WARNING 'notify_chat_message failed: %', SQLERRM;
+      RETURN NEW;
   END;
-  
-  -- ✅ ALWAYS return NEW to allow message insert
-  RETURN NEW;
 END;
 $$;
 
@@ -1484,11 +1604,9 @@ $$;
 -- Name: FUNCTION notify_chat_message(); Type: COMMENT; Schema: public; Owner: -
 --
 
-COMMENT ON FUNCTION public.notify_chat_message() IS 'Trigger que cria notificações push (ephemeral) quando alguém envia mensagem no chat.
-Categoria "push" = não aparece no inbox, apenas como push notification.
-Inclui conteúdo da mensagem no campo "note".
-Wrapped in exception handler to prevent blocking message inserts.
-TODO: Filtrar users que estão ativos no chat para não enviar notificação.';
+COMMENT ON FUNCTION public.notify_chat_message() IS 'Trigger that creates push notifications when a chat message is sent.
+UPDATED: Filters out users actively viewing the chat (last_seen < 30 seconds).
+Uses set-based INSERT for performance. Exception handler prevents blocking message inserts.';
 
 
 --
@@ -3614,6 +3732,39 @@ end $$;
 
 
 --
+-- Name: touch_chat_presence(uuid); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.touch_chat_presence(p_event_id uuid) RETURNS void
+    LANGUAGE plpgsql SECURITY DEFINER
+    SET search_path TO 'public'
+    AS $$
+DECLARE
+  v_user_id UUID;
+BEGIN
+  v_user_id := auth.uid();
+  
+  IF v_user_id IS NULL THEN
+    RAISE EXCEPTION 'User not authenticated';
+  END IF;
+  
+  -- Upsert presence with server-side timestamp (more reliable than client)
+  INSERT INTO chat_active_users (event_id, user_id, last_seen)
+  VALUES (p_event_id, v_user_id, NOW())
+  ON CONFLICT (event_id, user_id) 
+  DO UPDATE SET last_seen = NOW();
+END;
+$$;
+
+
+--
+-- Name: FUNCTION touch_chat_presence(p_event_id uuid); Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON FUNCTION public.touch_chat_presence(p_event_id uuid) IS 'Updates user presence in a chat. Called as heartbeat every 10 seconds by Flutter client. Uses server-side NOW() for reliable timestamps.';
+
+
+--
 -- Name: trigger_reset_expired_rsvp(); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -3682,6 +3833,52 @@ BEGIN
   RETURN NEW;
 END;
 $$;
+
+
+--
+-- Name: update_expired_recaps(); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.update_expired_recaps() RETURNS TABLE(updated_event_id uuid, event_name text, ended_at timestamp with time zone)
+    LANGUAGE plpgsql SECURITY DEFINER
+    AS $$
+DECLARE
+  updated_count integer := 0;
+BEGIN
+  -- Update events where:
+  -- 1. Status is 'recap'
+  -- 2. end_datetime + 24 hours has passed
+  UPDATE events
+  SET status = 'ended'
+  WHERE status = 'recap'
+    AND end_datetime IS NOT NULL
+    AND (end_datetime + INTERVAL '24 hours') < NOW()
+  RETURNING id, name, NOW()
+  INTO updated_event_id, event_name, ended_at;
+
+  -- Get count of updated rows
+  GET DIAGNOSTICS updated_count = ROW_COUNT;
+
+  -- Log the update (optional - for monitoring)
+  RAISE NOTICE 'Auto-ended % recap events that expired', updated_count;
+
+  -- Return updated events for logging/monitoring
+  RETURN QUERY
+  SELECT id, name, NOW() as ended_at
+  FROM events
+  WHERE status = 'ended'
+    AND end_datetime IS NOT NULL
+    AND (end_datetime + INTERVAL '24 hours') < NOW()
+    AND updated_at > (NOW() - INTERVAL '1 minute'); -- Only recently updated
+END;
+$$;
+
+
+--
+-- Name: FUNCTION update_expired_recaps(); Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON FUNCTION public.update_expired_recaps() IS 'Automatically transitions events from recap to ended status when recap window (end_datetime + 24h) expires. Called by pg_cron job every 5 minutes.';
 
 
 --
@@ -3904,6 +4101,24 @@ COMMENT ON FUNCTION public.validate_expense() IS 'Valida INSERT em event_expense
 SET default_tablespace = '';
 
 SET default_table_access_method = heap;
+
+--
+-- Name: chat_active_users; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.chat_active_users (
+    event_id uuid NOT NULL,
+    user_id uuid NOT NULL,
+    last_seen timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: TABLE chat_active_users; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON TABLE public.chat_active_users IS 'Tracks users actively viewing event chats. Used to prevent push notifications for messages in the chat they are currently viewing. Entries expire after 30 seconds of inactivity.';
+
 
 --
 -- Name: chat_messages; Type: TABLE; Schema: public; Owner: -
@@ -4675,6 +4890,14 @@ CREATE TABLE public.user_suggestions (
 
 
 --
+-- Name: chat_active_users chat_active_users_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.chat_active_users
+    ADD CONSTRAINT chat_active_users_pkey PRIMARY KEY (event_id, user_id);
+
+
+--
 -- Name: chat_messages chat_messages_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -5047,6 +5270,13 @@ CREATE UNIQUE INDEX group_photos_with_uploader_id_idx ON public.group_photos_wit
 
 
 --
+-- Name: idx_chat_active_users_event_last_seen; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_chat_active_users_event_last_seen ON public.chat_active_users USING btree (event_id, last_seen DESC);
+
+
+--
 -- Name: idx_chat_messages_event; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -5054,24 +5284,10 @@ CREATE INDEX idx_chat_messages_event ON public.chat_messages USING btree (event_
 
 
 --
--- Name: idx_chat_messages_event_created; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_chat_messages_event_created ON public.chat_messages USING btree (event_id, created_at DESC);
-
-
---
 -- Name: idx_chat_messages_event_created_not_deleted; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX idx_chat_messages_event_created_not_deleted ON public.chat_messages USING btree (event_id, created_at DESC) WHERE (is_deleted = false);
-
-
---
--- Name: idx_chat_messages_event_id; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_chat_messages_event_id ON public.chat_messages USING btree (event_id, created_at DESC);
 
 
 --
@@ -5086,20 +5302,6 @@ CREATE INDEX idx_chat_messages_event_not_deleted ON public.chat_messages USING b
 --
 
 CREATE INDEX idx_chat_messages_event_pinned ON public.chat_messages USING btree (event_id, is_pinned, created_at DESC) WHERE (is_pinned = true);
-
-
---
--- Name: idx_chat_messages_event_read; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_chat_messages_event_read ON public.chat_messages USING btree (event_id, read) WHERE (read = false);
-
-
---
--- Name: idx_chat_messages_pinned; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_chat_messages_pinned ON public.chat_messages USING btree (event_id, is_pinned) WHERE (is_pinned = true);
 
 
 --
@@ -5716,6 +5918,20 @@ CREATE TRIGGER event_location_set_notification AFTER UPDATE ON public.events FOR
 
 
 --
+-- Name: events event_status_ended_trigger; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER event_status_ended_trigger AFTER UPDATE OF status ON public.events FOR EACH ROW WHEN ((new.status = 'ended'::public.event_state)) EXECUTE FUNCTION public.handle_event_ended();
+
+
+--
+-- Name: TRIGGER event_status_ended_trigger ON events; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON TRIGGER event_status_ended_trigger ON public.events IS 'Automatically sends "Memory Ready" notifications when event status changes to ended. Handles both manual (host action) and automatic (scheduled) transitions.';
+
+
+--
 -- Name: events events_changed; Type: TRIGGER; Schema: public; Owner: -
 --
 
@@ -5936,6 +6152,22 @@ CREATE TRIGGER uploads_open_notification AFTER UPDATE ON public.events FOR EACH 
 --
 
 CREATE TRIGGER users_touch_updated_at BEFORE UPDATE ON public.users FOR EACH ROW EXECUTE FUNCTION public._touch_updated_at();
+
+
+--
+-- Name: chat_active_users chat_active_users_event_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.chat_active_users
+    ADD CONSTRAINT chat_active_users_event_id_fkey FOREIGN KEY (event_id) REFERENCES public.events(id) ON DELETE CASCADE;
+
+
+--
+-- Name: chat_active_users chat_active_users_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.chat_active_users
+    ADD CONSTRAINT chat_active_users_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
 
 
 --
@@ -6714,6 +6946,13 @@ CREATE POLICY "Users can leave groups" ON public.group_members FOR DELETE USING 
 
 
 --
+-- Name: chat_active_users Users can manage own presence; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "Users can manage own presence" ON public.chat_active_users USING ((auth.uid() = user_id)) WITH CHECK ((auth.uid() = user_id));
+
+
+--
 -- Name: notifications Users can mark own notifications as read; Type: POLICY; Schema: public; Owner: -
 --
 
@@ -6891,6 +7130,13 @@ CREATE POLICY "Users can view own notifications" ON public.notifications FOR SEL
 
 
 --
+-- Name: chat_active_users Users can view own presence; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "Users can view own presence" ON public.chat_active_users FOR SELECT USING ((auth.uid() = user_id));
+
+
+--
 -- Name: user_push_tokens Users can view own push tokens; Type: POLICY; Schema: public; Owner: -
 --
 
@@ -6940,6 +7186,12 @@ CREATE POLICY "Users can view their own read status" ON public.message_reads FOR
 
 CREATE POLICY authenticated_can_insert_via_rpc ON public.group_invite_links FOR INSERT TO authenticated WITH CHECK (true);
 
+
+--
+-- Name: chat_active_users; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.chat_active_users ENABLE ROW LEVEL SECURITY;
 
 --
 -- Name: chat_messages chat_delete_policy; Type: POLICY; Schema: public; Owner: -
@@ -7451,5 +7703,5 @@ CREATE POLICY users_can_view_group_photos ON public.group_photos FOR SELECT USIN
 -- PostgreSQL database dump complete
 --
 
-\unrestrict W4g6binxgQxoPjdeLve0GDssPNARmqKkMAhpsjMOeV9cNaaIuhhkh6qCIoQBb2n
+\unrestrict uu2MoPQJi5uNv1YX1ZxXhqUGtteykdXKEXsHeava1pfsBrkbAlLKlE8EY3TX6Jq
 

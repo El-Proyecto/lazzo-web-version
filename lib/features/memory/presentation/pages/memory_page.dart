@@ -7,6 +7,7 @@ import '../../../../routes/app_router.dart';
 import '../../../../shared/components/nav/common_app_bar.dart';
 import '../../../../shared/components/nav/app_bar_with_subtitle.dart';
 import '../../../../shared/components/cards/add_photos_cta_card.dart';
+import '../../../../shared/components/cards/close_recap_card.dart';
 import '../../../../shared/components/common/top_banner.dart';
 import '../../../../shared/components/sections/cover_mosaic.dart';
 import '../../../../shared/components/sections/hybrid_photo_grid.dart';
@@ -141,6 +142,28 @@ class _MemoryPageState extends ConsumerState<MemoryPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const SizedBox(height: Gaps.sm),
+
+                  // Close Recap Card: Show for hosts in recap state with photos
+                  // Only appears if photos exist (no point closing recap if no memory)
+                  if (eventStatus == EventStatus.recap &&
+                      isHost &&
+                      memory.photos.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: Insets.screenH,
+                      ),
+                      child: CloseRecapCard(
+                        timeRemaining: memory.formattedRecapTimeRemaining,
+                        onCloseConfirmed: () =>
+                            _handleEndRecapEarly(context, ref),
+                        isLiving: false,
+                      ),
+                    ),
+
+                  if (eventStatus == EventStatus.recap &&
+                      isHost &&
+                      memory.photos.isNotEmpty)
+                    const SizedBox(height: Gaps.md),
 
                   // CTA Banner: Show for living/recap if user hasn't uploaded photos
                   if (_shouldShowCtaBanner(eventStatus, userHasUploadedPhotos))
@@ -354,10 +377,12 @@ class _MemoryPageState extends ConsumerState<MemoryPage> {
 
     // Recap state: show countdown timer with chat button (and edit if applicable)
     if (eventStatus == EventStatus.recap) {
-      // TODO: Calculate real remaining time from event end_datetime + 24h window
-      final subtitle =
-          'Closes soon'; // Placeholder until we add end_datetime to entity
-      final subtitleColor = BrandColors.text2;
+      final subtitle = memory.recapTimeRemaining != null
+          ? 'Closes in ${memory.formattedRecapTimeRemaining}'
+          : 'Closes soon';
+      final subtitleColor = memory.isRecapClosingSoon
+          ? BrandColors.cantVote // Red when <30min
+          : BrandColors.text2;
 
       // Chat button (always present in recap)
       final chatButton = IconButton(
@@ -430,17 +455,16 @@ class _MemoryPageState extends ConsumerState<MemoryPage> {
 
   /// Navigate to manage memory page
   Future<void> _navigateToManageMemory(BuildContext context) async {
-    final result = await Navigator.of(context).pushNamed(
+    await Navigator.of(context).pushNamed(
       AppRouter.manageMemory,
       arguments: {
         'memoryId': widget.memoryId,
       },
     );
 
-    // Refresh memory data if changes were made
-    if (result == true && mounted) {
-      // Force complete refresh by invalidating and immediately reading the future
-      // This ensures we wait for fresh data from Supabase before rebuilding
+    // Always refresh when returning from manage memory
+    // This ensures cover selections, photo deletions, etc. are reflected
+    if (mounted) {
       ref.invalidate(memoryDetailProvider(widget.memoryId));
       try {
         await ref.read(memoryDetailProvider(widget.memoryId).future);
@@ -515,5 +539,66 @@ class _MemoryPageState extends ConsumerState<MemoryPage> {
         'photoId': photoId,
       },
     );
+  }
+
+  /// Handle ending recap early (host action)
+  Future<void> _handleEndRecapEarly(BuildContext context, WidgetRef ref) async {
+    // Show confirmation dialog
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: BrandColors.bg2,
+        title: Text(
+          'End Recap Early?',
+          style: AppText.titleMediumEmph.copyWith(color: BrandColors.text1),
+        ),
+        content: Text(
+          'This will close the recap period and move the event to ended state. Members will no longer be able to add photos.',
+          style: AppText.bodyMedium.copyWith(color: BrandColors.text2),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel',
+                style: TextStyle(color: BrandColors.text2)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('End Recap',
+                style: TextStyle(color: BrandColors.recap)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true || !context.mounted) return;
+
+    try {
+      // Update event status to 'ended' in Supabase
+      // Trigger handle_event_ended() will automatically call notify_memory_ready()
+      await Supabase.instance.client
+          .from('events')
+          .update({'status': 'ended'}).eq('id', widget.memoryId);
+
+      // Refresh memory data
+      ref.invalidate(memoryDetailProvider(widget.memoryId));
+
+      if (context.mounted) {
+        // Navigate to MemoryReadyPage
+        Navigator.of(context).pushReplacementNamed(
+          AppRouter.memoryReady,
+          arguments: {
+            'memoryId': widget.memoryId,
+          },
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        TopBanner.showError(
+          context,
+          message: 'Failed to end recap',
+        );
+      }
+    }
   }
 }

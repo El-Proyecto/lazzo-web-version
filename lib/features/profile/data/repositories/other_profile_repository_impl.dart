@@ -82,6 +82,8 @@ class OtherProfileRepositoryImpl implements OtherProfileRepository {
               ? DateTime.parse(memoryData['date'] as String)
               : DateTime.now(),
           location: memoryData['location'] as String?,
+          status: memoryData['status']
+              as String?, // Event status for colored borders
         ));
       }
 

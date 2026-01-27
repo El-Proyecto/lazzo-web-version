@@ -4,19 +4,20 @@ import '../../constants/text_styles.dart';
 import '../../themes/colors.dart';
 import '../dialogs/confirmation_dialog.dart';
 
-/// Card for hosts to close recap/living phase early
-/// Only shown in recap or living state for event hosts
-/// Allows immediate access to memory by ending recap/living timer
+/// Card for hosts to close recap phase early
+/// Only shown in recap state for event hosts who have uploaded photos
+/// Allows immediate access to memory by ending recap timer
+/// Note: Does NOT appear in living state - only recap
 class CloseRecapCard extends StatelessWidget {
   final String timeRemaining;
   final VoidCallback onCloseConfirmed;
-  final bool isLiving; // true for living mode, false for recap mode
+  final bool isLiving; // Deprecated - always false, kept for backwards compat
 
   const CloseRecapCard({
     super.key,
     required this.timeRemaining,
     required this.onCloseConfirmed,
-    this.isLiving = false, // defaults to recap mode
+    this.isLiving = false, // Always recap mode now
   });
 
   void _showConfirmationDialog(BuildContext context) {

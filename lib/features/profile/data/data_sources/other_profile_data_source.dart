@@ -63,6 +63,7 @@ class OtherProfileDataSource {
             id,
             name,
             end_datetime,
+            status,
             locations (
               display_name
             ),

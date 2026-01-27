@@ -22,6 +22,7 @@ class MemoryEntity {
   final String title;
   final String? location;
   final DateTime eventDate;
+  final DateTime? endDatetime; // Event end time (for recap countdown)
   final List<MemoryPhoto> photos;
   final EventStatus status; // Event status (living/recap/ended)
   final String createdBy; // Host user ID
@@ -32,6 +33,7 @@ class MemoryEntity {
     required this.title,
     this.location,
     required this.eventDate,
+    this.endDatetime,
     required this.photos,
     required this.status,
     required this.createdBy,
@@ -45,6 +47,35 @@ class MemoryEntity {
     final coverIds = coverPhotos.map((p) => p.id).toSet();
     return photos.where((p) => !coverIds.contains(p.id)).toList()
       ..sort((a, b) => a.capturedAt.compareTo(b.capturedAt));
+  }
+
+  /// Calculate time remaining until recap closes (end_datetime + 24h)
+  Duration? get recapTimeRemaining {
+    if (status != EventStatus.recap || endDatetime == null) return null;
+    final closeTime = endDatetime!.add(const Duration(hours: 24));
+    final remaining = closeTime.difference(DateTime.now());
+    return remaining.isNegative ? Duration.zero : remaining;
+  }
+
+  /// Format remaining time as "1h 20m", "45m", "3m"
+  String get formattedRecapTimeRemaining {
+    final remaining = recapTimeRemaining;
+    if (remaining == null) return '';
+
+    final hours = remaining.inHours;
+    final minutes = remaining.inMinutes.remainder(60);
+
+    if (hours > 0) {
+      return '${hours}h ${minutes}m';
+    }
+    return '${minutes}m';
+  }
+
+  /// Whether recap is closing soon (less than 30 minutes)
+  bool get isRecapClosingSoon {
+    final remaining = recapTimeRemaining;
+    if (remaining == null) return false;
+    return remaining.inMinutes < 30;
   }
 }
 

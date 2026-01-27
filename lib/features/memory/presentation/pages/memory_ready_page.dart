@@ -393,10 +393,7 @@ class _ShareMemoryButton extends StatelessWidget {
       width: double.infinity,
       height: 56,
       child: ElevatedButton(
-        onPressed: () {
-          // TODO P2: Implement share functionality
-          Navigator.of(context).pop();
-        },
+        onPressed: () => _navigateToShareMemory(context),
         style: ElevatedButton.styleFrom(
           backgroundColor: BrandColors.recap,
           foregroundColor: BrandColors.text1,
@@ -413,6 +410,13 @@ class _ShareMemoryButton extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+
+  void _navigateToShareMemory(BuildContext context) {
+    Navigator.of(context).pushNamed(
+      AppRouter.shareMemory,
+      arguments: {'memoryId': memoryId},
     );
   }
 }

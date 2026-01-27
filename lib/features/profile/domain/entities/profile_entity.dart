@@ -1,3 +1,6 @@
+import 'package:flutter/material.dart';
+import '../../../../shared/themes/colors.dart';
+
 /// Profile/User entity
 /// Contains minimal fields needed by the profile UI
 class ProfileEntity {
@@ -35,9 +38,8 @@ class ProfileEntity {
       id: id ?? this.id,
       name: name ?? this.name,
       email: email ?? this.email,
-      profileImageUrl: clearProfileImage
-          ? null
-          : (profileImageUrl ?? this.profileImageUrl),
+      profileImageUrl:
+          clearProfileImage ? null : (profileImageUrl ?? this.profileImageUrl),
       location: clearLocation ? null : (location ?? this.location),
       birthday: clearBirthday ? null : (birthday ?? this.birthday),
       memories: memories ?? this.memories,
@@ -52,6 +54,7 @@ class MemoryEntity {
   final String? coverImageUrl;
   final DateTime date;
   final String? location;
+  final String? status; // Event status (living/recap/ended)
 
   const MemoryEntity({
     required this.id,
@@ -59,7 +62,21 @@ class MemoryEntity {
     this.coverImageUrl,
     required this.date,
     this.location,
+    this.status,
   });
+
+  /// Whether memory is still in living state
+  bool get isLiving => status == 'living';
+
+  /// Whether memory is in recap state
+  bool get isRecap => status == 'recap';
+
+  /// Get border color for active memories (living/recap)
+  Color? get activeBorderColor {
+    if (isLiving) return BrandColors.living; // Purple
+    if (isRecap) return BrandColors.recap; // Orange
+    return null; // No border for ended memories
+  }
 
   MemoryEntity copyWith({
     String? id,
@@ -67,6 +84,7 @@ class MemoryEntity {
     String? coverImageUrl,
     DateTime? date,
     String? location,
+    String? status,
   }) {
     return MemoryEntity(
       id: id ?? this.id,
@@ -74,6 +92,7 @@ class MemoryEntity {
       coverImageUrl: coverImageUrl ?? this.coverImageUrl,
       date: date ?? this.date,
       location: location ?? this.location,
+      status: status ?? this.status,
     );
   }
 }

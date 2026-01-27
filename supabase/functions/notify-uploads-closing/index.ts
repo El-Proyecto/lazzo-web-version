@@ -42,7 +42,7 @@ serve(async (req: Request) => {
 
     console.log('[notify-uploads-closing] Starting job...')
 
-    // Call the optimized PostgreSQL function
+    // Task 1: Notify participants about uploads closing soon
     const { data, error } = await supabaseClient.rpc('notify_uploads_closing_soon')
 
     if (error) {
@@ -51,7 +51,20 @@ serve(async (req: Request) => {
     }
 
     const result = data?.[0] || { notifications_created: 0, events_processed: 0 }
-    console.log('[notify-uploads-closing] Job completed:', result)
+    console.log('[notify-uploads-closing] Notifications sent:', result)
+
+    // Task 2: Check and end expired recaps (recap period > 24h)
+    const { data: expiredRecaps, error: recapError } = await supabaseClient.rpc('check_and_end_expired_recaps')
+
+    if (recapError) {
+      console.error('[notify-uploads-closing] Error ending expired recaps:', recapError)
+      // Don't throw - this is secondary task
+    } else {
+      const recapCount = expiredRecaps?.length || 0
+      if (recapCount > 0) {
+        console.log(`[notify-uploads-closing] Ended ${recapCount} expired recaps:`, expiredRecaps)
+      }
+    }
 
     return new Response(
       JSON.stringify({ 
@@ -59,6 +72,7 @@ serve(async (req: Request) => {
         message: 'Upload closing notifications sent',
         notifications_created: result.notifications_created,
         events_processed: result.events_processed,
+        expired_recaps_ended: expiredRecaps?.length || 0,
         timestamp: new Date().toISOString()
       }),
       { 

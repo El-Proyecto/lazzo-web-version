@@ -91,6 +91,15 @@ class _LazzoAppState extends ConsumerState<LazzoApp> {
         return;
       }
 
+      // Handle event deeplinks (e.g., lazzo://event/<eventId>)
+      if (uri.scheme == 'lazzo' &&
+          uri.host == 'event' &&
+          pathSegments.isNotEmpty) {
+        final eventId = pathSegments.first;
+        await _navigateToMemoryReady(eventId);
+        return;
+      }
+
       // Support /i/<token> and /invite/<token>
       // Also support custom scheme: lazzo://invite/TOKEN
       String? token;
@@ -125,7 +134,7 @@ class _LazzoAppState extends ConsumerState<LazzoApp> {
         // Save the invite token to be processed after signup/login
         _pendingInviteToken = token;
         await PendingInviteService.savePendingToken(token);
-        
+
         // Navigate to auth page - user will signup/login and then the invite will be processed
         if (_navigatorKey.currentState?.mounted == true) {
           _navigatorKey.currentState!.pushNamedAndRemoveUntil(
@@ -194,20 +203,39 @@ class _LazzoAppState extends ConsumerState<LazzoApp> {
     }
   }
 
+  /// Navigate to memory ready page with retry logic for navigator availability
+  Future<void> _navigateToMemoryReady(String memoryId) async {
+    // Wait for navigator to be ready (max 5 seconds)
+    for (int i = 0; i < 10; i++) {
+      if (_navigatorKey.currentState?.mounted == true) {
+        break;
+      }
+      await Future.delayed(const Duration(milliseconds: 500));
+    }
+
+    // Navigate to memory ready page
+    if (_navigatorKey.currentState?.mounted == true) {
+      _navigatorKey.currentState!.pushNamed(
+        AppRouter.memoryReady,
+        arguments: {'memoryId': memoryId},
+      );
+    }
+  }
+
   /// Process pending invite token (called after successful login)
   /// Checks both in-memory token and persisted token from SharedPreferences
   Future<void> processPendingInvite() async {
     // First check in-memory token
     String? token = _pendingInviteToken;
     _pendingInviteToken = null;
-    
+
     // If no in-memory token, check persisted token (in case app was restarted during signup)
     if (token == null) {
       token = await PendingInviteService.getPendingToken();
     }
-    
+
     if (token == null) return;
-    
+
     // Clear persisted token to avoid reprocessing
     await PendingInviteService.clearPendingToken();
 
@@ -311,7 +339,7 @@ class _AuthWrapperState extends ConsumerState<AuthWrapper> {
 
       // Navigate to group hub after a small delay to let MainLayout load
       await Future.delayed(const Duration(milliseconds: 500));
-      
+
       if (mounted) {
         Navigator.of(context).pushNamed(
           AppRouter.groupHub,

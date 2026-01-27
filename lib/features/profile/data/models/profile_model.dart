@@ -87,6 +87,7 @@ class MemoryModel {
   final String? coverStoragePath;
   final DateTime date;
   final String? location;
+  final String? status; // Event status (living/recap/ended)
 
   const MemoryModel({
     required this.eventId,
@@ -94,6 +95,7 @@ class MemoryModel {
     this.coverStoragePath,
     required this.date,
     this.location,
+    this.status,
   });
 
   factory MemoryModel.fromMap(Map<String, dynamic> row) {
@@ -125,6 +127,7 @@ class MemoryModel {
       coverStoragePath: row['cover_storage_path'] as String?,
       date: parsedDate ?? DateTime.now(), // Fallback to now if null
       location: locationName,
+      status: row['status'] as String?, // Event status from RPC
     );
   }
 
@@ -134,5 +137,6 @@ class MemoryModel {
         coverImageUrl: signedUrl,
         date: date,
         location: location,
+        status: status,
       );
 }

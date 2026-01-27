@@ -121,9 +121,10 @@ class MemoryRepositoryImpl implements MemoryRepository {
           ? (locationsData as Map<String, dynamic>)['display_name'] as String?
           : null;
 
-      // Extract status and createdBy
+      // Extract status, createdBy, and endDatetime
       final statusString = memoryData['status'] as String;
       final createdBy = memoryData['created_by'] as String;
+      final endDatetimeStr = memoryData['end_datetime'] as String?;
 
       return MemoryEntity(
         id: memoryData['id'] as String,
@@ -131,6 +132,8 @@ class MemoryRepositoryImpl implements MemoryRepository {
         title: memoryData['name'] as String,
         location: locationName ?? 'Unknown Location',
         eventDate: DateTime.parse(memoryData['start_datetime'] as String),
+        endDatetime:
+            endDatetimeStr != null ? DateTime.parse(endDatetimeStr) : null,
         photos: photos,
         status: EventStatus.fromString(statusString),
         createdBy: createdBy,

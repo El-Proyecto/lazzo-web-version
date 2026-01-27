@@ -358,13 +358,13 @@ class _InboxPageState extends ConsumerState<InboxPage>
         }
         break;
 
-      // Memory ready → Navigate to memory viewer
+      // Memory ready → Navigate to memory ready page
       case NotificationType.memoryReady:
         if (notification.eventId != null) {
           Navigator.pushNamed(
             context,
-            '/memory-viewer',
-            arguments: {'eventId': notification.eventId},
+            '/memory-ready',
+            arguments: {'memoryId': notification.eventId},
           );
         }
         break;

@@ -12,7 +12,6 @@ import '../../../../routes/app_router.dart';
 import '../providers/other_profile_providers.dart';
 import '../../../group_hub/domain/entities/group_event_entity.dart';
 import '../../domain/entities/profile_entity.dart';
-import '../../../memory/data/fakes/fake_memory_repository.dart';
 
 /// Other user's profile page
 /// Shows profile information, shared upcoming events, and shared memories
@@ -201,34 +200,31 @@ class OtherProfilePage extends ConsumerWidget {
     String userName,
   ) async {
     try {
-                        
       final inviteUseCase = ref.read(inviteToGroupProvider);
-      
+
       final success = await inviteUseCase(
         userId: userId,
         groupId: groupId,
       );
 
-      
       if (context.mounted) {
         if (success) {
-                    TopBanner.showSuccess(
+          TopBanner.showSuccess(
             context,
             message: 'Invitation sent to $userName',
           );
         } else {
-                    TopBanner.showError(
+          TopBanner.showError(
             context,
             message: 'Failed to send invitation',
           );
         }
       }
     } catch (e) {
-            
       if (context.mounted) {
         // Check for duplicate invite error
         if (e.toString().contains('DUPLICATE_INVITE')) {
-                    TopBanner.showInfo(
+          TopBanner.showInfo(
             context,
             message: 'Invitation already sent to $userName',
           );
@@ -255,7 +251,7 @@ class OtherProfilePage extends ConsumerWidget {
       AppRouter.memory,
       arguments: {
         'memoryId': memory.id,
-        'eventStatus': FakeEventStatus.ended,
+        // eventStatus is deprecated - removed in favor of querying from repository
       },
     );
   }
