@@ -7,6 +7,7 @@ import '../../../../shared/components/sections/hybrid_photo_grid.dart';
 import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/constants/text_styles.dart';
 import '../../../../shared/themes/colors.dart';
+import '../../../home/presentation/providers/home_event_providers.dart';
 import '../providers/memory_providers.dart';
 import '../../domain/entities/memory_entity.dart';
 
@@ -33,7 +34,7 @@ class MemoryReadyPage extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: BrandColors.bg1,
-      appBar: _buildAppBar(context),
+      appBar: _buildAppBar(context, ref),
       body: memoryAsync.when(
         data: (memory) {
           if (memory == null) {
@@ -70,15 +71,20 @@ class MemoryReadyPage extends ConsumerWidget {
   }
 
   /// Build AppBar with only close button (like GroupCreatedPage)
-  PreferredSizeWidget _buildAppBar(BuildContext context) {
+  PreferredSizeWidget _buildAppBar(BuildContext context, WidgetRef ref) {
     return CommonAppBar(
       title: '',
       trailing: IconButton(
         icon: const Icon(Icons.close, color: BrandColors.text1),
-        onPressed: () => Navigator.of(context).pushNamedAndRemoveUntil(
-          AppRouter.mainLayout,
-          (route) => false,
-        ),
+        onPressed: () {
+          // Refresh home data before navigating back
+          ref.invalidate(nextEventControllerProvider);
+          ref.invalidate(confirmedEventsControllerProvider);
+          Navigator.of(context).pushNamedAndRemoveUntil(
+            AppRouter.mainLayout,
+            (route) => false,
+          );
+        },
       ),
     );
   }

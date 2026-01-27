@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict uu2MoPQJi5uNv1YX1ZxXhqUGtteykdXKEXsHeava1pfsBrkbAlLKlE8EY3TX6Jq
+\restrict 3PQGQHd6bheEX7E1Uh4ern2Qb37DreQcLZvsdriMhZy2nFHEQbi2KyuWYfj9wVO
 
 -- Dumped from database version 17.4
 -- Dumped by pg_dump version 18.1
@@ -2759,7 +2759,21 @@ Inbox text: "João Silva suggested Parque das Nações for Birthday Party"';
 CREATE FUNCTION public.notify_memory_ready(p_event_id uuid) RETURNS void
     LANGUAGE plpgsql
     AS $$
+DECLARE
+  v_photo_count INTEGER;
 BEGIN
+  -- First check if any photos exist for this event
+  SELECT COUNT(*) INTO v_photo_count
+  FROM public.group_photos
+  WHERE event_id = p_event_id;
+
+  -- Only send notifications if photos exist
+  IF v_photo_count = 0 THEN
+    RAISE NOTICE 'Event % has no photos, skipping memory ready notification', p_event_id;
+    RETURN;
+  END IF;
+
+  -- Photos exist, send notifications to all participants
   INSERT INTO notifications (
     recipient_user_id,
     type,
@@ -2783,8 +2797,19 @@ BEGIN
   JOIN event_participants ep ON ep.pevent_id = e.id
   WHERE e.id = p_event_id
     AND should_send_notification(ep.user_id, e.group_id);
+    
+  RAISE NOTICE 'Event % has % photos, sent memory ready notifications', p_event_id, v_photo_count;
 END;
 $$;
+
+
+--
+-- Name: FUNCTION notify_memory_ready(p_event_id uuid); Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON FUNCTION public.notify_memory_ready(p_event_id uuid) IS 'Sends "Memory Ready" push notifications to all event participants.
+Only sends notifications if at least 1 photo exists in group_photos for the event.
+Called by handle_event_ended() trigger when event status changes to ended.';
 
 
 --
@@ -7703,5 +7728,5 @@ CREATE POLICY users_can_view_group_photos ON public.group_photos FOR SELECT USIN
 -- PostgreSQL database dump complete
 --
 
-\unrestrict uu2MoPQJi5uNv1YX1ZxXhqUGtteykdXKEXsHeava1pfsBrkbAlLKlE8EY3TX6Jq
+\unrestrict 3PQGQHd6bheEX7E1Uh4ern2Qb37DreQcLZvsdriMhZy2nFHEQbi2KyuWYfj9wVO
 

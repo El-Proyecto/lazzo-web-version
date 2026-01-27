@@ -298,15 +298,21 @@ class _EventLivingPageState extends ConsumerState<EventLivingPage> {
                       },
                     );
                   },
-                  onViewMemory: () {
-                    // Navigate to manage memory page
-                    Navigator.pushNamed(
+                  onViewMemory: () async {
+                    // Navigate to manage memory page and refresh on return if changes made
+                    final hasChanges = await Navigator.pushNamed<bool>(
                       context,
                       AppRouter.manageMemory,
                       arguments: {
                         'memoryId': widget.eventId,
                       },
                     );
+
+                    // Refresh data if changes were made
+                    if (hasChanges == true) {
+                      ref.invalidate(eventDetailProvider(widget.eventId));
+                      ref.invalidate(eventPhotosProvider(widget.eventId));
+                    }
                   },
                 ),
                 const SizedBox(height: Gaps.lg),

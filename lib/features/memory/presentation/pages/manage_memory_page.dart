@@ -12,6 +12,7 @@ import '../../../../shared/constants/text_styles.dart';
 import '../../../../shared/themes/colors.dart';
 import '../../../event/presentation/providers/event_providers.dart';
 import '../../../event/presentation/providers/event_photo_providers.dart';
+import '../../../home/presentation/providers/home_event_providers.dart';
 import '../providers/manage_memory_providers.dart';
 import '../providers/memory_providers.dart';
 import '../widgets/cover_selection_card.dart';
@@ -553,6 +554,10 @@ class _ManageMemoryPageState extends ConsumerState<ManageMemoryPage> {
         }
         return;
       }
+
+      // Refresh home data
+      ref.invalidate(nextEventControllerProvider);
+      ref.invalidate(confirmedEventsControllerProvider);
 
       // Mark that changes were made
       setState(() {

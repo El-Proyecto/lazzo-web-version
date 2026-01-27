@@ -14,6 +14,7 @@ import '../../../../shared/components/sections/hybrid_photo_grid.dart';
 import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/constants/text_styles.dart';
 import '../../../../shared/themes/colors.dart';
+import '../../../home/presentation/providers/home_event_providers.dart';
 import '../providers/memory_providers.dart';
 import '../../domain/entities/memory_entity.dart';
 
@@ -542,37 +543,8 @@ class _MemoryPageState extends ConsumerState<MemoryPage> {
   }
 
   /// Handle ending recap early (host action)
+  /// Note: Confirmation dialog is already shown by CloseRecapCard
   Future<void> _handleEndRecapEarly(BuildContext context, WidgetRef ref) async {
-    // Show confirmation dialog
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: BrandColors.bg2,
-        title: Text(
-          'End Recap Early?',
-          style: AppText.titleMediumEmph.copyWith(color: BrandColors.text1),
-        ),
-        content: Text(
-          'This will close the recap period and move the event to ended state. Members will no longer be able to add photos.',
-          style: AppText.bodyMedium.copyWith(color: BrandColors.text2),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel',
-                style: TextStyle(color: BrandColors.text2)),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('End Recap',
-                style: TextStyle(color: BrandColors.recap)),
-          ),
-        ],
-      ),
-    );
-
-    if (confirm != true || !context.mounted) return;
-
     try {
       // Update event status to 'ended' in Supabase
       // Trigger handle_event_ended() will automatically call notify_memory_ready()
@@ -580,8 +552,10 @@ class _MemoryPageState extends ConsumerState<MemoryPage> {
           .from('events')
           .update({'status': 'ended'}).eq('id', widget.memoryId);
 
-      // Refresh memory data
+      // Refresh memory data and home data
       ref.invalidate(memoryDetailProvider(widget.memoryId));
+      ref.invalidate(nextEventControllerProvider);
+      ref.invalidate(confirmedEventsControllerProvider);
 
       if (context.mounted) {
         // Navigate to MemoryReadyPage
