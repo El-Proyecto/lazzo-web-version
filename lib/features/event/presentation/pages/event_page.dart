@@ -68,6 +68,8 @@ class _EventPageState extends ConsumerState<EventPage> {
     // Setup Realtime subscription for unread count badge updates
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(unreadCountRealtimeProvider(eventId));
+      // Check if we need to show expiration warning
+      _checkAndShowExpirationWarning();
     });
 
     // Listen to scroll to show/hide title in app bar
@@ -96,6 +98,83 @@ class _EventPageState extends ConsumerState<EventPage> {
   String _getUserDisplayName(
       String userId, String userName, String? currentUserId) {
     return userId == currentUserId ? 'You' : userName;
+  }
+
+  /// Check if event is pending and about to expire, show warning to hosts
+  Future<void> _checkAndShowExpirationWarning() async {
+    try {
+      final event = await ref.read(eventDetailProvider(eventId).future);
+      final canManage = await ref.read(canManageEventProvider(eventId).future);
+
+      // Only show for hosts
+      if (!canManage) return;
+
+      // Only show for pending events
+      if (event.status != EventStatus.pending) return;
+
+      // Only show if event has a start date
+      if (event.startDateTime == null) return;
+
+      // Check if less than 30 minutes until event starts
+      final now = DateTime.now();
+      final minutesUntilStart = event.startDateTime!.difference(now).inMinutes;
+
+      // Show warning if less than 30 minutes and event hasn't started yet
+      if (minutesUntilStart > 0 && minutesUntilStart <= 30 && mounted) {
+        _showExpirationWarningDialog(event);
+      }
+    } catch (e) {
+      // Silently fail - don't block page load
+    }
+  }
+
+  /// Show warning dialog about event expiration
+  void _showExpirationWarningDialog(EventDetail event) {
+    // Check if location is defined
+    final hasLocation = event.hasDefinedLocation;
+
+    showDialog(
+      context: context,
+      barrierDismissible: true, // Allow dismissing by tapping outside
+      builder: (context) => ConfirmationDialog(
+        title: 'Event Will Expire Soon',
+        message: hasLocation
+            ? 'This event will be marked as expired if not confirmed before it starts. Confirm now to prevent expiration.'
+            : 'This event will be marked as expired if not confirmed before it starts. Please set a location first, then confirm the event.',
+        confirmText: hasLocation ? 'Confirm Event' : null,
+        cancelText: 'Ok',
+        isDestructive: false,
+        onConfirm: hasLocation
+            ? () async {
+                // Check if event has date defined before confirming
+                if (!event.hasDefinedDate) {
+                  if (context.mounted) {
+                    showDialog(
+                      context: context,
+                      builder: (context) => MissingFieldsConfirmationDialog(
+                        hasLocation: event.hasDefinedLocation,
+                        hasDate: event.hasDefinedDate,
+                      ),
+                    );
+                  }
+                  return;
+                }
+
+                // Confirm the event
+                await ref
+                    .read(eventStatusNotifierProvider(eventId).notifier)
+                    .updateStatus(eventId, EventStatus.confirmed);
+
+                if (context.mounted) {
+                  TopBanner.showSuccess(
+                    context,
+                    message: 'Event confirmed successfully!',
+                  );
+                }
+              }
+            : null,
+      ),
+    );
   }
 
   /// Show dialog to change event status

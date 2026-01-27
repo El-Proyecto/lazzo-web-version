@@ -121,14 +121,45 @@ class _ManageMemoryPageState extends ConsumerState<ManageMemoryPage> {
                   padding: EdgeInsets.only(
                     left: Insets.screenH,
                     right: Insets.screenH,
-                    bottom: (_isSelectionMode || _shouldShowCloseRecap())
+                    bottom: _isSelectionMode
                         ? 100
-                        : Gaps.xl, // Extra space for fixed buttons
+                        : Gaps.xl, // Extra space for fixed button
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const SizedBox(height: Gaps.lg),
+
+                      // Close Recap Card at top (only for hosts in recap with photos)
+                      if (_shouldShowCloseRecap())
+                        ...eventAsync.when(
+                          data: (event) {
+                            final endDateTime = event.endDateTime;
+                            if (endDateTime != null) {
+                              final recapEndTime =
+                                  endDateTime.add(const Duration(hours: 24));
+                              final remaining =
+                                  recapEndTime.difference(DateTime.now());
+                              if (!remaining.isNegative) {
+                                final hours = remaining.inHours;
+                                final minutes =
+                                    remaining.inMinutes.remainder(60);
+                                final timeRemaining = '${hours}h ${minutes}m';
+                                return [
+                                  CloseRecapCard(
+                                    timeRemaining: timeRemaining,
+                                    onCloseConfirmed: () => _handleCloseRecap(),
+                                    isLiving: false,
+                                  ),
+                                  const SizedBox(height: Gaps.md),
+                                ];
+                              }
+                            }
+                            return [];
+                          },
+                          loading: () => [],
+                          error: (_, __) => [],
+                        ),
 
                       // Show CTA banner if no photos exist yet, otherwise show cover selection
                       // CTA encourages first upload, cover selection manages existing photos
@@ -215,47 +246,6 @@ class _ManageMemoryPageState extends ConsumerState<ManageMemoryPage> {
                   ),
                 ),
               ),
-
-              // Bottom fixed CloseRecapCard (only for hosts in recap with photos)
-              if (_shouldShowCloseRecap())
-                Positioned(
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
-                  child: Container(
-                    padding: const EdgeInsets.all(Insets.screenH),
-                    decoration: const BoxDecoration(
-                      color: BrandColors.bg2,
-                      border: Border(
-                        top: BorderSide(color: BrandColors.bg3, width: 1),
-                      ),
-                    ),
-                    child: eventAsync.when(
-                      data: (event) {
-                        final endDateTime = event.endDateTime;
-                        if (endDateTime != null) {
-                          final recapEndTime =
-                              endDateTime.add(const Duration(hours: 24));
-                          final remaining =
-                              recapEndTime.difference(DateTime.now());
-                          if (!remaining.isNegative) {
-                            final hours = remaining.inHours;
-                            final minutes = remaining.inMinutes.remainder(60);
-                            final timeRemaining = '${hours}h ${minutes}m';
-                            return CloseRecapCard(
-                              timeRemaining: timeRemaining,
-                              onCloseConfirmed: () => _handleCloseRecap(),
-                              isLiving: false,
-                            );
-                          }
-                        }
-                        return const SizedBox.shrink();
-                      },
-                      loading: () => const SizedBox.shrink(),
-                      error: (_, __) => const SizedBox.shrink(),
-                    ),
-                  ),
-                ),
 
               // Bottom delete button (only show in selection mode)
               if (_isSelectionMode)

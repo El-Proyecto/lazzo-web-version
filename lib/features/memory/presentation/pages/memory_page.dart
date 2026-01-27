@@ -129,118 +129,128 @@ class _MemoryPageState extends ConsumerState<MemoryPage> {
         return Scaffold(
           backgroundColor: BrandColors.bg1,
           appBar: appBar,
-          body: RefreshIndicator(
-            onRefresh: () async {
-              // Invalidate and wait for memory data to refetch
-              _refreshData();
-              await ref.read(memoryDetailProvider(widget.memoryId).future);
-            },
-            color: BrandColors.planning,
-            backgroundColor: BrandColors.bg2,
-            child: SingleChildScrollView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SizedBox(height: Gaps.sm),
+          body: Stack(
+            children: [
+              RefreshIndicator(
+                onRefresh: () async {
+                  // Invalidate and wait for memory data to refetch
+                  _refreshData();
+                  await ref.read(memoryDetailProvider(widget.memoryId).future);
+                },
+                color: BrandColors.planning,
+                backgroundColor: BrandColors.bg2,
+                child: SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: Gaps.sm),
 
-                  // CTA Banner: Show for living/recap if user hasn't uploaded photos
-                  if (_shouldShowCtaBanner(eventStatus, userHasUploadedPhotos))
-                    Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: Insets.screenH,
-                      ),
-                      child: eventStatus == EventStatus.living
-                          ? AddPhotosCtaCard.living(
-                              onPressed: () => _handleAddPhotosFromCta(context),
+                      // Close Recap Card: Show at top for hosts in recap state with photos
+                      if (eventStatus == EventStatus.recap &&
+                          isHost &&
+                          memory.photos.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: Insets.screenH,
+                          ),
+                          child: CloseRecapCard(
+                            timeRemaining: memory.formattedRecapTimeRemaining,
+                            onCloseConfirmed: () =>
+                                _handleEndRecapEarly(context, ref),
+                            isLiving: false,
+                          ),
+                        ),
+
+                      if (eventStatus == EventStatus.recap &&
+                          isHost &&
+                          memory.photos.isNotEmpty)
+                        const SizedBox(height: Gaps.md),
+
+                      // CTA Banner: Show for living/recap if user hasn't uploaded photos
+                      if (_shouldShowCtaBanner(
+                          eventStatus, userHasUploadedPhotos))
+                        Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: Insets.screenH,
+                          ),
+                          child: eventStatus == EventStatus.living
+                              ? AddPhotosCtaCard.living(
+                                  onPressed: () =>
+                                      _handleAddPhotosFromCta(context),
+                                )
+                              : AddPhotosCtaCard.recap(
+                                  onPressed: () =>
+                                      _handleAddPhotosFromCta(context),
+                                ),
+                        ),
+
+                      if (_shouldShowCtaBanner(
+                          eventStatus, userHasUploadedPhotos))
+                        const SizedBox(height: Gaps.lg),
+
+                      // Cover Mosaic (full width with horizontal padding)
+                      CoverMosaic(
+                        covers: coverPhotos
+                            .map(
+                              (photo) => CoverPhotoData(
+                                id: photo.id,
+                                imageUrl: photo.coverUrl ?? photo.url,
+                                isPortrait: photo.isPortrait,
+                              ),
                             )
-                          : AddPhotosCtaCard.recap(
-                              onPressed: () => _handleAddPhotosFromCta(context),
+                            .toList(),
+                        onPhotoTap: (photoId) =>
+                            _navigateToViewer(context, photoId),
+                      ),
+
+                      const SizedBox(height: Gaps.lg),
+
+                      // Event Title & Subtitle (full width, center-aligned)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: Insets.screenH),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            // Title
+                            Text(
+                              memory.title,
+                              style: AppText.subtitleMuted.copyWith(
+                                color: BrandColors.text1,
+                              ),
+                              textAlign: TextAlign.center,
                             ),
-                    ),
 
-                  if (_shouldShowCtaBanner(eventStatus, userHasUploadedPhotos))
-                    const SizedBox(height: Gaps.lg),
+                            const SizedBox(height: Gaps.xxs),
 
-                  // Cover Mosaic (full width with horizontal padding)
-                  CoverMosaic(
-                    covers: coverPhotos
-                        .map(
-                          (photo) => CoverPhotoData(
-                            id: photo.id,
-                            imageUrl: photo.coverUrl ?? photo.url,
-                            isPortrait: photo.isPortrait,
-                          ),
-                        )
-                        .toList(),
-                    onPhotoTap: (photoId) =>
-                        _navigateToViewer(context, photoId),
-                  ),
-
-                  const SizedBox(height: Gaps.lg),
-
-                  // Event Title & Subtitle (full width, center-aligned)
-                  Padding(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: Insets.screenH),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        // Title
-                        Text(
-                          memory.title,
-                          style: AppText.subtitleMuted.copyWith(
-                            color: BrandColors.text1,
-                          ),
-                          textAlign: TextAlign.center,
+                            // Subtitle: location • date
+                            Text(
+                              _buildSubtitle(memory.location, memory.eventDate),
+                              style: AppText.bodyMedium.copyWith(
+                                color: BrandColors.text2,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ],
                         ),
-
-                        const SizedBox(height: Gaps.xxs),
-
-                        // Subtitle: location • date
-                        Text(
-                          _buildSubtitle(memory.location, memory.eventDate),
-                          style: AppText.bodyMedium.copyWith(
-                            color: BrandColors.text2,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(height: Gaps.xl),
-
-                  // Hybrid Photo Grid with Clustering
-                  HybridPhotoGrid(
-                    clusters: _buildClusters(gridPhotos),
-                    onPhotoTap: (photoId) =>
-                        _navigateToViewer(context, photoId),
-                  ),
-
-                  const SizedBox(height: Gaps.xl),
-
-                  // Close Recap Card: Show for hosts in recap state with photos at the END
-                  // Only appears if photos exist (no point closing recap if no memory)
-                  if (eventStatus == EventStatus.recap &&
-                      isHost &&
-                      memory.photos.isNotEmpty)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: Insets.screenH,
                       ),
-                      child: CloseRecapCard(
-                        timeRemaining: memory.formattedRecapTimeRemaining,
-                        onCloseConfirmed: () =>
-                            _handleEndRecapEarly(context, ref),
-                        isLiving: false,
-                      ),
-                    ),
 
-                  const SizedBox(height: Gaps.md),
-                ],
+                      const SizedBox(height: Gaps.xl),
+
+                      // Hybrid Photo Grid with Clustering
+                      HybridPhotoGrid(
+                        clusters: _buildClusters(gridPhotos),
+                        onPhotoTap: (photoId) =>
+                            _navigateToViewer(context, photoId),
+                      ),
+
+                      const SizedBox(height: Gaps.xl),
+                    ],
+                  ),
+                ),
               ),
-            ),
+            ],
           ),
         );
       },
