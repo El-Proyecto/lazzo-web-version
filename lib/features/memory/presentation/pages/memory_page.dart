@@ -144,28 +144,6 @@ class _MemoryPageState extends ConsumerState<MemoryPage> {
                 children: [
                   const SizedBox(height: Gaps.sm),
 
-                  // Close Recap Card: Show for hosts in recap state with photos
-                  // Only appears if photos exist (no point closing recap if no memory)
-                  if (eventStatus == EventStatus.recap &&
-                      isHost &&
-                      memory.photos.isNotEmpty)
-                    Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: Insets.screenH,
-                      ),
-                      child: CloseRecapCard(
-                        timeRemaining: memory.formattedRecapTimeRemaining,
-                        onCloseConfirmed: () =>
-                            _handleEndRecapEarly(context, ref),
-                        isLiving: false,
-                      ),
-                    ),
-
-                  if (eventStatus == EventStatus.recap &&
-                      isHost &&
-                      memory.photos.isNotEmpty)
-                    const SizedBox(height: Gaps.md),
-
                   // CTA Banner: Show for living/recap if user hasn't uploaded photos
                   if (_shouldShowCtaBanner(eventStatus, userHasUploadedPhotos))
                     Padding(
@@ -239,6 +217,25 @@ class _MemoryPageState extends ConsumerState<MemoryPage> {
                     onPhotoTap: (photoId) =>
                         _navigateToViewer(context, photoId),
                   ),
+
+                  const SizedBox(height: Gaps.xl),
+
+                  // Close Recap Card: Show for hosts in recap state with photos at the END
+                  // Only appears if photos exist (no point closing recap if no memory)
+                  if (eventStatus == EventStatus.recap &&
+                      isHost &&
+                      memory.photos.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: Insets.screenH,
+                      ),
+                      child: CloseRecapCard(
+                        timeRemaining: memory.formattedRecapTimeRemaining,
+                        onCloseConfirmed: () =>
+                            _handleEndRecapEarly(context, ref),
+                        isLiving: false,
+                      ),
+                    ),
 
                   const SizedBox(height: Gaps.md),
                 ],
@@ -456,6 +453,9 @@ class _MemoryPageState extends ConsumerState<MemoryPage> {
 
   /// Navigate to manage memory page
   Future<void> _navigateToManageMemory(BuildContext context) async {
+    // Invalidate provider before navigation to ensure fresh state
+    ref.invalidate(memoryDetailProvider(widget.memoryId));
+
     await Navigator.of(context).pushNamed(
       AppRouter.manageMemory,
       arguments: {

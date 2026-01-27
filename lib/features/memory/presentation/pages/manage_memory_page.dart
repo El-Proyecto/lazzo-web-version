@@ -121,64 +121,14 @@ class _ManageMemoryPageState extends ConsumerState<ManageMemoryPage> {
                   padding: EdgeInsets.only(
                     left: Insets.screenH,
                     right: Insets.screenH,
-                    bottom:
-                        _isSelectionMode ? 90 : 0, // Space for bottom button
+                    bottom: (_isSelectionMode || _shouldShowCloseRecap())
+                        ? 100
+                        : Gaps.xl, // Extra space for fixed buttons
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const SizedBox(height: Gaps.lg),
-
-                      // Close recap card (only for hosts in recap phase with photos)
-                      // Show only if:
-                      // 1. Event is in recap status
-                      // 2. Current user is the host
-                      // 3. Photos have been uploaded (otherwise no memory to end)
-                      ...eventAsync.when(
-                        data: (event) {
-                          final currentUserId =
-                              Supabase.instance.client.auth.currentUser?.id;
-                          final isHost = event.hostId == currentUserId;
-                          final status =
-                              event.status.toString().split('.').last;
-                          final isRecap = status == 'recap';
-                          final hasPhotos = state.allPhotos.isNotEmpty;
-
-                          // Only show in recap phase for hosts who have photos
-                          if (isHost &&
-                              isRecap &&
-                              hasPhotos &&
-                              event.endDateTime != null) {
-                            // Calculate time remaining until recap window closes
-                            final recapEndTime = event.endDateTime!
-                                .add(const Duration(hours: 24));
-                            final remaining =
-                                recapEndTime.difference(DateTime.now());
-
-                            if (!remaining.isNegative) {
-                              final hours = remaining.inHours;
-                              final minutes = remaining.inMinutes.remainder(60);
-                              final timeRemaining = '${hours}h ${minutes}m';
-
-                              return [
-                                CloseRecapCard(
-                                  timeRemaining: timeRemaining,
-                                  onCloseConfirmed: () => _handleCloseRecap(),
-                                  isLiving: false, // Always recap mode
-                                ),
-                                const SizedBox(height: Gaps.md),
-                              ];
-                            }
-                          }
-                          return [];
-                        },
-                        loading: () {
-                          return [];
-                        },
-                        error: (error, __) {
-                          return [];
-                        },
-                      ),
 
                       // Show CTA banner if no photos exist yet, otherwise show cover selection
                       // CTA encourages first upload, cover selection manages existing photos
@@ -265,6 +215,47 @@ class _ManageMemoryPageState extends ConsumerState<ManageMemoryPage> {
                   ),
                 ),
               ),
+
+              // Bottom fixed CloseRecapCard (only for hosts in recap with photos)
+              if (_shouldShowCloseRecap())
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  child: Container(
+                    padding: const EdgeInsets.all(Insets.screenH),
+                    decoration: const BoxDecoration(
+                      color: BrandColors.bg2,
+                      border: Border(
+                        top: BorderSide(color: BrandColors.bg3, width: 1),
+                      ),
+                    ),
+                    child: eventAsync.when(
+                      data: (event) {
+                        final endDateTime = event.endDateTime;
+                        if (endDateTime != null) {
+                          final recapEndTime =
+                              endDateTime.add(const Duration(hours: 24));
+                          final remaining =
+                              recapEndTime.difference(DateTime.now());
+                          if (!remaining.isNegative) {
+                            final hours = remaining.inHours;
+                            final minutes = remaining.inMinutes.remainder(60);
+                            final timeRemaining = '${hours}h ${minutes}m';
+                            return CloseRecapCard(
+                              timeRemaining: timeRemaining,
+                              onCloseConfirmed: () => _handleCloseRecap(),
+                              isLiving: false,
+                            );
+                          }
+                        }
+                        return const SizedBox.shrink();
+                      },
+                      loading: () => const SizedBox.shrink(),
+                      error: (_, __) => const SizedBox.shrink(),
+                    ),
+                  ),
+                ),
 
               // Bottom delete button (only show in selection mode)
               if (_isSelectionMode)
@@ -477,21 +468,31 @@ class _ManageMemoryPageState extends ConsumerState<ManageMemoryPage> {
   }
 
   void _handleAddPhoto() async {
-    // Get event details for groupId
+    // Get event details for groupId and status
     final eventAsync = ref.read(eventDetailProvider(widget.memoryId));
 
     eventAsync.when(
       data: (event) async {
+        final status = event.status.toString().split('.').last;
+        final isLiving = status == 'living';
+
         // Get photo upload notifier
         final photoNotifier = ref.read(
           eventPhotoUploadNotifierProvider(widget.memoryId).notifier,
         );
 
-        // Take photo and upload
-        await photoNotifier.takePhoto(
-          eventId: widget.memoryId,
-          groupId: event.groupId,
-        );
+        // Living: take photo with camera, Recap: pick from gallery
+        if (isLiving) {
+          await photoNotifier.takePhoto(
+            eventId: widget.memoryId,
+            groupId: event.groupId,
+          );
+        } else {
+          await photoNotifier.pickPhotoFromGallery(
+            eventId: widget.memoryId,
+            groupId: event.groupId,
+          );
+        }
 
         // Show result
         final uploadState = ref.read(
@@ -536,6 +537,28 @@ class _ManageMemoryPageState extends ConsumerState<ManageMemoryPage> {
           );
         }
       },
+    );
+  }
+
+  /// Check if CloseRecapCard should be shown (host in recap with photos)
+  bool _shouldShowCloseRecap() {
+    final eventAsync = ref.watch(eventDetailProvider(widget.memoryId));
+    final manageState = ref.watch(manageMemoryProvider(widget.memoryId));
+
+    return eventAsync.maybeWhen(
+      data: (event) {
+        final currentUserId = Supabase.instance.client.auth.currentUser?.id;
+        final isHost = event.hostId == currentUserId;
+        final status = event.status.toString().split('.').last;
+        final isRecap = status == 'recap';
+        final hasPhotos = manageState.maybeWhen(
+          data: (state) => state.allPhotos.isNotEmpty,
+          orElse: () => false,
+        );
+
+        return isHost && isRecap && hasPhotos && event.endDateTime != null;
+      },
+      orElse: () => false,
     );
   }
 

@@ -340,6 +340,9 @@ class _GroupHubPageState extends ConsumerState<GroupHubPage>
                           coverImageUrl: memories[i].coverImageUrl,
                           date: memories[i].date,
                           location: memories[i].location,
+                          borderColor: _isMemoryInRecap(memories[i])
+                              ? BrandColors.recap
+                              : null,
                           onTap: () {
                             Navigator.pushNamed(
                               context,
@@ -367,6 +370,9 @@ class _GroupHubPageState extends ConsumerState<GroupHubPage>
                             coverImageUrl: memories[i + 1].coverImageUrl,
                             date: memories[i + 1].date,
                             location: memories[i + 1].location,
+                            borderColor: _isMemoryInRecap(memories[i + 1])
+                                ? BrandColors.recap
+                                : null,
                             onTap: () {
                               Navigator.pushNamed(
                                 context,
@@ -840,5 +846,15 @@ class _GroupHubPageState extends ConsumerState<GroupHubPage>
         ),
       ),
     );
+  }
+
+  /// Check if memory is in recap phase (event ended within last 24 hours)
+  bool _isMemoryInRecap(GroupMemoryEntity memory) {
+    final now = DateTime.now();
+    final eventDate = memory.date;
+    final hoursSinceEvent = now.difference(eventDate).inHours;
+
+    // Memory is in recap if event ended within the last 24 hours
+    return hoursSinceEvent >= 0 && hoursSinceEvent <= 24;
   }
 }
