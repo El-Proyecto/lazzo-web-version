@@ -39,4 +39,12 @@ abstract class ChatRepository {
     required String currentUserId,
     int limit = 50,
   });
+
+  /// Fetch older messages for pagination (infinite scroll)
+  /// Returns messages older than the given timestamp
+  Future<List<ChatMessage>> fetchOlderMessages({
+    required String eventId,
+    required DateTime olderThan,
+    int limit = 30,
+  });
 }

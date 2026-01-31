@@ -68,6 +68,9 @@ class _EventPageState extends ConsumerState<EventPage> {
     // Setup Realtime subscription for unread count badge updates
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(unreadCountRealtimeProvider(eventId));
+
+      // Refresh chat messages when entering event page to ensure latest messages
+      ref.invalidate(chatMessagesProvider(eventId));
     });
 
     // Listen to scroll to show/hide title in app bar
@@ -1742,6 +1745,7 @@ class _EventPageState extends ConsumerState<EventPage> {
         content: m.content,
         timestamp: m.createdAt,
         isReadBySomeone: m.isReadBySomeone,
+        isReadByEveryone: m.isReadByEveryone,
         isPinned: m.isPinned,
         isDeleted: m.isDeleted,
         isPending: m.isPending,
@@ -1754,6 +1758,7 @@ class _EventPageState extends ConsumerState<EventPage> {
                 content: m.replyTo!.content,
                 timestamp: m.replyTo!.createdAt,
                 isReadBySomeone: m.replyTo!.isReadBySomeone,
+                isReadByEveryone: m.replyTo!.isReadByEveryone,
                 isPinned: m.replyTo!.isPinned,
                 isDeleted: m.replyTo!.isDeleted,
                 isPending: m.replyTo!.isPending,

@@ -270,16 +270,24 @@ class _HomeEventCardState extends ConsumerState<HomeEventCard> {
   }
 
   Widget _buildAttendeeInfo(BuildContext context) {
+    // Check if event is expired (pending status + date passed)
+    final isExpired = widget.state == HomeEventCardState.pending &&
+        _currentEvent.date != null &&
+        DateTime.now().isAfter(_currentEvent.date!);
+
     // Show photos bottom sheet for Living/Recap, votes for Pending/Confirmed
+    // Disable interaction for expired events
     return InkWell(
-      onTap: () {
-        if (widget.state == HomeEventCardState.living ||
-            widget.state == HomeEventCardState.recap) {
-          _showPhotosBottomSheet(context);
-        } else {
-          _showVotesBottomSheet(context);
-        }
-      },
+      onTap: isExpired
+          ? null // No interaction for expired events
+          : () {
+              if (widget.state == HomeEventCardState.living ||
+                  widget.state == HomeEventCardState.recap) {
+                _showPhotosBottomSheet(context);
+              } else {
+                _showVotesBottomSheet(context);
+              }
+            },
       borderRadius: BorderRadius.circular(Radii.sm),
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: Gaps.xxs),
@@ -367,12 +375,20 @@ class _HomeEventCardState extends ConsumerState<HomeEventCard> {
       return '${_currentEvent.goingCount} $participantText • $photoInfo';
     }
 
-    // For Pending/Confirmed states, show "going" count (not "participants")
-    // This is semantically correct: goingCount = people who voted "Can"
-    if (_currentEvent.goingCount == 0) {
-      return 'Tap to vote!';
+    // For Pending/Confirmed states, show "going" count
+    // Only show "Tap to vote!" if user hasn't voted yet
+    if (_currentEvent.userVote == null) {
+      if (_currentEvent.goingCount == 0) {
+        return 'Tap to vote!';
+      }
+      return '${_currentEvent.goingCount} going • Tap to vote!';
     }
-    return '${_currentEvent.goingCount} going • Tap to vote!';
+
+    // User has voted - show "Tap to view votes" instead
+    if (_currentEvent.goingCount == 0) {
+      return 'Tap to view votes';
+    }
+    return '${_currentEvent.goingCount} going • Tap to view votes';
   }
 
   Widget _buildAttendeeAvatars() {

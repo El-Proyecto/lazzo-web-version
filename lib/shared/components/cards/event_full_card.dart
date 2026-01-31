@@ -249,16 +249,24 @@ class _EventFullCardState extends State<EventFullCard> {
   }
 
   Widget _buildAttendeeInfo(BuildContext context) {
+    // Check if event is expired (pending status + date passed)
+    final isExpired = widget.state == EventFullCardState.pending &&
+        _currentEvent.date != null &&
+        DateTime.now().isAfter(_currentEvent.date!);
+
     // Show photos bottom sheet for Living/Recap, votes for Pending/Confirmed
+    // Disable interaction for expired events
     return InkWell(
-      onTap: () {
-        if (widget.state == EventFullCardState.living ||
-            widget.state == EventFullCardState.recap) {
-          _showPhotosBottomSheet(context);
-        } else {
-          _showVotesBottomSheet(context);
-        }
-      },
+      onTap: isExpired
+          ? null // No interaction for expired events
+          : () {
+              if (widget.state == EventFullCardState.living ||
+                  widget.state == EventFullCardState.recap) {
+                _showPhotosBottomSheet(context);
+              } else {
+                _showVotesBottomSheet(context);
+              }
+            },
       borderRadius: BorderRadius.circular(Radii.sm),
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: Gaps.xxs),

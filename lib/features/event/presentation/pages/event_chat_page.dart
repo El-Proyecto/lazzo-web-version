@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -29,7 +30,8 @@ class EventChatPage extends ConsumerStatefulWidget {
   ConsumerState<EventChatPage> createState() => _EventChatPageState();
 }
 
-class _EventChatPageState extends ConsumerState<EventChatPage> {
+class _EventChatPageState extends ConsumerState<EventChatPage>
+    with WidgetsBindingObserver {
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final FocusNode _focusNode = FocusNode();
@@ -47,6 +49,14 @@ class _EventChatPageState extends ConsumerState<EventChatPage> {
 
   // Optimistic UI: pending messages waiting to be confirmed
   final List<ChatMessage> _pendingMessages = [];
+
+  // Infinite scroll state
+  bool _isLoadingMore = false;
+  bool _hasMoreMessages = true;
+  final List<ChatMessage> _olderMessages = [];
+
+  // ✅ NEW: Chat active presence tracking
+  Timer? _heartbeatTimer;
 
   /// Get current user ID from Supabase auth
   String? get _currentUserId => Supabase.instance.client.auth.currentUser?.id;
@@ -69,14 +79,27 @@ class _EventChatPageState extends ConsumerState<EventChatPage> {
   void initState() {
     super.initState();
 
+    // ✅ NEW: Add lifecycle observer for app state changes
+    WidgetsBinding.instance.addObserver(this);
+
     _scrollController.addListener(_onScroll);
     _messageController.addListener(_onTextChanged);
 
     // Mark that we should update read status when leaving
     _shouldMarkAsReadOnDispose = true;
 
-    // Extract scrollToMessageId from navigation arguments after first frame
+    // ✅ NEW: Register user as active in this chat
+    _registerChatActive();
+    _startHeartbeat();
+
+    // Refresh chat messages when entering the page to ensure latest messages
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      // Invalidate the chat provider to force a fresh fetch
+      ref.invalidate(chatMessagesProvider(widget.eventId));
+
+      // Also refresh unread count
+      ref.invalidate(unreadMessagesCountProvider(widget.eventId));
+
       final args =
           ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
       if (args != null && args.containsKey('scrollToMessageId')) {
@@ -106,12 +129,67 @@ class _EventChatPageState extends ConsumerState<EventChatPage> {
   void dispose() {
     _isDisposing = true;
 
+    // ✅ Stop heartbeat (presence expires automatically via server timeout)
+    _heartbeatTimer?.cancel();
+    // NOTE: We intentionally do NOT call _unregisterChatActive() here.
+    // For multi-device safety, presence expires via 30s server timeout.
+    // This prevents issues where leaving chat on one device logs out all devices.
+
+    // ✅ Remove lifecycle observer
+    WidgetsBinding.instance.removeObserver(this);
+
     _scrollController.removeListener(_onScroll);
     _messageController.removeListener(_onTextChanged);
     _messageController.dispose();
     _scrollController.dispose();
     _focusNode.dispose();
     super.dispose();
+  }
+
+  /// ✅ Handle app lifecycle state changes (foreground/background)
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused) {
+      // App went to background → stop heartbeat (presence expires via 30s timeout)
+      // NOTE: We do NOT unregister for multi-device safety
+      _heartbeatTimer?.cancel();
+    } else if (state == AppLifecycleState.resumed) {
+      // App came back to foreground → re-register as active
+      _registerChatActive();
+      _startHeartbeat();
+    }
+  }
+
+  /// ✅ Register user as actively viewing this chat using server-side RPC
+  /// Prevents receiving push notifications for messages in this chat
+  Future<void> _registerChatActive() async {
+    final userId = _currentUserId;
+    if (userId == null) return;
+
+    try {
+      // Use RPC for server-side timestamp (more reliable than client-side)
+      await Supabase.instance.client.rpc(
+        'touch_chat_presence',
+        params: {'p_event_id': widget.eventId},
+      );
+    } catch (e) {
+      // Silently fail - don't block chat functionality
+      // User will receive notifications as fallback (graceful degradation)
+    }
+  }
+
+  // NOTE: _unregisterChatActive() removed for multi-device safety.
+  // Presence expires automatically via 30s server-side timeout.
+  // leave_chat_presence RPC exists server-side but is not called from Flutter.
+
+  /// ✅ Start periodic heartbeat to keep "active" status updated
+  /// Updates last_seen every 10 seconds to signal user is still viewing chat
+  /// (Server uses 30s window, so 10s heartbeat gives 3x safety margin)
+  void _startHeartbeat() {
+    _heartbeatTimer?.cancel();
+    _heartbeatTimer = Timer.periodic(const Duration(seconds: 10), (_) {
+      _registerChatActive(); // Update last_seen timestamp via RPC
+    });
   }
 
   void _onScroll() {
@@ -128,6 +206,74 @@ class _EventChatPageState extends ConsumerState<EventChatPage> {
           _shouldAutoScroll = true;
         });
       }
+
+      // Infinite scroll: detect when user scrolls to the top (oldest messages)
+      // In a reversed ListView, "max scroll extent" is the top (oldest messages)
+      final maxScroll = _scrollController.position.maxScrollExtent;
+      final currentScroll = _scrollController.offset;
+      final threshold = 200.0; // pixels from top to trigger load
+
+      if (maxScroll - currentScroll <= threshold &&
+          !_isLoadingMore &&
+          _hasMoreMessages) {
+        _loadMoreMessages();
+      }
+    }
+  }
+
+  /// Load older messages for infinite scroll
+  Future<void> _loadMoreMessages() async {
+    if (_isLoadingMore || !_hasMoreMessages) return;
+
+    setState(() {
+      _isLoadingMore = true;
+    });
+
+    try {
+      // Get the oldest message timestamp from current messages
+      final messagesAsync = ref.read(chatMessagesProvider(widget.eventId));
+      final currentMessages = messagesAsync.valueOrNull ?? [];
+
+      // Combine stream messages with already loaded older messages
+      final allMessages = [...currentMessages, ..._olderMessages];
+
+      if (allMessages.isEmpty) {
+        setState(() {
+          _isLoadingMore = false;
+          _hasMoreMessages = false;
+        });
+        return;
+      }
+
+      // Find the oldest message (last in the combined list since sorted DESC)
+      final oldestMessage = allMessages.reduce(
+        (a, b) => a.createdAt.isBefore(b.createdAt) ? a : b,
+      );
+
+      // Fetch older messages
+      final repository = ref.read(chatRepositoryProvider);
+      final olderMessages = await repository.fetchOlderMessages(
+        eventId: widget.eventId,
+        olderThan: oldestMessage.createdAt,
+        limit: 30,
+      );
+
+      setState(() {
+        _isLoadingMore = false;
+        if (olderMessages.isEmpty) {
+          _hasMoreMessages = false;
+        } else {
+          // Filter out duplicates
+          final existingIds = allMessages.map((m) => m.id).toSet();
+          final newMessages =
+              olderMessages.where((m) => !existingIds.contains(m.id)).toList();
+          _olderMessages.addAll(newMessages);
+        }
+      });
+    } catch (e) {
+      setState(() {
+        _isLoadingMore = false;
+      });
     }
   }
 
@@ -551,10 +697,11 @@ class _EventChatPageState extends ConsumerState<EventChatPage> {
                       return !hasDuplicate;
                     }).toList();
 
-                    // Combine filtered pending messages with real messages
+                    // Combine filtered pending messages with real messages and older loaded messages
                     final allMessages = [
                       ...filteredPendingMessages,
-                      ...messages
+                      ...messages,
+                      ..._olderMessages,
                     ];
 
                     if (allMessages.isEmpty) {
@@ -596,22 +743,48 @@ class _EventChatPageState extends ConsumerState<EventChatPage> {
 
                     // Build list with date separators and unread indicator
                     final bubbleColor = _getEventStateColor(event.status);
-                    return ChatMessagesList(
-                      messages: allMessages,
-                      scrollController: _scrollController,
-                      onMessageLongPress: _onMessageLongPress,
-                      onMessageTap: _scrollToMessage,
-                      onSwipeReply: _replyToMessage,
-                      messageKeys: _messageKeys,
-                      currentUserId: _currentUserId,
-                      bubbleColor: bubbleColor,
-                      unreadCount: unreadCount,
-                      enableSwipeToReply: true,
-                      reverse: true,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: Pads.sectionH,
-                      ),
-                      physics: const AlwaysScrollableScrollPhysics(),
+                    return Stack(
+                      children: [
+                        ChatMessagesList(
+                          messages: allMessages,
+                          scrollController: _scrollController,
+                          onMessageLongPress: _onMessageLongPress,
+                          onMessageTap: _scrollToMessage,
+                          onSwipeReply: _replyToMessage,
+                          messageKeys: _messageKeys,
+                          currentUserId: _currentUserId,
+                          bubbleColor: bubbleColor,
+                          unreadCount: unreadCount,
+                          enableSwipeToReply: true,
+                          reverse: true,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: Pads.sectionH,
+                          ),
+                          physics: const AlwaysScrollableScrollPhysics(),
+                        ),
+                        // Loading indicator for infinite scroll
+                        if (_isLoadingMore)
+                          Positioned(
+                            top: 0,
+                            left: 0,
+                            right: 0,
+                            child: Container(
+                              padding: const EdgeInsets.all(Gaps.sm),
+                              color: BrandColors.bg1.withValues(alpha: 0.8),
+                              child: const Center(
+                                child: SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: BrandColors.text2,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        // "No more messages" indicator removed - cleaner UX
+                      ],
                     );
                   },
                   loading: () => const Center(
@@ -917,19 +1090,22 @@ class _ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
   @override
   Size get preferredSize {
     // Calculate dynamic height based on content
-    double height = 44; // Base: 12 top padding + 32 row height
+    // Base: 12 top padding + 32 row height = 44
+    double height = 44;
 
     if (subtitle != null) {
-      height += 8 + 20; // 8px gap (Gaps.xs) + 14px text height = 20
+      // Subtitle: ~20px text height + 8px bottom padding (Gaps.xs) = 28px
+      height += 28;
     }
 
     if (pinnedMessage != null) {
-      height +=
-          8 + 37; // 8px gap + banner height (16 padding + 16 content) = 40
+      // Pinned banner: 12px (Gaps.sm) padding * 2 + ~20px content = ~44px
+      height += 44;
     }
 
     if (showBanner) {
-      height += 8 + 28; // 8px gap + banner height (8 padding + 16 content) = 32
+      // Notification banner: 4px (Gaps.xs) padding * 2 + ~16px content = ~24px
+      height += 24;
     }
 
     return Size.fromHeight(height);

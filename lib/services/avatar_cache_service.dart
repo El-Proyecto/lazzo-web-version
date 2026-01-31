@@ -134,6 +134,15 @@ class AvatarCacheService {
     _cache.removeWhere((_, entry) => entry.isExpired);
   }
 
+  /// Clear specific path from cache (forces refresh on next load)
+  /// Useful when user updates their profile photo
+  void clearPath(String? storagePath) {
+    if (storagePath == null || storagePath.isEmpty) return;
+    final normalizedPath =
+        storagePath.startsWith('/') ? storagePath.substring(1) : storagePath;
+    _cache.remove(normalizedPath);
+  }
+
   /// Clear all cache (for testing/logout)
   void clearAll() {
     _cache.clear();

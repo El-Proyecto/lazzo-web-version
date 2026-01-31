@@ -217,4 +217,43 @@ class ChatRepositoryImpl implements ChatRepository {
                   throw Exception('Failed to get messages with read status: $e');
     }
   }
+
+  @override
+  Future<List<ChatMessage>> fetchOlderMessages({
+    required String eventId,
+    required DateTime olderThan,
+    int limit = 30,
+  }) async {
+    try {
+      final models = await _remoteDataSource.fetchOlderMessages(
+        eventId: eventId,
+        olderThan: olderThan,
+        limit: limit,
+      );
+
+      // Build a map of all messages by ID for fast lookup (for replyTo)
+      final messagesById = <String, ChatMessage>{};
+
+      // First pass: convert all models to entities (without replyTo)
+      for (final model in models) {
+        messagesById[model.id] = model.toEntity();
+      }
+
+      // Second pass: populate replyTo references
+      final messagesWithReplies = <ChatMessage>[];
+      for (final model in models) {
+        final baseMessage = messagesById[model.id]!;
+
+        // If this message has a reply_to_id, find the referenced message
+        final replyTo =
+            model.replyToId != null ? messagesById[model.replyToId] : null;
+
+        messagesWithReplies.add(baseMessage.copyWith(replyTo: replyTo));
+      }
+
+      return messagesWithReplies;
+    } catch (e) {
+      throw Exception('Failed to fetch older messages: $e');
+    }
+  }
 }

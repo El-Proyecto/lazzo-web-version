@@ -337,6 +337,7 @@ class _EventLivingPageState extends ConsumerState<EventLivingPage> {
                               content: m.content,
                               timestamp: m.createdAt,
                               isReadBySomeone: m.isReadBySomeone,
+                              isReadByEveryone: m.isReadByEveryone,
                               isDeleted: m.isDeleted,
                               isPending: m.isPending,
                             ),

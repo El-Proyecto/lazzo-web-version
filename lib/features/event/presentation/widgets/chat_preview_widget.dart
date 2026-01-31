@@ -22,6 +22,7 @@ class ChatMessagePreview {
   final String content;
   final DateTime timestamp;
   final bool isReadBySomeone;
+  final bool isReadByEveryone;
   final bool isPinned;
   final bool isDeleted;
   final bool isPending;
@@ -34,6 +35,7 @@ class ChatMessagePreview {
     required this.content,
     required this.timestamp,
     required this.isReadBySomeone,
+    this.isReadByEveryone = false,
     this.isPinned = false,
     this.isDeleted = false,
     this.isPending = false,

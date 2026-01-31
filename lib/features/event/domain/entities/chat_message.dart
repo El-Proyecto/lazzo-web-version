@@ -20,6 +20,9 @@ class ChatMessage {
   /// True if at least one participant (other than sender) has read this message
   final bool isReadBySomeone;
 
+  /// True if ALL participants (other than sender) have read this message (WhatsApp-style double checkmarks)
+  final bool isReadByEveryone;
+
   /// True if message is still being sent (optimistic UI)
   final bool isPending;
 
@@ -36,6 +39,7 @@ class ChatMessage {
     this.isDeleted = false,
     this.replyTo,
     this.isReadBySomeone = false,
+    this.isReadByEveryone = false,
     this.isPending = false,
   });
 
@@ -52,6 +56,7 @@ class ChatMessage {
     bool? isDeleted,
     ChatMessage? replyTo,
     bool? isReadBySomeone,
+    bool? isReadByEveryone,
     bool? isPending,
   }) {
     return ChatMessage(
@@ -63,6 +68,7 @@ class ChatMessage {
       content: content ?? this.content,
       createdAt: createdAt ?? this.createdAt,
       isReadBySomeone: isReadBySomeone ?? this.isReadBySomeone,
+      isReadByEveryone: isReadByEveryone ?? this.isReadByEveryone,
       isPinned: isPinned ?? this.isPinned,
       isDeleted: isDeleted ?? this.isDeleted,
       replyTo: replyTo ?? this.replyTo,

@@ -18,6 +18,7 @@ class ChatMessageModel {
   final bool isDeleted;
   final String? replyToId;
   final bool isReadBySomeone;
+  final bool isReadByEveryone;
 
   const ChatMessageModel({
     required this.id,
@@ -32,6 +33,7 @@ class ChatMessageModel {
     this.isDeleted = false,
     this.replyToId,
     this.isReadBySomeone = false,
+    this.isReadByEveryone = false,
   });
 
   /// Create model from Supabase JSON (with user join)
@@ -50,6 +52,9 @@ class ChatMessageModel {
     final isReadBySomeone =
         json['is_read_by_someone'] as bool? ?? json['read'] as bool? ?? false;
 
+    // RPC returns is_read_by_everyone for WhatsApp-style double checkmarks
+    final isReadByEveryone = json['is_read_by_everyone'] as bool? ?? false;
+
     return ChatMessageModel(
       id: json['id'] as String,
       eventId: json['event_id'] as String,
@@ -59,6 +64,7 @@ class ChatMessageModel {
       content: json['content'] as String,
       createdAt: DateTime.parse(json['created_at'] as String),
       isReadBySomeone: isReadBySomeone,
+      isReadByEveryone: isReadByEveryone,
       isPinned: json['is_pinned'] as bool? ?? false,
       isDeleted: json['is_deleted'] as bool? ?? false,
       replyToId: json['reply_to_id'] as String?,
@@ -91,6 +97,7 @@ class ChatMessageModel {
       content: content,
       createdAt: createdAt,
       isReadBySomeone: isReadBySomeone,
+      isReadByEveryone: isReadByEveryone,
       isPinned: isPinned,
       isDeleted: isDeleted,
       replyTo: null, // Will be populated by repository if needed
@@ -108,6 +115,7 @@ class ChatMessageModel {
       content: entity.content,
       createdAt: entity.createdAt,
       isReadBySomeone: entity.isReadBySomeone,
+      isReadByEveryone: entity.isReadByEveryone,
       isPinned: entity.isPinned,
       isDeleted: entity.isDeleted,
       replyToId: entity.replyTo?.id,

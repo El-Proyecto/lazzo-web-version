@@ -257,20 +257,26 @@ class _ChatMessageBubbleState extends State<ChatMessageBubble> {
                 ),
               ),
               // Status indicator for current user messages
+              // - Clock icon: message is pending
+              // - Single checkmark (gray): message sent, not read by anyone
+              // - Single checkmark (green): message read by at least one person
+              // - Double checkmark (green): message read by everyone (WhatsApp-style)
               if (widget.isCurrentUser) ...[
                 const SizedBox(width: 4),
                 Icon(
                   widget.message.isPending
                       ? Icons.access_time
-                      : (widget.message.isReadBySomeone
-                          ? Icons.done_all
-                          : Icons.done),
+                      : (widget.message.isReadByEveryone
+                          ? Icons.done_all // Double checkmark - everyone read
+                          : (widget.message.isReadBySomeone
+                              ? Icons.done // Single checkmark - someone read
+                              : Icons.done)), // Single checkmark - sent
                   size: 14,
                   color: widget.message.isPending
                       ? BrandColors.text2.withValues(alpha: 0.5)
                       : (widget.message.isReadBySomeone
-                          ? BrandColors.planning
-                          : BrandColors.text2),
+                          ? BrandColors.planning // Green if anyone has read
+                          : BrandColors.text2), // Gray if not read
                 ),
               ],
             ],

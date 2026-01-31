@@ -359,4 +359,23 @@ class FakeChatRepository implements ChatRepository {
 
     return messagesWithStatus;
   }
+
+  @override
+  Future<List<ChatMessage>> fetchOlderMessages({
+    required String eventId,
+    required DateTime olderThan,
+    int limit = 30,
+  }) async {
+    await Future.delayed(const Duration(milliseconds: 300));
+
+    // In fake mode, return messages older than the given timestamp
+    final olderMessages = _messages
+        .where((m) => m.eventId == eventId && m.createdAt.isBefore(olderThan))
+        .toList();
+
+    // Sort DESCENDING (newest first of the older messages)
+    olderMessages.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+
+    return olderMessages.take(limit).toList();
+  }
 }
