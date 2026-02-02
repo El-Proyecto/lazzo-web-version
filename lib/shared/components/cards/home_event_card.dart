@@ -287,7 +287,7 @@ class _HomeEventCardState extends ConsumerState<HomeEventCard> {
           children: [
             // Profile pictures (or expired message)
             _buildAttendeeAvatars(),
-            
+
             // Only show participant count if not expired
             if (_buildAttendeeText().isNotEmpty) ...[
               const SizedBox(width: Gaps.xs),
@@ -360,18 +360,49 @@ class _HomeEventCardState extends ConsumerState<HomeEventCard> {
         widget.state == HomeEventCardState.recap) {
       final participantText =
           _currentEvent.goingCount == 1 ? 'participant' : 'participants';
-      final photoInfo = _currentEvent.photoCount == 0
-          ? 'No photos yet'
-          : '${_currentEvent.photoCount}/${_currentEvent.maxPhotos} ${_currentEvent.photoCount == 1 ? 'photo' : 'photos'}';
+
+      // ✅ Check if current user has added photos
+      final currentUserId = Supabase.instance.client.auth.currentUser?.id;
+      final userPhotoCount = _currentEvent.participantPhotos
+          .where((p) => p.userId == currentUserId)
+          .fold(0, (sum, p) => sum + p.photoCount);
+
+      String photoInfo;
+      if (_currentEvent.photoCount == 0) {
+        photoInfo = 'No photos yet';
+      } else if (userPhotoCount > 0) {
+        // User has added photos - show their contribution
+        photoInfo =
+            '${_currentEvent.photoCount}/${_currentEvent.maxPhotos} ${_currentEvent.photoCount == 1 ? 'photo' : 'photos'} • You added $userPhotoCount';
+      } else {
+        // Show total photos
+        photoInfo =
+            '${_currentEvent.photoCount}/${_currentEvent.maxPhotos} ${_currentEvent.photoCount == 1 ? 'photo' : 'photos'}';
+      }
 
       return '${_currentEvent.goingCount} $participantText • $photoInfo';
     }
 
     // For Pending/Confirmed states, show "going" count (not "participants")
-    // This is semantically correct: goingCount = people who voted "Can"
+    // ✅ Check if user has already voted using userVote field
+    final hasUserVoted = _currentEvent.userVote != null;
+    final userVotedYes = _currentEvent.userVote == true;
+
     if (_currentEvent.goingCount == 0) {
+      if (hasUserVoted) {
+        return userVotedYes
+            ? 'No one going yet • You voted yes!'
+            : 'No one going yet • You voted no!';
+      }
       return 'Tap to vote!';
     }
+
+    if (hasUserVoted) {
+      // User has voted - show going count + their vote
+      final voteText = userVotedYes ? 'You voted yes!' : 'You voted no!';
+      return '${_currentEvent.goingCount} going • $voteText';
+    }
+
     return '${_currentEvent.goingCount} going • Tap to vote!';
   }
 

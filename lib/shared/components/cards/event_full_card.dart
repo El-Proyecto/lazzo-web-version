@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../features/group_hub/domain/entities/group_event_entity.dart';
 import '../../constants/spacing.dart';
 import '../../constants/text_styles.dart';
@@ -266,7 +267,7 @@ class _EventFullCardState extends State<EventFullCard> {
           children: [
             // Profile pictures (or expired message)
             _buildAttendeeAvatars(),
-            
+
             // Only show vote count if not expired
             if (_buildAttendeeText().isNotEmpty) ...[
               const SizedBox(width: Gaps.xs),
@@ -329,9 +330,21 @@ class _EventFullCardState extends State<EventFullCard> {
     // For Living/Recap states: show photo count
     if (widget.state == EventFullCardState.living ||
         widget.state == EventFullCardState.recap) {
+      // ✅ Check if current user has added photos
+      final currentUserId = Supabase.instance.client.auth.currentUser?.id;
+      final userPhotoCount = _currentEvent.participantPhotos
+          .where((p) => p.userId == currentUserId)
+          .fold(0, (sum, p) => sum + p.photoCount);
+
       if (_currentEvent.photoCount == 0) {
         return '${_currentEvent.goingCount} participants • No photos yet';
       }
+
+      if (userPhotoCount > 0) {
+        // User has added photos - show their contribution
+        return '${_currentEvent.goingCount} participants • ${_currentEvent.photoCount}/${_currentEvent.maxPhotos} photos • You added $userPhotoCount';
+      }
+
       return '${_currentEvent.goingCount} participants • ${_currentEvent.photoCount}/${_currentEvent.maxPhotos} photos';
     }
 

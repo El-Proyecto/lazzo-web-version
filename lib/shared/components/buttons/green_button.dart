@@ -7,12 +7,14 @@ class GreenButton extends StatefulWidget {
   final String text;
   final VoidCallback? onPressed;
   final bool isLoading;
+  final int maxLines;
 
   const GreenButton({
     super.key,
     required this.text,
     this.onPressed,
     this.isLoading = false,
+    this.maxLines = 1,
   });
 
   @override
@@ -50,7 +52,6 @@ class _GreenButtonState extends State<GreenButton>
         scale: _scaleAnimation,
         child: SizedBox(
           width: double.infinity,
-          height: 48,
           child: ElevatedButton(
             onPressed: widget.isLoading ? null : widget.onPressed,
             style: ElevatedButton.styleFrom(
@@ -58,6 +59,7 @@ class _GreenButtonState extends State<GreenButton>
                   ? const Color(0xFF044B1E) // Verde escuro quando desabilitado
                   : BrandColors.planning, // Verde claro quando habilitado
               foregroundColor: BrandColors.text1,
+              minimumSize: const Size(double.infinity, 48),
               padding: const EdgeInsets.symmetric(
                 horizontal: Pads.ctlH,
                 vertical: Pads.ctlV,
@@ -75,6 +77,8 @@ class _GreenButtonState extends State<GreenButton>
                 : Text(
                     widget.text,
                     textAlign: TextAlign.center,
+                    maxLines: widget.maxLines,
+                    overflow: TextOverflow.ellipsis,
                     style: AppText.titleMediumEmph.copyWith(
                       color: BrandColors.text1,
                     ),

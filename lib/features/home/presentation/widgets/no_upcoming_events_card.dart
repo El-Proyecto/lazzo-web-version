@@ -67,7 +67,7 @@ class _NoUpcomingEventsCardState extends State<NoUpcomingEventsCard> {
 
   void _updateFadeVisibility() {
     if (!mounted) return;
-    
+
     // Check if controller is attached before accessing position
     if (!_scrollController.hasClients) return;
 
@@ -214,6 +214,7 @@ class _NoUpcomingEventsCardState extends State<NoUpcomingEventsCard> {
           // CTA Button
           GreenButton(
             text: _buttonText,
+            maxLines: 2,
             onPressed: _selectedGroupId != null
                 ? () => widget.onCreateEvent(_selectedGroupId!)
                 : null,
@@ -225,8 +226,7 @@ class _NoUpcomingEventsCardState extends State<NoUpcomingEventsCard> {
             'Events are shared with group members.',
             style: AppText.bodyMedium.copyWith(
               color: BrandColors.text2,
-              fontSize:
-                  12,
+              fontSize: 12,
             ),
           ),
         ],

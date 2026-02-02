@@ -214,6 +214,15 @@ class _EventLivingPageState extends ConsumerState<EventLivingPage> {
 
                     if (!context.mounted) return;
 
+                    // ✅ Check if there are participants before opening bottom sheet
+                    if (participants.isEmpty) {
+                      TopBanner.showInfo(
+                        context,
+                        message: 'No participants to split expenses with yet',
+                      );
+                      return;
+                    }
+
                     // Open add expense bottom sheet
                     AddExpenseBottomSheet.show(
                       context: context,

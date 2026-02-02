@@ -17,14 +17,14 @@ class HomeEventRemoteDataSource {
   /// RPC checks if event is expired and resets votes if needed
   Future<void> _resetExpiredPendingVotes(List<String> eventIds) async {
     if (eventIds.isEmpty) return;
-    
+
     try {
       // Call RPC for each event (RPC handles expired check internally)
       await Future.wait(
         eventIds.map((id) => client.rpc(
-          'reset_event_votes_if_expired',
-          params: {'p_event_id': id},
-        )),
+              'reset_event_votes_if_expired',
+              params: {'p_event_id': id},
+            )),
       );
     } catch (e) {
       // Best-effort cleanup - don't throw
@@ -101,16 +101,27 @@ class HomeEventRemoteDataSource {
       final confirmedCount =
           events.where((e) => e.status == HomeEventStatus.confirmed).length;
 
-      // ✅ Filter out expired pending events (should only appear in Pending Events section)
+      // ✅ Separate expired pending events from non-expired events
+      // Expired pending events should appear as hero ONLY if there are no other events
       final now = DateTime.now().toUtc();
-      final nonExpiredEvents = events.where((event) {
-        // Keep confirmed/living/recap events always
-        if (event.status != HomeEventStatus.pending) return true;
+      final nonExpiredEvents = <HomeEventEntity>[];
+      final expiredPendingEvents = <HomeEventEntity>[];
 
-        // For pending events: exclude if date is in the past (expired)
-        if (event.date == null) return true;
-        return event.date!.toUtc().isAfter(now);
-      }).toList();
+      for (final event in events) {
+        // Keep confirmed/living/recap events always
+        if (event.status != HomeEventStatus.pending) {
+          nonExpiredEvents.add(event);
+        } else {
+          // For pending events: check if expired
+          if (event.date == null) {
+            nonExpiredEvents.add(event); // No date = not expired
+          } else if (event.date!.toUtc().isAfter(now)) {
+            nonExpiredEvents.add(event); // Future date = not expired
+          } else {
+            expiredPendingEvents.add(event); // Past date = expired
+          }
+        }
+      }
 
       final confirmedAfterFilter = nonExpiredEvents
           .where((e) => e.status == HomeEventStatus.confirmed)
@@ -118,7 +129,11 @@ class HomeEventRemoteDataSource {
 
       if (confirmedCount > 0 && confirmedAfterFilter == 0) {}
 
-      if (nonExpiredEvents.isEmpty) {
+      // ✅ If no non-expired events, use expired pending events as fallback
+      final eventsToSort =
+          nonExpiredEvents.isNotEmpty ? nonExpiredEvents : expiredPendingEvents;
+
+      if (eventsToSort.isEmpty) {
         return null;
       }
 
@@ -130,7 +145,7 @@ class HomeEventRemoteDataSource {
         HomeEventStatus.pending: 1,
       };
 
-      nonExpiredEvents.sort((a, b) {
+      eventsToSort.sort((a, b) {
         final aPriority = priorityMap[a.status] ?? 0;
         final bPriority = priorityMap[b.status] ?? 0;
 
@@ -145,7 +160,7 @@ class HomeEventRemoteDataSource {
         return a.date!.compareTo(b.date!); // Ascending (soonest first)
       });
 
-      final nextEvent = nonExpiredEvents.first;
+      final nextEvent = eventsToSort.first;
 
       if (nextEvent.status != HomeEventStatus.confirmed &&
           confirmedAfterFilter > 0) {}
@@ -250,7 +265,7 @@ class HomeEventRemoteDataSource {
       // Identify expired events (pending + date passed)
       final now = DateTime.now();
       final expiredEventIds = <String>[];
-      
+
       for (final event in data) {
         final startDateStr = event['start_datetime'] as String?;
         if (startDateStr != null) {
@@ -260,7 +275,7 @@ class HomeEventRemoteDataSource {
           }
         }
       }
-      
+
       // Reset votes for expired events (fire-and-forget)
       if (expiredEventIds.isNotEmpty) {
         _resetExpiredPendingVotes(expiredEventIds);

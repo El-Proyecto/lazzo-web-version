@@ -98,7 +98,7 @@ class EventRepositoryImpl implements EventRepository {
         // Don't fail event creation if RSVP update fails
       }
 
-      // If event has initial date/time, create it as a suggestion
+      // If event has initial date/time, create it as a suggestion (marked as initial)
       if (event.startDateTime != null) {
         try {
           final suggestionResponse = await _client
@@ -108,6 +108,8 @@ class EventRepositoryImpl implements EventRepository {
                 'created_by': userId,
                 'starts_at': event.startDateTime!.toIso8601String(),
                 'ends_at': event.endDateTime?.toIso8601String(),
+                'is_initial':
+                    true, // Mark as initial - won't trigger notification
               })
               .select('id')
               .single();
@@ -129,7 +131,7 @@ class EventRepositoryImpl implements EventRepository {
         }
       }
 
-      // If event has initial location, create it as a suggestion
+      // If event has initial location, create it as a suggestion (marked as initial)
       if (event.location != null && locationId != null) {
         try {
           await _client.from('location_suggestions').insert({
@@ -139,6 +141,7 @@ class EventRepositoryImpl implements EventRepository {
             'address': event.location!.formattedAddress,
             'latitude': event.location!.latitude,
             'longitude': event.location!.longitude,
+            'is_initial': true, // Mark as initial - won't trigger notification
           });
         } catch (e) {
           // Don't fail event creation if suggestion fails
@@ -153,23 +156,23 @@ class EventRepositoryImpl implements EventRepository {
             .select('name')
             .eq('id', userId)
             .single();
-        
+
         final groupResponse = await _client
             .from('groups')
             .select('name')
             .eq('id', effectiveGroupId)
             .single();
-        
+
         final creatorName = userResponse['name'] as String;
         final groupName = groupResponse['name'] as String;
-        
+
         // Get all group members except the creator
         final membersResponse = await _client
             .from('group_members')
             .select('user_id')
             .eq('group_id', effectiveGroupId)
             .neq('user_id', userId);
-        
+
         // Send notification to each member
         for (final member in membersResponse) {
           final memberId = member['user_id'] as String;
@@ -343,10 +346,10 @@ class EventRepositoryImpl implements EventRepository {
 
   @override
   Future<void> deleteEvent(String id) async {
-        try {
+    try {
       await _dataSource.deleteEvent(id);
-          } catch (e) {
-                  rethrow;
+    } catch (e) {
+      rethrow;
     }
   }
 

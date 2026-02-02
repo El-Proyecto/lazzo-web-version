@@ -12,7 +12,9 @@ class EventHeader extends StatelessWidget {
   final DateTime? dateTime;
   final DateTime? endDateTime;
   final String? groupName;
+  final String? groupId;
   final bool isExpired;
+  final VoidCallback? onGroupTap;
 
   const EventHeader({
     super.key,
@@ -22,7 +24,9 @@ class EventHeader extends StatelessWidget {
     this.dateTime,
     this.endDateTime,
     this.groupName,
+    this.groupId,
     this.isExpired = false,
+    this.onGroupTap,
   });
 
   @override
@@ -64,7 +68,14 @@ class EventHeader extends StatelessWidget {
         // Group info (if available)
         if (groupName != null) ...[
           const SizedBox(height: Gaps.xxs),
-          _InfoRow(icon: Icons.group, text: groupName!),
+          GestureDetector(
+            onTap: onGroupTap,
+            child: _InfoRow(
+              icon: Icons.group,
+              text: groupName!,
+              isTappable: onGroupTap != null,
+            ),
+          ),
         ],
       ],
     );
@@ -119,18 +130,22 @@ class _InfoRow extends StatelessWidget {
   final IconData icon;
   final String text;
   final bool isExpired;
+  final bool isTappable;
 
   const _InfoRow({
     required this.icon,
     required this.text,
     this.isExpired = false,
+    this.isTappable = false,
   });
 
   @override
   Widget build(BuildContext context) {
     final color = isExpired
         ? BrandColors.text2.withValues(alpha: 0.5)
-        : BrandColors.text2;
+        : isTappable
+            ? BrandColors.text2
+            : BrandColors.text2;
 
     return Container(
       decoration: BoxDecoration(borderRadius: BorderRadius.circular(Radii.sm)),

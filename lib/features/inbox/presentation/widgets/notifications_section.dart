@@ -65,40 +65,63 @@ class NotificationsSection extends StatelessWidget {
   }
 
   Widget _buildEmptyState() {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(Gaps.xl),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 64,
-              height: 64,
-              decoration: ShapeDecoration(
-                color: BrandColors.bg3,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(Radii.pill),
+    return RefreshIndicator(
+      onRefresh: () async {
+        onRefresh?.call();
+      },
+      color: BrandColors.planning,
+      backgroundColor: BrandColors.bg2,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          return ListView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            children: [
+              SizedBox(
+                height: constraints.maxHeight > 0
+                    ? constraints.maxHeight * 0.8
+                    : 400,
+                child: Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(Gaps.xl),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Container(
+                          width: 64,
+                          height: 64,
+                          decoration: ShapeDecoration(
+                            color: BrandColors.bg3,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(Radii.pill),
+                            ),
+                          ),
+                          child: const Icon(
+                            Icons.notifications_outlined,
+                            size: 32,
+                            color: BrandColors.text2,
+                          ),
+                        ),
+                        const SizedBox(height: Gaps.lg),
+                        Text(
+                          'No notifications',
+                          style: AppText.titleMediumEmph
+                              .copyWith(color: BrandColors.text1),
+                        ),
+                        const SizedBox(height: Gaps.sm),
+                        Text(
+                          'When you have new notifications, they\'ll appear here.',
+                          textAlign: TextAlign.center,
+                          style: AppText.bodyMedium
+                              .copyWith(color: BrandColors.text2),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               ),
-              child: const Icon(
-                Icons.notifications_outlined,
-                size: 32,
-                color: BrandColors.text2,
-              ),
-            ),
-            const SizedBox(height: Gaps.lg),
-            Text(
-              'No notifications',
-              style: AppText.titleMediumEmph.copyWith(color: BrandColors.text1),
-            ),
-            const SizedBox(height: Gaps.sm),
-            Text(
-              'When you have new notifications, they\'ll appear here.',
-              textAlign: TextAlign.center,
-              style: AppText.bodyMedium.copyWith(color: BrandColors.text2),
-            ),
-          ],
-        ),
+            ],
+          );
+        },
       ),
     );
   }

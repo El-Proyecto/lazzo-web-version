@@ -91,10 +91,9 @@ class NotificationService {
       'p_event_emoji': eventEmoji,
       'p_user_name': creatorName,
       'p_event_name': eventName,
-      'p_note': expenseName, // ✅ Use p_note for expense name
+      'p_note': expenseName,
       'p_amount': amount,
-      'p_expense_id': expenseId, // ✅ Add expense_id
-      // Note: debtorName is shown in UI but stored in notification display logic
+      'p_expense_id': expenseId,
     });
   }
 

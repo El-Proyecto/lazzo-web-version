@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict 3PQGQHd6bheEX7E1Uh4ern2Qb37DreQcLZvsdriMhZy2nFHEQbi2KyuWYfj9wVO
+\restrict hpacRJ3cL5f6UIIc7xHFPT3Ul1Dwo8JdkqEHtKX2z3gNBOElzV1KBeuDocBFhLz
 
 -- Dumped from database version 17.4
 -- Dumped by pg_dump version 18.1
@@ -650,10 +650,10 @@ BEGIN
     CASE p_category
       WHEN 'push' THEN
         CASE 
-          WHEN p_type = 'chatMessage' THEN chat_enabled
-          WHEN p_type = 'chatMention' THEN chat_enabled
-          WHEN p_type LIKE 'event%' THEN events_enabled
-          WHEN p_type LIKE 'payment%' THEN payments_enabled
+          WHEN p_type = 'chatMessage' THEN push_enabled_for_chat
+          WHEN p_type = 'chatMention' THEN push_enabled_for_chat
+          WHEN p_type LIKE 'event%' THEN push_enabled_for_events
+          WHEN p_type LIKE 'payment%' THEN push_enabled_for_payments
           ELSE TRUE
         END
       ELSE TRUE -- Feed/actions notifications always allowed
@@ -669,8 +669,7 @@ BEGIN
     v_should_notify := TRUE;
   END IF;
   
-  -- ✅ FIX: Skip ephemeral push notifications during quiet hours
-  -- Don't downgrade to inbox - ephemeral notifications should never persist
+  -- Skip ephemeral push notifications during quiet hours
   IF v_in_quiet_hours AND p_category = 'push' THEN
     RETURN NULL; -- Skip notification entirely during quiet hours
   END IF;
@@ -7728,5 +7727,5 @@ CREATE POLICY users_can_view_group_photos ON public.group_photos FOR SELECT USIN
 -- PostgreSQL database dump complete
 --
 
-\unrestrict 3PQGQHd6bheEX7E1Uh4ern2Qb37DreQcLZvsdriMhZy2nFHEQbi2KyuWYfj9wVO
+\unrestrict hpacRJ3cL5f6UIIc7xHFPT3Ul1Dwo8JdkqEHtKX2z3gNBOElzV1KBeuDocBFhLz
 

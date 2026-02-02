@@ -255,6 +255,7 @@ class _AddExpenseBottomSheetState extends State<AddExpenseBottomSheet> {
                       hintText: 'e.g., Dinner at Restaurant',
                       errorText: _showErrors ? _titleError : null,
                       onChanged: (_) {
+                        setState(() {});
                         if (_showErrors) _validateFields();
                       },
                     ),

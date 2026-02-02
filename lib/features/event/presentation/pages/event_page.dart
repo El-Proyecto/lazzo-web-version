@@ -279,6 +279,15 @@ class _EventPageState extends ConsumerState<EventPage> {
 
     if (!context.mounted) return;
 
+    // ✅ Check if there are participants before opening bottom sheet
+    if (participants.isEmpty) {
+      TopBanner.showInfo(
+        context,
+        message: 'No participants to split expenses with yet',
+      );
+      return;
+    }
+
     AddExpenseBottomSheet.show(
       context: context,
       participants: participants,
@@ -527,7 +536,15 @@ class _EventPageState extends ConsumerState<EventPage> {
                   dateTime: event.startDateTime,
                   endDateTime: event.endDateTime,
                   groupName: event.groupName,
+                  groupId: event.groupId,
                   isExpired: event.isExpired,
+                  onGroupTap: () {
+                    Navigator.pushNamed(
+                      context,
+                      AppRouter.groupHub,
+                      arguments: {'groupId': event.groupId},
+                    );
+                  },
                 ),
                 const SizedBox(height: Gaps.md),
 

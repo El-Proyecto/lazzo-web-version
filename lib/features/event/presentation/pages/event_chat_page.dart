@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../../routes/app_router.dart';
+import '../../../../services/chat_mute_service.dart';
 import '../../../../shared/components/dialogs/add_expense_bottom_sheet.dart';
 import '../../../../shared/components/dialogs/message_actions_sheet.dart';
 import '../../../../shared/components/common/top_banner.dart';
@@ -75,6 +76,9 @@ class _EventChatPageState extends ConsumerState<EventChatPage> {
     // Mark that we should update read status when leaving
     _shouldMarkAsReadOnDispose = true;
 
+    // Load persisted mute state
+    _loadMuteState();
+
     // Extract scrollToMessageId from navigation arguments after first frame
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final args =
@@ -88,6 +92,16 @@ class _EventChatPageState extends ConsumerState<EventChatPage> {
       // Note: Messages are marked as read on dispose (when leaving page)
       // or when user sends a message
     });
+  }
+
+  /// Load persisted mute state from local storage
+  Future<void> _loadMuteState() async {
+    final isMuted = await ChatMuteService.isMuted(widget.eventId);
+    if (mounted && isMuted != _notificationsMuted) {
+      setState(() {
+        _notificationsMuted = isMuted;
+      });
+    }
   }
 
   @override
@@ -180,9 +194,11 @@ class _EventChatPageState extends ConsumerState<EventChatPage> {
     }
   }
 
-  void _toggleNotifications() {
+  void _toggleNotifications() async {
+    final newMuteState = await ChatMuteService.toggleMuted(widget.eventId);
+
     setState(() {
-      _notificationsMuted = !_notificationsMuted;
+      _notificationsMuted = newMuteState;
       // Do not use the AppBar banner anymore; show TopBanner instead
       _showBanner = false;
     });
@@ -984,6 +1000,15 @@ class _ChatInput extends StatelessWidget {
         .toList();
 
     if (!context.mounted) return;
+
+    // ✅ Check if there are participants before opening bottom sheet
+    if (participants.isEmpty) {
+      TopBanner.showInfo(
+        context,
+        message: 'No participants to split expenses with yet',
+      );
+      return;
+    }
 
     AddExpenseBottomSheet.show(
       context: context,

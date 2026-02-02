@@ -5,6 +5,7 @@ import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/constants/text_styles.dart';
 import '../../../../shared/themes/colors.dart';
 import '../../../../shared/components/dialogs/add_expense_bottom_sheet.dart';
+import '../../../../shared/components/common/top_banner.dart';
 import 'event_expense_card.dart';
 import 'expense_detail_bottom_sheet.dart';
 // ✅ MUDAR: import de expense/ em vez de event/
@@ -35,7 +36,6 @@ class EventExpensesWidget extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-
     final expensesAsync = ref.watch(eventExpensesProvider(eventId));
 
     return expensesAsync.when(
@@ -177,6 +177,15 @@ class EventExpensesWidget extends ConsumerWidget {
   }
 
   void _showAddExpenseSheet(BuildContext context) {
+    // ✅ Check if there are participants before opening bottom sheet
+    if (participants.isEmpty) {
+      TopBanner.showInfo(
+        context,
+        message: 'No participants to split expenses with yet',
+      );
+      return;
+    }
+
     AddExpenseBottomSheet.show(
       context: context,
       participants: participants,
