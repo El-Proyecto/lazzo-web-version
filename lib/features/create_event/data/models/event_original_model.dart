@@ -37,7 +37,7 @@ class EventModel {
       id: json['id'] as String,
       name: json['name'] as String,
       emoji: (json['emoji'] as String?) ?? '',
-      groupId: json['group_id'] as String,
+      groupId: json['group_id'] as String? ?? '', // LAZZO 2.0: groups removed
       startDateTime: asDateTime(json['start_datetime']),
       endDateTime: asDateTime(json['end_datetime']),
       locationId: json['location_id'] as String?,

@@ -10,7 +10,8 @@ import '../widgets/event_group_selector.dart';
 import '../widgets/date_time_section.dart';
 import '../widgets/location_section.dart';
 import '../widgets/event_history_dialog.dart';
-import '../widgets/group_selection_dialog.dart';
+// LAZZO 2.0: Group selection removed
+// import '../widgets/group_selection_dialog.dart';
 import '../widgets/confirm_event_dialog.dart';
 import '../widgets/exit_confirmation_dialog.dart';
 import '../../../../shared/models/event_draft.dart';
@@ -18,8 +19,9 @@ import '../../../../services/draft_service.dart';
 import '../../../../shared/themes/colors.dart';
 // LAZZO 2.0: top_banner no longer needed here
 // import '../../../../shared/components/common/top_banner.dart';
-import '../../../groups/presentation/providers/groups_provider.dart';
-import '../../../groups/domain/entities/group.dart';
+// LAZZO 2.0: Groups removed — events are standalone
+// import '../../../groups/presentation/providers/groups_provider.dart';
+// import '../../../groups/domain/entities/group.dart';
 import '../../../event/presentation/providers/event_providers.dart';
 import '../providers/event_history_provider.dart';
 import '../../../home/presentation/providers/home_event_providers.dart';
@@ -59,41 +61,7 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
   String? _nameError;
   String? _groupError;
 
-  /// Helper function to convert a single Group entity to GroupInfo with image URL
-  Future<GroupInfo> _convertGroupToGroupInfo(Group group, WidgetRef ref) async {
-    String? imageUrl;
-
-    // Get image URL if the group has a photo
-    if (group.photoPath != null && group.photoPath!.isNotEmpty) {
-      try {
-        imageUrl = await ref.read(
-            groupCoverUrlProvider((group.photoPath, group.photoUpdatedAt))
-                .future);
-      } catch (e) {
-        imageUrl = null;
-      }
-    }
-
-    return GroupInfo(
-      id: group.id,
-      name: group.name,
-      memberCount: group.memberCount,
-      imageUrl: imageUrl,
-    );
-  }
-
-  /// Helper function to convert Group entities to GroupInfo with image URLs
-  Future<List<GroupInfo>> _loadGroupInfosWithImages(
-      List<Group> groups, WidgetRef ref) async {
-    final List<GroupInfo> groupInfos = [];
-
-    for (final group in groups) {
-      final groupInfo = await _convertGroupToGroupInfo(group, ref);
-      groupInfos.add(groupInfo);
-    }
-
-    return groupInfos;
-  }
+  // LAZZO 2.0: Group-related helpers removed (groups are gone)
 
   @override
   void initState() {
@@ -106,35 +74,8 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
 
   /// Verifica se existe um grupo pré-selecionado nos argumentos de navegação
   void _handleNavigationArguments() async {
-    final arguments =
-        ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
-    if (arguments != null && arguments['groupId'] != null) {
-      final groupId = arguments['groupId'] as String;
-
-      // Buscar grupos reais do Supabase
-      final groupsAsync = ref.read(groupsProvider);
-      groupsAsync.when(
-        data: (groups) async {
-          final selectedGroup =
-              groups.where((group) => group.id == groupId).firstOrNull;
-          if (selectedGroup != null && mounted) {
-            final groupInfo =
-                await _convertGroupToGroupInfo(selectedGroup, ref);
-            if (mounted) {
-              setState(() {
-                _selectedGroup = groupInfo;
-              });
-            }
-          }
-        },
-        loading: () {
-          // Groups are loading, we'll handle this in the group selection dialog
-        },
-        error: (error, stackTrace) {
-          // Handle error if needed
-        },
-      );
-    }
+    // LAZZO 2.0: Groups removed — no pre-selection needed
+    // Events are standalone, no group association
   }
 
   /// Carrega rascunho se existir
@@ -691,97 +632,8 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
   }
 
   void _showGroupSelection() {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      isDismissible: true,
-      enableDrag: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => Consumer(
-        builder: (context, ref, child) {
-          final groupsAsync = ref.watch(groupsProvider);
-
-          return groupsAsync.when(
-            data: (groups) {
-              // Convert Group entities to GroupInfo with image URLs
-              return FutureBuilder<List<GroupInfo>>(
-                  future: _loadGroupInfosWithImages(groups, ref),
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return Container(
-                        height: 400,
-                        decoration: const BoxDecoration(
-                          color: BrandColors.bg1,
-                          borderRadius:
-                              BorderRadius.vertical(top: Radius.circular(20)),
-                        ),
-                        child: const Center(
-                          child: CircularProgressIndicator(
-                              color: BrandColors.planning),
-                        ),
-                      );
-                    }
-
-                    final groupInfos = snapshot.data ?? [];
-
-                    return GroupSelectionBottomSheet(
-                      groups: groupInfos,
-                      onGroupSelected: (group) {
-                        setState(() {
-                          _selectedGroup = group;
-                          // Clear error if group is now selected
-                          if (_showValidationErrors) {
-                            _groupError = null;
-                          }
-                        });
-                      },
-                      onCreateGroup: () {}, // LAZZO 2.0: Group creation removed
-                    );
-                  });
-            },
-            loading: () => Container(
-              height: 400,
-              decoration: const BoxDecoration(
-                color: BrandColors.bg1,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-              ),
-              child: const Center(
-                child: CircularProgressIndicator(color: BrandColors.planning),
-              ),
-            ),
-            error: (error, stackTrace) => Container(
-              height: 400,
-              decoration: const BoxDecoration(
-                color: BrandColors.bg1,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-              ),
-              child: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(Icons.error_outline,
-                        size: 48, color: BrandColors.cantVote),
-                    const SizedBox(height: 16),
-                    Text('Error loading groups',
-                        style: Theme.of(context)
-                            .textTheme
-                            .titleMedium
-                            ?.copyWith(color: BrandColors.cantVote)),
-                    const SizedBox(height: 8),
-                    Text(error.toString(),
-                        style: Theme.of(context)
-                            .textTheme
-                            .bodyMedium
-                            ?.copyWith(color: BrandColors.text2),
-                        textAlign: TextAlign.center),
-                  ],
-                ),
-              ),
-            ),
-          );
-        },
-      ),
-    );
+    // LAZZO 2.0: Groups removed — events are standalone
+    // Group selection UI is no longer needed
   }
 
   void _loadEventFromHistory(EventHistoryItem event) async {
@@ -826,46 +678,7 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
       }
     });
 
-    // Tentar pré-selecionar o grupo se existir
-    if (event.groupId != null) {
-      try {
-        final groupsAsync = ref.read(groupsProvider);
-        await groupsAsync.when(
-          data: (groups) async {
-            // Find matching group by ID
-            final matchingGroup =
-                groups.where((g) => g.id == event.groupId).firstOrNull;
-            if (matchingGroup != null) {
-              // Load group image URL
-              final imageUrl = await ref.read(
-                groupCoverUrlProvider(
-                        (matchingGroup.photoPath, matchingGroup.photoUpdatedAt))
-                    .future,
-              );
-
-              if (mounted) {
-                setState(() {
-                  _selectedGroup = GroupInfo(
-                    id: matchingGroup.id,
-                    name: matchingGroup.name,
-                    imageUrl: imageUrl,
-                    memberCount: matchingGroup.memberCount,
-                  );
-                  // Clear group error if validation is showing
-                  if (_showValidationErrors) {
-                    _groupError = null;
-                  }
-                });
-              }
-            }
-          },
-          loading: () {},
-          error: (_, __) {},
-        );
-      } catch (e) {
-        // Silently fail if group not found - user can select manually
-      }
-    }
+    // LAZZO 2.0: Group pre-selection removed — events are standalone
   }
 
   // LAZZO 2.0: _createNewGroup method removed — events are standalone, no group creation needed

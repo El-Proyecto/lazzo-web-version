@@ -7,7 +7,8 @@ class EventDetailModel {
   final String id;
   final String name;
   final String emoji;
-  final String groupId;
+  final String
+      groupId; // LAZZO 2.0: Will be empty string for events without groups
   final String? groupName;
   final DateTime? startDateTime;
   final DateTime? endDateTime;
@@ -48,7 +49,7 @@ class EventDetailModel {
       id: json['id'] as String,
       name: json['name'] as String,
       emoji: json['emoji'] as String? ?? '📅',
-      groupId: json['group_id'] as String,
+      groupId: json['group_id'] as String? ?? '',
       groupName: json['group_name'] as String?,
       startDateTime: json['start_datetime'] != null
           ? DateTime.parse(json['start_datetime'] as String)
@@ -94,20 +95,19 @@ class EventDetailModel {
     EventStatus statusEnum;
     final statusLower = status.toLowerCase();
 
-    
     switch (statusLower) {
       case 'confirmed':
         statusEnum = EventStatus.confirmed;
-                break;
+        break;
       case 'living':
         statusEnum = EventStatus.living;
-                break;
+        break;
       case 'recap':
         statusEnum = EventStatus.recap;
-                break;
+        break;
       default:
         statusEnum = EventStatus.pending;
-            }
+    }
 
     // Create location if all fields present
     EventLocation? location;

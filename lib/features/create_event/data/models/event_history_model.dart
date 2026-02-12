@@ -47,8 +47,8 @@ class EventHistoryModel {
       locationAddress: locationData?['formatted_address'] as String?,
       latitude: locationData?['latitude'] as double?,
       longitude: locationData?['longitude'] as double?,
-      groupId: json['group_id'] as String,
-      groupName: (json['groups'] as Map<String, dynamic>?)?['name'] as String?,
+      groupId: json['group_id'] as String? ?? '',
+      groupName: null, // LAZZO 2.0: groups removed
       createdAt: DateTime.parse(json['created_at'] as String),
     );
   }
@@ -97,7 +97,6 @@ class EventHistoryModel {
       'emoji': emoji,
       'start_datetime': startDateTime.toIso8601String(),
       'location_id': locationId,
-      'group_id': groupId,
       'created_at': createdAt.toIso8601String(),
       if (locationName != null)
         'locations': {

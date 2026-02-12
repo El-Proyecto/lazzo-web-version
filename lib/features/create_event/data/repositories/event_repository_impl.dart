@@ -32,8 +32,8 @@ class EventRepositoryImpl implements EventRepository {
         throw Exception('User must be authenticated to create events');
       }
 
-      // Validate and normalize groupId
-      String effectiveGroupId = event.groupId;
+      // LAZZO 2.0: Groups removed — groupId no longer used in DB
+      // Kept in method signature for compatibility
 
       // Create location if needed
       String? locationId;
@@ -63,7 +63,7 @@ class EventRepositoryImpl implements EventRepository {
         response = await _dataSource.createEvent(
           name: event.name,
           emoji: event.emoji,
-          groupId: effectiveGroupId,
+          groupId: '', // LAZZO 2.0: groups removed, kept for API compat
           startDateTime: event.startDateTime,
           endDateTime: event.endDateTime,
           locationId: locationId,
@@ -166,11 +166,11 @@ class EventRepositoryImpl implements EventRepository {
 
         final creatorName = userResponse['name'] as String;
 
-        // Get all group members except the creator
+        // LAZZO 2.0: Get all event participants except the creator
         final membersResponse = await _client
-            .from('group_members')
+            .from('event_participants')
             .select('user_id')
-            .eq('group_id', effectiveGroupId)
+            .eq('pevent_id', eventId)
             .neq('user_id', userId);
 
         // Send notification to each member
@@ -248,7 +248,7 @@ class EventRepositoryImpl implements EventRepository {
         id: event.id,
         name: event.name,
         emoji: event.emoji,
-        groupId: event.groupId,
+        groupId: '', // LAZZO 2.0: groups removed
         startDateTime: event.startDateTime,
         endDateTime: event.endDateTime,
         locationId: locationId,
@@ -353,7 +353,11 @@ class EventRepositoryImpl implements EventRepository {
 
   @override
   Future<List<Event>> getEventsForGroup(String groupId) async {
-    final response = await _dataSource.getEventsForGroup(groupId);
+    // LAZZO 2.0: Groups removed. Use created_by filter instead.
+    // The groupId parameter is kept for interface compatibility but ignored.
+    final userId = _client.auth.currentUser?.id;
+    if (userId == null) return [];
+    final response = await _dataSource.getEventsCreatedByUser(userId);
     List<Event> events = [];
     for (final row in response) {
       // Fetch location if present

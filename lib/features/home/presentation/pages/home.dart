@@ -8,14 +8,14 @@ import '../../../../shared/components/cards/home_event_card.dart';
 import '../../../../shared/components/cards/event_small_card.dart';
 import '../../../../shared/components/cards/event_full_card.dart';
 // import '../../../../shared/components/cards/todo_card.dart'; // MVP: Actions removed, preserved for P2
-import '../../../../shared/components/cards/payment_summary_card.dart';
+// LAZZO 2.0: payment_summary_card import removed
 import '../../../../shared/components/cards/recent_memory_card.dart';
 import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/constants/text_styles.dart';
 import '../../../../shared/themes/colors.dart';
 import '../../../../shared/layouts/main_layout_providers.dart';
 // LAZZO 2.0: groups_provider import removed
-import '../../../inbox/presentation/providers/payments_provider.dart';
+// LAZZO 2.0: payments_provider import removed
 import '../../../event/domain/entities/event_display_entity.dart';
 import '../../../event/presentation/providers/event_providers.dart';
 import '../../../event/domain/entities/rsvp.dart';
@@ -67,7 +67,7 @@ class _HomePageState extends ConsumerState<HomePage> {
     ref.invalidate(livingAndRecapEventsControllerProvider);
     ref.invalidate(todosControllerProvider);
     ref.invalidate(recentMemoriesControllerProvider);
-    ref.invalidate(paymentSummariesControllerProvider);
+    // LAZZO 2.0: paymentSummariesControllerProvider removed
   }
 
   @override
@@ -211,8 +211,7 @@ class _HomePageState extends ConsumerState<HomePage> {
     final livingAndRecapEventsAsync =
         ref.watch(livingAndRecapEventsControllerProvider);
     // final todosAsync = ref.watch(todosControllerProvider); // MVP: Actions removed, preserved for P2
-    final paymentsAsync = ref.watch(paymentSummariesControllerProvider);
-    final totalBalanceAsync = ref.watch(totalBalanceControllerProvider);
+    // LAZZO 2.0: paymentsAsync + totalBalanceAsync removed
     final recentMemoriesAsync = ref.watch(recentMemoriesControllerProvider);
     // LAZZO 2.0: groupsAsync removed â€” events are standalone
     final nextEventStatus = ref.watch(navBarStateProvider);
@@ -235,9 +234,8 @@ class _HomePageState extends ConsumerState<HomePage> {
         (pendingEventsAsync.asData?.value.isNotEmpty ?? false));
 
     // Show "No upcoming events" if no events and data is loaded
-    final showNoEventsCard = eventsLoaded &&
-        !hasEvents &&
-        !_isNoEventsCardDismissed;
+    final showNoEventsCard =
+        eventsLoaded && !hasEvents && !_isNoEventsCardDismissed;
 
     return Scaffold(
       appBar: CommonAppBar(
@@ -286,7 +284,7 @@ class _HomePageState extends ConsumerState<HomePage> {
               ref.read(livingAndRecapEventsControllerProvider.future),
               ref.read(todosControllerProvider.future),
               ref.read(recentMemoriesControllerProvider.future),
-              ref.read(paymentSummariesControllerProvider.future),
+              // LAZZO 2.0: paymentSummariesControllerProvider removed
             ]);
           },
           color: BrandColors.planning,
@@ -299,8 +297,7 @@ class _HomePageState extends ConsumerState<HomePage> {
 
               // Search Bar
               Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: Insets.screenH),
+                padding: const EdgeInsets.symmetric(horizontal: Insets.screenH),
                 child: custom.SearchBar(
                   placeholder: 'Search events, memories, payments...',
                   enabled: false,
@@ -349,7 +346,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                             return const SizedBox.shrink();
                           }
 
-                                                    return Column(
+                          return Column(
                             children: [
                               SectionBlock(
                                 title: 'Next Event',
@@ -363,9 +360,6 @@ class _HomePageState extends ConsumerState<HomePage> {
                                       AppRouter.event,
                                       arguments: {'eventId': event.id},
                                     );
-                                  },
-                                  onExpensePressed: () {
-                                    // Handled inside HomeEventCard
                                   },
                                   onVoteChanged: _handleVoteChanged,
                                 ),
@@ -392,13 +386,13 @@ class _HomePageState extends ConsumerState<HomePage> {
                     }
 
                     // Separate living and recap events
-                                        final livingEvents = allLivingAndRecapEvents
+                    final livingEvents = allLivingAndRecapEvents
                         .where((e) => e.status == HomeEventStatus.living)
                         .toList();
                     final recapEvents = allLivingAndRecapEvents
                         .where((e) => e.status == HomeEventStatus.recap)
                         .toList();
-                    
+
                     return Column(
                       children: [
                         // Live Events section
@@ -423,9 +417,6 @@ class _HomePageState extends ConsumerState<HomePage> {
                                             'eventId': livingEvents.first.id
                                           },
                                         );
-                                      },
-                                      onExpensePressed: () {
-                                        // Handled inside HomeEventCard
                                       },
                                       onVoteChanged: _handleVoteChanged,
                                     ),
@@ -497,9 +488,6 @@ class _HomePageState extends ConsumerState<HomePage> {
                                               'memoryId': recapEvents.first.id
                                             },
                                           );
-                                        },
-                                        onExpensePressed: () {
-                                          // Handled inside HomeEventCard
                                         },
                                         onVoteChanged: _handleVoteChanged,
                                       ),
@@ -645,9 +633,6 @@ class _HomePageState extends ConsumerState<HomePage> {
                                       arguments: {'eventId': event.id},
                                     );
                                   }
-                                },
-                                onExpensePressed: () {
-                                  // Handled inside HomeEventCard
                                 },
                                 onVoteChanged: _handleVoteChanged,
                               ),
@@ -877,150 +862,7 @@ class _HomePageState extends ConsumerState<HomePage> {
               // Spacing after event sections
               const SizedBox(height: Gaps.lg),
 
-              // Payments Section (shows even without events)
-              paymentsAsync.when(
-                data: (payments) {
-                  if (payments.isEmpty) {
-                    return const SizedBox.shrink();
-                  }
-                  return Column(
-                    children: [
-                      // Section title with total balance
-                      Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: Insets.screenH,
-                        ),
-                        child: Row(
-                          children: [
-                            Text(
-                              'Payments',
-                              style: AppText.titleMediumEmph.copyWith(
-                                color: BrandColors.text1,
-                              ),
-                            ),
-                            const Spacer(),
-                            totalBalanceAsync.when(
-                              data: (balance) {
-                                return Text(
-                                  '${balance.abs().toStringAsFixed(2)}â‚¬',
-                                  style: AppText.titleMediumEmph.copyWith(
-                                    color: balance >= 0
-                                        ? BrandColors.planning // Green
-                                        : BrandColors.cantVote, // Red
-                                  ),
-                                );
-                              },
-                              loading: () => const SizedBox.shrink(),
-                              error: (_, __) => const SizedBox.shrink(),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: Gaps.md),
-
-                      // Payment cards - 2 per row, always aligned left
-                      Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: Insets.screenH,
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            for (int i = 0; i < payments.take(4).length; i += 2)
-                              Padding(
-                                padding: EdgeInsets.only(
-                                  bottom: i + 2 < payments.take(4).length
-                                      ? Gaps.sm
-                                      : 0,
-                                ),
-                                child: Row(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    // First payment card
-                                    Expanded(
-                                      child: PaymentSummaryCard(
-                                        payment: payments.take(4).toList()[i],
-                                        onTap: () {
-                                          final payment =
-                                              payments.take(4).toList()[i];
-                                          // Set inbox internal tab to Payments (index 1, since Notifications is 0)
-                                          ref
-                                              .read(inboxTabIndexProvider
-                                                  .notifier)
-                                              .state = 1;
-
-                                          // Store selected payment user ID
-                                          ref
-                                              .read(
-                                                  selectedPaymentUserIdProvider
-                                                      .notifier)
-                                              .state = payment.userId;
-
-                                          // Navigate to Inbox main tab (index 2) after a frame
-                                          WidgetsBinding.instance
-                                              .addPostFrameCallback((_) {
-                                            ref
-                                                .read(mainLayoutTabProvider
-                                                    .notifier)
-                                                .state = 2;
-                                          });
-                                        },
-                                      ),
-                                    ),
-
-                                    // Second payment card (if exists)
-                                    if (i + 1 < payments.take(4).length) ...[
-                                      const SizedBox(width: Gaps.sm),
-                                      Expanded(
-                                        child: PaymentSummaryCard(
-                                          payment:
-                                              payments.take(4).toList()[i + 1],
-                                          onTap: () {
-                                            final payment = payments
-                                                .take(4)
-                                                .toList()[i + 1];
-                                            // Set inbox internal tab to Payments (index 1, since Notifications is 0)
-                                            ref
-                                                .read(inboxTabIndexProvider
-                                                    .notifier)
-                                                .state = 1;
-
-                                            // Store selected payment user ID
-                                            ref
-                                                .read(
-                                                    selectedPaymentUserIdProvider
-                                                        .notifier)
-                                                .state = payment.userId;
-
-                                            // Navigate to Inbox main tab (index 2) after a frame
-                                            WidgetsBinding.instance
-                                                .addPostFrameCallback((_) {
-                                              ref
-                                                  .read(mainLayoutTabProvider
-                                                      .notifier)
-                                                  .state = 2;
-                                            });
-                                          },
-                                        ),
-                                      ),
-                                    ] else
-                                      // Empty space to maintain alignment
-                                      const Expanded(child: SizedBox()),
-                                  ],
-                                ),
-                              ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: Gaps.lg),
-                    ],
-                  );
-                },
-                loading: () => const SizedBox.shrink(),
-                error: (error, stackTrace) => const SizedBox.shrink(),
-              ),
-
-              const SizedBox(height: Gaps.lg),
+              // LAZZO 2.0: Payments Section removed
 
               // Recent Memories Section
               recentMemoriesAsync.when(

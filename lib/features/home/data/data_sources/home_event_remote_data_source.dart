@@ -42,7 +42,6 @@ class HomeEventRemoteDataSource {
           .from(_eventsView)
           .select('''
             event_id, event_name, emoji,
-            group_id, group_name,
             start_datetime, end_datetime,
             location_name, event_status,
             user_rsvp, voted_at,
@@ -179,7 +178,6 @@ class HomeEventRemoteDataSource {
           .from(_eventsView)
           .select('''
             event_id, event_name, emoji,
-            group_id, group_name,
             start_datetime, end_datetime,
             location_name, event_status,
             user_rsvp, voted_at,
@@ -244,7 +242,6 @@ class HomeEventRemoteDataSource {
           .from(_eventsView)
           .select('''
             event_id, event_name, emoji,
-            group_id, group_name,
             start_datetime, end_datetime,
             location_name, event_status,
             user_rsvp, voted_at,
@@ -362,7 +359,6 @@ class HomeEventRemoteDataSource {
           .from(_eventsView)
           .select('''
             event_id, event_name, emoji,
-            group_id, group_name,
             start_datetime, end_datetime,
             location_name, event_status,
             user_rsvp, voted_at,
@@ -468,7 +464,6 @@ class HomeEventRemoteDataSource {
           .from(_eventsView)
           .select('''
             event_id, event_name, emoji,
-            group_id, group_name,
             start_datetime, end_datetime,
             location_name, event_status,
             user_rsvp, voted_at,
@@ -523,7 +518,6 @@ class HomeEventRemoteDataSource {
           .from(_eventsView)
           .select('''
             event_id, event_name, emoji,
-            group_id, group_name,
             start_datetime, end_datetime,
             location_name, event_status,
             user_rsvp, voted_at,

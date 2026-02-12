@@ -46,7 +46,7 @@ class EventPhotoDataSource {
       final publicUrl =
           _client.storage.from('memory_groups').getPublicUrl(storagePath);
 
-      // 4. Create database record in group_photos table
+      // 4. Create database record in event_photos table
       final photoData = {
         'event_id': eventId,
         'url': publicUrl,
@@ -57,7 +57,7 @@ class EventPhotoDataSource {
       };
 
       final response = await _client
-          .from('group_photos')
+          .from('event_photos')
           .insert(photoData)
           .select(
               'id, url, storage_path, captured_at, uploader_id, is_portrait')
@@ -65,7 +65,7 @@ class EventPhotoDataSource {
 
       return response;
     } catch (e) {
-                  throw Exception('Failed to upload photo: $e');
+      throw Exception('Failed to upload photo: $e');
     }
   }
 
@@ -78,9 +78,9 @@ class EventPhotoDataSource {
       // 1. Delete from storage
       await _client.storage.from('memory_groups').remove([storagePath]);
       // 2. Delete from database
-      await _client.from('group_photos').delete().eq('id', photoId);
+      await _client.from('event_photos').delete().eq('id', photoId);
     } catch (e) {
-            throw Exception('Failed to delete photo: $e');
+      throw Exception('Failed to delete photo: $e');
     }
   }
 
@@ -124,25 +124,23 @@ class EventPhotoDataSource {
       final image = img.decodeImage(bytes);
 
       if (image == null) {
-                return false;
+        return false;
       }
 
       // Portrait if height > width
       final isPortrait = image.height > image.width;
-      
+
       return isPortrait;
     } catch (e) {
-            return false;
+      return false;
     }
   }
 
   /// Get all photos for an event with uploader information
   Future<List<Map<String, dynamic>>> getEventPhotos(String eventId) async {
     try {
-      // Query group_photos with user info
-      final response = await _client
-          .from('group_photos')
-          .select('''
+      // Query event_photos with user info
+      final response = await _client.from('event_photos').select('''
             id,
             url,
             storage_path,
@@ -150,15 +148,13 @@ class EventPhotoDataSource {
             uploader_id,
             is_portrait,
             uploader:uploader_id(id, name, avatar_url)
-          ''')
-          .eq('event_id', eventId)
-          .order('captured_at', ascending: false);
+          ''').eq('event_id', eventId).order('captured_at', ascending: false);
 
       // Generate signed URLs for each photo
       final photos = <Map<String, dynamic>>[];
       for (final photo in response as List) {
         final signedUrl = await getSignedUrl(photo['storage_path'] as String);
-        
+
         photos.add({
           'id': photo['id'],
           'url': signedUrl,

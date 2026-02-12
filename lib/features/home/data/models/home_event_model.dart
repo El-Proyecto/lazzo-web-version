@@ -158,9 +158,9 @@ class _HomeEventModel {
 
       // Query to get photo count by participant
       final response = await supabaseClient
-          .from('group_photos')
+          .from('event_photos')
           .select(
-              'uploader_id, users!group_photos_uploader_id_fkey(id, display_name, avatar_url)')
+              'uploader_id, users!event_photos_uploader_id_fkey(id, display_name, avatar_url)')
           .eq('event_id', id)
           .order('captured_at', ascending: false);
 

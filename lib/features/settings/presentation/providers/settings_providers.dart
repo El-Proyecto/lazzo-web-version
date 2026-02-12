@@ -7,7 +7,8 @@ import '../../data/fakes/fake_settings_repository.dart';
 
 // Import providers to invalidate on logout
 import '../../../home/presentation/providers/home_event_providers.dart';
-import '../../../groups/presentation/providers/groups_provider.dart';
+// LAZZO 2.0: Groups removed
+// import '../../../groups/presentation/providers/groups_provider.dart';
 import '../../../inbox/presentation/providers/notifications_provider.dart';
 import '../../../inbox/presentation/providers/payments_provider.dart';
 import '../../../auth/presentation/providers/auth_provider.dart';
@@ -99,7 +100,7 @@ class SettingsController extends StateNotifier<AsyncValue<SettingsEntity>> {
   Future<void> logOut() async {
     final repository = ref.read(settingsRepositoryProvider);
     await repository.logOut();
-    
+
     // CRITICAL: Invalidate all user-specific providers to clear cached data
     // This prevents stale data from showing when logging in with a different account
     _invalidateAllUserProviders();
@@ -114,19 +115,19 @@ class SettingsController extends StateNotifier<AsyncValue<SettingsEntity>> {
     ref.invalidate(livingAndRecapEventsControllerProvider);
     ref.invalidate(recentMemoriesControllerProvider);
     ref.invalidate(paymentSummariesControllerProvider);
-    
+
     // Profile providers - NOT invalidated here, invalidated on login instead
     // This prevents the "Error loading profile" flash when switching accounts
     // ref.invalidate(currentUserProfileProvider);
-    
-    // Groups providers
-    ref.invalidate(groupsProvider);
-    
+
+    // Groups providers — LAZZO 2.0: groups removed
+    // ref.invalidate(groupsProvider);
+
     // Inbox providers
     ref.invalidate(notificationsProvider);
     ref.invalidate(paymentsOwedToUserProvider);
     ref.invalidate(paymentsUserOwesProvider);
-    
+
     // Auth provider
     ref.invalidate(authProvider);
   }

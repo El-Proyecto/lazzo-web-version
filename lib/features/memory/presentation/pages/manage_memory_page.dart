@@ -475,12 +475,12 @@ class _ManageMemoryPageState extends ConsumerState<ManageMemoryPage> {
         if (isLiving) {
           await photoNotifier.takePhoto(
             eventId: widget.memoryId,
-            groupId: event.groupId,
+            groupId: event.id, // LAZZO 2.0: use eventId as storage path prefix
           );
         } else {
           await photoNotifier.pickPhotoFromGallery(
             eventId: widget.memoryId,
-            groupId: event.groupId,
+            groupId: event.id, // LAZZO 2.0: use eventId as storage path prefix
           );
         }
 

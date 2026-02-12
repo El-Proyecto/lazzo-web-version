@@ -21,7 +21,6 @@ import '../../domain/entities/rsvp.dart';
 import '../../domain/entities/suggestion.dart';
 import '../../domain/entities/event_detail.dart';
 import '../providers/event_providers.dart';
-import '../widgets/event_expenses_widget.dart';
 import '../widgets/date_time_suggestions_widget.dart'
     show DateTimeSuggestionsWidget, DateTimeSuggestion;
 import '../widgets/date_time_suggestions_widget.dart' as datetime_widget;
@@ -29,8 +28,6 @@ import '../widgets/location_suggestions_widget.dart';
 import '../widgets/add_suggestion_bottom_sheet.dart';
 import 'event_page_models.dart';
 
-import '../../../../shared/components/dialogs/add_expense_bottom_sheet.dart';
-import '../../../expense/presentation/providers/event_expense_providers.dart';
 import '../../../inbox/presentation/providers/payments_provider.dart';
 
 /// Event detail page
@@ -252,65 +249,6 @@ class _EventPageState extends ConsumerState<EventPage> {
     }
   }
 
-  /// Show add expense bottom sheet
-  Future<void> _showAddExpenseBottomSheet(BuildContext context) async {
-    // Get event participants
-    final participantsAsync =
-        await ref.read(eventParticipantsProvider(eventId).future);
-
-    final currentUserId = Supabase.instance.client.auth.currentUser?.id;
-
-    // Helper function to display "You" for current user
-    String getUserDisplayName(String userId, String userName) {
-      return userId == currentUserId ? 'You' : userName;
-    }
-
-    final participants = participantsAsync
-        .map((p) => ExpenseParticipantOption(
-              id: p.userId,
-              name: getUserDisplayName(p.userId, p.displayName),
-              avatarUrl: p.avatarUrl,
-            ))
-        .toList();
-
-    if (!context.mounted) return;
-
-    // ✅ Check if there are participants before opening bottom sheet
-    if (participants.isEmpty) {
-      TopBanner.showInfo(
-        context,
-        message: 'No participants to split expenses with yet',
-      );
-      return;
-    }
-
-    AddExpenseBottomSheet.show(
-      context: context,
-      participants: participants,
-      onAddExpense: (title, paidBy, participantsOwe, amount) async {
-        // Create expense using expense provider
-        try {
-          await ref.read(eventExpensesProvider(eventId).notifier).addExpense(
-            description: title,
-            amount: amount,
-            paidBy: paidBy,
-            participantsOwe: participantsOwe,
-            participantsPaid: [paidBy],
-          );
-
-          if (context.mounted) {
-            TopBanner.showSuccess(context,
-                message: 'Expense added successfully');
-          }
-        } catch (e) {
-          if (context.mounted) {
-            TopBanner.showError(context, message: 'Failed to add expense: $e');
-          }
-        }
-      },
-    );
-  }
-
   /// Add event to device calendar
   Future<void> _addToCalendar(
     BuildContext context,
@@ -376,9 +314,6 @@ class _EventPageState extends ConsumerState<EventPage> {
       ref.invalidate(userLocationSuggestionVotesProvider(eventId));
       ref.invalidate(eventParticipantsProvider(eventId));
 
-      // Invalidate expenses for this event
-      ref.invalidate(eventExpensesProvider(eventId));
-
       // Invalidate base payment providers (affects all events)
       final currentUserId = Supabase.instance.client.auth.currentUser?.id;
       if (currentUserId != null) {
@@ -389,9 +324,6 @@ class _EventPageState extends ConsumerState<EventPage> {
 
     final eventName = eventAsync.value?.name ?? '';
     final eventStatus = eventAsync.value?.status;
-    final showAddExpense = eventStatus == EventStatus.pending ||
-        eventStatus == EventStatus.confirmed ||
-        eventStatus == EventStatus.living;
 
     return Scaffold(
       backgroundColor: BrandColors.bg1,
@@ -498,15 +430,7 @@ class _EventPageState extends ConsumerState<EventPage> {
             );
           },
         ),
-        trailing2: showAddExpense
-            ? IconButton(
-                icon: const Icon(
-                  Icons.receipt_long_outlined,
-                  color: BrandColors.text1,
-                ),
-                onPressed: () => _showAddExpenseBottomSheet(context),
-              )
-            : null,
+        trailing2: null,
       ),
       body: eventAsync.when(
         data: (event) => RefreshIndicator(
@@ -707,61 +631,7 @@ class _EventPageState extends ConsumerState<EventPage> {
                   },
                 ),
 
-                // Expenses widget
-                // Use whenOrNull to keep previous expenses visible during refresh
-                participantsAsync.whenOrNull(
-                      data: (participants) {
-                        final currentUserId =
-                            Supabase.instance.client.auth.currentUser?.id;
-                        final participantOptions = participants.map((p) {
-                          return ExpenseParticipantOption(
-                            id: p.userId,
-                            name: _getUserDisplayName(
-                                p.userId, p.displayName, currentUserId),
-                            avatarUrl: p.avatarUrl,
-                          );
-                        }).toList();
-
-                        // Sort: "You" first, then alphabetically by name
-                        participantOptions.sort((a, b) {
-                          if (a.name == 'You') return -1;
-                          if (b.name == 'You') return 1;
-                          return a.name.compareTo(b.name);
-                        });
-
-                        // Determine if expenses widget should be shrinked based on expenses count
-                        final expensesAsync =
-                            ref.watch(eventExpensesProvider(eventId));
-                        final isExpensesShrinked = expensesAsync.maybeWhen(
-                          data: (expenses) => expenses.isEmpty,
-                          orElse: () => false,
-                        );
-
-                        return Padding(
-                          padding: EdgeInsets.only(
-                            top: isExpensesShrinked ? 0 : Gaps.lg,
-                          ),
-                          child: EventExpensesWidget(
-                            eventId: eventId,
-                            mode: EventMode.planning,
-                            participants: participantOptions,
-                            onAddExpense: (title, paidById, participantsOwe,
-                                amount) async {
-                              ref
-                                  .read(eventExpensesProvider(eventId).notifier)
-                                  .addExpense(
-                                description: title,
-                                amount: amount,
-                                paidBy: paidById,
-                                participantsOwe: participantsOwe,
-                                participantsPaid: [],
-                              );
-                            },
-                          ),
-                        );
-                      },
-                    ) ??
-                    const SizedBox.shrink(),
+                // LAZZO 2.0: Expenses widget removed
 
                 const SizedBox(height: Gaps.lg),
 

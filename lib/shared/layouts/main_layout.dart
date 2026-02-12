@@ -206,7 +206,8 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
       // Take photo and upload
       await photoNotifier.takePhoto(
         eventId: eventId,
-        groupId: eventDetail.groupId,
+        groupId:
+            eventDetail.id, // LAZZO 2.0: use eventId as storage path prefix
       );
 
       // Show result

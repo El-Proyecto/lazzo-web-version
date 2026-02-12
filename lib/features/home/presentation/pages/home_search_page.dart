@@ -4,17 +4,18 @@ import '../../../../shared/components/nav/common_app_bar.dart';
 import '../../../../shared/components/inputs/search_bar.dart' as custom;
 import '../../../../shared/components/cards/event_small_card.dart';
 import '../../../../shared/components/cards/recent_memory_card.dart';
-import '../../../../shared/components/cards/payment_summary_card.dart';
+// LAZZO 2.0: payment_summary_card import removed
 import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/constants/text_styles.dart';
 import '../../../../shared/themes/colors.dart';
-import '../../../../shared/layouts/main_layout_providers.dart';
+// LAZZO 2.0: main_layout_providers unused
+// import '../../../../shared/layouts/main_layout_providers.dart';
 import '../../../../routes/app_router.dart';
 import '../../../memory/data/fakes/fake_memory_repository.dart';
-import '../../../inbox/presentation/providers/payments_provider.dart';
+// LAZZO 2.0: payments_provider import removed
 import '../../domain/entities/home_event.dart';
 import '../../domain/entities/recent_memory_entity.dart';
-import '../../domain/entities/payment_summary_entity.dart';
+// LAZZO 2.0: payment_summary_entity import removed
 import '../providers/home_event_providers.dart';
 import 'package:intl/intl.dart';
 
@@ -130,24 +131,6 @@ class _HomeSearchPageState extends ConsumerState<HomeSearchPage> {
     }).toList();
   }
 
-  List<PaymentSummaryEntity> _filterPayments(
-    List<PaymentSummaryEntity> payments,
-    String query,
-  ) {
-    if (query.isEmpty) return payments;
-
-    return payments.where((payment) {
-      // Search by user name
-      if (_matchesSearch(payment.userName, query)) return true;
-
-      // Search by amount
-      final amount = payment.amount.abs().toStringAsFixed(2);
-      if (_matchesSearch(amount, query)) return true;
-
-      return false;
-    }).toList();
-  }
-
   EventSmallCardState _mapStatusToSmallCardState(HomeEventStatus status) {
     switch (status) {
       case HomeEventStatus.pending:
@@ -166,7 +149,7 @@ class _HomeSearchPageState extends ConsumerState<HomeSearchPage> {
     final livingAndRecapEventsAsync =
         ref.watch(livingAndRecapEventsControllerProvider);
     final memoriesAsync = ref.watch(recentMemoriesControllerProvider);
-    final paymentsAsync = ref.watch(paymentSummariesControllerProvider);
+    // LAZZO 2.0: paymentsAsync removed
 
     // Filter results based on search query
     final filteredConfirmed = confirmedEventsAsync.maybeWhen(
@@ -197,17 +180,13 @@ class _HomeSearchPageState extends ConsumerState<HomeSearchPage> {
       orElse: () => <RecentMemoryEntity>[],
     );
 
-    final filteredPayments = paymentsAsync.maybeWhen(
-      data: (payments) => _filterPayments(payments, _searchQuery),
-      orElse: () => <PaymentSummaryEntity>[],
-    );
+    // LAZZO 2.0: filteredPayments removed
 
     final hasResults = filteredConfirmed.isNotEmpty ||
         filteredPending.isNotEmpty ||
         filteredLiving.isNotEmpty ||
         filteredRecap.isNotEmpty ||
-        filteredMemories.isNotEmpty ||
-        filteredPayments.isNotEmpty;
+        filteredMemories.isNotEmpty;
 
     return Scaffold(
       backgroundColor: BrandColors.bg1,
@@ -452,42 +431,7 @@ class _HomeSearchPageState extends ConsumerState<HomeSearchPage> {
                               const SizedBox(height: Gaps.md),
                             ],
 
-                            // Payments
-                            if (filteredPayments.isNotEmpty) ...[
-                              _buildSectionHeader('Payments'),
-                              const SizedBox(height: Gaps.sm),
-                              Wrap(
-                                spacing: Gaps.sm,
-                                runSpacing: Gaps.sm,
-                                children: filteredPayments.map((payment) {
-                                  return SizedBox(
-                                    width: (MediaQuery.of(context).size.width -
-                                            (Insets.screenH * 2) -
-                                            Gaps.sm) /
-                                        2,
-                                    child: PaymentSummaryCard(
-                                      payment: payment,
-                                      onTap: () {
-                                        // Store selected payment user ID
-                                        ref
-                                            .read(selectedPaymentUserIdProvider
-                                                .notifier)
-                                            .state = payment.userId;
-
-                                        // Navigate to Inbox Payments tab
-                                        ref
-                                            .read(
-                                                inboxTabIndexProvider.notifier)
-                                            .state = 2;
-
-                                        Navigator.of(context).pop();
-                                      },
-                                    ),
-                                  );
-                                }).toList(),
-                              ),
-                              const SizedBox(height: Gaps.md),
-                            ],
+                            // LAZZO 2.0: Payments search results removed
 
                             const SizedBox(height: Gaps.lg),
                           ],

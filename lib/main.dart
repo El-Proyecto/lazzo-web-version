@@ -44,17 +44,10 @@ import 'features/inbox/presentation/providers/notifications_provider.dart';
 // import '../features/inbox/data/repositories/action_repository_impl.dart';
 // import '../features/inbox/presentation/providers/actions_provider.dart';
 
-// LAZZO 2.0: Groups removed — imports deleted
+// LAZZO 2.0: Groups + Expenses removed
 
-// EXPENSES
-import 'features/expense/presentation/providers/event_expense_providers.dart';
-import 'features/expense/data/data_sources/event_expense_remote_data_source.dart';
-import 'features/expense/data/repositories/event_expense_repository_impl.dart';
-
-// NOTIFICATION SERVICE
-import 'services/notification_service.dart';
-
-// LAZZO 2.0: Group Hub + Groups Update removed — imports deleted
+// LAZZO 2.0: notification_service import unused
+// import 'services/notification_service.dart';
 
 // PROFILE - Real implementation
 import '../features/profile/data/data_sources/profile_remote_data_source.dart';
@@ -197,8 +190,6 @@ void main() async {
         //   ),
         // ),
 
-        // LAZZO 2.0: Groups + Group Hub DI overrides removed
-
         // ✅ MEMORY MANAGEMENT repo -> real (Supabase) via DI (Nov 27, 2025)
         memory_manage.memoryRepositoryProvider.overrideWith((ref) {
           final client = Supabase.instance.client;
@@ -249,14 +240,6 @@ void main() async {
         usersRepositoryProvider.overrideWith((ref) {
           final client = Supabase.instance.client;
           return UsersRepository(UsersRemoteDatasource(client));
-        }),
-
-        eventExpenseRepositoryProvider.overrideWith((ref) {
-          final client = Supabase.instance.client;
-          final notificationService = ref.watch(notificationServiceProvider);
-          final dataSource =
-              EventExpenseRemoteDataSource(client, notificationService);
-          return EventExpenseRepositoryImpl(dataSource);
         }),
 
         // ✅ CREATE EVENT repo -> real (Supabase) via DI
