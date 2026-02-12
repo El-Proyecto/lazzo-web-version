@@ -168,9 +168,6 @@ class ManageMemoryNotifier
         // This ensures photos are uploaded to the correct event
         final eventId = memoryId;
 
-        // LAZZO 2.0: Use eventId as storage path prefix (groups removed)
-        final groupId = eventId;
-
         final dataSource = MemoryPhotoDataSource(Supabase.instance.client);
 
         for (int i = 0; i < selectedPhotoPaths.length; i++) {
@@ -192,7 +189,6 @@ class ManageMemoryNotifier
 
             // Upload photo to Supabase
             final uploadResult = await dataSource.uploadPhoto(
-              groupId: groupId,
               eventId: eventId,
               userId: currentUserId,
               file: file,

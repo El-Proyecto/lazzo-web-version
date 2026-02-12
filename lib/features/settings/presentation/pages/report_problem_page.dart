@@ -23,7 +23,6 @@ class _ReportProblemPageState extends ConsumerState<ReportProblemPage> {
     'Create or join event',
     'Upload photos & memories',
     'Share memories',
-    'Payments & expenses',
     'Notifications',
     'Other',
   ];

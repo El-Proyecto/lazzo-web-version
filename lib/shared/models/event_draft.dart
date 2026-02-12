@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../../features/create_event/presentation/widgets/event_group_selector.dart';
 import '../../features/create_event/presentation/widgets/location_section.dart';
 import '../../features/create_event/presentation/widgets/date_time_section.dart';
 
@@ -8,7 +7,6 @@ import '../../features/create_event/presentation/widgets/date_time_section.dart'
 class EventDraft {
   final String eventName;
   final String? eventEmoji;
-  final GroupInfo? selectedGroup;
   final DateTime? selectedDate;
   final TimeOfDay? selectedTime;
   final DateTime? endDate;
@@ -21,7 +19,6 @@ class EventDraft {
   const EventDraft({
     required this.eventName,
     this.eventEmoji,
-    this.selectedGroup,
     this.selectedDate,
     this.selectedTime,
     this.endDate,
@@ -36,7 +33,6 @@ class EventDraft {
   bool get hasChanges {
     return eventName.isNotEmpty ||
         eventEmoji != null || // Check if emoji was selected
-        selectedGroup != null ||
         selectedDate != null ||
         selectedTime != null ||
         selectedLocation != null ||
@@ -48,9 +44,6 @@ class EventDraft {
   bool get isValid {
     // Nome é obrigatório
     if (eventName.trim().isEmpty) return false;
-
-    // Grupo é obrigatório
-    if (selectedGroup == null) return false;
 
     // Se location está em "Set now", precisa ter localização
     if (locationState == LocationState.setNow && selectedLocation == null) {
@@ -89,7 +82,6 @@ class EventDraft {
     return {
       'eventName': eventName,
       'eventEmoji': eventEmoji,
-      'selectedGroup': selectedGroup?.toJson(),
       'selectedDate': selectedDate?.millisecondsSinceEpoch,
       'selectedTime': selectedTime != null
           ? {'hour': selectedTime!.hour, 'minute': selectedTime!.minute}
@@ -110,9 +102,6 @@ class EventDraft {
     return EventDraft(
       eventName: json['eventName'] ?? '',
       eventEmoji: json['eventEmoji'] ?? '🍖',
-      selectedGroup: json['selectedGroup'] != null
-          ? GroupInfo.fromJson(json['selectedGroup'])
-          : null,
       selectedDate: json['selectedDate'] != null
           ? DateTime.fromMillisecondsSinceEpoch(json['selectedDate'])
           : null,
@@ -148,7 +137,6 @@ class EventDraft {
   EventDraft copyWith({
     String? eventName,
     String? eventEmoji,
-    GroupInfo? selectedGroup,
     DateTime? selectedDate,
     TimeOfDay? selectedTime,
     DateTime? endDate,
@@ -160,7 +148,6 @@ class EventDraft {
     return EventDraft(
       eventName: eventName ?? this.eventName,
       eventEmoji: eventEmoji ?? this.eventEmoji,
-      selectedGroup: selectedGroup ?? this.selectedGroup,
       selectedDate: selectedDate ?? this.selectedDate,
       selectedTime: selectedTime ?? this.selectedTime,
       endDate: endDate ?? this.endDate,

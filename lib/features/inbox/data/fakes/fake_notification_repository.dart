@@ -47,47 +47,7 @@ class FakeNotificationRepository implements NotificationRepository {
       eventEmoji: '�',
     ),
 
-    NotificationEntity(
-      id: '5',
-      title: 'Payment Request',
-      description: '{user} requested **{amount}** for {note}.',
-      type: NotificationType.paymentsRequest,
-      category: NotificationCategory.push,
-      priority: NotificationPriority.high,
-      createdAt: DateTime.now().subtract(const Duration(hours: 2)),
-      userName: 'Ana',
-      amount: '€25.50',
-      note: 'restaurant bill',
-      eventEmoji: '🍽️',
-    ),
-
-    NotificationEntity(
-      id: '6',
-      title: 'Payment Added',
-      description: '{user} added an expense in **{event}**. You owe {amount}.',
-      type: NotificationType.paymentsAddedYouOwe,
-      category: NotificationCategory.push,
-      priority: NotificationPriority.high,
-      createdAt: DateTime.now().subtract(const Duration(hours: 3)),
-      userName: 'Pedro',
-      eventName: 'Football Match',
-      amount: '€12.00',
-      eventId: 'event4',
-      eventEmoji: '⚽',
-    ),
-
-    NotificationEntity(
-      id: '7',
-      title: 'Payment Received',
-      description: '{user} paid you **{amount}**.',
-      type: NotificationType.paymentsPaidYou,
-      category: NotificationCategory.push,
-      priority: NotificationPriority.medium,
-      createdAt: DateTime.now().subtract(const Duration(hours: 4)),
-      userName: 'Maria',
-      amount: '€15.00',
-      eventEmoji: '💰',
-    ),
+    // LAZZO 2.0: Fake payment notifications removed (ids 5, 6, 7)
 
     NotificationEntity(
       id: '8',

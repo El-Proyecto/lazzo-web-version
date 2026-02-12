@@ -227,29 +227,6 @@ class _HomeEventCardState extends ConsumerState<HomeEventCard> {
                   ),
                 ],
               ),
-              if (_currentEvent.groupName != null) const SizedBox(height: 2),
-              // Group with icon
-              if (_currentEvent.groupName != null)
-                Row(
-                  children: [
-                    const Icon(
-                      Icons.group,
-                      size: 14,
-                      color: BrandColors.text2,
-                    ),
-                    const SizedBox(width: 4),
-                    Expanded(
-                      child: Text(
-                        _currentEvent.groupName!,
-                        style: AppText.bodyMedium.copyWith(
-                          color: BrandColors.text2,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
-                ),
             ],
           ),
         ),

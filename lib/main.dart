@@ -29,10 +29,7 @@ import 'features/home/presentation/providers/home_event_providers.dart';
 import 'features/home/data/data_sources/recent_memory_data_source.dart';
 import 'features/home/data/repositories/recent_memory_repository_impl.dart';
 
-// INBOX PAYMENTS - Real implementation
-import 'features/inbox/data/data_source/payments_remote_data_source.dart';
-import 'features/inbox/data/repositories/payment_repository_impl.dart';
-import 'features/inbox/presentation/providers/payments_provider.dart';
+// LAZZO 2.0: Payments removed
 
 // INBOX NOTIFICATIONS - Real implementation (P2)
 import 'features/inbox/data/data_sources/notification_remote_data_source.dart';
@@ -161,17 +158,7 @@ void main() async {
           );
         }),
 
-        // Note: HOME PAYMENT SUMMARIES reuses inbox payment data directly
-        // No separate repository needed - see paymentSummariesControllerProvider
-
-        // ✅ INBOX PAYMENTS repo -> real (Supabase) via DI
-        paymentRepositoryProvider.overrideWith(
-          (ref) {
-            final client = Supabase.instance.client;
-            final dataSource = PaymentsRemoteDataSource(client);
-            return PaymentRepositoryImpl(dataSource, client);
-          },
-        ),
+        // LAZZO 2.0: Payments DI removed
 
         // ✅ INBOX NOTIFICATIONS repo -> real (Supabase) via DI (Dec 13, 2025)
         notificationRepositoryProvider.overrideWith(

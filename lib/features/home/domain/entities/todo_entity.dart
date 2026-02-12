@@ -5,7 +5,6 @@ class TodoEntity {
   final String actionName; // e.g., "Vote a date"
   final String eventEmoji; // e.g., "🍽️"
   final String eventName; // e.g., "Friday Dinner"
-  final String groupName; // e.g., "Dinner Group"
   final DateTime? deadline;
 
   const TodoEntity({
@@ -13,7 +12,6 @@ class TodoEntity {
     required this.actionName,
     required this.eventEmoji,
     required this.eventName,
-    required this.groupName,
     this.deadline,
   });
 

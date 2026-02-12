@@ -6,12 +6,10 @@ import '../../../../shared/constants/text_styles.dart';
 // LAZZO 2.0: AppRouter no longer needed here
 // import '../../../../routes/app_router.dart';
 import '../../../../shared/components/nav/common_app_bar.dart';
-import '../widgets/event_group_selector.dart';
+import '../widgets/event_name_selector.dart';
 import '../widgets/date_time_section.dart';
 import '../widgets/location_section.dart';
 import '../widgets/event_history_dialog.dart';
-// LAZZO 2.0: Group selection removed
-// import '../widgets/group_selection_dialog.dart';
 import '../widgets/confirm_event_dialog.dart';
 import '../widgets/exit_confirmation_dialog.dart';
 import '../../../../shared/models/event_draft.dart';
@@ -39,7 +37,6 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
   // Estado do evento
   String _eventName = '';
   String? _eventEmoji;
-  GroupInfo? _selectedGroup;
   DateTime? _selectedDate;
   TimeOfDay? _selectedTime;
   DateTime? _endDate;
@@ -59,7 +56,6 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
 
   // Validation errors
   String? _nameError;
-  String? _groupError;
 
   // LAZZO 2.0: Group-related helpers removed (groups are gone)
 
@@ -87,7 +83,6 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
       setState(() {
         _eventName = draft.eventName;
         _eventEmoji = draft.eventEmoji;
-        _selectedGroup = draft.selectedGroup;
         _selectedDate = draft.selectedDate;
         _selectedTime = draft.selectedTime;
         _endDate = draft.endDate;
@@ -105,7 +100,6 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
     return EventDraft(
       eventName: _eventName,
       eventEmoji: _eventEmoji,
-      selectedGroup: _selectedGroup,
       selectedDate: _selectedDate,
       selectedTime: _selectedTime,
       endDate: _endDate,
@@ -134,13 +128,6 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
       } else {
         _nameError = null;
       }
-
-      // Validate group
-      if (_selectedGroup == null) {
-        _groupError = 'Please select a group';
-      } else {
-        _groupError = null;
-      }
     });
   }
 
@@ -157,10 +144,8 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
   /// Verifica se o formulário é válido
   bool get _isFormValid {
     final basicFieldsValid = _nameError == null &&
-        _groupError == null &&
         _eventName.trim().isNotEmpty &&
-        _eventName != 'Add Event Name' &&
-        _selectedGroup != null;
+        _eventName != 'Add Event Name';
 
     // All fields must be valid: basic fields + location + datetime
     // Location and DateTime are valid if "Decide Later" OR properly filled when "Set Now"
@@ -312,11 +297,6 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
           _eventName != 'Add Event Name') {
         _nameError = null;
       }
-
-      // Clear group error if group is selected
-      if (_groupError != null && _selectedGroup != null) {
-        _groupError = null;
-      }
     });
   }
 
@@ -416,18 +396,14 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
                   children: [
                     const SizedBox(height: Gaps.lg),
 
-                    // Seleção de grupo e nome do evento
-                    EventGroupSelector(
-                      key: const Key('createEvent:groupSelector'),
+                    // Seleção de nome do evento
+                    EventNameSelector(
+                      key: const Key('createEvent:nameSelector'),
                       eventEmoji: _eventEmoji,
                       eventName:
                           _eventName.isEmpty ? 'Add Event Name' : _eventName,
                       nameFieldKey: const Key('createEvent:name'),
-                      groupButtonKey: const Key('createEvent:groupButton'),
-                      selectedGroup: _selectedGroup,
                       nameError: _showValidationErrors ? _nameError : null,
-                      groupError: _showValidationErrors ? _groupError : null,
-                      onGroupPressed: _showGroupSelection,
                       onEventNameChanged: (name) {
                         setState(() {
                           _eventName = name;
@@ -586,8 +562,6 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
           lastDate: history.startDateTime,
           lastTime: timeOfDay,
           location: history.locationName,
-          groupId: history.groupId,
-          groupName: history.groupName,
         );
       }).toList();
 
@@ -620,7 +594,6 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
       builder: (context) => ConfirmEventBottomSheet(
         eventName: _eventName,
         eventEmoji: _eventEmoji,
-        selectedGroup: _selectedGroup,
         selectedDate: _selectedDate,
         selectedTime: _selectedTime,
         endDate: _endDate,
@@ -629,11 +602,6 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
         onEventCreated: _onEventCreated,
       ),
     );
-  }
-
-  void _showGroupSelection() {
-    // LAZZO 2.0: Groups removed — events are standalone
-    // Group selection UI is no longer needed
   }
 
   void _loadEventFromHistory(EventHistoryItem event) async {
@@ -718,7 +686,6 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
           'eventId': eventId,
           'showSuccessBanner': true,
           'eventName': _eventName.isEmpty ? 'Untitled Event' : _eventName,
-          'groupName': _selectedGroup?.name ?? 'No Group',
         },
       );
     }

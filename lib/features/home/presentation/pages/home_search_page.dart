@@ -97,11 +97,6 @@ class _HomeSearchPageState extends ConsumerState<HomeSearchPage> {
         return true;
       }
 
-      // Search by group name
-      if (event.groupName != null && _matchesSearch(event.groupName!, query)) {
-        return true;
-      }
-
       // Search by date
       if (_matchesDateSearch(event.date, query)) return true;
 
@@ -216,7 +211,7 @@ class _HomeSearchPageState extends ConsumerState<HomeSearchPage> {
                 vertical: Gaps.sm,
               ),
               child: custom.SearchBar(
-                placeholder: 'Search events, memories, payments...',
+                placeholder: 'Search events, memories...',
                 enabled: true,
                 onChanged: (value) {
                   setState(() {
@@ -240,7 +235,7 @@ class _HomeSearchPageState extends ConsumerState<HomeSearchPage> {
                           ),
                           const SizedBox(height: Gaps.md),
                           Text(
-                            'Search for events, memories, or payments',
+                            'Search for events or memories',
                             style: AppText.bodyMedium.copyWith(
                               color: BrandColors.text2,
                             ),

@@ -13,7 +13,6 @@ class UpdateEventUseCase {
     required String eventId,
     required String name,
     required String emoji,
-    required String groupId,
     DateTime? startDateTime,
     DateTime? endDateTime,
     EventLocation? location,
@@ -42,7 +41,6 @@ class UpdateEventUseCase {
     final updatedEvent = existingEvent.copyWith(
       name: name.trim(),
       emoji: emoji,
-      groupId: groupId,
       startDateTime: ValueWrapper(startDateTime),
       endDateTime: ValueWrapper(endDateTime),
       location: ValueWrapper(location),

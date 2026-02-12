@@ -17,7 +17,6 @@ class FakeEventRepository implements EventRepository {
           id: 'event-1',
           name: 'Churrascada no Parque',
           emoji: '🍖',
-          groupId: '1',
           startDateTime: DateTime.now().add(const Duration(days: 2, hours: 14)),
           endDateTime: DateTime.now().add(const Duration(days: 2, hours: 20)),
           location: const EventLocation(
@@ -34,7 +33,6 @@ class FakeEventRepository implements EventRepository {
           id: 'event-2',
           name: 'Jantar de Aniversário',
           emoji: '🎂',
-          groupId: '2',
           startDateTime: DateTime.now().add(const Duration(days: 5, hours: 19)),
           endDateTime: DateTime.now().add(const Duration(days: 5, hours: 23)),
           status: EventStatus.pending,
@@ -89,12 +87,6 @@ class FakeEventRepository implements EventRepository {
   Future<void> deleteEvent(String id) async {
     await Future.delayed(const Duration(milliseconds: 200));
     _events.removeWhere((e) => e.id == id);
-  }
-
-  @override
-  Future<List<Event>> getEventsForGroup(String groupId) async {
-    await Future.delayed(const Duration(milliseconds: 300));
-    return _events.where((e) => e.groupId == groupId).toList();
   }
 
   @override
@@ -166,8 +158,6 @@ class FakeEventRepository implements EventRepository {
         locationAddress: 'Rua do Alecrim 47, 1200-014 Lisboa',
         latitude: 38.7093,
         longitude: -9.1431,
-        groupId: 'group-1',
-        groupName: 'Os Traquinas',
         createdAt: DateTime.now().subtract(const Duration(days: 20)),
       ),
       EventHistory(
@@ -179,8 +169,6 @@ class FakeEventRepository implements EventRepository {
         locationAddress: 'Estádio Nacional, 1495-751 Cruz Quebrada',
         latitude: 38.7182,
         longitude: -9.2344,
-        groupId: 'group-2',
-        groupName: 'Sporting',
         createdAt: DateTime.now().subtract(const Duration(days: 35)),
       ),
       EventHistory(
@@ -192,8 +180,6 @@ class FakeEventRepository implements EventRepository {
         locationAddress: 'Praça Alvalade 6, 1700-036 Lisboa',
         latitude: 38.7575,
         longitude: -9.1440,
-        groupId: 'group-1',
-        groupName: 'Os Traquinas',
         createdAt: DateTime.now().subtract(const Duration(days: 50)),
       ),
     ];

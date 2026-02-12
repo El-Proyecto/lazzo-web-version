@@ -181,8 +181,6 @@ class _EventLivingPageState extends ConsumerState<EventLivingPage> {
                     // Take photo and upload
                     await photoNotifier.takePhoto(
                       eventId: widget.eventId,
-                      groupId: event
-                          .id, // LAZZO 2.0: Using eventId as storage path (groups removed)
                     );
 
                     // Show result

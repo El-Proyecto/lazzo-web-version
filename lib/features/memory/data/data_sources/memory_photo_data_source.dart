@@ -19,7 +19,6 @@ class MemoryPhotoDataSource {
   /// Returns the photo ID and storage_path
   /// Note: URLs are generated on-demand using signed URLs with RLS validation
   Future<Map<String, dynamic>> uploadPhoto({
-    required String groupId,
     required String eventId,
     required String userId,
     required File file,
@@ -27,9 +26,9 @@ class MemoryPhotoDataSource {
   }) async {
     try {
       // Step 1: Upload to storage (returns storage path, not URL)
-      // Storage path: groupId/eventId/userId/uuid.jpg
+      // Storage path: eventId/memoryId/userId/uuid.jpg
       final storagePath = await _storageService.uploadMemoryPhoto(
-        groupId: groupId,
+        eventId: eventId,
         memoryId: eventId,
         userId: userId,
         file: file,

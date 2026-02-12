@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../routes/app_router.dart';
 import '../../../create_event/domain/entities/event.dart' as create_event;
 import '../../../../shared/components/nav/common_app_bar.dart';
@@ -28,7 +27,7 @@ import '../widgets/location_suggestions_widget.dart';
 import '../widgets/add_suggestion_bottom_sheet.dart';
 import 'event_page_models.dart';
 
-import '../../../inbox/presentation/providers/payments_provider.dart';
+// LAZZO 2.0: payments_provider import removed
 
 /// Event detail page
 /// Displays all event information and interactions
@@ -314,12 +313,7 @@ class _EventPageState extends ConsumerState<EventPage> {
       ref.invalidate(userLocationSuggestionVotesProvider(eventId));
       ref.invalidate(eventParticipantsProvider(eventId));
 
-      // Invalidate base payment providers (affects all events)
-      final currentUserId = Supabase.instance.client.auth.currentUser?.id;
-      if (currentUserId != null) {
-        ref.invalidate(paymentsOwedToUserProvider);
-        ref.invalidate(paymentsUserOwesProvider);
-      }
+      // LAZZO 2.0: payment provider invalidations removed
     }
 
     final eventName = eventAsync.value?.name ?? '';
@@ -357,7 +351,6 @@ class _EventPageState extends ConsumerState<EventPage> {
                           id: eventData.id,
                           name: eventData.name,
                           emoji: eventData.emoji,
-                          groupId: eventData.groupId,
                           startDateTime: eventData.startDateTime,
                           endDateTime: eventData.endDateTime,
                           location: eventData.location != null
@@ -399,7 +392,6 @@ class _EventPageState extends ConsumerState<EventPage> {
                           id: eventData.id,
                           name: eventData.name,
                           emoji: eventData.emoji,
-                          groupId: eventData.groupId,
                           startDateTime: eventData.startDateTime,
                           endDateTime: eventData.endDateTime,
                           location: eventData.location != null
@@ -454,12 +446,7 @@ class _EventPageState extends ConsumerState<EventPage> {
                   location: event.location?.displayName,
                   dateTime: event.startDateTime,
                   endDateTime: event.endDateTime,
-                  groupName: event.groupName,
-                  groupId: event.groupId,
                   isExpired: event.isExpired,
-                  onGroupTap: () {
-                    // LAZZO 2.0: Group hub navigation removed — events are standalone
-                  },
                 ),
                 const SizedBox(height: Gaps.md),
 

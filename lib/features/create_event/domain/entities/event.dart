@@ -4,7 +4,6 @@ class Event {
   final String id;
   final String name;
   final String emoji;
-  final String groupId;
   final DateTime? startDateTime;
   final DateTime? endDateTime;
   final EventLocation? location;
@@ -15,7 +14,6 @@ class Event {
     required this.id,
     required this.name,
     required this.emoji,
-    required this.groupId,
     this.startDateTime,
     this.endDateTime,
     this.location,
@@ -30,7 +28,6 @@ class Event {
     String? id,
     String? name,
     String? emoji,
-    String? groupId,
     ValueWrapper<DateTime?>? startDateTime,
     ValueWrapper<DateTime?>? endDateTime,
     ValueWrapper<EventLocation?>? location,
@@ -41,7 +38,6 @@ class Event {
       id: id ?? this.id,
       name: name ?? this.name,
       emoji: emoji ?? this.emoji,
-      groupId: groupId ?? this.groupId,
       startDateTime:
           startDateTime != null ? startDateTime.value : this.startDateTime,
       endDateTime: endDateTime != null ? endDateTime.value : this.endDateTime,

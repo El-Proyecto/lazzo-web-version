@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/constants/text_styles.dart';
-import '../widgets/event_group_selector.dart';
+import '../widgets/event_name_selector.dart';
 import '../widgets/date_time_section.dart';
 import '../widgets/location_section.dart'; // Use original version from commit 6641830
 import '../../../../shared/components/nav/common_app_bar.dart'; // Import CommonAppBar
@@ -33,7 +33,6 @@ class _EditEventPageState extends ConsumerState<EditEventPage> {
   // Estado do evento
   String _eventName = '';
   String _eventEmoji = '🍖';
-  GroupInfo? _selectedGroup;
   DateTime? _selectedDate;
   TimeOfDay? _selectedTime;
   DateTime? _endDate;
@@ -53,7 +52,6 @@ class _EditEventPageState extends ConsumerState<EditEventPage> {
   // Valores iniciais para detectar alterações
   late String _initialEventName;
   late String _initialEventEmoji;
-  late GroupInfo? _initialSelectedGroup;
   late DateTime? _initialSelectedDate;
   late TimeOfDay? _initialSelectedTime;
   late DateTime? _initialEndDate;
@@ -64,7 +62,6 @@ class _EditEventPageState extends ConsumerState<EditEventPage> {
 
   // Validation errors
   String? _nameError;
-  String? _groupError;
 
   @override
   void initState() {
@@ -78,20 +75,6 @@ class _EditEventPageState extends ConsumerState<EditEventPage> {
 
     _eventName = event.name;
     _eventEmoji = event.emoji;
-
-    // Load group from groupId - using mock data for now
-    final mockGroups = _getMockGroups();
-    _selectedGroup =
-        mockGroups.where((group) => group.id == event.groupId).firstOrNull;
-
-    // Se não encontrar o grupo nos mocks, criar um temporário com o ID do evento
-    if (_selectedGroup == null && event.groupId.isNotEmpty) {
-      _selectedGroup = GroupInfo(
-        id: event.groupId,
-        name: 'Grupo ${event.groupId}',
-        memberCount: 1,
-      );
-    }
 
     if (event.startDateTime != null) {
       _selectedDate = DateTime(
@@ -131,7 +114,6 @@ class _EditEventPageState extends ConsumerState<EditEventPage> {
   void _storeInitialValues() {
     _initialEventName = _eventName;
     _initialEventEmoji = _eventEmoji;
-    _initialSelectedGroup = _selectedGroup;
     _initialSelectedDate = _selectedDate;
     _initialSelectedTime = _selectedTime;
     _initialEndDate = _endDate;
@@ -145,7 +127,6 @@ class _EditEventPageState extends ConsumerState<EditEventPage> {
   bool _hasChanges() {
     return _eventName != _initialEventName ||
         _eventEmoji != _initialEventEmoji ||
-        _selectedGroup?.id != _initialSelectedGroup?.id ||
         _selectedDate != _initialSelectedDate ||
         _selectedTime != _initialSelectedTime ||
         _endDate != _initialEndDate ||
@@ -160,7 +141,6 @@ class _EditEventPageState extends ConsumerState<EditEventPage> {
   //   return EventDraft(
   //     eventName: _eventName,
   //     eventEmoji: _eventEmoji,
-  //     selectedGroup: _selectedGroup,
   //     selectedDate: _selectedDate,
   //     selectedTime: _selectedTime,
   //     endDate: _endDate,
@@ -178,19 +158,11 @@ class _EditEventPageState extends ConsumerState<EditEventPage> {
 
     setState(() {
       _nameError = null;
-      _groupError = null;
     });
 
     if (_eventName.trim().isEmpty) {
       setState(() {
         _nameError = 'Nome do evento é obrigatório';
-      });
-      isValid = false;
-    }
-
-    if (_selectedGroup == null) {
-      setState(() {
-        _groupError = 'Selecione um grupo';
       });
       isValid = false;
     }
@@ -216,9 +188,6 @@ class _EditEventPageState extends ConsumerState<EditEventPage> {
     // Nome é obrigatório
     bool nameValid = _eventName.trim().isNotEmpty;
 
-    // Grupo é obrigatório - mas na edição mantemos o grupo original se não foi alterado
-    bool groupValid = _selectedGroup != null || widget.event.groupId.isNotEmpty;
-
     // Data/hora é válida se for "decide later" ou se tiver ambos data e hora definidos
     bool dateTimeValid = (_dateTimeState == DateTimeState.decideLater ||
         (_selectedDate != null && _selectedTime != null));
@@ -232,7 +201,7 @@ class _EditEventPageState extends ConsumerState<EditEventPage> {
       locationValid = hasAddress || hasName;
     }
 
-    return nameValid && groupValid && dateTimeValid && locationValid;
+    return nameValid && dateTimeValid && locationValid;
   }
 
   /// Obtém o erro de validação de localização
@@ -402,7 +371,6 @@ class _EditEventPageState extends ConsumerState<EditEventPage> {
       eventId: widget.event.id,
       name: _eventName,
       emoji: _eventEmoji,
-      groupId: widget.event.groupId, // Keep original group for edit
       startDateTime: startDateTime,
       endDateTime: endDateTime,
       location: eventLocation,
@@ -585,13 +553,10 @@ class _EditEventPageState extends ConsumerState<EditEventPage> {
                   children: [
                     const SizedBox(height: Gaps.lg),
 
-                    // Seletor de nome e grupo do evento
-                    EventGroupSelector(
+                    // Seletor de nome do evento
+                    EventNameSelector(
                       eventName: _eventName,
                       eventEmoji: _eventEmoji,
-                      selectedGroup: _selectedGroup,
-                      isGroupReadOnly:
-                          true, // Não permitir mudança de grupo na edição
                       onEventNameChanged: (value) {
                         setState(() {
                           _eventName = value;
@@ -609,9 +574,7 @@ class _EditEventPageState extends ConsumerState<EditEventPage> {
                           _eventEmoji = emoji;
                         });
                       },
-                      onGroupPressed: null, // Disabled for edit mode
                       nameError: _showValidationErrors ? _nameError : null,
-                      groupError: _showValidationErrors ? _groupError : null,
                     ),
 
                     const SizedBox(height: Gaps.md),
@@ -715,14 +678,5 @@ class _EditEventPageState extends ConsumerState<EditEventPage> {
         ),
       ),
     );
-  }
-
-  /// Mock data para grupos - TODO: Remover quando tiver integração real
-  List<GroupInfo> _getMockGroups() {
-    return [
-      const GroupInfo(id: '1', name: 'Amigos da Faculdade', memberCount: 12),
-      const GroupInfo(id: '2', name: 'Família', memberCount: 8),
-      const GroupInfo(id: '3', name: 'Trabalho', memberCount: 15),
-    ];
   }
 }

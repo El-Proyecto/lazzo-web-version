@@ -220,8 +220,6 @@ class FakeHomeEventRepository implements HomeEventRepository {
       id: 'event_1',
       name: 'Beach Day with the Squad',
       emoji: '🏖️',
-      groupId: 'group_1',
-      groupName: 'Friends Squad',
       date: eventDate,
       endDate: eventEndDate,
       location: 'Praia da Rocha',
@@ -346,8 +344,6 @@ class FakeHomeEventRepository implements HomeEventRepository {
         id: 'event_2',
         name: 'Dinner at New Restaurant',
         emoji: '🍽️',
-        groupId: 'group_2',
-        groupName: 'Foodies Club',
         date: DateTime.now().add(const Duration(days: 7)),
         endDate:
             DateTime.now().add(const Duration(days: 7, hours: 3)), // 3h dinner
@@ -370,8 +366,6 @@ class FakeHomeEventRepository implements HomeEventRepository {
         id: 'event_3',
         name: 'Weekend Hiking Trip',
         emoji: '⛰️',
-        groupId: 'group_3',
-        groupName: 'Adventure Crew',
         date: DateTime.now().add(const Duration(days: 14)),
         endDate:
             DateTime.now().add(const Duration(days: 14, hours: 6)), // 6h hike
@@ -550,8 +544,6 @@ class FakeHomeEventRepository implements HomeEventRepository {
         id: 'event_4',
         name: 'Movie Night',
         emoji: '🎬',
-        groupId: 'group_1',
-        groupName: 'Friends Squad',
         date: null,
         endDate: null, // Pending events have no dates yet
         location: 'To be decided',
@@ -573,8 +565,6 @@ class FakeHomeEventRepository implements HomeEventRepository {
         id: 'event_5',
         name: 'Birthday Party',
         emoji: '🎂',
-        groupId: 'group_4',
-        groupName: 'Best Friends',
         date: null,
         endDate: null, // Pending events have no dates yet
         location: 'Someone\'s House',

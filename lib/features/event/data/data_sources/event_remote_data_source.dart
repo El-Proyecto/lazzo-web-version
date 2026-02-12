@@ -91,8 +91,6 @@ class EventRemoteDataSource {
       // Build event detail with all data
       final eventData = <String, dynamic>{
         'id': response['id'],
-        'group_id': '', // LAZZO 2.0: Groups removed
-        'group_name': null,
         'name': response['name'],
         'emoji': response['emoji'],
         'start_datetime': response['start_datetime'],

@@ -10,7 +10,7 @@ import '../../../home/presentation/providers/home_event_providers.dart';
 // LAZZO 2.0: Groups removed
 // import '../../../groups/presentation/providers/groups_provider.dart';
 import '../../../inbox/presentation/providers/notifications_provider.dart';
-import '../../../inbox/presentation/providers/payments_provider.dart';
+// LAZZO 2.0: payments_provider import removed
 import '../../../auth/presentation/providers/auth_provider.dart';
 
 /// Provider for settings repository (fake by default)
@@ -114,7 +114,7 @@ class SettingsController extends StateNotifier<AsyncValue<SettingsEntity>> {
     ref.invalidate(homeEventsControllerProvider);
     ref.invalidate(livingAndRecapEventsControllerProvider);
     ref.invalidate(recentMemoriesControllerProvider);
-    ref.invalidate(paymentSummariesControllerProvider);
+    // LAZZO 2.0: paymentSummariesControllerProvider invalidation removed
 
     // Profile providers - NOT invalidated here, invalidated on login instead
     // This prevents the "Error loading profile" flash when switching accounts
@@ -125,8 +125,7 @@ class SettingsController extends StateNotifier<AsyncValue<SettingsEntity>> {
 
     // Inbox providers
     ref.invalidate(notificationsProvider);
-    ref.invalidate(paymentsOwedToUserProvider);
-    ref.invalidate(paymentsUserOwesProvider);
+    // LAZZO 2.0: payment provider invalidations removed
 
     // Auth provider
     ref.invalidate(authProvider);

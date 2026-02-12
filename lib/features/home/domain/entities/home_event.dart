@@ -7,8 +7,6 @@ class HomeEventEntity {
   final String id;
   final String name;
   final String emoji;
-  final String? groupId;
-  final String? groupName;
   final DateTime? date;
   final DateTime? endDate;
   final String? location;
@@ -28,8 +26,6 @@ class HomeEventEntity {
     required this.id,
     required this.name,
     required this.emoji,
-    this.groupId,
-    this.groupName,
     this.date,
     this.endDate,
     this.location,
@@ -56,8 +52,6 @@ class HomeEventEntity {
     String? id,
     String? name,
     String? emoji,
-    String? groupId,
-    String? groupName,
     DateTime? date,
     DateTime? endDate,
     String? location,
@@ -76,8 +70,6 @@ class HomeEventEntity {
       id: id ?? this.id,
       name: name ?? this.name,
       emoji: emoji ?? this.emoji,
-      groupId: groupId ?? this.groupId,
-      groupName: groupName ?? this.groupName,
       date: date ?? this.date,
       endDate: endDate ?? this.endDate,
       location: location ?? this.location,

@@ -88,7 +88,6 @@ class CreateEventController extends StateNotifier<CreateEventState> {
       final createdEvent = await _createEventUseCase.execute(
         name: event.name,
         emoji: event.emoji,
-        groupId: event.groupId,
         startDateTime: event.startDateTime,
         endDateTime: event.endDateTime,
         location: event.location,
@@ -165,7 +164,6 @@ class EditEventController extends StateNotifier<EditEventState> {
     required String eventId,
     required String name,
     required String emoji,
-    required String groupId,
     DateTime? startDateTime,
     DateTime? endDateTime,
     EventLocation? location,
@@ -177,7 +175,6 @@ class EditEventController extends StateNotifier<EditEventState> {
         eventId: eventId,
         name: name,
         emoji: emoji,
-        groupId: groupId,
         startDateTime: startDateTime,
         endDateTime: endDateTime,
         location: location,
@@ -205,15 +202,6 @@ class EditEventController extends StateNotifier<EditEventState> {
     state = const EditEventState();
   }
 }
-
-/// Provider for getting events by group
-final eventsForGroupProvider = FutureProvider.family<List<Event>, String>((
-  ref,
-  groupId,
-) async {
-  final repository = ref.watch(eventRepositoryProvider);
-  return repository.getEventsForGroup(groupId);
-});
 
 /// Provider for searching locations
 final locationSearchProvider =

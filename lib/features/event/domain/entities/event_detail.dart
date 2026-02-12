@@ -4,8 +4,6 @@ class EventDetail {
   final String id;
   final String name;
   final String emoji;
-  final String groupId;
-  final String? groupName; // Nome do grupo para exibição
   final DateTime? startDateTime;
   final DateTime? endDateTime;
   final EventLocation? location;
@@ -19,8 +17,6 @@ class EventDetail {
     required this.id,
     required this.name,
     required this.emoji,
-    required this.groupId,
-    this.groupName,
     this.startDateTime,
     this.endDateTime,
     this.location,
@@ -35,8 +31,6 @@ class EventDetail {
     String? id,
     String? name,
     String? emoji,
-    String? groupId,
-    String? groupName,
     DateTime? startDateTime,
     DateTime? endDateTime,
     EventLocation? location,
@@ -50,8 +44,6 @@ class EventDetail {
       id: id ?? this.id,
       name: name ?? this.name,
       emoji: emoji ?? this.emoji,
-      groupId: groupId ?? this.groupId,
-      groupName: groupName ?? this.groupName,
       startDateTime: startDateTime ?? this.startDateTime,
       endDateTime: endDateTime ?? this.endDateTime,
       location: location ?? this.location,
@@ -87,8 +79,7 @@ class EventDetail {
   bool get isExpired {
     final hasStartDate = startDateTime != null;
 
-    if (hasStartDate) {
-                                        }
+    if (hasStartDate) {}
 
     if (status != EventStatus.pending) return false;
     if (startDateTime == null) return false;

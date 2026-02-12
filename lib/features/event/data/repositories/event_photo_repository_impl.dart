@@ -14,25 +14,24 @@ class EventPhotoRepositoryImpl implements EventPhotoRepository {
   @override
   Future<String> uploadPhoto({
     required String eventId,
-    required String groupId,
     required File imageFile,
     DateTime? capturedAt,
   }) async {
     try {
-
       // 1. Compress image before upload (reduce size for faster upload and storage)
       final xFile = XFile(imageFile.path);
-      final compressedBytes = await ImageCompressionService.compressToWebP(xFile);
+      final compressedBytes =
+          await ImageCompressionService.compressToWebP(xFile);
 
       // Create temporary file with compressed bytes
       final tempDir = Directory.systemTemp;
-      final tempFile = File('${tempDir.path}/compressed_${DateTime.now().millisecondsSinceEpoch}.jpg');
+      final tempFile = File(
+          '${tempDir.path}/compressed_${DateTime.now().millisecondsSinceEpoch}.jpg');
       await tempFile.writeAsBytes(compressedBytes);
 
       // 2. Upload compressed image via data source
       final photoData = await _dataSource.uploadPhoto(
         eventId: eventId,
-        groupId: groupId,
         imageFile: tempFile,
         capturedAt: capturedAt ?? DateTime.now(),
       );

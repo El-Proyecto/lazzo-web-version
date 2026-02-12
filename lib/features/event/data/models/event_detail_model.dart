@@ -7,9 +7,6 @@ class EventDetailModel {
   final String id;
   final String name;
   final String emoji;
-  final String
-      groupId; // LAZZO 2.0: Will be empty string for events without groups
-  final String? groupName;
   final DateTime? startDateTime;
   final DateTime? endDateTime;
   final String? locationName;
@@ -26,8 +23,6 @@ class EventDetailModel {
     required this.id,
     required this.name,
     required this.emoji,
-    required this.groupId,
-    this.groupName,
     this.startDateTime,
     this.endDateTime,
     this.locationName,
@@ -49,8 +44,6 @@ class EventDetailModel {
       id: json['id'] as String,
       name: json['name'] as String,
       emoji: json['emoji'] as String? ?? '📅',
-      groupId: json['group_id'] as String? ?? '',
-      groupName: json['group_name'] as String?,
       startDateTime: json['start_datetime'] != null
           ? DateTime.parse(json['start_datetime'] as String)
           : null,
@@ -75,8 +68,6 @@ class EventDetailModel {
       'id': id,
       'name': name,
       'emoji': emoji,
-      'group_id': groupId,
-      'group_name': groupName,
       'start_datetime': startDateTime?.toIso8601String(),
       'end_datetime': endDateTime?.toIso8601String(),
       'location_name': locationName,
@@ -128,8 +119,6 @@ class EventDetailModel {
       id: id,
       name: name,
       emoji: emoji,
-      groupId: groupId,
-      groupName: groupName,
       startDateTime: startDateTime,
       endDateTime: endDateTime,
       location: location,
@@ -147,8 +136,6 @@ class EventDetailModel {
       id: entity.id,
       name: entity.name,
       emoji: entity.emoji,
-      groupId: entity.groupId,
-      groupName: entity.groupName,
       startDateTime: entity.startDateTime,
       endDateTime: entity.endDateTime,
       locationName: entity.location?.displayName,

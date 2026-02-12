@@ -26,7 +26,7 @@ import '../../../../routes/app_router.dart';
 import '../../../memory/data/fakes/fake_memory_repository.dart';
 import '../../domain/entities/home_event.dart';
 
-/// Home page - main screen showing next event, confirmed/pending events, payments, and memories
+/// Home page - main screen showing next event, confirmed/pending events, and memories
 ///
 /// LAZZO 2.0: Groups removed. Events are standalone.
 /// This page purely consumes provider data - no mock logic here (Clean Architecture).
@@ -299,7 +299,7 @@ class _HomePageState extends ConsumerState<HomePage> {
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: Insets.screenH),
                 child: custom.SearchBar(
-                  placeholder: 'Search events, memories, payments...',
+                  placeholder: 'Search events, memories...',
                   enabled: false,
                   onTap: () {
                     Navigator.pushNamed(context, AppRouter.homeSearch);

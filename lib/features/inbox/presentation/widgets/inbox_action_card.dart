@@ -72,10 +72,14 @@ class InboxActionCard extends StatelessWidget {
   Widget _buildBottomSection() {
     return Row(
       children: [
-        _buildGroupIcon(),
-        const SizedBox(width: Gaps.xs), // Reduzido para metade (era sm)
+        const Icon(
+          Icons.event,
+          color: BrandColors.text2,
+          size: IconSizes.sm,
+        ),
+        const SizedBox(width: Gaps.xs),
         Text(
-          _getGroupName(),
+          action.title,
           style: AppText.bodyMedium.copyWith(color: BrandColors.text1),
         ),
         const Spacer(),
@@ -99,14 +103,6 @@ class InboxActionCard extends StatelessWidget {
           ), // Aumentado para ficar proporcional
         ),
       ),
-    );
-  }
-
-  Widget _buildGroupIcon() {
-    return const Icon(
-      Icons.group,
-      color: BrandColors.text2,
-      size: IconSizes.sm,
     );
   }
 
@@ -191,21 +187,6 @@ class InboxActionCard extends StatelessWidget {
         return 'Birthday Party';
       case ActionType.eventPreparation:
         return 'Photo Sharing';
-    }
-  }
-
-  String _getGroupName() {
-    // In a real app, this would come from a Group entity via groupId
-    // For now, we'll use intelligent mapping based on groupId
-    switch (action.groupId) {
-      case 'group1':
-        return 'Dinner Group';
-      case 'group2':
-        return 'Beach Friends';
-      case 'group3':
-        return 'Weekend Hikers';
-      default:
-        return 'Unknown Group';
     }
   }
 

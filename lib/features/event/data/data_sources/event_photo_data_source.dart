@@ -11,13 +11,12 @@ class EventPhotoDataSource {
 
   /// Upload a photo to Supabase Storage and create database record
   ///
-  /// Storage path: /{groupId}/{eventId}/{userId}/{timestamp}.jpg
+  /// Storage path: /{eventId}/{userId}/{timestamp}.jpg
   /// Bucket: memory_groups (private, requires auth)
   ///
   /// Returns the uploaded photo data including URL and storage path
   Future<Map<String, dynamic>> uploadPhoto({
     required String eventId,
-    required String groupId,
     required File imageFile,
     required DateTime capturedAt,
   }) async {
@@ -27,10 +26,10 @@ class EventPhotoDataSource {
         throw Exception('User not authenticated');
       }
 
-      // 1. Generate storage path: /{groupId}/{eventId}/{userId}/{timestamp}.extension
+      // 1. Generate storage path: /{eventId}/{userId}/{timestamp}.extension
       final timestamp = DateTime.now().millisecondsSinceEpoch;
       final extension = imageFile.path.split('.').last.toLowerCase();
-      final storagePath = '$groupId/$eventId/$userId/$timestamp.$extension';
+      final storagePath = '$eventId/$userId/$timestamp.$extension';
 
       // 2. Upload to Supabase Storage
       await _client.storage.from('memory_groups').upload(

@@ -4,34 +4,24 @@ import '../../../../shared/constants/text_styles.dart';
 import '../../../../shared/themes/colors.dart';
 import 'emoji_selector_dialog.dart';
 
-/// Widget tokenizado para seleção de nome e grupo do evento
-/// Combina emoji, campo de nome editável e seleção de grupo
-class EventGroupSelector extends StatelessWidget {
+/// Widget tokenizado para seleção de nome e emoji do evento
+/// Combina emoji e campo de nome editável
+class EventNameSelector extends StatelessWidget {
   final String eventName;
   final Key? nameFieldKey;
-  final Key? groupButtonKey;
   final String? eventEmoji;
-  final GroupInfo? selectedGroup;
   final Function(String)? onEmojiPressed;
   final Function(String)? onEventNameChanged;
-  final VoidCallback? onGroupPressed;
   final String? nameError;
-  final String? groupError;
-  final bool isGroupReadOnly;
 
-  const EventGroupSelector({
+  const EventNameSelector({
     super.key,
     required this.eventName,
     this.eventEmoji,
-    this.selectedGroup,
     this.nameFieldKey,
-    this.groupButtonKey,
     this.onEmojiPressed,
     this.onEventNameChanged,
-    this.onGroupPressed,
     this.nameError,
-    this.groupError,
-    this.isGroupReadOnly = false,
   });
 
   @override
@@ -108,61 +98,22 @@ class EventGroupSelector extends StatelessWidget {
                 ),
               ),
             ),
-
-            const SizedBox(width: Gaps.xs),
-
-            // Seleção de grupo
-            GestureDetector(
-              key: groupButtonKey,
-              onTap: isGroupReadOnly ? null : onGroupPressed,
-              child: Container(
-                width: 48,
-                height: 48,
-                decoration: BoxDecoration(
-                  color: isGroupReadOnly ? BrandColors.bg3 : BrandColors.bg2,
-                  borderRadius: BorderRadius.circular(Radii.smAlt),
-                  border: groupError != null
-                      ? Border.all(color: Colors.red, width: 1)
-                      : null,
-                ),
-                child: Center(
-                  child: selectedGroup != null
-                      ? _GroupIcon(group: selectedGroup!)
-                      : Icon(
-                          Icons.group_add,
-                          color: isGroupReadOnly
-                              ? BrandColors.text2.withValues(alpha: 0.5)
-                              : BrandColors.text2,
-                          size: 20,
-                        ),
-                ),
-              ),
-            ),
           ],
         ),
 
         // Error messages
-        if (nameError != null || groupError != null) ...[
+        if (nameError != null) ...[
           const SizedBox(height: Gaps.xxs),
-          if (nameError != null)
-            Padding(
-              padding: const EdgeInsets.only(left: 48 + Gaps.xs),
-              child: Text(
-                nameError!,
-                style: AppText.bodyMedium.copyWith(
-                  color: Colors.red,
-                  fontSize: 12,
-                ),
-              ),
-            ),
-          if (groupError != null)
-            Text(
-              groupError!,
+          Padding(
+            padding: const EdgeInsets.only(left: 48 + Gaps.xs),
+            child: Text(
+              nameError!,
               style: AppText.bodyMedium.copyWith(
                 color: Colors.red,
                 fontSize: 12,
               ),
             ),
+          ),
         ],
       ],
     );
@@ -189,59 +140,6 @@ class EventGroupSelector extends StatelessWidget {
       builder: (context) => EmojiSelectorBottomSheet(
         selectedEmoji: eventEmoji,
         onEmojiSelected: onEmojiPressed,
-      ),
-    );
-  }
-}
-
-class _GroupIcon extends StatelessWidget {
-  final GroupInfo group;
-
-  const _GroupIcon({required this.group});
-
-  @override
-  Widget build(BuildContext context) {
-    if (group.imageUrl != null) {
-      return ClipRRect(
-        borderRadius: BorderRadius.circular(Radii.sm),
-        child: Image.network(
-          group.imageUrl!,
-          width: 32,
-          height: 32,
-          fit: BoxFit.cover,
-          errorBuilder: (context, error, stackTrace) {
-            return _DefaultGroupIcon(name: group.name);
-          },
-        ),
-      );
-    }
-
-    return _DefaultGroupIcon(name: group.name);
-  }
-}
-
-class _DefaultGroupIcon extends StatelessWidget {
-  final String name;
-
-  const _DefaultGroupIcon({required this.name});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 32,
-      height: 32,
-      decoration: BoxDecoration(
-        color: BrandColors.bg3,
-        borderRadius: BorderRadius.circular(Radii.sm),
-      ),
-      child: Center(
-        child: Text(
-          name.isNotEmpty ? name[0].toUpperCase() : 'G',
-          style: AppText.labelLarge.copyWith(
-            color: BrandColors.text1,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
       ),
     );
   }
@@ -420,39 +318,6 @@ class _EventNameEditBottomSheetState extends State<_EventNameEditBottomSheet> {
           ],
         ),
       ),
-    );
-  }
-}
-
-/// Modelo para informações do grupo
-class GroupInfo {
-  final String id;
-  final String name;
-  final String? imageUrl;
-  final int memberCount;
-
-  const GroupInfo({
-    required this.id,
-    required this.name,
-    this.imageUrl,
-    required this.memberCount,
-  });
-
-  Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-      'name': name,
-      'imageUrl': imageUrl,
-      'memberCount': memberCount,
-    };
-  }
-
-  factory GroupInfo.fromJson(Map<String, dynamic> json) {
-    return GroupInfo(
-      id: json['id'],
-      name: json['name'],
-      imageUrl: json['imageUrl'],
-      memberCount: json['memberCount'],
     );
   }
 }

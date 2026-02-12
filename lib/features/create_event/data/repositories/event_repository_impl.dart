@@ -32,9 +32,6 @@ class EventRepositoryImpl implements EventRepository {
         throw Exception('User must be authenticated to create events');
       }
 
-      // LAZZO 2.0: Groups removed — groupId no longer used in DB
-      // Kept in method signature for compatibility
-
       // Create location if needed
       String? locationId;
       if (event.location != null) {
@@ -63,7 +60,6 @@ class EventRepositoryImpl implements EventRepository {
         response = await _dataSource.createEvent(
           name: event.name,
           emoji: event.emoji,
-          groupId: '', // LAZZO 2.0: groups removed, kept for API compat
           startDateTime: event.startDateTime,
           endDateTime: event.endDateTime,
           locationId: locationId,
@@ -248,7 +244,6 @@ class EventRepositoryImpl implements EventRepository {
         id: event.id,
         name: event.name,
         emoji: event.emoji,
-        groupId: '', // LAZZO 2.0: groups removed
         startDateTime: event.startDateTime,
         endDateTime: event.endDateTime,
         locationId: locationId,
@@ -349,29 +344,6 @@ class EventRepositoryImpl implements EventRepository {
     } catch (e) {
       rethrow;
     }
-  }
-
-  @override
-  Future<List<Event>> getEventsForGroup(String groupId) async {
-    // LAZZO 2.0: Groups removed. Use created_by filter instead.
-    // The groupId parameter is kept for interface compatibility but ignored.
-    final userId = _client.auth.currentUser?.id;
-    if (userId == null) return [];
-    final response = await _dataSource.getEventsCreatedByUser(userId);
-    List<Event> events = [];
-    for (final row in response) {
-      // Fetch location if present
-      String? locationId = row['location_id'] as String?;
-      EventLocation? location;
-      if (locationId != null) {
-        final loc = await _dataSource.getLocationById(locationId);
-        if (loc != null) {
-          location = LocationModel.fromJson(loc).toEntity();
-        }
-      }
-      events.add(EventModel.fromJson(row).toEntity(location: location));
-    }
-    return events;
   }
 
   @override

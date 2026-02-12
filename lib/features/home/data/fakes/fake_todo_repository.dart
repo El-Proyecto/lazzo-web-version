@@ -23,7 +23,6 @@ class FakeTodoRepository implements TodoRepository {
         actionName: 'Vote a date',
         eventEmoji: '🍽️',
         eventName: 'Friday Dinner',
-        groupName: 'Dinner Group',
         deadline: now.add(const Duration(hours: 18)), // 18h left
       ),
       TodoEntity(
@@ -31,7 +30,6 @@ class FakeTodoRepository implements TodoRepository {
         actionName: 'Confirm attendance',
         eventEmoji: '🏖️',
         eventName: 'Beach BBQ',
-        groupName: 'Beach Friends',
         deadline: now.add(const Duration(days: 2)), // 2d left
       ),
       TodoEntity(
@@ -39,7 +37,6 @@ class FakeTodoRepository implements TodoRepository {
         actionName: 'Add photos',
         eventEmoji: '🎂',
         eventName: 'Birthday Party',
-        groupName: 'Party Crew',
         deadline: now.add(const Duration(hours: 3)), // 3h left (urgent)
       ),
       TodoEntity(
@@ -47,7 +44,6 @@ class FakeTodoRepository implements TodoRepository {
         actionName: 'Vote a place',
         eventEmoji: '🎵',
         eventName: 'Concert Night',
-        groupName: 'Music Lovers',
         deadline: now.add(const Duration(days: 5)), // 5d left
       ),
     ];

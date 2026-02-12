@@ -12,8 +12,6 @@ class EventHistoryModel {
   final String? locationAddress;
   final double? latitude;
   final double? longitude;
-  final String groupId;
-  final String? groupName;
   final DateTime createdAt;
 
   const EventHistoryModel({
@@ -26,8 +24,6 @@ class EventHistoryModel {
     this.locationAddress,
     this.latitude,
     this.longitude,
-    required this.groupId,
-    this.groupName,
     required this.createdAt,
   });
 
@@ -47,8 +43,6 @@ class EventHistoryModel {
       locationAddress: locationData?['formatted_address'] as String?,
       latitude: locationData?['latitude'] as double?,
       longitude: locationData?['longitude'] as double?,
-      groupId: json['group_id'] as String? ?? '',
-      groupName: null, // LAZZO 2.0: groups removed
       createdAt: DateTime.parse(json['created_at'] as String),
     );
   }
@@ -65,8 +59,6 @@ class EventHistoryModel {
       locationAddress: locationAddress,
       latitude: latitude,
       longitude: longitude,
-      groupId: groupId,
-      groupName: groupName,
       createdAt: createdAt,
     );
   }
@@ -83,8 +75,6 @@ class EventHistoryModel {
       locationAddress: entity.locationAddress,
       latitude: entity.latitude,
       longitude: entity.longitude,
-      groupId: entity.groupId,
-      groupName: entity.groupName,
       createdAt: entity.createdAt,
     );
   }
