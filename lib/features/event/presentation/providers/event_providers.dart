@@ -3,7 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../data/fakes/fake_event_repository.dart';
 import '../../data/fakes/fake_rsvp_repository.dart';
 import '../../data/fakes/fake_poll_repository.dart';
-import '../../data/fakes/fake_chat_repository.dart';
+
 import '../../data/fakes/fake_suggestion_repository.dart';
 import '../../domain/entities/event_detail.dart';
 import '../../domain/entities/rsvp.dart';
@@ -12,7 +12,7 @@ import '../../domain/entities/suggestion.dart';
 import '../../domain/repositories/event_repository.dart';
 import '../../domain/repositories/rsvp_repository.dart';
 import '../../domain/repositories/poll_repository.dart';
-import '../../domain/repositories/chat_repository.dart';
+
 import '../../domain/repositories/suggestion_repository.dart';
 import '../../domain/repositories/event_photo_repository.dart';
 import '../../domain/usecases/get_event_detail.dart';
@@ -27,75 +27,28 @@ import '../../domain/usecases/update_event_status.dart';
 import '../../domain/usecases/extend_event_time.dart';
 import '../../domain/usecases/end_event_now.dart';
 import '../../domain/entities/event_participant_entity.dart';
-import '../../../group_hub/presentation/providers/group_hub_providers.dart';
-import 'chat_providers.dart';
+
 
 // Current user ID provider
 final currentUserIdProvider = Provider<String?>((ref) {
   return Supabase.instance.client.auth.currentUser?.id;
 });
 
-/// Provider to check if current user is admin of the event's group
-/// Used to determine if user can see/edit event status and settings
-final isUserGroupAdminProvider =
-    FutureProvider.family<bool, String>((ref, groupId) async {
-  final currentUserId = ref.watch(currentUserIdProvider);
+// LAZZO 2.0: isUserGroupAdminProvider removed (groups removed)
 
-  if (currentUserId == null) return false;
-
-  try {
-    // Get group members to check if current user is admin
-    final membersState = ref.watch(groupMembersProvider(groupId));
-
-    // Wait for data to load using whenData or handle loading/error states
-    return await membersState.when(
-      data: (members) {
-        // Find current user in members list
-        try {
-          final currentUserMember = members.firstWhere(
-            (member) => member.id == currentUserId,
-          );
-          return currentUserMember.isAdmin;
-        } catch (e) {
-          // User not found in group members
-          return false;
-        }
-      },
-      loading: () => false, // Not admin while loading
-      error: (error, stack) {
-        return false;
-      },
-    );
-  } catch (e) {
-    return false;
-  }
-});
-
-/// Provider to check if current user can manage event (host or group admin)
-/// Combines host check and admin check
+/// Provider to check if current user can manage event (host)
+/// LAZZO 2.0: Simplified — only checks if user is event host (no group admin)
 final canManageEventProvider =
     FutureProvider.family<bool, String>((ref, eventId) async {
   try {
-    // Get event details to check host and group
+    // Get event details to check host
     final event = await ref.watch(eventDetailProvider(eventId).future);
     final currentUserId = ref.watch(currentUserIdProvider);
 
     if (currentUserId == null) return false;
 
     // Check if user is event host
-    final isHost = event.hostId == currentUserId;
-
-    if (isHost) {
-      return true;
-    }
-
-    // Check if user is group admin
-    final isAdmin =
-        await ref.watch(isUserGroupAdminProvider(event.groupId).future);
-
-    if (isAdmin) {}
-
-    return isAdmin;
+    return event.hostId == currentUserId;
   } catch (e) {
     return false;
   }
@@ -112,10 +65,6 @@ final rsvpRepositoryProvider = Provider<RsvpRepository>((ref) {
 
 final pollRepositoryProvider = Provider<PollRepository>((ref) {
   return FakePollRepository();
-});
-
-final chatRepositoryProvider = Provider<ChatRepository>((ref) {
-  return FakeChatRepository();
 });
 
 final suggestionRepositoryProvider = Provider<SuggestionRepository>((ref) {
@@ -145,7 +94,7 @@ final getEventPollsProvider = Provider<GetEventPolls>((ref) {
   return GetEventPolls(ref.watch(pollRepositoryProvider));
 });
 
-// REMOVED: getRecentMessagesProvider - use chatMessagesProvider (stream) instead
+
 
 final getEventSuggestionsProvider = Provider<GetEventSuggestions>((ref) {
   return GetEventSuggestions(ref.watch(suggestionRepositoryProvider));
@@ -257,8 +206,7 @@ final eventPollsProvider = FutureProvider.family<List<Poll>, String>((
   return await useCase(eventId);
 });
 
-// REMOVED: recentMessagesProvider, MessagesNotifier, unreadMessagesCountProvider
-// These are now handled by chatMessagesProvider (stream-based) in chat_providers.dart
+
 
 // Event suggestions state provider
 final eventSuggestionsProvider =
@@ -422,9 +370,6 @@ class UserRsvpNotifier extends StateNotifier<AsyncValue<Rsvp?>> {
     }
   }
 }
-
-// REMOVED: sendMessageProvider and SendMessageNotifier
-// Now using chatActionsProvider in chat_providers.dart
 
 // Create suggestion notifier
 final createSuggestionNotifierProvider =
@@ -790,22 +735,6 @@ final locationSuggestionsDataProvider =
       'locationVotes': locationVotes,
       'userVoteIds': userVoteIds,
       'goingCount': goingCount,
-    };
-  },
-);
-
-/// Combined provider for chat preview with unread count
-/// No need to combine multiple providers - just watches chat and unread
-/// Kept for consistency and future expansion (e.g., typing indicators)
-final chatPreviewDataProvider =
-    Provider.autoDispose.family<Map<String, dynamic>, String>(
-  (ref, eventId) {
-    final messagesAsync = ref.watch(chatMessagesProvider(eventId));
-    final unreadCountAsync = ref.watch(unreadMessagesCountProvider(eventId));
-
-    return {
-      'messagesAsync': messagesAsync,
-      'unreadCountAsync': unreadCountAsync,
     };
   },
 );

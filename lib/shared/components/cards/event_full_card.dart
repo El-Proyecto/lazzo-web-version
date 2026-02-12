@@ -1,23 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../../../features/group_hub/domain/entities/group_event_entity.dart';
+import '../../../features/event/domain/entities/event_display_entity.dart';
 import '../../constants/spacing.dart';
 import '../../constants/text_styles.dart';
 import '../../themes/colors.dart';
 import '../widgets/votes_bottom_sheet.dart';
 import '../widgets/photos_bottom_sheet.dart';
 
-/// Event full card state for group hub
+/// Event full card state
 /// Planning phase: pending (chip bg3) or confirmed (green chip)
 /// Living phase: living (purple chip)
 /// Recap phase: recap (purple chip)
 enum EventFullCardState { pending, confirmed, living, recap }
 
-/// Full event card for group hub Events section
+/// Full event card for Events sections
 /// Shows event details with date, status chip, attendees, and going count
 /// Supports voting for planning phase events
 class EventFullCard extends StatefulWidget {
-  final GroupEventEntity event;
+  final EventDisplayEntity event;
   final EventFullCardState state;
   final VoidCallback? onTap;
   final Function(String eventId, bool? vote)? onVoteChanged;
@@ -35,7 +35,7 @@ class EventFullCard extends StatefulWidget {
 }
 
 class _EventFullCardState extends State<EventFullCard> {
-  late GroupEventEntity _currentEvent;
+  late EventDisplayEntity _currentEvent;
 
   @override
   void initState() {

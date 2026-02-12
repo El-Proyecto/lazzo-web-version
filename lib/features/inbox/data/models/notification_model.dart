@@ -153,8 +153,7 @@ class NotificationModel {
   String _generateTitle() {
     switch (type) {
       // PUSH notifications
-      case 'groupInviteReceived':
-        return 'Group Invite';
+      // LAZZO 2.0: groupInviteReceived removed
       case 'eventStartsSoon':
         return 'Event Starting Soon';
       case 'eventLive':
@@ -181,14 +180,7 @@ class NotificationModel {
         return 'New Login';
 
       // NOTIFICATIONS (feed)
-      case 'groupInviteAccepted':
-        return 'Invite Accepted';
-      case 'groupMemberAdded':
-        return 'New Member';
-      case 'groupRenamed':
-        return 'Group Renamed';
-      case 'groupPhotoChanged':
-        return 'Group Photo Changed';
+      // LAZZO 2.0: groupInviteAccepted, groupMemberAdded, groupRenamed, groupPhotoChanged removed
       case 'eventCreated':
         return 'New Event';
       case 'eventDateSet':
@@ -239,8 +231,7 @@ class NotificationModel {
   String _generateDescription() {
     switch (type) {
       // PUSH notifications
-      case 'groupInviteReceived':
-        return '{user} invited you to join {group}';
+      // LAZZO 2.0: groupInviteReceived removed
       case 'eventStartsSoon':
         return '{event} starts in {mins} min!';
       case 'eventLive':
@@ -273,16 +264,9 @@ class NotificationModel {
         return 'New sign-in on {device}. Was this you?';
 
       // NOTIFICATIONS (feed)
-      case 'groupInviteAccepted':
-        return '{user} joined {group}.';
-      case 'groupMemberAdded':
-        return '{user} joined {group}.';
-      case 'groupRenamed':
-        return '{group} has a new name.';
-      case 'groupPhotoChanged':
-        return '{group} has a new photo.';
+      // LAZZO 2.0: groupInviteAccepted, groupMemberAdded, groupRenamed, groupPhotoChanged removed
       case 'eventCreated':
-        return '{user} created {event} in {group}.';
+        return '{user} created {event}.';
       case 'eventDateSet':
         return '{event} is set for {date} at {time}.';
       case 'eventCanceled':
@@ -326,8 +310,7 @@ class NotificationModel {
   NotificationType _parseNotificationType(String type) {
     switch (type) {
       // PUSH (13 types)
-      case 'groupInviteReceived':
-        return NotificationType.groupInviteReceived;
+      // LAZZO 2.0: groupInviteReceived removed
       case 'eventStartsSoon':
         return NotificationType.eventStartsSoon;
       case 'eventLive':
@@ -358,14 +341,7 @@ class NotificationModel {
         return NotificationType.securityNewLogin;
 
       // NOTIFICATIONS (12 types - removed eventLocationSet, eventDetailsUpdated)
-      case 'groupInviteAccepted':
-        return NotificationType.groupInviteAccepted;
-      case 'groupMemberAdded':
-        return NotificationType.groupMemberAdded;
-      case 'groupRenamed':
-        return NotificationType.groupRenamed;
-      case 'groupPhotoChanged':
-        return NotificationType.groupPhotoChanged;
+      // LAZZO 2.0: groupInviteAccepted, groupMemberAdded, groupRenamed, groupPhotoChanged removed
       case 'eventCreated':
         return NotificationType.eventCreated;
       case 'eventDateSet':

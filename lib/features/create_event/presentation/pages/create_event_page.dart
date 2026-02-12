@@ -3,7 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/constants/text_styles.dart';
-import '../../../../routes/app_router.dart';
+// LAZZO 2.0: AppRouter no longer needed here
+// import '../../../../routes/app_router.dart';
 import '../../../../shared/components/nav/common_app_bar.dart';
 import '../widgets/event_group_selector.dart';
 import '../widgets/date_time_section.dart';
@@ -15,7 +16,8 @@ import '../widgets/exit_confirmation_dialog.dart';
 import '../../../../shared/models/event_draft.dart';
 import '../../../../services/draft_service.dart';
 import '../../../../shared/themes/colors.dart';
-import '../../../../shared/components/common/top_banner.dart';
+// LAZZO 2.0: top_banner no longer needed here
+// import '../../../../shared/components/common/top_banner.dart';
 import '../../../groups/presentation/providers/groups_provider.dart';
 import '../../../groups/domain/entities/group.dart';
 import '../../../event/presentation/providers/event_providers.dart';
@@ -733,7 +735,7 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
                           }
                         });
                       },
-                      onCreateGroup: _createNewGroup,
+                      onCreateGroup: () {}, // LAZZO 2.0: Group creation removed
                     );
                   });
             },
@@ -866,44 +868,7 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
     }
   }
 
-  void _createNewGroup() async {
-    // Save current draft before navigating
-    await _saveDraft();
-    // Check mounted before using context after await
-    if (!mounted) return;
-    // Navigate to create group page and wait for result
-    final result = await Navigator.of(context).pushNamed(
-      AppRouter.createGroup,
-      arguments: {'fromCreateEvent': true},
-    );
-    // Check mounted again after await
-    if (!mounted) return;
-    // Check if a group was created and returned
-    if (result != null && result is Map<String, dynamic>) {
-      final groupId = result['groupId'] as String?;
-      final groupName = result['groupName'] as String?;
-      final memberCount = result['memberCount'] as int?;
-      if (groupId != null && groupName != null) {
-        setState(() {
-          _selectedGroup = GroupInfo(
-            id: groupId,
-            name: groupName,
-            memberCount: memberCount ?? 1,
-            imageUrl: result['imageUrl'] as String?,
-          );
-          // Clear error if group is now selected
-          if (_showValidationErrors) {
-            _groupError = null;
-          }
-        });
-        // Show success message
-        TopBanner.showSuccess(
-          context,
-          message: 'Group "$groupName" created!',
-        );
-      }
-    }
-  }
+  // LAZZO 2.0: _createNewGroup method removed — events are standalone, no group creation needed
 
   void _onEventCreated(String eventId) async {
     // Clear draft since event is being created

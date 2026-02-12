@@ -1,8 +1,7 @@
 import '../../domain/entities/other_profile_entity.dart';
-import '../../domain/entities/invite_group_entity.dart';
 import '../../domain/entities/profile_entity.dart';
 import '../../domain/repositories/other_profile_repository.dart';
-import '../../../group_hub/domain/entities/group_event_entity.dart';
+import '../../../event/domain/entities/event_display_entity.dart';
 
 /// Fake implementation of OtherProfileRepository for development
 class FakeOtherProfileRepository implements OtherProfileRepository {
@@ -22,127 +21,57 @@ class FakeOtherProfileRepository implements OtherProfileRepository {
     );
   }
 
-  @override
-  Future<List<InviteGroupEntity>> getInvitableGroups(String userId) async {
-    // Simulate network delay
-    await Future.delayed(const Duration(milliseconds: 300));
+  // LAZZO 2.0: Group invite methods removed (getInvitableGroups, inviteToGroup, acceptGroupInvite, declineGroupInvite)
 
+  List<EventDisplayEntity> _getMockUpcomingEvents() {
     return [
-      const InviteGroupEntity(
-        id: '1',
-        name: 'Family',
-        groupPhotoUrl: 'https://i.pravatar.cc/300?img=20',
-        memberCount: 8,
-      ),
-      const InviteGroupEntity(
-        id: '2',
-        name: 'Work Friends',
-        groupPhotoUrl: 'https://i.pravatar.cc/300?img=21',
-        memberCount: 12,
-      ),
-      const InviteGroupEntity(
-        id: '3',
-        name: 'College Crew',
-        groupPhotoUrl: 'https://i.pravatar.cc/300?img=22',
-        memberCount: 15,
-      ),
-    ];
-  }
-
-  @override
-  Future<bool> inviteToGroup({
-    required String userId,
-    required String groupId,
-  }) async {
-    // Simulate network delay
-    await Future.delayed(const Duration(milliseconds: 400));
-
-    // Always succeed in fake implementation
-    return true;
-  }
-
-  @override
-  Future<bool> acceptGroupInvite({
-    required String userId,
-    required String groupId,
-  }) async {
-    // Simulate network delay
-    await Future.delayed(const Duration(milliseconds: 400));
-
-    // Always succeed in fake implementation
-        return true;
-  }
-
-  @override
-  Future<bool> declineGroupInvite({
-    required String userId,
-    required String groupId,
-  }) async {
-    // Simulate network delay
-    await Future.delayed(const Duration(milliseconds: 300));
-
-    // Always succeed in fake implementation
-        return true;
-  }
-
-  List<GroupEventEntity> _getMockUpcomingEvents() {
-    return [
-      GroupEventEntity(
+      EventDisplayEntity(
         id: '1',
         name: 'Beach Day',
         emoji: '🏖️',
         date: DateTime.now().add(const Duration(days: 5)),
         location: 'Cascais Beach',
-        status: GroupEventStatus.confirmed,
+        status: EventDisplayStatus.confirmed,
         goingCount: 8,
         participantCount: 8,
-        photoCount: 0,
         attendeeNames: ['You', 'Ana', 'Marco', '5 others'],
         attendeeAvatars: [
           'https://i.pravatar.cc/300?img=1',
           'https://i.pravatar.cc/300?img=5',
           'https://i.pravatar.cc/300?img=3',
         ],
-        allVotes: [],
-        userVote: true,
       ),
-      GroupEventEntity(
+      EventDisplayEntity(
         id: '2',
         name: 'Movie Night',
         emoji: '🎬',
         date: DateTime.now().add(const Duration(days: 12)),
         location: 'Cinema City',
-        status: GroupEventStatus.confirmed,
+        status: EventDisplayStatus.confirmed,
         goingCount: 6,
         participantCount: 6,
-        photoCount: 0,
         attendeeNames: ['You', 'Ana', 'João', '3 others'],
         attendeeAvatars: [
           'https://i.pravatar.cc/300?img=1',
           'https://i.pravatar.cc/300?img=5',
           'https://i.pravatar.cc/300?img=4',
         ],
-        allVotes: [],
-        userVote: true,
       ),
-      GroupEventEntity(
+      EventDisplayEntity(
         id: '3',
         name: 'Birthday Party',
         emoji: '🎉',
         date: DateTime.now().add(const Duration(days: 20)),
         location: "Marco's Place",
-        status: GroupEventStatus.confirmed,
+        status: EventDisplayStatus.confirmed,
         goingCount: 12,
         participantCount: 12,
-        photoCount: 0,
         attendeeNames: ['You', 'Ana', 'Marco', 'Sofia', '8 others'],
         attendeeAvatars: [
           'https://i.pravatar.cc/300?img=1',
           'https://i.pravatar.cc/300?img=5',
           'https://i.pravatar.cc/300?img=3',
         ],
-        allVotes: [],
-        userVote: true,
       ),
     ];
   }

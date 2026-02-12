@@ -157,14 +157,14 @@ class EventRepositoryImpl implements EventRepository {
             .eq('id', userId)
             .single();
 
-        final groupResponse = await _client
-            .from('groups')
-            .select('name')
-            .eq('id', effectiveGroupId)
-            .single();
+        // LAZZO 2.0: group query no longer needed
+        // final groupResponse = await _client
+        //     .from('groups')
+        //     .select('name')
+        //     .eq('id', effectiveGroupId)
+        //     .single();
 
         final creatorName = userResponse['name'] as String;
-        final groupName = groupResponse['name'] as String;
 
         // Get all group members except the creator
         final membersResponse = await _client
@@ -180,9 +180,7 @@ class EventRepositoryImpl implements EventRepository {
             recipientUserId: memberId,
             creatorName: creatorName,
             eventName: event.name,
-            groupName: groupName,
             eventId: eventId,
-            groupId: effectiveGroupId,
             eventEmoji: event.emoji,
           );
         }

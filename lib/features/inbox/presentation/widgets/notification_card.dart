@@ -8,8 +8,6 @@ class NotificationCard extends StatelessWidget {
   final NotificationEntity notification;
   final VoidCallback? onTap;
   final VoidCallback? onActionTap;
-  final Function(String groupId)? onAccept;
-  final Function(String groupId)? onDecline;
   final Function(String paymentId)? onMarkPaid; // Mark payment as paid
 
   const NotificationCard({
@@ -17,8 +15,6 @@ class NotificationCard extends StatelessWidget {
     required this.notification,
     this.onTap,
     this.onActionTap,
-    this.onAccept,
-    this.onDecline,
     this.onMarkPaid,
   });
 
@@ -61,11 +57,7 @@ class NotificationCard extends StatelessWidget {
   bool _shouldShowActionButtons() {
     final type = notification.type;
 
-    // Group invite has buttons
-    if (type == NotificationType.groupInviteReceived &&
-        notification.groupId != null) {
-      return true;
-    }
+    // LAZZO 2.0: Group invite buttons removed
 
     // paymentsAddedYouOwe no longer shows action button (just taps to event)
     // Payment requests still have action buttons
@@ -138,53 +130,7 @@ class NotificationCard extends StatelessWidget {
       );
     }
 
-    // Group invite: Accept/Decline
-    if (type == NotificationType.groupInviteReceived &&
-        notification.groupId != null) {
-      return Row(
-        children: [
-          Expanded(
-            child: OutlinedButton(
-              onPressed: () => onDecline?.call(notification.groupId!),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: BrandColors.text2,
-                side: const BorderSide(color: BrandColors.bg3),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(Radii.sm),
-                ),
-                padding: const EdgeInsets.symmetric(vertical: Gaps.sm),
-              ),
-              child: Text(
-                'Decline',
-                style: AppText.labelLarge.copyWith(color: BrandColors.text2),
-              ),
-            ),
-          ),
-          const SizedBox(width: Gaps.sm),
-          Expanded(
-            child: ElevatedButton(
-              onPressed: () => onAccept?.call(notification.groupId!),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: BrandColors.planning,
-                foregroundColor: BrandColors.text1,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(Radii.sm),
-                ),
-                padding: const EdgeInsets.symmetric(vertical: Gaps.sm),
-                elevation: 0,
-              ),
-              child: Text(
-                'Accept',
-                style: AppText.labelLarge.copyWith(
-                  color: BrandColors.text1,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          ),
-        ],
-      );
-    }
+    // LAZZO 2.0: Group invite Accept/Decline buttons removed
 
     // No action button for paymentsAddedYouOwe anymore
     // Just tap on card to navigate to event
@@ -193,12 +139,8 @@ class NotificationCard extends StatelessWidget {
   }
 
   Widget _buildAvatar() {
-    // Se for convite para grupo, mostra foto do grupo
-    if (notification.type == NotificationType.groupInvite) {
-      return _buildGroupPhoto();
-    }
-
-    // Caso contrário, mostra emoji do evento
+    // LAZZO 2.0: Group photo avatar removed
+    // Mostra emoji do evento    // Mostra emoji do evento
     return SizedBox(
       width: 40,
       height: 40,
@@ -208,30 +150,6 @@ class NotificationCard extends StatelessWidget {
           style: const TextStyle(fontSize: 24),
         ),
       ),
-    );
-  }
-
-  Widget _buildGroupPhoto() {
-    return Container(
-      width: 40,
-      height: 40,
-      decoration: ShapeDecoration(
-        color: BrandColors.bg3,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(Radii.sm),
-        ),
-        // Em produção, isso viria da entidade de notificação
-        // Para demo, usando um placeholder
-        image: _getGroupImageUrl() != null
-            ? DecorationImage(
-                image: NetworkImage(_getGroupImageUrl()!),
-                fit: BoxFit.cover,
-              )
-            : null,
-      ),
-      child: _getGroupImageUrl() == null
-          ? const Icon(Icons.group, color: BrandColors.text2, size: 20)
-          : null,
     );
   }
 
@@ -360,13 +278,7 @@ class NotificationCard extends StatelessWidget {
     return spans.isEmpty ? [TextSpan(text: text)] : spans;
   }
 
-  String? _getGroupImageUrl() {
-    // Em produção, isso viria da entidade de notificação através do groupId
-    // Para demo, retorna null para mostrar o ícone placeholder
-    // Quando integrado com dados reais, seria algo como:
-    // return groupRepository.getGroupById(notification.groupId)?.avatarUrl;
-    return null;
-  }
+  // LAZZO 2.0: _getGroupImageUrl removed
 
   String _getEmojiForNotification() {
     // Se tiver emoji do evento específico, usa esse
@@ -378,8 +290,7 @@ class NotificationCard extends StatelessWidget {
     // Fallback para emojis genéricos por tipo (só se não tiver emoji específico)
     switch (notification.type) {
       // Legacy types
-      case NotificationType.groupInvite:
-        return '👥';
+      // LAZZO 2.0: groupInvite removed
       case NotificationType.eventUpdate:
         return '📅';
       case NotificationType.paymentRequest:
@@ -388,8 +299,7 @@ class NotificationCard extends StatelessWidget {
         return '📢';
 
       // PUSH notifications
-      case NotificationType.groupInviteReceived:
-        return '👥';
+      // LAZZO 2.0: groupInviteReceived removed
       case NotificationType.eventStartsSoon:
       case NotificationType.eventLive:
       case NotificationType.eventEndsSoon:
@@ -412,11 +322,7 @@ class NotificationCard extends StatelessWidget {
         return '🔐';
 
       // NOTIFICATIONS (feed)
-      case NotificationType.groupInviteAccepted:
-      case NotificationType.groupMemberAdded:
-      case NotificationType.groupRenamed:
-      case NotificationType.groupPhotoChanged:
-        return '👥';
+      // LAZZO 2.0: groupInviteAccepted, groupMemberAdded, groupRenamed, groupPhotoChanged removed
       case NotificationType.eventCreated:
       case NotificationType.eventDateSet:
       case NotificationType.eventCanceled:

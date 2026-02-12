@@ -1,13 +1,6 @@
-import '../entities/invite_group_entity.dart';
-import '../repositories/other_profile_repository.dart';
+// LAZZO 2.0: This use case is deprecated — group invites removed.
+// File preserved for git history. Will be deleted in cleanup phase.
 
-/// Use case to get groups where current user can invite another user
 class GetInvitableGroups {
-  final OtherProfileRepository repository;
-
-  const GetInvitableGroups(this.repository);
-
-  Future<List<InviteGroupEntity>> call(String userId) {
-    return repository.getInvitableGroups(userId);
-  }
+  const GetInvitableGroups(dynamic repository);
 }

@@ -1,5 +1,5 @@
 import 'profile_entity.dart';
-import '../../../group_hub/domain/entities/group_event_entity.dart';
+import '../../../event/domain/entities/event_display_entity.dart';
 
 /// Other user's profile entity
 /// Contains profile information plus shared context (events and memories)
@@ -9,7 +9,7 @@ class OtherProfileEntity {
   final String? profileImageUrl;
   final String? location;
   final DateTime? birthday;
-  final List<GroupEventEntity> upcomingTogether;
+  final List<EventDisplayEntity> upcomingTogether;
   final List<MemoryEntity> memoriesTogether;
 
   const OtherProfileEntity({
@@ -28,7 +28,7 @@ class OtherProfileEntity {
     String? profileImageUrl,
     String? location,
     DateTime? birthday,
-    List<GroupEventEntity>? upcomingTogether,
+    List<EventDisplayEntity>? upcomingTogether,
     List<MemoryEntity>? memoriesTogether,
     bool clearProfileImage = false,
     bool clearLocation = false,

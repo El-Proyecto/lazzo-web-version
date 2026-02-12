@@ -17,7 +17,7 @@ import '../widgets/notifications_section.dart';
 // import '../widgets/actions_section.dart'; // MVP: Actions removed, preserved for P2
 import '../widgets/payments_section.dart';
 import '../widgets/payment_details_bottom_sheet.dart';
-import '../../../profile/presentation/providers/other_profile_providers.dart';
+// LAZZO 2.0: other_profile_providers import removed (group invite providers)
 
 class InboxPage extends ConsumerStatefulWidget {
   const InboxPage({super.key});
@@ -152,74 +152,8 @@ class _InboxPageState extends ConsumerState<InboxPage>
           onActionTap: (notification) {
             _handleActionButtonTap(notification);
           },
-          onAcceptInvite: (groupId) async {
-            final userId = Supabase.instance.client.auth.currentUser?.id;
-            if (userId == null) {
-              _showSnackBar('Error: Not logged in', isError: true);
-              return;
-            }
-
-            final acceptUseCase = ref.read(acceptGroupInviteProvider);
-            final success =
-                await acceptUseCase(userId: userId, groupId: groupId);
-
-            if (success) {
-              // Find and mark the notification as read to hide it
-              final notificationsState = ref.read(notificationsProvider);
-              notificationsState.whenData((notifications) {
-                final inviteNotification = notifications.firstWhere(
-                  (n) =>
-                      n.groupId == groupId &&
-                      n.type == NotificationType.groupInviteReceived,
-                  orElse: () => notifications.first,
-                );
-                // Mark as read to remove from inbox
-                ref
-                    .read(markNotificationAsReadUseCaseProvider)
-                    .call(inviteNotification.id);
-              });
-
-              _showSnackBar('Joined group successfully!');
-              // Refresh notifications to show updated list
-              ref.read(notificationsProvider.notifier).refresh();
-            } else {
-              _showSnackBar('Failed to join group', isError: true);
-            }
-          },
-          onDeclineInvite: (groupId) async {
-            final userId = Supabase.instance.client.auth.currentUser?.id;
-            if (userId == null) {
-              _showSnackBar('Error: Not logged in', isError: true);
-              return;
-            }
-
-            final declineUseCase = ref.read(declineGroupInviteProvider);
-            final success =
-                await declineUseCase(userId: userId, groupId: groupId);
-
-            if (success) {
-              // Find and mark the notification as read to hide it
-              final notificationsState = ref.read(notificationsProvider);
-              notificationsState.whenData((notifications) {
-                final inviteNotification = notifications.firstWhere(
-                  (n) =>
-                      n.groupId == groupId &&
-                      n.type == NotificationType.groupInviteReceived,
-                  orElse: () => notifications.first,
-                );
-                // Mark as read to remove from inbox
-                ref
-                    .read(markNotificationAsReadUseCaseProvider)
-                    .call(inviteNotification.id);
-              });
-
-              _showSnackBar('Invite declined');
-              // Refresh notifications to show updated list
-              ref.read(notificationsProvider.notifier).refresh();
-            } else {
-              _showSnackBar('Failed to decline invite', isError: true);
-            }
-          },
+          onAcceptInvite: null, // LAZZO 2.0: Group invites removed
+          onDeclineInvite: null, // LAZZO 2.0: Group invites removed
           onMarkPaymentPaid: (notificationId) async {
             try {
               // Optimistic UI: Add to deleting set to hide immediately
@@ -330,15 +264,7 @@ class _InboxPageState extends ConsumerState<InboxPage>
     );
   }
 
-  void _showSnackBar(String message, {bool isError = false}) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: isError ? Colors.red[700] : BrandColors.planning,
-        duration: const Duration(seconds: 2),
-      ),
-    );
-  }
+  // LAZZO 2.0: _showSnackBar removed — was used for group invite actions
 
   void _handleNotificationTap(NotificationEntity notification) {
     // Mark as read
@@ -409,17 +335,7 @@ class _InboxPageState extends ConsumerState<InboxPage>
         }
         break;
 
-      // Group notifications → Navigate to group hub
-      case NotificationType.groupInviteReceived:
-      case NotificationType.groupPhotoChanged:
-        if (notification.groupId != null) {
-          Navigator.pushNamed(
-            context,
-            '/group-hub',
-            arguments: {'groupId': notification.groupId},
-          );
-        }
-        break;
+      // LAZZO 2.0: Group notifications removed — no more group hub navigation
 
       // Event info notifications → Navigate to event
       case NotificationType.eventCreated:
@@ -452,16 +368,7 @@ class _InboxPageState extends ConsumerState<InboxPage>
         }
         break;
 
-      // Group member notifications → Navigate to group
-      case NotificationType.groupInviteAccepted:
-        if (notification.groupId != null) {
-          Navigator.pushNamed(
-            context,
-            '/group-hub',
-            arguments: {'groupId': notification.groupId},
-          );
-        }
-        break;
+      // LAZZO 2.0: groupInviteAccepted removed
 
       // RSVP notifications → Navigate to event (show participants)
       case NotificationType.rsvpUpdated:

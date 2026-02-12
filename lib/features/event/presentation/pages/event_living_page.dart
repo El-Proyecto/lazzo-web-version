@@ -10,13 +10,10 @@ import '../../../../shared/components/dialogs/add_expense_bottom_sheet.dart';
 import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/themes/colors.dart';
 import '../../../expense/presentation/providers/event_expense_providers.dart';
-import '../../domain/entities/chat_message.dart';
 import '../providers/event_providers.dart';
-import '../providers/chat_providers.dart';
 import '../providers/event_photo_providers.dart';
 import '../widgets/living_time_left_pill.dart';
 import '../widgets/living_action_row.dart';
-import '../widgets/chat_preview_widget.dart';
 import '../widgets/host_time_controls.dart';
 import '../widgets/event_expenses_widget.dart';
 
@@ -27,7 +24,7 @@ String _getUserDisplayName(
 }
 
 /// Event page for Living mode
-/// Displays event in progress with photo upload, chat, and host controls
+/// Displays event in progress with photo upload and host controls
 class EventLivingPage extends ConsumerStatefulWidget {
   final String eventId;
 
@@ -44,10 +41,6 @@ class _EventLivingPageState extends ConsumerState<EventLivingPage> {
   @override
   void initState() {
     super.initState();
-    // Setup Realtime subscription for unread count badge updates
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(unreadCountRealtimeProvider(widget.eventId));
-    });
     // Listen to scroll to show/hide title in app bar
     _scrollController.addListener(_onScroll);
   }
@@ -72,8 +65,6 @@ class _EventLivingPageState extends ConsumerState<EventLivingPage> {
 
   Future<void> refreshEventData() async {
     ref.invalidate(eventDetailProvider(widget.eventId));
-    ref.invalidate(chatMessagesProvider(widget.eventId));
-    ref.invalidate(unreadMessagesCountProvider(widget.eventId));
     ref.invalidate(eventParticipantsProvider(widget.eventId));
     ref.invalidate(eventExpensesProvider(widget.eventId));
     ref.invalidate(eventPhotosProvider(widget.eventId));
@@ -83,7 +74,6 @@ class _EventLivingPageState extends ConsumerState<EventLivingPage> {
   Widget build(BuildContext context) {
     final currentUserId = ref.watch(currentUserIdProvider);
     final eventAsync = ref.watch(eventDetailProvider(widget.eventId));
-    final messagesAsync = ref.watch(chatMessagesProvider(widget.eventId));
 
     return Scaffold(
       backgroundColor: BrandColors.bg1,
@@ -326,75 +316,6 @@ class _EventLivingPageState extends ConsumerState<EventLivingPage> {
                 ),
                 const SizedBox(height: Gaps.lg),
 
-                // Chat preview (purple accent)
-                messagesAsync.when(
-                  data: (messages) {
-                    // Get unread count (now returns AsyncValue)
-                    final unreadCountAsync = ref.watch(
-                      unreadMessagesCountProvider(widget.eventId),
-                    );
-
-                    final unreadCount = unreadCountAsync.maybeWhen(
-                      data: (count) => count,
-                      orElse: () => 0,
-                    );
-
-                    return ChatPreviewWidget(
-                      newMessagesCount: unreadCount,
-                      currentUserId: currentUserId ?? 'unknown',
-                      recentMessages: messages
-                          .map(
-                            (m) => ChatMessagePreview(
-                              userId: m.userId,
-                              userName: _getUserDisplayName(
-                                  m.userId, m.userName, currentUserId),
-                              userAvatar: m.userAvatar,
-                              content: m.content,
-                              timestamp: m.createdAt,
-                              isReadBySomeone: m.isReadBySomeone,
-                              isDeleted: m.isDeleted,
-                              isPending: m.isPending,
-                            ),
-                          )
-                          .toList(),
-                      onOpenChat: () {
-                        // Navigate to event chat page
-                        Navigator.pushNamed(
-                          context,
-                          AppRouter.eventChat,
-                          arguments: {'eventId': widget.eventId},
-                        );
-                      },
-                      onSendMessage: (content,
-                          {ChatMessagePreview? replyTo}) async {
-                        // Convert ChatMessagePreview to ChatMessage if replying
-                        ChatMessage? replyToMessage;
-                        if (replyTo != null && messagesAsync.hasValue) {
-                          final messages = messagesAsync.value!;
-                          try {
-                            replyToMessage = messages.firstWhere(
-                              (m) =>
-                                  m.userId == replyTo.userId &&
-                                  m.content == replyTo.content &&
-                                  m.createdAt == replyTo.timestamp,
-                            );
-                          } catch (_) {
-                            // Message not found, ignore reply
-                          }
-                        }
-
-                        await ref
-                            .read(chatActionsProvider(widget.eventId))
-                            .sendMessage(content, replyTo: replyToMessage);
-                      },
-                      mode: ChatMode.living,
-                    );
-                  },
-                  loading: () =>
-                      const Center(child: CircularProgressIndicator()),
-                  error: (error, stack) => const SizedBox.shrink(),
-                ),
-
                 // Expenses widget (spacing will be added after if widget renders)
                 FutureBuilder(
                   future: ref
@@ -427,11 +348,11 @@ class _EventLivingPageState extends ConsumerState<EventLivingPage> {
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Spacing before expenses section (only if chat exists above)
+                        // Spacing before expenses section
                         const SizedBox(height: Gaps.lg),
                         EventExpensesWidget(
                           eventId: widget.eventId,
-                          mode: ChatMode.living,
+                          mode: EventMode.living,
                           participants: participants,
                           onAddExpense:
                               (title, paidBy, participantsOwe, amount) async {

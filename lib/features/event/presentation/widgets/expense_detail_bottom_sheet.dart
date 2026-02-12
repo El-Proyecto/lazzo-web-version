@@ -5,7 +5,6 @@ import '../../../expense/domain/entities/event_expense_entity.dart';
 import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/constants/text_styles.dart';
 import '../../../../shared/themes/colors.dart';
-import 'chat_preview_widget.dart';
 import 'event_expenses_widget.dart';
 
 class ExpenseDetailBottomSheet extends StatefulWidget {
@@ -15,7 +14,7 @@ class ExpenseDetailBottomSheet extends StatefulWidget {
   // ✅ USAR: modelo local de living_expenses_widget.dart
   final List<ExpenseParticipantDisplay> participants;
   final bool isCurrentUserPayer;
-  final ChatMode? mode;
+  final EventMode? mode;
   final Future<void> Function()? onMarkAsPaid;
   final Function(String participantId)? onNotifyParticipant;
 
@@ -40,7 +39,7 @@ class ExpenseDetailBottomSheet extends StatefulWidget {
     required String payerName,
     required List<ExpenseParticipantDisplay> participants,
     required bool isCurrentUserPayer,
-    ChatMode? mode,
+    EventMode? mode,
     Future<void> Function()? onMarkAsPaid,
     Function(String participantId)? onNotifyParticipant,
   }) {
@@ -462,7 +461,7 @@ class _ExpenseDetailBottomSheetState extends State<ExpenseDetailBottomSheet> {
           style: ElevatedButton.styleFrom(
             backgroundColor: hasPaid
                 ? BrandColors.bg3
-                : (widget.mode == ChatMode.living
+                : (widget.mode == EventMode.living
                     ? BrandColors.living
                     : BrandColors.planning),
             foregroundColor: hasPaid ? BrandColors.text2 : BrandColors.text1,

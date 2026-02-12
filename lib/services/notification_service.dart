@@ -20,25 +20,7 @@ class NotificationService {
   // ==================== PUSH NOTIFICATIONS ====================
   // Urgent actions requiring immediate attention (phone notification + inbox)
 
-  /// Send group invite notification
-  /// Triggered when: User invites another user to join a group
-  Future<String?> sendGroupInvite({
-    required String recipientUserId,
-    required String inviterName,
-    required String groupName,
-    required String groupId,
-  }) async {
-    return await _client.rpc('create_notification_secure', params: {
-      'p_recipient_user_id': recipientUserId,
-      'p_type': 'groupInviteReceived',
-      'p_category': 'push',
-      'p_priority': 'high',
-      'p_deeplink': 'lazzo://groups/$groupId',
-      'p_group_id': groupId,
-      'p_user_name': inviterName,
-      'p_group_name': groupName,
-    });
-  }
+  // LAZZO 2.0: sendGroupInvite removed
 
   /// Send expense added notification (you owe money)
   /// Triggered when: Someone creates an expense where you owe money
@@ -306,9 +288,7 @@ class NotificationService {
     required String recipientUserId,
     required String creatorName,
     required String eventName,
-    required String groupName,
     required String eventId,
-    required String groupId,
     String? eventEmoji,
   }) async {
     return await _client.rpc('create_notification_secure', params: {
@@ -317,11 +297,9 @@ class NotificationService {
       'p_category': 'notifications',
       'p_priority': 'medium',
       'p_deeplink': 'lazzo://events/$eventId',
-      'p_group_id': groupId,
       'p_event_id': eventId,
       'p_event_emoji': eventEmoji,
       'p_user_name': creatorName,
-      'p_group_name': groupName,
       'p_event_name': eventName,
     });
   }
@@ -538,25 +516,7 @@ class NotificationService {
     });
   }
 
-  /// Send group member joined notification (invite accepted)
-  /// Triggered when: Someone accepts a group invite
-  Future<String?> sendGroupMemberJoined({
-    required String recipientUserId,
-    required String joinerName,
-    required String groupName,
-    required String groupId,
-  }) async {
-    return await _client.rpc('create_notification_secure', params: {
-      'p_recipient_user_id': recipientUserId,
-      'p_type': 'groupInviteAccepted',
-      'p_category': 'notifications',
-      'p_priority': 'low',
-      'p_deeplink': 'lazzo://groups/$groupId',
-      'p_group_id': groupId,
-      'p_user_name': joinerName,
-      'p_group_name': groupName,
-    });
-  }
+  // LAZZO 2.0: sendGroupMemberJoined removed
 
   /// Send location suggestion added notification
   /// Triggered when: Someone suggests a location for an event

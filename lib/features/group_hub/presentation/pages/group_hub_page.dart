@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../shared/components/nav/common_app_bar.dart';
 import '../../../../shared/components/common/page_segmented_control.dart';
 import '../../../../shared/components/cards/event_full_card.dart';
+import '../../../event/domain/entities/event_display_entity.dart'; // LAZZO 2.0: dead code import for compilation
 import '../../../../shared/components/cards/memory_card.dart';
 import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/constants/text_styles.dart';
@@ -654,30 +655,27 @@ class _GroupHubPageState extends ConsumerState<GroupHubPage>
               cardState = EventFullCardState.pending;
           }
 
-          // Create a modified event with default location text if location is null
-          final displayEvent = event.location == null || event.location!.isEmpty
-              ? GroupEventEntity(
-                  id: event.id,
-                  name: event.name,
-                  emoji: event.emoji,
-                  date: event.date,
-                  endDate: event.endDate,
-                  location: 'Location to be decided',
-                  status: event.status,
-                  goingCount: event.goingCount,
-                  participantCount: event.participantCount,
-                  attendeeAvatars: event.attendeeAvatars,
-                  attendeeNames: event.attendeeNames,
-                  allVotes: event.allVotes,
-                  userVote: event.userVote,
-                  photoCount: event.photoCount,
-                  maxPhotos: event.maxPhotos,
-                  participantPhotos: event.participantPhotos,
-                )
-              : event;
+          // LAZZO 2.0: displayEvent variable removed (dead code, location handled in EventDisplayEntity below)
 
           return EventFullCard(
-            event: displayEvent,
+            event: EventDisplayEntity(
+              id: event.id,
+              name: event.name,
+              emoji: event.emoji,
+              date: event.date,
+              endDate: event.endDate,
+              location: event.location ?? 'Location to be decided',
+              status: EventDisplayStatus.values.byName(event.status.name),
+              goingCount: event.goingCount,
+              participantCount: event.participantCount,
+              attendeeAvatars: event.attendeeAvatars,
+              attendeeNames: event.attendeeNames,
+              allVotes: event.allVotes,
+              userVote: event.userVote,
+              photoCount: event.photoCount,
+              maxPhotos: event.maxPhotos,
+              participantPhotos: event.participantPhotos,
+            ), // LAZZO 2.0: dead code — group_hub will be removed
             state: cardState,
             onTap: () async {
               // Navigate based on event status

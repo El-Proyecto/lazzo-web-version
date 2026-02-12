@@ -1,6 +1,4 @@
 import '../widgets/date_time_suggestions_widget.dart' show DateTimeSuggestion;
-import '../widgets/chat_preview_widget.dart';
-import '../../domain/entities/chat_message.dart';
 import '../../domain/entities/suggestion.dart';
 
 /// Data class for processed date/time suggestions with votes
@@ -46,22 +44,4 @@ class LocationSuggestionsData {
   );
 }
 
-/// Data class for processed chat messages with preview models
-class ChatPreviewData {
-  final List<ChatMessagePreview> previews;
-  final Map<String, ChatMessage> messageMap;
-  final int unreadCount;
 
-  const ChatPreviewData({
-    required this.previews,
-    required this.messageMap,
-    required this.unreadCount,
-  });
-
-  /// Empty state
-  static const empty = ChatPreviewData(
-    previews: [],
-    messageMap: {},
-    unreadCount: 0,
-  );
-}

@@ -5,7 +5,6 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../components/nav/navigation_bar.dart' as nav;
 import '../components/common/top_banner.dart';
 import '../components/dialogs/event_selection_menu.dart';
-import '../../features/groups/presentation/pages/groups_page.dart';
 import '../../features/inbox/presentation/pages/inbox_page.dart';
 import '../../features/inbox/presentation/providers/notifications_provider.dart';
 import '../../features/profile/presentation/pages/profile_page.dart';
@@ -56,13 +55,12 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
 
   final List<Widget> _pages = [
     const HomePage(), // 0 - Home
-    const GroupsPage(), // 1 - Groups
-    const InboxPage(), // 2 - Inbox (moved from index 3)
-    const ProfilePage(), // 3 - Profile (moved from index 4)
+    const InboxPage(), // 1 - Inbox (LAZZO 2.0: Groups removed, indices shifted)
+    const ProfilePage(), // 2 - Profile
   ];
 
   void _onNavTap(int index) async {
-    if (index == 2) {
+    if (index == 1) {
       // Center button - action depends on NavBar state
       final nextEventStatus = ref.read(navBarStateProvider);
 
@@ -162,21 +160,18 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
     }
 
     // Map navigation bar indices to page indices
-    // NavBar: 0=Home, 1=Groups, 2=Create(skip), 3=Inbox, 4=Profile
-    // Pages: 0=Home, 1=Groups, 2=Inbox, 3=Profile
+    // NavBar: 0=Home, 1=Center(handled above), 2=Inbox, 3=Profile
+    // Pages: 0=Home, 1=Inbox, 2=Profile
     int pageIndex;
     switch (index) {
       case 0: // Home
         pageIndex = 0;
         break;
-      case 1: // Groups
+      case 2: // Inbox
         pageIndex = 1;
         break;
-      case 3: // Inbox
+      case 3: // Profile
         pageIndex = 2;
-        break;
-      case 4: // Profile
-        pageIndex = 3;
         break;
       default:
         return;
@@ -329,19 +324,17 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
     });
 
     // Map page index back to navigation bar index
+    // NavBar: 0=Home, 1=Center, 2=Inbox, 3=Profile
     int navBarIndex;
     switch (_currentIndex) {
       case 0: // Home page -> nav index 0
         navBarIndex = 0;
         break;
-      case 1: // Groups page -> nav index 1
-        navBarIndex = 1;
+      case 1: // Inbox page -> nav index 2
+        navBarIndex = 2;
         break;
-      case 2: // Inbox page -> nav index 3
+      case 2: // Profile page -> nav index 3
         navBarIndex = 3;
-        break;
-      case 3: // Profile page -> nav index 4
-        navBarIndex = 4;
         break;
       default:
         navBarIndex = 0;

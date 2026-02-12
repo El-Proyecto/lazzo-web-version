@@ -490,7 +490,7 @@ class GroupDetailsPage extends ConsumerWidget {
             // Navigate back to groups page immediately (group already removed from list)
             if (context.mounted) {
               Navigator.of(context).popUntil((route) => route.isFirst);
-              Navigator.of(context).pushReplacementNamed(AppRouter.groups);
+              Navigator.of(context).pushReplacementNamed('/groups'); // LAZZO 2.0: dead code
             }
 
             // Call server in background

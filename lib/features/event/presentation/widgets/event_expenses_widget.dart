@@ -12,13 +12,14 @@ import 'expense_detail_bottom_sheet.dart';
 import '../../../expense/domain/entities/event_expense_entity.dart';
 // ✅ MUDAR: import provider de expense/
 import '../../../expense/presentation/providers/event_expense_providers.dart';
-import 'chat_preview_widget.dart'; // For ChatMode enum
+/// Event display mode for styling (planning = green, living = purple)
+enum EventMode { planning, living }
 
 /// Widget showing event expenses in both planning and living modes
 class EventExpensesWidget extends ConsumerWidget {
   final String eventId;
   final List<ExpenseParticipantOption> participants;
-  final ChatMode mode;
+  final EventMode mode;
   final Future<void> Function(
     String title,
     String paidById,

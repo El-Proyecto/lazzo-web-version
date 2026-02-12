@@ -6,7 +6,8 @@ import '../../../../shared/constants/text_styles.dart';
 import '../../../../shared/themes/colors.dart';
 import '../../../../shared/components/nav/common_app_bar.dart';
 import '../../../../shared/components/common/top_banner.dart';
-import '../../../../routes/app_router.dart';
+// LAZZO 2.0: AppRouter import removed (dead code)
+// import '../../../../routes/app_router.dart';
 import '../../domain/entities/group_entity.dart';
 import '../widgets/group_photo_selector_with_camera.dart';
 import '../providers/create_group_provider.dart';
@@ -217,7 +218,7 @@ class _CreateGroupPageState extends ConsumerState<CreateGroupPage> {
               final navigator = Navigator.of(context);
               if (!mounted) return;
               navigator.pushNamed(
-                AppRouter.groupCreated,
+                '/groupCreated', // LAZZO 2.0: dead code
                 arguments: {'group': createdGroup},
               );
             }

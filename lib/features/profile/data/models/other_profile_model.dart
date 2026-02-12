@@ -1,4 +1,4 @@
-import '../../../group_hub/domain/entities/group_event_entity.dart';
+import '../../../event/domain/entities/event_display_entity.dart';
 import '../../domain/entities/other_profile_entity.dart';
 import '../../domain/entities/profile_entity.dart';
 import '../../domain/entities/shared_memory_entity.dart';
@@ -37,7 +37,7 @@ class OtherProfileModel {
   OtherProfileEntity toEntity({
     String? signedAvatarUrl,
     List<MemoryEntity> memoriesTogether = const [],
-    List<GroupEventEntity> upcomingTogether = const [],
+    List<EventDisplayEntity> upcomingTogether = const [],
   }) {
     return OtherProfileEntity(
       id: id,

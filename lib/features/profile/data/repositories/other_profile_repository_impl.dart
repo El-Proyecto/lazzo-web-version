@@ -1,12 +1,10 @@
-import '../../domain/entities/invite_group_entity.dart';
 import '../../domain/entities/other_profile_entity.dart';
 import '../../domain/entities/profile_entity.dart';
 import '../../domain/repositories/other_profile_repository.dart';
-import '../../../group_hub/domain/entities/group_event_entity.dart';
+import '../../../event/domain/entities/event_display_entity.dart';
 import '../data_sources/other_profile_data_source.dart';
 import '../models/other_profile_model.dart';
 import '../../../../services/storage_service.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 /// Implementation of OtherProfileRepository using Supabase
 /// Bridges data source → domain entities with signed URL generation
@@ -95,7 +93,7 @@ class OtherProfileRepositoryImpl implements OtherProfileRepository {
 
       // Convert upcoming events to entities (simplified - just basic info)
       final upcomingList = upcomingEventsData.map((eventData) {
-        return GroupEventEntity(
+        return EventDisplayEntity(
           id: eventData['id'] as String,
           name: eventData['name'] as String? ?? 'Untitled Event',
           emoji: eventData['emoji'] as String? ?? '📅',
@@ -134,119 +132,21 @@ class OtherProfileRepositoryImpl implements OtherProfileRepository {
   }
 
   /// Parse event status string to enum
-  GroupEventStatus _parseEventStatus(String? status) {
+  EventDisplayStatus _parseEventStatus(String? status) {
     switch (status) {
       case 'pending':
       case 'planning':
-        return GroupEventStatus.pending;
+        return EventDisplayStatus.pending;
       case 'confirmed':
-        return GroupEventStatus.confirmed;
+        return EventDisplayStatus.confirmed;
       case 'living':
-        return GroupEventStatus.living;
+        return EventDisplayStatus.living;
       case 'recap':
-        return GroupEventStatus.recap;
+        return EventDisplayStatus.recap;
       default:
-        return GroupEventStatus.pending;
+        return EventDisplayStatus.pending;
     }
   }
 
-  @override
-  Future<List<InviteGroupEntity>> getInvitableGroups(String userId) async {
-    try {
-      final groupsData = await _dataSource.getInvitableGroups(
-        currentUserId: _currentUserId,
-        targetUserId: userId,
-      );
-
-      // Convert to entities with signed URLs for group photos
-      final entities = <InviteGroupEntity>[];
-      for (final groupData in groupsData) {
-        String? signedPhotoUrl;
-        final photoUrl = groupData['photo_url'] as String?;
-
-        if (photoUrl != null && photoUrl.isNotEmpty) {
-          try {
-            // Note: group photos are stored in 'group-photos' bucket (with hyphen)
-            signedPhotoUrl = await _storageService.getSignedUrl(
-              photoUrl,
-              bucket: 'group-photos',
-              expiresInSeconds: 3600,
-            );
-          } catch (e) {
-            signedPhotoUrl = null;
-          }
-        }
-
-        entities.add(InviteGroupEntity(
-          id: groupData['id'] as String,
-          name: groupData['name'] as String? ?? 'Unnamed Group',
-          groupPhotoUrl: signedPhotoUrl,
-          memberCount: groupData['member_count'] as int? ?? 0,
-        ));
-      }
-
-      return entities;
-    } catch (e) {
-      return [];
-    }
-  }
-
-  @override
-  Future<bool> inviteToGroup({
-    required String userId,
-    required String groupId,
-  }) async {
-    try {
-      await _dataSource.inviteToGroup(
-        userId: userId,
-        groupId: groupId,
-        invitedBy: _currentUserId,
-      );
-
-      return true;
-    } on PostgrestException catch (e) {
-      // Check for duplicate invite constraint violation
-      if (e.code == '23505' &&
-          e.message.contains('group_invites_unique_invite')) {
-        // Rethrow with custom message type
-        throw Exception('DUPLICATE_INVITE');
-      }
-
-      return false;
-    } catch (e) {
-      return false;
-    }
-  }
-
-  @override
-  Future<bool> acceptGroupInvite({
-    required String userId,
-    required String groupId,
-  }) async {
-    try {
-      await _dataSource.acceptGroupInvite(
-        userId: userId,
-        groupId: groupId,
-      );
-      return true;
-    } catch (e) {
-      return false;
-    }
-  }
-
-  @override
-  Future<bool> declineGroupInvite({
-    required String userId,
-    required String groupId,
-  }) async {
-    try {
-      await _dataSource.declineGroupInvite(
-        userId: userId,
-        groupId: groupId,
-      );
-      return true;
-    } catch (e) {
-      return false;
-    }
-  }
+  // LAZZO 2.0: Group invite methods removed (getInvitableGroups, inviteToGroup, acceptGroupInvite, declineGroupInvite)
 }

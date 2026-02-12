@@ -3,7 +3,7 @@ enum NotificationCategory { push, notifications, actions }
 
 // PUSH (with in-app feed entry) - Essential, low-noise changes of state
 enum NotificationPushType {
-  groupInviteReceived,
+  // LAZZO 2.0: groupInviteReceived removed
   eventStartsSoon,
   eventLive,
   eventEndsSoon,
@@ -20,9 +20,7 @@ enum NotificationPushType {
 
 // NOTIFICATIONS (feed) - Informational updates
 enum NotificationFeedType {
-  groupInviteAccepted,
-  groupRenamed,
-  groupPhotoChanged,
+  // LAZZO 2.0: groupInviteAccepted, groupRenamed, groupPhotoChanged removed
   eventCreated,
   eventDateSet,
   eventLocationSet,
@@ -44,14 +42,12 @@ enum ActionNotificationType {
 
 enum NotificationType {
   // Legacy types for backwards compatibility
-  groupInvite,
+  // LAZZO 2.0: groupInvite removed
   eventUpdate,
   paymentRequest,
   general,
   // New specific types based on catalog
-  groupInviteReceived,
-  groupInviteAccepted,
-  groupMemberAdded, // NEW: When someone joins a group
+  // LAZZO 2.0: groupInviteReceived, groupInviteAccepted, groupMemberAdded, groupRenamed, groupPhotoChanged removed
   eventStartsSoon,
   eventLive,
   eventEndsSoon,
@@ -67,8 +63,6 @@ enum NotificationType {
   chatMention,
   chatMessage, // NEW: Chat messages notification
   securityNewLogin,
-  groupRenamed,
-  groupPhotoChanged,
   eventCreated,
   eventDateSet,
   eventConfirmed,
@@ -236,12 +230,7 @@ class NotificationEntity {
 
     // Generate deeplink based on type and available IDs
     switch (type) {
-      case NotificationType.groupInviteReceived:
-      case NotificationType.groupInviteAccepted:
-      case NotificationType.groupRenamed:
-      case NotificationType.groupPhotoChanged:
-        return groupId != null ? 'lazzo://group/$groupId' : null;
-
+      // LAZZO 2.0: group deeplinks removed
       case NotificationType.eventStartsSoon:
       case NotificationType.eventLive:
       case NotificationType.eventEndsSoon:
@@ -269,7 +258,7 @@ class NotificationEntity {
         return 'lazzo://profile/security';
 
       case NotificationType.eventCanceled:
-        return groupId != null ? 'lazzo://group/$groupId' : null;
+        return eventId != null ? 'lazzo://event/$eventId' : null;
 
       default:
         return null;

@@ -11,8 +11,7 @@ class NotificationsSection extends StatelessWidget {
   final VoidCallback? onRefresh;
   final Function(NotificationEntity)? onNotificationTap;
   final Function(NotificationEntity)? onActionTap;
-  final Function(String groupId)? onAcceptInvite;
-  final Function(String groupId)? onDeclineInvite;
+  // LAZZO 2.0: onAcceptInvite/onDeclineInvite removed
   final Function(String paymentId)? onMarkPaymentPaid;
 
   const NotificationsSection({
@@ -22,8 +21,9 @@ class NotificationsSection extends StatelessWidget {
     this.onRefresh,
     this.onNotificationTap,
     this.onActionTap,
-    this.onAcceptInvite,
-    this.onDeclineInvite,
+    // LAZZO 2.0: Group invite callbacks removed
+    Function(String)? onAcceptInvite,
+    Function(String)? onDeclineInvite,
     this.onMarkPaymentPaid,
   });
 
@@ -55,8 +55,6 @@ class NotificationsSection extends StatelessWidget {
             notification: notification,
             onTap: () => onNotificationTap?.call(notification),
             onActionTap: () => onActionTap?.call(notification),
-            onAccept: onAcceptInvite,
-            onDecline: onDeclineInvite,
             onMarkPaid: onMarkPaymentPaid,
           );
         },

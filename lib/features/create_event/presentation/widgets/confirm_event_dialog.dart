@@ -5,7 +5,7 @@ import '../../../../shared/components/common/common_bottom_sheet.dart';
 import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/constants/text_styles.dart';
 import '../../../../shared/themes/colors.dart';
-import '../../../../shared/services/emoji_suggestion_service.dart';
+//import '../../../../shared/services/emoji_suggestion_service.dart';
 import 'event_group_selector.dart';
 import 'location_section.dart';
 import '../providers/event_providers.dart';

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../shared/components/nav/common_app_bar.dart';
@@ -14,37 +14,21 @@ import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/constants/text_styles.dart';
 import '../../../../shared/themes/colors.dart';
 import '../../../../shared/layouts/main_layout_providers.dart';
-import '../../../groups/presentation/providers/groups_provider.dart';
+// LAZZO 2.0: groups_provider import removed
 import '../../../inbox/presentation/providers/payments_provider.dart';
-import '../../../group_hub/domain/entities/group_event_entity.dart';
+import '../../../event/domain/entities/event_display_entity.dart';
 import '../../../event/presentation/providers/event_providers.dart';
 import '../../../event/domain/entities/rsvp.dart';
-import '../widgets/no_groups_yet_card.dart';
+// LAZZO 2.0: no_groups_yet_card import removed
 import '../widgets/no_upcoming_events_card.dart';
 import '../providers/home_event_providers.dart';
 import '../../../../routes/app_router.dart';
 import '../../../memory/data/fakes/fake_memory_repository.dart';
 import '../../domain/entities/home_event.dart';
 
-/// Home page - main screen showing next event, confirmed/pending events, todos, payments, and memories
+/// Home page - main screen showing next event, confirmed/pending events, payments, and memories
 ///
-/// TESTING EMPTY STATES (for P1 development):
-/// To test different empty state scenarios, modify the static variables in fake repositories:
-///
-/// 1. Test "No groups yet" card:
-///    - Set: FakeGroupRepository.mockNoGroups = true
-///    - Result: Shows NoGroupsYetCard with CTA to create first group
-///
-/// 2. Test "No upcoming events" card:
-///    - Set: FakeGroupRepository.mockNoGroups = false (has groups)
-///    - Set: FakeHomeEventRepository.mockEmptyState = 'no-events'
-///    - Result: Shows NoUpcomingEventsCard with group chips and create event CTA
-///
-/// 3. Test normal home (default):
-///    - Set: FakeGroupRepository.mockNoGroups = false
-///    - Set: FakeHomeEventRepository.mockEmptyState = 'normal'
-///    - Result: Shows regular home with events, todos, payments, memories
-///
+/// LAZZO 2.0: Groups removed. Events are standalone.
 /// This page purely consumes provider data - no mock logic here (Clean Architecture).
 
 class HomePage extends ConsumerStatefulWidget {
@@ -143,15 +127,15 @@ class _HomePageState extends ConsumerState<HomePage> {
     }
   }
 
-  GroupEventEntity _convertHomeEventToGroupEvent(HomeEventEntity event) {
-    return GroupEventEntity(
+  EventDisplayEntity _convertHomeEventToDisplayEvent(HomeEventEntity event) {
+    return EventDisplayEntity(
       id: event.id,
       name: event.name,
       emoji: event.emoji,
       date: event.date,
       endDate: event.endDate,
       location: event.location,
-      status: _mapHomeStatusToGroupStatus(event.status),
+      status: _mapHomeStatusToDisplayStatus(event.status),
       goingCount: event.goingCount,
       participantCount: event.attendeeNames.length,
       attendeeAvatars: event.attendeeAvatars,
@@ -164,16 +148,16 @@ class _HomePageState extends ConsumerState<HomePage> {
     );
   }
 
-  GroupEventStatus _mapHomeStatusToGroupStatus(HomeEventStatus status) {
+  EventDisplayStatus _mapHomeStatusToDisplayStatus(HomeEventStatus status) {
     switch (status) {
       case HomeEventStatus.pending:
-        return GroupEventStatus.pending;
+        return EventDisplayStatus.pending;
       case HomeEventStatus.confirmed:
-        return GroupEventStatus.confirmed;
+        return EventDisplayStatus.confirmed;
       case HomeEventStatus.living:
-        return GroupEventStatus.living;
+        return EventDisplayStatus.living;
       case HomeEventStatus.recap:
-        return GroupEventStatus.recap;
+        return EventDisplayStatus.recap;
     }
   }
 
@@ -230,7 +214,7 @@ class _HomePageState extends ConsumerState<HomePage> {
     final paymentsAsync = ref.watch(paymentSummariesControllerProvider);
     final totalBalanceAsync = ref.watch(totalBalanceControllerProvider);
     final recentMemoriesAsync = ref.watch(recentMemoriesControllerProvider);
-    final groupsAsync = ref.watch(groupsProvider);
+    // LAZZO 2.0: groupsAsync removed â€” events are standalone
     final nextEventStatus = ref.watch(navBarStateProvider);
 
     // Debug prints to check data received
@@ -240,16 +224,7 @@ class _HomePageState extends ConsumerState<HomePage> {
     livingAndRecapEventsAsync.whenData((events) {});
 
     // Calculate empty states based on provider data
-    // IMPORTANT: Only show empty states when data is LOADED, not during loading
-    // Empty state logic:
-    // - Show "No groups yet" if user has no groups (data loaded)
-    // - Show "No upcoming events" if user has groups but no events (data loaded)
-    // - Show normal home if user has groups and events
-
-    // Check if groups data is loaded
-    final groupsLoaded = groupsAsync.hasValue;
-    final groups = groupsAsync.asData?.value ?? [];
-    final hasGroups = groups.isNotEmpty;
+    // LAZZO 2.0: Groups empty state removed â€” only check events
 
     // Check if events data is loaded
     final eventsLoaded = nextEventAsync.hasValue &&
@@ -259,13 +234,10 @@ class _HomePageState extends ConsumerState<HomePage> {
         (confirmedEventsAsync.asData?.value.isNotEmpty ?? false) ||
         (pendingEventsAsync.asData?.value.isNotEmpty ?? false));
 
-    // Determine which empty state to show (only when data is loaded)
-    final showNoGroupsCard = groupsLoaded && !hasGroups;
-    final showNoEventsCard = groupsLoaded &&
-        eventsLoaded &&
-        hasGroups &&
+    // Show "No upcoming events" if no events and data is loaded
+    final showNoEventsCard = eventsLoaded &&
         !hasEvents &&
-        !_isNoEventsCardDismissed; // Don't show if dismissed
+        !_isNoEventsCardDismissed;
 
     return Scaffold(
       appBar: CommonAppBar(
@@ -325,81 +297,39 @@ class _HomePageState extends ConsumerState<HomePage> {
             children: [
               const SizedBox(height: Gaps.xs),
 
-              // Search Bar - only show if user has groups
-              if (!showNoGroupsCard)
-                Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: Insets.screenH),
-                  child: custom.SearchBar(
-                    placeholder: 'Search events, memories, payments...',
-                    enabled: false,
-                    onTap: () {
-                      Navigator.pushNamed(context, AppRouter.homeSearch);
-                    },
-                  ),
+              // Search Bar
+              Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: Insets.screenH),
+                child: custom.SearchBar(
+                  placeholder: 'Search events, memories, payments...',
+                  enabled: false,
+                  onTap: () {
+                    Navigator.pushNamed(context, AppRouter.homeSearch);
+                  },
                 ),
-              if (!showNoGroupsCard) const SizedBox(height: Gaps.md),
+              ),
+              const SizedBox(height: Gaps.md),
 
-              // Empty States - purely based on provider data
-              // IMPORTANT: Only show when data is loaded to avoid flickering
-              // Show "No groups yet" if user has no groups (when data loaded)
-              if (showNoGroupsCard)
+              // Empty State - "No upcoming events" (LAZZO 2.0: NoGroupsYetCard removed)
+              if (showNoEventsCard)
                 Padding(
                   padding:
                       const EdgeInsets.symmetric(horizontal: Insets.screenH),
                   child: Column(
                     children: [
-                      NoGroupsYetCard(
-                        onCreateGroup: () {
-                          Navigator.pushNamed(context, AppRouter.createGroup);
-                          // TODO P2: After group created, auto-open create event
-                        },
-                      ),
-                      const SizedBox(height: Gaps.lg),
-                    ],
-                  ),
-                )
-              // Show "No upcoming events" if user has groups but no events (when data loaded)
-              else if (showNoEventsCard)
-                Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: Insets.screenH),
-                  child: Column(
-                    children: [
-                      groupsAsync.when(
-                        data: (groups) {
-                          // Convert groups to GroupChipData
-                          final groupChips = groups
-                              .take(5) // Max 5 most active groups
-                              .map(
-                                (g) => GroupChipData(
-                                  id: g.id,
-                                  name: g.name,
-                                  photoUrl:
-                                      g.photoPath, // Using photoPath for now
-                                ),
-                              )
-                              .toList();
-
-                          return NoUpcomingEventsCard(
-                            groups: groupChips,
-                            onCreateEvent: (groupId) {
-                              // TODO P2: Navigate to create event with group prefilled
-                              Navigator.pushNamed(
-                                context,
-                                AppRouter.createEvent,
-                                arguments: {'groupId': groupId},
-                              );
-                            },
-                            onDismiss: () {
-                              setState(() {
-                                _isNoEventsCardDismissed = true;
-                              });
-                            },
+                      NoUpcomingEventsCard(
+                        onCreateEvent: () {
+                          Navigator.pushNamed(
+                            context,
+                            AppRouter.createEvent,
                           );
                         },
-                        loading: () => const SizedBox.shrink(),
-                        error: (_, __) => const SizedBox.shrink(),
+                        onDismiss: () {
+                          setState(() {
+                            _isNoEventsCardDismissed = true;
+                          });
+                        },
                       ),
                       const SizedBox(height: Gaps.lg),
                     ],
@@ -407,7 +337,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                 ),
 
               // EVENT SECTIONS - Only show if NOT in empty state
-              if (!showNoGroupsCard && !showNoEventsCard) ...[
+              if (!showNoEventsCard) ...[
                 // Living and Recap Events Sections
                 livingAndRecapEventsAsync.when(
                   data: (allLivingAndRecapEvents) {
@@ -433,9 +363,6 @@ class _HomePageState extends ConsumerState<HomePage> {
                                       AppRouter.event,
                                       arguments: {'eventId': event.id},
                                     );
-                                  },
-                                  onChatPressed: () {
-                                    // TODO: Navigate to event chat
                                   },
                                   onExpensePressed: () {
                                     // Handled inside HomeEventCard
@@ -497,9 +424,6 @@ class _HomePageState extends ConsumerState<HomePage> {
                                           },
                                         );
                                       },
-                                      onChatPressed: () {
-                                        // TODO: Navigate to event chat
-                                      },
                                       onExpensePressed: () {
                                         // Handled inside HomeEventCard
                                       },
@@ -521,7 +445,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                                           children: [
                                             EventFullCard(
                                               event:
-                                                  _convertHomeEventToGroupEvent(
+                                                  _convertHomeEventToDisplayEvent(
                                                       event),
                                               state: EventFullCardState.living,
                                               onTap: () async {
@@ -574,9 +498,6 @@ class _HomePageState extends ConsumerState<HomePage> {
                                             },
                                           );
                                         },
-                                        onChatPressed: () {
-                                          // TODO: Navigate to event chat
-                                        },
                                         onExpensePressed: () {
                                           // Handled inside HomeEventCard
                                         },
@@ -597,7 +518,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                                           children: [
                                             EventFullCard(
                                               event:
-                                                  _convertHomeEventToGroupEvent(
+                                                  _convertHomeEventToDisplayEvent(
                                                       event),
                                               state: EventFullCardState.recap,
                                               onTap: () async {
@@ -630,7 +551,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                                           children: [
                                             EventFullCard(
                                               event:
-                                                  _convertHomeEventToGroupEvent(
+                                                  _convertHomeEventToDisplayEvent(
                                                       event),
                                               state: EventFullCardState.recap,
                                               onTap: () async {
@@ -725,9 +646,6 @@ class _HomePageState extends ConsumerState<HomePage> {
                                     );
                                   }
                                 },
-                                onChatPressed: () {
-                                  // TODO: Navigate to event chat
-                                },
                                 onExpensePressed: () {
                                   // Handled inside HomeEventCard
                                 },
@@ -808,7 +726,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                                         event.status),
                                     isExpired: isExpired,
                                     onTap: () async {
-                                      // ✅ Navigate based on actual calculated status
+                                      // âœ… Navigate based on actual calculated status
                                       if (event.status ==
                                           HomeEventStatus.living) {
                                         await Navigator.pushNamed(
@@ -906,7 +824,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                                         event.status),
                                     isExpired: isExpired,
                                     onTap: () async {
-                                      // ✅ Navigate based on actual calculated status
+                                      // âœ… Navigate based on actual calculated status
                                       if (event.status ==
                                           HomeEventStatus.living) {
                                         await Navigator.pushNamed(
@@ -984,7 +902,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                             totalBalanceAsync.when(
                               data: (balance) {
                                 return Text(
-                                  '${balance.abs().toStringAsFixed(2)}€',
+                                  '${balance.abs().toStringAsFixed(2)}â‚¬',
                                   style: AppText.titleMediumEmph.copyWith(
                                     color: balance >= 0
                                         ? BrandColors.planning // Green

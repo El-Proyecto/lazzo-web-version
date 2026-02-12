@@ -10,9 +10,6 @@ import '../features/auth/presentation/pages/login/login_otp_verification.dart';
 import '../features/auth/presentation/pages/auth_page.dart';
 import '../features/auth/presentation/pages/finish_setup.dart';
 import '../shared/layouts/main_layout.dart';
-import '../features/groups/presentation/pages/groups_page.dart';
-import '../features/groups/presentation/pages/create_group_page.dart';
-import '../features/groups/presentation/pages/group_created_page.dart';
 import '../features/create_event/presentation/pages/create_event_page.dart';
 import '../features/create_event/presentation/pages/edit_event_page.dart';
 import '../features/inbox/presentation/pages/inbox_page.dart';
@@ -21,9 +18,6 @@ import '../features/profile/presentation/pages/edit_profile_page.dart';
 import '../features/profile/presentation/pages/other_profile_page.dart';
 import '../features/event/presentation/pages/event_page.dart';
 import '../features/event/presentation/pages/event_living_page.dart';
-import '../features/event/presentation/pages/event_chat_page.dart';
-import '../features/group_hub/presentation/pages/group_hub_page.dart';
-import '../features/group_hub/presentation/pages/group_details_page.dart';
 import '../features/memory/presentation/pages/memory_page.dart';
 import '../features/memory/presentation/pages/memory_viewer_page.dart';
 import '../features/memory/presentation/pages/manage_memory_page.dart';
@@ -44,9 +38,6 @@ class AppRouter {
   static const String pendingEventsList = '/pending-events-list';
   static const String auth = '/auth';
   static const String mainLayout = '/main';
-  static const String groups = '/groups';
-  static const String createGroup = '/create-group';
-  static const String groupCreated = '/group-created';
   static const String createEvent = '/create-event';
   static const String editEvent = '/edit-event';
   static const String inbox = '/inbox';
@@ -55,9 +46,6 @@ class AppRouter {
   static const String otherProfile = '/other-profile';
   static const String event = '/event';
   static const String eventLiving = '/event-living';
-  static const String eventChat = '/event-chat';
-  static const String groupHub = '/group-hub';
-  static const String groupDetails = '/group-details';
   static const String memory = '/memory';
   static const String memoryViewer = '/memory-viewer';
   static const String photoPreview = '/photo-preview';
@@ -87,13 +75,6 @@ class AppRouter {
     pendingEventsList: (context) =>
         const EventsListPage(type: EventsListType.pending),
     mainLayout: (context) => const MainLayout(),
-    groups: (context) => const GroupsPage(),
-    createGroup: (context) => const CreateGroupPage(),
-    groupCreated: (context) {
-      final args =
-          ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
-      return GroupCreatedPage(group: args['group']);
-    },
     createEvent: (context) => const CreateEventPage(),
     editEvent: (context) {
       final args =
@@ -131,27 +112,6 @@ class AppRouter {
       final args =
           ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
       return EventLivingPage(eventId: args?['eventId'] ?? 'event-1');
-    },
-    eventChat: (context) {
-      final args =
-          ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
-      return EventChatPage(eventId: args?['eventId'] ?? 'event-1');
-    },
-    groupHub: (context) {
-      final args =
-          ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
-      return GroupHubPage(
-        groupId: args?['groupId'] ?? 'group-1',
-        groupName: args?['groupName'] ?? 'Group Name',
-        groupPhotoUrl: args?['groupPhotoUrl'],
-      );
-    },
-    groupDetails: (context) {
-      final args =
-          ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
-      return GroupDetailsPage(
-        groupId: args?['groupId'] ?? 'group-1',
-      );
     },
     memory: (context) {
       final args =

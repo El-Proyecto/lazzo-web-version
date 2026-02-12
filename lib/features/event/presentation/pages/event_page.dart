@@ -20,10 +20,7 @@ import '../../../../services/calendar_service.dart';
 import '../../domain/entities/rsvp.dart';
 import '../../domain/entities/suggestion.dart';
 import '../../domain/entities/event_detail.dart';
-import '../../domain/entities/chat_message.dart';
 import '../providers/event_providers.dart';
-import '../providers/chat_providers.dart';
-import '../widgets/chat_preview_widget.dart';
 import '../widgets/event_expenses_widget.dart';
 import '../widgets/date_time_suggestions_widget.dart'
     show DateTimeSuggestionsWidget, DateTimeSuggestion;
@@ -67,7 +64,6 @@ class _EventPageState extends ConsumerState<EventPage> {
     super.initState();
     // Setup Realtime subscription for unread count badge updates
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(unreadCountRealtimeProvider(eventId));
       // Check if we need to show expiration warning
       _checkAndShowExpirationWarning();
     });
@@ -372,7 +368,6 @@ class _EventPageState extends ConsumerState<EventPage> {
       ref.invalidate(eventRsvpsProvider(eventId));
       ref.invalidate(userRsvpProvider(eventId));
       ref.invalidate(eventPollsProvider(eventId));
-      ref.invalidate(chatMessagesProvider(eventId));
       ref.invalidate(eventSuggestionsProvider(eventId));
       ref.invalidate(suggestionVotesProvider(eventId));
       ref.invalidate(userSuggestionVotesProvider(eventId));
@@ -539,11 +534,7 @@ class _EventPageState extends ConsumerState<EventPage> {
                   groupId: event.groupId,
                   isExpired: event.isExpired,
                   onGroupTap: () {
-                    Navigator.pushNamed(
-                      context,
-                      AppRouter.groupHub,
-                      arguments: {'groupId': event.groupId},
-                    );
+                    // LAZZO 2.0: Group hub navigation removed — events are standalone
                   },
                 ),
                 const SizedBox(height: Gaps.md),
@@ -716,160 +707,6 @@ class _EventPageState extends ConsumerState<EventPage> {
                   },
                 ),
 
-                // Chat Preview (OPTIMIZED)
-                // Data processing moved to pure function
-                Consumer(
-                  builder: (context, ref, child) {
-                    final data = ref.watch(chatPreviewDataProvider(eventId));
-                    final messagesAsync =
-                        data['messagesAsync'] as AsyncValue<List<ChatMessage>>;
-                    final unreadCountAsync =
-                        data['unreadCountAsync'] as AsyncValue<int>;
-
-                    return messagesAsync.when(
-                      data: (messages) {
-                        final unreadCount = unreadCountAsync.maybeWhen(
-                          data: (count) => count,
-                          orElse: () => 0,
-                        );
-
-                        // Process messages using pure function
-                        final chatData = _processChatMessages(
-                          messages: messages,
-                          unreadCount: unreadCount,
-                          currentUserId: currentUserId,
-                        );
-
-                        return ChatPreviewWidget(
-                          newMessagesCount: chatData.unreadCount,
-                          currentUserId: currentUserId ?? '',
-                          recentMessages: chatData.previews,
-                          onOpenChat: () {
-                            Navigator.pushNamed(
-                              context,
-                              AppRouter.eventChat,
-                              arguments: {'eventId': eventId},
-                            );
-                          },
-                          onOpenChatWithMessage: (messageId) {
-                            Navigator.pushNamed(
-                              context,
-                              AppRouter.eventChat,
-                              arguments: {
-                                'eventId': eventId,
-                                'scrollToMessageId': messageId,
-                              },
-                            );
-                          },
-                          onSendMessage: (content,
-                              {ChatMessagePreview? replyTo}) async {
-                            // Use message map for faster lookup
-                            ChatMessage? replyToMessage;
-                            if (replyTo != null) {
-                              try {
-                                replyToMessage = messages.firstWhere(
-                                  (m) =>
-                                      m.userId == replyTo.userId &&
-                                      m.content == replyTo.content &&
-                                      m.createdAt == replyTo.timestamp,
-                                );
-                              } catch (e) {
-                                // Ignore if message not found
-                              }
-                            }
-
-                            await ref
-                                .read(chatActionsProvider(eventId))
-                                .sendMessage(
-                                  content,
-                                  replyTo: replyToMessage,
-                                );
-                          },
-                          onPinMessage: (message) async {
-                            final originalMessage = messages.firstWhere(
-                              (m) =>
-                                  m.content == message.content &&
-                                  m.userId == message.userId,
-                            );
-                            await ref
-                                .read(chatActionsProvider(eventId))
-                                .togglePin(
-                                  originalMessage.id,
-                                  !originalMessage.isPinned,
-                                );
-                            // Navigate to chat and scroll to pinned message
-                            if (context.mounted) {
-                              Navigator.pushNamed(
-                                context,
-                                AppRouter.eventChat,
-                                arguments: {
-                                  'eventId': eventId,
-                                  'scrollToMessageId': originalMessage.id,
-                                },
-                              );
-                            }
-                          },
-                          onDeleteMessage: (message) async {
-                            final originalMessage = messages.firstWhere(
-                              (m) =>
-                                  m.content == message.content &&
-                                  m.userId == message.userId,
-                            );
-                            await ref
-                                .read(chatActionsProvider(eventId))
-                                .deleteMessage(originalMessage.id);
-                          },
-                          onReplyMessage: (message) {
-                            Navigator.pushNamed(
-                              context,
-                              AppRouter.eventChat,
-                              arguments: {'eventId': eventId},
-                            );
-                          },
-                        );
-                      },
-                      loading: () => const ChatPreviewWidget(
-                        newMessagesCount: 0,
-                        currentUserId: '',
-                        recentMessages: [],
-                        onOpenChat: null,
-                        onSendMessage: null,
-                      ),
-                      error: (error, stack) {
-                        return ChatPreviewWidget(
-                          newMessagesCount: 0,
-                          currentUserId: currentUserId ?? '',
-                          recentMessages: const [],
-                          onOpenChat: () {},
-                          onSendMessage: (content,
-                              {ChatMessagePreview? replyTo}) async {
-                            await ref
-                                .read(chatActionsProvider(eventId))
-                                .sendMessage(content);
-                          },
-                          onPinMessage: (message) async {
-                            await ref
-                                .read(chatActionsProvider(eventId))
-                                .togglePin('', false);
-                            if (context.mounted) {
-                              Navigator.pushNamed(
-                                context,
-                                AppRouter.eventChat,
-                                arguments: {'eventId': eventId},
-                              );
-                            }
-                          },
-                          onDeleteMessage: (message) async {
-                            await ref
-                                .read(chatActionsProvider(eventId))
-                                .deleteMessage('');
-                          },
-                        );
-                      },
-                    );
-                  },
-                ),
-
                 // Expenses widget
                 // Use whenOrNull to keep previous expenses visible during refresh
                 participantsAsync.whenOrNull(
@@ -906,7 +743,7 @@ class _EventPageState extends ConsumerState<EventPage> {
                           ),
                           child: EventExpensesWidget(
                             eventId: eventId,
-                            mode: ChatMode.planning,
+                            mode: EventMode.planning,
                             participants: participantOptions,
                             onAddExpense: (title, paidById, participantsOwe,
                                 amount) async {
@@ -1814,54 +1651,6 @@ class _EventPageState extends ConsumerState<EventPage> {
       allVotes: allVotes,
       hasAlternatives: hasAlternatives,
       currentEventGoingCount: goingCount,
-    );
-  }
-
-  /// Process chat messages into preview models
-  /// Returns data ready for UI consumption with message lookup map
-  ChatPreviewData _processChatMessages({
-    required List<ChatMessage> messages,
-    required int unreadCount,
-    required String? currentUserId,
-  }) {
-    // Create message lookup map for faster access (used in reply/pin/delete)
-    final messageMap = <String, ChatMessage>{};
-    for (final message in messages) {
-      messageMap[message.id] = message;
-    }
-
-    final previewMessages = messages.map((m) {
-      return ChatMessagePreview(
-        userId: m.userId,
-        userName: _getUserDisplayName(m.userId, m.userName, currentUserId),
-        userAvatar: m.userAvatar,
-        content: m.content,
-        timestamp: m.createdAt,
-        isReadBySomeone: m.isReadBySomeone,
-        isPinned: m.isPinned,
-        isDeleted: m.isDeleted,
-        isPending: m.isPending,
-        replyTo: m.replyTo != null
-            ? ChatMessagePreview(
-                userId: m.replyTo!.userId,
-                userName: _getUserDisplayName(
-                    m.replyTo!.userId, m.replyTo!.userName, currentUserId),
-                userAvatar: m.replyTo!.userAvatar,
-                content: m.replyTo!.content,
-                timestamp: m.replyTo!.createdAt,
-                isReadBySomeone: m.replyTo!.isReadBySomeone,
-                isPinned: m.replyTo!.isPinned,
-                isDeleted: m.replyTo!.isDeleted,
-                isPending: m.replyTo!.isPending,
-              )
-            : null,
-      );
-    }).toList();
-
-    return ChatPreviewData(
-      previews: previewMessages,
-      messageMap: messageMap,
-      unreadCount: unreadCount,
     );
   }
 }

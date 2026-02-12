@@ -44,13 +44,7 @@ import 'features/inbox/presentation/providers/notifications_provider.dart';
 // import '../features/inbox/data/repositories/action_repository_impl.dart';
 // import '../features/inbox/presentation/providers/actions_provider.dart';
 
-// GROUPS - Real implementation (commented out for testing fake repository)
-import '../features/groups/presentation/providers/groups_provider.dart';
-import '../features/groups/data/data_sources/groups_data_source.dart';
-import '../features/groups/data/repositories/group_repository_impl.dart';
-// import '../features/groups/presentation/providers/groups_provider.dart';
-// import '../features/groups/data/data_sources/groups_data_source.dart';
-// import '../features/groups/data/repositories/group_repository_impl.dart';
+// LAZZO 2.0: Groups removed — imports deleted
 
 // EXPENSES
 import 'features/expense/presentation/providers/event_expense_providers.dart';
@@ -60,23 +54,7 @@ import 'features/expense/data/repositories/event_expense_repository_impl.dart';
 // NOTIFICATION SERVICE
 import 'services/notification_service.dart';
 
-// GROUP HUB - Real implementation
-import '../features/group_hub/presentation/providers/group_hub_providers.dart'
-    as group_hub;
-import '../features/group_hub/data/data_sources/group_event_data_source.dart'
-    as group_hub_ds;
-import '../features/group_hub/data/repositories/group_event_repository_impl.dart'
-    as group_hub_repo;
-import '../features/group_hub/data/data_sources/group_memory_data_source.dart';
-import '../features/group_hub/data/repositories/group_memory_repository_impl.dart';
-import '../features/group_hub/data/data_sources/group_photos_data_source.dart';
-import '../features/group_hub/data/repositories/group_photos_repository_impl.dart';
-import '../features/group_hub/data/data_sources/group_details_data_source.dart';
-import '../features/group_hub/data/repositories/group_details_repository_impl.dart';
-
-// GROUPS UPDATE - Real implementation
-import '../features/groups/presentation/providers/update_group_provider.dart';
-import '../features/groups/data/repositories/supabase_update_group_repository.dart';
+// LAZZO 2.0: Group Hub + Groups Update removed — imports deleted
 
 // PROFILE - Real implementation
 import '../features/profile/data/data_sources/profile_remote_data_source.dart';
@@ -103,12 +81,10 @@ import '../features/event/data/repositories/event_photo_repository_impl.dart';
 import '../features/event/data/data_sources/rsvp_remote_data_source.dart';
 import '../features/event/data/data_sources/suggestion_remote_data_source.dart';
 import '../features/event/data/data_sources/poll_remote_data_source.dart';
-import '../features/event/data/data_sources/chat_remote_data_source.dart';
 import '../features/event/data/repositories/event_repository_impl.dart';
 import '../features/event/data/repositories/rsvp_repository_impl.dart';
 import '../features/event/data/repositories/suggestion_repository_impl.dart';
 import '../features/event/data/repositories/poll_repository_impl.dart';
-import '../features/event/data/repositories/chat_repository_impl.dart';
 
 // AUTH (DI via providers)
 import '../features/auth/presentation/providers/auth_provider.dart';
@@ -221,49 +197,7 @@ void main() async {
         //   ),
         // ),
 
-        // ✅ GROUPS repo -> real (Supabase) via DI (P2 implementation)
-        groupRepositoryProvider.overrideWith((ref) {
-          final client = Supabase.instance.client;
-          final dataSource = SupabaseGroupsDataSource(client);
-          return GroupRepositoryImpl(dataSource, client);
-        }),
-
-        // ✅ GROUP HUB EVENTS repo -> real (Supabase) via DI (Nov 18, 2025)
-        group_hub.groupEventRepositoryProvider.overrideWith((ref) {
-          final client = Supabase.instance.client;
-          final dataSource = group_hub_ds.SupabaseGroupEventDataSource(client);
-          return group_hub_repo.GroupEventRepositoryImpl(dataSource);
-        }),
-
-        // ✅ GROUP MEMORIES repo -> real (Supabase) via DI (Nov 25, 2025)
-        // Updated Nov 27: Added StorageService for signed URL generation
-        group_hub.groupMemoryRepositoryProvider.overrideWith((ref) {
-          final client = Supabase.instance.client;
-          final dataSource = SupabaseGroupMemoryDataSource(client);
-          final storageService = StorageService(client);
-          return GroupMemoryRepositoryImpl(dataSource, storageService);
-        }),
-
-        // ✅ GROUP PHOTOS repo -> real (Supabase) via DI (Nov 25, 2025)
-        group_hub.groupPhotosRepositoryProvider.overrideWith((ref) {
-          final client = Supabase.instance.client;
-          final dataSource = GroupPhotosDataSource(client);
-          final storageService = StorageService(client);
-          return GroupPhotosRepositoryImpl(dataSource, storageService);
-        }),
-
-        // ✅ GROUP DETAILS repo -> real (Supabase) via DI (Dec 4, 2025)
-        group_hub.groupDetailsRepositoryProvider.overrideWith((ref) {
-          final client = Supabase.instance.client;
-          final dataSource = GroupDetailsDataSource(client);
-          return GroupDetailsRepositoryImpl(dataSource, client);
-        }),
-
-        // ✅ UPDATE GROUP repo -> real (Supabase) via DI (Dec 4, 2025)
-        updateGroupRepositoryProvider.overrideWith((ref) {
-          final client = Supabase.instance.client;
-          return SupabaseUpdateGroupRepository(client);
-        }),
+        // LAZZO 2.0: Groups + Group Hub DI overrides removed
 
         // ✅ MEMORY MANAGEMENT repo -> real (Supabase) via DI (Nov 27, 2025)
         memory_manage.memoryRepositoryProvider.overrideWith((ref) {
@@ -359,11 +293,6 @@ void main() async {
           final dataSource = EventPhotoDataSource(client);
           return EventPhotoRepositoryImpl(dataSource);
         }),
-        chatRepositoryProvider.overrideWith(
-          (ref) => ChatRepositoryImpl(
-            ChatRemoteDataSource(Supabase.instance.client),
-          ),
-        ),
 
         // ✅ SETTINGS repo -> real (Supabase) via DI (P2 Implementation Complete)
         settingsRepositoryProvider.overrideWith((ref) {

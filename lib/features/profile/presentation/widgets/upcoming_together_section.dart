@@ -3,13 +3,13 @@ import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/constants/text_styles.dart';
 import '../../../../shared/themes/colors.dart';
 import '../../../../shared/components/cards/confirmed_event_card.dart';
-import '../../../group_hub/domain/entities/group_event_entity.dart';
+import '../../../event/domain/entities/event_display_entity.dart';
 
 /// Section displaying upcoming events that both users are attending
 /// Shows vertical list of confirmed events
 class UpcomingTogetherSection extends StatelessWidget {
-  final List<GroupEventEntity> events;
-  final Function(GroupEventEntity)? onEventTap;
+  final List<EventDisplayEntity> events;
+  final Function(EventDisplayEntity)? onEventTap;
 
   const UpcomingTogetherSection({
     super.key,

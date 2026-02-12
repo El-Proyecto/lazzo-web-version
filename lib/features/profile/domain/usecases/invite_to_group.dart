@@ -1,18 +1,6 @@
-import '../repositories/other_profile_repository.dart';
+// LAZZO 2.0: This use case is deprecated — group invites removed.
+// File preserved for git history. Will be deleted in cleanup phase.
 
-/// Use case to invite a user to a group
 class InviteToGroup {
-  final OtherProfileRepository repository;
-
-  const InviteToGroup(this.repository);
-
-  Future<bool> call({
-    required String userId,
-    required String groupId,
-  }) {
-    return repository.inviteToGroup(
-      userId: userId,
-      groupId: groupId,
-    );
-  }
+  const InviteToGroup(dynamic repository);
 }

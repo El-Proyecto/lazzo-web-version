@@ -4,19 +4,7 @@ import '../../domain/repositories/notification_repository.dart';
 class FakeNotificationRepository implements NotificationRepository {
   final List<NotificationEntity> _notifications = [
     // PUSH notifications (with in-app feed entry)
-    NotificationEntity(
-      id: '1',
-      title: 'Group Invitation',
-      description: '{user} invited you to join **{group}**.',
-      type: NotificationType.groupInviteReceived,
-      category: NotificationCategory.push,
-      priority: NotificationPriority.high,
-      createdAt: DateTime.now().subtract(const Duration(minutes: 30)),
-      userName: 'João',
-      groupName: 'Summer Trip Planning',
-      groupId: 'group1',
-      eventEmoji: '🏖️',
-    ),
+    // LAZZO 2.0: groupInviteReceived fake removed
 
     NotificationEntity(
       id: '2',
@@ -115,32 +103,18 @@ class FakeNotificationRepository implements NotificationRepository {
     ),
 
     // NOTIFICATIONS (feed) - Informational updates
-    NotificationEntity(
-      id: '9',
-      title: 'User Joined',
-      description: '{user} joined **{group}**.',
-      type: NotificationType.groupInviteAccepted,
-      category: NotificationCategory.notifications,
-      priority: NotificationPriority.low,
-      createdAt: DateTime.now().subtract(const Duration(hours: 8)),
-      userName: 'Carlos',
-      groupName: 'Weekend Hikers',
-      groupId: 'group2',
-      isRead: true,
-    ),
+    // LAZZO 2.0: groupInviteAccepted fake removed
 
     NotificationEntity(
       id: '10',
       title: 'Event Created',
-      description: 'New event **{event}** in **{group}**.',
+      description: 'New event **{event}**.',
       type: NotificationType.eventCreated,
       category: NotificationCategory.notifications,
       priority: NotificationPriority.medium,
       createdAt: DateTime.now().subtract(const Duration(hours: 12)),
       eventName: 'Hiking Trip',
-      groupName: 'Weekend Hikers',
       eventId: 'event6',
-      groupId: 'group2',
       eventEmoji: '🥾',
       isRead: true,
     ),

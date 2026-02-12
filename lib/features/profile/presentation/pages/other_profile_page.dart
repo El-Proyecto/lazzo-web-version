@@ -3,14 +3,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../widgets/user_info_card.dart';
 import '../widgets/upcoming_together_section.dart';
 import '../widgets/memories_section.dart';
-import '../widgets/invite_to_group_bottom_sheet.dart';
 import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/themes/colors.dart';
-import '../../../../shared/components/common/top_banner.dart';
 import '../../../../shared/components/nav/common_app_bar.dart';
 import '../../../../routes/app_router.dart';
 import '../providers/other_profile_providers.dart';
-import '../../../group_hub/domain/entities/group_event_entity.dart';
+import '../../../event/domain/entities/event_display_entity.dart';
 import '../../domain/entities/profile_entity.dart';
 
 /// Other user's profile page
@@ -43,19 +41,7 @@ class OtherProfilePage extends ConsumerWidget {
             ),
           ),
         ),
-        trailing: GestureDetector(
-          onTap: () => _handleInvitePressed(context, ref),
-          child: Container(
-            width: 36,
-            height: 36,
-            alignment: Alignment.center,
-            child: const Icon(
-              Icons.person_add_outlined,
-              color: BrandColors.text1,
-              size: 20,
-            ),
-          ),
-        ),
+        // LAZZO 2.0: Group invite trailing icon removed
       ),
       body: profileAsync.when(
         loading: () => const Center(
@@ -153,96 +139,13 @@ class OtherProfilePage extends ConsumerWidget {
     );
   }
 
-  void _handleInvitePressed(BuildContext context, WidgetRef ref) async {
-    try {
-      // Show loading dialog
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => const Center(
-          child: CircularProgressIndicator(color: BrandColors.planning),
-        ),
-      );
+  // LAZZO 2.0: _handleInvitePressed and _handleGroupSelected removed (group invites removed)
 
-      // Fetch groups and profile in parallel
-      final groups = await ref.read(invitableGroupsProvider(userId).future);
-      final profile = await ref.read(otherUserProfileProvider(userId).future);
-
-      // Dismiss loading dialog
-      if (context.mounted) {
-        Navigator.of(context).pop();
-
-        // Show bottom sheet
-        InviteToGroupBottomSheet.show(
-          context: context,
-          userName: profile.name,
-          groups: groups,
-          onGroupSelected: (groupId) =>
-              _handleGroupSelected(context, ref, groupId, profile.name),
-        );
-      }
-    } catch (e) {
-      // Dismiss loading dialog
-      if (context.mounted) {
-        Navigator.of(context).pop();
-        TopBanner.showError(
-          context,
-          message: 'Failed to load groups',
-        );
-      }
-    }
-  }
-
-  void _handleGroupSelected(
-    BuildContext context,
-    WidgetRef ref,
-    String groupId,
-    String userName,
-  ) async {
-    try {
-      final inviteUseCase = ref.read(inviteToGroupProvider);
-
-      final success = await inviteUseCase(
-        userId: userId,
-        groupId: groupId,
-      );
-
-      if (context.mounted) {
-        if (success) {
-          TopBanner.showSuccess(
-            context,
-            message: 'Invitation sent to $userName',
-          );
-        } else {
-          TopBanner.showError(
-            context,
-            message: 'Failed to send invitation',
-          );
-        }
-      }
-    } catch (e) {
-      if (context.mounted) {
-        // Check for duplicate invite error
-        if (e.toString().contains('DUPLICATE_INVITE')) {
-          TopBanner.showInfo(
-            context,
-            message: 'Invitation already sent to $userName',
-          );
-        } else {
-          TopBanner.showError(
-            context,
-            message: 'Error sending invitation',
-          );
-        }
-      }
-    }
-  }
-
-  void _onEventTap(BuildContext context, GroupEventEntity event) {
+  void _onEventTap(BuildContext context, EventDisplayEntity event) {
     // TODO: Navigate to event detail page
-    TopBanner.showInfo(
-      context,
-      message: 'Event detail - Coming soon!',
+    Navigator.of(context).pushNamed(
+      AppRouter.event,
+      arguments: {'eventId': event.id},
     );
   }
 

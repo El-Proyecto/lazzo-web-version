@@ -14,7 +14,8 @@ import '../../../../shared/models/group_enums.dart';
 import '../../../../shared/components/chips/filter_chip.dart';
 import '../../domain/entities/group.dart';
 import '../providers/groups_provider.dart';
-import '../../../../routes/app_router.dart';
+// LAZZO 2.0: AppRouter import removed (dead code)
+// import '../../../../routes/app_router.dart';
 import '../../../group_hub/presentation/providers/group_hub_providers.dart';
 
 class GroupsPage extends ConsumerStatefulWidget {
@@ -270,7 +271,7 @@ class _GroupsPageState extends ConsumerState<GroupsPage>
 
       if (mounted) {
         Navigator.of(context).pushNamed(
-          AppRouter.groupHub,
+          '/groupHub', // LAZZO 2.0: dead code
           arguments: {
             'groupId': group.id,
             'groupName': group.name,

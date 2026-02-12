@@ -1,7 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 /// Provider for controlling which tab is selected in MainLayout
-/// 0 = Home, 1 = Groups, 2 = Inbox, 3 = Profile
+/// 0 = Home, 1 = Inbox, 2 = Profile (LAZZO 2.0: Groups removed)
 final mainLayoutTabProvider = StateProvider<int>((ref) => 0);
 
 /// Provider for controlling which tab is selected in InboxPage

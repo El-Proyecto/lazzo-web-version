@@ -21,12 +21,11 @@ enum HomeEventCardState { pending, confirmed, living, recap }
 
 /// Large event card for Home page "Next Event" section
 /// Shows event details with state-specific border/chip colors
-/// Includes Chat and Expense action buttons at bottom
+/// Includes Expense action button at bottom
 class HomeEventCard extends ConsumerStatefulWidget {
   final HomeEventEntity event;
   final HomeEventCardState state;
   final VoidCallback? onTap;
-  final VoidCallback? onChatPressed;
   final VoidCallback? onExpensePressed;
   final Function(String eventId, bool? vote)? onVoteChanged;
 
@@ -35,7 +34,6 @@ class HomeEventCard extends ConsumerStatefulWidget {
     required this.event,
     required this.state,
     this.onTap,
-    this.onChatPressed,
     this.onExpensePressed,
     this.onVoteChanged,
   });
@@ -94,7 +92,7 @@ class _HomeEventCardState extends ConsumerState<HomeEventCard> {
             _buildAttendeeInfo(context),
             const SizedBox(height: Gaps.md),
 
-            // Action buttons: Chat and Expense
+            // Action buttons: Expense
             _buildActionButtons(),
           ],
         ),
@@ -533,48 +531,6 @@ class _HomeEventCardState extends ConsumerState<HomeEventCard> {
   Widget _buildActionButtons() {
     return Row(
       children: [
-        // Chat button
-        Expanded(
-          child: GestureDetector(
-            onTap: () {
-              // Navigate to event chat page for all states
-              Navigator.pushNamed(
-                context,
-                '/event-chat',
-                arguments: {'eventId': _currentEvent.id},
-              );
-            },
-            child: Container(
-              height: 44,
-              decoration: BoxDecoration(
-                color: BrandColors.bg3,
-                borderRadius: BorderRadius.circular(Radii.sm),
-              ),
-              child: Center(
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(
-                      Icons.chat_bubble_outline,
-                      color: BrandColors.text1,
-                      size: 18,
-                    ),
-                    const SizedBox(width: Gaps.xs),
-                    Text(
-                      'Chat',
-                      style: AppText.bodyMediumEmph.copyWith(
-                        color: BrandColors.text1,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(width: Gaps.sm),
-
         // Expense button
         Expanded(
           child: GestureDetector(

@@ -3,7 +3,7 @@
 
 // Card Components
 export 'cards/memory_card.dart';
-export 'cards/group_card.dart';
+// LAZZO 2.0: group_card.dart export removed
 export 'cards/action_card.dart';
 export 'cards/event_full_card.dart';
 export 'cards/event_small_card.dart';
@@ -15,7 +15,7 @@ export 'cards/close_recap_card.dart';
 export 'cards/share_card.dart';
 
 // Badge Components
-export 'badges/group_badge.dart';
+// LAZZO 2.0: group_badge.dart export removed
 
 // Chip Components
 export 'chips/event_status_chip.dart';

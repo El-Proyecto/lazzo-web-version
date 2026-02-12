@@ -1,17 +1,6 @@
-import '../repositories/other_profile_repository.dart';
+// LAZZO 2.0: This use case is deprecated — group invites removed.
+// File preserved for git history. Will be deleted in cleanup phase.
 
 class AcceptGroupInvite {
-  final OtherProfileRepository repository;
-
-  const AcceptGroupInvite(this.repository);
-
-  Future<bool> call({
-    required String userId,
-    required String groupId,
-  }) {
-    return repository.acceptGroupInvite(
-      userId: userId,
-      groupId: groupId,
-    );
-  }
+  const AcceptGroupInvite(dynamic repository);
 }

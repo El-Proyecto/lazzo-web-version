@@ -358,7 +358,7 @@ class _MemoryPageState extends ConsumerState<MemoryPage> {
   }
 
   /// Build AppBar based on event status
-  /// - Recap: AppBarWithSubtitle showing countdown timer with chat button
+  /// - Recap: AppBarWithSubtitle showing countdown timer
   /// - Living/Ended: CommonAppBar
   PreferredSizeWidget _buildAppBar(
     BuildContext context,
@@ -383,7 +383,7 @@ class _MemoryPageState extends ConsumerState<MemoryPage> {
       },
     );
 
-    // Recap state: show countdown timer with chat button (and edit if applicable)
+    // Recap state: show countdown timer with edit button (if applicable)
     if (eventStatus == EventStatus.recap) {
       final subtitle = memory.recapTimeRemaining != null
           ? 'Closes in ${memory.formattedRecapTimeRemaining}'
@@ -391,12 +391,6 @@ class _MemoryPageState extends ConsumerState<MemoryPage> {
       final subtitleColor = memory.isRecapClosingSoon
           ? BrandColors.cantVote // Red when <30min
           : BrandColors.text2;
-
-      // Chat button (always present in recap)
-      final chatButton = IconButton(
-        icon: const Icon(Icons.chat_bubble_outline, color: BrandColors.text1),
-        onPressed: () => _navigateToChat(context),
-      );
 
       // Edit button (only if host or has uploaded photos)
       final editButton = (isHost || userHasUploadedPhotos)
@@ -412,7 +406,6 @@ class _MemoryPageState extends ConsumerState<MemoryPage> {
         subtitleColor: subtitleColor,
         leading: leading,
         trailing: editButton,
-        trailing2: chatButton,
       );
     }
 
@@ -529,16 +522,6 @@ class _MemoryPageState extends ConsumerState<MemoryPage> {
         }
       }
     }
-  }
-
-  /// Navigate to event chat page
-  void _navigateToChat(BuildContext context) {
-    Navigator.of(context).pushNamed(
-      AppRouter.eventChat,
-      arguments: {
-        'eventId': widget.memoryId, // Using memoryId as eventId
-      },
-    );
   }
 
   /// Navigate to memory viewer page
