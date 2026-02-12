@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict MlYfL73WYK497Nwl8cM1zhJfQwmpRrjUqrMvvbpWYGzA9QbOHrO61X0tYEedXyI
+\restrict ddlLiktetbXH0oVF3N0Ho84yXUQetLy5t8HgO0a3HvWUrtJSTAEdPxXIdjEKEte
 
 -- Dumped from database version 17.4
 -- Dumped by pg_dump version 18.1
@@ -724,7 +724,7 @@ $$;
 --
 
 CREATE FUNCTION public.is_member_of_event(eid uuid) RETURNS boolean
-    LANGUAGE sql STABLE
+    LANGUAGE sql STABLE SECURITY DEFINER
     SET search_path TO 'public'
     AS $$
   SELECT EXISTS (
@@ -3421,15 +3421,6 @@ CREATE POLICY "Users can update their own profile" ON public.users FOR UPDATE US
 
 
 --
--- Name: event_participants Users can view event_participants; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY "Users can view event_participants" ON public.event_participants FOR SELECT TO authenticated USING ((EXISTS ( SELECT 1
-   FROM public.event_participants ep
-  WHERE ((ep.pevent_id = event_participants.pevent_id) AND (ep.user_id = auth.uid())))));
-
-
---
 -- Name: locations Users can view locations for their events; Type: POLICY; Schema: public; Owner: -
 --
 
@@ -3475,24 +3466,10 @@ CREATE POLICY ep_delete ON public.event_participants FOR DELETE USING ((user_id 
 
 
 --
--- Name: event_participants ep_insert; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY ep_insert ON public.event_participants FOR INSERT WITH CHECK ((public.is_member_of_event(pevent_id) AND (user_id = auth.uid())));
-
-
---
 -- Name: event_participants ep_select; Type: POLICY; Schema: public; Owner: -
 --
 
 CREATE POLICY ep_select ON public.event_participants FOR SELECT USING (public.is_member_of_event(pevent_id));
-
-
---
--- Name: event_participants ep_update; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY ep_update ON public.event_participants FOR UPDATE USING (((user_id = auth.uid()) AND public.is_member_of_event(pevent_id))) WITH CHECK ((user_id = auth.uid()));
 
 
 --
@@ -3641,5 +3618,5 @@ CREATE POLICY users_can_view_avatars_of_event_participants ON public.users FOR S
 -- PostgreSQL database dump complete
 --
 
-\unrestrict MlYfL73WYK497Nwl8cM1zhJfQwmpRrjUqrMvvbpWYGzA9QbOHrO61X0tYEedXyI
+\unrestrict ddlLiktetbXH0oVF3N0Ho84yXUQetLy5t8HgO0a3HvWUrtJSTAEdPxXIdjEKEte
 
