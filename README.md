@@ -119,7 +119,7 @@ We **do not** keep any `figma_raw/` dumps in this repo. If a piece is **not reus
 - Never call Supabase directly from presentation layer; use repository pattern.
 - Select **only** columns required by the entity/use case.
 - Use indexes: e.g., `order('created_at', ascending: false).limit(1)` on indexed columns.
-- Storage paths convention: `/groupId/eventId/userId/uuid.jpg` with metadata (uploader, type, ts).
+- Storage paths convention: `/eventId/userId/uuid.jpg` with metadata (uploader, type, ts).
 - RPC/Triggers live in DB; expose as repository methods.
 
 ---

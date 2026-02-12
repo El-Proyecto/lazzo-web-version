@@ -111,7 +111,7 @@ lib/
 - **RLS first**: queries must satisfy row-level policies. No admin keys in app.
 - **Minimal select**: only fields required by the **entity**.
 - **Indexes**: sort & filter by indexed columns; always `limit`.
-- **Storage**: path convention `/groupId/eventId/userId/uuid.jpg` + metadata (uploader, type, ts).
+- **Storage**: path convention `/eventId/userId/uuid.jpg` + metadata (uploader, type, ts).
 - **RPC/Triggers**: live in DB; expose via repository method signatures.
 - **Database reference**: See `supabase_structure.sql` and `supabase_schema.sql`**(supabase completed dump)** for current schema (source of truth) and `SUPABASE_DATABASE_STRUCTURE.md` for comprehensive documentation with relationships, query patterns, indexes, triggers, and RLS policies.
 
@@ -120,7 +120,7 @@ lib/
 - **Schema design**: Denormalize strategically with materialized views; use foreign keys with CASCADE; validate data with DB constraints; use UUIDs for primary keys.
 - **Caching strategies**: Use materialized views for expensive queries; client-side caching with Riverpod; consider local database (SQLite/Isar) for offline-first features; stale-while-revalidate pattern for non-critical data.
 - **Efficient indexing**: Composite indexes for common query patterns; partial indexes for filtered queries; monitor index usage and drop unused ones; B-tree indexes for equality/range queries.
-- **Local database usage**: Cache frequently accessed data; optimistic updates (local first, sync async); conflict resolution with `updated_at` timestamps; selective sync for active groups/events only.
+- **Local database usage**: Cache frequently accessed data; optimistic updates (local first, sync async); conflict resolution with `updated_at` timestamps; selective sync for active events only.
 - **Payload size minimization**: Paginate all lists with `limit + offset` or cursor-based; compress images before upload; JSON field pruning (only non-null fields); use storage CDN for images (never fetch full blobs via API).
 
 ---
@@ -334,8 +334,8 @@ print('here');
 
 **Naming Convention:**
 - Format: `print('[FeatureName] description')`
-- Feature names: `EventChat`, `Profile`, `Groups`, `CreateEvent`, `SupabaseClient`, `Repository`
-- Include relevant IDs: `userId`, `eventId`, `groupId`
+- Feature names: `EventChat`, `Profile`, `CreateEvent`, `SupabaseClient`, `Repository`
+- Include relevant IDs: `userId`, `eventId`
 - Keep messages concise and actionable
 
 **Before PR/Merge to Main:**

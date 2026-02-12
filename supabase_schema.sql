@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict hpacRJ3cL5f6UIIc7xHFPT3Ul1Dwo8JdkqEHtKX2z3gNBOElzV1KBeuDocBFhLz
+\restrict qtmzKkbRblxbdI0drnwV7C1RuajFwIu6Mna99m1ed3bB9F58rYcRxoq19qf8QAV
 
 -- Dumped from database version 17.4
 -- Dumped by pg_dump version 18.1
@@ -63,37 +63,6 @@ CREATE TYPE public.event_state AS ENUM (
 CREATE TYPE public.expense_status AS ENUM (
     'open',
     'settled'
-);
-
-
---
--- Name: group_state; Type: TYPE; Schema: public; Owner: -
---
-
-CREATE TYPE public.group_state AS ENUM (
-    'active',
-    'archived'
-);
-
-
---
--- Name: member_role; Type: TYPE; Schema: public; Owner: -
---
-
-CREATE TYPE public.member_role AS ENUM (
-    'admin',
-    'member'
-);
-
-
---
--- Name: message_type; Type: TYPE; Schema: public; Owner: -
---
-
-CREATE TYPE public.message_type AS ENUM (
-    'text',
-    'event',
-    'expense'
 );
 
 
@@ -211,251 +180,63 @@ end $$;
 
 
 --
--- Name: accept_group_invite(uuid, uuid); Type: FUNCTION; Schema: public; Owner: -
+-- Name: accept_event_invite_by_token(text); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.accept_group_invite(p_group_id uuid, p_user_id uuid) RETURNS void
+CREATE FUNCTION public.accept_event_invite_by_token(p_token text) RETURNS TABLE(event_id uuid, event_name text, event_emoji text)
     LANGUAGE plpgsql SECURITY DEFINER
     AS $$
 DECLARE
-  v_invite_exists BOOLEAN;
+  v_user_id uuid;
+  v_event_id uuid;
+  v_event_name text;
+  v_event_emoji text;
+  v_link_valid boolean;
 BEGIN
-  -- 1. Check if invite exists
-  SELECT EXISTS(
-    SELECT 1 FROM group_invites 
-    WHERE group_id = p_group_id AND invited_id = p_user_id
-  ) INTO v_invite_exists;
-  
-  IF NOT v_invite_exists THEN
-    RAISE EXCEPTION 'No invite found for this user and group'
-      USING ERRCODE = 'P0001';
-  END IF;
-  
-  -- 2. Check if already a member (user left and rejoining)
-  IF EXISTS(
-    SELECT 1 FROM group_members 
-    WHERE group_id = p_group_id AND user_id = p_user_id
-  ) THEN
-    -- Already member, delete invite and notification
-    DELETE FROM group_invites 
-    WHERE group_id = p_group_id AND invited_id = p_user_id;
-    
-    DELETE FROM notifications
-    WHERE recipient_user_id = p_user_id 
-      AND group_id = p_group_id 
-      AND type = 'groupInviteReceived';
-    
-    RETURN;
-  END IF;
-  
-  -- 3. Add to group_members
-  INSERT INTO group_members (group_id, user_id, role, joined_at)
-  VALUES (p_group_id, p_user_id, 'member', NOW())
-  ON CONFLICT (group_id, user_id) DO NOTHING;
-  
-  -- 4. Create group_user_settings (active state)
-  INSERT INTO group_user_settings (group_id, user_id, is_pinned, is_muted, group_state)
-  VALUES (p_group_id, p_user_id, FALSE, FALSE, 'active')
-  ON CONFLICT (group_id, user_id) DO UPDATE SET
-    group_state = 'active',  -- Reactivate if was archived
-    updated_at = NOW();
-  
-  -- 5. Delete the invite
-  DELETE FROM group_invites 
-  WHERE group_id = p_group_id AND invited_id = p_user_id;
-  
-  -- 6. Delete the notification (NEW - removes from inbox automatically)
-  DELETE FROM notifications
-  WHERE recipient_user_id = p_user_id 
-    AND group_id = p_group_id 
-    AND type = 'groupInviteReceived';
-    
-END;
-$$;
-
-
---
--- Name: accept_group_invite_by_token(text); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.accept_group_invite_by_token(p_token text) RETURNS TABLE(result_group_id uuid)
-    LANGUAGE plpgsql SECURITY DEFINER
-    AS $$
-DECLARE
-  v_user_id UUID;
-  v_invite RECORD;
-  v_target_group_id UUID;
-BEGIN
-  -- Get authenticated user
   v_user_id := auth.uid();
   IF v_user_id IS NULL THEN
     RAISE EXCEPTION 'Not authenticated';
   END IF;
 
-  -- Find and validate invite link
-  SELECT 
-    gil.id,
-    gil.group_id,
-    gil.expires_at,
-    gil.revoked_at
-  INTO v_invite
-  FROM group_invite_links gil
-  WHERE gil.token = p_token;
+  -- Validate token
+  SELECT eil.event_id INTO v_event_id
+  FROM public.event_invite_links eil
+  WHERE eil.token = p_token
+    AND eil.revoked_at IS NULL
+    AND eil.expires_at > now();
 
-  -- Token doesn't exist
-  IF v_invite.id IS NULL THEN
-    RAISE EXCEPTION 'Invalid invite token';
+  IF v_event_id IS NULL THEN
+    RAISE EXCEPTION 'Invalid or expired invite link';
   END IF;
 
-  -- Store group_id in variable
-  v_target_group_id := v_invite.group_id;
+  -- Get event info
+  SELECT e.name, e.emoji INTO v_event_name, v_event_emoji
+  FROM public.events e WHERE e.id = v_event_id;
 
-  -- Token expired
-  IF v_invite.expires_at < NOW() THEN
-    RAISE EXCEPTION 'Invite link has expired';
-  END IF;
-
-  -- Token revoked
-  IF v_invite.revoked_at IS NOT NULL THEN
-    RAISE EXCEPTION 'Invite link has been revoked';
-  END IF;
-
-  -- Check if user is already a member
-  IF EXISTS (
-    SELECT 1 
-    FROM group_members gm
-    WHERE gm.group_id = v_target_group_id
-    AND gm.user_id = v_user_id
-  ) THEN
-    -- Already member, return
-    RETURN QUERY SELECT v_target_group_id;
-    RETURN;
-  END IF;
-
-  -- Add user to group
-  INSERT INTO group_members (
-    group_id,
-    user_id,
-    role
-  )
-  VALUES (
-    v_target_group_id,
-    v_user_id,
-    'member'
-  )
-  ON CONFLICT (group_id, user_id) DO NOTHING;
-
-  -- Return the group_id
-  RETURN QUERY SELECT v_target_group_id;
-END;
-$$;
-
-
---
--- Name: add_event_participants(uuid, uuid); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.add_event_participants(p_event_id uuid, p_group_id uuid) RETURNS json
-    LANGUAGE plpgsql SECURITY DEFINER
-    SET search_path TO 'public'
-    AS $$
-DECLARE
-  v_member_ids UUID[];
-  v_inserted_count INT;
-BEGIN
-  -- Get all member IDs from the group
-  SELECT ARRAY_AGG(user_id)
-  INTO v_member_ids
-  FROM group_members
-  WHERE group_id = p_group_id;
-
-  -- Insert all members as participants
-  INSERT INTO event_participants (event_id, user_id, rsvp_status)
-  SELECT p_event_id, unnest(v_member_ids), 'confirmed';
-
-  GET DIAGNOSTICS v_inserted_count = ROW_COUNT;
-
-  RETURN json_build_object(
-    'success', true,
-    'participants_added', v_inserted_count
-  );
-EXCEPTION WHEN OTHERS THEN
-  RETURN json_build_object(
-    'success', false,
-    'error', SQLERRM
-  );
-END;
-$$;
-
-
---
--- Name: add_group_members_to_event(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.add_group_members_to_event() RETURNS trigger
-    LANGUAGE plpgsql SECURITY DEFINER
-    SET search_path TO 'public'
-    AS $$
-BEGIN
-  -- Insere todos os membros do grupo como participantes com RSVP pending
-  INSERT INTO event_participants (pevent_id, user_id, rsvp)
-  SELECT NEW.id, gm.user_id, 'pending'
-  FROM group_members gm
-  WHERE gm.group_id = NEW.group_id;
-  
-  RETURN NEW;
-END;
-$$;
-
-
---
--- Name: add_new_member_to_group_events(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.add_new_member_to_group_events() RETURNS trigger
-    LANGUAGE plpgsql SECURITY DEFINER
-    AS $$
-BEGIN
-  -- Add new member as participant to all non-ended events in the group
-  INSERT INTO event_participants (pevent_id, user_id, rsvp)
-  SELECT e.id, NEW.user_id, 'pending'
-  FROM events e
-  WHERE e.group_id = NEW.group_id
-    AND e.status IN ('pending', 'confirmed')  -- Não inclui 'ended'
+  -- Add as participant (idempotent)
+  INSERT INTO public.event_participants (pevent_id, user_id, rsvp)
+  VALUES (v_event_id, v_user_id, 'pending'::rsvp_status)
   ON CONFLICT (pevent_id, user_id) DO NOTHING;
-  
-  RETURN NEW;
+
+  -- Increment open count
+  UPDATE public.event_invite_links
+  SET open_count = open_count + 1
+  WHERE token = p_token AND revoked_at IS NULL;
+
+  -- Track analytics
+  INSERT INTO public.invite_analytics (event_id, invite_token, action, user_id)
+  VALUES (v_event_id, p_token, 'auto_join_app', v_user_id);
+
+  RETURN QUERY SELECT v_event_id, v_event_name, v_event_emoji;
 END;
 $$;
 
 
 --
--- Name: auto_refresh_group_cache(); Type: FUNCTION; Schema: public; Owner: -
+-- Name: FUNCTION accept_event_invite_by_token(p_token text); Type: COMMENT; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.auto_refresh_group_cache() RETURNS trigger
-    LANGUAGE plpgsql
-    AS $$
-BEGIN
-  REFRESH MATERIALIZED VIEW CONCURRENTLY group_hub_events_cache;
-  RETURN NULL;
-END;
-$$;
-
-
---
--- Name: auto_refresh_group_photos_view(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.auto_refresh_group_photos_view() RETURNS trigger
-    LANGUAGE plpgsql
-    AS $$
-BEGIN
-  -- Use CONCURRENTLY to allow concurrent reads during refresh
-  REFRESH MATERIALIZED VIEW CONCURRENTLY public.group_photos_with_uploader;
-  RETURN NULL;
-END;
-$$;
+COMMENT ON FUNCTION public.accept_event_invite_by_token(p_token text) IS 'Accepts an event invite by token. Adds the authenticated user as a participant. Idempotent — calling twice won''t duplicate.';
 
 
 --
@@ -556,61 +337,6 @@ BEGIN
   --   AND type NOT IN ('uploadsOpen', 'uploadsClosing', 'eventStartsSoon', 'locationLiveStarted');
   
 END;
-$$;
-
-
---
--- Name: create_group_invite_link(uuid, integer); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.create_group_invite_link(p_group_id uuid, p_expires_in_hours integer DEFAULT 48) RETURNS TABLE(token text, expires_at timestamp with time zone)
-    LANGUAGE plpgsql SECURITY DEFINER
-    AS $$
-declare
-  v_uid uuid;
-  v_token text;
-  v_expires_at timestamptz;
-  v_try int := 0;
-begin
-  v_uid := auth.uid();
-  if v_uid is null then
-    raise exception 'Not authenticated' using errcode = '28000';
-  end if;
-
-  -- CORRIGIDO: verificar apenas 'admin' (não 'owner')
-  if not exists (
-    select 1
-    from public.group_members gm
-    where gm.group_id = p_group_id
-      and gm.user_id = v_uid
-      and gm.role = 'admin'
-  ) then
-    raise exception 'Not allowed to create invite link for this group' using errcode = '42501';
-  end if;
-
-  v_expires_at := now() + make_interval(hours => p_expires_in_hours);
-
-  loop
-    v_try := v_try + 1;
-    if v_try > 10 then
-      raise exception 'Failed to generate unique token' using errcode = 'P0001';
-    end if;
-
-    v_token := public.generate_invite_token(18);
-
-    begin
-      insert into public.group_invite_links (group_id, created_by, token, expires_at)
-      values (p_group_id, v_uid, v_token, v_expires_at);
-
-      token := v_token;
-      expires_at := v_expires_at;
-      return next;
-      exit;
-    exception when unique_violation then
-      null;
-    end;
-  end loop;
-end;
 $$;
 
 
@@ -818,245 +544,163 @@ $$;
 
 
 --
--- Name: get_event_participants_count(uuid, uuid); Type: FUNCTION; Schema: public; Owner: -
+-- Name: get_event_by_invite_token(text); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.get_event_participants_count(p_event_id uuid, p_exclude_user_id uuid) RETURNS integer
+CREATE FUNCTION public.get_event_by_invite_token(p_token text) RETURNS TABLE(event_id uuid, event_name text, event_emoji text, event_description text, start_datetime timestamp with time zone, end_datetime timestamp with time zone, location_name text, location_address text, location_lat numeric, location_lng numeric, organizer_name text, organizer_avatar text, status text, participant_count bigint, going_count bigint, guest_going_count bigint, cover_photo_url text)
     LANGUAGE plpgsql SECURITY DEFINER
-    SET search_path TO 'public'
-    AS $$
-BEGIN
-  RETURN (
-    SELECT COUNT(*)::integer
-    FROM event_participants ep
-    WHERE ep.pevent_id = p_event_id
-      AND ep.user_id != p_exclude_user_id
-  );
-END;
-$$;
-
-
---
--- Name: FUNCTION get_event_participants_count(p_event_id uuid, p_exclude_user_id uuid); Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON FUNCTION public.get_event_participants_count(p_event_id uuid, p_exclude_user_id uuid) IS 'Returns count of event participants excluding specified user (used for read status calculations)';
-
-
---
--- Name: get_group_member_count(uuid); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.get_group_member_count(group_uuid uuid) RETURNS integer
-    LANGUAGE plpgsql SECURITY DEFINER
-    AS $$
-BEGIN
-  RETURN (
-    SELECT COUNT(*)::INTEGER 
-    FROM group_members 
-    WHERE group_id = group_uuid
-  );
-END;
-$$;
-
-
---
--- Name: get_messages_with_read_status(uuid, uuid, integer); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.get_messages_with_read_status(p_event_id uuid, p_current_user_id uuid, p_limit integer DEFAULT 50) RETURNS TABLE(id uuid, event_id uuid, user_id uuid, content text, created_at timestamp with time zone, is_pinned boolean, is_deleted boolean, reply_to_id uuid, updated_at timestamp with time zone, user_name text, user_avatar text, is_read_by_someone boolean, is_read_by_everyone boolean)
-    LANGUAGE plpgsql SECURITY DEFINER
-    SET search_path TO 'public'
     AS $$
 DECLARE
-  v_total_other_participants integer;
+  v_event_id uuid;
 BEGIN
-  -- Count participants excluding sender (for "read by everyone" calculation)
-  -- Note: event_participants uses pevent_id, not event_id
-  SELECT COUNT(*) INTO v_total_other_participants
-  FROM event_participants ep
-  WHERE ep.pevent_id = p_event_id
-    AND ep.user_id != p_current_user_id;
+  -- Validate token
+  SELECT eil.event_id INTO v_event_id
+  FROM public.event_invite_links eil
+  WHERE eil.token = p_token
+    AND eil.revoked_at IS NULL
+    AND eil.expires_at > now();
 
+  IF v_event_id IS NULL THEN
+    RAISE EXCEPTION 'Invalid or expired invite link';
+  END IF;
+
+  -- Track web open
+  INSERT INTO public.invite_analytics (event_id, invite_token, action)
+  VALUES (v_event_id, p_token, 'link_opened_web');
+
+  -- Return event data for the web page
   RETURN QUERY
-  SELECT 
-    cm.id,
-    cm.event_id,
-    cm.user_id,
-    cm.content,
-    cm.created_at,
-    cm.is_pinned,
-    cm.is_deleted,
-    cm.reply_to_id,
-    cm.updated_at,
-    u.name AS user_name,
-    u.avatar_url AS user_avatar,
-    -- is_read_by_someone: TRUE if at least one other participant has read this message
-    EXISTS (
-      SELECT 1
-      FROM message_reads mr
-      INNER JOIN chat_messages last_read ON (last_read.id = mr.last_read_message_id)
-      WHERE mr.event_id = cm.event_id
-        AND mr.user_id != cm.user_id
-        AND last_read.created_at >= cm.created_at
-    ) AS is_read_by_someone,
-    -- is_read_by_everyone: TRUE only if ALL other participants have read this message
-    CASE 
-      WHEN v_total_other_participants = 0 THEN true  -- No other participants = consider "read"
-      ELSE (
-        SELECT COUNT(*) = v_total_other_participants
-        FROM message_reads mr
-        INNER JOIN chat_messages last_read ON (last_read.id = mr.last_read_message_id)
-        INNER JOIN event_participants ep ON (ep.user_id = mr.user_id AND ep.pevent_id = p_event_id)
-        WHERE mr.event_id = cm.event_id
-          AND mr.user_id != cm.user_id
-          AND last_read.created_at >= cm.created_at
-      )
-    END AS is_read_by_everyone
-  FROM chat_messages cm
-  LEFT JOIN users u ON u.id = cm.user_id
-  WHERE cm.event_id = p_event_id
-    AND cm.is_deleted = false
-  ORDER BY cm.created_at DESC
-  LIMIT p_limit;
+  SELECT
+    e.id AS event_id,
+    e.name AS event_name,
+    e.emoji AS event_emoji,
+    e.description AS event_description,
+    e.start_datetime,
+    e.end_datetime,
+    l.display_name AS location_name,
+    l.formatted_address AS location_address,
+    l.latitude AS location_lat,
+    l.longitude AS location_lng,
+    u.name AS organizer_name,
+    u.avatar_url AS organizer_avatar,
+    e.status::text,
+    (SELECT count(*) FROM public.event_participants ep WHERE ep.pevent_id = e.id)::bigint AS participant_count,
+    (SELECT count(*) FROM public.event_participants ep WHERE ep.pevent_id = e.id AND ep.rsvp = 'yes'::rsvp_status)::bigint AS going_count,
+    (SELECT count(*) FROM public.event_guest_rsvps gr WHERE gr.event_id = e.id AND gr.rsvp = 'going')::bigint AS guest_going_count,
+    ep_cover.url AS cover_photo_url
+  FROM public.events e
+  LEFT JOIN public.locations l ON l.id = e.location_id
+  LEFT JOIN public.users u ON u.id = e.created_by
+  LEFT JOIN public.event_photos ep_cover ON ep_cover.id = e.cover_photo_id
+  WHERE e.id = v_event_id;
 END;
 $$;
 
 
 --
--- Name: FUNCTION get_messages_with_read_status(p_event_id uuid, p_current_user_id uuid, p_limit integer); Type: COMMENT; Schema: public; Owner: -
+-- Name: FUNCTION get_event_by_invite_token(p_token text); Type: COMMENT; Schema: public; Owner: -
 --
 
-COMMENT ON FUNCTION public.get_messages_with_read_status(p_event_id uuid, p_current_user_id uuid, p_limit integer) IS 'Returns messages with WhatsApp-style read status:
-- is_read_by_someone: TRUE when at least one participant has read
-- is_read_by_everyone: TRUE when ALL participants have read (double checkmarks)';
+COMMENT ON FUNCTION public.get_event_by_invite_token(p_token text) IS 'Returns event details for the web landing page. Token-gated: no token = no data. Used by Next.js server-side.';
 
 
 --
--- Name: get_or_create_group_invite_link(uuid, integer); Type: FUNCTION; Schema: public; Owner: -
+-- Name: get_or_create_event_invite_link(uuid, integer, text); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.get_or_create_group_invite_link(p_group_id uuid, p_expires_in_hours integer DEFAULT 48) RETURNS TABLE(id uuid, token text, expires_at timestamp with time zone, created_at timestamp with time zone)
+CREATE FUNCTION public.get_or_create_event_invite_link(p_event_id uuid, p_expires_in_hours integer DEFAULT 48, p_share_channel text DEFAULT NULL::text) RETURNS TABLE(token text, expires_at timestamp with time zone, created_at timestamp with time zone)
     LANGUAGE plpgsql SECURITY DEFINER
     AS $$
 DECLARE
-  v_user_id UUID;
-  v_existing_link RECORD;
-  v_new_token TEXT;
-  v_new_id UUID;
-  v_expires_at TIMESTAMPTZ;
+  v_user_id uuid;
+  v_existing_token text;
+  v_existing_expires timestamptz;
+  v_existing_created timestamptz;
+  v_new_token text;
+  v_new_expires timestamptz;
+  v_event_exists boolean;
+  v_is_participant boolean;
 BEGIN
-  -- Get authenticated user
   v_user_id := auth.uid();
   IF v_user_id IS NULL THEN
     RAISE EXCEPTION 'Not authenticated';
   END IF;
 
-  -- Verify user is member of group
-  IF NOT EXISTS (
-    SELECT 1 FROM group_members
-    WHERE group_id = p_group_id 
-    AND user_id = v_user_id
-  ) THEN
-    RAISE EXCEPTION 'User is not a member of this group';
+  -- Verify event exists
+  SELECT EXISTS(SELECT 1 FROM public.events WHERE id = p_event_id) INTO v_event_exists;
+  IF NOT v_event_exists THEN
+    RAISE EXCEPTION 'Event not found';
   END IF;
 
-  -- Try to find valid existing link (not expired, not revoked)
-  SELECT 
-    gil.id,
-    gil.token,
-    gil.expires_at,
-    gil.created_at
-  INTO v_existing_link
-  FROM group_invite_links gil
-  WHERE gil.group_id = p_group_id
-    AND gil.expires_at > NOW()
-    AND gil.revoked_at IS NULL
-  ORDER BY gil.expires_at DESC
+  -- Verify user is organizer or participant
+  SELECT EXISTS(
+    SELECT 1 FROM public.event_participants 
+    WHERE pevent_id = p_event_id AND user_id = v_user_id
+  ) INTO v_is_participant;
+  
+  IF NOT v_is_participant AND NOT EXISTS(
+    SELECT 1 FROM public.events WHERE id = p_event_id AND created_by = v_user_id
+  ) THEN
+    RAISE EXCEPTION 'Not authorized to create invite for this event';
+  END IF;
+
+  -- Try to reuse existing valid token
+  SELECT eil.token, eil.expires_at, eil.created_at
+  INTO v_existing_token, v_existing_expires, v_existing_created
+  FROM public.event_invite_links eil
+  WHERE eil.event_id = p_event_id
+    AND eil.revoked_at IS NULL
+    AND eil.expires_at > now()
+  ORDER BY eil.created_at DESC
   LIMIT 1;
 
-  -- If valid link exists, return it
-  IF v_existing_link.id IS NOT NULL THEN
-    RETURN QUERY SELECT 
-      v_existing_link.id,
-      v_existing_link.token,
-      v_existing_link.expires_at,
-      v_existing_link.created_at;
+  IF v_existing_token IS NOT NULL THEN
+    RETURN QUERY SELECT v_existing_token, v_existing_expires, v_existing_created;
     RETURN;
   END IF;
 
-  -- No valid link exists, create new one
-  v_new_token := generate_url_safe_token();
-  v_expires_at := NOW() + (p_expires_in_hours || ' hours')::INTERVAL;
+  -- Generate new token
+  v_new_token := public.generate_url_safe_token();
+  v_new_expires := now() + (p_expires_in_hours || ' hours')::interval;
 
-  INSERT INTO group_invite_links (
-    group_id,
-    created_by,
-    token,
-    expires_at
-  )
-  VALUES (
-    p_group_id,
-    v_user_id,
-    v_new_token,
-    v_expires_at
-  )
-  RETURNING 
-    group_invite_links.id,
-    group_invite_links.token,
-    group_invite_links.expires_at,
-    group_invite_links.created_at
-  INTO v_new_id, v_new_token, v_expires_at, v_existing_link.created_at;
+  INSERT INTO public.event_invite_links (event_id, created_by, token, expires_at, share_channel)
+  VALUES (p_event_id, v_user_id, v_new_token, v_new_expires, p_share_channel);
 
-  RETURN QUERY SELECT 
-    v_new_id,
-    v_new_token,
-    v_expires_at,
-    v_existing_link.created_at;
+  RETURN QUERY SELECT v_new_token, v_new_expires, now();
 END;
 $$;
 
 
 --
--- Name: get_recent_memories_with_covers(uuid[], timestamp with time zone); Type: FUNCTION; Schema: public; Owner: -
+-- Name: FUNCTION get_or_create_event_invite_link(p_event_id uuid, p_expires_in_hours integer, p_share_channel text); Type: COMMENT; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.get_recent_memories_with_covers(p_user_group_ids uuid[], p_start_date timestamp with time zone) RETURNS TABLE(id uuid, name text, start_datetime timestamp with time zone, end_datetime timestamp with time zone, display_name text, cover_storage_path text, group_id uuid)
+COMMENT ON FUNCTION public.get_or_create_event_invite_link(p_event_id uuid, p_expires_in_hours integer, p_share_channel text) IS 'Creates or reuses an event invite link. Returns existing valid token if available, otherwise generates a new one. Only event participants/organizers can create links.';
+
+
+--
+-- Name: get_recent_memories_with_covers(uuid, timestamp with time zone); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.get_recent_memories_with_covers(p_user_id uuid, p_start_date timestamp with time zone) RETURNS TABLE(id uuid, name text, start_datetime timestamp with time zone, end_datetime timestamp with time zone, display_name text, cover_storage_path text)
     LANGUAGE sql STABLE SECURITY DEFINER
+    SET search_path TO 'public'
     AS $$
-  SELECT 
+  SELECT
     e.id,
     e.name,
     e.start_datetime,
     e.end_datetime,
-    l.display_name,
+    COALESCE(e.name, 'Untitled Event') AS display_name,
     COALESCE(
-      -- Try 1: Use cover_photo_id if set
-      (SELECT gp.storage_path 
-       FROM group_photos gp 
-       WHERE gp.id = e.cover_photo_id 
-       LIMIT 1),
-      
-      -- Try 2: Get first portrait photo
-      (SELECT gp.storage_path 
-       FROM group_photos gp 
-       WHERE gp.event_id = e.id 
-         AND gp.is_portrait = true 
-       ORDER BY gp.captured_at ASC 
-       LIMIT 1),
-      
-      -- Try 3: Get any photo
-      (SELECT gp.storage_path 
-       FROM group_photos gp 
-       WHERE gp.event_id = e.id 
-       ORDER BY gp.captured_at ASC 
-       LIMIT 1)
-    ) as cover_storage_path,
-    e.group_id
+      (SELECT ep.storage_path FROM event_photos ep WHERE ep.id = e.cover_photo_id),
+      (SELECT ep.storage_path FROM event_photos ep WHERE ep.event_id = e.id AND ep.is_portrait = true ORDER BY ep.created_at LIMIT 1),
+      (SELECT ep.storage_path FROM event_photos ep WHERE ep.event_id = e.id ORDER BY ep.created_at LIMIT 1)
+    ) AS cover_storage_path
   FROM events e
-  LEFT JOIN locations l ON e.location_id = l.id
-  WHERE e.group_id = ANY(p_user_group_ids)
-    AND e.status IN ('recap', 'ended')
+  JOIN event_participants part ON part.pevent_id = e.id
+  WHERE part.user_id = p_user_id
+    AND e.status IN ('recap'::event_state, 'ended'::event_state)
     AND e.end_datetime >= p_start_date
   ORDER BY e.end_datetime DESC
   LIMIT 20;
@@ -1064,107 +708,44 @@ $$;
 
 
 --
--- Name: FUNCTION get_recent_memories_with_covers(p_user_group_ids uuid[], p_start_date timestamp with time zone); Type: COMMENT; Schema: public; Owner: -
+-- Name: FUNCTION get_recent_memories_with_covers(p_user_id uuid, p_start_date timestamp with time zone); Type: COMMENT; Schema: public; Owner: -
 --
 
-COMMENT ON FUNCTION public.get_recent_memories_with_covers(p_user_group_ids uuid[], p_start_date timestamp with time zone) IS 'Optimized function to fetch recent memories (last 30 days) with cover photos. Uses COALESCE for automatic fallback. Called by Home page to eliminate N+1 queries.';
+COMMENT ON FUNCTION public.get_recent_memories_with_covers(p_user_id uuid, p_start_date timestamp with time zone) IS 'Fetches recent memories (ended events) for a user. Lazzo 2.0: no longer group-based, queries by participant membership directly.';
 
 
 --
--- Name: get_unread_message_count(uuid, uuid); Type: FUNCTION; Schema: public; Owner: -
+-- Name: get_user_memories_with_covers(uuid); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.get_unread_message_count(p_event_id uuid, p_user_id uuid) RETURNS integer
-    LANGUAGE plpgsql SECURITY DEFINER
+CREATE FUNCTION public.get_user_memories_with_covers(p_user_id uuid) RETURNS TABLE(id uuid, name text, end_datetime timestamp with time zone, status text, display_name text, cover_storage_path text)
+    LANGUAGE sql STABLE SECURITY DEFINER
     SET search_path TO 'public'
     AS $$
-DECLARE
-  v_count integer;
-BEGIN
-  SELECT COUNT(*)::integer INTO v_count
-  FROM chat_messages cm
-  LEFT JOIN message_reads mr ON (
-    mr.user_id = p_user_id AND
-    mr.event_id = cm.event_id
-  )
-  LEFT JOIN chat_messages last_read ON (last_read.id = mr.last_read_message_id)
-  WHERE cm.event_id = p_event_id
-    AND cm.user_id != p_user_id
-    AND cm.is_deleted = false
-    AND (
-      mr.last_read_message_id IS NULL OR
-      cm.created_at > last_read.created_at
-    );
-
-  RETURN v_count;
-END;
-$$;
-
-
---
--- Name: FUNCTION get_unread_message_count(p_event_id uuid, p_user_id uuid); Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON FUNCTION public.get_unread_message_count(p_event_id uuid, p_user_id uuid) IS 'Returns count of unread messages for a user in an event. Excludes user''s own messages.';
-
-
---
--- Name: get_user_memories_with_covers(uuid[]); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.get_user_memories_with_covers(p_group_ids uuid[]) RETURNS TABLE(id uuid, name text, end_datetime timestamp with time zone, status text, display_name text, cover_storage_path text)
-    LANGUAGE sql STABLE SECURITY DEFINER
-    AS $$
-  SELECT 
+  SELECT
     e.id,
     e.name,
     e.end_datetime,
-    e.status,  -- NEW: Include event status (living/recap/ended)
-    l.display_name,
+    e.status::text,
+    COALESCE(e.name, 'Untitled Event') AS display_name,
     COALESCE(
-      -- Try 1: Use cover_photo_id if set
-      (SELECT gp.storage_path 
-       FROM group_photos gp 
-       WHERE gp.id = e.cover_photo_id 
-       LIMIT 1),
-      
-      -- Try 2: Get first portrait photo
-      (SELECT gp.storage_path 
-       FROM group_photos gp 
-       WHERE gp.event_id = e.id 
-         AND gp.is_portrait = true 
-       ORDER BY gp.captured_at ASC 
-       LIMIT 1),
-      
-      -- Try 3: Get any photo
-      (SELECT gp.storage_path 
-       FROM group_photos gp 
-       WHERE gp.event_id = e.id 
-       ORDER BY gp.captured_at ASC 
-       LIMIT 1)
-    ) as cover_storage_path
+      (SELECT ep.storage_path FROM event_photos ep WHERE ep.id = e.cover_photo_id),
+      (SELECT ep.storage_path FROM event_photos ep WHERE ep.event_id = e.id AND ep.is_portrait = true ORDER BY ep.created_at LIMIT 1),
+      (SELECT ep.storage_path FROM event_photos ep WHERE ep.event_id = e.id ORDER BY ep.created_at LIMIT 1)
+    ) AS cover_storage_path
   FROM events e
-  LEFT JOIN locations l ON e.location_id = l.id
-  WHERE e.group_id = ANY(p_group_ids)
-    AND e.status IN ('recap', 'ended')
-    AND (
-      -- Only return events that have at least one photo
-      e.cover_photo_id IS NOT NULL
-      OR EXISTS (
-        SELECT 1 FROM group_photos gp 
-        WHERE gp.event_id = e.id 
-        LIMIT 1
-      )
-    )
+  JOIN event_participants part ON part.pevent_id = e.id
+  WHERE part.user_id = p_user_id
+    AND e.status IN ('living'::event_state, 'recap'::event_state, 'ended'::event_state)
   ORDER BY e.end_datetime DESC;
 $$;
 
 
 --
--- Name: FUNCTION get_user_memories_with_covers(p_group_ids uuid[]); Type: COMMENT; Schema: public; Owner: -
+-- Name: FUNCTION get_user_memories_with_covers(p_user_id uuid); Type: COMMENT; Schema: public; Owner: -
 --
 
-COMMENT ON FUNCTION public.get_user_memories_with_covers(p_group_ids uuid[]) IS 'Optimized function to fetch user memories with cover photos and status. Uses COALESCE for automatic fallback: cover_photo_id → portrait → any photo. Returns status field for colored borders in UI (living=purple, recap=orange). Called by Profile page to eliminate N+1 queries.';
+COMMENT ON FUNCTION public.get_user_memories_with_covers(p_user_id uuid) IS 'Fetches all memories for a user with cover photos. Lazzo 2.0: queries by participant membership instead of group membership.';
 
 
 --
@@ -1204,72 +785,18 @@ CREATE FUNCTION public.handle_new_event() RETURNS trigger
     LANGUAGE plpgsql SECURITY DEFINER
     SET search_path TO 'public'
     AS $$
-begin
-  if NEW.created_by is null then
-    raise exception 'created_by não pode ser NULL ao criar evento';
-  end if;
+BEGIN
+  IF NEW.created_by IS NULL THEN
+    RAISE EXCEPTION 'created_by is required';
+  END IF;
 
-  -- 1) Host do evento entra sempre como participante
-  insert into public.event_participants (
-    pevent_id,
-    user_id,
-    role
-  ) values (
-    NEW.id,
-    NEW.created_by,
-    'host'
-  );
-  -- (rsvp fica com o default da coluna, ou NULL se não houver default)
+  -- Insert creator as host participant
+  INSERT INTO public.event_participants (pevent_id, user_id, rsvp)
+  VALUES (NEW.id, NEW.created_by, 'yes'::rsvp_status)
+  ON CONFLICT (pevent_id, user_id) DO NOTHING;
 
-  -- 2) Se o evento pertence a um grupo, adicionar todos os membros do grupo
-  --    como participantes, exceto o host. O rsvp fica "pending" se esse
-  --    for o default da coluna.
-  if NEW.group_id is not null then
-    insert into public.event_participants (
-      pevent_id,
-      user_id
-      -- , rsvp  -- opcional, ver nota abaixo
-    )
-    select
-      NEW.id        as pevent_id,
-      gm.user_id
-      -- , 'pending'::rsvp_status  -- usa isto se quiseres forçar explicitamente
-    from public.group_members gm
-    where gm.group_id = NEW.group_id
-      and gm.user_id is not null
-      and gm.user_id <> NEW.created_by; -- não duplicar o host
-  end if;
-
-  return NEW;
-end;
-$$;
-
-
---
--- Name: handle_new_group(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.handle_new_group() RETURNS trigger
-    LANGUAGE plpgsql SECURITY DEFINER
-    SET search_path TO 'public'
-    AS $$
-begin
-  if NEW.created_by is null then
-    raise exception 'created_by não pode ser NULL ao criar grupo';
-  end if;
-
-  insert into public.group_members (
-    group_id,
-    user_id,
-    role
-  ) values (
-    NEW.id,
-    NEW.created_by,
-    'admin'  -- ou 'admin', como decidires
-  );
-
-  return NEW;
-end;
+  RETURN NEW;
+END;
 $$;
 
 
@@ -1305,142 +832,17 @@ $$;
 
 
 --
--- Name: is_admin(uuid); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.is_admin(p_group uuid) RETURNS boolean
-    LANGUAGE sql STABLE SECURITY DEFINER
-    SET search_path TO 'public'
-    AS $$
-  SELECT EXISTS (
-    SELECT 1 FROM public.group_members gm
-    WHERE gm.group_id = p_group AND gm.user_id = auth.uid()
-      AND gm.role = 'admin'::member_role
-  );
-$$;
-
-
---
--- Name: is_group_creator(uuid); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.is_group_creator(p_group uuid) RETURNS boolean
-    LANGUAGE sql STABLE SECURITY DEFINER
-    SET search_path TO 'public'
-    AS $$
-  SELECT EXISTS (
-    SELECT 1 FROM public.groups g
-    WHERE g.id = p_group AND g.created_by = auth.uid()
-  );
-$$;
-
-
---
--- Name: is_member(uuid); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.is_member(p_group uuid) RETURNS boolean
-    LANGUAGE sql STABLE SECURITY DEFINER
-    SET search_path TO 'public'
-    AS $$
-  SELECT EXISTS (
-    SELECT 1 FROM public.group_members gm
-    WHERE gm.group_id = p_group AND gm.user_id = auth.uid()
-  );
-$$;
-
-
---
 -- Name: is_member_of_event(uuid); Type: FUNCTION; Schema: public; Owner: -
 --
 
 CREATE FUNCTION public.is_member_of_event(eid uuid) RETURNS boolean
     LANGUAGE sql STABLE
-    AS $$
-  select exists (
-    select 1
-    from public.events e
-    join public.group_members gm
-      on gm.group_id = e.group_id and gm.user_id = auth.uid()
-    where e.id = eid
-  );
-$$;
-
-
---
--- Name: leave_chat_presence(uuid); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.leave_chat_presence(p_event_id uuid) RETURNS void
-    LANGUAGE plpgsql SECURITY DEFINER
     SET search_path TO 'public'
     AS $$
-DECLARE
-  v_user_id UUID;
-BEGIN
-  v_user_id := auth.uid();
-  
-  IF v_user_id IS NULL THEN
-    RAISE EXCEPTION 'User not authenticated';
-  END IF;
-  
-  -- Remove presence for this user in this chat
-  DELETE FROM chat_active_users
-  WHERE event_id = p_event_id AND user_id = v_user_id;
-END;
-$$;
-
-
---
--- Name: FUNCTION leave_chat_presence(p_event_id uuid); Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON FUNCTION public.leave_chat_presence(p_event_id uuid) IS 'Removes user presence from a chat. Called when leaving chat page or app goes to background.';
-
-
---
--- Name: leave_group(uuid, uuid); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.leave_group(p_group_id uuid, p_user_id uuid) RETURNS jsonb
-    LANGUAGE plpgsql SECURITY DEFINER
-    AS $$
-DECLARE
-  v_member_count INTEGER;
-  v_group_deleted BOOLEAN := FALSE;
-BEGIN
-  -- 1. Remover de group_members
-  DELETE FROM group_members 
-  WHERE group_id = p_group_id AND user_id = p_user_id;
-  
-  IF NOT FOUND THEN
-    RAISE EXCEPTION 'User is not a member of this group';
-  END IF;
-  
-  -- 2. Remover group_user_settings
-  DELETE FROM group_user_settings 
-  WHERE group_id = p_group_id AND user_id = p_user_id;
-  
-  -- 3. Contar membros restantes
-  SELECT COUNT(*) INTO v_member_count
-  FROM group_members WHERE group_id = p_group_id;
-  
-  -- 4. Se não há membros, apagar convites e grupo
-  IF v_member_count = 0 THEN
-    -- Apagar convites pendentes (FK constraint fix)
-    DELETE FROM group_invites WHERE group_id = p_group_id;
-    
-    -- Apagar grupo (CASCADE irá limpar storage refs se configurado)
-    DELETE FROM groups WHERE id = p_group_id;
-    v_group_deleted := TRUE;
-  END IF;
-  
-  RETURN jsonb_build_object(
-    'success', TRUE,
-    'group_deleted', v_group_deleted,
-    'remaining_members', v_member_count
+  SELECT EXISTS (
+    SELECT 1 FROM public.event_participants
+    WHERE pevent_id = eid AND user_id = auth.uid()
   );
-END;
 $$;
 
 
@@ -1477,138 +879,6 @@ $$;
 
 
 --
--- Name: notify_chat_mention(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.notify_chat_mention() RETURNS trigger
-    LANGUAGE plpgsql
-    AS $$
-BEGIN
-  -- Simple @mention detection (improve with regex in production)
-  IF NEW.content ~ '@[a-zA-Z0-9_]+' THEN
-    INSERT INTO notifications (
-      recipient_user_id,
-      type,
-      category,
-      priority,
-      user_name,
-      event_name,
-      event_id,
-      deeplink
-    )
-    SELECT 
-      mentioned_user.id,
-      'chatMention',
-      'push',
-      'high',
-      sender.name,
-      e.name,
-      NEW.event_id,
-      'lazzo://event/' || NEW.event_id::text
-    FROM users mentioned_user
-    CROSS JOIN users sender
-    CROSS JOIN events e
-    WHERE sender.id = NEW.user_id
-      AND e.id = NEW.event_id
-      -- Match username in content (improve with proper regex)
-      AND NEW.content ~* ('@' || mentioned_user.name)
-      AND mentioned_user.id != NEW.user_id
-      AND should_send_notification(mentioned_user.id, e.group_id);
-  END IF;
-  
-  RETURN NEW;
-END;
-$$;
-
-
---
--- Name: notify_chat_message(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.notify_chat_message() RETURNS trigger
-    LANGUAGE plpgsql SECURITY DEFINER
-    SET search_path TO 'public'
-    AS $$
-DECLARE
-  v_event_emoji TEXT;
-  v_event_name TEXT;
-  v_sender_name TEXT;
-BEGIN
-  BEGIN
-    -- Get event details
-    SELECT emoji, name INTO v_event_emoji, v_event_name
-    FROM events
-    WHERE id = NEW.event_id;
-    
-    -- Get sender name
-    SELECT name INTO v_sender_name
-    FROM users
-    WHERE id = NEW.user_id;
-
-    -- ✅ Set-based INSERT (no loop) with active user filtering
-    -- Notifies all event participants EXCEPT:
-    -- 1. The message sender (ep.user_id != NEW.user_id)
-    -- 2. Users actively viewing this chat (NOT EXISTS in chat_active_users with recent last_seen)
-    INSERT INTO notifications (
-      recipient_user_id,
-      type,
-      category,
-      priority,
-      deeplink,
-      event_id,
-      event_emoji,
-      user_name,
-      event_name,
-      note
-    )
-    SELECT 
-      ep.user_id,
-      'chatMessage',
-      'push'::notification_category,
-      'low'::notification_priority,
-      'lazzo://events/' || NEW.event_id || '/chat',  -- ✅ FIXED: correct deeplink scheme
-      NEW.event_id,
-      v_event_emoji,
-      v_sender_name,
-      v_event_name,
-      NEW.content  -- Full content (truncation handled by push service)
-    FROM event_participants ep
-    CROSS JOIN users sender
-    WHERE sender.id = NEW.user_id
-      AND ep.pevent_id = NEW.event_id
-      AND ep.user_id != NEW.user_id -- Exclude sender
-      -- ✅ NEW: Exclude users actively viewing this chat (last_seen within 30 seconds)
-      AND NOT EXISTS (
-        SELECT 1 
-        FROM chat_active_users cau
-        WHERE cau.event_id = NEW.event_id
-          AND cau.user_id = ep.user_id
-          AND cau.last_seen > NOW() - INTERVAL '30 seconds'
-      )
-    ON CONFLICT (dedup_key, dedup_bucket) DO NOTHING;  -- ✅ ADDED: prevent duplicates
-
-    RETURN NEW;
-  EXCEPTION
-    WHEN OTHERS THEN
-      -- ✅ CRITICAL: Never block message inserts due to notification failures
-      -- Log error but continue (graceful degradation)
-      RAISE WARNING 'notify_chat_message failed: %', SQLERRM;
-      RETURN NEW;
-  END;
-END;
-$$;
-
-
---
--- Name: FUNCTION notify_chat_message(); Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON FUNCTION public.notify_chat_message() IS 'Trigger that creates push notifications when a chat message is sent.
-UPDATED: Filters out users actively viewing the chat (last_seen < 30 seconds).
-Uses set-based INSERT for performance. Exception handler prevents blocking message inserts.';
-
-
---
 -- Name: notify_date_suggestion_added(); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -1620,44 +890,28 @@ DECLARE
   v_event_name TEXT;
   v_event_emoji TEXT;
 BEGIN
-  -- Buscar dados do evento e suggester
+  -- Skip notification for initial date (set during event creation)
+  IF NEW.is_initial = TRUE THEN
+    RETURN NEW;
+  END IF;
+
   SELECT e.name, e.emoji INTO v_event_name, v_event_emoji
-  FROM events e
-  WHERE e.id = NEW.event_id;
+  FROM events e WHERE e.id = NEW.event_id;
   
   SELECT u.name INTO v_suggester_name
-  FROM users u
-  WHERE u.id = NEW.created_by;
+  FROM users u WHERE u.id = NEW.created_by;
 
-  -- Notificar todos os participantes do evento (exceto quem sugeriu)
   INSERT INTO notifications (
-    recipient_user_id,
-    type,
-    category,
-    priority,
-    user_name,
-    date,
-    time,
-    event_name,
-    event_emoji,
-    event_id,
-    deeplink
+    recipient_user_id, type, category, priority, user_name,
+    date, time, event_name, event_emoji, event_id, deeplink
   )
   SELECT 
-    ep.user_id,                                    -- participantes do evento
-    'dateSuggestionAdded',                         -- tipo
-    'notifications',                               -- categoria
-    'low',                                         -- prioridade
-    v_suggester_name,                              -- quem sugeriu
-    TO_CHAR(NEW.starts_at, 'DD Mon'),             -- data formatada (ex: "15 Jan")
-    TO_CHAR(NEW.starts_at, 'HH24:MI'),            -- hora formatada (ex: "20:00")
-    v_event_name,                                  -- nome do evento
-    v_event_emoji,                                 -- emoji do evento
-    NEW.event_id,                                  -- event_id
-    'lazzo://events/' || NEW.event_id || '/dates' -- deeplink
+    ep.user_id, 'dateSuggestionAdded', 'notifications', 'low',
+    v_suggester_name, TO_CHAR(NEW.starts_at, 'DD Mon'),
+    TO_CHAR(NEW.starts_at, 'HH24:MI'), v_event_name, v_event_emoji,
+    NEW.event_id, 'lazzo://events/' || NEW.event_id || '/dates'
   FROM event_participants ep
-  WHERE ep.pevent_id = NEW.event_id
-    AND ep.user_id != NEW.created_by              -- não notificar quem sugeriu
+  WHERE ep.pevent_id = NEW.event_id AND ep.user_id != NEW.created_by
   ON CONFLICT (dedup_key, dedup_bucket) DO NOTHING;
   
   RETURN NEW;
@@ -1746,48 +1000,6 @@ BEGIN
     FROM event_participants ep
     WHERE ep.pevent_id = NEW.id
       AND should_send_notification(ep.user_id, NEW.group_id);
-  END IF;
-  
-  RETURN NEW;
-END;
-$$;
-
-
---
--- Name: notify_event_created(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.notify_event_created() RETURNS trigger
-    LANGUAGE plpgsql
-    AS $$
-BEGIN
-  IF NEW.group_id IS NOT NULL THEN
-    INSERT INTO notifications (
-      recipient_user_id,
-      type,
-      category,
-      priority,
-      event_emoji,
-      event_name,
-      group_name,
-      event_id,
-      deeplink
-    )
-    SELECT 
-      gm.user_id,
-      'eventCreated',
-      'notifications',
-      'medium',
-      NEW.emoji,
-      NEW.name,
-      g.name,
-      NEW.id,
-      'lazzo://event/' || NEW.id::text
-    FROM group_members gm
-    JOIN groups g ON g.id = NEW.group_id
-    WHERE gm.group_id = NEW.group_id
-      AND gm.user_id != NEW.created_by
-      AND should_send_notification(gm.user_id, NEW.group_id);
   END IF;
   
   RETURN NEW;
@@ -2477,217 +1689,6 @@ $$;
 
 
 --
--- Name: notify_group_invite(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.notify_group_invite() RETURNS trigger
-    LANGUAGE plpgsql SECURITY DEFINER
-    AS $$
-BEGIN
-  -- Set-based INSERT (no FOR LOOP)
-  -- Uses ON CONFLICT to handle deduplication atomically
-  INSERT INTO notifications (
-    recipient_user_id, type, category, priority, deeplink,
-    group_id, user_name, group_name
-  )
-  SELECT
-    NEW.invited_id,
-    'groupInviteReceived',
-    'push',
-    'high',
-    'lazzo://groups/' || NEW.group_id,
-    NEW.group_id,
-    u.name,
-    g.name
-  FROM users u, groups g
-  WHERE u.id = NEW.invited_by AND g.id = NEW.group_id
-  ON CONFLICT (dedup_key, dedup_bucket) DO NOTHING;
-  
-  RETURN NEW;
-END;
-$$;
-
-
---
--- Name: notify_group_invite_accepted(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.notify_group_invite_accepted() RETURNS trigger
-    LANGUAGE plpgsql SECURITY DEFINER
-    AS $$
-DECLARE
-  v_invited_by UUID;
-  v_accepter_name TEXT;
-  v_group_name TEXT;
-BEGIN
-  -- Buscar quem convidou (do último convite pendente)
-  SELECT invited_by INTO v_invited_by
-  FROM group_invites
-  WHERE invited_id = NEW.user_id AND group_id = NEW.group_id
-  ORDER BY created_at DESC
-  LIMIT 1;
-  
-  -- Se não encontrou quem convidou, não fazer nada
-  IF v_invited_by IS NULL THEN
-    RETURN NEW;
-  END IF;
-  
-  -- Buscar nome de quem aceitou e do grupo
-  SELECT u.name INTO v_accepter_name
-  FROM users u
-  WHERE u.id = NEW.user_id;
-  
-  SELECT g.name INTO v_group_name
-  FROM groups g
-  WHERE g.id = NEW.group_id;
-
-  -- Notificar quem convidou
-  INSERT INTO notifications (
-    recipient_user_id,
-    type,
-    category,
-    priority,
-    user_name,
-    group_name,
-    group_id,
-    deeplink
-  )
-  VALUES (
-    v_invited_by,                                  -- quem convidou
-    'groupInviteAccepted',                         -- tipo
-    'push',                                        -- categoria PUSH (ephemeral)
-    'medium',                                      -- prioridade
-    v_accepter_name,                               -- quem aceitou
-    v_group_name,                                  -- nome do grupo
-    NEW.group_id,                                  -- group_id
-    'lazzo://groups/' || NEW.group_id              -- deeplink
-  )
-  ON CONFLICT (dedup_key, dedup_bucket) DO NOTHING;
-  
-  RETURN NEW;
-END;
-$$;
-
-
---
--- Name: FUNCTION notify_group_invite_accepted(); Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON FUNCTION public.notify_group_invite_accepted() IS 'Notifica quem convidou quando convite é aceito (INSERT em group_members).
-Push only (não aparece no inbox): "João Silva joined Friends"';
-
-
---
--- Name: notify_group_invite_received(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.notify_group_invite_received() RETURNS trigger
-    LANGUAGE plpgsql SECURITY DEFINER
-    SET search_path TO 'public'
-    AS $$
-BEGIN
-  -- Always create notification (no should_send_notification check)
-  -- Category 'actions' = inbox notification that requires user action
-  -- ON CONFLICT DO NOTHING allows reinvites to same group
-  INSERT INTO notifications (
-    recipient_user_id,
-    type,
-    category,
-    priority,
-    user_name,
-    group_name,
-    group_id,
-    deeplink
-  )
-  SELECT 
-    NEW.invited_id,
-    'groupInviteReceived',
-    'actions',
-    'high',
-    inviter.name,
-    g.name,
-    NEW.group_id,
-    'lazzo://inbox'  -- ✅ CHANGED: Points to inbox (was lazzo://groups/{id})
-  FROM users inviter
-  JOIN groups g ON g.id = NEW.group_id
-  WHERE inviter.id = NEW.invited_by
-  ON CONFLICT (dedup_key, dedup_bucket) DO NOTHING;
-  
-  RETURN NEW;
-END;
-$$;
-
-
---
--- Name: FUNCTION notify_group_invite_received(); Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON FUNCTION public.notify_group_invite_received() IS 'Trigger function that creates action notification when user is invited to group.
-Uses SECURITY DEFINER to bypass RLS policies.
-ON CONFLICT DO NOTHING prevents duplicate errors.
-Deeplink points to inbox where user can accept/decline the invite.';
-
-
---
--- Name: notify_group_member_added(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.notify_group_member_added() RETURNS trigger
-    LANGUAGE plpgsql SECURITY DEFINER
-    AS $$
-DECLARE
-  v_group_name TEXT;
-  v_new_member_name TEXT;
-BEGIN
-  -- Buscar dados do grupo e do novo membro
-  SELECT g.name INTO v_group_name
-  FROM groups g
-  WHERE g.id = NEW.group_id;
-  
-  SELECT u.name INTO v_new_member_name
-  FROM users u
-  WHERE u.id = NEW.user_id;
-
-  -- Notificar todos os membros existentes do grupo (exceto o novo membro)
-  INSERT INTO notifications (
-    recipient_user_id,
-    type,
-    category,
-    priority,
-    user_name,
-    group_name,
-    group_id,
-    deeplink
-  )
-  SELECT 
-    gm.user_id,                                    -- membros existentes
-    'groupMemberAdded',                            -- tipo
-    'push',                                        -- categoria PUSH (ephemeral)
-    'medium',                                      -- prioridade
-    v_new_member_name,                             -- nome do novo membro
-    v_group_name,                                  -- nome do grupo
-    NEW.group_id,                                  -- group_id
-    'lazzo://groups/' || NEW.group_id              -- deeplink
-  FROM group_members gm
-  WHERE gm.group_id = NEW.group_id
-    AND gm.user_id != NEW.user_id                 -- não notificar o novo membro
-    AND gm.joined_at < NEW.joined_at              -- só membros anteriores
-  ON CONFLICT (dedup_key, dedup_bucket) DO NOTHING;
-  
-  RETURN NEW;
-END;
-$$;
-
-
---
--- Name: FUNCTION notify_group_member_added(); Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON FUNCTION public.notify_group_member_added() IS 'Notifica membros existentes quando alguém novo entra no grupo.
-Push only (não aparece no inbox): "João Silva joined Friends"';
-
-
---
 -- Name: notify_location_suggestion_added(); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -2699,43 +1700,27 @@ DECLARE
   v_event_name TEXT;
   v_event_emoji TEXT;
 BEGIN
-  -- Buscar dados do evento
-  SELECT e.name, e.emoji INTO v_event_name, v_event_emoji
-  FROM events e
-  WHERE e.id = NEW.event_id;
-  
-  -- Buscar nome de quem sugeriu
-  SELECT u.name INTO v_suggester_name
-  FROM users u
-  WHERE u.id = NEW.user_id;
+  -- Skip notification for initial location (set during event creation)
+  IF NEW.is_initial = TRUE THEN
+    RETURN NEW;
+  END IF;
 
-  -- Notificar todos os participantes do evento (exceto quem sugeriu)
+  SELECT e.name, e.emoji INTO v_event_name, v_event_emoji
+  FROM events e WHERE e.id = NEW.event_id;
+  
+  SELECT u.name INTO v_suggester_name
+  FROM users u WHERE u.id = NEW.user_id;
+
   INSERT INTO notifications (
-    recipient_user_id,
-    type,
-    category,
-    priority,
-    user_name,
-    place,
-    event_name,
-    event_emoji,
-    event_id,
-    deeplink
+    recipient_user_id, type, category, priority, user_name,
+    place, event_name, event_emoji, event_id, deeplink
   )
   SELECT 
-    ep.user_id,                                       -- participantes do evento
-    'locationSuggestionAdded',                        -- tipo
-    'notifications',                                  -- categoria
-    'low',                                            -- prioridade
-    v_suggester_name,                                 -- quem sugeriu
-    NEW.location_name,                                -- nome do local (da tabela location_suggestions)
-    v_event_name,                                     -- nome do evento
-    v_event_emoji,                                    -- emoji do evento
-    NEW.event_id,                                     -- event_id
-    'lazzo://events/' || NEW.event_id || '/location' -- deeplink
+    ep.user_id, 'locationSuggestionAdded', 'notifications', 'low',
+    v_suggester_name, NEW.location_name, v_event_name, v_event_emoji,
+    NEW.event_id, 'lazzo://events/' || NEW.event_id || '/location'
   FROM event_participants ep
-  WHERE ep.pevent_id = NEW.event_id
-    AND ep.user_id != NEW.user_id                    -- não notificar quem sugeriu
+  WHERE ep.pevent_id = NEW.event_id AND ep.user_id != NEW.user_id
   ON CONFLICT (dedup_key, dedup_bucket) DO NOTHING;
   
   RETURN NEW;
@@ -3497,6 +2482,40 @@ Run via pg_cron or manually when needed. Safe to run repeatedly (idempotent)';
 
 
 --
+-- Name: revoke_event_invite_link(text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.revoke_event_invite_link(p_token text) RETURNS void
+    LANGUAGE plpgsql SECURITY DEFINER
+    AS $$
+DECLARE
+  v_user_id uuid;
+  v_event_id uuid;
+BEGIN
+  v_user_id := auth.uid();
+  IF v_user_id IS NULL THEN
+    RAISE EXCEPTION 'Not authenticated';
+  END IF;
+
+  -- Only event creator can revoke
+  SELECT eil.event_id INTO v_event_id
+  FROM public.event_invite_links eil
+  JOIN public.events e ON e.id = eil.event_id
+  WHERE eil.token = p_token
+    AND e.created_by = v_user_id;
+
+  IF v_event_id IS NULL THEN
+    RAISE EXCEPTION 'Not authorized or link not found';
+  END IF;
+
+  UPDATE public.event_invite_links
+  SET revoked_at = now()
+  WHERE token = p_token;
+END;
+$$;
+
+
+--
 -- Name: revoke_group_invite_link(text); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -3906,50 +2925,6 @@ COMMENT ON FUNCTION public.update_expired_recaps() IS 'Automatically transitions
 
 
 --
--- Name: update_group_member_role(uuid, uuid, public.member_role); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.update_group_member_role(p_group_id uuid, p_user_id uuid, p_new_role public.member_role) RETURNS void
-    LANGUAGE plpgsql SECURITY DEFINER
-    SET search_path TO 'public'
-    AS $$
-DECLARE
-  v_current_user_id UUID;
-  v_current_user_role member_role;
-BEGIN
-  -- Get current authenticated user
-  v_current_user_id := auth.uid();
-  
-  IF v_current_user_id IS NULL THEN
-    RAISE EXCEPTION 'User not authenticated';
-  END IF;
-  
-  -- Check if current user is admin of this group
-  SELECT role INTO v_current_user_role
-  FROM group_members
-  WHERE group_id = p_group_id AND user_id = v_current_user_id;
-  
-  IF v_current_user_role IS NULL THEN
-    RAISE EXCEPTION 'User is not a member of this group';
-  END IF;
-  
-  IF v_current_user_role != 'admin' THEN
-    RAISE EXCEPTION 'Only admins can change member roles';
-  END IF;
-  
-  -- Perform the update
-  UPDATE group_members
-  SET role = p_new_role
-  WHERE group_id = p_group_id AND user_id = p_user_id;
-  
-  IF NOT FOUND THEN
-    RAISE EXCEPTION 'Member not found in group';
-  END IF;
-END;
-$$;
-
-
---
 -- Name: update_last_read_message(uuid, uuid); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -4085,6 +3060,58 @@ $$;
 
 
 --
+-- Name: upsert_event_guest_rsvp_by_token(text, text, text, integer, text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.upsert_event_guest_rsvp_by_token(p_token text, p_guest_name text, p_rsvp text DEFAULT 'going'::text, p_plus_one integer DEFAULT 0, p_guest_phone text DEFAULT NULL::text) RETURNS TABLE(event_id uuid, event_name text, rsvp_id uuid)
+    LANGUAGE plpgsql SECURITY DEFINER
+    AS $$
+DECLARE
+  v_event_id uuid;
+  v_event_name text;
+  v_rsvp_id uuid;
+BEGIN
+  -- Validate token
+  SELECT eil.event_id INTO v_event_id
+  FROM public.event_invite_links eil
+  WHERE eil.token = p_token
+    AND eil.revoked_at IS NULL
+    AND eil.expires_at > now();
+
+  IF v_event_id IS NULL THEN
+    RAISE EXCEPTION 'Invalid or expired invite link';
+  END IF;
+
+  -- Get event name
+  SELECT e.name INTO v_event_name FROM public.events e WHERE e.id = v_event_id;
+
+  -- Upsert guest RSVP (one RSVP per name+token combo)
+  INSERT INTO public.event_guest_rsvps (event_id, invite_token, guest_name, rsvp, plus_one, guest_phone)
+  VALUES (v_event_id, p_token, p_guest_name, p_rsvp, p_plus_one, p_guest_phone)
+  ON CONFLICT ON CONSTRAINT event_guest_rsvps_pkey DO UPDATE
+    SET rsvp = EXCLUDED.rsvp,
+        plus_one = EXCLUDED.plus_one,
+        guest_phone = EXCLUDED.guest_phone,
+        updated_at = now()
+  RETURNING id INTO v_rsvp_id;
+
+  -- Track analytics
+  INSERT INTO public.invite_analytics (event_id, invite_token, action, metadata)
+  VALUES (v_event_id, p_token, 'rsvp_web', jsonb_build_object('guest_name', p_guest_name, 'rsvp', p_rsvp));
+
+  RETURN QUERY SELECT v_event_id, v_event_name, v_rsvp_id;
+END;
+$$;
+
+
+--
+-- Name: FUNCTION upsert_event_guest_rsvp_by_token(p_token text, p_guest_name text, p_rsvp text, p_plus_one integer, p_guest_phone text); Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON FUNCTION public.upsert_event_guest_rsvp_by_token(p_token text, p_guest_name text, p_rsvp text, p_plus_one integer, p_guest_phone text) IS 'Allows non-app guests to RSVP to an event via the web landing page using the invite token.';
+
+
+--
 -- Name: user_exists_by_email(text); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -4145,24 +3172,6 @@ COMMENT ON TABLE public.chat_active_users IS 'Tracks users actively viewing even
 
 
 --
--- Name: chat_messages; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.chat_messages (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    event_id uuid NOT NULL,
-    user_id uuid NOT NULL,
-    content text NOT NULL,
-    read boolean DEFAULT false,
-    created_at timestamp with time zone DEFAULT now(),
-    is_pinned boolean DEFAULT false,
-    is_deleted boolean DEFAULT false,
-    reply_to_id uuid,
-    updated_at timestamp with time zone DEFAULT now()
-);
-
-
---
 -- Name: event_date_options; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -4173,6 +3182,7 @@ CREATE TABLE public.event_date_options (
     ends_at timestamp with time zone NOT NULL,
     created_by uuid,
     created_at timestamp with time zone DEFAULT now(),
+    is_initial boolean DEFAULT false,
     CONSTRAINT edo_time_check CHECK ((ends_at > starts_at))
 );
 
@@ -4205,6 +3215,41 @@ CREATE TABLE public.event_expenses (
 
 
 --
+-- Name: event_guest_rsvps; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.event_guest_rsvps (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    event_id uuid NOT NULL,
+    invite_token text NOT NULL,
+    guest_name text NOT NULL,
+    guest_phone text,
+    rsvp text DEFAULT 'going'::text NOT NULL,
+    plus_one integer DEFAULT 0 NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT valid_rsvp CHECK ((rsvp = ANY (ARRAY['going'::text, 'not_going'::text, 'maybe'::text])))
+);
+
+
+--
+-- Name: event_invite_links; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.event_invite_links (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    event_id uuid NOT NULL,
+    created_by uuid NOT NULL,
+    token text NOT NULL,
+    expires_at timestamp with time zone NOT NULL,
+    revoked_at timestamp with time zone,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    share_channel text,
+    open_count integer DEFAULT 0 NOT NULL
+);
+
+
+--
 -- Name: event_participants; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -4231,15 +3276,75 @@ SELECT
     NULL::uuid AS organizer_id,
     NULL::public.event_state AS event_status,
     NULL::text AS emoji,
-    NULL::uuid AS group_id,
     NULL::timestamp with time zone AS created_at,
     NULL::bigint AS participants_total,
     NULL::bigint AS voters_total,
     NULL::bigint AS missing_responses,
     NULL::bigint AS going_count,
     NULL::bigint AS not_going_count,
-    NULL::uuid[] AS participant_user_ids,
-    NULL::jsonb AS rsvp_breakdown;
+    NULL::uuid[] AS participant_user_ids;
+
+
+--
+-- Name: event_photos; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.event_photos (
+    id uuid DEFAULT extensions.uuid_generate_v4() NOT NULL,
+    event_id uuid NOT NULL,
+    url text NOT NULL,
+    storage_path text NOT NULL,
+    captured_at timestamp with time zone DEFAULT now() NOT NULL,
+    uploader_id uuid NOT NULL,
+    is_portrait boolean DEFAULT false NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    updated_at timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: users; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.users (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    name text DEFAULT 'NULL'::text NOT NULL,
+    email text NOT NULL,
+    birth_date date,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    city text,
+    "Notify_birthday" boolean DEFAULT false,
+    updated_at timestamp with time zone DEFAULT now(),
+    avatar_url text
+);
+
+
+--
+-- Name: TABLE users; Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON TABLE public.users IS 'Table that keeps our Users'' information';
+
+
+--
+-- Name: event_photos_with_uploader; Type: MATERIALIZED VIEW; Schema: public; Owner: -
+--
+
+CREATE MATERIALIZED VIEW public.event_photos_with_uploader AS
+ SELECT ep.id,
+    ep.event_id,
+    ep.url,
+    ep.storage_path,
+    ep.captured_at,
+    ep.uploader_id,
+    ep.is_portrait,
+    ep.created_at,
+    ep.updated_at,
+    u.name AS uploader_name,
+    u.avatar_url AS uploader_avatar
+   FROM (public.event_photos ep
+     LEFT JOIN public.users u ON ((ep.uploader_id = u.id)))
+  WITH NO DATA;
 
 
 --
@@ -4256,9 +3361,10 @@ CREATE TABLE public.events (
     status public.event_state DEFAULT 'pending'::public.event_state NOT NULL,
     emoji text,
     created_at timestamp with time zone DEFAULT now(),
-    group_id uuid,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
-    cover_photo_id uuid
+    cover_photo_id uuid,
+    description text,
+    max_participants integer
 );
 
 
@@ -4297,261 +3403,35 @@ CREATE TABLE public.locations (
 
 
 --
--- Name: users; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.users (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    name text DEFAULT 'NULL'::text NOT NULL,
-    email text NOT NULL,
-    birth_date date,
-    created_at timestamp with time zone DEFAULT now() NOT NULL,
-    city text,
-    "Notify_birthday" boolean DEFAULT false,
-    updated_at timestamp with time zone DEFAULT now(),
-    avatar_url text
-);
-
-
---
--- Name: TABLE users; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON TABLE public.users IS 'Table that keeps our Users'' information';
-
-
---
--- Name: group_hub_events_view; Type: VIEW; Schema: public; Owner: -
---
-
-CREATE VIEW public.group_hub_events_view WITH (security_invoker='on') AS
- WITH participant_data AS (
-         SELECT ep.pevent_id AS event_id,
-            ep.rsvp,
-            json_build_object('user_id', ep.user_id, 'name', u.name, 'full_name', u.name, 'display_name', u.name, 'avatar_url', u.avatar_url, 'voted_at', ep.confirmed_at) AS user_data
-           FROM (public.event_participants ep
-             JOIN public.users u ON ((u.id = ep.user_id)))
-        )
- SELECT e.id AS event_id,
-    e.name AS title,
-    e.emoji,
-    e.start_datetime,
-    e.end_datetime,
-    l.display_name AS location_name,
-    e.status AS computed_status,
-    e.group_id,
-    NULL::integer AS max_photos,
-        CASE
-            WHEN (e.status = 'confirmed'::public.event_state) THEN 1
-            ELSE 0
-        END AS priority,
-    COALESCE(( SELECT json_agg(participant_data.user_data ORDER BY (participant_data.user_data ->> 'name'::text)) AS json_agg
-           FROM participant_data
-          WHERE ((participant_data.event_id = e.id) AND (participant_data.rsvp = 'yes'::public.rsvp_status))), '[]'::json) AS going_users,
-    COALESCE(( SELECT json_agg(participant_data.user_data ORDER BY (participant_data.user_data ->> 'name'::text)) AS json_agg
-           FROM participant_data
-          WHERE ((participant_data.event_id = e.id) AND (participant_data.rsvp = 'no'::public.rsvp_status))), '[]'::json) AS not_going_users,
-    COALESCE(( SELECT json_agg(json_build_object('user_id', (participant_data.user_data ->> 'user_id'::text), 'name', (participant_data.user_data ->> 'name'::text), 'full_name', (participant_data.user_data ->> 'full_name'::text), 'display_name', (participant_data.user_data ->> 'display_name'::text), 'avatar_url', (participant_data.user_data ->> 'avatar_url'::text))) AS json_agg
-           FROM participant_data
-          WHERE ((participant_data.event_id = e.id) AND (participant_data.rsvp = 'pending'::public.rsvp_status))), '[]'::json) AS no_response_users,
-    COALESCE(( SELECT (count(*))::integer AS count
-           FROM participant_data
-          WHERE ((participant_data.event_id = e.id) AND (participant_data.rsvp = 'yes'::public.rsvp_status))), 0) AS rsvp_going,
-    COALESCE(( SELECT (count(*))::integer AS count
-           FROM participant_data
-          WHERE (participant_data.event_id = e.id)), 0) AS participant_count,
-    0 AS photo_count
-   FROM (public.events e
-     LEFT JOIN public.locations l ON ((l.id = e.location_id)));
-
-
---
--- Name: group_hub_events_cache; Type: MATERIALIZED VIEW; Schema: public; Owner: -
---
-
-CREATE MATERIALIZED VIEW public.group_hub_events_cache AS
- SELECT event_id,
-    title,
-    emoji,
-    start_datetime,
-    end_datetime,
-    location_name,
-    computed_status,
-    group_id,
-    max_photos,
-    priority,
-    going_users,
-    not_going_users,
-    no_response_users,
-    rsvp_going,
-    participant_count,
-    photo_count
-   FROM public.group_hub_events_view
-  WITH NO DATA;
-
-
---
--- Name: group_invite_links; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.group_invite_links (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    group_id uuid NOT NULL,
-    created_by uuid NOT NULL,
-    token text NOT NULL,
-    expires_at timestamp with time zone NOT NULL,
-    revoked_at timestamp with time zone,
-    created_at timestamp with time zone DEFAULT now() NOT NULL
-);
-
-
---
--- Name: group_invites; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.group_invites (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    group_id uuid,
-    invited_id uuid NOT NULL,
-    invited_by uuid,
-    group_url text,
-    created_at timestamp with time zone DEFAULT now() NOT NULL
-);
-
-
---
--- Name: group_members; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.group_members (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    group_id uuid NOT NULL,
-    user_id uuid NOT NULL,
-    role public.member_role DEFAULT 'member'::public.member_role NOT NULL,
-    joined_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT group_members_role_valid CHECK ((role = ANY (ARRAY['admin'::public.member_role, 'member'::public.member_role])))
-);
-
-
---
--- Name: group_messages; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.group_messages (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    group_id uuid NOT NULL,
-    sender_id uuid NOT NULL,
-    text text,
-    created_at timestamp with time zone DEFAULT now(),
-    type public.message_type DEFAULT 'text'::public.message_type NOT NULL
-);
-
-
---
--- Name: TABLE group_messages; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON TABLE public.group_messages IS 'Table that stores the messages sent to a specific group';
-
-
---
--- Name: group_photos; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.group_photos (
-    id uuid DEFAULT extensions.uuid_generate_v4() NOT NULL,
-    event_id uuid NOT NULL,
-    url text NOT NULL,
-    storage_path text NOT NULL,
-    captured_at timestamp with time zone DEFAULT now() NOT NULL,
-    uploader_id uuid NOT NULL,
-    is_portrait boolean DEFAULT false NOT NULL,
-    created_at timestamp with time zone DEFAULT now() NOT NULL,
-    updated_at timestamp with time zone DEFAULT now() NOT NULL
-);
-
-
---
--- Name: group_photos_with_uploader; Type: MATERIALIZED VIEW; Schema: public; Owner: -
---
-
-CREATE MATERIALIZED VIEW public.group_photos_with_uploader AS
- SELECT gp.id,
-    gp.event_id,
-    gp.url,
-    gp.storage_path,
-    gp.captured_at,
-    gp.uploader_id,
-    gp.is_portrait,
-    gp.created_at,
-    gp.updated_at,
-    u.name AS uploader_name,
-    u.avatar_url AS uploader_avatar
-   FROM (public.group_photos gp
-     LEFT JOIN public.users u ON ((gp.uploader_id = u.id)))
-  WITH NO DATA;
-
-
---
--- Name: group_user_settings; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.group_user_settings (
-    group_id uuid NOT NULL,
-    user_id uuid NOT NULL,
-    is_pinned boolean DEFAULT false NOT NULL,
-    is_muted boolean DEFAULT false NOT NULL,
-    group_state text DEFAULT 'active'::text NOT NULL,
-    updated_at timestamp with time zone DEFAULT now() NOT NULL
-);
-
-
---
--- Name: groups; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.groups (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    name text NOT NULL,
-    created_by uuid NOT NULL,
-    created_at timestamp with time zone DEFAULT now() NOT NULL,
-    expense uuid,
-    event_id uuid,
-    memory_id uuid,
-    members_can_invite boolean DEFAULT true,
-    members_can_create_events boolean DEFAULT true,
-    members_can_add_members boolean DEFAULT true,
-    photo_url text,
-    qr_code text,
-    photo_updated_at timestamp with time zone,
-    group_url text,
-    CONSTRAINT groups_name_length CHECK (((char_length(name) >= 2) AND (char_length(name) <= 100)))
-);
-
-
---
--- Name: TABLE groups; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON TABLE public.groups IS 'Table responsible for storing every group';
-
-
---
 -- Name: home_events_view; Type: VIEW; Schema: public; Owner: -
 --
 
 CREATE VIEW public.home_events_view WITH (security_invoker='on') AS
+ WITH participant_agg AS (
+         SELECT ep_1.pevent_id AS event_id,
+            count(ep_1.user_id) AS participants_total,
+            count(ep_1.user_id) FILTER (WHERE (ep_1.rsvp = 'yes'::public.rsvp_status)) AS going_count,
+            count(ep_1.user_id) FILTER (WHERE (ep_1.rsvp = 'no'::public.rsvp_status)) AS not_going_count,
+            count(ep_1.user_id) FILTER (WHERE ((ep_1.rsvp IS NULL) OR (ep_1.rsvp = 'pending'::public.rsvp_status))) AS no_response_count,
+            count(ep_1.user_id) FILTER (WHERE (ep_1.rsvp = ANY (ARRAY['yes'::public.rsvp_status, 'no'::public.rsvp_status]))) AS voters_total,
+            COALESCE(jsonb_agg(jsonb_build_object('user_id', ep_1.user_id, 'display_name', p.name, 'avatar_url', p.avatar_url, 'voted_at', ep_1.confirmed_at)) FILTER (WHERE (ep_1.rsvp = 'yes'::public.rsvp_status)), '[]'::jsonb) AS going_users,
+            COALESCE(jsonb_agg(jsonb_build_object('user_id', ep_1.user_id, 'display_name', p.name, 'avatar_url', p.avatar_url, 'voted_at', ep_1.confirmed_at)) FILTER (WHERE (ep_1.rsvp = 'no'::public.rsvp_status)), '[]'::jsonb) AS not_going_users,
+            COALESCE(jsonb_agg(jsonb_build_object('user_id', ep_1.user_id, 'display_name', p.name, 'avatar_url', p.avatar_url)) FILTER (WHERE ((ep_1.rsvp IS NULL) OR (ep_1.rsvp = 'pending'::public.rsvp_status))), '[]'::jsonb) AS no_response_users
+           FROM (public.event_participants ep_1
+             LEFT JOIN public.users p ON ((p.id = ep_1.user_id)))
+          GROUP BY ep_1.pevent_id
+        )
  SELECT ep.user_id,
     COALESCE((ep.rsvp)::text, 'pending'::text) AS user_rsvp,
     ep.confirmed_at AS voted_at,
     e.id AS event_id,
     e.name AS event_name,
     e.emoji,
+    e.description,
     e.start_datetime,
     e.end_datetime,
     e.location_id,
     l.display_name AS location_name,
-    e.group_id,
     e.created_by AS organizer_id,
     e.status AS event_status,
         CASE
@@ -4569,26 +3449,16 @@ CREATE VIEW public.home_events_view WITH (security_invoker='on') AS
     agg.going_users,
     agg.not_going_users,
     agg.no_response_users,
-    agg.voters,
-    agg.no_response_voters,
-    g.name AS group_name
+    COALESCE(guest.guest_going, (0)::bigint) AS guest_going_count,
+    COALESCE(guest.guest_total, (0)::bigint) AS guest_total_count
    FROM ((((public.event_participants ep
      JOIN public.events e ON ((e.id = ep.pevent_id)))
-     LEFT JOIN public.groups g ON ((g.id = e.group_id)))
      LEFT JOIN public.locations l ON ((l.id = e.location_id)))
-     LEFT JOIN LATERAL ( SELECT count(ep2.user_id) AS participants_total,
-            count(ep2.user_id) FILTER (WHERE ((ep2.rsvp)::text = ANY (ARRAY['going'::text, 'yes'::text, 'attending'::text, 'accepted'::text]))) AS going_count,
-            count(ep2.user_id) FILTER (WHERE ((ep2.rsvp)::text = ANY (ARRAY['declined'::text, 'no'::text, 'not_going'::text, 'rejected'::text]))) AS not_going_count,
-            count(ep2.user_id) FILTER (WHERE ((ep2.rsvp IS NULL) OR ((ep2.rsvp)::text = ANY (ARRAY['pending'::text, 'invited'::text])))) AS no_response_count,
-            count(ep2.user_id) FILTER (WHERE ((ep2.rsvp)::text = ANY (ARRAY['going'::text, 'yes'::text, 'attending'::text, 'accepted'::text, 'declined'::text, 'no'::text, 'not_going'::text, 'rejected'::text]))) AS voters_total,
-            COALESCE(jsonb_agg(jsonb_build_object('user_id', ep2.user_id, 'display_name', p.name, 'avatar_url', p.avatar_url, 'voted_at', ep2.confirmed_at)) FILTER (WHERE ((ep2.rsvp)::text = ANY (ARRAY['going'::text, 'yes'::text, 'attending'::text, 'accepted'::text]))), '[]'::jsonb) AS going_users,
-            COALESCE(jsonb_agg(jsonb_build_object('user_id', ep2.user_id, 'display_name', p.name, 'avatar_url', p.avatar_url, 'voted_at', ep2.confirmed_at)) FILTER (WHERE ((ep2.rsvp)::text = ANY (ARRAY['declined'::text, 'no'::text, 'not_going'::text, 'rejected'::text]))), '[]'::jsonb) AS not_going_users,
-            COALESCE(jsonb_agg(jsonb_build_object('user_id', ep2.user_id, 'display_name', p.name, 'avatar_url', p.avatar_url, 'voted_at', NULL::timestamp with time zone)) FILTER (WHERE ((ep2.rsvp IS NULL) OR ((ep2.rsvp)::text = ANY (ARRAY['pending'::text, 'invited'::text])))), '[]'::jsonb) AS no_response_users,
-            COALESCE(array_agg(DISTINCT ep2.user_id) FILTER (WHERE ((ep2.rsvp)::text = ANY (ARRAY['going'::text, 'yes'::text, 'attending'::text, 'accepted'::text, 'declined'::text, 'no'::text, 'not_going'::text, 'rejected'::text]))), '{}'::uuid[]) AS voters,
-            COALESCE(array_agg(DISTINCT ep2.user_id) FILTER (WHERE ((ep2.rsvp IS NULL) OR ((ep2.rsvp)::text = ANY (ARRAY['pending'::text, 'invited'::text])))), '{}'::uuid[]) AS no_response_voters
-           FROM (public.event_participants ep2
-             LEFT JOIN public.users p ON ((p.id = ep2.user_id)))
-          WHERE (ep2.pevent_id = e.id)) agg ON (true))
+     LEFT JOIN participant_agg agg ON ((agg.event_id = e.id)))
+     LEFT JOIN LATERAL ( SELECT count(*) FILTER (WHERE (gr.rsvp = 'going'::text)) AS guest_going,
+            count(*) AS guest_total
+           FROM public.event_guest_rsvps gr
+          WHERE (gr.event_id = e.id)) guest ON (true))
   WHERE ((e.status = 'pending'::public.event_state) OR (((e.start_datetime IS NULL) OR (e.end_datetime IS NULL) OR (e.start_datetime >= now()) OR (e.end_datetime >= now()) OR (e.end_datetime >= (now() - '24:00:00'::interval))) AND ((e.status)::text <> 'ended'::text)))
   ORDER BY
         CASE
@@ -4598,6 +3468,21 @@ CREATE VIEW public.home_events_view WITH (security_invoker='on') AS
             WHEN (e.status = 'pending'::public.event_state) THEN 1
             ELSE 0
         END DESC, e.start_datetime;
+
+
+--
+-- Name: invite_analytics; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.invite_analytics (
+    id uuid DEFAULT gen_random_uuid() NOT NULL,
+    event_id uuid NOT NULL,
+    invite_token text,
+    action text NOT NULL,
+    user_id uuid,
+    metadata jsonb DEFAULT '{}'::jsonb,
+    created_at timestamp with time zone DEFAULT now() NOT NULL
+);
 
 
 --
@@ -4624,7 +3509,8 @@ CREATE TABLE public.location_suggestions (
     address text,
     latitude double precision,
     longitude double precision,
-    created_at timestamp with time zone DEFAULT now()
+    created_at timestamp with time zone DEFAULT now(),
+    is_initial boolean DEFAULT false
 );
 
 
@@ -4644,33 +3530,6 @@ CREATE TABLE public.memories (
 
 
 --
--- Name: message_reads; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.message_reads (
-    user_id uuid NOT NULL,
-    event_id uuid NOT NULL,
-    last_read_message_id uuid,
-    last_read_at timestamp with time zone DEFAULT now(),
-    updated_at timestamp with time zone DEFAULT now()
-);
-
-
---
--- Name: TABLE message_reads; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON TABLE public.message_reads IS 'Tracks the last message read by each user in each event. Used for badge counts and read receipts.';
-
-
---
--- Name: COLUMN message_reads.last_read_message_id; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON COLUMN public.message_reads.last_read_message_id IS 'ID of the last message the user has seen. All messages with created_at <= this message.created_at are considered read.';
-
-
---
 -- Name: notifications; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -4684,11 +3543,9 @@ CREATE TABLE public.notifications (
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     action_url text,
     deeplink text,
-    group_id uuid,
     event_id uuid,
     event_emoji text,
     user_name text,
-    group_name text,
     event_name text,
     amount text,
     hours text,
@@ -4699,7 +3556,6 @@ CREATE TABLE public.notifications (
     device text,
     note text,
     dedup_bucket timestamp with time zone DEFAULT (date_trunc('minute'::text, now()) + '00:05:00'::interval) NOT NULL,
-    dedup_key text GENERATED ALWAYS AS ((((((((recipient_user_id)::text || ':'::text) || type) || ':'::text) || COALESCE((group_id)::text, ''::text)) || ':'::text) || COALESCE((event_id)::text, ''::text))) STORED,
     expense_id uuid
 );
 
@@ -4815,51 +3671,9 @@ CREATE TABLE public.user_notification_settings (
     push_enabled_for_invites boolean DEFAULT true NOT NULL,
     push_enabled_for_events boolean DEFAULT true NOT NULL,
     push_enabled_for_payments boolean DEFAULT true NOT NULL,
-    push_enabled_for_chat boolean DEFAULT true NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL
 );
-
-
---
--- Name: user_payment_debts_view; Type: VIEW; Schema: public; Owner: -
---
-
-CREATE VIEW public.user_payment_debts_view AS
- SELECT ((es.expense_id || '_'::text) || es.user_id) AS payment_id,
-    es.expense_id,
-    es.user_id AS debtor_user_id,
-    ee.paid_by AS paid_by_user_id,
-    ee.event_id,
-    es.amount AS debt_amount,
-    es.has_paid,
-    ee.title AS expense_title,
-    ee.total_amount AS expense_total_amount,
-    ee.created_at,
-    ee.created_by AS expense_created_by,
-    debtor.name AS debtor_user_name,
-    debtor.avatar_url AS debtor_avatar_url,
-    creditor.name AS paid_by_user_name,
-    creditor.avatar_url AS paid_by_avatar_url,
-    e.name AS event_name,
-    e.emoji AS event_emoji,
-    e.group_id,
-    g.name AS group_name
-   FROM (((((public.expense_splits es
-     JOIN public.event_expenses ee ON ((ee.id = es.expense_id)))
-     JOIN public.events e ON ((e.id = ee.event_id)))
-     JOIN public.users debtor ON ((debtor.id = es.user_id)))
-     JOIN public.users creditor ON ((creditor.id = ee.paid_by)))
-     LEFT JOIN public.groups g ON ((g.id = e.group_id)))
-  WHERE (es.has_paid = false)
-  ORDER BY ee.created_at DESC;
-
-
---
--- Name: VIEW user_payment_debts_view; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON VIEW public.user_payment_debts_view IS 'Denormalized view of unpaid payment debts for Inbox Payments feature. Shows who owes whom with full context (event, amounts, names). Filtering by user is done in application queries.';
 
 
 --
@@ -4922,14 +3736,6 @@ ALTER TABLE ONLY public.chat_active_users
 
 
 --
--- Name: chat_messages chat_messages_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.chat_messages
-    ADD CONSTRAINT chat_messages_pkey PRIMARY KEY (id);
-
-
---
 -- Name: event_date_options event_date_options_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -4954,11 +3760,35 @@ ALTER TABLE ONLY public.event_expenses
 
 
 --
+-- Name: event_guest_rsvps event_guest_rsvps_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.event_guest_rsvps
+    ADD CONSTRAINT event_guest_rsvps_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: event_invite_links event_invite_links_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.event_invite_links
+    ADD CONSTRAINT event_invite_links_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: event_participants event_participants_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.event_participants
     ADD CONSTRAINT event_participants_pkey PRIMARY KEY (pevent_id, user_id);
+
+
+--
+-- Name: event_photos event_photos_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.event_photos
+    ADD CONSTRAINT event_photos_pkey PRIMARY KEY (id);
 
 
 --
@@ -4978,91 +3808,11 @@ ALTER TABLE ONLY public.expense_splits
 
 
 --
--- Name: group_invite_links group_invite_links_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+-- Name: invite_analytics invite_analytics_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.group_invite_links
-    ADD CONSTRAINT group_invite_links_pkey PRIMARY KEY (id);
-
-
---
--- Name: group_invite_links group_invite_links_token_key; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.group_invite_links
-    ADD CONSTRAINT group_invite_links_token_key UNIQUE (token);
-
-
---
--- Name: group_invites group_invites_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.group_invites
-    ADD CONSTRAINT group_invites_pkey PRIMARY KEY (id);
-
-
---
--- Name: group_invites group_invites_token_key; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.group_invites
-    ADD CONSTRAINT group_invites_token_key UNIQUE (group_url);
-
-
---
--- Name: group_invites group_invites_unique_invite; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.group_invites
-    ADD CONSTRAINT group_invites_unique_invite UNIQUE (group_id, invited_id);
-
-
---
--- Name: group_members group_members_group_user_uniq; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.group_members
-    ADD CONSTRAINT group_members_group_user_uniq UNIQUE (group_id, user_id);
-
-
---
--- Name: group_members group_members_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.group_members
-    ADD CONSTRAINT group_members_pkey PRIMARY KEY (id);
-
-
---
--- Name: group_messages group_messages_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.group_messages
-    ADD CONSTRAINT group_messages_pkey PRIMARY KEY (id);
-
-
---
--- Name: group_photos group_photos_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.group_photos
-    ADD CONSTRAINT group_photos_pkey PRIMARY KEY (id);
-
-
---
--- Name: group_user_settings group_user_settings_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.group_user_settings
-    ADD CONSTRAINT group_user_settings_pkey PRIMARY KEY (group_id, user_id);
-
-
---
--- Name: groups groups_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.groups
-    ADD CONSTRAINT groups_pkey PRIMARY KEY (id);
+ALTER TABLE ONLY public.invite_analytics
+    ADD CONSTRAINT invite_analytics_pkey PRIMARY KEY (id);
 
 
 --
@@ -5111,30 +3861,6 @@ ALTER TABLE ONLY public.memories
 
 ALTER TABLE ONLY public.memories
     ADD CONSTRAINT memories_user_id_key UNIQUE (user_id);
-
-
---
--- Name: message_reads message_reads_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.message_reads
-    ADD CONSTRAINT message_reads_pkey PRIMARY KEY (user_id, event_id);
-
-
---
--- Name: group_messages messages_group_id_key; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.group_messages
-    ADD CONSTRAINT messages_group_id_key UNIQUE (group_id);
-
-
---
--- Name: notifications notifications_dedup_unique; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.notifications
-    ADD CONSTRAINT notifications_dedup_unique UNIQUE (dedup_key, dedup_bucket);
 
 
 --
@@ -5266,80 +3992,10 @@ ALTER TABLE ONLY public.users
 
 
 --
--- Name: group_hub_events_cache_event_id_idx; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE UNIQUE INDEX group_hub_events_cache_event_id_idx ON public.group_hub_events_cache USING btree (event_id);
-
-
---
--- Name: group_hub_events_cache_group_id_idx; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX group_hub_events_cache_group_id_idx ON public.group_hub_events_cache USING btree (group_id);
-
-
---
--- Name: group_photos_with_uploader_event_id_idx; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX group_photos_with_uploader_event_id_idx ON public.group_photos_with_uploader USING btree (event_id);
-
-
---
--- Name: group_photos_with_uploader_id_idx; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE UNIQUE INDEX group_photos_with_uploader_id_idx ON public.group_photos_with_uploader USING btree (id);
-
-
---
 -- Name: idx_chat_active_users_event_last_seen; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX idx_chat_active_users_event_last_seen ON public.chat_active_users USING btree (event_id, last_seen DESC);
-
-
---
--- Name: idx_chat_messages_event; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_chat_messages_event ON public.chat_messages USING btree (event_id, created_at DESC);
-
-
---
--- Name: idx_chat_messages_event_created_not_deleted; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_chat_messages_event_created_not_deleted ON public.chat_messages USING btree (event_id, created_at DESC) WHERE (is_deleted = false);
-
-
---
--- Name: idx_chat_messages_event_not_deleted; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_chat_messages_event_not_deleted ON public.chat_messages USING btree (event_id, is_deleted, created_at DESC) WHERE (is_deleted = false);
-
-
---
--- Name: idx_chat_messages_event_pinned; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_chat_messages_event_pinned ON public.chat_messages USING btree (event_id, is_pinned, created_at DESC) WHERE (is_pinned = true);
-
-
---
--- Name: idx_chat_messages_reply_to; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_chat_messages_reply_to ON public.chat_messages USING btree (reply_to_id) WHERE (reply_to_id IS NOT NULL);
-
-
---
--- Name: idx_chat_messages_user; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_chat_messages_user ON public.chat_messages USING btree (user_id);
 
 
 --
@@ -5392,6 +4048,34 @@ CREATE INDEX idx_event_expenses_paid_by ON public.event_expenses USING btree (pa
 
 
 --
+-- Name: idx_event_guest_rsvps_event; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_event_guest_rsvps_event ON public.event_guest_rsvps USING btree (event_id);
+
+
+--
+-- Name: idx_event_guest_rsvps_token; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_event_guest_rsvps_token ON public.event_guest_rsvps USING btree (invite_token);
+
+
+--
+-- Name: idx_event_invite_links_event_valid; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_event_invite_links_event_valid ON public.event_invite_links USING btree (event_id, expires_at) WHERE (revoked_at IS NULL);
+
+
+--
+-- Name: idx_event_invite_links_token; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_event_invite_links_token ON public.event_invite_links USING btree (token) WHERE (revoked_at IS NULL);
+
+
+--
 -- Name: idx_event_participants_event; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -5420,24 +4104,17 @@ CREATE INDEX idx_event_participants_user ON public.event_participants USING btre
 
 
 --
+-- Name: idx_event_photos_uploader_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_event_photos_uploader_id ON public.event_photos_with_uploader USING btree (id);
+
+
+--
 -- Name: idx_events_cover_photo; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX idx_events_cover_photo ON public.events USING btree (cover_photo_id);
-
-
---
--- Name: idx_events_group_status_date; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_events_group_status_date ON public.events USING btree (group_id, status, end_datetime DESC);
-
-
---
--- Name: idx_events_group_status_start; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_events_group_status_start ON public.events USING btree (group_id, status, start_datetime);
 
 
 --
@@ -5462,143 +4139,38 @@ CREATE INDEX idx_expense_splits_user_unpaid ON public.expense_splits USING btree
 
 
 --
--- Name: idx_group_hub_cache_event_id; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_group_hub_cache_event_id ON public.group_hub_events_cache USING btree (event_id);
-
-
---
--- Name: idx_group_hub_cache_group_id; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_group_hub_cache_group_id ON public.group_hub_events_cache USING btree (group_id);
-
-
---
--- Name: idx_group_hub_cache_priority; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_group_hub_cache_priority ON public.group_hub_events_cache USING btree (priority);
-
-
---
--- Name: idx_group_invite_links_expires_at; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_group_invite_links_expires_at ON public.group_invite_links USING btree (expires_at);
-
-
---
--- Name: idx_group_invite_links_group_id; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_group_invite_links_group_id ON public.group_invite_links USING btree (group_id);
-
-
---
--- Name: idx_group_invite_links_group_valid; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_group_invite_links_group_valid ON public.group_invite_links USING btree (group_id, expires_at, revoked_at) WHERE (revoked_at IS NULL);
-
-
---
--- Name: idx_group_invite_links_revoked_at; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_group_invite_links_revoked_at ON public.group_invite_links USING btree (revoked_at);
-
-
---
--- Name: idx_group_invite_links_token; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_group_invite_links_token ON public.group_invite_links USING btree (token) WHERE (revoked_at IS NULL);
-
-
---
--- Name: idx_group_invites_created_at; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_group_invites_created_at ON public.group_invites USING btree (created_at);
-
-
---
--- Name: idx_group_invites_group_id; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_group_invites_group_id ON public.group_invites USING btree (group_id);
-
-
---
--- Name: idx_group_invites_invited_id; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_group_invites_invited_id ON public.group_invites USING btree (invited_id);
-
-
---
--- Name: idx_group_members_composite; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_group_members_composite ON public.group_members USING btree (user_id, group_id);
-
-
---
--- Name: idx_group_members_group_id; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_group_members_group_id ON public.group_members USING btree (group_id);
-
-
---
--- Name: idx_group_members_user_group; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_group_members_user_group ON public.group_members USING btree (user_id, group_id);
-
-
---
--- Name: idx_group_members_user_id; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_group_members_user_id ON public.group_members USING btree (user_id);
-
-
---
 -- Name: idx_group_photos_created; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_group_photos_created ON public.group_photos USING btree (created_at DESC);
+CREATE INDEX idx_group_photos_created ON public.event_photos USING btree (created_at DESC);
 
 
 --
 -- Name: idx_group_photos_event_captured; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_group_photos_event_captured ON public.group_photos USING btree (event_id, captured_at DESC);
+CREATE INDEX idx_group_photos_event_captured ON public.event_photos USING btree (event_id, captured_at DESC);
 
 
 --
 -- Name: idx_group_photos_uploader; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_group_photos_uploader ON public.group_photos USING btree (uploader_id);
+CREATE INDEX idx_group_photos_uploader ON public.event_photos USING btree (uploader_id);
 
 
 --
--- Name: idx_groups_created_at; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_invite_analytics_event; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_groups_created_at ON public.groups USING btree (created_at DESC);
+CREATE INDEX idx_invite_analytics_event ON public.invite_analytics USING btree (event_id, action);
 
 
 --
--- Name: idx_groups_created_by; Type: INDEX; Schema: public; Owner: -
+-- Name: idx_invite_analytics_token; Type: INDEX; Schema: public; Owner: -
 --
 
-CREATE INDEX idx_groups_created_by ON public.groups USING btree (created_by);
+CREATE INDEX idx_invite_analytics_token ON public.invite_analytics USING btree (invite_token) WHERE (invite_token IS NOT NULL);
 
 
 --
@@ -5644,38 +4216,10 @@ CREATE INDEX idx_location_suggestions_user ON public.location_suggestions USING 
 
 
 --
--- Name: idx_message_reads_event_id; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_message_reads_event_id ON public.message_reads USING btree (event_id);
-
-
---
--- Name: idx_message_reads_event_user_last_read; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_message_reads_event_user_last_read ON public.message_reads USING btree (event_id, user_id, last_read_message_id);
-
-
---
--- Name: idx_message_reads_last_read_message_id; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_message_reads_last_read_message_id ON public.message_reads USING btree (last_read_message_id);
-
-
---
 -- Name: idx_notifications_category; Type: INDEX; Schema: public; Owner: -
 --
 
 CREATE INDEX idx_notifications_category ON public.notifications USING btree (recipient_user_id, category, created_at DESC);
-
-
---
--- Name: idx_notifications_dedup; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_notifications_dedup ON public.notifications USING btree (dedup_key, dedup_bucket);
 
 
 --
@@ -5690,13 +4234,6 @@ CREATE INDEX idx_notifications_event ON public.notifications USING btree (event_
 --
 
 CREATE INDEX idx_notifications_expense_id ON public.notifications USING btree (expense_id);
-
-
---
--- Name: idx_notifications_group; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_notifications_group ON public.notifications USING btree (group_id, created_at DESC) WHERE (group_id IS NOT NULL);
 
 
 --
@@ -5836,7 +4373,7 @@ CREATE UNIQUE INDEX users_email_uidx ON public.users USING btree (lower(email));
 -- Name: event_participants_summary_view _RETURN; Type: RULE; Schema: public; Owner: -
 --
 
-CREATE OR REPLACE VIEW public.event_participants_summary_view WITH (security_invoker='on') AS
+CREATE OR REPLACE VIEW public.event_participants_summary_view AS
  SELECT e.id AS event_id,
     e.name AS event_name,
     e.start_datetime,
@@ -5845,44 +4382,16 @@ CREATE OR REPLACE VIEW public.event_participants_summary_view WITH (security_inv
     e.created_by AS organizer_id,
     e.status AS event_status,
     e.emoji,
-    e.group_id,
     e.created_at,
     count(ep.user_id) AS participants_total,
-    count(ep.user_id) FILTER (WHERE (ep.rsvp IS NOT NULL)) AS voters_total,
-    count(ep.user_id) FILTER (WHERE ((ep.rsvp IS NULL) OR ((ep.rsvp)::text = ANY (ARRAY['pending'::text, 'invited'::text])))) AS missing_responses,
-    count(ep.user_id) FILTER (WHERE ((ep.rsvp)::text = ANY (ARRAY['going'::text, 'yes'::text, 'attending'::text, 'accepted'::text]))) AS going_count,
-    count(ep.user_id) FILTER (WHERE ((ep.rsvp)::text = ANY (ARRAY['declined'::text, 'no'::text, 'not_going'::text, 'rejected'::text]))) AS not_going_count,
-    COALESCE(array_agg(DISTINCT ep.user_id) FILTER (WHERE (ep.user_id IS NOT NULL)), '{}'::uuid[]) AS participant_user_ids,
-    ( SELECT COALESCE(jsonb_object_agg(s.rsvp_key, s.cnt), '{}'::jsonb) AS "coalesce"
-           FROM ( SELECT COALESCE((ep2.rsvp)::text, 'pending'::text) AS rsvp_key,
-                    count(*) AS cnt
-                   FROM public.event_participants ep2
-                  WHERE (ep2.pevent_id = e.id)
-                  GROUP BY COALESCE((ep2.rsvp)::text, 'pending'::text)) s) AS rsvp_breakdown
+    count(ep.user_id) FILTER (WHERE (ep.rsvp = ANY (ARRAY['yes'::public.rsvp_status, 'no'::public.rsvp_status]))) AS voters_total,
+    count(ep.user_id) FILTER (WHERE ((ep.rsvp IS NULL) OR (ep.rsvp = 'pending'::public.rsvp_status))) AS missing_responses,
+    count(ep.user_id) FILTER (WHERE (ep.rsvp = 'yes'::public.rsvp_status)) AS going_count,
+    count(ep.user_id) FILTER (WHERE (ep.rsvp = 'no'::public.rsvp_status)) AS not_going_count,
+    array_agg(ep.user_id) AS participant_user_ids
    FROM (public.events e
      LEFT JOIN public.event_participants ep ON ((ep.pevent_id = e.id)))
   GROUP BY e.id;
-
-
---
--- Name: chat_messages chat_mention_notification; Type: TRIGGER; Schema: public; Owner: -
---
-
-CREATE TRIGGER chat_mention_notification AFTER INSERT ON public.chat_messages FOR EACH ROW EXECUTE FUNCTION public.notify_chat_mention();
-
-
---
--- Name: chat_messages chat_message_notification; Type: TRIGGER; Schema: public; Owner: -
---
-
-CREATE TRIGGER chat_message_notification AFTER INSERT ON public.chat_messages FOR EACH ROW EXECUTE FUNCTION public.notify_chat_message();
-
-
---
--- Name: chat_messages chat_messages_updated_at_trigger; Type: TRIGGER; Schema: public; Owner: -
---
-
-CREATE TRIGGER chat_messages_updated_at_trigger BEFORE UPDATE ON public.chat_messages FOR EACH ROW EXECUTE FUNCTION public.update_chat_messages_updated_at();
 
 
 --
@@ -5907,13 +4416,6 @@ CREATE TRIGGER event_confirmed_notification AFTER UPDATE ON public.events FOR EA
 
 
 --
--- Name: events event_created_notification; Type: TRIGGER; Schema: public; Owner: -
---
-
-CREATE TRIGGER event_created_notification AFTER INSERT ON public.events FOR EACH ROW EXECUTE FUNCTION public.notify_event_created();
-
-
---
 -- Name: events event_date_set_notification; Type: TRIGGER; Schema: public; Owner: -
 --
 
@@ -5932,6 +4434,13 @@ CREATE TRIGGER event_details_updated_notification AFTER UPDATE ON public.events 
 --
 
 CREATE TRIGGER event_extended_notification AFTER UPDATE ON public.events FOR EACH ROW EXECUTE FUNCTION public.notify_event_extended();
+
+
+--
+-- Name: event_guest_rsvps event_guest_rsvps_updated_at; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER event_guest_rsvps_updated_at BEFORE UPDATE ON public.event_guest_rsvps FOR EACH ROW EXECUTE FUNCTION public._touch_updated_at();
 
 
 --
@@ -5956,38 +4465,10 @@ COMMENT ON TRIGGER event_status_ended_trigger ON public.events IS 'Automatically
 
 
 --
--- Name: events events_changed; Type: TRIGGER; Schema: public; Owner: -
---
-
-CREATE TRIGGER events_changed AFTER INSERT OR DELETE OR UPDATE ON public.events FOR EACH STATEMENT EXECUTE FUNCTION public.auto_refresh_group_cache();
-
-
---
 -- Name: expense_splits expense_paid_notification; Type: TRIGGER; Schema: public; Owner: -
 --
 
 CREATE TRIGGER expense_paid_notification AFTER UPDATE ON public.expense_splits FOR EACH ROW EXECUTE FUNCTION public.notify_payment_received();
-
-
---
--- Name: group_invites group_invite_notification; Type: TRIGGER; Schema: public; Owner: -
---
-
-CREATE TRIGGER group_invite_notification AFTER INSERT ON public.group_invites FOR EACH ROW EXECUTE FUNCTION public.notify_group_invite_received();
-
-
---
--- Name: group_members group_member_added_notification; Type: TRIGGER; Schema: public; Owner: -
---
-
-CREATE TRIGGER group_member_added_notification AFTER INSERT ON public.group_members FOR EACH ROW EXECUTE FUNCTION public.notify_group_member_added();
-
-
---
--- Name: group_members group_member_joined_notification; Type: TRIGGER; Schema: public; Owner: -
---
-
-CREATE TRIGGER group_member_joined_notification AFTER INSERT ON public.group_members FOR EACH ROW EXECUTE FUNCTION public.notify_group_invite_accepted();
 
 
 --
@@ -6010,44 +4491,12 @@ CREATE TRIGGER notify_before_event_delete BEFORE DELETE ON public.events FOR EAC
 
 CREATE TRIGGER on_event_created AFTER INSERT ON public.events FOR EACH ROW EXECUTE FUNCTION public.handle_new_event();
 
-ALTER TABLE public.events DISABLE TRIGGER on_event_created;
-
-
---
--- Name: events on_event_created_add_participants; Type: TRIGGER; Schema: public; Owner: -
---
-
-CREATE TRIGGER on_event_created_add_participants AFTER INSERT ON public.events FOR EACH ROW EXECUTE FUNCTION public.add_group_members_to_event();
-
 
 --
 -- Name: events on_event_update_reset_expired_rsvp; Type: TRIGGER; Schema: public; Owner: -
 --
 
 CREATE TRIGGER on_event_update_reset_expired_rsvp AFTER UPDATE ON public.events FOR EACH ROW EXECUTE FUNCTION public.trigger_reset_expired_rsvp();
-
-
---
--- Name: groups on_group_created; Type: TRIGGER; Schema: public; Owner: -
---
-
-CREATE TRIGGER on_group_created AFTER INSERT ON public.groups FOR EACH ROW EXECUTE FUNCTION public.handle_new_group();
-
-ALTER TABLE public.groups DISABLE TRIGGER on_group_created;
-
-
---
--- Name: group_invites on_group_invite_notify; Type: TRIGGER; Schema: public; Owner: -
---
-
-CREATE TRIGGER on_group_invite_notify AFTER INSERT ON public.group_invites FOR EACH ROW EXECUTE FUNCTION public.notify_group_invite_received();
-
-
---
--- Name: group_members on_new_group_member_add_to_events; Type: TRIGGER; Schema: public; Owner: -
---
-
-CREATE TRIGGER on_new_group_member_add_to_events AFTER INSERT ON public.group_members FOR EACH ROW EXECUTE FUNCTION public.add_new_member_to_group_events();
 
 
 --
@@ -6058,38 +4507,10 @@ CREATE TRIGGER on_notification_insert_send_push AFTER INSERT ON public.notificat
 
 
 --
--- Name: event_participants participants_changed; Type: TRIGGER; Schema: public; Owner: -
---
-
-CREATE TRIGGER participants_changed AFTER INSERT OR DELETE OR UPDATE ON public.event_participants FOR EACH STATEMENT EXECUTE FUNCTION public.auto_refresh_group_cache();
-
-
---
--- Name: group_photos refresh_group_photos_view; Type: TRIGGER; Schema: public; Owner: -
---
-
-CREATE TRIGGER refresh_group_photos_view AFTER INSERT OR DELETE OR UPDATE ON public.group_photos FOR EACH STATEMENT EXECUTE FUNCTION public.auto_refresh_group_photos_view();
-
-
---
--- Name: users refresh_group_photos_view_on_user; Type: TRIGGER; Schema: public; Owner: -
---
-
-CREATE TRIGGER refresh_group_photos_view_on_user AFTER UPDATE OF name, avatar_url ON public.users FOR EACH STATEMENT EXECUTE FUNCTION public.auto_refresh_group_photos_view();
-
-
---
 -- Name: location_suggestions suggestion_added_notification; Type: TRIGGER; Schema: public; Owner: -
 --
 
 CREATE TRIGGER suggestion_added_notification AFTER INSERT ON public.location_suggestions FOR EACH ROW EXECUTE FUNCTION public.notify_suggestion_added();
-
-
---
--- Name: group_members trg_add_new_member_to_events; Type: TRIGGER; Schema: public; Owner: -
---
-
-CREATE TRIGGER trg_add_new_member_to_events AFTER INSERT ON public.group_members FOR EACH ROW EXECUTE FUNCTION public.add_new_member_to_group_events();
 
 
 --
@@ -6100,24 +4521,24 @@ CREATE TRIGGER trigger_create_user_settings AFTER INSERT ON public.users FOR EAC
 
 
 --
--- Name: group_photos trigger_refresh_photos_on_delete; Type: TRIGGER; Schema: public; Owner: -
+-- Name: event_photos trigger_refresh_photos_on_delete; Type: TRIGGER; Schema: public; Owner: -
 --
 
-CREATE TRIGGER trigger_refresh_photos_on_delete AFTER DELETE ON public.group_photos FOR EACH STATEMENT EXECUTE FUNCTION public.refresh_group_photos_view();
-
-
---
--- Name: group_photos trigger_refresh_photos_on_insert; Type: TRIGGER; Schema: public; Owner: -
---
-
-CREATE TRIGGER trigger_refresh_photos_on_insert AFTER INSERT ON public.group_photos FOR EACH STATEMENT EXECUTE FUNCTION public.refresh_group_photos_view();
+CREATE TRIGGER trigger_refresh_photos_on_delete AFTER DELETE ON public.event_photos FOR EACH STATEMENT EXECUTE FUNCTION public.refresh_group_photos_view();
 
 
 --
--- Name: group_photos trigger_refresh_photos_on_update; Type: TRIGGER; Schema: public; Owner: -
+-- Name: event_photos trigger_refresh_photos_on_insert; Type: TRIGGER; Schema: public; Owner: -
 --
 
-CREATE TRIGGER trigger_refresh_photos_on_update AFTER UPDATE ON public.group_photos FOR EACH STATEMENT EXECUTE FUNCTION public.refresh_group_photos_view();
+CREATE TRIGGER trigger_refresh_photos_on_insert AFTER INSERT ON public.event_photos FOR EACH STATEMENT EXECUTE FUNCTION public.refresh_group_photos_view();
+
+
+--
+-- Name: event_photos trigger_refresh_photos_on_update; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER trigger_refresh_photos_on_update AFTER UPDATE ON public.event_photos FOR EACH STATEMENT EXECUTE FUNCTION public.refresh_group_photos_view();
 
 
 --
@@ -6149,19 +4570,10 @@ CREATE TRIGGER update_events_updated_at BEFORE UPDATE ON public.events FOR EACH 
 
 
 --
--- Name: group_photos update_group_photos_updated_at; Type: TRIGGER; Schema: public; Owner: -
+-- Name: event_photos update_group_photos_updated_at; Type: TRIGGER; Schema: public; Owner: -
 --
 
-CREATE TRIGGER update_group_photos_updated_at BEFORE UPDATE ON public.group_photos FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
-
-
---
--- Name: groups update_groups_updated_at; Type: TRIGGER; Schema: public; Owner: -
---
-
-CREATE TRIGGER update_groups_updated_at BEFORE UPDATE ON public.groups FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
-
-ALTER TABLE public.groups DISABLE TRIGGER update_groups_updated_at;
+CREATE TRIGGER update_group_photos_updated_at BEFORE UPDATE ON public.event_photos FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
 
 --
@@ -6192,30 +4604,6 @@ ALTER TABLE ONLY public.chat_active_users
 
 ALTER TABLE ONLY public.chat_active_users
     ADD CONSTRAINT chat_active_users_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
-
-
---
--- Name: chat_messages chat_messages_event_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.chat_messages
-    ADD CONSTRAINT chat_messages_event_id_fkey FOREIGN KEY (event_id) REFERENCES public.events(id) ON DELETE CASCADE;
-
-
---
--- Name: chat_messages chat_messages_reply_to_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.chat_messages
-    ADD CONSTRAINT chat_messages_reply_to_id_fkey FOREIGN KEY (reply_to_id) REFERENCES public.chat_messages(id);
-
-
---
--- Name: chat_messages chat_messages_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.chat_messages
-    ADD CONSTRAINT chat_messages_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
 
 
 --
@@ -6275,6 +4663,30 @@ ALTER TABLE ONLY public.event_expenses
 
 
 --
+-- Name: event_guest_rsvps event_guest_rsvps_event_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.event_guest_rsvps
+    ADD CONSTRAINT event_guest_rsvps_event_id_fkey FOREIGN KEY (event_id) REFERENCES public.events(id) ON DELETE CASCADE;
+
+
+--
+-- Name: event_invite_links event_invite_links_created_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.event_invite_links
+    ADD CONSTRAINT event_invite_links_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.users(id) ON DELETE CASCADE;
+
+
+--
+-- Name: event_invite_links event_invite_links_event_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.event_invite_links
+    ADD CONSTRAINT event_invite_links_event_id_fkey FOREIGN KEY (event_id) REFERENCES public.events(id) ON DELETE CASCADE;
+
+
+--
 -- Name: event_participants event_participants_pevent_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -6291,11 +4703,27 @@ ALTER TABLE ONLY public.event_participants
 
 
 --
+-- Name: event_photos event_photos_event_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.event_photos
+    ADD CONSTRAINT event_photos_event_id_fkey FOREIGN KEY (event_id) REFERENCES public.events(id) ON DELETE CASCADE;
+
+
+--
+-- Name: event_photos event_photos_uploader_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.event_photos
+    ADD CONSTRAINT event_photos_uploader_id_fkey FOREIGN KEY (uploader_id) REFERENCES public.users(id) ON DELETE CASCADE;
+
+
+--
 -- Name: events events_cover_photo_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.events
-    ADD CONSTRAINT events_cover_photo_id_fkey FOREIGN KEY (cover_photo_id) REFERENCES public.group_photos(id) ON DELETE SET NULL;
+    ADD CONSTRAINT events_cover_photo_id_fkey FOREIGN KEY (cover_photo_id) REFERENCES public.event_photos(id);
 
 
 --
@@ -6304,14 +4732,6 @@ ALTER TABLE ONLY public.events
 
 ALTER TABLE ONLY public.events
     ADD CONSTRAINT events_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.users(id);
-
-
---
--- Name: events events_group_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.events
-    ADD CONSTRAINT events_group_id_fkey FOREIGN KEY (group_id) REFERENCES public.groups(id);
 
 
 --
@@ -6339,123 +4759,19 @@ ALTER TABLE ONLY public.expense_splits
 
 
 --
--- Name: group_invite_links group_invite_links_created_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: invite_analytics invite_analytics_event_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.group_invite_links
-    ADD CONSTRAINT group_invite_links_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.users(id) ON DELETE CASCADE;
-
-
---
--- Name: group_invite_links group_invite_links_group_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.group_invite_links
-    ADD CONSTRAINT group_invite_links_group_id_fkey FOREIGN KEY (group_id) REFERENCES public.groups(id) ON DELETE CASCADE;
+ALTER TABLE ONLY public.invite_analytics
+    ADD CONSTRAINT invite_analytics_event_id_fkey FOREIGN KEY (event_id) REFERENCES public.events(id) ON DELETE CASCADE;
 
 
 --
--- Name: group_invites group_invites_group_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+-- Name: invite_analytics invite_analytics_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
-ALTER TABLE ONLY public.group_invites
-    ADD CONSTRAINT group_invites_group_id_fkey FOREIGN KEY (group_id) REFERENCES public.groups(id);
-
-
---
--- Name: group_invites group_invites_invited_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.group_invites
-    ADD CONSTRAINT group_invites_invited_by_fkey FOREIGN KEY (invited_by) REFERENCES public.users(id);
-
-
---
--- Name: group_invites group_invites_invited_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.group_invites
-    ADD CONSTRAINT group_invites_invited_id_fkey FOREIGN KEY (invited_id) REFERENCES public.users(id);
-
-
---
--- Name: group_members group_members_group_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.group_members
-    ADD CONSTRAINT group_members_group_id_fkey FOREIGN KEY (group_id) REFERENCES public.groups(id) ON DELETE CASCADE;
-
-
---
--- Name: group_members group_members_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.group_members
-    ADD CONSTRAINT group_members_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
-
-
---
--- Name: group_messages group_messages_sender_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.group_messages
-    ADD CONSTRAINT group_messages_sender_id_fkey FOREIGN KEY (sender_id) REFERENCES public.users(id);
-
-
---
--- Name: group_photos group_photos_event_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.group_photos
-    ADD CONSTRAINT group_photos_event_id_fkey FOREIGN KEY (event_id) REFERENCES public.events(id) ON DELETE CASCADE;
-
-
---
--- Name: group_photos group_photos_uploader_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.group_photos
-    ADD CONSTRAINT group_photos_uploader_id_fkey FOREIGN KEY (uploader_id) REFERENCES public.users(id) ON DELETE CASCADE;
-
-
---
--- Name: group_user_settings group_user_settings_group_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.group_user_settings
-    ADD CONSTRAINT group_user_settings_group_id_fkey FOREIGN KEY (group_id) REFERENCES public.groups(id) ON DELETE CASCADE;
-
-
---
--- Name: group_user_settings group_user_settings_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.group_user_settings
-    ADD CONSTRAINT group_user_settings_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
-
-
---
--- Name: groups groups_created_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.groups
-    ADD CONSTRAINT groups_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.users(id);
-
-
---
--- Name: groups groups_event_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.groups
-    ADD CONSTRAINT groups_event_id_fkey FOREIGN KEY (event_id) REFERENCES public.events(id) ON DELETE SET NULL;
-
-
---
--- Name: groups groups_memory_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.groups
-    ADD CONSTRAINT groups_memory_id_fkey FOREIGN KEY (memory_id) REFERENCES public.memories(mem_id) ON UPDATE CASCADE ON DELETE CASCADE;
+ALTER TABLE ONLY public.invite_analytics
+    ADD CONSTRAINT invite_analytics_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id);
 
 
 --
@@ -6515,38 +4831,6 @@ ALTER TABLE ONLY public.memories
 
 
 --
--- Name: message_reads message_reads_event_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.message_reads
-    ADD CONSTRAINT message_reads_event_id_fkey FOREIGN KEY (event_id) REFERENCES public.events(id) ON DELETE CASCADE;
-
-
---
--- Name: message_reads message_reads_last_read_message_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.message_reads
-    ADD CONSTRAINT message_reads_last_read_message_id_fkey FOREIGN KEY (last_read_message_id) REFERENCES public.chat_messages(id) ON DELETE SET NULL;
-
-
---
--- Name: message_reads message_reads_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.message_reads
-    ADD CONSTRAINT message_reads_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
-
-
---
--- Name: group_messages messages_group_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.group_messages
-    ADD CONSTRAINT messages_group_id_fkey FOREIGN KEY (group_id) REFERENCES public.groups(id);
-
-
---
 -- Name: notifications notifications_event_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -6560,14 +4844,6 @@ ALTER TABLE ONLY public.notifications
 
 ALTER TABLE ONLY public.notifications
     ADD CONSTRAINT notifications_expense_id_fkey FOREIGN KEY (expense_id) REFERENCES public.event_expenses(id) ON DELETE CASCADE;
-
-
---
--- Name: notifications notifications_group_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.notifications
-    ADD CONSTRAINT notifications_group_id_fkey FOREIGN KEY (group_id) REFERENCES public.groups(id) ON DELETE CASCADE;
 
 
 --
@@ -6643,22 +4919,10 @@ ALTER TABLE ONLY public.user_suggestions
 
 
 --
--- Name: group_invites Admins can delete group invites; Type: POLICY; Schema: public; Owner: -
+-- Name: invite_analytics Analytics insertable by anyone; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY "Admins can delete group invites" ON public.group_invites FOR DELETE USING ((EXISTS ( SELECT 1
-   FROM public.group_members gm
-  WHERE ((gm.group_id = group_invites.group_id) AND (gm.user_id = auth.uid()) AND (gm.role = 'admin'::public.member_role)))));
-
-
---
--- Name: group_photos Allow group members to view photos; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY "Allow group members to view photos" ON public.group_photos FOR SELECT TO authenticated USING ((event_id IN ( SELECT e.id
-   FROM (public.events e
-     JOIN public.group_members gm ON ((gm.group_id = e.group_id)))
-  WHERE (gm.user_id = auth.uid()))));
+CREATE POLICY "Analytics insertable by anyone" ON public.invite_analytics FOR INSERT WITH CHECK (true);
 
 
 --
@@ -6683,109 +4947,130 @@ CREATE POLICY "Enable read access for own user" ON public.users FOR SELECT USING
 
 
 --
--- Name: location_suggestions Event creators can delete all location suggestions for their ev; Type: POLICY; Schema: public; Owner: -
+-- Name: event_photos Event creator can manage all photos; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY "Event creators can delete all location suggestions for their ev" ON public.location_suggestions FOR DELETE USING (((event_id IN ( SELECT events.id
-   FROM public.events
-  WHERE (events.created_by = auth.uid()))) OR (event_id IN ( SELECT e.id
-   FROM (public.events e
-     JOIN public.group_members gm ON ((gm.group_id = e.group_id)))
-  WHERE ((gm.user_id = auth.uid()) AND (gm.role = 'admin'::public.member_role))))));
+CREATE POLICY "Event creator can manage all photos" ON public.event_photos FOR DELETE TO authenticated USING ((EXISTS ( SELECT 1
+   FROM public.events e
+  WHERE ((e.id = event_photos.event_id) AND (e.created_by = auth.uid())))));
 
 
 --
--- Name: groups Group admins can delete groups; Type: POLICY; Schema: public; Owner: -
+-- Name: events Event creator or admin can delete events; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY "Group admins can delete groups" ON public.groups FOR DELETE USING ((created_by = auth.uid()));
-
-
---
--- Name: location_suggestions Group members can create location suggestions; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY "Group members can create location suggestions" ON public.location_suggestions FOR INSERT WITH CHECK ((EXISTS ( SELECT 1
-   FROM (public.events e
-     JOIN public.group_members gm ON ((e.group_id = gm.group_id)))
-  WHERE ((e.id = location_suggestions.event_id) AND (gm.user_id = auth.uid())))));
+CREATE POLICY "Event creator or admin can delete events" ON public.events FOR DELETE TO authenticated USING ((created_by = auth.uid()));
 
 
 --
--- Name: chat_messages Group members can send chat messages; Type: POLICY; Schema: public; Owner: -
+-- Name: location_suggestions Event creators can delete location suggestions; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY "Group members can send chat messages" ON public.chat_messages FOR INSERT WITH CHECK ((EXISTS ( SELECT 1
-   FROM (public.events e
-     JOIN public.group_members gm ON ((e.group_id = gm.group_id)))
-  WHERE ((e.id = chat_messages.event_id) AND (gm.user_id = auth.uid())))));
-
-
---
--- Name: events Group members can update event cover; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY "Group members can update event cover" ON public.events FOR UPDATE TO authenticated USING ((group_id IN ( SELECT group_members.group_id
-   FROM public.group_members
-  WHERE (group_members.user_id = auth.uid())))) WITH CHECK ((group_id IN ( SELECT group_members.group_id
-   FROM public.group_members
-  WHERE (group_members.user_id = auth.uid()))));
+CREATE POLICY "Event creators can delete location suggestions" ON public.location_suggestions FOR DELETE TO authenticated USING (((user_id = auth.uid()) OR (EXISTS ( SELECT 1
+   FROM public.events e
+  WHERE ((e.id = location_suggestions.event_id) AND (e.created_by = auth.uid()))))));
 
 
 --
--- Name: group_photos Group members can upload event photos; Type: POLICY; Schema: public; Owner: -
+-- Name: event_invite_links Event members can create invite links; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY "Group members can upload event photos" ON public.group_photos FOR INSERT WITH CHECK (((EXISTS ( SELECT 1
-   FROM (public.events e
-     JOIN public.group_members gm ON ((gm.group_id = e.group_id)))
-  WHERE ((e.id = group_photos.event_id) AND (gm.user_id = auth.uid())))) AND (uploader_id = auth.uid())));
-
-
---
--- Name: chat_messages Group members can view chat messages; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY "Group members can view chat messages" ON public.chat_messages FOR SELECT USING ((EXISTS ( SELECT 1
-   FROM (public.events e
-     JOIN public.group_members gm ON ((e.group_id = gm.group_id)))
-  WHERE ((e.id = chat_messages.event_id) AND (gm.user_id = auth.uid())))));
+CREATE POLICY "Event members can create invite links" ON public.event_invite_links FOR INSERT WITH CHECK (((created_by = auth.uid()) AND ((EXISTS ( SELECT 1
+   FROM public.event_participants ep
+  WHERE ((ep.pevent_id = event_invite_links.event_id) AND (ep.user_id = auth.uid())))) OR (EXISTS ( SELECT 1
+   FROM public.events e
+  WHERE ((e.id = event_invite_links.event_id) AND (e.created_by = auth.uid())))))));
 
 
 --
--- Name: group_photos Group members can view event photos; Type: POLICY; Schema: public; Owner: -
+-- Name: invite_analytics Event organizer can view analytics; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY "Group members can view event photos" ON public.group_photos FOR SELECT USING ((EXISTS ( SELECT 1
-   FROM (public.events e
-     JOIN public.group_members gm ON ((gm.group_id = e.group_id)))
-  WHERE ((e.id = group_photos.event_id) AND (gm.user_id = auth.uid())))));
-
-
---
--- Name: location_suggestions Group members can view location suggestions; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY "Group members can view location suggestions" ON public.location_suggestions FOR SELECT USING ((EXISTS ( SELECT 1
-   FROM (public.events e
-     JOIN public.group_members gm ON ((e.group_id = gm.group_id)))
-  WHERE ((e.id = location_suggestions.event_id) AND (gm.user_id = auth.uid())))));
+CREATE POLICY "Event organizer can view analytics" ON public.invite_analytics FOR SELECT USING ((EXISTS ( SELECT 1
+   FROM public.events e
+  WHERE ((e.id = invite_analytics.event_id) AND (e.created_by = auth.uid())))));
 
 
 --
--- Name: group_photos Members can add photos to their groups; Type: POLICY; Schema: public; Owner: -
+-- Name: location_suggestions Event participants can create location suggestions; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY "Members can add photos to their groups" ON public.group_photos FOR INSERT WITH CHECK ((uploader_id = auth.uid()));
+CREATE POLICY "Event participants can create location suggestions" ON public.location_suggestions FOR INSERT TO authenticated WITH CHECK ((EXISTS ( SELECT 1
+   FROM public.event_participants ep
+  WHERE ((ep.pevent_id = location_suggestions.event_id) AND (ep.user_id = auth.uid())))));
 
 
 --
--- Name: group_invites Members can invite users to groups; Type: POLICY; Schema: public; Owner: -
+-- Name: events Event participants can update event cover; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY "Members can invite users to groups" ON public.group_invites FOR INSERT WITH CHECK ((EXISTS ( SELECT 1
-   FROM public.group_members gm
-  WHERE ((gm.group_id = group_invites.group_id) AND (gm.user_id = auth.uid())))));
+CREATE POLICY "Event participants can update event cover" ON public.events FOR UPDATE TO authenticated USING (((created_by = auth.uid()) OR (EXISTS ( SELECT 1
+   FROM public.event_participants ep
+  WHERE ((ep.pevent_id = events.id) AND (ep.user_id = auth.uid())))))) WITH CHECK (((created_by = auth.uid()) OR (EXISTS ( SELECT 1
+   FROM public.event_participants ep
+  WHERE ((ep.pevent_id = events.id) AND (ep.user_id = auth.uid()))))));
+
+
+--
+-- Name: event_photos Event participants can upload photos; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "Event participants can upload photos" ON public.event_photos FOR INSERT TO authenticated WITH CHECK (((uploader_id = auth.uid()) AND ((EXISTS ( SELECT 1
+   FROM public.event_participants ep
+  WHERE ((ep.pevent_id = event_photos.event_id) AND (ep.user_id = auth.uid())))) OR (EXISTS ( SELECT 1
+   FROM public.events e
+  WHERE ((e.id = event_photos.event_id) AND (e.created_by = auth.uid())))))));
+
+
+--
+-- Name: events Event participants can view events; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "Event participants can view events" ON public.events FOR SELECT TO authenticated USING (((created_by = auth.uid()) OR (EXISTS ( SELECT 1
+   FROM public.event_participants ep
+  WHERE ((ep.pevent_id = events.id) AND (ep.user_id = auth.uid()))))));
+
+
+--
+-- Name: event_guest_rsvps Event participants can view guest RSVPs; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "Event participants can view guest RSVPs" ON public.event_guest_rsvps FOR SELECT USING (((EXISTS ( SELECT 1
+   FROM public.event_participants ep
+  WHERE ((ep.pevent_id = event_guest_rsvps.event_id) AND (ep.user_id = auth.uid())))) OR (EXISTS ( SELECT 1
+   FROM public.events e
+  WHERE ((e.id = event_guest_rsvps.event_id) AND (e.created_by = auth.uid()))))));
+
+
+--
+-- Name: event_invite_links Event participants can view invite links; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "Event participants can view invite links" ON public.event_invite_links FOR SELECT USING (((EXISTS ( SELECT 1
+   FROM public.event_participants ep
+  WHERE ((ep.pevent_id = event_invite_links.event_id) AND (ep.user_id = auth.uid())))) OR (EXISTS ( SELECT 1
+   FROM public.events e
+  WHERE ((e.id = event_invite_links.event_id) AND (e.created_by = auth.uid()))))));
+
+
+--
+-- Name: location_suggestions Event participants can view location suggestions; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "Event participants can view location suggestions" ON public.location_suggestions FOR SELECT TO authenticated USING ((EXISTS ( SELECT 1
+   FROM public.event_participants ep
+  WHERE ((ep.pevent_id = location_suggestions.event_id) AND (ep.user_id = auth.uid())))));
+
+
+--
+-- Name: event_photos Event participants can view photos; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "Event participants can view photos" ON public.event_photos FOR SELECT TO authenticated USING (((EXISTS ( SELECT 1
+   FROM public.event_participants ep
+  WHERE ((ep.pevent_id = event_photos.event_id) AND (ep.user_id = auth.uid())))) OR (EXISTS ( SELECT 1
+   FROM public.events e
+  WHERE ((e.id = event_photos.event_id) AND (e.created_by = auth.uid()))))));
 
 
 --
@@ -6803,46 +5088,17 @@ CREATE POLICY "Service role full access to push tokens" ON public.user_push_toke
 
 
 --
+-- Name: event_guest_rsvps Service role manages guest RSVPs; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "Service role manages guest RSVPs" ON public.event_guest_rsvps USING (true) WITH CHECK (true);
+
+
+--
 -- Name: reviewer_auth_sessions Service role only; Type: POLICY; Schema: public; Owner: -
 --
 
 CREATE POLICY "Service role only" ON public.reviewer_auth_sessions USING (false);
-
-
---
--- Name: groups System can delete empty groups; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY "System can delete empty groups" ON public.groups FOR DELETE USING ((NOT (EXISTS ( SELECT 1
-   FROM public.group_members
-  WHERE (group_members.group_id = groups.id)))));
-
-
---
--- Name: group_invites System can delete invites for empty groups; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY "System can delete invites for empty groups" ON public.group_invites FOR DELETE USING ((NOT (EXISTS ( SELECT 1
-   FROM public.group_members
-  WHERE (group_members.group_id = group_invites.group_id)))));
-
-
---
--- Name: group_messages System can delete messages for empty groups; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY "System can delete messages for empty groups" ON public.group_messages FOR DELETE USING ((NOT (EXISTS ( SELECT 1
-   FROM public.group_members
-  WHERE (group_members.group_id = group_messages.group_id)))));
-
-
---
--- Name: notifications System can delete notifications for empty groups; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY "System can delete notifications for empty groups" ON public.notifications FOR DELETE USING (((group_id IS NOT NULL) AND (NOT (EXISTS ( SELECT 1
-   FROM public.group_members
-  WHERE (group_members.group_id = notifications.group_id))))));
 
 
 --
@@ -6852,6 +5108,13 @@ CREATE POLICY "System can delete notifications for empty groups" ON public.notif
 CREATE POLICY "Users can create expenses for their events" ON public.event_expenses FOR INSERT WITH CHECK ((EXISTS ( SELECT 1
    FROM public.event_participants ep
   WHERE ((ep.pevent_id = event_expenses.event_id) AND (ep.user_id = auth.uid()) AND (ep.rsvp = 'yes'::public.rsvp_status)))));
+
+
+--
+-- Name: event_photos Users can delete own event photos; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "Users can delete own event photos" ON public.event_photos FOR DELETE TO authenticated USING ((uploader_id = auth.uid()));
 
 
 --
@@ -6887,20 +5150,6 @@ CREATE POLICY "Users can delete own tokens" ON public.push_tokens FOR DELETE USI
 --
 
 CREATE POLICY "Users can delete their own events" ON public.events FOR DELETE USING ((created_by = auth.uid()));
-
-
---
--- Name: group_user_settings Users can delete their own group settings; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY "Users can delete their own group settings" ON public.group_user_settings FOR DELETE USING ((user_id = auth.uid()));
-
-
---
--- Name: group_photos Users can delete their own photos; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY "Users can delete their own photos" ON public.group_photos FOR DELETE USING ((uploader_id = auth.uid()));
 
 
 --
@@ -6960,13 +5209,6 @@ CREATE POLICY "Users can insert own suggestions" ON public.user_suggestions FOR 
 --
 
 CREATE POLICY "Users can insert own tokens" ON public.push_tokens FOR INSERT WITH CHECK ((auth.uid() = user_id));
-
-
---
--- Name: group_members Users can leave groups; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY "Users can leave groups" ON public.group_members FOR DELETE USING ((user_id = auth.uid()));
 
 
 --
@@ -7036,6 +5278,13 @@ CREATE POLICY "Users can update own RSVP" ON public.event_participants FOR UPDAT
 
 
 --
+-- Name: event_photos Users can update own event photos; Type: POLICY; Schema: public; Owner: -
+--
+
+CREATE POLICY "Users can update own event photos" ON public.event_photos FOR UPDATE TO authenticated USING ((uploader_id = auth.uid())) WITH CHECK ((uploader_id = auth.uid()));
+
+
+--
 -- Name: user_push_tokens Users can update own push tokens; Type: POLICY; Schema: public; Owner: -
 --
 
@@ -7071,13 +5320,6 @@ CREATE POLICY "Users can update their own events" ON public.events FOR UPDATE US
 
 
 --
--- Name: group_photos Users can update their own photos; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY "Users can update their own photos" ON public.group_photos FOR UPDATE USING ((uploader_id = auth.uid())) WITH CHECK ((uploader_id = auth.uid()));
-
-
---
 -- Name: users Users can update their own profile; Type: POLICY; Schema: public; Owner: -
 --
 
@@ -7085,29 +5327,12 @@ CREATE POLICY "Users can update their own profile" ON public.users FOR UPDATE US
 
 
 --
--- Name: message_reads Users can update their own read status; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY "Users can update their own read status" ON public.message_reads USING ((auth.uid() = user_id)) WITH CHECK ((auth.uid() = user_id));
-
-
---
 -- Name: event_participants Users can view event_participants; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY "Users can view event_participants" ON public.event_participants FOR SELECT TO authenticated USING ((pevent_id IN ( SELECT e.id
-   FROM (public.events e
-     JOIN public.group_members gm ON ((e.group_id = gm.group_id)))
-  WHERE (gm.user_id = auth.uid()))));
-
-
---
--- Name: events Users can view events from their groups; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY "Users can view events from their groups" ON public.events FOR SELECT USING ((EXISTS ( SELECT 1
-   FROM public.group_members
-  WHERE ((group_members.group_id = events.group_id) AND (group_members.user_id = auth.uid())))));
+CREATE POLICY "Users can view event_participants" ON public.event_participants FOR SELECT TO authenticated USING ((EXISTS ( SELECT 1
+   FROM public.event_participants ep
+  WHERE ((ep.pevent_id = event_participants.pevent_id) AND (ep.user_id = auth.uid())))));
 
 
 --
@@ -7130,13 +5355,13 @@ CREATE POLICY "Users can view expenses from their events" ON public.event_expens
 
 
 --
--- Name: locations Users can view locations for accessible events; Type: POLICY; Schema: public; Owner: -
+-- Name: locations Users can view locations for their events; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY "Users can view locations for accessible events" ON public.locations FOR SELECT USING ((EXISTS ( SELECT 1
+CREATE POLICY "Users can view locations for their events" ON public.locations FOR SELECT TO authenticated USING (((id IN ( SELECT DISTINCT e.location_id
    FROM (public.events e
-     JOIN public.group_members gm ON ((gm.group_id = e.group_id)))
-  WHERE ((e.location_id = locations.id) AND (gm.user_id = auth.uid())))));
+     JOIN public.event_participants ep ON ((e.id = ep.pevent_id)))
+  WHERE (ep.user_id = auth.uid()))) OR (created_by = auth.uid())));
 
 
 --
@@ -7182,100 +5407,10 @@ CREATE POLICY "Users can view own tokens" ON public.push_tokens FOR SELECT USING
 
 
 --
--- Name: message_reads Users can view read status of event participants; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY "Users can view read status of event participants" ON public.message_reads FOR SELECT USING ((EXISTS ( SELECT 1
-   FROM public.event_participants ep
-  WHERE ((ep.pevent_id = message_reads.event_id) AND (ep.user_id = auth.uid())))));
-
-
---
--- Name: group_invites Users can view their invites; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY "Users can view their invites" ON public.group_invites FOR SELECT USING (((auth.uid() = invited_by) OR (auth.uid() = invited_id)));
-
-
---
--- Name: message_reads Users can view their own read status; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY "Users can view their own read status" ON public.message_reads FOR SELECT USING ((auth.uid() = user_id));
-
-
---
--- Name: group_invite_links authenticated_can_insert_via_rpc; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY authenticated_can_insert_via_rpc ON public.group_invite_links FOR INSERT TO authenticated WITH CHECK (true);
-
-
---
 -- Name: chat_active_users; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
 ALTER TABLE public.chat_active_users ENABLE ROW LEVEL SECURITY;
-
---
--- Name: chat_messages chat_delete_policy; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY chat_delete_policy ON public.chat_messages FOR DELETE USING (false);
-
-
---
--- Name: chat_messages chat_insert_policy; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY chat_insert_policy ON public.chat_messages FOR INSERT WITH CHECK (((auth.uid() IS NOT NULL) AND (auth.uid() IN ( SELECT gm.user_id
-   FROM (public.group_members gm
-     JOIN public.events e ON ((e.group_id = gm.group_id)))
-  WHERE (e.id = chat_messages.event_id))) AND (user_id = auth.uid()) AND (is_pinned = false) AND (is_deleted = false)));
-
-
---
--- Name: chat_messages; Type: ROW SECURITY; Schema: public; Owner: -
---
-
-ALTER TABLE public.chat_messages ENABLE ROW LEVEL SECURITY;
-
---
--- Name: chat_messages chat_read_policy; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY chat_read_policy ON public.chat_messages FOR SELECT USING ((auth.uid() IN ( SELECT gm.user_id
-   FROM (public.group_members gm
-     JOIN public.events e ON ((e.group_id = gm.group_id)))
-  WHERE (e.id = chat_messages.event_id))));
-
-
---
--- Name: chat_messages chat_update_delete_policy; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY chat_update_delete_policy ON public.chat_messages FOR UPDATE USING ((user_id = auth.uid())) WITH CHECK ((user_id = auth.uid()));
-
-
---
--- Name: chat_messages chat_update_pin_policy; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY chat_update_pin_policy ON public.chat_messages FOR UPDATE USING ((auth.uid() IN ( SELECT gm.user_id
-   FROM (public.group_members gm
-     JOIN public.events e ON ((e.group_id = gm.group_id)))
-  WHERE (e.id = chat_messages.event_id)))) WITH CHECK ((auth.uid() IN ( SELECT gm.user_id
-   FROM (public.group_members gm
-     JOIN public.events e ON ((e.group_id = gm.group_id)))
-  WHERE (e.id = chat_messages.event_id))));
-
-
---
--- Name: group_invite_links creator_can_update_own_invites; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY creator_can_update_own_invites ON public.group_invite_links FOR UPDATE TO authenticated USING ((created_by = auth.uid())) WITH CHECK ((created_by = auth.uid()));
-
 
 --
 -- Name: event_date_options edopts_delete; Type: POLICY; Schema: public; Owner: -
@@ -7394,6 +5529,18 @@ CREATE POLICY event_expenses_update_policy ON public.event_expenses FOR UPDATE T
 
 
 --
+-- Name: event_guest_rsvps; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.event_guest_rsvps ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: event_invite_links; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.event_invite_links ENABLE ROW LEVEL SECURITY;
+
+--
 -- Name: event_participants; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
@@ -7420,19 +5567,16 @@ CREATE POLICY event_participants_can_vote_on_location_suggestions ON public.loca
 
 
 --
+-- Name: event_photos; Type: ROW SECURITY; Schema: public; Owner: -
+--
+
+ALTER TABLE public.event_photos ENABLE ROW LEVEL SECURITY;
+
+--
 -- Name: events; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
 ALTER TABLE public.events ENABLE ROW LEVEL SECURITY;
-
---
--- Name: events events_delete_policy; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY events_delete_policy ON public.events FOR DELETE USING (((created_by = auth.uid()) OR (EXISTS ( SELECT 1
-   FROM public.group_members
-  WHERE ((group_members.group_id = events.group_id) AND (group_members.user_id = auth.uid()) AND (group_members.role = 'admin'::public.member_role))))));
-
 
 --
 -- Name: events events_insert_own; Type: POLICY; Schema: public; Owner: -
@@ -7475,92 +5619,10 @@ CREATE POLICY expense_splits_update_policy ON public.expense_splits FOR UPDATE T
 
 
 --
--- Name: group_members gm_insert; Type: POLICY; Schema: public; Owner: -
+-- Name: invite_analytics; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
-CREATE POLICY gm_insert ON public.group_members FOR INSERT WITH CHECK ((public.is_group_creator(group_id) OR public.is_admin(group_id)));
-
-
---
--- Name: group_members gm_select; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY gm_select ON public.group_members FOR SELECT USING (public.is_member(group_id));
-
-
---
--- Name: events group members can select group events; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY "group members can select group events" ON public.events FOR SELECT USING ((EXISTS ( SELECT 1
-   FROM public.group_members gm
-  WHERE ((gm.group_id = events.group_id) AND (gm.user_id = auth.uid())))));
-
-
---
--- Name: group_invite_links; Type: ROW SECURITY; Schema: public; Owner: -
---
-
-ALTER TABLE public.group_invite_links ENABLE ROW LEVEL SECURITY;
-
---
--- Name: group_invites; Type: ROW SECURITY; Schema: public; Owner: -
---
-
-ALTER TABLE public.group_invites ENABLE ROW LEVEL SECURITY;
-
---
--- Name: group_members; Type: ROW SECURITY; Schema: public; Owner: -
---
-
-ALTER TABLE public.group_members ENABLE ROW LEVEL SECURITY;
-
---
--- Name: group_messages; Type: ROW SECURITY; Schema: public; Owner: -
---
-
-ALTER TABLE public.group_messages ENABLE ROW LEVEL SECURITY;
-
---
--- Name: group_photos; Type: ROW SECURITY; Schema: public; Owner: -
---
-
-ALTER TABLE public.group_photos ENABLE ROW LEVEL SECURITY;
-
---
--- Name: group_user_settings; Type: ROW SECURITY; Schema: public; Owner: -
---
-
-ALTER TABLE public.group_user_settings ENABLE ROW LEVEL SECURITY;
-
---
--- Name: groups; Type: ROW SECURITY; Schema: public; Owner: -
---
-
-ALTER TABLE public.groups ENABLE ROW LEVEL SECURITY;
-
---
--- Name: groups groups_insert; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY groups_insert ON public.groups FOR INSERT WITH CHECK ((created_by = auth.uid()));
-
-
---
--- Name: groups groups_select; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY groups_select ON public.groups FOR SELECT USING (((created_by = auth.uid()) OR public.is_member(id)));
-
-
---
--- Name: groups groups_update; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY groups_update ON public.groups FOR UPDATE USING (((created_by = auth.uid()) OR (EXISTS ( SELECT 1
-   FROM public.group_members
-  WHERE ((group_members.group_id = groups.id) AND (group_members.user_id = auth.uid()) AND (group_members.role = 'admin'::public.member_role))))));
-
+ALTER TABLE public.invite_analytics ENABLE ROW LEVEL SECURITY;
 
 --
 -- Name: locations loc_delete_own; Type: POLICY; Schema: public; Owner: -
@@ -7609,25 +5671,10 @@ ALTER TABLE public.location_suggestions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.locations ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: group_invite_links members_can_read_own_group_invites; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY members_can_read_own_group_invites ON public.group_invite_links FOR SELECT TO authenticated USING ((group_id IN ( SELECT group_members.group_id
-   FROM public.group_members
-  WHERE (group_members.user_id = auth.uid()))));
-
-
---
 -- Name: memories; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
 ALTER TABLE public.memories ENABLE ROW LEVEL SECURITY;
-
---
--- Name: message_reads; Type: ROW SECURITY; Schema: public; Owner: -
---
-
-ALTER TABLE public.message_reads ENABLE ROW LEVEL SECURITY;
 
 --
 -- Name: notifications; Type: ROW SECURITY; Schema: public; Owner: -
@@ -7658,13 +5705,6 @@ ALTER TABLE public.push_tokens ENABLE ROW LEVEL SECURITY;
 --
 
 ALTER TABLE public.reviewer_auth_sessions ENABLE ROW LEVEL SECURITY;
-
---
--- Name: group_user_settings user_manages_own_settings; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY user_manages_own_settings ON public.group_user_settings USING ((user_id = auth.uid())) WITH CHECK ((user_id = auth.uid()));
-
 
 --
 -- Name: user_notification_settings; Type: ROW SECURITY; Schema: public; Owner: -
@@ -7704,28 +5744,18 @@ CREATE POLICY users_can_remove_own_location_votes ON public.location_suggestion_
 
 
 --
--- Name: users users_can_view_avatars_of_group_members; Type: POLICY; Schema: public; Owner: -
+-- Name: users users_can_view_avatars_of_event_participants; Type: POLICY; Schema: public; Owner: -
 --
 
-CREATE POLICY users_can_view_avatars_of_group_members ON public.users FOR SELECT USING (((auth.uid() = id) OR (id IN ( SELECT DISTINCT gm2.user_id
-   FROM (public.group_members gm1
-     JOIN public.group_members gm2 ON ((gm1.group_id = gm2.group_id)))
-  WHERE (gm1.user_id = auth.uid())))));
-
-
---
--- Name: group_photos users_can_view_group_photos; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY users_can_view_group_photos ON public.group_photos FOR SELECT USING ((EXISTS ( SELECT 1
-   FROM (public.events e
-     JOIN public.event_participants ep ON ((ep.pevent_id = e.id)))
-  WHERE ((e.id = group_photos.event_id) AND (ep.user_id = auth.uid())))));
+CREATE POLICY users_can_view_avatars_of_event_participants ON public.users FOR SELECT TO authenticated USING (((auth.uid() = id) OR (id IN ( SELECT DISTINCT ep2.user_id
+   FROM (public.event_participants ep1
+     JOIN public.event_participants ep2 ON ((ep1.pevent_id = ep2.pevent_id)))
+  WHERE (ep1.user_id = auth.uid())))));
 
 
 --
 -- PostgreSQL database dump complete
 --
 
-\unrestrict hpacRJ3cL5f6UIIc7xHFPT3Ul1Dwo8JdkqEHtKX2z3gNBOElzV1KBeuDocBFhLz
+\unrestrict qtmzKkbRblxbdI0drnwV7C1RuajFwIu6Mna99m1ed3bB9F58rYcRxoq19qf8QAV
 
