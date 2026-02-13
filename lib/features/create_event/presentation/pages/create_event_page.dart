@@ -43,10 +43,6 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
   TimeOfDay? _endTime;
   LocationInfo? _selectedLocation;
 
-  // Estados das seções
-  DateTimeState _dateTimeState = DateTimeState.decideLater;
-  LocationState _locationState = LocationState.decideLater;
-
   // Serviços
   final DraftService _draftService = DraftService();
 
@@ -88,8 +84,6 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
         _endDate = draft.endDate;
         _endTime = draft.endTime;
         _selectedLocation = draft.selectedLocation;
-        _dateTimeState = draft.dateTimeState;
-        _locationState = draft.locationState;
         _hasInitializedFromDraft = true;
       });
     }
@@ -105,8 +99,6 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
       endDate: _endDate,
       endTime: _endTime,
       selectedLocation: _selectedLocation,
-      dateTimeState: _dateTimeState,
-      locationState: _locationState,
       createdAt: DateTime.now(),
     );
   }
@@ -147,57 +139,34 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
         _eventName.trim().isNotEmpty &&
         _eventName != 'Add Event Name';
 
-    // All fields must be valid: basic fields + location + datetime
-    // Location and DateTime are valid if "Decide Later" OR properly filled when "Set Now"
+    // All fields must be valid
     return basicFieldsValid && _isLocationValid && _isDateTimeValid;
   }
 
   /// Verifica se a localização é válida
   bool get _isLocationValid {
-    if (_locationState == LocationState.decideLater) {
-      return true; // Decide later is always valid
-    }
-
-    // For "Set now", require at least one field:
-    // Location object must exist AND have either formattedAddress OR displayName
-    if (_selectedLocation != null) {
-      final hasAddress = _selectedLocation!.formattedAddress.isNotEmpty;
-      final hasName = _selectedLocation!.displayName != null &&
-          _selectedLocation!.displayName!.isNotEmpty;
-      return hasAddress || hasName;
-    }
-
-    // If no location is set when "Set Now" is selected, it's invalid
-    return false;
-  }
-
-  /// Valida o estado atual da localização
-  void _validateLocationState() {
-    // Don't auto-switch to "Decide later" when user is actively editing location
-    // This was causing the bug where clicking "Change" would disable the Continue button
-    // The validation will handle the invalid state by showing an error message instead
+    // Location is optional — valid if empty or properly filled
+    if (_selectedLocation == null) return true;
+    final hasAddress = _selectedLocation!.formattedAddress.isNotEmpty;
+    final hasName = _selectedLocation!.displayName != null &&
+        _selectedLocation!.displayName!.isNotEmpty;
+    return hasAddress || hasName;
   }
 
   /// Obtém o erro de validação da localização
   String? _getLocationValidationError() {
     if (!_showValidationErrors) return null;
-
-    if (_locationState == LocationState.setNow && !_isLocationValid) {
-      return 'Please fill in at least one field: Location name or Address';
-    }
+    // No location validation error since location is optional
     return null;
   }
 
   /// Verifica se data e hora são válidas
   bool get _isDateTimeValid {
-    if (_dateTimeState == DateTimeState.decideLater) {
-      return true; // Decide later is always valid
-    }
+    // Date/time is optional — valid if not set
+    if (_selectedDate == null && _selectedTime == null) return true;
 
-    // For "Set now", require start date and time
-    if (_selectedDate == null || _selectedTime == null) {
-      return false;
-    }
+    // If partially set, require both
+    if (_selectedDate == null || _selectedTime == null) return false;
 
     final now = DateTime.now();
     final startDateTime = DateTime(
@@ -233,12 +202,11 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
   String? _getDateTimeValidationError() {
     if (!_showValidationErrors) return null;
 
-    if (_dateTimeState == DateTimeState.decideLater) {
-      return null;
-    }
+    // Only validate if user started filling in date/time
+    if (_selectedDate == null && _selectedTime == null) return null;
 
     if (_selectedDate == null || _selectedTime == null) {
-      return 'Please set start date and time';
+      return 'Please set both start date and time';
     }
 
     // Check if start date/time is in the past
@@ -264,8 +232,7 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
 
   /// Define horário final padrão (6 horas após o início) se necessário
   void _setDefaultEndTimeIfNeeded() {
-    if (_dateTimeState == DateTimeState.setNow &&
-        _selectedDate != null &&
+    if (_selectedDate != null &&
         _selectedTime != null &&
         _endDate == null &&
         _endTime == null) {
@@ -430,7 +397,6 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
                       startTime: _selectedTime,
                       endDate: _endDate,
                       endTime: _endTime,
-                      initialState: _dateTimeState,
                       onStartDateChanged: (date) {
                         setState(() {
                           _selectedDate = date;
@@ -457,13 +423,6 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
                         });
                         _clearValidationErrorsIfValid();
                       },
-                      onStateChanged: (state) {
-                        setState(() {
-                          _dateTimeState = state;
-                        });
-                        // Clear validation errors if state becomes valid
-                        _clearValidationErrorsIfValid();
-                      },
                       validationError: _getDateTimeValidationError(),
                     ),
 
@@ -472,20 +431,11 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
                     // Seção de localização
                     LocationSection(
                       selectedLocation: _selectedLocation,
-                      initialState: _locationState,
                       onLocationChanged: (location) {
                         setState(() {
                           _selectedLocation = location;
                         });
                         // Clear validation errors if location becomes valid
-                        _clearValidationErrorsIfValid();
-                      },
-                      onStateChanged: (state) {
-                        setState(() {
-                          _locationState = state;
-                        });
-                        _validateLocationState();
-                        // Clear validation errors if state becomes valid
                         _clearValidationErrorsIfValid();
                       },
                       validationError: _getLocationValidationError(),
@@ -630,7 +580,6 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
         _selectedTime = event.lastTime;
         _endDate = nextDate; // End date igual ao start date
         _endTime = event.lastTime; // End time igual ao start time
-        _dateTimeState = DateTimeState.setNow;
       }
 
       // Carregar localização se existir
@@ -642,7 +591,6 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
           latitude: 0.0,
           longitude: 0.0,
         );
-        _locationState = LocationState.setNow;
       }
     });
 

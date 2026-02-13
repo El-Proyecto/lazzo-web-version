@@ -14,8 +14,7 @@ class HomeEventEntity {
   final int goingCount;
   final List<String> attendeeAvatars; // Profile picture URLs
   final List<String> attendeeNames; // Names of attendees
-  final bool?
-      userVote; // true = going, false = not going, null = pending/not voted
+  final RsvpVoteStatus userVote; // going, notGoing, maybe, or pending
   final List<RsvpVote> allVotes; // All votes for the bottom sheet
   final int photoCount; // Total photos added (for Living/Recap)
   final int maxPhotos; // Maximum photos allowed (for Living/Recap)
@@ -33,7 +32,7 @@ class HomeEventEntity {
     required this.goingCount,
     required this.attendeeAvatars,
     required this.attendeeNames,
-    this.userVote,
+    this.userVote = RsvpVoteStatus.pending,
     this.allVotes = const [],
     this.photoCount = 0,
     this.maxPhotos = 0,
@@ -59,12 +58,11 @@ class HomeEventEntity {
     int? goingCount,
     List<String>? attendeeAvatars,
     List<String>? attendeeNames,
-    bool? userVote,
+    RsvpVoteStatus? userVote,
     List<RsvpVote>? allVotes,
     int? photoCount,
     int? maxPhotos,
     List<ParticipantPhoto>? participantPhotos,
-    bool updateUserVote = false, // Flag to allow explicit null setting
   }) {
     return HomeEventEntity(
       id: id ?? this.id,
@@ -77,7 +75,7 @@ class HomeEventEntity {
       goingCount: goingCount ?? this.goingCount,
       attendeeAvatars: attendeeAvatars ?? this.attendeeAvatars,
       attendeeNames: attendeeNames ?? this.attendeeNames,
-      userVote: updateUserVote ? userVote : (userVote ?? this.userVote),
+      userVote: userVote ?? this.userVote,
       allVotes: allVotes ?? this.allVotes,
       photoCount: photoCount ?? this.photoCount,
       maxPhotos: maxPhotos ?? this.maxPhotos,

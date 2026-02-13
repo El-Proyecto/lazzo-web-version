@@ -8,6 +8,7 @@ import '../../constants/spacing.dart';
 import '../../constants/text_styles.dart';
 import '../../themes/colors.dart';
 import '../widgets/votes_bottom_sheet.dart';
+import '../widgets/rsvp_widget.dart';
 import '../widgets/photos_bottom_sheet.dart';
 
 /// Home event card state
@@ -22,7 +23,7 @@ class HomeEventCard extends ConsumerStatefulWidget {
   final HomeEventEntity event;
   final HomeEventCardState state;
   final VoidCallback? onTap;
-  final Function(String eventId, bool? vote)? onVoteChanged;
+  final Function(String eventId, RsvpVoteStatus vote)? onVoteChanged;
 
   const HomeEventCard({
     super.key,
@@ -349,23 +350,34 @@ class _HomeEventCardState extends ConsumerState<HomeEventCard> {
     }
 
     // For Pending/Confirmed states, show "going" count (not "participants")
-    // ✅ Check if user has already voted using userVote field
-    final hasUserVoted = _currentEvent.userVote != null;
-    final userVotedYes = _currentEvent.userVote == true;
+    // Check if user has already voted using userVote field
+    final hasUserVoted = _currentEvent.userVote != RsvpVoteStatus.pending;
+    String? voteLabel;
+    switch (_currentEvent.userVote) {
+      case RsvpVoteStatus.going:
+        voteLabel = 'You voted yes!';
+        break;
+      case RsvpVoteStatus.notGoing:
+        voteLabel = 'You voted no!';
+        break;
+      case RsvpVoteStatus.maybe:
+        voteLabel = 'You voted maybe!';
+        break;
+      case RsvpVoteStatus.pending:
+        voteLabel = null;
+        break;
+    }
 
     if (_currentEvent.goingCount == 0) {
       if (hasUserVoted) {
-        return userVotedYes
-            ? 'No one going yet • You voted yes!'
-            : 'No one going yet • You voted no!';
+        return 'No one going yet • $voteLabel';
       }
       return 'Tap to vote!';
     }
 
     if (hasUserVoted) {
       // User has voted - show going count + their vote
-      final voteText = userVotedYes ? 'You voted yes!' : 'You voted no!';
-      return '${_currentEvent.goingCount} going • $voteText';
+      return '${_currentEvent.goingCount} going • $voteLabel';
     }
 
     return '${_currentEvent.goingCount} going • Tap to vote!';

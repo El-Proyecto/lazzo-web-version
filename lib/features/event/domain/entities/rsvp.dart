@@ -41,4 +41,4 @@ class Rsvp {
 }
 
 /// RSVP status enumeration
-enum RsvpStatus { going, notGoing, pending }
+enum RsvpStatus { going, notGoing, maybe, pending }

@@ -121,12 +121,12 @@ class FakeHomeEventRepository implements HomeEventRepository {
     final goingVotes =
         allVotes.where((v) => v.status == RsvpVoteStatus.going).toList();
 
-    // Next Event only shows if user voted "Can" (userVote == true)
-    // Change userVote to false or null to test - event won't appear as Next Event
-    const userVote = true; // User has voted "Can"
+    // Next Event only shows if user voted "Can" (userVote == going)
+    // Change userVote to test - event won't appear as Next Event
+    const userVote = RsvpVoteStatus.going; // User has voted "Can"
 
     // Only return event if user voted "Can"
-    if (userVote != true) {
+    if (userVote != RsvpVoteStatus.going) {
       return null; // No next event if user hasn't voted or voted "Can't"
     }
 
@@ -359,7 +359,7 @@ class FakeHomeEventRepository implements HomeEventRepository {
             .where((v) => v.status == RsvpVoteStatus.going)
             .map((v) => v.userName)
             .toList(),
-        userVote: null, // User hasn't voted yet
+        userVote: RsvpVoteStatus.pending, // User hasn't voted yet
         allVotes: event2Votes,
       ),
       HomeEventEntity(
@@ -381,7 +381,7 @@ class FakeHomeEventRepository implements HomeEventRepository {
             .where((v) => v.status == RsvpVoteStatus.going)
             .map((v) => v.userName)
             .toList(),
-        userVote: true,
+        userVote: RsvpVoteStatus.going,
         allVotes: event3Votes,
       ),
     ];
@@ -558,7 +558,7 @@ class FakeHomeEventRepository implements HomeEventRepository {
             .where((v) => v.status == RsvpVoteStatus.going)
             .map((v) => v.userName)
             .toList(),
-        userVote: true,
+        userVote: RsvpVoteStatus.going,
         allVotes: event4Votes,
       ),
       HomeEventEntity(
@@ -579,7 +579,7 @@ class FakeHomeEventRepository implements HomeEventRepository {
             .where((v) => v.status == RsvpVoteStatus.going)
             .map((v) => v.userName)
             .toList(),
-        userVote: null, // User hasn't voted yet
+        userVote: RsvpVoteStatus.pending, // User hasn't voted yet
         allVotes: event5Votes,
       ),
     ];

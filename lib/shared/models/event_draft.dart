@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../../features/create_event/presentation/widgets/location_section.dart';
-import '../../features/create_event/presentation/widgets/date_time_section.dart';
 
 /// Model para rascunho de evento
 /// Usado para salvar e carregar estados parciais de criação de eventos
@@ -12,8 +11,6 @@ class EventDraft {
   final DateTime? endDate;
   final TimeOfDay? endTime;
   final LocationInfo? selectedLocation;
-  final DateTimeState dateTimeState;
-  final LocationState locationState;
   final DateTime createdAt;
 
   const EventDraft({
@@ -24,20 +21,16 @@ class EventDraft {
     this.endDate,
     this.endTime,
     this.selectedLocation,
-    required this.dateTimeState,
-    required this.locationState,
     required this.createdAt,
   });
 
   /// Verifica se o rascunho tem alterações
   bool get hasChanges {
     return eventName.isNotEmpty ||
-        eventEmoji != null || // Check if emoji was selected
+        eventEmoji != null ||
         selectedDate != null ||
         selectedTime != null ||
-        selectedLocation != null ||
-        dateTimeState != DateTimeState.decideLater ||
-        locationState != LocationState.decideLater;
+        selectedLocation != null;
   }
 
   /// Verifica se o rascunho é válido para criação
@@ -45,33 +38,29 @@ class EventDraft {
     // Nome é obrigatório
     if (eventName.trim().isEmpty) return false;
 
-    // Se location está em "Set now", precisa ter localização
-    if (locationState == LocationState.setNow && selectedLocation == null) {
-      return false;
-    }
+    // Date/time optional but if partially set, both needed
+    if ((selectedDate != null) != (selectedTime != null)) return false;
 
-    // Se date/time está em "Set now", precisa ter data e hora de início
-    if (dateTimeState == DateTimeState.setNow) {
-      if (selectedDate == null || selectedTime == null) return false;
-
-      // Se tem data/hora de fim, validar que fim > início
-      if (endDate != null && endTime != null) {
-        final startDateTime = DateTime(
-          selectedDate!.year,
-          selectedDate!.month,
-          selectedDate!.day,
-          selectedTime!.hour,
-          selectedTime!.minute,
-        );
-        final endDateTime = DateTime(
-          endDate!.year,
-          endDate!.month,
-          endDate!.day,
-          endTime!.hour,
-          endTime!.minute,
-        );
-        if (!endDateTime.isAfter(startDateTime)) return false;
-      }
+    // Se tem data/hora de fim, validar que fim > início
+    if (selectedDate != null &&
+        selectedTime != null &&
+        endDate != null &&
+        endTime != null) {
+      final startDateTime = DateTime(
+        selectedDate!.year,
+        selectedDate!.month,
+        selectedDate!.day,
+        selectedTime!.hour,
+        selectedTime!.minute,
+      );
+      final endDateTime = DateTime(
+        endDate!.year,
+        endDate!.month,
+        endDate!.day,
+        endTime!.hour,
+        endTime!.minute,
+      );
+      if (!endDateTime.isAfter(startDateTime)) return false;
     }
 
     return true;
@@ -91,8 +80,6 @@ class EventDraft {
           ? {'hour': endTime!.hour, 'minute': endTime!.minute}
           : null,
       'selectedLocation': selectedLocation?.toJson(),
-      'dateTimeState': dateTimeState.name,
-      'locationState': locationState.name,
       'createdAt': createdAt.millisecondsSinceEpoch,
     };
   }
@@ -123,12 +110,6 @@ class EventDraft {
       selectedLocation: json['selectedLocation'] != null
           ? LocationInfo.fromJson(json['selectedLocation'])
           : null,
-      dateTimeState: DateTimeState.values.byName(
-        json['dateTimeState'] ?? 'decideLater',
-      ),
-      locationState: LocationState.values.byName(
-        json['locationState'] ?? 'decideLater',
-      ),
       createdAt: DateTime.fromMillisecondsSinceEpoch(json['createdAt']),
     );
   }
@@ -142,8 +123,6 @@ class EventDraft {
     DateTime? endDate,
     TimeOfDay? endTime,
     LocationInfo? selectedLocation,
-    DateTimeState? dateTimeState,
-    LocationState? locationState,
   }) {
     return EventDraft(
       eventName: eventName ?? this.eventName,
@@ -153,8 +132,6 @@ class EventDraft {
       endDate: endDate ?? this.endDate,
       endTime: endTime ?? this.endTime,
       selectedLocation: selectedLocation ?? this.selectedLocation,
-      dateTimeState: dateTimeState ?? this.dateTimeState,
-      locationState: locationState ?? this.locationState,
       createdAt: createdAt,
     );
   }

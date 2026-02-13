@@ -1,1 +1,1 @@
-enum UserVoteStatus { yes, no, notVoted }
+enum UserVoteStatus { yes, no, maybe, notVoted }

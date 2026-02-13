@@ -699,9 +699,18 @@ class _EventPageState extends ConsumerState<EventPage> {
     );
   }
 
-  bool? _getUserVoteStatus(Rsvp? rsvp) {
-    if (rsvp == null || rsvp.status == RsvpStatus.pending) return null;
-    return rsvp.status == RsvpStatus.going;
+  rsvp_widget.RsvpVoteStatus _getUserVoteStatus(Rsvp? rsvp) {
+    if (rsvp == null) return rsvp_widget.RsvpVoteStatus.pending;
+    switch (rsvp.status) {
+      case RsvpStatus.going:
+        return rsvp_widget.RsvpVoteStatus.going;
+      case RsvpStatus.notGoing:
+        return rsvp_widget.RsvpVoteStatus.notGoing;
+      case RsvpStatus.maybe:
+        return rsvp_widget.RsvpVoteStatus.maybe;
+      case RsvpStatus.pending:
+        return rsvp_widget.RsvpVoteStatus.pending;
+    }
   }
 
   String? _getUserVotedOption(dynamic poll) {
@@ -1156,6 +1165,8 @@ class _EventPageState extends ConsumerState<EventPage> {
                 rsvps.where((r) => r.status == RsvpStatus.going).length;
             final notGoingCount =
                 rsvps.where((r) => r.status == RsvpStatus.notGoing).length;
+            final maybeCount =
+                rsvps.where((r) => r.status == RsvpStatus.maybe).length;
             final pendingCount =
                 rsvps.where((r) => r.status == RsvpStatus.pending).length;
 
@@ -1164,6 +1175,7 @@ class _EventPageState extends ConsumerState<EventPage> {
                 rsvp_widget.RsvpWidget(
                   goingCount: goingCount,
                   notGoingCount: notGoingCount,
+                  maybeCount: maybeCount,
                   pendingCount: pendingCount,
                   userVote: _getUserVoteStatus(userRsvp),
                   currentUserId: currentUserId,
@@ -1173,6 +1185,16 @@ class _EventPageState extends ConsumerState<EventPage> {
                     final newStatus = currentStatus == RsvpStatus.going
                         ? RsvpStatus.pending
                         : RsvpStatus.going;
+                    await ref
+                        .read(userRsvpProvider(eventId).notifier)
+                        .submitVote(newStatus);
+                  },
+                  onMaybePressed: () async {
+                    final currentStatus =
+                        userRsvp?.status ?? RsvpStatus.pending;
+                    final newStatus = currentStatus == RsvpStatus.maybe
+                        ? RsvpStatus.pending
+                        : RsvpStatus.maybe;
                     await ref
                         .read(userRsvpProvider(eventId).notifier)
                         .submitVote(newStatus);
@@ -1195,16 +1217,13 @@ class _EventPageState extends ConsumerState<EventPage> {
                           userName: _getUserDisplayName(
                               r.userId, r.userName, currentUserId),
                           userAvatar: r.userAvatar,
-                          status: r.status == RsvpStatus.going
-                              ? rsvp_widget.RsvpVoteStatus.going
-                              : r.status == RsvpStatus.notGoing
-                                  ? rsvp_widget.RsvpVoteStatus.notGoing
-                                  : rsvp_widget.RsvpVoteStatus.pending,
+                          status: _mapRsvpToVoteStatus(r.status),
                           votedAt: r.createdAt,
                         ),
                       )
                       .toList(),
-                  onAddSuggestion: _getUserVoteStatus(userRsvp) == false
+                  onAddSuggestion: _getUserVoteStatus(userRsvp) ==
+                          rsvp_widget.RsvpVoteStatus.notGoing
                       ? () {
                           if (event.startDateTime == null ||
                               event.endDateTime == null) {
@@ -1271,6 +1290,7 @@ class _EventPageState extends ConsumerState<EventPage> {
     final goingCount = rsvps.where((r) => r.status == RsvpStatus.going).length;
     final notGoingCount =
         rsvps.where((r) => r.status == RsvpStatus.notGoing).length;
+    final maybeCount = rsvps.where((r) => r.status == RsvpStatus.maybe).length;
     final pendingCount =
         rsvps.where((r) => r.status == RsvpStatus.pending).length;
 
@@ -1279,6 +1299,7 @@ class _EventPageState extends ConsumerState<EventPage> {
         rsvp_widget.RsvpWidget(
           goingCount: goingCount,
           notGoingCount: notGoingCount,
+          maybeCount: maybeCount,
           pendingCount: pendingCount,
           userVote: _getUserVoteStatus(userRsvp),
           currentUserId: currentUserId,
@@ -1287,6 +1308,15 @@ class _EventPageState extends ConsumerState<EventPage> {
             final newStatus = currentStatus == RsvpStatus.going
                 ? RsvpStatus.pending
                 : RsvpStatus.going;
+            await ref
+                .read(userRsvpProvider(eventId).notifier)
+                .submitVote(newStatus);
+          },
+          onMaybePressed: () async {
+            final currentStatus = userRsvp?.status ?? RsvpStatus.pending;
+            final newStatus = currentStatus == RsvpStatus.maybe
+                ? RsvpStatus.pending
+                : RsvpStatus.maybe;
             await ref
                 .read(userRsvpProvider(eventId).notifier)
                 .submitVote(newStatus);
@@ -1308,11 +1338,7 @@ class _EventPageState extends ConsumerState<EventPage> {
                   userName:
                       _getUserDisplayName(r.userId, r.userName, currentUserId),
                   userAvatar: r.userAvatar,
-                  status: r.status == RsvpStatus.going
-                      ? rsvp_widget.RsvpVoteStatus.going
-                      : r.status == RsvpStatus.notGoing
-                          ? rsvp_widget.RsvpVoteStatus.notGoing
-                          : rsvp_widget.RsvpVoteStatus.pending,
+                  status: _mapRsvpToVoteStatus(r.status),
                   votedAt: r.createdAt,
                 ),
               )
@@ -1335,10 +1361,11 @@ class _EventPageState extends ConsumerState<EventPage> {
         rsvp_widget.RsvpWidget(
           goingCount: 0,
           notGoingCount: 0,
+          maybeCount: 0,
           pendingCount: 0,
-          userVote: null,
           currentUserId: currentUserId,
           onGoingPressed: () {},
+          onMaybePressed: () {},
           onNotGoingPressed: () {},
           allVotes: const [],
           onAddSuggestion: null,
@@ -1350,6 +1377,20 @@ class _EventPageState extends ConsumerState<EventPage> {
         const SizedBox(height: Gaps.lg),
       ],
     );
+  }
+
+  /// Maps domain RsvpStatus to widget RsvpVoteStatus
+  rsvp_widget.RsvpVoteStatus _mapRsvpToVoteStatus(RsvpStatus status) {
+    switch (status) {
+      case RsvpStatus.going:
+        return rsvp_widget.RsvpVoteStatus.going;
+      case RsvpStatus.notGoing:
+        return rsvp_widget.RsvpVoteStatus.notGoing;
+      case RsvpStatus.maybe:
+        return rsvp_widget.RsvpVoteStatus.maybe;
+      case RsvpStatus.pending:
+        return rsvp_widget.RsvpVoteStatus.pending;
+    }
   }
 
   // ===== DATA PROCESSING METHODS =====

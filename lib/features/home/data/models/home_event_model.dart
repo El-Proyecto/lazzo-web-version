@@ -312,16 +312,20 @@ class _HomeEventModel {
     }
   }
 
-  static bool? _mapUserVote(String? rsvp) {
-    if (rsvp == null) return null;
+  static RsvpVoteStatus _mapUserVote(String? rsvp) {
+    if (rsvp == null) return RsvpVoteStatus.pending;
     final s = rsvp.toLowerCase();
     if (s == 'yes' || s == 'going' || s == 'attending' || s == 'accepted') {
-      return true;
+      return RsvpVoteStatus.going;
     }
     if (s == 'no' || s == 'not_going' || s == 'declined' || s == 'rejected') {
-      return false;
+      return RsvpVoteStatus.notGoing;
     }
-    return null; // pending/invited
+    if (s == 'maybe') {
+      return RsvpVoteStatus.maybe;
+    }
+    // 'pending' and unknown values
+    return RsvpVoteStatus.pending;
   }
 
   static List<String> _extractAvatars(List<dynamic> users) {

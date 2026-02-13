@@ -16,7 +16,7 @@ class EventDisplayEntity {
   final int participantCount;
   final List<String> attendeeAvatars;
   final List<String> attendeeNames;
-  final bool? userVote;
+  final RsvpVoteStatus userVote;
   final List<RsvpVote> allVotes;
   final int photoCount;
   final int maxPhotos;
@@ -34,7 +34,7 @@ class EventDisplayEntity {
     required this.participantCount,
     required this.attendeeAvatars,
     required this.attendeeNames,
-    this.userVote,
+    this.userVote = RsvpVoteStatus.pending,
     this.allVotes = const [],
     this.photoCount = 0,
     this.maxPhotos = 0,
@@ -55,10 +55,9 @@ class EventDisplayEntity {
     int? maxPhotos,
     List<String>? attendeeAvatars,
     List<String>? attendeeNames,
-    bool? userVote,
+    RsvpVoteStatus? userVote,
     List<RsvpVote>? allVotes,
     List<ParticipantPhoto>? participantPhotos,
-    bool updateUserVote = false,
   }) {
     return EventDisplayEntity(
       id: id ?? this.id,
@@ -72,7 +71,7 @@ class EventDisplayEntity {
       participantCount: participantCount ?? this.participantCount,
       attendeeAvatars: attendeeAvatars ?? this.attendeeAvatars,
       attendeeNames: attendeeNames ?? this.attendeeNames,
-      userVote: updateUserVote ? userVote : (userVote ?? this.userVote),
+      userVote: userVote ?? this.userVote,
       allVotes: allVotes ?? this.allVotes,
       photoCount: photoCount ?? this.photoCount,
       maxPhotos: maxPhotos ?? this.maxPhotos,

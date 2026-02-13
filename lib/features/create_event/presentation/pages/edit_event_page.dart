@@ -39,10 +39,6 @@ class _EditEventPageState extends ConsumerState<EditEventPage> {
   TimeOfDay? _endTime;
   LocationInfo? _selectedLocation;
 
-  // Estados das seções
-  DateTimeState _dateTimeState = DateTimeState.decideLater;
-  LocationState _locationState = LocationState.decideLater;
-
   // Serviços
   // final DraftService _draftService = DraftService(); // Commented for P1
 
@@ -57,8 +53,6 @@ class _EditEventPageState extends ConsumerState<EditEventPage> {
   late DateTime? _initialEndDate;
   late TimeOfDay? _initialEndTime;
   late LocationInfo? _initialSelectedLocation;
-  late DateTimeState _initialDateTimeState;
-  late LocationState _initialLocationState;
 
   // Validation errors
   String? _nameError;
@@ -83,7 +77,6 @@ class _EditEventPageState extends ConsumerState<EditEventPage> {
         event.startDateTime!.day,
       );
       _selectedTime = TimeOfDay.fromDateTime(event.startDateTime!);
-      _dateTimeState = DateTimeState.setNow;
     }
 
     if (event.endDateTime != null) {
@@ -103,7 +96,6 @@ class _EditEventPageState extends ConsumerState<EditEventPage> {
         latitude: event.location!.latitude,
         longitude: event.location!.longitude,
       );
-      _locationState = LocationState.setNow;
     }
 
     // Armazenar valores iniciais após todas as inicializações
@@ -119,8 +111,6 @@ class _EditEventPageState extends ConsumerState<EditEventPage> {
     _initialEndDate = _endDate;
     _initialEndTime = _endTime;
     _initialSelectedLocation = _selectedLocation;
-    _initialDateTimeState = _dateTimeState;
-    _initialLocationState = _locationState;
   }
 
   /// Detecta se há alterações não salvas
@@ -131,9 +121,7 @@ class _EditEventPageState extends ConsumerState<EditEventPage> {
         _selectedTime != _initialSelectedTime ||
         _endDate != _initialEndDate ||
         _endTime != _initialEndTime ||
-        _selectedLocation?.id != _initialSelectedLocation?.id ||
-        _dateTimeState != _initialDateTimeState ||
-        _locationState != _initialLocationState;
+        _selectedLocation?.id != _initialSelectedLocation?.id;
   }
 
   /// Cria o rascunho atual (Commented for P1)
@@ -146,8 +134,6 @@ class _EditEventPageState extends ConsumerState<EditEventPage> {
   //     endDate: _endDate,
   //     endTime: _endTime,
   //     selectedLocation: _selectedLocation,
-  //     dateTimeState: _dateTimeState,
-  //     locationState: _locationState,
   //     createdAt: DateTime.now(),
   //   );
   // }
@@ -167,15 +153,9 @@ class _EditEventPageState extends ConsumerState<EditEventPage> {
       isValid = false;
     }
 
-    // Validações específicas para cada estado
-    if (_dateTimeState == DateTimeState.setNow) {
+    // Validações: date/time are optional but if partially set, both needed
+    if (_selectedDate != null || _selectedTime != null) {
       if (_selectedDate == null || _selectedTime == null) {
-        isValid = false;
-      }
-    }
-
-    if (_locationState == LocationState.setNow) {
-      if (_selectedLocation == null) {
         isValid = false;
       }
     }
@@ -188,13 +168,13 @@ class _EditEventPageState extends ConsumerState<EditEventPage> {
     // Nome é obrigatório
     bool nameValid = _eventName.trim().isNotEmpty;
 
-    // Data/hora é válida se for "decide later" ou se tiver ambos data e hora definidos
-    bool dateTimeValid = (_dateTimeState == DateTimeState.decideLater ||
-        (_selectedDate != null && _selectedTime != null));
+    // Data/hora é válida se vazia ou se tiver ambos definidos
+    bool dateTimeValid = (_selectedDate == null && _selectedTime == null) ||
+        (_selectedDate != null && _selectedTime != null);
 
-    // Localização é válida se for "decide later" ou se tiver pelo menos um campo preenchido
-    bool locationValid = _locationState == LocationState.decideLater;
-    if (_locationState == LocationState.setNow && _selectedLocation != null) {
+    // Localização é sempre válida (opcional)
+    bool locationValid = true;
+    if (_selectedLocation != null) {
       final hasAddress = _selectedLocation!.formattedAddress.isNotEmpty;
       final hasName = _selectedLocation!.displayName != null &&
           _selectedLocation!.displayName!.isNotEmpty;
@@ -207,34 +187,15 @@ class _EditEventPageState extends ConsumerState<EditEventPage> {
   /// Obtém o erro de validação de localização
   String? _getLocationValidationError() {
     if (!_showValidationErrors) return null;
-
-    if (_locationState == LocationState.setNow) {
-      // Check if location is valid
-      if (_selectedLocation == null) {
-        return 'Please fill in at least one field: Location name or Address';
-      }
-
-      final hasAddress = _selectedLocation!.formattedAddress.isNotEmpty;
-      final hasName = _selectedLocation!.displayName != null &&
-          _selectedLocation!.displayName!.isNotEmpty;
-
-      if (!hasAddress && !hasName) {
-        return 'Please fill in at least one field: Location name or Address';
-      }
-    }
+    // Location is optional
     return null;
   }
 
   /// Verifica se data e hora são válidas
   bool get _isDateTimeValid {
-    if (_dateTimeState == DateTimeState.decideLater) {
-      return true; // Decide later is always valid
-    }
-
-    // For "Set now", require start date and time
-    if (_selectedDate == null || _selectedTime == null) {
-      return false;
-    }
+    // Optional: valid if both empty or both set
+    if (_selectedDate == null && _selectedTime == null) return true;
+    if (_selectedDate == null || _selectedTime == null) return false;
 
     final now = DateTime.now();
     final startDateTime = DateTime(
@@ -270,12 +231,11 @@ class _EditEventPageState extends ConsumerState<EditEventPage> {
   String? _getDateTimeValidationError() {
     if (!_showValidationErrors) return null;
 
-    if (_dateTimeState == DateTimeState.decideLater) {
-      return null;
-    }
+    // Only validate if user started filling in
+    if (_selectedDate == null && _selectedTime == null) return null;
 
     if (_selectedDate == null || _selectedTime == null) {
-      return 'Please set start date and time';
+      return 'Please set both start date and time';
     }
 
     // Check if start date/time is in the past
@@ -331,9 +291,7 @@ class _EditEventPageState extends ConsumerState<EditEventPage> {
     DateTime? startDateTime;
     DateTime? endDateTime;
 
-    if (_dateTimeState == DateTimeState.setNow &&
-        _selectedDate != null &&
-        _selectedTime != null) {
+    if (_selectedDate != null && _selectedTime != null) {
       startDateTime = DateTime(
         _selectedDate!.year,
         _selectedDate!.month,
@@ -355,7 +313,7 @@ class _EditEventPageState extends ConsumerState<EditEventPage> {
 
     // Convert LocationInfo to EventLocation
     EventLocation? eventLocation;
-    if (_locationState == LocationState.setNow && _selectedLocation != null) {
+    if (_selectedLocation != null) {
       final loc = _selectedLocation!;
       eventLocation = EventLocation(
         id: loc.id,
@@ -384,15 +342,6 @@ class _EditEventPageState extends ConsumerState<EditEventPage> {
     ref.invalidate(home_providers.confirmedEventsControllerProvider);
     ref.invalidate(home_providers.homeEventsControllerProvider);
     ref.invalidate(home_providers.todosControllerProvider);
-    // 3. Date/time suggestions (ensures synced suggestion shows correctly)
-    ref.invalidate(event_providers.eventSuggestionsProvider(widget.event.id));
-    // 4. Location suggestions (ensures synced suggestion shows correctly)
-    ref.invalidate(
-        event_providers.eventLocationSuggestionsProvider(widget.event.id));
-    // 5. Suggestion votes (refresh vote counts)
-    ref.invalidate(event_providers.suggestionVotesProvider(widget.event.id));
-    ref.invalidate(
-        event_providers.userSuggestionVotesProvider(widget.event.id));
 
     // Reset initial values after successful update
     setState(() {
@@ -585,18 +534,6 @@ class _EditEventPageState extends ConsumerState<EditEventPage> {
                       startTime: _selectedTime,
                       endDate: _endDate,
                       endTime: _endTime,
-                      initialState: _dateTimeState,
-                      onStateChanged: (state) {
-                        setState(() {
-                          _dateTimeState = state;
-                          if (state == DateTimeState.decideLater) {
-                            _selectedDate = null;
-                            _selectedTime = null;
-                            _endDate = null;
-                            _endTime = null;
-                          }
-                        });
-                      },
                       onStartDateChanged: (date) {
                         setState(() {
                           _selectedDate = date;
@@ -625,15 +562,6 @@ class _EditEventPageState extends ConsumerState<EditEventPage> {
                     // Seção de Localização
                     LocationSection(
                       selectedLocation: _selectedLocation,
-                      initialState: _locationState,
-                      onStateChanged: (state) {
-                        setState(() {
-                          _locationState = state;
-                          if (state == LocationState.decideLater) {
-                            _selectedLocation = null;
-                          }
-                        });
-                      },
                       onLocationChanged: (location) {
                         setState(() {
                           _selectedLocation = location;

@@ -19,6 +19,7 @@ import '../../../../shared/layouts/main_layout_providers.dart';
 import '../../../event/domain/entities/event_display_entity.dart';
 import '../../../event/presentation/providers/event_providers.dart';
 import '../../../event/domain/entities/rsvp.dart';
+import '../../../../shared/components/widgets/rsvp_widget.dart';
 // LAZZO 2.0: no_groups_yet_card import removed
 import '../widgets/no_upcoming_events_card.dart';
 import '../providers/home_event_providers.dart';
@@ -162,17 +163,29 @@ class _HomePageState extends ConsumerState<HomePage> {
   }
 
   /// Handle vote changes from bottom sheets - persists to Supabase and refreshes UI
-  Future<void> _handleVoteChanged(String eventId, bool? vote) async {
+  Future<void> _handleVoteChanged(String eventId, RsvpVoteStatus vote) async {
     try {
       final rsvpRepo = ref.read(rsvpRepositoryProvider);
       final userId = Supabase.instance.client.auth.currentUser?.id;
 
       if (userId == null) return;
 
-      // Convert vote to RsvpStatus
-      final status = vote == null
-          ? RsvpStatus.pending
-          : (vote ? RsvpStatus.going : RsvpStatus.notGoing);
+      // Convert RsvpVoteStatus to RsvpStatus
+      final RsvpStatus status;
+      switch (vote) {
+        case RsvpVoteStatus.going:
+          status = RsvpStatus.going;
+          break;
+        case RsvpVoteStatus.maybe:
+          status = RsvpStatus.maybe;
+          break;
+        case RsvpVoteStatus.notGoing:
+          status = RsvpStatus.notGoing;
+          break;
+        case RsvpVoteStatus.pending:
+          status = RsvpStatus.pending;
+          break;
+      }
 
       await rsvpRepo.submitRsvp(eventId, userId, status);
 

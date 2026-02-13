@@ -14,8 +14,8 @@ class VotesBottomSheet {
     required String eventEmoji,
     String? eventDate,
     String? eventLocation,
-    bool? userVote, // true = going, false = not going, null = not voted
-    Function(bool?)? onVoteChanged, // Updated callback to handle null (unvote)
+    RsvpVoteStatus userVote = RsvpVoteStatus.pending,
+    Function(RsvpVoteStatus)? onVoteChanged,
     String? currentUserId,
     String? currentUserAvatar,
   }) {
@@ -45,8 +45,8 @@ class _VotesBottomSheetContent extends StatefulWidget {
   final String eventEmoji;
   final String? eventDate;
   final String? eventLocation;
-  final bool? initialUserVote;
-  final Function(bool?)? onVoteChanged;
+  final RsvpVoteStatus initialUserVote;
+  final Function(RsvpVoteStatus)? onVoteChanged;
   final String? currentUserId;
   final String? currentUserAvatar;
 
@@ -69,16 +69,16 @@ class _VotesBottomSheetContent extends StatefulWidget {
 
 class _VotesBottomSheetContentState extends State<_VotesBottomSheetContent> {
   late bool _isVotingState;
-  late bool? _currentUserVote;
+  late RsvpVoteStatus _currentUserVote;
   late List<RsvpVote> _currentVotes;
 
   @override
   void initState() {
     super.initState();
     _currentUserVote = widget.initialUserVote;
-    _currentVotes = List.from(widget.allVotes); // Create mutable copy
+    _currentVotes = List.from(widget.allVotes);
     // Start in voting state if user hasn't voted yet
-    _isVotingState = _currentUserVote == null;
+    _isVotingState = _currentUserVote == RsvpVoteStatus.pending;
   }
 
   void _toggleState() {
@@ -88,18 +88,25 @@ class _VotesBottomSheetContentState extends State<_VotesBottomSheetContent> {
   }
 
   String _getVoteLabel() {
-    if (_currentUserVote == true) return 'Can';
-    if (_currentUserVote == false) return 'Can\'t';
-    return 'Vote';
+    switch (_currentUserVote) {
+      case RsvpVoteStatus.going:
+        return 'Can';
+      case RsvpVoteStatus.maybe:
+        return 'Maybe';
+      case RsvpVoteStatus.notGoing:
+        return 'Can\'t';
+      case RsvpVoteStatus.pending:
+        return 'Vote';
+    }
   }
 
-  void _handleVote(bool vote) {
+  void _handleVote(RsvpVoteStatus vote) {
     setState(() {
       final bool isSameVote = _currentUserVote == vote;
 
       if (isSameVote) {
         // Same vote clicked - unvote (remove vote)
-        _currentUserVote = null;
+        _currentUserVote = RsvpVoteStatus.pending;
         _removeUserVote();
         // Stay in voting state when unvoting
         _isVotingState = true;
@@ -113,7 +120,7 @@ class _VotesBottomSheetContentState extends State<_VotesBottomSheetContent> {
     widget.onVoteChanged?.call(_currentUserVote);
   }
 
-  void _updateUserVote(bool vote) {
+  void _updateUserVote(RsvpVoteStatus vote) {
     final userId = widget.currentUserId ?? 'current_user';
 
     // Remove ALL existing votes from this user (by userId)
@@ -126,7 +133,7 @@ class _VotesBottomSheetContentState extends State<_VotesBottomSheetContent> {
       userId: userId,
       userName: 'You',
       userAvatar: widget.currentUserAvatar,
-      status: vote ? RsvpVoteStatus.going : RsvpVoteStatus.notGoing,
+      status: vote,
       votedAt: DateTime.now(),
     );
     _currentVotes.add(newVote);
@@ -185,7 +192,7 @@ class _VotesBottomSheetContentState extends State<_VotesBottomSheetContent> {
                 Expanded(
                   child: Text(
                     _isVotingState
-                        ? (_currentUserVote == null
+                        ? (_currentUserVote == RsvpVoteStatus.pending
                             ? 'Can you make it?'
                             : 'Vote')
                         : 'Votes',
@@ -260,6 +267,8 @@ class _VotesBottomSheetContentState extends State<_VotesBottomSheetContent> {
   Widget _buildVotingContent() {
     final going =
         _currentVotes.where((v) => v.status == RsvpVoteStatus.going).length;
+    final maybe =
+        _currentVotes.where((v) => v.status == RsvpVoteStatus.maybe).length;
     final notGoing =
         _currentVotes.where((v) => v.status == RsvpVoteStatus.notGoing).length;
 
@@ -273,9 +282,19 @@ class _VotesBottomSheetContentState extends State<_VotesBottomSheetContent> {
               child: _VoteButton(
                 label: 'Can',
                 count: going,
-                isSelected: _currentUserVote == true,
+                isSelected: _currentUserVote == RsvpVoteStatus.going,
                 color: BrandColors.planning,
-                onPressed: () => _handleVote(true),
+                onPressed: () => _handleVote(RsvpVoteStatus.going),
+              ),
+            ),
+            const SizedBox(width: Gaps.sm),
+            Expanded(
+              child: _VoteButton(
+                label: 'Maybe',
+                count: maybe,
+                isSelected: _currentUserVote == RsvpVoteStatus.maybe,
+                color: BrandColors.warning,
+                onPressed: () => _handleVote(RsvpVoteStatus.maybe),
               ),
             ),
             const SizedBox(width: Gaps.sm),
@@ -283,9 +302,9 @@ class _VotesBottomSheetContentState extends State<_VotesBottomSheetContent> {
               child: _VoteButton(
                 label: 'Can\'t',
                 count: notGoing,
-                isSelected: _currentUserVote == false,
+                isSelected: _currentUserVote == RsvpVoteStatus.notGoing,
                 color: BrandColors.cantVote,
-                onPressed: () => _handleVote(false),
+                onPressed: () => _handleVote(RsvpVoteStatus.notGoing),
               ),
             ),
           ],
@@ -302,6 +321,14 @@ class _VotesBottomSheetContentState extends State<_VotesBottomSheetContent> {
   Widget _buildVotedContent() {
     final going =
         _currentVotes.where((v) => v.status == RsvpVoteStatus.going).toList()
+          ..sort((a, b) {
+            if (a.votedAt == null && b.votedAt == null) return 0;
+            if (a.votedAt == null) return 1;
+            if (b.votedAt == null) return -1;
+            return b.votedAt!.compareTo(a.votedAt!);
+          });
+    final maybe =
+        _currentVotes.where((v) => v.status == RsvpVoteStatus.maybe).toList()
           ..sort((a, b) {
             if (a.votedAt == null && b.votedAt == null) return 0;
             if (a.votedAt == null) return 1;
@@ -329,6 +356,17 @@ class _VotesBottomSheetContentState extends State<_VotesBottomSheetContent> {
               title: 'Can',
               count: going.length,
               votes: going,
+              currentUserId: widget.currentUserId,
+            ),
+            const SizedBox(height: Gaps.md),
+          ],
+
+          // Maybe section
+          if (maybe.isNotEmpty) ...[
+            _VoteSection(
+              title: 'Maybe',
+              count: maybe.length,
+              votes: maybe,
               currentUserId: widget.currentUserId,
             ),
             const SizedBox(height: Gaps.md),
@@ -575,12 +613,12 @@ class _VoteItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bool isCurrentUser = vote.userId == currentUserId;
-            
+
     return InkWell(
       onTap: () {
         // Close bottom sheet
         Navigator.pop(context);
-        
+
         if (isCurrentUser) {
           // Navigate to own profile
           Navigator.pushNamed(
@@ -613,7 +651,7 @@ class _VoteItem extends StatelessWidget {
                         height: 32,
                         fit: BoxFit.cover,
                         errorBuilder: (context, error, stackTrace) {
-                                                  return _buildDefaultAvatar();
+                          return _buildDefaultAvatar();
                         },
                       ),
                     )
