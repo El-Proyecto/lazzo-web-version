@@ -32,9 +32,9 @@ class EventRemoteDataSource {
       // Main event query
       final response = await _supabaseClient.from('events').select('''
             id,
-            group_id,
             name,
             emoji,
+            description,
             start_datetime,
             end_datetime,
             status,
@@ -47,19 +47,7 @@ class EventRemoteDataSource {
       // Fire-and-forget - RPC handles all logic
       _resetExpiredEventVotes(eventId);
 
-      // Get group name if exists
-      String? groupName;
-      if (response['group_id'] != null) {
-        final groupResponse = await _supabaseClient
-            .from('groups')
-            .select('name')
-            .eq('id', response['group_id'])
-            .maybeSingle();
-
-        if (groupResponse != null) {
-          groupName = groupResponse['name'] as String?;
-        }
-      }
+      // LAZZO 2.0: Groups removed — no group name lookup needed
 
       // Get location details if exists
       String? locationName;
@@ -104,10 +92,9 @@ class EventRemoteDataSource {
       // Build event detail with all data
       final eventData = <String, dynamic>{
         'id': response['id'],
-        'group_id': response['group_id'],
-        'group_name': groupName,
         'name': response['name'],
         'emoji': response['emoji'],
+        'description': response['description'],
         'start_datetime': response['start_datetime'],
         'end_datetime': response['end_datetime'],
         'status': response['status'],

@@ -11,10 +11,7 @@ class EventHeader extends StatelessWidget {
   final String? location;
   final DateTime? dateTime;
   final DateTime? endDateTime;
-  final String? groupName;
-  final String? groupId;
   final bool isExpired;
-  final VoidCallback? onGroupTap;
 
   const EventHeader({
     super.key,
@@ -23,10 +20,7 @@ class EventHeader extends StatelessWidget {
     this.location,
     this.dateTime,
     this.endDateTime,
-    this.groupName,
-    this.groupId,
     this.isExpired = false,
-    this.onGroupTap,
   });
 
   @override
@@ -62,19 +56,6 @@ class EventHeader extends StatelessWidget {
             icon: Icons.calendar_today,
             text: _formatDateTime(dateTime!, endDateTime),
             isExpired: isExpired,
-          ),
-        ],
-
-        // Group info (if available)
-        if (groupName != null) ...[
-          const SizedBox(height: Gaps.xxs),
-          GestureDetector(
-            onTap: onGroupTap,
-            child: _InfoRow(
-              icon: Icons.group,
-              text: groupName!,
-              isTappable: onGroupTap != null,
-            ),
           ),
         ],
       ],

@@ -4,7 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 ///
 /// Responsibilities:
 /// - Query events table for memory (event in recap status)
-/// - Query group_photos table for memory photos
+/// - Query event_photos table for memory photos
 /// - Update event cover_photo_id
 class MemoryDataSource {
   final SupabaseClient _client;
@@ -28,7 +28,6 @@ class MemoryDataSource {
             emoji,
             status,
             cover_photo_id,
-            group_id,
             created_by,
             locations!location_id (
               display_name
@@ -48,14 +47,14 @@ class MemoryDataSource {
   /// Get all photos for a memory (event)
   ///
   /// Query structure:
-  /// SELECT group_photos.*, profiles.name
-  /// FROM group_photos
-  /// LEFT JOIN profiles ON group_photos.uploader_id = profiles.id
+  /// SELECT event_photos.*, profiles.name
+  /// FROM event_photos
+  /// LEFT JOIN profiles ON event_photos.uploader_id = profiles.id
   /// WHERE event_id = eventId
   /// ORDER BY created_at ASC
   Future<List<Map<String, dynamic>>> getMemoryPhotos(String eventId) async {
     try {
-      final response = await _client.from('group_photos').select('''
+      final response = await _client.from('event_photos').select('''
             id,
             storage_path,
             uploader_id,

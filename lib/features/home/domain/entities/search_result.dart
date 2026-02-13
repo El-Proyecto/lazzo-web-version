@@ -6,7 +6,6 @@ class SearchResult {
   final List<SearchItem> livingEvents;
   final List<SearchItem> recapEvents;
   final List<SearchItem> memories;
-  final List<SearchItem> payments;
 
   const SearchResult({
     this.confirmedEvents = const [],
@@ -14,7 +13,6 @@ class SearchResult {
     this.livingEvents = const [],
     this.recapEvents = const [],
     this.memories = const [],
-    this.payments = const [],
   });
 
   bool get isEmpty =>
@@ -22,16 +20,14 @@ class SearchResult {
       pendingEvents.isEmpty &&
       livingEvents.isEmpty &&
       recapEvents.isEmpty &&
-      memories.isEmpty &&
-      payments.isEmpty;
+      memories.isEmpty;
 
   int get totalResults =>
       confirmedEvents.length +
       pendingEvents.length +
       livingEvents.length +
       recapEvents.length +
-      memories.length +
-      payments.length;
+      memories.length;
 }
 
 /// Individual search item
@@ -61,5 +57,4 @@ enum SearchItemType {
   livingEvent,
   recapEvent,
   memory,
-  payment,
 }

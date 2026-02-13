@@ -1,16 +1,13 @@
 import 'package:flutter/material.dart';
-import '../../../../shared/components/common/create_event_segmented_control.dart';
 import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/constants/text_styles.dart';
 import '../../../../shared/themes/colors.dart';
 import 'inline_date_picker.dart';
 import 'inline_time_picker.dart';
 
-enum DateTimeState { decideLater, setNow }
-
-/// Seção expansível para seleção de data e hora
-/// Suporta estados: Decide later, Set Now com Start e End
-class DateTimeSection extends StatefulWidget {
+/// Seção para seleção de data e hora
+/// Mostra sempre os campos de Start e End (sem toggle Decide later / Set Now)
+class DateTimeSection extends StatelessWidget {
   final DateTime? startDate;
   final TimeOfDay? startTime;
   final DateTime? endDate;
@@ -19,8 +16,6 @@ class DateTimeSection extends StatefulWidget {
   final Function(TimeOfDay?)? onStartTimeChanged;
   final Function(DateTime?)? onEndDateChanged;
   final Function(TimeOfDay?)? onEndTimeChanged;
-  final DateTimeState initialState;
-  final Function(DateTimeState)? onStateChanged;
   final String? validationError;
 
   const DateTimeSection({
@@ -33,45 +28,8 @@ class DateTimeSection extends StatefulWidget {
     this.onStartTimeChanged,
     this.onEndDateChanged,
     this.onEndTimeChanged,
-    this.initialState = DateTimeState.decideLater,
-    this.onStateChanged,
     this.validationError,
   });
-
-  @override
-  State<DateTimeSection> createState() => _DateTimeSectionState();
-}
-
-class _DateTimeSectionState extends State<DateTimeSection>
-    with SingleTickerProviderStateMixin {
-  DateTimeState _currentState = DateTimeState.decideLater;
-  late TabController _tabController;
-
-  @override
-  void initState() {
-    super.initState();
-    _currentState = widget.initialState;
-    _tabController = TabController(
-      length: 2,
-      vsync: this,
-      initialIndex: _currentState == DateTimeState.decideLater ? 0 : 1,
-    );
-  }
-
-  @override
-  void didUpdateWidget(DateTimeSection oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    // React to external state changes (e.g., from event history)
-    if (oldWidget.initialState != widget.initialState) {
-      _changeState(widget.initialState);
-    }
-  }
-
-  @override
-  void dispose() {
-    _tabController.dispose();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -89,23 +47,45 @@ class _DateTimeSectionState extends State<DateTimeSection>
       ),
       child: Column(
         children: [
-          // Header com toggle
-          _buildHeader(),
+          // Header
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              'Date & Time',
+              style: AppText.titleMediumEmph.copyWith(color: BrandColors.text1),
+            ),
+          ),
 
-          // Conteúdo expansível
-          if (_currentState == DateTimeState.setNow) ...[
-            const SizedBox(height: Gaps.md),
-            _buildExpandedContent(),
-          ],
+          const SizedBox(height: Gaps.md),
+
+          // Start Date & Time
+          _DateTimeRow(
+            label: 'Start',
+            date: startDate,
+            time: startTime,
+            onDateChanged: onStartDateChanged,
+            onTimeChanged: onStartTimeChanged,
+          ),
+
+          const SizedBox(height: Gaps.sm),
+
+          // End Date & Time
+          _DateTimeRow(
+            label: 'End',
+            date: endDate,
+            time: endTime,
+            onDateChanged: onEndDateChanged,
+            onTimeChanged: onEndTimeChanged,
+          ),
 
           // Error message
-          if (widget.validationError != null) ...[
+          if (validationError != null) ...[
             const SizedBox(height: Gaps.sm),
             Container(
               width: double.infinity,
               alignment: Alignment.centerLeft,
               child: Text(
-                widget.validationError!,
+                validationError!,
                 style: AppText.bodyMedium.copyWith(color: BrandColors.cantVote),
               ),
             ),
@@ -113,76 +93,6 @@ class _DateTimeSectionState extends State<DateTimeSection>
         ],
       ),
     );
-  }
-
-  Widget _buildHeader() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(
-          'Date & Time',
-          style: AppText.titleMediumEmph.copyWith(color: BrandColors.text1),
-        ),
-
-        // Segmented Control
-        SizedBox(
-          width: 200, // Fixed width to prevent overflow
-          child: CreateEventSegmentedControl(
-            controller: _tabController,
-            labels: const ['Decide later', 'Set Now'],
-            onTap: (index) {
-              final newState =
-                  index == 0 ? DateTimeState.decideLater : DateTimeState.setNow;
-              _changeState(newState);
-            },
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildExpandedContent() {
-    return Column(
-      children: [
-        // Start Date & Time
-        _DateTimeRow(
-          label: 'Start',
-          date: widget.startDate,
-          time: widget.startTime,
-          onDateChanged: widget.onStartDateChanged,
-          onTimeChanged: widget.onStartTimeChanged,
-        ),
-
-        const SizedBox(height: Gaps.sm),
-
-        // End Date & Time
-        _DateTimeRow(
-          label: 'End',
-          date: widget.endDate,
-          time: widget.endTime,
-          onDateChanged: widget.onEndDateChanged,
-          onTimeChanged: widget.onEndTimeChanged,
-        ),
-      ],
-    );
-  }
-
-  void _changeState(DateTimeState newState) {
-    setState(() {
-      _currentState = newState;
-    });
-
-    // Update tab controller to match new state
-    final newIndex = newState == DateTimeState.decideLater ? 0 : 1;
-    if (_tabController.index != newIndex) {
-      _tabController.animateTo(newIndex);
-    }
-
-    // Notify parent of state change for validation
-    // Use post-frame callback to avoid setState during build
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      widget.onStateChanged?.call(newState);
-    });
   }
 }
 
@@ -276,7 +186,6 @@ class _DateTimeRowState extends State<_DateTimeRow> {
             selectedTime: widget.time,
             onTimeChanged: (time) {
               widget.onTimeChanged?.call(time);
-              // Time picker stays open until user clicks outside or taps time button again
             },
           ),
         ],
@@ -288,7 +197,7 @@ class _DateTimeRowState extends State<_DateTimeRow> {
     setState(() {
       _isDatePickerExpanded = !_isDatePickerExpanded;
       if (_isDatePickerExpanded) {
-        _isTimePickerExpanded = false; // Close time picker if open
+        _isTimePickerExpanded = false;
       }
     });
   }
@@ -297,7 +206,7 @@ class _DateTimeRowState extends State<_DateTimeRow> {
     setState(() {
       _isTimePickerExpanded = !_isTimePickerExpanded;
       if (_isTimePickerExpanded) {
-        _isDatePickerExpanded = false; // Close date picker if open
+        _isDatePickerExpanded = false;
       }
     });
   }

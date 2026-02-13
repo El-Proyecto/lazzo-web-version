@@ -3,16 +3,14 @@ import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/constants/text_styles.dart';
 import '../../../../shared/themes/colors.dart';
 
-/// Action row for living mode with three separate action buttons:
-/// Add Expense, Take Photo (purple), View Memory
+/// Action row for living mode with action buttons:
+/// Take Photo (purple), View Memory
 class LivingActionRow extends StatelessWidget {
-  final VoidCallback onAddExpense;
   final VoidCallback onTakePhoto;
   final VoidCallback onViewMemory;
 
   const LivingActionRow({
     super.key,
-    required this.onAddExpense,
     required this.onTakePhoto,
     required this.onViewMemory,
   });
@@ -21,17 +19,6 @@ class LivingActionRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Expanded(
-          child: _ActionButton(
-            icon: Icons.add_circle_outline,
-            label: 'Expense',
-            onPressed: onAddExpense,
-            backgroundColor: BrandColors.bg2,
-            textColor: BrandColors.text1,
-            iconColor: BrandColors.text1,
-          ),
-        ),
-        const SizedBox(width: Gaps.sm),
         Expanded(
           child: _ActionButton(
             icon: Icons.camera_alt,

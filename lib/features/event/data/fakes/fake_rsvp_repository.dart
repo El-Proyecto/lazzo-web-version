@@ -82,6 +82,26 @@ class FakeRsvpRepository implements RsvpRepository {
       createdAt: DateTime.now().subtract(const Duration(minutes: 30)),
     ),
 
+    // Maybe votes (2 people)
+    Rsvp(
+      id: 'rsvp-11',
+      eventId: 'event-1',
+      userId: 'user-11',
+      userName: 'Diogo Martins',
+      userAvatar: null,
+      status: RsvpStatus.maybe,
+      createdAt: DateTime.now().subtract(const Duration(hours: 2)),
+    ),
+    Rsvp(
+      id: 'rsvp-12',
+      eventId: 'event-1',
+      userId: 'user-12',
+      userName: 'Carolina Ribeiro',
+      userAvatar: null,
+      status: RsvpStatus.maybe,
+      createdAt: DateTime.now().subtract(const Duration(hours: 1)),
+    ),
+
     // Haven't responded (2 people)
     Rsvp(
       id: 'rsvp-9',
@@ -245,12 +265,10 @@ class FakeRsvpRepository implements RsvpRepository {
 
   Future<void> _updateEventCounts(String eventId) async {
     final eventRsvps = _rsvps.where((r) => r.eventId == eventId).toList();
-    final goingCount = eventRsvps
-        .where((r) => r.status == RsvpStatus.going)
-        .length;
-    final notGoingCount = eventRsvps
-        .where((r) => r.status == RsvpStatus.notGoing)
-        .length;
+    final goingCount =
+        eventRsvps.where((r) => r.status == RsvpStatus.going).length;
+    final notGoingCount =
+        eventRsvps.where((r) => r.status == RsvpStatus.notGoing).length;
 
     // Update counts in FakeEventRepository
     FakeEventRepository.updateRsvpCounts(eventId, goingCount, notGoingCount);

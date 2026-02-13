@@ -121,12 +121,12 @@ class FakeHomeEventRepository implements HomeEventRepository {
     final goingVotes =
         allVotes.where((v) => v.status == RsvpVoteStatus.going).toList();
 
-    // Next Event only shows if user voted "Can" (userVote == true)
-    // Change userVote to false or null to test - event won't appear as Next Event
-    const userVote = true; // User has voted "Can"
+    // Next Event only shows if user voted "Can" (userVote == going)
+    // Change userVote to test - event won't appear as Next Event
+    const userVote = RsvpVoteStatus.going; // User has voted "Can"
 
     // Only return event if user voted "Can"
-    if (userVote != true) {
+    if (userVote != RsvpVoteStatus.going) {
       return null; // No next event if user hasn't voted or voted "Can't"
     }
 
@@ -220,8 +220,6 @@ class FakeHomeEventRepository implements HomeEventRepository {
       id: 'event_1',
       name: 'Beach Day with the Squad',
       emoji: '🏖️',
-      groupId: 'group_1',
-      groupName: 'Friends Squad',
       date: eventDate,
       endDate: eventEndDate,
       location: 'Praia da Rocha',
@@ -346,8 +344,6 @@ class FakeHomeEventRepository implements HomeEventRepository {
         id: 'event_2',
         name: 'Dinner at New Restaurant',
         emoji: '🍽️',
-        groupId: 'group_2',
-        groupName: 'Foodies Club',
         date: DateTime.now().add(const Duration(days: 7)),
         endDate:
             DateTime.now().add(const Duration(days: 7, hours: 3)), // 3h dinner
@@ -363,15 +359,13 @@ class FakeHomeEventRepository implements HomeEventRepository {
             .where((v) => v.status == RsvpVoteStatus.going)
             .map((v) => v.userName)
             .toList(),
-        userVote: null, // User hasn't voted yet
+        userVote: RsvpVoteStatus.pending, // User hasn't voted yet
         allVotes: event2Votes,
       ),
       HomeEventEntity(
         id: 'event_3',
         name: 'Weekend Hiking Trip',
         emoji: '⛰️',
-        groupId: 'group_3',
-        groupName: 'Adventure Crew',
         date: DateTime.now().add(const Duration(days: 14)),
         endDate:
             DateTime.now().add(const Duration(days: 14, hours: 6)), // 6h hike
@@ -387,7 +381,7 @@ class FakeHomeEventRepository implements HomeEventRepository {
             .where((v) => v.status == RsvpVoteStatus.going)
             .map((v) => v.userName)
             .toList(),
-        userVote: true,
+        userVote: RsvpVoteStatus.going,
         allVotes: event3Votes,
       ),
     ];
@@ -550,8 +544,6 @@ class FakeHomeEventRepository implements HomeEventRepository {
         id: 'event_4',
         name: 'Movie Night',
         emoji: '🎬',
-        groupId: 'group_1',
-        groupName: 'Friends Squad',
         date: null,
         endDate: null, // Pending events have no dates yet
         location: 'To be decided',
@@ -566,15 +558,13 @@ class FakeHomeEventRepository implements HomeEventRepository {
             .where((v) => v.status == RsvpVoteStatus.going)
             .map((v) => v.userName)
             .toList(),
-        userVote: true,
+        userVote: RsvpVoteStatus.going,
         allVotes: event4Votes,
       ),
       HomeEventEntity(
         id: 'event_5',
         name: 'Birthday Party',
         emoji: '🎂',
-        groupId: 'group_4',
-        groupName: 'Best Friends',
         date: null,
         endDate: null, // Pending events have no dates yet
         location: 'Someone\'s House',
@@ -589,7 +579,7 @@ class FakeHomeEventRepository implements HomeEventRepository {
             .where((v) => v.status == RsvpVoteStatus.going)
             .map((v) => v.userName)
             .toList(),
-        userVote: null, // User hasn't voted yet
+        userVote: RsvpVoteStatus.pending, // User hasn't voted yet
         allVotes: event5Votes,
       ),
     ];

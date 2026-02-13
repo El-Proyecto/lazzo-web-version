@@ -1,10 +1,10 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../domain/entities/notification_entity.dart';
 import '../../domain/repositories/notification_repository.dart';
 import '../../domain/usecases/get_notifications.dart';
-import '../../domain/usecases/mark_expense_paid_from_notification.dart';
-import '../../../expense/presentation/providers/event_expense_providers.dart';
+// LAZZO 2.0: mark_expense_paid_from_notification import removed
+// LAZZO 2.0: Expense feature removed
+// import '../../../expense/presentation/providers/event_expense_providers.dart';
 
 // Repository provider - overridden in main.dart with real Supabase implementation
 final notificationRepositoryProvider = Provider<NotificationRepository>((ref) {
@@ -23,14 +23,7 @@ final markNotificationAsReadUseCaseProvider = Provider<MarkNotificationAsRead>((
   return MarkNotificationAsRead(ref.watch(notificationRepositoryProvider));
 });
 
-final markExpenseAsPaidFromNotificationUseCaseProvider =
-    Provider<MarkExpenseAsPaidFromNotification>((ref) {
-  return MarkExpenseAsPaidFromNotification(
-    notificationRepository: ref.watch(notificationRepositoryProvider),
-    expenseRepository: ref.watch(eventExpenseRepositoryProvider),
-    supabase: Supabase.instance.client,
-  );
-});
+// LAZZO 2.0: markExpenseAsPaidFromNotificationUseCaseProvider removed
 
 final markAllNotificationsAsReadUseCaseProvider =
     Provider<MarkAllNotificationsAsRead>((ref) {

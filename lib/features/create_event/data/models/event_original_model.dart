@@ -4,25 +4,25 @@ class EventModel {
   final String id;
   final String name;
   final String emoji;
-  final String groupId;
   final DateTime? startDateTime;
   final DateTime? endDateTime;
   final String? locationId;
   final String status;
   final String createdBy;
   final DateTime createdAt;
+  final String? description;
 
   EventModel({
     required this.id,
     required this.name,
     required this.emoji,
-    required this.groupId,
     this.startDateTime,
     this.endDateTime,
     this.locationId,
     required this.status,
     required this.createdBy,
     required this.createdAt,
+    this.description,
   });
 
   factory EventModel.fromJson(Map<String, dynamic> json) {
@@ -37,13 +37,13 @@ class EventModel {
       id: json['id'] as String,
       name: json['name'] as String,
       emoji: (json['emoji'] as String?) ?? '',
-      groupId: json['group_id'] as String,
       startDateTime: asDateTime(json['start_datetime']),
       endDateTime: asDateTime(json['end_datetime']),
       locationId: json['location_id'] as String?,
       status: (json['status'] as String?)?.toLowerCase() ?? 'draft',
       createdBy: json['created_by'] as String,
       createdAt: asDateTime(json['created_at'])!,
+      description: json['description'] as String?,
     );
   }
 
@@ -52,13 +52,13 @@ class EventModel {
       'id': id,
       'name': name,
       'emoji': emoji,
-      'group_id': groupId,
       'start_datetime': startDateTime?.toIso8601String(),
       'end_datetime': endDateTime?.toIso8601String(),
       'location_id': locationId,
       'status': status,
       'created_by': createdBy,
       'created_at': createdAt.toIso8601String(),
+      'description': description,
     };
   }
 
@@ -67,12 +67,12 @@ class EventModel {
       id: id,
       name: name,
       emoji: emoji,
-      groupId: groupId,
       startDateTime: startDateTime,
       endDateTime: endDateTime,
       location: location,
       status: _parseEventStatus(status),
       createdAt: createdAt,
+      description: description,
     );
   }
 
@@ -81,13 +81,13 @@ class EventModel {
       id: event.id,
       name: event.name,
       emoji: event.emoji,
-      groupId: event.groupId,
       startDateTime: event.startDateTime,
       endDateTime: event.endDateTime,
       locationId: event.location?.id,
       status: event.status.toString().split('.').last,
       createdBy: createdBy,
       createdAt: event.createdAt,
+      description: event.description,
     );
   }
 

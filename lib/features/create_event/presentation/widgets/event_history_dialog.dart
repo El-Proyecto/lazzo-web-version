@@ -123,8 +123,8 @@ class _EventHistoryTile extends StatelessWidget {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    _formatEventInfo(event.lastDate, event.lastTime,
-                        event.location, event.groupName),
+                    _formatEventInfo(
+                        event.lastDate, event.lastTime, event.location),
                     style: AppText.bodyMedium.copyWith(
                       color: BrandColors.text2,
                     ),
@@ -142,8 +142,7 @@ class _EventHistoryTile extends StatelessWidget {
     );
   }
 
-  String _formatEventInfo(
-      DateTime? date, TimeOfDay? time, String? location, String? groupName) {
+  String _formatEventInfo(DateTime? date, TimeOfDay? time, String? location) {
     final parts = <String>[];
 
     // Add weekday and time (e.g., "Fri, 22:00")
@@ -160,11 +159,6 @@ class _EventHistoryTile extends StatelessWidget {
       parts.add(location);
     }
 
-    // Add group name if present
-    if (groupName != null && groupName.isNotEmpty) {
-      parts.add(groupName);
-    }
-
     return parts.isNotEmpty ? parts.join(' • ') : '';
   }
 }
@@ -177,8 +171,6 @@ class EventHistoryItem {
   final DateTime? lastDate;
   final TimeOfDay? lastTime;
   final String? location;
-  final String? groupId;
-  final String? groupName;
 
   const EventHistoryItem({
     required this.id,
@@ -187,7 +179,5 @@ class EventHistoryItem {
     this.lastDate,
     this.lastTime,
     this.location,
-    this.groupId,
-    this.groupName,
   });
 }

@@ -5,6 +5,7 @@ import '../../constants/spacing.dart';
 import '../../constants/text_styles.dart';
 import '../../themes/colors.dart';
 import '../widgets/votes_bottom_sheet.dart';
+import '../widgets/rsvp_widget.dart';
 import '../widgets/photos_bottom_sheet.dart';
 
 /// Event full card state
@@ -20,7 +21,7 @@ class EventFullCard extends StatefulWidget {
   final EventDisplayEntity event;
   final EventFullCardState state;
   final VoidCallback? onTap;
-  final Function(String eventId, bool? vote)? onVoteChanged;
+  final Function(String eventId, RsvpVoteStatus vote)? onVoteChanged;
 
   const EventFullCard({
     super.key,
@@ -350,7 +351,7 @@ class _EventFullCardState extends State<EventFullCard> {
 
     // For Pending/Confirmed states: show names
     // If user hasn't voted yet, show "Tap to vote!" message
-    if (_currentEvent.userVote == null) {
+    if (_currentEvent.userVote == RsvpVoteStatus.pending) {
       return '${_currentEvent.goingCount} going • Tap to vote!';
     }
 

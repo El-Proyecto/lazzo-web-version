@@ -40,6 +40,13 @@ class CompactVoteWidget extends StatelessWidget {
         iconData = Icons.cancel;
         voteText = "Can't";
         break;
+      case UserVoteStatus.maybe:
+        borderColor = BrandColors.warning;
+        iconColor = BrandColors.warning;
+        textColor = BrandColors.warning;
+        iconData = Icons.help_outline;
+        voteText = 'Maybe';
+        break;
       case UserVoteStatus.notVoted:
         borderColor = BrandColors.text2;
         iconColor = BrandColors.text2;

@@ -7,8 +7,6 @@ class EventDetailModel {
   final String id;
   final String name;
   final String emoji;
-  final String groupId;
-  final String? groupName;
   final DateTime? startDateTime;
   final DateTime? endDateTime;
   final String? locationName;
@@ -20,13 +18,12 @@ class EventDetailModel {
   final String hostId;
   final int goingCount;
   final int notGoingCount;
+  final String? description;
 
   const EventDetailModel({
     required this.id,
     required this.name,
     required this.emoji,
-    required this.groupId,
-    this.groupName,
     this.startDateTime,
     this.endDateTime,
     this.locationName,
@@ -38,6 +35,7 @@ class EventDetailModel {
     required this.hostId,
     required this.goingCount,
     required this.notGoingCount,
+    this.description,
   });
 
   /// Create model from Supabase JSON
@@ -48,8 +46,6 @@ class EventDetailModel {
       id: json['id'] as String,
       name: json['name'] as String,
       emoji: json['emoji'] as String? ?? '📅',
-      groupId: json['group_id'] as String,
-      groupName: json['group_name'] as String?,
       startDateTime: json['start_datetime'] != null
           ? DateTime.parse(json['start_datetime'] as String)
           : null,
@@ -65,6 +61,7 @@ class EventDetailModel {
       hostId: json['host_id'] as String,
       goingCount: json['rsvp_going_count'] as int? ?? 0,
       notGoingCount: json['rsvp_not_going_count'] as int? ?? 0,
+      description: json['description'] as String?,
     );
   }
 
@@ -74,8 +71,6 @@ class EventDetailModel {
       'id': id,
       'name': name,
       'emoji': emoji,
-      'group_id': groupId,
-      'group_name': groupName,
       'start_datetime': startDateTime?.toIso8601String(),
       'end_datetime': endDateTime?.toIso8601String(),
       'location_name': locationName,
@@ -85,6 +80,7 @@ class EventDetailModel {
       'status': status,
       'created_at': createdAt.toIso8601String(),
       'host_id': hostId,
+      'description': description,
     };
   }
 
@@ -94,20 +90,19 @@ class EventDetailModel {
     EventStatus statusEnum;
     final statusLower = status.toLowerCase();
 
-    
     switch (statusLower) {
       case 'confirmed':
         statusEnum = EventStatus.confirmed;
-                break;
+        break;
       case 'living':
         statusEnum = EventStatus.living;
-                break;
+        break;
       case 'recap':
         statusEnum = EventStatus.recap;
-                break;
+        break;
       default:
         statusEnum = EventStatus.pending;
-            }
+    }
 
     // Create location if all fields present
     EventLocation? location;
@@ -128,8 +123,6 @@ class EventDetailModel {
       id: id,
       name: name,
       emoji: emoji,
-      groupId: groupId,
-      groupName: groupName,
       startDateTime: startDateTime,
       endDateTime: endDateTime,
       location: location,
@@ -138,6 +131,7 @@ class EventDetailModel {
       hostId: hostId,
       goingCount: goingCount,
       notGoingCount: notGoingCount,
+      description: description,
     );
   }
 
@@ -147,8 +141,6 @@ class EventDetailModel {
       id: entity.id,
       name: entity.name,
       emoji: entity.emoji,
-      groupId: entity.groupId,
-      groupName: entity.groupName,
       startDateTime: entity.startDateTime,
       endDateTime: entity.endDateTime,
       locationName: entity.location?.displayName,
@@ -160,6 +152,7 @@ class EventDetailModel {
       hostId: entity.hostId,
       goingCount: entity.goingCount,
       notGoingCount: entity.notGoingCount,
+      description: entity.description,
     );
   }
 }

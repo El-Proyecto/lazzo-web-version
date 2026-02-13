@@ -93,8 +93,8 @@ class ImageCompressionService {
   }
 
   /// Gera nome de arquivo temporário para processamento
-  static String generateTempFileName(String groupId) {
+  static String generateTempFileName(String eventId) {
     final timestamp = DateTime.now().millisecondsSinceEpoch;
-    return 'temp_${groupId}_$timestamp.webp';
+    return 'temp_${eventId}_$timestamp.webp';
   }
 }

@@ -32,9 +32,6 @@ class EventRepositoryImpl implements EventRepository {
         throw Exception('User must be authenticated to create events');
       }
 
-      // Validate and normalize groupId
-      String effectiveGroupId = event.groupId;
-
       // Create location if needed
       String? locationId;
       if (event.location != null) {
@@ -63,12 +60,12 @@ class EventRepositoryImpl implements EventRepository {
         response = await _dataSource.createEvent(
           name: event.name,
           emoji: event.emoji,
-          groupId: effectiveGroupId,
           startDateTime: event.startDateTime,
           endDateTime: event.endDateTime,
           locationId: locationId,
           status: event.status.toString().split('.').last,
           createdBy: userId,
+          description: event.description,
         );
       } catch (e) {
         rethrow;
@@ -166,11 +163,11 @@ class EventRepositoryImpl implements EventRepository {
 
         final creatorName = userResponse['name'] as String;
 
-        // Get all group members except the creator
+        // LAZZO 2.0: Get all event participants except the creator
         final membersResponse = await _client
-            .from('group_members')
+            .from('event_participants')
             .select('user_id')
-            .eq('group_id', effectiveGroupId)
+            .eq('pevent_id', eventId)
             .neq('user_id', userId);
 
         // Send notification to each member
@@ -248,11 +245,11 @@ class EventRepositoryImpl implements EventRepository {
         id: event.id,
         name: event.name,
         emoji: event.emoji,
-        groupId: event.groupId,
         startDateTime: event.startDateTime,
         endDateTime: event.endDateTime,
         locationId: locationId,
         status: event.status.toString().split('.').last,
+        description: event.description,
       );
 
       // CRITICAL: Delete ALL date suggestions when admin sets/changes event date
@@ -349,25 +346,6 @@ class EventRepositoryImpl implements EventRepository {
     } catch (e) {
       rethrow;
     }
-  }
-
-  @override
-  Future<List<Event>> getEventsForGroup(String groupId) async {
-    final response = await _dataSource.getEventsForGroup(groupId);
-    List<Event> events = [];
-    for (final row in response) {
-      // Fetch location if present
-      String? locationId = row['location_id'] as String?;
-      EventLocation? location;
-      if (locationId != null) {
-        final loc = await _dataSource.getLocationById(locationId);
-        if (loc != null) {
-          location = LocationModel.fromJson(loc).toEntity();
-        }
-      }
-      events.add(EventModel.fromJson(row).toEntity(location: location));
-    }
-    return events;
   }
 
   @override

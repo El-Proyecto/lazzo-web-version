@@ -25,13 +25,15 @@ class RsvpModel {
   factory RsvpModel.fromJson(Map<String, dynamic> json) {
     // Handle nested user data from join
     final userData = json['user'] as Map<String, dynamic>?;
-    
+
     return RsvpModel(
       userId: json['user_id'] as String,
-      eventId: json['pevent_id'] as String, // event_participants uses 'pevent_id'
+      eventId:
+          json['pevent_id'] as String, // event_participants uses 'pevent_id'
       userName: userData?['name'] as String? ?? 'Unknown User',
       userAvatar: userData?['avatar_url'] as String?,
-      status: json['rsvp'] as String? ?? 'pending', // event_participants uses 'rsvp' column
+      status: json['rsvp'] as String? ??
+          'pending', // event_participants uses 'rsvp' column
       confirmedAt: json['confirmed_at'] != null
           ? DateTime.parse(json['confirmed_at'] as String)
           : null,
@@ -60,6 +62,8 @@ class RsvpModel {
         statusEnum = RsvpStatus.notGoing;
         break;
       case 'maybe':
+        statusEnum = RsvpStatus.maybe;
+        break;
       case 'pending':
       default:
         statusEnum = RsvpStatus.pending;
@@ -86,6 +90,9 @@ class RsvpModel {
         break;
       case RsvpStatus.notGoing:
         statusString = 'no';
+        break;
+      case RsvpStatus.maybe:
+        statusString = 'maybe';
         break;
       case RsvpStatus.pending:
         statusString = 'pending';

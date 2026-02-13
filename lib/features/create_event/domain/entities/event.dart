@@ -4,23 +4,23 @@ class Event {
   final String id;
   final String name;
   final String emoji;
-  final String groupId;
   final DateTime? startDateTime;
   final DateTime? endDateTime;
   final EventLocation? location;
   final EventStatus status;
   final DateTime createdAt;
+  final String? description;
 
   const Event({
     required this.id,
     required this.name,
     required this.emoji,
-    required this.groupId,
     this.startDateTime,
     this.endDateTime,
     this.location,
     required this.status,
     required this.createdAt,
+    this.description,
   });
 
   /// Copy event with updated fields
@@ -30,24 +30,24 @@ class Event {
     String? id,
     String? name,
     String? emoji,
-    String? groupId,
     ValueWrapper<DateTime?>? startDateTime,
     ValueWrapper<DateTime?>? endDateTime,
     ValueWrapper<EventLocation?>? location,
     EventStatus? status,
     DateTime? createdAt,
+    ValueWrapper<String?>? description,
   }) {
     return Event(
       id: id ?? this.id,
       name: name ?? this.name,
       emoji: emoji ?? this.emoji,
-      groupId: groupId ?? this.groupId,
       startDateTime:
           startDateTime != null ? startDateTime.value : this.startDateTime,
       endDateTime: endDateTime != null ? endDateTime.value : this.endDateTime,
       location: location != null ? location.value : this.location,
       status: status ?? this.status,
       createdAt: createdAt ?? this.createdAt,
+      description: description != null ? description.value : this.description,
     );
   }
 }

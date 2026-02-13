@@ -9,8 +9,6 @@ class _HomeEventModel {
   final String id;
   final String name;
   final String emoji;
-  final String? groupId;
-  final String? groupName;
   final DateTime? date;
   final DateTime? endDate;
   final String? location;
@@ -32,8 +30,6 @@ class _HomeEventModel {
     required this.id,
     required this.name,
     required this.emoji,
-    this.groupId,
-    this.groupName,
     this.date,
     this.endDate,
     this.location,
@@ -76,8 +72,6 @@ class _HomeEventModel {
       id: _asString(map['event_id']) ?? '',
       name: _asString(map['event_name']) ?? '',
       emoji: _normalizeEmoji(map['emoji']),
-      groupId: _asString(map['group_id']),
-      groupName: _asString(map['group_name']),
       date: startDate,
       endDate: endDate,
       location: _asString(map['location_name']),
@@ -131,8 +125,6 @@ class _HomeEventModel {
       id: id,
       name: name,
       emoji: emoji,
-      groupId: groupId,
-      groupName: groupName,
       date: date,
       endDate: endDate,
       location: location,
@@ -158,9 +150,9 @@ class _HomeEventModel {
 
       // Query to get photo count by participant
       final response = await supabaseClient
-          .from('group_photos')
+          .from('event_photos')
           .select(
-              'uploader_id, users!group_photos_uploader_id_fkey(id, display_name, avatar_url)')
+              'uploader_id, users!event_photos_uploader_id_fkey(id, display_name, avatar_url)')
           .eq('event_id', id)
           .order('captured_at', ascending: false);
 
@@ -320,16 +312,20 @@ class _HomeEventModel {
     }
   }
 
-  static bool? _mapUserVote(String? rsvp) {
-    if (rsvp == null) return null;
+  static RsvpVoteStatus _mapUserVote(String? rsvp) {
+    if (rsvp == null) return RsvpVoteStatus.pending;
     final s = rsvp.toLowerCase();
     if (s == 'yes' || s == 'going' || s == 'attending' || s == 'accepted') {
-      return true;
+      return RsvpVoteStatus.going;
     }
     if (s == 'no' || s == 'not_going' || s == 'declined' || s == 'rejected') {
-      return false;
+      return RsvpVoteStatus.notGoing;
     }
-    return null; // pending/invited
+    if (s == 'maybe') {
+      return RsvpVoteStatus.maybe;
+    }
+    // 'pending' and unknown values
+    return RsvpVoteStatus.pending;
   }
 
   static List<String> _extractAvatars(List<dynamic> users) {

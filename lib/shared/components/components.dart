@@ -10,7 +10,7 @@ export 'cards/event_small_card.dart';
 export 'cards/home_event_card.dart';
 export 'cards/confirmed_event_card.dart'; // TODO: Update imports to use event_small_card.dart instead
 export 'cards/todo_card.dart';
-export 'cards/payment_summary_card.dart';
+// LAZZO 2.0: payment_summary_card.dart removed (expenses removed)
 export 'cards/close_recap_card.dart';
 export 'cards/share_card.dart';
 
@@ -27,7 +27,6 @@ export 'inputs/segmented_control.dart';
 
 // Common Components
 export 'common/page_segmented_control.dart';
-export 'common/create_event_segmented_control.dart';
 export 'common/top_banner.dart';
 export 'common/invite_bottom_sheet.dart';
 export 'common/simple_selection_sheet.dart';
@@ -49,7 +48,7 @@ export 'widgets/poll_widget.dart';
 export 'widgets/help_plan_event_widget.dart';
 
 // Dialog Components
-export 'dialogs/add_expense_bottom_sheet.dart';
+// LAZZO 2.0: add_expense_bottom_sheet.dart removed (expenses removed)
 export 'dialogs/missing_fields_confirmation_dialog.dart';
 
 // Navigation Components

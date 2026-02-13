@@ -1,62 +1,124 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 /// Data source for fetching recent memories from the last 30 days
+/// LAZZO 2.0: Rewritten to use event_participants instead of group_members
 class RecentMemoryDataSource {
   final SupabaseClient _client;
 
   RecentMemoryDataSource(this._client);
 
   /// Fetch memories from the last 30 days for the current user
-  /// Returns list of events with status 'recap' or 'ended' from user's groups
-  ///
-  /// **OPTIMIZED VERSION**: Uses SQL RPC function to eliminate N+1 queries.
-  /// Replaces 20+ sequential queries with a single database call.
-  ///
-  /// Requires P2 team to deploy `get_recent_memories_with_covers` RPC function.
-  /// See IMPLEMENTATION/SQL_FUNCTIONS_FOR_P2.md for deployment guide.
+  /// Returns list of events with status 'recap' or 'ended' where user is a participant
   Future<List<Map<String, dynamic>>> getRecentMemories(String userId) async {
     try {
       // Calculate 30 days ago timestamp
       final thirtyDaysAgo = DateTime.now().subtract(const Duration(days: 30));
 
-      // 1) Get user's group IDs
-      final groupsResponse = await _client
-          .from('group_members')
-          .select('group_id')
+      // 1) Get event IDs where user is a participant
+      final participantResponse = await _client
+          .from('event_participants')
+          .select('pevent_id')
           .eq('user_id', userId);
 
-      if (groupsResponse.isEmpty) {
+      if (participantResponse.isEmpty) {
         return [];
       }
 
-      final groupIds =
-          groupsResponse.map((row) => row['group_id'] as String).toList();
+      final eventIds =
+          participantResponse.map((row) => row['pevent_id'] as String).toList();
 
-      // 2) Call RPC function that handles:
-      // - Filter events from user's groups
-      // - Find events with status 'recap' or 'ended'
-      // - Apply 30-day time window
-      // - Use COALESCE to get best available cover photo
-      final response = await _client.rpc(
-        'get_recent_memories_with_covers',
-        params: {
-          'p_user_group_ids': groupIds,
-          'p_start_date': thirtyDaysAgo.toIso8601String(),
-        },
-      );
+      // 2) Query events with status 'recap' or 'ended' within 30 days
+      final eventsResponse = await _client
+          .from('events')
+          .select('''
+            id,
+            name,
+            end_datetime,
+            status,
+            cover_photo_id,
+            locations (
+              display_name
+            )
+          ''')
+          .inFilter('id', eventIds)
+          .inFilter('status', ['recap', 'ended'])
+          .gte('end_datetime', thirtyDaysAgo.toIso8601String())
+          .order('end_datetime', ascending: false);
 
-      if (response == null || response is! List) {
+      if (eventsResponse == null || (eventsResponse as List).isEmpty) {
         return [];
       }
 
-      // Filter out events without cover photos (safety check)
-      final events = List<Map<String, dynamic>>.from(response)
-          .where((event) => event['cover_storage_path'] != null)
-          .toList();
+      // 3) Process each event to add cover photo
+      final List<Map<String, dynamic>> memoriesWithCovers = [];
 
-      return events;
+      for (final event in eventsResponse) {
+        final eventMap = Map<String, dynamic>.from(event);
+        String? coverStoragePath;
+        final eventId = eventMap['id'] as String;
+        final coverPhotoId = eventMap['cover_photo_id'] as String?;
+
+        // Try 1: Use cover_photo_id if set
+        if (coverPhotoId != null) {
+          try {
+            final coverResponse = await _client
+                .from('event_photos')
+                .select('storage_path')
+                .eq('id', coverPhotoId)
+                .maybeSingle();
+            if (coverResponse != null) {
+              coverStoragePath = coverResponse['storage_path'] as String?;
+            }
+          } catch (_) {}
+        }
+
+        // Try 2: Get first portrait photo
+        if (coverStoragePath == null) {
+          try {
+            final portraitResponse = await _client
+                .from('event_photos')
+                .select('storage_path')
+                .eq('event_id', eventId)
+                .eq('is_portrait', true)
+                .order('captured_at', ascending: true)
+                .limit(1)
+                .maybeSingle();
+            if (portraitResponse != null) {
+              coverStoragePath = portraitResponse['storage_path'] as String?;
+            }
+          } catch (_) {}
+        }
+
+        // Try 3: Get any photo
+        if (coverStoragePath == null) {
+          try {
+            final anyPhoto = await _client
+                .from('event_photos')
+                .select('storage_path')
+                .eq('event_id', eventId)
+                .order('captured_at', ascending: true)
+                .limit(1)
+                .maybeSingle();
+            if (anyPhoto != null) {
+              coverStoragePath = anyPhoto['storage_path'] as String?;
+            }
+          } catch (_) {}
+        }
+
+        if (coverStoragePath != null) {
+          memoriesWithCovers.add({
+            'id': eventId,
+            'title': eventMap['name'] as String? ?? 'Untitled',
+            'date': eventMap['end_datetime'],
+            'location':
+                (eventMap['locations'] as Map?)?['display_name'] as String?,
+            'cover_storage_path': coverStoragePath,
+          });
+        }
+      }
+
+      return memoriesWithCovers;
     } catch (e) {
-      // RPC function not available or query failed
       return [];
     }
   }

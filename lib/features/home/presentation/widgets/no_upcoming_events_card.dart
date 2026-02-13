@@ -3,7 +3,6 @@ import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/constants/text_styles.dart';
 import '../../../../shared/themes/colors.dart';
 import '../../../../shared/components/buttons/green_button.dart';
-// LAZZO 2.0: group_chip import removed — events are standalone
 
 /// Empty state card shown when user has no upcoming events
 /// Feature-specific widget for Home page

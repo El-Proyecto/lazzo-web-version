@@ -10,16 +10,15 @@ class MemoryPhotoDataSource {
   MemoryPhotoDataSource(this._client)
       : _storageService = StorageService(_client);
 
-  /// Upload a photo and create a record in group_photos table
+  /// Upload a photo and create a record in event_photos table
   ///
   /// Steps:
   /// 1. Upload file to storage (memory_groups PRIVATE bucket)
-  /// 2. Insert record in group_photos table with storage_path
+  /// 2. Insert record in event_photos table with storage_path
   ///
   /// Returns the photo ID and storage_path
   /// Note: URLs are generated on-demand using signed URLs with RLS validation
   Future<Map<String, dynamic>> uploadPhoto({
-    required String groupId,
     required String eventId,
     required String userId,
     required File file,
@@ -27,9 +26,9 @@ class MemoryPhotoDataSource {
   }) async {
     try {
       // Step 1: Upload to storage (returns storage path, not URL)
-      // Storage path: groupId/eventId/userId/uuid.jpg
+      // Storage path: eventId/memoryId/userId/uuid.jpg
       final storagePath = await _storageService.uploadMemoryPhoto(
-        groupId: groupId,
+        eventId: eventId,
         memoryId: eventId,
         userId: userId,
         file: file,
@@ -37,11 +36,11 @@ class MemoryPhotoDataSource {
 
       // DEBUG: Verify RLS policy conditions before INSERT
 
-      // Check 1: Verify event exists and has group_id
+      // Check 1: Verify event exists
       try {
         final eventCheck = await _client
             .from('events')
-            .select('id, group_id, created_by')
+            .select('id, created_by')
             .eq('id', eventId)
             .maybeSingle();
 
@@ -54,22 +53,22 @@ class MemoryPhotoDataSource {
         // Event check failed - RLS will handle authorization
       }
 
-      // Check 2: Verify user is member of the group
+      // Check 2: Verify user is a participant of the event
       try {
         final memberCheck = await _client
-            .from('group_members')
-            .select('user_id, group_id, role')
+            .from('event_participants')
+            .select('user_id, pevent_id')
             .eq('user_id', userId)
-            .eq('group_id', groupId)
+            .eq('pevent_id', eventId)
             .maybeSingle();
 
         if (memberCheck == null) {
-          // User not member
+          // User not participant
         } else {
-          // User is member
+          // User is participant
         }
       } catch (e) {
-        // Member check failed - RLS will handle authorization
+        // Participant check failed - RLS will handle authorization
       }
 
       // Check 3: Verify uploader_id matches auth.uid()
@@ -81,7 +80,7 @@ class MemoryPhotoDataSource {
       // We store only the storage_path, not a URL
       // URLs are generated on-demand with createSignedUrl()
       final response = await _client
-          .from('group_photos')
+          .from('event_photos')
           .insert({
             'event_id': eventId,
             'uploader_id': userId,
@@ -110,12 +109,12 @@ class MemoryPhotoDataSource {
 
   /// Delete a photo (both storage and database record)
   ///
-  /// photoId: UUID of the photo record in group_photos table
+  /// photoId: UUID of the photo record in event_photos table
   Future<void> deletePhoto(String photoId) async {
     try {
       // First get the storage_path from the database
       final photoData = await _client
-          .from('group_photos')
+          .from('event_photos')
           .select('storage_path')
           .eq('id', photoId)
           .maybeSingle();
@@ -130,7 +129,7 @@ class MemoryPhotoDataSource {
       await _client.storage.from('memory_groups').remove([storagePath]);
 
       // Delete from database
-      await _client.from('group_photos').delete().eq('id', photoId);
+      await _client.from('event_photos').delete().eq('id', photoId);
     } catch (e) {
       rethrow;
     }
@@ -140,7 +139,7 @@ class MemoryPhotoDataSource {
   Future<List<Map<String, dynamic>>> getPhotosForEvent(String eventId) async {
     try {
       final response = await _client
-          .from('group_photos')
+          .from('event_photos')
           .select('id, url, is_portrait, uploader_id, captured_at, created_at')
           .eq('event_id', eventId)
           .order('captured_at', ascending: false);

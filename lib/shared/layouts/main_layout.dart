@@ -195,9 +195,6 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
   /// Handle photo capture for living event
   Future<void> _handleLivingEventPhoto(String eventId) async {
     try {
-      // Get event detail to obtain groupId
-      final eventDetail = await ref.read(eventDetailProvider(eventId).future);
-
       // Get photo upload notifier
       final photoNotifier = ref.read(
         eventPhotoUploadNotifierProvider(eventId).notifier,
@@ -206,7 +203,6 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
       // Take photo and upload
       await photoNotifier.takePhoto(
         eventId: eventId,
-        groupId: eventDetail.groupId,
       );
 
       // Show result
