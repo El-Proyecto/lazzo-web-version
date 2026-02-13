@@ -6,11 +6,11 @@ import '../../../../shared/constants/text_styles.dart';
 // LAZZO 2.0: AppRouter no longer needed here
 // import '../../../../routes/app_router.dart';
 import '../../../../shared/components/nav/common_app_bar.dart';
-import '../widgets/event_group_selector.dart';
+import '../widgets/event_name_selector.dart';
 import '../widgets/date_time_section.dart';
 import '../widgets/location_section.dart';
+import '../widgets/description_section.dart';
 import '../widgets/event_history_dialog.dart';
-import '../widgets/group_selection_dialog.dart';
 import '../widgets/confirm_event_dialog.dart';
 import '../widgets/exit_confirmation_dialog.dart';
 import '../../../../shared/models/event_draft.dart';
@@ -18,8 +18,9 @@ import '../../../../services/draft_service.dart';
 import '../../../../shared/themes/colors.dart';
 // LAZZO 2.0: top_banner no longer needed here
 // import '../../../../shared/components/common/top_banner.dart';
-import '../../../groups/presentation/providers/groups_provider.dart';
-import '../../../groups/domain/entities/group.dart';
+// LAZZO 2.0: Groups removed — events are standalone
+// import '../../../groups/presentation/providers/groups_provider.dart';
+// import '../../../groups/domain/entities/group.dart';
 import '../../../event/presentation/providers/event_providers.dart';
 import '../providers/event_history_provider.dart';
 import '../../../home/presentation/providers/home_event_providers.dart';
@@ -37,16 +38,12 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
   // Estado do evento
   String _eventName = '';
   String? _eventEmoji;
-  GroupInfo? _selectedGroup;
   DateTime? _selectedDate;
   TimeOfDay? _selectedTime;
   DateTime? _endDate;
   TimeOfDay? _endTime;
   LocationInfo? _selectedLocation;
-
-  // Estados das seções
-  DateTimeState _dateTimeState = DateTimeState.decideLater;
-  LocationState _locationState = LocationState.decideLater;
+  String? _description;
 
   // Serviços
   final DraftService _draftService = DraftService();
@@ -57,43 +54,8 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
 
   // Validation errors
   String? _nameError;
-  String? _groupError;
 
-  /// Helper function to convert a single Group entity to GroupInfo with image URL
-  Future<GroupInfo> _convertGroupToGroupInfo(Group group, WidgetRef ref) async {
-    String? imageUrl;
-
-    // Get image URL if the group has a photo
-    if (group.photoPath != null && group.photoPath!.isNotEmpty) {
-      try {
-        imageUrl = await ref.read(
-            groupCoverUrlProvider((group.photoPath, group.photoUpdatedAt))
-                .future);
-      } catch (e) {
-        imageUrl = null;
-      }
-    }
-
-    return GroupInfo(
-      id: group.id,
-      name: group.name,
-      memberCount: group.memberCount,
-      imageUrl: imageUrl,
-    );
-  }
-
-  /// Helper function to convert Group entities to GroupInfo with image URLs
-  Future<List<GroupInfo>> _loadGroupInfosWithImages(
-      List<Group> groups, WidgetRef ref) async {
-    final List<GroupInfo> groupInfos = [];
-
-    for (final group in groups) {
-      final groupInfo = await _convertGroupToGroupInfo(group, ref);
-      groupInfos.add(groupInfo);
-    }
-
-    return groupInfos;
-  }
+  // LAZZO 2.0: Group-related helpers removed (groups are gone)
 
   @override
   void initState() {
@@ -106,35 +68,8 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
 
   /// Verifica se existe um grupo pré-selecionado nos argumentos de navegação
   void _handleNavigationArguments() async {
-    final arguments =
-        ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
-    if (arguments != null && arguments['groupId'] != null) {
-      final groupId = arguments['groupId'] as String;
-
-      // Buscar grupos reais do Supabase
-      final groupsAsync = ref.read(groupsProvider);
-      groupsAsync.when(
-        data: (groups) async {
-          final selectedGroup =
-              groups.where((group) => group.id == groupId).firstOrNull;
-          if (selectedGroup != null && mounted) {
-            final groupInfo =
-                await _convertGroupToGroupInfo(selectedGroup, ref);
-            if (mounted) {
-              setState(() {
-                _selectedGroup = groupInfo;
-              });
-            }
-          }
-        },
-        loading: () {
-          // Groups are loading, we'll handle this in the group selection dialog
-        },
-        error: (error, stackTrace) {
-          // Handle error if needed
-        },
-      );
-    }
+    // LAZZO 2.0: Groups removed — no pre-selection needed
+    // Events are standalone, no group association
   }
 
   /// Carrega rascunho se existir
@@ -146,14 +81,11 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
       setState(() {
         _eventName = draft.eventName;
         _eventEmoji = draft.eventEmoji;
-        _selectedGroup = draft.selectedGroup;
         _selectedDate = draft.selectedDate;
         _selectedTime = draft.selectedTime;
         _endDate = draft.endDate;
         _endTime = draft.endTime;
         _selectedLocation = draft.selectedLocation;
-        _dateTimeState = draft.dateTimeState;
-        _locationState = draft.locationState;
         _hasInitializedFromDraft = true;
       });
     }
@@ -164,14 +96,11 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
     return EventDraft(
       eventName: _eventName,
       eventEmoji: _eventEmoji,
-      selectedGroup: _selectedGroup,
       selectedDate: _selectedDate,
       selectedTime: _selectedTime,
       endDate: _endDate,
       endTime: _endTime,
       selectedLocation: _selectedLocation,
-      dateTimeState: _dateTimeState,
-      locationState: _locationState,
       createdAt: DateTime.now(),
     );
   }
@@ -193,13 +122,6 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
       } else {
         _nameError = null;
       }
-
-      // Validate group
-      if (_selectedGroup == null) {
-        _groupError = 'Please select a group';
-      } else {
-        _groupError = null;
-      }
     });
   }
 
@@ -216,62 +138,37 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
   /// Verifica se o formulário é válido
   bool get _isFormValid {
     final basicFieldsValid = _nameError == null &&
-        _groupError == null &&
         _eventName.trim().isNotEmpty &&
-        _eventName != 'Add Event Name' &&
-        _selectedGroup != null;
+        _eventName != 'Add Event Name';
 
-    // All fields must be valid: basic fields + location + datetime
-    // Location and DateTime are valid if "Decide Later" OR properly filled when "Set Now"
+    // All fields must be valid
     return basicFieldsValid && _isLocationValid && _isDateTimeValid;
   }
 
   /// Verifica se a localização é válida
   bool get _isLocationValid {
-    if (_locationState == LocationState.decideLater) {
-      return true; // Decide later is always valid
-    }
-
-    // For "Set now", require at least one field:
-    // Location object must exist AND have either formattedAddress OR displayName
-    if (_selectedLocation != null) {
-      final hasAddress = _selectedLocation!.formattedAddress.isNotEmpty;
-      final hasName = _selectedLocation!.displayName != null &&
-          _selectedLocation!.displayName!.isNotEmpty;
-      return hasAddress || hasName;
-    }
-
-    // If no location is set when "Set Now" is selected, it's invalid
-    return false;
-  }
-
-  /// Valida o estado atual da localização
-  void _validateLocationState() {
-    // Don't auto-switch to "Decide later" when user is actively editing location
-    // This was causing the bug where clicking "Change" would disable the Continue button
-    // The validation will handle the invalid state by showing an error message instead
+    // Location is optional — valid if empty or properly filled
+    if (_selectedLocation == null) return true;
+    final hasAddress = _selectedLocation!.formattedAddress.isNotEmpty;
+    final hasName = _selectedLocation!.displayName != null &&
+        _selectedLocation!.displayName!.isNotEmpty;
+    return hasAddress || hasName;
   }
 
   /// Obtém o erro de validação da localização
   String? _getLocationValidationError() {
     if (!_showValidationErrors) return null;
-
-    if (_locationState == LocationState.setNow && !_isLocationValid) {
-      return 'Please fill in at least one field: Location name or Address';
-    }
+    // No location validation error since location is optional
     return null;
   }
 
   /// Verifica se data e hora são válidas
   bool get _isDateTimeValid {
-    if (_dateTimeState == DateTimeState.decideLater) {
-      return true; // Decide later is always valid
-    }
+    // Date/time is optional — valid if not set
+    if (_selectedDate == null && _selectedTime == null) return true;
 
-    // For "Set now", require start date and time
-    if (_selectedDate == null || _selectedTime == null) {
-      return false;
-    }
+    // If partially set, require both
+    if (_selectedDate == null || _selectedTime == null) return false;
 
     final now = DateTime.now();
     final startDateTime = DateTime(
@@ -307,12 +204,11 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
   String? _getDateTimeValidationError() {
     if (!_showValidationErrors) return null;
 
-    if (_dateTimeState == DateTimeState.decideLater) {
-      return null;
-    }
+    // Only validate if user started filling in date/time
+    if (_selectedDate == null && _selectedTime == null) return null;
 
     if (_selectedDate == null || _selectedTime == null) {
-      return 'Please set start date and time';
+      return 'Please set both start date and time';
     }
 
     // Check if start date/time is in the past
@@ -338,8 +234,7 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
 
   /// Define horário final padrão (6 horas após o início) se necessário
   void _setDefaultEndTimeIfNeeded() {
-    if (_dateTimeState == DateTimeState.setNow &&
-        _selectedDate != null &&
+    if (_selectedDate != null &&
         _selectedTime != null &&
         _endDate == null &&
         _endTime == null) {
@@ -370,11 +265,6 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
           _eventName.trim().isNotEmpty &&
           _eventName != 'Add Event Name') {
         _nameError = null;
-      }
-
-      // Clear group error if group is selected
-      if (_groupError != null && _selectedGroup != null) {
-        _groupError = null;
       }
     });
   }
@@ -475,18 +365,14 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
                   children: [
                     const SizedBox(height: Gaps.lg),
 
-                    // Seleção de grupo e nome do evento
-                    EventGroupSelector(
-                      key: const Key('createEvent:groupSelector'),
+                    // Seleção de nome do evento
+                    EventNameSelector(
+                      key: const Key('createEvent:nameSelector'),
                       eventEmoji: _eventEmoji,
                       eventName:
                           _eventName.isEmpty ? 'Add Event Name' : _eventName,
                       nameFieldKey: const Key('createEvent:name'),
-                      groupButtonKey: const Key('createEvent:groupButton'),
-                      selectedGroup: _selectedGroup,
                       nameError: _showValidationErrors ? _nameError : null,
-                      groupError: _showValidationErrors ? _groupError : null,
-                      onGroupPressed: _showGroupSelection,
                       onEventNameChanged: (name) {
                         setState(() {
                           _eventName = name;
@@ -513,7 +399,6 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
                       startTime: _selectedTime,
                       endDate: _endDate,
                       endTime: _endTime,
-                      initialState: _dateTimeState,
                       onStartDateChanged: (date) {
                         setState(() {
                           _selectedDate = date;
@@ -540,13 +425,6 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
                         });
                         _clearValidationErrorsIfValid();
                       },
-                      onStateChanged: (state) {
-                        setState(() {
-                          _dateTimeState = state;
-                        });
-                        // Clear validation errors if state becomes valid
-                        _clearValidationErrorsIfValid();
-                      },
                       validationError: _getDateTimeValidationError(),
                     ),
 
@@ -555,7 +433,6 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
                     // Seção de localização
                     LocationSection(
                       selectedLocation: _selectedLocation,
-                      initialState: _locationState,
                       onLocationChanged: (location) {
                         setState(() {
                           _selectedLocation = location;
@@ -563,15 +440,19 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
                         // Clear validation errors if location becomes valid
                         _clearValidationErrorsIfValid();
                       },
-                      onStateChanged: (state) {
-                        setState(() {
-                          _locationState = state;
-                        });
-                        _validateLocationState();
-                        // Clear validation errors if state becomes valid
-                        _clearValidationErrorsIfValid();
-                      },
                       validationError: _getLocationValidationError(),
+                    ),
+
+                    const SizedBox(height: Gaps.md),
+
+                    // Seção de details
+                    DescriptionSection(
+                      description: _description,
+                      onDescriptionChanged: (description) {
+                        setState(() {
+                          _description = description;
+                        });
+                      },
                     ),
 
                     const SizedBox(height: Gaps.lg),
@@ -645,8 +526,6 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
           lastDate: history.startDateTime,
           lastTime: timeOfDay,
           location: history.locationName,
-          groupId: history.groupId,
-          groupName: history.groupName,
         );
       }).toList();
 
@@ -679,107 +558,13 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
       builder: (context) => ConfirmEventBottomSheet(
         eventName: _eventName,
         eventEmoji: _eventEmoji,
-        selectedGroup: _selectedGroup,
         selectedDate: _selectedDate,
         selectedTime: _selectedTime,
         endDate: _endDate,
         endTime: _endTime,
         selectedLocation: _selectedLocation,
+        description: _description,
         onEventCreated: _onEventCreated,
-      ),
-    );
-  }
-
-  void _showGroupSelection() {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      isDismissible: true,
-      enableDrag: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => Consumer(
-        builder: (context, ref, child) {
-          final groupsAsync = ref.watch(groupsProvider);
-
-          return groupsAsync.when(
-            data: (groups) {
-              // Convert Group entities to GroupInfo with image URLs
-              return FutureBuilder<List<GroupInfo>>(
-                  future: _loadGroupInfosWithImages(groups, ref),
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return Container(
-                        height: 400,
-                        decoration: const BoxDecoration(
-                          color: BrandColors.bg1,
-                          borderRadius:
-                              BorderRadius.vertical(top: Radius.circular(20)),
-                        ),
-                        child: const Center(
-                          child: CircularProgressIndicator(
-                              color: BrandColors.planning),
-                        ),
-                      );
-                    }
-
-                    final groupInfos = snapshot.data ?? [];
-
-                    return GroupSelectionBottomSheet(
-                      groups: groupInfos,
-                      onGroupSelected: (group) {
-                        setState(() {
-                          _selectedGroup = group;
-                          // Clear error if group is now selected
-                          if (_showValidationErrors) {
-                            _groupError = null;
-                          }
-                        });
-                      },
-                      onCreateGroup: () {}, // LAZZO 2.0: Group creation removed
-                    );
-                  });
-            },
-            loading: () => Container(
-              height: 400,
-              decoration: const BoxDecoration(
-                color: BrandColors.bg1,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-              ),
-              child: const Center(
-                child: CircularProgressIndicator(color: BrandColors.planning),
-              ),
-            ),
-            error: (error, stackTrace) => Container(
-              height: 400,
-              decoration: const BoxDecoration(
-                color: BrandColors.bg1,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-              ),
-              child: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(Icons.error_outline,
-                        size: 48, color: BrandColors.cantVote),
-                    const SizedBox(height: 16),
-                    Text('Error loading groups',
-                        style: Theme.of(context)
-                            .textTheme
-                            .titleMedium
-                            ?.copyWith(color: BrandColors.cantVote)),
-                    const SizedBox(height: 8),
-                    Text(error.toString(),
-                        style: Theme.of(context)
-                            .textTheme
-                            .bodyMedium
-                            ?.copyWith(color: BrandColors.text2),
-                        textAlign: TextAlign.center),
-                  ],
-                ),
-              ),
-            ),
-          );
-        },
       ),
     );
   }
@@ -810,7 +595,6 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
         _selectedTime = event.lastTime;
         _endDate = nextDate; // End date igual ao start date
         _endTime = event.lastTime; // End time igual ao start time
-        _dateTimeState = DateTimeState.setNow;
       }
 
       // Carregar localização se existir
@@ -822,50 +606,10 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
           latitude: 0.0,
           longitude: 0.0,
         );
-        _locationState = LocationState.setNow;
       }
     });
 
-    // Tentar pré-selecionar o grupo se existir
-    if (event.groupId != null) {
-      try {
-        final groupsAsync = ref.read(groupsProvider);
-        await groupsAsync.when(
-          data: (groups) async {
-            // Find matching group by ID
-            final matchingGroup =
-                groups.where((g) => g.id == event.groupId).firstOrNull;
-            if (matchingGroup != null) {
-              // Load group image URL
-              final imageUrl = await ref.read(
-                groupCoverUrlProvider(
-                        (matchingGroup.photoPath, matchingGroup.photoUpdatedAt))
-                    .future,
-              );
-
-              if (mounted) {
-                setState(() {
-                  _selectedGroup = GroupInfo(
-                    id: matchingGroup.id,
-                    name: matchingGroup.name,
-                    imageUrl: imageUrl,
-                    memberCount: matchingGroup.memberCount,
-                  );
-                  // Clear group error if validation is showing
-                  if (_showValidationErrors) {
-                    _groupError = null;
-                  }
-                });
-              }
-            }
-          },
-          loading: () {},
-          error: (_, __) {},
-        );
-      } catch (e) {
-        // Silently fail if group not found - user can select manually
-      }
-    }
+    // LAZZO 2.0: Group pre-selection removed — events are standalone
   }
 
   // LAZZO 2.0: _createNewGroup method removed — events are standalone, no group creation needed
@@ -905,7 +649,6 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
           'eventId': eventId,
           'showSuccessBanner': true,
           'eventName': _eventName.isEmpty ? 'Untitled Event' : _eventName,
-          'groupName': _selectedGroup?.name ?? 'No Group',
         },
       );
     }

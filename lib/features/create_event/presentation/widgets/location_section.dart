@@ -8,23 +8,18 @@ import '../../../../shared/components/common/top_banner.dart';
 import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/constants/text_styles.dart';
 import '../../../../shared/themes/colors.dart';
-import '../../../../shared/components/common/create_event_segmented_control.dart';
 
-/// Seção expansível para seleção de localização
-/// Suporta estados: To Define e Address
+/// Seção para seleção de localização
+/// Mostra sempre os campos de localização (sem toggle Decide later / Set Now)
 class LocationSection extends StatefulWidget {
   final LocationInfo? selectedLocation;
   final Function(LocationInfo?)? onLocationChanged;
-  final Function(LocationState)? onStateChanged;
-  final LocationState initialState;
   final String? validationError;
 
   const LocationSection({
     super.key,
     this.selectedLocation,
     this.onLocationChanged,
-    this.onStateChanged,
-    this.initialState = LocationState.decideLater,
     this.validationError,
   });
 
@@ -32,10 +27,7 @@ class LocationSection extends StatefulWidget {
   State<LocationSection> createState() => _LocationSectionState();
 }
 
-class _LocationSectionState extends State<LocationSection>
-    with SingleTickerProviderStateMixin {
-  LocationState _currentState = LocationState.decideLater;
-  late TabController _tabController;
+class _LocationSectionState extends State<LocationSection> {
   final TextEditingController _locationNameController = TextEditingController();
   final TextEditingController _addressSearchController =
       TextEditingController();
@@ -49,14 +41,6 @@ class _LocationSectionState extends State<LocationSection>
   @override
   void initState() {
     super.initState();
-    _currentState = widget.initialState;
-
-    // Initialize TabController
-    _tabController = TabController(
-      length: 2,
-      vsync: this,
-      initialIndex: _currentState == LocationState.decideLater ? 0 : 1,
-    );
 
     // Initialize controllers with existing data if available
     if (widget.selectedLocation != null) {
@@ -68,10 +52,6 @@ class _LocationSectionState extends State<LocationSection>
   @override
   void didUpdateWidget(LocationSection oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // React to external state changes (e.g., from event history)
-    if (oldWidget.initialState != widget.initialState) {
-      _changeState(widget.initialState);
-    }
     // Update controllers when location changes
     if (oldWidget.selectedLocation != widget.selectedLocation &&
         widget.selectedLocation != null) {
@@ -83,7 +63,6 @@ class _LocationSectionState extends State<LocationSection>
   @override
   void dispose() {
     _searchDebounceTimer?.cancel();
-    _tabController.dispose();
     _locationNameController.dispose();
     _addressSearchController.dispose();
     super.dispose();
@@ -105,42 +84,19 @@ class _LocationSectionState extends State<LocationSection>
       ),
       child: Column(
         children: [
-          // Header com toggle
-          _buildHeader(),
+          // Header
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              'Location',
+              style: AppText.titleMediumEmph.copyWith(color: BrandColors.text1),
+            ),
+          ),
 
-          // Conteúdo expansível
-          if (_currentState == LocationState.setNow) ...[
-            const SizedBox(height: Gaps.md),
-            _buildExpandedContent(),
-          ],
+          const SizedBox(height: Gaps.md),
+          _buildExpandedContent(),
         ],
       ),
-    );
-  }
-
-  Widget _buildHeader() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(
-          'Location',
-          style: AppText.titleMediumEmph.copyWith(color: BrandColors.text1),
-        ),
-
-        // Segmented Control (same as Date & Time)
-        SizedBox(
-          width: 200, // Fixed width to prevent overflow
-          child: CreateEventSegmentedControl(
-            controller: _tabController,
-            labels: const ['Decide later', 'Set Now'],
-            onTap: (index) {
-              final newState =
-                  index == 0 ? LocationState.decideLater : LocationState.setNow;
-              _changeState(newState);
-            },
-          ),
-        ),
-      ],
     );
   }
 
@@ -518,24 +474,6 @@ class _LocationSectionState extends State<LocationSection>
         );
       }
     }
-  }
-
-  void _changeState(LocationState newState) {
-    setState(() {
-      _currentState = newState;
-    });
-
-    // Update TabController to match the state
-    _tabController.animateTo(newState == LocationState.decideLater ? 0 : 1);
-
-    // Use post-frame callback to avoid setState during build
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (newState == LocationState.decideLater) {
-        widget.onLocationChanged?.call(null);
-      }
-      // Notify parent of state change for validation
-      widget.onStateChanged?.call(newState);
-    });
   }
 
   void _updateLocationName(String name) {
@@ -1312,9 +1250,6 @@ class _CustomNameFieldState extends State<_CustomNameField> {
     );
   }
 }
-
-/// Estados da seção de localização
-enum LocationState { decideLater, setNow }
 
 /// Estados do picker de localização
 enum LocationPickerState { input, searching, results, mapConfirm }

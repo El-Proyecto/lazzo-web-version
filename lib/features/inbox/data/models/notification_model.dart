@@ -11,11 +11,9 @@ class NotificationModel {
   final String? actionText;
   final String? actionUrl;
   final String? deeplink;
-  final String? groupId;
   final String? eventId;
   final String? eventEmoji;
   final String? userName;
-  final String? groupName;
   final String? eventName;
   final String? amount;
   final String? hours;
@@ -25,7 +23,6 @@ class NotificationModel {
   final String? place;
   final String? device;
   final String? note;
-  final String? expenseId; // ✅ Link to expense for payment notifications
 
   const NotificationModel({
     required this.id,
@@ -37,11 +34,9 @@ class NotificationModel {
     this.actionText,
     this.actionUrl,
     this.deeplink,
-    this.groupId,
     this.eventId,
     this.eventEmoji,
     this.userName,
-    this.groupName,
     this.eventName,
     this.amount,
     this.hours,
@@ -51,7 +46,6 @@ class NotificationModel {
     this.place,
     this.device,
     this.note,
-    this.expenseId,
   });
 
   factory NotificationModel.fromJson(Map<String, dynamic> json) {
@@ -66,11 +60,9 @@ class NotificationModel {
       actionText: json['action_text'] as String?,
       actionUrl: json['action_url'] as String?,
       deeplink: json['deeplink'] as String?,
-      groupId: json['group_id'] as String?,
       eventId: json['event_id'] as String?,
       eventEmoji: json['event_emoji'] as String?,
       userName: json['user_name'] as String?,
-      groupName: json['group_name'] as String?,
       eventName: json['event_name'] as String?,
       amount: json['amount'] as String?,
       hours: json['hours'] as String?,
@@ -80,7 +72,6 @@ class NotificationModel {
       place: json['place'] as String?,
       device: json['device'] as String?,
       note: json['note'] as String?,
-      expenseId: json['expense_id'] as String?,
     );
   }
 
@@ -96,11 +87,9 @@ class NotificationModel {
       'action_text': actionText,
       'action_url': actionUrl,
       'deeplink': deeplink,
-      'group_id': groupId,
       'event_id': eventId,
       'event_emoji': eventEmoji,
       'user_name': userName,
-      'group_name': groupName,
       'event_name': eventName,
       'amount': amount,
       'hours': hours,
@@ -110,7 +99,6 @@ class NotificationModel {
       'place': place,
       'device': device,
       'note': note,
-      'expense_id': expenseId,
     };
   }
 
@@ -131,11 +119,9 @@ class NotificationModel {
       actionText: actionText,
       actionUrl: actionUrl,
       deeplink: deeplink,
-      groupId: groupId,
       eventId: eventId,
       eventEmoji: eventEmoji,
       userName: userName,
-      groupName: groupName,
       eventName: eventName,
       amount: amount,
       hours: hours,
@@ -145,7 +131,6 @@ class NotificationModel {
       place: place,
       device: device,
       note: note,
-      expenseId: expenseId,
     );
   }
 

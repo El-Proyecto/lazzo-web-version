@@ -5,7 +5,7 @@ import '../../constants/text_styles.dart';
 import '../../themes/colors.dart';
 
 /// Compact to-do card for home page
-/// Shows action name, event emoji/name, group, and time left
+/// Shows action name, event emoji/name, and time left
 class TodoCard extends StatelessWidget {
   final TodoEntity todo;
   final VoidCallback? onTap;
@@ -71,29 +71,6 @@ class TodoCard extends StatelessWidget {
                       Flexible(
                         child: Text(
                           todo.eventName,
-                          style: AppText.bodyMedium.copyWith(
-                            color: BrandColors.text2,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 2),
-
-                  // Group name with icon
-                  Row(
-                    children: [
-                      const Icon(
-                        Icons.people,
-                        color: BrandColors.text2,
-                        size: IconSizes.sm,
-                      ),
-                      const SizedBox(width: Gaps.xs / 2),
-                      Flexible(
-                        child: Text(
-                          todo.groupName,
                           style: AppText.bodyMedium.copyWith(
                             color: BrandColors.text2,
                           ),

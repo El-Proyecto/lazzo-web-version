@@ -35,6 +35,9 @@ class RsvpRepositoryImpl implements RsvpRepository {
       case RsvpStatus.notGoing:
         statusString = 'no';
         break;
+      case RsvpStatus.maybe:
+        statusString = 'maybe';
+        break;
       case RsvpStatus.pending:
         statusString = 'pending';
         break;
@@ -61,6 +64,9 @@ class RsvpRepositoryImpl implements RsvpRepository {
         break;
       case RsvpStatus.notGoing:
         statusString = 'no';
+        break;
+      case RsvpStatus.maybe:
+        statusString = 'maybe';
         break;
       case RsvpStatus.pending:
         statusString = 'pending';

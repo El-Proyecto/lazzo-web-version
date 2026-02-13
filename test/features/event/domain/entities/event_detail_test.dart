@@ -24,8 +24,6 @@ void main() {
         id: 'event-1',
         name: 'Test Event',
         emoji: '🎉',
-        groupId: 'group-1',
-        groupName: 'Test Group',
         startDateTime: startDateTime,
         endDateTime: endDateTime,
         location: location,

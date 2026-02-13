@@ -42,12 +42,12 @@ class EventDataSource {
     //required String? id,
     required String name,
     required String emoji,
-    required String groupId,
     DateTime? startDateTime,
     DateTime? endDateTime,
     String? locationId,
     String status = 'draft',
     required String createdBy,
+    String? description,
   }) async {
     // Calculate correct status based on time if event is being confirmed
     String finalStatus = status;
@@ -61,15 +61,15 @@ class EventDataSource {
         .insert({
           'name': name,
           'emoji': emoji,
-          'group_id': groupId,
           'start_datetime': startDateTime?.toIso8601String(),
           'end_datetime': endDateTime?.toIso8601String(),
           'location_id': locationId,
           'status': finalStatus,
           'created_by': createdBy,
+          'description': description,
         })
         .select(
-            'id, name, emoji, group_id, start_datetime, end_datetime, location_id, status, created_by, created_at')
+            'id, name, emoji, description, start_datetime, end_datetime, location_id, status, created_by, created_at')
         .single();
 
     return response;
@@ -81,7 +81,7 @@ class EventDataSource {
     final response = await _client
         .from('events')
         .select(
-            'id, name, emoji, group_id, start_datetime, end_datetime, location_id, status, created_by, created_at')
+            'id, name, emoji, description, start_datetime, end_datetime, location_id, status, created_by, created_at')
         .eq('id', id)
         .maybeSingle();
 
@@ -96,11 +96,11 @@ class EventDataSource {
     required String id,
     required String name,
     required String emoji,
-    required String groupId,
     required DateTime? startDateTime,
     required DateTime? endDateTime,
     required String? locationId,
     required String status,
+    String? description,
   }) async {
     // Calculate correct status based on time if event is confirmed/living/recap
     String finalStatus = status;
@@ -113,7 +113,7 @@ class EventDataSource {
     final updateData = <String, dynamic>{
       'name': name,
       'emoji': emoji,
-      'group_id': groupId,
+      'description': description,
       'start_datetime': startDateTime?.toIso8601String(),
       'end_datetime': endDateTime?.toIso8601String(),
       'location_id': locationId,
@@ -127,7 +127,7 @@ class EventDataSource {
           .update(updateData)
           .eq('id', id)
           .select(
-              'id, name, emoji, group_id, start_datetime, end_datetime, location_id, status, created_by, created_at, updated_at')
+              'id, name, emoji, description, start_datetime, end_datetime, location_id, status, created_by, created_at, updated_at')
           .single(); // Use .single() instead of .maybeSingle() to get proper error
 
       return response;
@@ -156,17 +156,17 @@ class EventDataSource {
     }
   }
 
-  /// Get events for a group with performance optimization
+  /// Get events created by a user with performance optimization
   /// Uses indexes: order by created_at (indexed) with limit
-  Future<List<Map<String, dynamic>>> getEventsForGroup(
-    String groupId, {
+  Future<List<Map<String, dynamic>>> getEventsCreatedByUser(
+    String userId, {
     int limit = 50,
   }) async {
     final response = await _client
         .from('events')
         .select(
-            'id, name, emoji, group_id, start_datetime, end_datetime, location_id, status, created_by, created_at')
-        .eq('group_id', groupId)
+            'id, name, emoji, start_datetime, end_datetime, location_id, status, created_by, created_at')
+        .eq('created_by', userId)
         .order('created_at', ascending: false)
         .limit(limit);
 
@@ -230,7 +230,6 @@ class EventDataSource {
     int limit = 10,
   }) async {
     try {
-      // Use explicit foreign key to avoid ambiguity: events.group_id → groups.id
       final response = await _client
           .from('events')
           .select('''
@@ -239,7 +238,6 @@ class EventDataSource {
             emoji,
             start_datetime,
             location_id,
-            group_id,
             created_at,
             status,
             locations (
@@ -247,9 +245,6 @@ class EventDataSource {
               formatted_address,
               latitude,
               longitude
-            ),
-            groups!events_group_id_fkey (
-              name
             )
           ''')
           .eq('created_by', userId)

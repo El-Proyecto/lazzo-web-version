@@ -11,11 +11,11 @@ class StorageService {
   StorageService(this._client);
 
   /// Upload a photo to the memory_groups bucket (PRIVATE)
-  /// Path convention: /groupId/memoryId/userId/uuid.jpg
+  /// Path convention: /eventId/memoryId/userId/uuid.jpg
   ///
   /// Returns the storage path (not URL - URLs are generated on-demand with RLS)
   Future<String> uploadMemoryPhoto({
-    required String groupId,
+    required String eventId,
     required String memoryId,
     required String userId,
     required File file,
@@ -27,7 +27,7 @@ class StorageService {
       final fileName = '$uuid$extension';
 
       // Storage path following convention
-      final storagePath = '$groupId/$memoryId/$userId/$fileName';
+      final storagePath = '$eventId/$memoryId/$userId/$fileName';
 
       // Upload to Supabase Storage (private bucket)
       await _client.storage.from('memory_groups').upload(storagePath, file);
@@ -61,13 +61,13 @@ class StorageService {
 
   /// Delete a photo from storage
   Future<void> deleteMemoryPhoto({
-    required String groupId,
+    required String eventId,
     required String memoryId,
     required String userId,
     required String fileName,
   }) async {
     try {
-      final storagePath = '$groupId/$memoryId/$userId/$fileName';
+      final storagePath = '$eventId/$memoryId/$userId/$fileName';
 
       await _client.storage.from('memory_groups').remove([storagePath]);
     } catch (e) {

@@ -1,48 +1,6 @@
 -- WARNING: This schema is for context only and is not meant to be run.
 -- Table order and constraints may not be valid for execution.
 
-CREATE TABLE public.chat_active_users (
-  event_id uuid NOT NULL,
-  user_id uuid NOT NULL,
-  last_seen timestamp with time zone NOT NULL DEFAULT now(),
-  CONSTRAINT chat_active_users_pkey PRIMARY KEY (event_id, user_id),
-  CONSTRAINT chat_active_users_event_id_fkey FOREIGN KEY (event_id) REFERENCES public.events(id),
-  CONSTRAINT chat_active_users_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
-);
-CREATE TABLE public.event_date_options (
-  id uuid NOT NULL DEFAULT gen_random_uuid(),
-  event_id uuid NOT NULL,
-  starts_at timestamp with time zone NOT NULL,
-  ends_at timestamp with time zone NOT NULL,
-  created_by uuid,
-  created_at timestamp with time zone DEFAULT now(),
-  is_initial boolean DEFAULT false,
-  CONSTRAINT event_date_options_pkey PRIMARY KEY (id),
-  CONSTRAINT event_date_options_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.users(id),
-  CONSTRAINT event_date_options_event_id_fkey FOREIGN KEY (event_id) REFERENCES public.events(id)
-);
-CREATE TABLE public.event_date_votes (
-  option_id uuid NOT NULL,
-  user_id uuid NOT NULL DEFAULT auth.uid(),
-  voted_at timestamp with time zone DEFAULT now(),
-  event_id uuid NOT NULL,
-  CONSTRAINT event_date_votes_pkey PRIMARY KEY (option_id, user_id),
-  CONSTRAINT event_date_votes_option_id_fkey FOREIGN KEY (option_id) REFERENCES public.event_date_options(id),
-  CONSTRAINT event_date_votes_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
-);
-CREATE TABLE public.event_expenses (
-  id uuid NOT NULL DEFAULT uuid_generate_v4(),
-  event_id uuid NOT NULL,
-  title text NOT NULL,
-  total_amount numeric NOT NULL,
-  created_at timestamp with time zone DEFAULT now(),
-  created_by uuid,
-  paid_by uuid NOT NULL,
-  CONSTRAINT event_expenses_pkey PRIMARY KEY (id),
-  CONSTRAINT event_expenses_event_id_fkey FOREIGN KEY (event_id) REFERENCES public.events(id),
-  CONSTRAINT event_expenses_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.users(id),
-  CONSTRAINT event_expenses_paid_by_fkey FOREIGN KEY (paid_by) REFERENCES public.users(id)
-);
 CREATE TABLE public.event_guest_rsvps (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   event_id uuid NOT NULL,
@@ -113,15 +71,6 @@ CREATE TABLE public.events (
   CONSTRAINT events_location_id_fkey FOREIGN KEY (location_id) REFERENCES public.locations(id),
   CONSTRAINT events_cover_photo_id_fkey FOREIGN KEY (cover_photo_id) REFERENCES public.event_photos(id)
 );
-CREATE TABLE public.expense_splits (
-  expense_id uuid NOT NULL,
-  user_id uuid NOT NULL,
-  amount numeric NOT NULL,
-  has_paid boolean DEFAULT false,
-  CONSTRAINT expense_splits_pkey PRIMARY KEY (expense_id, user_id),
-  CONSTRAINT expense_splits_expense_id_fkey FOREIGN KEY (expense_id) REFERENCES public.event_expenses(id),
-  CONSTRAINT expense_splits_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
-);
 CREATE TABLE public.invite_analytics (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   event_id uuid NOT NULL,
@@ -134,29 +83,6 @@ CREATE TABLE public.invite_analytics (
   CONSTRAINT invite_analytics_event_id_fkey FOREIGN KEY (event_id) REFERENCES public.events(id),
   CONSTRAINT invite_analytics_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
 );
-CREATE TABLE public.location_suggestion_votes (
-  id uuid NOT NULL DEFAULT gen_random_uuid(),
-  suggestion_id uuid NOT NULL,
-  user_id uuid NOT NULL,
-  created_at timestamp with time zone DEFAULT now(),
-  CONSTRAINT location_suggestion_votes_pkey PRIMARY KEY (id),
-  CONSTRAINT location_suggestion_votes_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id),
-  CONSTRAINT location_suggestion_votes_suggestion_id_fkey FOREIGN KEY (suggestion_id) REFERENCES public.location_suggestions(id)
-);
-CREATE TABLE public.location_suggestions (
-  id uuid NOT NULL DEFAULT gen_random_uuid(),
-  event_id uuid NOT NULL,
-  user_id uuid NOT NULL,
-  location_name text NOT NULL,
-  address text,
-  latitude double precision,
-  longitude double precision,
-  created_at timestamp with time zone DEFAULT now(),
-  is_initial boolean DEFAULT false,
-  CONSTRAINT location_suggestions_pkey PRIMARY KEY (id),
-  CONSTRAINT location_suggestions_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id),
-  CONSTRAINT location_suggestions_event_id_fkey FOREIGN KEY (event_id) REFERENCES public.events(id)
-);
 CREATE TABLE public.locations (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   display_name text,
@@ -167,18 +93,6 @@ CREATE TABLE public.locations (
   created_by uuid,
   CONSTRAINT locations_pkey PRIMARY KEY (id),
   CONSTRAINT locations_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.users(id)
-);
-CREATE TABLE public.memories (
-  mem_id uuid NOT NULL DEFAULT gen_random_uuid(),
-  user_id uuid NOT NULL UNIQUE,
-  photo_id uuid NOT NULL,
-  mem_title text NOT NULL,
-  mem_location text NOT NULL,
-  mem_date text NOT NULL,
-  visibility boolean NOT NULL DEFAULT false,
-  CONSTRAINT memories_pkey PRIMARY KEY (mem_id),
-  CONSTRAINT memories_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id),
-  CONSTRAINT memories_photo_id_fkey FOREIGN KEY (photo_id) REFERENCES public.photos(photo_id)
 );
 CREATE TABLE public.notifications (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -194,7 +108,6 @@ CREATE TABLE public.notifications (
   event_emoji text,
   user_name text,
   event_name text,
-  amount text,
   hours text,
   mins text,
   date text,
@@ -203,47 +116,20 @@ CREATE TABLE public.notifications (
   device text,
   note text,
   dedup_bucket timestamp with time zone NOT NULL DEFAULT (date_trunc('minute'::text, now()) + '00:05:00'::interval),
-  expense_id uuid,
   CONSTRAINT notifications_pkey PRIMARY KEY (id),
   CONSTRAINT notifications_recipient_user_id_fkey FOREIGN KEY (recipient_user_id) REFERENCES public.users(id),
-  CONSTRAINT notifications_event_id_fkey FOREIGN KEY (event_id) REFERENCES public.events(id),
-  CONSTRAINT notifications_expense_id_fkey FOREIGN KEY (expense_id) REFERENCES public.event_expenses(id)
-);
-CREATE TABLE public.photos (
-  photo_id uuid NOT NULL DEFAULT gen_random_uuid(),
-  event_id uuid NOT NULL UNIQUE,
-  uploaded_by uuid NOT NULL UNIQUE,
-  storage_path text NOT NULL UNIQUE,
-  width bigint,
-  height bigint,
-  date text NOT NULL,
-  CONSTRAINT photos_pkey PRIMARY KEY (photo_id),
-  CONSTRAINT photos_uploaded_by_fkey FOREIGN KEY (uploaded_by) REFERENCES public.users(id),
-  CONSTRAINT photos_event_id_fkey FOREIGN KEY (event_id) REFERENCES public.events(id)
+  CONSTRAINT notifications_event_id_fkey FOREIGN KEY (event_id) REFERENCES public.events(id)
 );
 CREATE TABLE public.problem_reports (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   user_id uuid NOT NULL,
-  category text NOT NULL CHECK (category = ANY (ARRAY['Sign up / Login'::text, 'Create or join event'::text, 'Upload photos & memories'::text, 'Share memories'::text, 'Payments & expenses'::text, 'Notifications'::text, 'Other'::text])),
+  category text NOT NULL CHECK (category = ANY (ARRAY['Sign up / Login'::text, 'Create or join event'::text, 'Upload photos & memories'::text, 'Share memories'::text, 'Notifications'::text, 'Other'::text])),
   description text NOT NULL CHECK (char_length(description) >= 10 AND char_length(description) <= 500),
   status USER-DEFINED NOT NULL DEFAULT 'pending'::report_status,
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   updated_at timestamp with time zone NOT NULL DEFAULT now(),
   CONSTRAINT problem_reports_pkey PRIMARY KEY (id),
   CONSTRAINT problem_reports_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
-);
-CREATE TABLE public.push_tokens (
-  id uuid NOT NULL DEFAULT gen_random_uuid(),
-  user_id uuid NOT NULL,
-  token text NOT NULL,
-  platform text NOT NULL CHECK (platform = ANY (ARRAY['ios'::text, 'android'::text, 'web'::text])),
-  device_name text,
-  created_at timestamp with time zone NOT NULL DEFAULT now(),
-  updated_at timestamp with time zone NOT NULL DEFAULT now(),
-  last_used_at timestamp with time zone,
-  is_active boolean NOT NULL DEFAULT true,
-  CONSTRAINT push_tokens_pkey PRIMARY KEY (id),
-  CONSTRAINT push_tokens_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id)
 );
 CREATE TABLE public.reviewer_auth_sessions (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
@@ -264,7 +150,6 @@ CREATE TABLE public.user_notification_settings (
   quiet_hours_end time without time zone,
   push_enabled_for_invites boolean NOT NULL DEFAULT true,
   push_enabled_for_events boolean NOT NULL DEFAULT true,
-  push_enabled_for_payments boolean NOT NULL DEFAULT true,
   created_at timestamp with time zone NOT NULL DEFAULT now(),
   updated_at timestamp with time zone NOT NULL DEFAULT now(),
   CONSTRAINT user_notification_settings_pkey PRIMARY KEY (user_id),

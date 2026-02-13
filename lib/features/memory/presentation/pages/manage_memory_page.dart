@@ -458,7 +458,7 @@ class _ManageMemoryPageState extends ConsumerState<ManageMemoryPage> {
   }
 
   void _handleAddPhoto() async {
-    // Get event details for groupId and status
+    // Get event details for status check
     final eventAsync = ref.read(eventDetailProvider(widget.memoryId));
 
     eventAsync.when(
@@ -475,12 +475,10 @@ class _ManageMemoryPageState extends ConsumerState<ManageMemoryPage> {
         if (isLiving) {
           await photoNotifier.takePhoto(
             eventId: widget.memoryId,
-            groupId: event.groupId,
           );
         } else {
           await photoNotifier.pickPhotoFromGallery(
             eventId: widget.memoryId,
-            groupId: event.groupId,
           );
         }
 

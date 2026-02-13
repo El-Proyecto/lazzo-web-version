@@ -2,53 +2,21 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-// Ajusta estes imports para os teus paths reais:
 import 'package:lazzo/features/create_event/presentation/pages/create_event_page.dart';
 import 'package:lazzo/features/create_event/presentation/widgets/confirm_event_dialog.dart';
-import 'package:lazzo/features/groups/presentation/providers/groups_provider.dart';
-import 'package:lazzo/features/groups/domain/entities/group.dart';
-import 'package:lazzo/shared/models/group_enums.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  // Helper para criar grupos mock para os testes
-  List<Group> getMockGroups() {
-    return [
-      const Group(
-        id: '1',
-        name: 'Os Bros',
-        memberCount: 5,
-        status: GroupStatus.active,
-        isPinned: false,
-        isMuted: false,
-      ),
-      const Group(
-        id: '2',
-        name: 'Família',
-        memberCount: 4,
-        status: GroupStatus.active,
-        isPinned: false,
-        isMuted: false,
-      ),
-    ];
-  }
-
-  // Widget wrapper com ProviderScope e mocks necessários
+  // Widget wrapper com ProviderScope
   Widget wrap(Widget child) {
     return ProviderScope(
-      overrides: [
-        // Mock do groupsProvider para retornar grupos fake
-        groupsProvider.overrideWith((ref) async {
-          return getMockGroups();
-        }),
-      ],
       child: MaterialApp(home: child),
     );
   }
 
-  group('CreateEventPage – só prossegue com nome + grupo', () {
-    testWidgets('Sem nome e grupo: mostra erros e NÃO abre confirmação', (
+  group('CreateEventPage – LAZZO 2.0 (no groups)', () {
+    testWidgets('Sem nome: mostra erro e NÃO abre confirmação', (
       tester,
     ) async {
       await tester.pumpWidget(wrap(const CreateEventPage()));
@@ -65,27 +33,25 @@ void main() {
       await tester.tap(continueBtn);
       await tester.pumpAndSettle();
 
-      // Erros devem aparecer
+      // Erro de nome deve aparecer
       expect(find.text('Event name is required'), findsOneWidget);
-      expect(find.text('Please select a group'), findsOneWidget);
 
       // Confirm dialog NÃO deve abrir
       expect(find.byType(ConfirmEventBottomSheet), findsNothing);
     });
 
-    testWidgets('Com nome e grupo: abre ConfirmEventBottomSheet', (
+    testWidgets('Com nome: abre ConfirmEventBottomSheet', (
       tester,
     ) async {
       await tester.pumpWidget(wrap(const CreateEventPage()));
 
       // 1) Abrir editor do nome (tap no texto "Add Event Name" abre o bottom sheet)
-      //   Dica: a GestureDetector está no container que contém este texto, o tap no texto propaga.
       final nameTapTarget = find.text('Add Event Name');
       expect(nameTapTarget, findsOneWidget);
       await tester.tap(nameTapTarget);
       await tester.pumpAndSettle(); // abre o bottom sheet do nome
 
-      // 2) Preencher nome no TextField com key fornecida pelo EventGroupSelector
+      // 2) Preencher nome no TextField
       final nameField = find.byKey(const Key('createEvent:name'));
       expect(
         nameField,
@@ -100,22 +66,7 @@ void main() {
       await tester.tap(find.text('Save'));
       await tester.pumpAndSettle(); // volta à página
 
-      // 3) Selecionar um grupo (usa a key do botão de grupo)
-      final groupBtn = find.byKey(const Key('createEvent:groupButton'));
-      expect(
-        groupBtn,
-        findsOneWidget,
-        reason:
-            'A groupButtonKey tem de estar no GestureDetector que chama onGroupPressed',
-      );
-      await tester.tap(groupBtn);
-      await tester.pumpAndSettle(); // abre BottomSheet de grupos
-
-      // Escolher "Os Bros" (vem de _getMockGroups)
-      await tester.tap(find.text('Os Bros'));
-      await tester.pumpAndSettle(); // fecha sheet
-
-      // 4) Prosseguir
+      // 3) Prosseguir
       final continueBtn = find.byKey(const Key('continue_button'));
       await tester.scrollUntilVisible(
         continueBtn,
@@ -130,7 +81,6 @@ void main() {
 
       // E não devem existir erros de validação
       expect(find.text('Event name is required'), findsNothing);
-      expect(find.text('Please select a group'), findsNothing);
     });
   });
 }

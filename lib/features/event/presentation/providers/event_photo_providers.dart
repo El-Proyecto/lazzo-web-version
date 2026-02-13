@@ -18,7 +18,6 @@ class EventPhotoUploadNotifier extends StateNotifier<AsyncValue<String?>> {
   /// Pick and upload a photo from camera
   Future<void> takePhoto({
     required String eventId,
-    required String groupId,
   }) async {
     try {
       // Pick image from camera
@@ -36,7 +35,6 @@ class EventPhotoUploadNotifier extends StateNotifier<AsyncValue<String?>> {
       // Upload photo
       await _uploadPhoto(
         eventId: eventId,
-        groupId: groupId,
         imageFile: File(photo.path),
       );
     } catch (error, stackTrace) {
@@ -47,7 +45,6 @@ class EventPhotoUploadNotifier extends StateNotifier<AsyncValue<String?>> {
   /// Pick and upload a photo from gallery
   Future<void> pickPhotoFromGallery({
     required String eventId,
-    required String groupId,
   }) async {
     try {
       // Pick image from gallery
@@ -65,7 +62,6 @@ class EventPhotoUploadNotifier extends StateNotifier<AsyncValue<String?>> {
       // Upload photo
       await _uploadPhoto(
         eventId: eventId,
-        groupId: groupId,
         imageFile: File(photo.path),
       );
     } catch (error, stackTrace) {
@@ -76,7 +72,6 @@ class EventPhotoUploadNotifier extends StateNotifier<AsyncValue<String?>> {
   /// Internal method to upload photo
   Future<void> _uploadPhoto({
     required String eventId,
-    required String groupId,
     required File imageFile,
   }) async {
     state = const AsyncValue.loading();
@@ -84,7 +79,6 @@ class EventPhotoUploadNotifier extends StateNotifier<AsyncValue<String?>> {
     try {
       final photoUrl = await _uploadEventPhoto(
         eventId: eventId,
-        groupId: groupId,
         imageFile: imageFile,
       );
 
@@ -121,7 +115,8 @@ final eventPhotoUploadNotifierProvider = StateNotifierProvider.family<
 });
 
 /// Provider to get all photos for an event
-final eventPhotosProvider = FutureProvider.family<List<dynamic>, String>((ref, eventId) async {
+final eventPhotosProvider =
+    FutureProvider.family<List<dynamic>, String>((ref, eventId) async {
   final repository = ref.watch(eventPhotoRepositoryProvider);
   return await repository.getEventPhotos(eventId);
 });

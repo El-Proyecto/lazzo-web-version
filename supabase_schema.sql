@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict qtmzKkbRblxbdI0drnwV7C1RuajFwIu6Mna99m1ed3bB9F58rYcRxoq19qf8QAV
+\restrict ddlLiktetbXH0oVF3N0Ho84yXUQetLy5t8HgO0a3HvWUrtJSTAEdPxXIdjEKEte
 
 -- Dumped from database version 17.4
 -- Dumped by pg_dump version 18.1
@@ -57,16 +57,6 @@ CREATE TYPE public.event_state AS ENUM (
 
 
 --
--- Name: expense_status; Type: TYPE; Schema: public; Owner: -
---
-
-CREATE TYPE public.expense_status AS ENUM (
-    'open',
-    'settled'
-);
-
-
---
 -- Name: notification_category; Type: TYPE; Schema: public; Owner: -
 --
 
@@ -85,27 +75,6 @@ CREATE TYPE public.notification_priority AS ENUM (
     'low',
     'medium',
     'high'
-);
-
-
---
--- Name: photo_type; Type: TYPE; Schema: public; Owner: -
---
-
-CREATE TYPE public.photo_type AS ENUM (
-    'group',
-    'pov'
-);
-
-
---
--- Name: poll_type; Type: TYPE; Schema: public; Owner: -
---
-
-CREATE TYPE public.poll_type AS ENUM (
-    'date',
-    'location',
-    'custom'
 );
 
 
@@ -129,28 +98,6 @@ CREATE TYPE public.rsvp_status AS ENUM (
     'yes',
     'no',
     'maybe'
-);
-
-
---
--- Name: rsvp_status	; Type: TYPE; Schema: public; Owner: -
---
-
-CREATE TYPE public."rsvp_status	" AS ENUM (
-    'pending',
-    'yes',
-    'no'
-);
-
-
---
--- Name: split_method; Type: TYPE; Schema: public; Owner: -
---
-
-CREATE TYPE public.split_method AS ENUM (
-    'equal',
-    'shares',
-    'weights'
 );
 
 
@@ -297,9 +244,8 @@ CREATE FUNCTION public.cleanup_expired_notifications() RETURNS void
     LANGUAGE plpgsql SECURITY DEFINER
     AS $$
 BEGIN
-  -- ✅ Remove EPHEMERAL notifications (temporary reminders/alerts)
-  -- These don't belong in permanent inbox history
-  
+  -- Remove EPHEMERAL notifications (temporary reminders/alerts)
+
   -- 1. Upload deadline notifications (no longer relevant after event ends)
   DELETE FROM notifications
   WHERE type IN ('uploadsOpen', 'uploadsClosing')
@@ -314,72 +260,46 @@ BEGIN
   DELETE FROM notifications
   WHERE type IN ('eventStartsSoon', 'eventStartingNow')
     AND created_at < NOW() - INTERVAL '2 hours';
-  
+
   -- 3. Location sharing notifications (temporary)
   DELETE FROM notifications
   WHERE type IN ('locationLiveStarted', 'locationLiveStopped')
     AND created_at < NOW() - INTERVAL '24 hours';
-  
-  -- ⚠️ NEVER DELETE these types (permanent inbox history):
-  -- - groupInviteReceived (users may want to review who invited them)
+
+  -- NEVER DELETE these types (permanent inbox history):
   -- - eventCreated (event history)
-  -- - paymentsAddedYouOwe, paymentsRequest (financial records)
-  -- - chatMention, chatReply (conversation context)
   -- - memoryShared (memories are permanent)
   -- - accountSecurity (audit trail)
-  
-  -- Optional: Archive very old read notifications (>90 days) instead of deleting
-  -- Uncomment if you add an `archived` column
-  -- UPDATE notifications
-  -- SET archived = TRUE
-  -- WHERE is_read = TRUE
-  --   AND created_at < NOW() - INTERVAL '90 days'
-  --   AND type NOT IN ('uploadsOpen', 'uploadsClosing', 'eventStartsSoon', 'locationLiveStarted');
-  
 END;
 $$;
 
 
 --
--- Name: create_notification_secure(uuid, text, public.notification_category, public.notification_priority, text, uuid, uuid, text, text, text, text, text, text, text, text, text, text, text, text, uuid); Type: FUNCTION; Schema: public; Owner: -
+-- Name: create_notification_secure(uuid, text, public.notification_category, public.notification_priority, text, uuid, text, text, text, text, text, text, text, text, text, text); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.create_notification_secure(p_recipient_user_id uuid, p_type text, p_category public.notification_category, p_priority public.notification_priority DEFAULT 'medium'::public.notification_priority, p_deeplink text DEFAULT NULL::text, p_group_id uuid DEFAULT NULL::uuid, p_event_id uuid DEFAULT NULL::uuid, p_event_emoji text DEFAULT NULL::text, p_user_name text DEFAULT NULL::text, p_group_name text DEFAULT NULL::text, p_event_name text DEFAULT NULL::text, p_amount text DEFAULT NULL::text, p_hours text DEFAULT NULL::text, p_mins text DEFAULT NULL::text, p_date text DEFAULT NULL::text, p_time text DEFAULT NULL::text, p_place text DEFAULT NULL::text, p_device text DEFAULT NULL::text, p_note text DEFAULT NULL::text, p_expense_id uuid DEFAULT NULL::uuid) RETURNS uuid
+CREATE FUNCTION public.create_notification_secure(p_recipient_user_id uuid, p_type text, p_category public.notification_category, p_priority public.notification_priority DEFAULT 'medium'::public.notification_priority, p_deeplink text DEFAULT NULL::text, p_event_id uuid DEFAULT NULL::uuid, p_event_emoji text DEFAULT NULL::text, p_user_name text DEFAULT NULL::text, p_event_name text DEFAULT NULL::text, p_hours text DEFAULT NULL::text, p_mins text DEFAULT NULL::text, p_date text DEFAULT NULL::text, p_time text DEFAULT NULL::text, p_place text DEFAULT NULL::text, p_device text DEFAULT NULL::text, p_note text DEFAULT NULL::text) RETURNS uuid
     LANGUAGE plpgsql SECURITY DEFINER
     AS $$
 DECLARE
   v_notification_id UUID;
   v_should_notify BOOLEAN;
-  v_is_muted BOOLEAN;
   v_in_quiet_hours BOOLEAN;
   v_push_enabled BOOLEAN;
 BEGIN
-  -- Check if user has muted this group (if group-related)
-  IF p_group_id IS NOT NULL THEN
-    SELECT is_muted INTO v_is_muted
-    FROM group_user_settings
-    WHERE user_id = p_recipient_user_id AND group_id = p_group_id;
-    
-    IF COALESCE(v_is_muted, FALSE) THEN
-      RETURN NULL; -- Skip notification for muted group
-    END IF;
-  END IF;
-  
   -- Check user notification settings
-  SELECT 
+  SELECT
     push_enabled,
-    CASE 
+    CASE
       WHEN quiet_hours_enabled THEN
         CURRENT_TIME BETWEEN quiet_hours_start AND quiet_hours_end
       ELSE FALSE
     END AS in_quiet_hours,
     CASE p_category
       WHEN 'push' THEN
-        CASE 
-          WHEN p_type = 'chatMessage' THEN push_enabled_for_chat
-          WHEN p_type = 'chatMention' THEN push_enabled_for_chat
+        CASE
           WHEN p_type LIKE 'event%' THEN push_enabled_for_events
-          WHEN p_type LIKE 'payment%' THEN push_enabled_for_payments
+          WHEN p_type LIKE 'invite%' THEN push_enabled_for_invites
           ELSE TRUE
         END
       ELSE TRUE -- Feed/actions notifications always allowed
@@ -387,49 +307,47 @@ BEGIN
   INTO v_push_enabled, v_in_quiet_hours, v_should_notify
   FROM user_notification_settings
   WHERE user_id = p_recipient_user_id;
-  
+
   -- Default to enabled if no settings found
   IF NOT FOUND THEN
     v_push_enabled := TRUE;
     v_in_quiet_hours := FALSE;
     v_should_notify := TRUE;
   END IF;
-  
+
   -- Skip ephemeral push notifications during quiet hours
   IF v_in_quiet_hours AND p_category = 'push' THEN
-    RETURN NULL; -- Skip notification entirely during quiet hours
+    RETURN NULL;
   END IF;
-  
+
   -- Skip entirely if category disabled
   IF NOT v_should_notify THEN
     RETURN NULL;
   END IF;
-  
+
   -- Insert notification
   INSERT INTO notifications (
     recipient_user_id, type, category, priority, deeplink,
-    group_id, event_id, event_emoji, user_name, group_name,
-    event_name, amount, hours, mins, date, time, place, device, note,
-    expense_id
+    event_id, event_emoji, user_name,
+    event_name, hours, mins, date, time, place, device, note
   ) VALUES (
     p_recipient_user_id, p_type, p_category, p_priority, p_deeplink,
-    p_group_id, p_event_id, p_event_emoji, p_user_name, p_group_name,
-    p_event_name, p_amount, p_hours, p_mins, p_date, p_time, p_place, p_device, p_note,
-    p_expense_id
+    p_event_id, p_event_emoji, p_user_name,
+    p_event_name, p_hours, p_mins, p_date, p_time, p_place, p_device, p_note
   )
   ON CONFLICT (dedup_key, dedup_bucket) DO NOTHING
   RETURNING id INTO v_notification_id;
-  
-  RETURN v_notification_id; -- NULL if duplicate
+
+  RETURN v_notification_id;
 END;
 $$;
 
 
 --
--- Name: FUNCTION create_notification_secure(p_recipient_user_id uuid, p_type text, p_category public.notification_category, p_priority public.notification_priority, p_deeplink text, p_group_id uuid, p_event_id uuid, p_event_emoji text, p_user_name text, p_group_name text, p_event_name text, p_amount text, p_hours text, p_mins text, p_date text, p_time text, p_place text, p_device text, p_note text, p_expense_id uuid); Type: COMMENT; Schema: public; Owner: -
+-- Name: FUNCTION create_notification_secure(p_recipient_user_id uuid, p_type text, p_category public.notification_category, p_priority public.notification_priority, p_deeplink text, p_event_id uuid, p_event_emoji text, p_user_name text, p_event_name text, p_hours text, p_mins text, p_date text, p_time text, p_place text, p_device text, p_note text); Type: COMMENT; Schema: public; Owner: -
 --
 
-COMMENT ON FUNCTION public.create_notification_secure(p_recipient_user_id uuid, p_type text, p_category public.notification_category, p_priority public.notification_priority, p_deeplink text, p_group_id uuid, p_event_id uuid, p_event_emoji text, p_user_name text, p_group_name text, p_event_name text, p_amount text, p_hours text, p_mins text, p_date text, p_time text, p_place text, p_device text, p_note text, p_expense_id uuid) IS 'Creates notifications with server-side filtering (muting, quiet hours, etc). Push notifications are ephemeral and never downgraded to inbox.';
+COMMENT ON FUNCTION public.create_notification_secure(p_recipient_user_id uuid, p_type text, p_category public.notification_category, p_priority public.notification_priority, p_deeplink text, p_event_id uuid, p_event_emoji text, p_user_name text, p_event_name text, p_hours text, p_mins text, p_date text, p_time text, p_place text, p_device text, p_note text) IS 'Creates notifications with server-side filtering (quiet hours, category prefs). Push notifications are ephemeral and never downgraded to inbox.';
 
 
 --
@@ -444,21 +362,6 @@ BEGIN
   VALUES (NEW.id)
   ON CONFLICT (user_id) DO NOTHING;
   RETURN NEW;
-END;
-$$;
-
-
---
--- Name: decrement_poll_vote_count(uuid); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.decrement_poll_vote_count(option_id uuid) RETURNS void
-    LANGUAGE plpgsql SECURITY DEFINER
-    AS $$
-BEGIN
-  UPDATE poll_options
-  SET vote_count = GREATEST(vote_count - 1, 0)
-  WHERE id = option_id;
 END;
 $$;
 
@@ -817,26 +720,11 @@ $$;
 
 
 --
--- Name: increment_poll_vote_count(uuid); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.increment_poll_vote_count(option_id uuid) RETURNS void
-    LANGUAGE plpgsql SECURITY DEFINER
-    AS $$
-BEGIN
-  UPDATE poll_options
-  SET vote_count = vote_count + 1
-  WHERE id = option_id;
-END;
-$$;
-
-
---
 -- Name: is_member_of_event(uuid); Type: FUNCTION; Schema: public; Owner: -
 --
 
 CREATE FUNCTION public.is_member_of_event(eid uuid) RETURNS boolean
-    LANGUAGE sql STABLE
+    LANGUAGE sql STABLE SECURITY DEFINER
     SET search_path TO 'public'
     AS $$
   SELECT EXISTS (
@@ -879,92 +767,43 @@ $$;
 
 
 --
--- Name: notify_date_suggestion_added(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.notify_date_suggestion_added() RETURNS trigger
-    LANGUAGE plpgsql SECURITY DEFINER
-    AS $$
-DECLARE
-  v_suggester_name TEXT;
-  v_event_name TEXT;
-  v_event_emoji TEXT;
-BEGIN
-  -- Skip notification for initial date (set during event creation)
-  IF NEW.is_initial = TRUE THEN
-    RETURN NEW;
-  END IF;
-
-  SELECT e.name, e.emoji INTO v_event_name, v_event_emoji
-  FROM events e WHERE e.id = NEW.event_id;
-  
-  SELECT u.name INTO v_suggester_name
-  FROM users u WHERE u.id = NEW.created_by;
-
-  INSERT INTO notifications (
-    recipient_user_id, type, category, priority, user_name,
-    date, time, event_name, event_emoji, event_id, deeplink
-  )
-  SELECT 
-    ep.user_id, 'dateSuggestionAdded', 'notifications', 'low',
-    v_suggester_name, TO_CHAR(NEW.starts_at, 'DD Mon'),
-    TO_CHAR(NEW.starts_at, 'HH24:MI'), v_event_name, v_event_emoji,
-    NEW.event_id, 'lazzo://events/' || NEW.event_id || '/dates'
-  FROM event_participants ep
-  WHERE ep.pevent_id = NEW.event_id AND ep.user_id != NEW.created_by
-  ON CONFLICT (dedup_key, dedup_bucket) DO NOTHING;
-  
-  RETURN NEW;
-END;
-$$;
-
-
---
--- Name: FUNCTION notify_date_suggestion_added(); Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON FUNCTION public.notify_date_suggestion_added() IS 'Notifica participantes quando alguém sugere uma data.
-Inbox text: "João Silva suggested 15 Jan at 20:00 for Birthday Party"';
-
-
---
 -- Name: notify_event_canceled(); Type: FUNCTION; Schema: public; Owner: -
 --
 
 CREATE FUNCTION public.notify_event_canceled() RETURNS trigger
-    LANGUAGE plpgsql SECURITY DEFINER
+    LANGUAGE plpgsql
     AS $$
 DECLARE
   participant_record RECORD;
 BEGIN
-  -- ✅ FIXED: Changed rsvp = 'going' to rsvp = 'yes'
-  -- Send notification to all participants who confirmed attendance (RSVP = 'yes')
-  FOR participant_record IN
-    SELECT ep.user_id, u.name
-    FROM event_participants ep
-    JOIN users u ON u.id = ep.user_id
-    WHERE ep.pevent_id = OLD.id
-      AND ep.rsvp = 'yes'  -- ✅ FIXED: was 'going'
-      AND ep.user_id != OLD.created_by
-  LOOP
-    -- Insert notification logic here (depends on your notification structure)
-    -- This is a placeholder - adjust based on actual implementation
-    INSERT INTO notifications (
-      recipient_user_id,
-      type,
-      category,
-      event_id,
-      group_id
-    ) VALUES (
-      participant_record.user_id,
-      'eventCanceled',
-      'push',
-      OLD.id,
-      OLD.group_id
-    );
-  END LOOP;
-  
-  RETURN OLD;
+  IF OLD.status != 'canceled' AND NEW.status = 'canceled' THEN
+    FOR participant_record IN
+      SELECT ep.user_id, u.name
+      FROM event_participants ep
+      JOIN users u ON u.id = ep.user_id
+      WHERE ep.pevent_id = OLD.id
+        AND ep.rsvp IN ('yes', 'maybe')
+        AND ep.user_id != OLD.created_by
+    LOOP
+      INSERT INTO notifications (
+        recipient_user_id,
+        type,
+        category,
+        event_id,
+        event_name,
+        event_emoji
+      ) VALUES (
+        participant_record.user_id,
+        'eventCanceled',
+        'push',
+        OLD.id,
+        OLD.name,
+        OLD.emoji
+      );
+    END LOOP;
+  END IF;
+
+  RETURN NEW;
 END;
 $$;
 
@@ -988,7 +827,7 @@ BEGIN
       event_id,
       deeplink
     )
-    SELECT 
+    SELECT
       ep.user_id,
       'eventConfirmed',
       'notifications',
@@ -999,9 +838,9 @@ BEGIN
       'lazzo://event/' || NEW.id::text
     FROM event_participants ep
     WHERE ep.pevent_id = NEW.id
-      AND should_send_notification(ep.user_id, NEW.group_id);
+      AND should_send_notification(ep.user_id);
   END IF;
-  
+
   RETURN NEW;
 END;
 $$;
@@ -1028,7 +867,7 @@ BEGIN
       event_id,
       deeplink
     )
-    SELECT 
+    SELECT
       ep.user_id,
       'eventDateSet',
       'notifications',
@@ -1042,9 +881,9 @@ BEGIN
     FROM event_participants ep
     WHERE ep.pevent_id = NEW.id
       AND ep.user_id != NEW.created_by
-      AND should_send_notification(ep.user_id, NEW.group_id);
+      AND should_send_notification(ep.user_id);
   END IF;
-  
+
   RETURN NEW;
 END;
 $$;
@@ -1058,11 +897,10 @@ CREATE FUNCTION public.notify_event_details_updated() RETURNS trigger
     LANGUAGE plpgsql
     AS $$
 BEGIN
-  -- Check if relevant fields changed (not status, not dates/location)
-  IF (OLD.name IS DISTINCT FROM NEW.name 
+  IF (OLD.name IS DISTINCT FROM NEW.name
       OR OLD.emoji IS DISTINCT FROM NEW.emoji)
      AND OLD.status = NEW.status THEN
-    
+
     INSERT INTO notifications (
       recipient_user_id,
       type,
@@ -1073,7 +911,7 @@ BEGIN
       event_id,
       deeplink
     )
-    SELECT 
+    SELECT
       ep.user_id,
       'eventDetailsUpdated',
       'notifications',
@@ -1085,9 +923,9 @@ BEGIN
     FROM event_participants ep
     WHERE ep.pevent_id = NEW.id
       AND ep.user_id != NEW.created_by
-      AND should_send_notification(ep.user_id, NEW.group_id);
+      AND should_send_notification(ep.user_id);
   END IF;
-  
+
   RETURN NEW;
 END;
 $$;
@@ -1112,7 +950,7 @@ BEGIN
     event_id,
     deeplink
   )
-  SELECT 
+  SELECT
     ep.user_id,
     'eventEndsSoon',
     'push',
@@ -1126,8 +964,7 @@ BEGIN
   JOIN event_participants ep ON ep.pevent_id = e.id
   WHERE e.end_datetime BETWEEN NOW() AND NOW() + interval '30 minutes'
     AND e.status IN ('confirmed', 'live')
-    AND should_send_notification(ep.user_id, e.group_id)
-    -- Avoid duplicates
+    AND should_send_notification(ep.user_id)
     AND NOT EXISTS (
       SELECT 1 FROM notifications n
       WHERE n.recipient_user_id = ep.user_id
@@ -1149,11 +986,11 @@ CREATE FUNCTION public.notify_event_extended() RETURNS trigger
 DECLARE
   v_extension_mins INTEGER;
 BEGIN
-  IF OLD.end_datetime IS DISTINCT FROM NEW.end_datetime 
+  IF OLD.end_datetime IS DISTINCT FROM NEW.end_datetime
      AND NEW.end_datetime > OLD.end_datetime THEN
-    
+
     v_extension_mins := EXTRACT(EPOCH FROM (NEW.end_datetime - OLD.end_datetime)) / 60;
-    
+
     INSERT INTO notifications (
       recipient_user_id,
       type,
@@ -1165,7 +1002,7 @@ BEGIN
       event_id,
       deeplink
     )
-    SELECT 
+    SELECT
       ep.user_id,
       'eventExtended',
       'push',
@@ -1177,9 +1014,9 @@ BEGIN
       'lazzo://event/' || NEW.id::text
     FROM event_participants ep
     WHERE ep.pevent_id = NEW.id
-      AND should_send_notification(ep.user_id, NEW.group_id);
+      AND should_send_notification(ep.user_id);
   END IF;
-  
+
   RETURN NEW;
 END;
 $$;
@@ -1203,7 +1040,7 @@ BEGIN
     event_id,
     deeplink
   )
-  SELECT 
+  SELECT
     ep.user_id,
     'eventLive',
     'push',
@@ -1216,8 +1053,7 @@ BEGIN
   JOIN event_participants ep ON ep.pevent_id = e.id
   WHERE e.start_datetime BETWEEN NOW() - interval '5 minutes' AND NOW()
     AND e.status = 'confirmed'
-    AND should_send_notification(ep.user_id, e.group_id)
-    -- Only send once
+    AND should_send_notification(ep.user_id)
     AND NOT EXISTS (
       SELECT 1 FROM notifications n
       WHERE n.recipient_user_id = ep.user_id
@@ -1248,7 +1084,7 @@ BEGIN
       event_id,
       deeplink
     )
-    SELECT 
+    SELECT
       ep.user_id,
       'eventLocationSet',
       'notifications',
@@ -1262,9 +1098,9 @@ BEGIN
     JOIN locations l ON l.id = NEW.location_id
     WHERE ep.pevent_id = NEW.id
       AND ep.user_id != NEW.created_by
-      AND should_send_notification(ep.user_id, NEW.group_id);
+      AND should_send_notification(ep.user_id);
   END IF;
-  
+
   RETURN NEW;
 END;
 $$;
@@ -1289,7 +1125,7 @@ BEGIN
     event_id,
     deeplink
   )
-  SELECT 
+  SELECT
     ep.user_id,
     'eventStartsSoon',
     'push',
@@ -1303,9 +1139,8 @@ BEGIN
   JOIN event_participants ep ON ep.pevent_id = e.id
   WHERE e.start_datetime BETWEEN NOW() AND NOW() + interval '30 minutes'
     AND e.status = 'confirmed'
-    AND ep.rsvp = 'going'
-    AND should_send_notification(ep.user_id, e.group_id)
-    -- Avoid duplicate notifications
+    AND ep.rsvp = 'yes'
+    AND should_send_notification(ep.user_id)
     AND NOT EXISTS (
       SELECT 1 FROM notifications n
       WHERE n.recipient_user_id = ep.user_id
@@ -1359,384 +1194,6 @@ $$;
 
 
 --
--- Name: notify_expense_added(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.notify_expense_added() RETURNS trigger
-    LANGUAGE plpgsql SECURITY DEFINER
-    AS $$
-DECLARE
-  v_payer_name TEXT;
-  v_event_name TEXT;
-  v_event_emoji TEXT;
-BEGIN
-  -- Buscar dados do evento e do pagador (usa created_by, NÃO payer_user_id)
-  SELECT 
-    e.name,
-    e.emoji,
-    u.name
-  INTO v_event_name, v_event_emoji, v_payer_name
-  FROM events e
-  LEFT JOIN users u ON u.id = NEW.created_by
-  WHERE e.id = NEW.event_id;
-
-  -- ========================================================================
-  -- Notificar cada pessoa que DEVE dinheiro (paymentsAddedYouOwe)
-  -- ========================================================================
-  INSERT INTO notifications (
-    recipient_user_id,
-    type,
-    category,
-    priority,
-    user_name,
-    event_name,
-    event_emoji,
-    amount,
-    event_id,
-    expense_id,  -- ✅ CRITICAL: Preencher expense_id para permitir JOINs
-    deeplink
-  )
-  SELECT
-    es.user_id,
-    'paymentsAddedYouOwe',
-    'inbox',
-    'high',
-    v_payer_name,
-    v_event_name,
-    v_event_emoji,
-    es.amount_owed::text,
-    NEW.event_id,
-    NEW.id,  -- ✅ expense_id vem do NEW.id (event_expenses.id)
-    'lazzo://event/' || NEW.event_id
-  FROM expense_splits es
-  WHERE es.expense_id = NEW.id
-  AND es.user_id != NEW.created_by
-  ON CONFLICT (dedup_key, dedup_bucket) DO NOTHING;
-
-  -- ========================================================================
-  -- Notificar o PAGADOR sobre quem lhe deve (paymentsAddedOwesYou)
-  -- ========================================================================
-  -- Só notifica se houver pessoas que devem (evita notificações vazias)
-  IF EXISTS (
-    SELECT 1 FROM expense_splits 
-    WHERE expense_id = NEW.id 
-    AND user_id != NEW.created_by
-  ) THEN
-    INSERT INTO notifications (
-      recipient_user_id,
-      type,
-      category,
-      priority,
-      user_name,
-      event_name,
-      event_emoji,
-      amount,
-      event_id,
-      expense_id,  -- ✅ CRITICAL: Preencher expense_id para permitir JOINs
-      deeplink
-    ) VALUES (
-      NEW.created_by,
-      'paymentsAddedOwesYou',
-      'inbox',
-      'medium',
-      v_payer_name,
-      v_event_name,
-      v_event_emoji,
-      NEW.total_amount::text,
-      NEW.event_id,
-      NEW.id,  -- ✅ expense_id vem do NEW.id (event_expenses.id)
-      'lazzo://event/' || NEW.event_id
-    )
-    ON CONFLICT (dedup_key, dedup_bucket) DO NOTHING;
-  END IF;
-
-  RETURN NEW;
-END;
-$$;
-
-
---
--- Name: FUNCTION notify_expense_added(); Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON FUNCTION public.notify_expense_added() IS 'Trigger que cria notificações quando uma despesa é adicionada.
-- paymentsAddedYouOwe: notifica quem deve
-- paymentsAddedOwesYou: notifica criador sobre quem lhe deve
-Campos: expense_id sempre preenchido. expense_name e people_count obtidos via JOINs no Flutter.';
-
-
---
--- Name: notify_expense_split_added(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.notify_expense_split_added() RETURNS trigger
-    LANGUAGE plpgsql SECURITY DEFINER
-    AS $$
-DECLARE
-  v_payer_name TEXT;
-  v_event_name TEXT;
-  v_event_emoji TEXT;
-  v_expense_title TEXT;
-  v_payer_user_id UUID;
-  v_event_id UUID;
-  v_total_amount NUMERIC;
-BEGIN
-  -- Buscar dados da despesa, evento e pagador
-  SELECT 
-    ee.title,
-    ee.total_amount,
-    ee.created_by,  -- ✅ CORRETO: event_expenses só tem created_by
-    ee.event_id,
-    e.name,
-    e.emoji,
-    u.name
-  INTO 
-    v_expense_title,
-    v_total_amount,
-    v_payer_user_id,
-    v_event_id,
-    v_event_name,
-    v_event_emoji,
-    v_payer_name
-  FROM event_expenses ee
-  JOIN events e ON e.id = ee.event_id
-  LEFT JOIN users u ON u.id = ee.created_by
-  WHERE ee.id = NEW.expense_id;
-
-  -- ========================================================================
-  -- Notificar a pessoa que DEVE dinheiro (paymentsAddedYouOwe)
-  -- ========================================================================
-  -- Só notifica se NÃO for o pagador
-  IF NEW.user_id != v_payer_user_id THEN
-    INSERT INTO notifications (
-      recipient_user_id,
-      type,
-      category,
-      priority,
-      user_name,
-      event_name,
-      event_emoji,
-      amount,
-      event_id,
-      expense_id,
-      deeplink
-    ) VALUES (
-      NEW.user_id,
-      'paymentsAddedYouOwe',
-      'inbox',
-      'high',
-      v_payer_name,
-      v_event_name,
-      v_event_emoji,
-      NEW.amount::text,  -- ✅ CORRETO: expense_splits.amount (não amount_owed)
-      v_event_id,
-      NEW.expense_id,
-      'lazzo://event/' || v_event_id
-    )
-    ON CONFLICT (dedup_key, dedup_bucket) DO NOTHING;
-  END IF;
-
-  -- ========================================================================
-  -- Notificar o PAGADOR sobre quem lhe deve (paymentsAddedOwesYou)
-  -- ========================================================================
-  -- Só cria UMA notificação para o pagador (não uma por split)
-  -- Usa ON CONFLICT para evitar duplicados
-  
-  IF NEW.user_id != v_payer_user_id THEN
-    INSERT INTO notifications (
-      recipient_user_id,
-      type,
-      category,
-      priority,
-      user_name,
-      event_name,
-      event_emoji,
-      amount,
-      event_id,
-      expense_id,
-      deeplink
-    ) VALUES (
-      v_payer_user_id,
-      'paymentsAddedOwesYou',
-      'inbox',
-      'medium',
-      v_payer_name,
-      v_event_name,
-      v_event_emoji,
-      v_total_amount::text,
-      v_event_id,
-      NEW.expense_id,
-      'lazzo://event/' || v_event_id
-    )
-    ON CONFLICT (dedup_key, dedup_bucket) DO NOTHING;
-  END IF;
-
-  RETURN NEW;
-END;
-$$;
-
-
---
--- Name: FUNCTION notify_expense_split_added(); Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON FUNCTION public.notify_expense_split_added() IS 'Trigger que cria notificações quando um split de despesa é adicionado pelo Flutter.
-- paymentsAddedYouOwe: notifica quem deve
-- paymentsAddedOwesYou: notifica criador sobre quem lhe deve (apenas uma notificação)
-✅ CORRIGIDO: usa amount (não amount_owed) e created_by (não payer_user_id)';
-
-
---
--- Name: notify_expense_split_simple(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.notify_expense_split_simple() RETURNS trigger
-    LANGUAGE plpgsql SECURITY DEFINER
-    AS $$
-DECLARE
-  v_payer_id UUID;
-  v_event_id UUID;
-  v_event_name TEXT;
-  v_event_emoji TEXT;
-  v_payer_name TEXT;
-  v_total_amount NUMERIC;
-BEGIN
-  -- Buscar dados da expense e do evento
-  SELECT 
-    ee.created_by,
-    ee.event_id,
-    ee.total_amount,
-    e.name,
-    e.emoji,
-    u.name
-  INTO 
-    v_payer_id,
-    v_event_id,
-    v_total_amount,
-    v_event_name,
-    v_event_emoji,
-    v_payer_name
-  FROM event_expenses ee
-  JOIN events e ON e.id = ee.event_id
-  LEFT JOIN users u ON u.id = ee.created_by
-  WHERE ee.id = NEW.expense_id;
-
-  -- ========================================================================
-  -- Notificar QUEM DEVE (paymentsAddedYouOwe)
-  -- ========================================================================
-  IF NEW.user_id != v_payer_id THEN
-    INSERT INTO notifications (
-      recipient_user_id,
-      type,
-      category,
-      priority,
-      user_name,
-      event_name,
-      event_emoji,
-      amount,
-      event_id,
-      expense_id,  -- ✅ CRITICAL: expense_id preenchido
-      deeplink
-    ) VALUES (
-      NEW.user_id,
-      'paymentsAddedYouOwe',
-      'inbox',
-      'high',
-      v_payer_name,
-      v_event_name,
-      v_event_emoji,
-      NEW.amount::text,
-      v_event_id,
-      NEW.expense_id,  -- ✅ ID da expense
-      'lazzo://event/' || v_event_id
-    )
-    ON CONFLICT (dedup_key, dedup_bucket) DO NOTHING;
-
-    -- ========================================================================
-    -- Notificar PAGADOR (paymentsAddedOwesYou) - UMA VEZ APENAS
-    -- ========================================================================
-    INSERT INTO notifications (
-      recipient_user_id,
-      type,
-      category,
-      priority,
-      user_name,
-      event_name,
-      event_emoji,
-      amount,
-      event_id,
-      expense_id,  -- ✅ CRITICAL: expense_id preenchido
-      deeplink
-    ) VALUES (
-      v_payer_id,
-      'paymentsAddedOwesYou',
-      'inbox',
-      'medium',
-      v_payer_name,
-      v_event_name,
-      v_event_emoji,
-      v_total_amount::text,
-      v_event_id,
-      NEW.expense_id,  -- ✅ ID da expense
-      'lazzo://event/' || v_event_id
-    )
-    ON CONFLICT (dedup_key, dedup_bucket) DO NOTHING;
-  END IF;
-
-  RETURN NEW;
-END;
-$$;
-
-
---
--- Name: notify_location_suggestion_added(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.notify_location_suggestion_added() RETURNS trigger
-    LANGUAGE plpgsql SECURITY DEFINER
-    AS $$
-DECLARE
-  v_suggester_name TEXT;
-  v_event_name TEXT;
-  v_event_emoji TEXT;
-BEGIN
-  -- Skip notification for initial location (set during event creation)
-  IF NEW.is_initial = TRUE THEN
-    RETURN NEW;
-  END IF;
-
-  SELECT e.name, e.emoji INTO v_event_name, v_event_emoji
-  FROM events e WHERE e.id = NEW.event_id;
-  
-  SELECT u.name INTO v_suggester_name
-  FROM users u WHERE u.id = NEW.user_id;
-
-  INSERT INTO notifications (
-    recipient_user_id, type, category, priority, user_name,
-    place, event_name, event_emoji, event_id, deeplink
-  )
-  SELECT 
-    ep.user_id, 'locationSuggestionAdded', 'notifications', 'low',
-    v_suggester_name, NEW.location_name, v_event_name, v_event_emoji,
-    NEW.event_id, 'lazzo://events/' || NEW.event_id || '/location'
-  FROM event_participants ep
-  WHERE ep.pevent_id = NEW.event_id AND ep.user_id != NEW.user_id
-  ON CONFLICT (dedup_key, dedup_bucket) DO NOTHING;
-  
-  RETURN NEW;
-END;
-$$;
-
-
---
--- Name: FUNCTION notify_location_suggestion_added(); Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON FUNCTION public.notify_location_suggestion_added() IS 'Notifica participantes quando alguém sugere um local via location_suggestions.
-Inbox text: "João Silva suggested Parque das Nações for Birthday Party"';
-
-
---
 -- Name: notify_memory_ready(uuid); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -1746,12 +1203,11 @@ CREATE FUNCTION public.notify_memory_ready(p_event_id uuid) RETURNS void
 DECLARE
   v_photo_count INTEGER;
 BEGIN
-  -- First check if any photos exist for this event
+  -- Check if any photos exist for this event
   SELECT COUNT(*) INTO v_photo_count
-  FROM public.group_photos
+  FROM public.event_photos
   WHERE event_id = p_event_id;
 
-  -- Only send notifications if photos exist
   IF v_photo_count = 0 THEN
     RAISE NOTICE 'Event % has no photos, skipping memory ready notification', p_event_id;
     RETURN;
@@ -1768,7 +1224,7 @@ BEGIN
     event_id,
     deeplink
   )
-  SELECT 
+  SELECT
     ep.user_id,
     'memoryReady',
     'push',
@@ -1780,8 +1236,8 @@ BEGIN
   FROM events e
   JOIN event_participants ep ON ep.pevent_id = e.id
   WHERE e.id = p_event_id
-    AND should_send_notification(ep.user_id, e.group_id);
-    
+    AND should_send_notification(ep.user_id);
+
   RAISE NOTICE 'Event % has % photos, sent memory ready notifications', p_event_id, v_photo_count;
 END;
 $$;
@@ -1791,9 +1247,7 @@ $$;
 -- Name: FUNCTION notify_memory_ready(p_event_id uuid); Type: COMMENT; Schema: public; Owner: -
 --
 
-COMMENT ON FUNCTION public.notify_memory_ready(p_event_id uuid) IS 'Sends "Memory Ready" push notifications to all event participants.
-Only sends notifications if at least 1 photo exists in group_photos for the event.
-Called by handle_event_ended() trigger when event status changes to ended.';
+COMMENT ON FUNCTION public.notify_memory_ready(p_event_id uuid) IS 'Sends "Memory Ready" push notifications to all event participants. Only sends if at least 1 photo exists in event_photos. Called by handle_event_ended() trigger.';
 
 
 --
@@ -1805,37 +1259,23 @@ CREATE FUNCTION public.notify_participants_before_delete() RETURNS trigger
     AS $$
 DECLARE
   participant_record RECORD;
-  event_group_name TEXT;
 BEGIN
-  -- OLD contains event data BEFORE deletion
-  
-  -- Get group name if exists
-  IF OLD.group_id IS NOT NULL THEN
-    SELECT name INTO event_group_name
-    FROM groups
-    WHERE id = OLD.group_id;
-  END IF;
-
-  -- ✅ FIXED: Changed rsvp = 'going' to rsvp = 'yes'
-  -- Notify all participants who confirmed attendance (RSVP = 'yes')
   FOR participant_record IN
     SELECT ep.user_id, u.name as user_name
     FROM event_participants ep
     JOIN users u ON u.id = ep.user_id
     WHERE ep.pevent_id = OLD.id
-      AND ep.rsvp = 'yes'  -- ✅ FIXED: was 'going'
-      AND ep.user_id != OLD.created_by  -- Don't notify the creator
+      AND ep.rsvp IN ('yes', 'maybe')
+      AND ep.user_id != OLD.created_by
   LOOP
-    -- Create notification for each confirmed participant
     INSERT INTO notifications (
       recipient_user_id,
       type,
       category,
       priority,
       event_id,
-      group_id,
       event_name,
-      group_name,
+      event_emoji,
       created_at
     ) VALUES (
       participant_record.user_id,
@@ -1843,176 +1283,13 @@ BEGIN
       'push',
       'high',
       OLD.id,
-      OLD.group_id,
       OLD.name,
-      event_group_name,
+      OLD.emoji,
       NOW()
     );
   END LOOP;
 
   RETURN OLD;
-END;
-$$;
-
-
---
--- Name: notify_payment_received(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.notify_payment_received() RETURNS trigger
-    LANGUAGE plpgsql SECURITY DEFINER
-    AS $$
-DECLARE
-  v_payer_name TEXT;
-  v_event_id UUID;
-  v_event_name TEXT;
-  v_event_emoji TEXT;
-  v_recipient_user_id UUID;
-BEGIN
-  -- Só notifica se mudou de não pago para pago
-  IF OLD.has_paid = FALSE AND NEW.has_paid = TRUE THEN
-    
-    -- Buscar dados do pagador, evento e quem recebe
-    SELECT 
-      u.name,
-      ee.event_id,
-      e.name,
-      e.emoji,
-      ee.created_by
-    INTO 
-      v_payer_name, 
-      v_event_id, 
-      v_event_name,
-      v_event_emoji,
-      v_recipient_user_id
-    FROM event_expenses ee
-    LEFT JOIN users u ON u.id = NEW.user_id
-    LEFT JOIN events e ON e.id = ee.event_id
-    WHERE ee.id = NEW.expense_id;
-    
-    -- Notificar quem recebeu o pagamento
-    INSERT INTO notifications (
-      recipient_user_id,
-      type,
-      category,
-      priority,
-      user_name,
-      amount,
-      event_id,
-      event_name,
-      event_emoji,
-      expense_id,
-      deeplink
-    ) VALUES (
-      v_recipient_user_id,
-      'paymentReceived',
-      'notifications',  -- ✅ FIXED: was 'inbox' (invalid enum)
-      'high',           -- ✅ CHANGED: from 'medium' to 'high' (payment notifications should be high priority)
-      v_payer_name,
-      NEW.amount::text,
-      v_event_id,
-      v_event_name,      -- ✅ ADDED
-      v_event_emoji,     -- ✅ ADDED
-      NEW.expense_id,
-      'lazzo://event/' || v_event_id
-    )
-    ON CONFLICT (dedup_key, dedup_bucket) DO NOTHING;
-    
-  END IF;
-  
-  RETURN NEW;
-END;
-$$;
-
-
---
--- Name: FUNCTION notify_payment_received(); Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON FUNCTION public.notify_payment_received() IS 'Notifies recipient when someone marks a payment as paid.
-✅ FIXED: Added event_name and event_emoji
-✅ FIXED: Changed category from inbox to notifications
-✅ CHANGED: Priority from medium to high';
-
-
---
--- Name: notify_payments_added_you_owe(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.notify_payments_added_you_owe() RETURNS trigger
-    LANGUAGE plpgsql
-    AS $$
-BEGIN
-  -- For each user who owes money in this split
-  INSERT INTO notifications (
-    recipient_user_id,
-    type,
-    category,
-    priority,
-    user_name,
-    amount,
-    event_name,
-    event_id,
-    expense_id, -- ✅ NOVO
-    deeplink
-  )
-  SELECT 
-    es.user_id,
-    'paymentsAddedYouOwe',
-    'push',
-    'high',
-    creator.name,
-    es.amount::text,
-    e.name,
-    ee.event_id,
-    NEW.id, -- ✅ NOVO: ID da despesa
-    'lazzo://payments'
-  FROM expense_splits es
-  JOIN event_expenses ee ON ee.id = es.expense_id
-  JOIN events e ON e.id = ee.event_id
-  JOIN users creator ON creator.id = ee.created_by
-  WHERE es.expense_id = NEW.id
-    AND es.has_paid = FALSE
-    AND should_send_notification(es.user_id, e.group_id);
-  
-  RETURN NEW;
-END;
-$$;
-
-
---
--- Name: notify_payments_paid_you(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.notify_payments_paid_you() RETURNS trigger
-    LANGUAGE plpgsql
-    AS $$
-BEGIN
-  IF OLD.has_paid = FALSE AND NEW.has_paid = TRUE THEN
-    INSERT INTO notifications (
-      recipient_user_id,
-      type,
-      category,
-      priority,
-      user_name,
-      amount,
-      deeplink
-    )
-    SELECT 
-      ee.created_by,
-      'paymentsPaidYou',
-      'push',
-      'medium',
-      payer.name,
-      NEW.amount::text,
-      'lazzo://payments'
-    FROM event_expenses ee
-    JOIN users payer ON payer.id = NEW.user_id
-    WHERE ee.id = NEW.expense_id
-      AND should_send_notification(ee.created_by, NULL);
-  END IF;
-  
-  RETURN NEW;
 END;
 $$;
 
@@ -2046,47 +1323,6 @@ $$;
 
 
 --
--- Name: notify_suggestion_added(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.notify_suggestion_added() RETURNS trigger
-    LANGUAGE plpgsql
-    AS $$
-BEGIN
-  INSERT INTO notifications (
-    recipient_user_id,
-    type,
-    category,
-    priority,
-    user_name,
-    place,
-    event_name,
-    event_id,
-    deeplink
-  )
-  SELECT 
-    ep.user_id,
-    'suggestionAdded',
-    'notifications',
-    'low',
-    suggester.name,
-    NEW.location_name,
-    e.name,
-    NEW.event_id,
-    'lazzo://event/' || NEW.event_id::text
-  FROM event_participants ep
-  JOIN users suggester ON suggester.id = NEW.user_id
-  JOIN events e ON e.id = NEW.event_id
-  WHERE ep.pevent_id = NEW.event_id
-    AND ep.user_id != NEW.user_id
-    AND should_send_notification(ep.user_id, e.group_id);
-  
-  RETURN NEW;
-END;
-$$;
-
-
---
 -- Name: notify_uploads_closing(); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -2105,7 +1341,7 @@ BEGIN
     event_id,
     deeplink
   )
-  SELECT 
+  SELECT
     ep.user_id,
     'uploadsClosing',
     'push',
@@ -2118,10 +1354,8 @@ BEGIN
   FROM events e
   JOIN event_participants ep ON ep.pevent_id = e.id
   WHERE e.status = 'uploads_open'
-    -- Assuming upload window closes 48h after event ends
     AND e.end_datetime + interval '23 hours' BETWEEN NOW() AND NOW() + interval '1 hour'
-    AND should_send_notification(ep.user_id, e.group_id)
-    -- Only send once
+    AND should_send_notification(ep.user_id)
     AND NOT EXISTS (
       SELECT 1 FROM notifications n
       WHERE n.recipient_user_id = ep.user_id
@@ -2187,8 +1421,9 @@ $$;
 
 CREATE FUNCTION public.notify_uploads_open() RETURNS trigger
     LANGUAGE plpgsql
-    AS $$DECLARE
-  v_window_hours INTEGER := 24; -- 48 hour upload window
+    AS $$
+DECLARE
+  v_window_hours INTEGER := 24;
 BEGIN
   IF OLD.status != 'recap' AND NEW.status = 'recap' THEN
     INSERT INTO notifications (
@@ -2202,7 +1437,7 @@ BEGIN
       event_id,
       deeplink
     )
-    SELECT 
+    SELECT
       ep.user_id,
       'uploadsOpen',
       'push',
@@ -2214,197 +1449,10 @@ BEGIN
       'lazzo://event/' || NEW.id::text || '/uploads'
     FROM event_participants ep
     WHERE ep.pevent_id = NEW.id
-      AND should_send_notification(ep.user_id, NEW.group_id);
+      AND should_send_notification(ep.user_id);
   END IF;
-  
+
   RETURN NEW;
-END;$$;
-
-
---
--- Name: pin_chat_message(uuid, uuid, boolean); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.pin_chat_message(message_id uuid, event_id uuid, should_pin boolean DEFAULT true) RETURNS void
-    LANGUAGE plpgsql SECURITY DEFINER
-    AS $$
-BEGIN
-  IF should_pin THEN
-    -- First, unpin all messages in this event
-    UPDATE chat_messages 
-    SET is_pinned = FALSE, updated_at = NOW()
-    WHERE chat_messages.event_id = pin_chat_message.event_id 
-      AND is_pinned = TRUE;
-    
-    -- Then pin the target message
-    UPDATE chat_messages 
-    SET is_pinned = TRUE, updated_at = NOW()
-    WHERE id = message_id;
-  ELSE
-    -- Just unpin the specified message
-    UPDATE chat_messages 
-    SET is_pinned = FALSE, updated_at = NOW()
-    WHERE id = message_id;
-  END IF;
-END;
-$$;
-
-
---
--- Name: populate_expense_notification_data(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.populate_expense_notification_data() RETURNS trigger
-    LANGUAGE plpgsql
-    AS $$
-DECLARE
-    v_expense_name TEXT;
-    v_person_name TEXT;
-    v_people_count INT;
-BEGIN
-    -- Só processa se for notificação de expense (tipos paymentsAddedOwesYou ou paymentsAddedYouOwe)
-    IF NEW.type IN ('paymentsAddedOwesYou', 'paymentsAddedYouOwe') AND NEW.expense_id IS NOT NULL THEN
-        
-        -- Obter o nome da despesa
-        SELECT title INTO v_expense_name
-        FROM event_expenses
-        WHERE id = NEW.expense_id;
-        
-        -- Contar quantas pessoas devem (excluindo quem pagou)
-        SELECT COUNT(*) INTO v_people_count
-        FROM expense_splits
-        WHERE expense_id = NEW.expense_id
-        AND user_id != (
-            SELECT payer_user_id 
-            FROM event_expenses 
-            WHERE id = NEW.expense_id
-        );
-        
-        -- Se for apenas 1 pessoa, obter o nome dela
-        IF v_people_count = 1 THEN
-            SELECT u.name INTO v_person_name
-            FROM expense_splits es
-            JOIN users u ON u.id = es.user_id
-            WHERE es.expense_id = NEW.expense_id
-            AND es.user_id != (
-                SELECT payer_user_id 
-                FROM event_expenses 
-                WHERE id = NEW.expense_id
-            )
-            LIMIT 1;
-        END IF;
-        
-        -- Atualizar a notificação com os dados
-        UPDATE notifications
-        SET 
-            expense_name = v_expense_name,
-            person_name = CASE 
-                WHEN v_people_count = 1 THEN v_person_name 
-                ELSE NULL 
-            END,
-            people_count = v_people_count
-        WHERE id = NEW.id;
-        
-    END IF;
-    
-    RETURN NEW;
-END;
-$$;
-
-
---
--- Name: refresh_group_hub_cache(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.refresh_group_hub_cache() RETURNS void
-    LANGUAGE plpgsql SECURITY DEFINER
-    AS $$
-BEGIN
-  REFRESH MATERIALIZED VIEW CONCURRENTLY group_hub_events_cache;
-END;
-$$;
-
-
---
--- Name: refresh_group_photos_view(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.refresh_group_photos_view() RETURNS trigger
-    LANGUAGE plpgsql
-    AS $$
-BEGIN
-    REFRESH MATERIALIZED VIEW CONCURRENTLY group_photos_with_uploader;
-    RETURN NULL;
-END;
-$$;
-
-
---
--- Name: remove_group_member(uuid, uuid); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.remove_group_member(p_group_id uuid, p_user_id uuid) RETURNS void
-    LANGUAGE plpgsql SECURITY DEFINER
-    SET search_path TO 'public'
-    AS $$
-DECLARE
-  v_current_user_id UUID;
-  v_current_user_role member_role;
-  v_target_user_role member_role;
-  v_admin_count INT;
-BEGIN
-  -- Get current authenticated user
-  v_current_user_id := auth.uid();
-  
-  IF v_current_user_id IS NULL THEN
-    RAISE EXCEPTION 'User not authenticated';
-  END IF;
-  
-  -- Cannot remove yourself
-  IF v_current_user_id = p_user_id THEN
-    RAISE EXCEPTION 'Cannot remove yourself from the group';
-  END IF;
-  
-  -- Check if current user is admin of this group
-  SELECT role INTO v_current_user_role
-  FROM group_members
-  WHERE group_id = p_group_id AND user_id = v_current_user_id;
-  
-  IF v_current_user_role IS NULL THEN
-    RAISE EXCEPTION 'User is not a member of this group';
-  END IF;
-  
-  IF v_current_user_role != 'admin' THEN
-    RAISE EXCEPTION 'Only admins can remove members';
-  END IF;
-  
-  -- Get target user role
-  SELECT role INTO v_target_user_role
-  FROM group_members
-  WHERE group_id = p_group_id AND user_id = p_user_id;
-  
-  IF v_target_user_role IS NULL THEN
-    RAISE EXCEPTION 'Target user is not a member of this group';
-  END IF;
-  
-  -- If removing an admin, check if at least one other admin will remain
-  IF v_target_user_role = 'admin' THEN
-    SELECT COUNT(*) INTO v_admin_count
-    FROM group_members
-    WHERE group_id = p_group_id AND role = 'admin';
-    
-    IF v_admin_count <= 1 THEN
-      RAISE EXCEPTION 'Cannot remove the last admin';
-    END IF;
-  END IF;
-  
-  -- Perform the delete
-  DELETE FROM group_members
-  WHERE group_id = p_group_id AND user_id = p_user_id;
-  
-  IF NOT FOUND THEN
-    RAISE EXCEPTION 'Failed to remove member';
-  END IF;
 END;
 $$;
 
@@ -2516,49 +1564,6 @@ $$;
 
 
 --
--- Name: revoke_group_invite_link(text); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.revoke_group_invite_link(p_token text) RETURNS void
-    LANGUAGE plpgsql SECURITY DEFINER
-    SET search_path TO 'public'
-    AS $$
-declare
-  v_uid uuid;
-  v_group_id uuid;
-begin
-  v_uid := auth.uid();
-  if v_uid is null then
-    raise exception 'Not authenticated' using errcode = '28000';
-  end if;
-
-  select group_id into v_group_id
-  from public.group_invite_links
-  where token = p_token;
-
-  if v_group_id is null then
-    raise exception 'Invalid invite token' using errcode = 'P0001';
-  end if;
-
-  -- só admin/owner pode revogar
-  if not exists (
-    select 1
-    from public.group_members gm
-    where gm.group_id = v_group_id
-      and gm.user_id = v_uid
-      and (gm.role in ('owner','admin'))
-  ) then
-    raise exception 'Not allowed to revoke' using errcode = '42501';
-  end if;
-
-  update public.group_invite_links
-    set revoked_at = now()
-  where token = p_token;
-end;
-$$;
-
-
---
 -- Name: revoke_reviewer_access(text); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -2655,10 +1660,10 @@ $$;
 
 
 --
--- Name: should_send_notification(uuid, uuid); Type: FUNCTION; Schema: public; Owner: -
+-- Name: should_send_notification(uuid); Type: FUNCTION; Schema: public; Owner: -
 --
 
-CREATE FUNCTION public.should_send_notification(p_user_id uuid, p_group_id uuid DEFAULT NULL::uuid) RETURNS boolean
+CREATE FUNCTION public.should_send_notification(p_user_id uuid) RETURNS boolean
     LANGUAGE plpgsql
     AS $$
 BEGIN
@@ -2669,19 +1674,7 @@ BEGIN
   ) THEN
     RETURN FALSE;
   END IF;
-  
-  -- Check group mute settings if group_id provided
-  IF p_group_id IS NOT NULL THEN
-    IF EXISTS (
-      SELECT 1 FROM group_user_settings
-      WHERE user_id = p_user_id 
-        AND group_id = p_group_id 
-        AND is_muted = TRUE
-    ) THEN
-      RETURN FALSE;
-    END IF;
-  END IF;
-  
+
   -- Check quiet hours
   DECLARE
     v_quiet_enabled boolean;
@@ -2693,7 +1686,7 @@ BEGIN
     INTO v_quiet_enabled, v_quiet_start, v_quiet_end
     FROM user_notification_settings
     WHERE user_id = p_user_id;
-    
+
     IF v_quiet_enabled THEN
       v_current_time := CURRENT_TIME;
       IF v_current_time BETWEEN v_quiet_start AND v_quiet_end THEN
@@ -2701,37 +1694,8 @@ BEGIN
       END IF;
     END IF;
   END;
-  
+
   RETURN TRUE;
-END;
-$$;
-
-
---
--- Name: soft_delete_chat_message(uuid); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.soft_delete_chat_message(message_id uuid) RETURNS void
-    LANGUAGE plpgsql SECURITY DEFINER
-    AS $$
-BEGIN
-  -- Check if the message belongs to the current user
-  IF NOT EXISTS (
-    SELECT 1 
-    FROM chat_messages 
-    WHERE id = message_id 
-      AND user_id = auth.uid()
-  ) THEN
-    RAISE EXCEPTION 'You can only delete your own messages';
-  END IF;
-  
-  -- Soft delete: mark as deleted and replace content
-  UPDATE chat_messages
-  SET 
-    is_deleted = TRUE, 
-    content = 'Message Deleted',
-    updated_at = NOW()
-  WHERE id = message_id;
 END;
 $$;
 
@@ -2772,39 +1736,6 @@ begin
   end;
   return new;
 end $$;
-
-
---
--- Name: touch_chat_presence(uuid); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.touch_chat_presence(p_event_id uuid) RETURNS void
-    LANGUAGE plpgsql SECURITY DEFINER
-    SET search_path TO 'public'
-    AS $$
-DECLARE
-  v_user_id UUID;
-BEGIN
-  v_user_id := auth.uid();
-  
-  IF v_user_id IS NULL THEN
-    RAISE EXCEPTION 'User not authenticated';
-  END IF;
-  
-  -- Upsert presence with server-side timestamp (more reliable than client)
-  INSERT INTO chat_active_users (event_id, user_id, last_seen)
-  VALUES (p_event_id, v_user_id, NOW())
-  ON CONFLICT (event_id, user_id) 
-  DO UPDATE SET last_seen = NOW();
-END;
-$$;
-
-
---
--- Name: FUNCTION touch_chat_presence(p_event_id uuid); Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON FUNCTION public.touch_chat_presence(p_event_id uuid) IS 'Updates user presence in a chat. Called as heartbeat every 10 seconds by Flutter client. Uses server-side NOW() for reliable timestamps.';
 
 
 --
@@ -2865,20 +1796,6 @@ $$;
 
 
 --
--- Name: update_chat_messages_updated_at(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.update_chat_messages_updated_at() RETURNS trigger
-    LANGUAGE plpgsql
-    AS $$
-BEGIN
-  NEW.updated_at = NOW();
-  RETURN NEW;
-END;
-$$;
-
-
---
 -- Name: update_expired_recaps(); Type: FUNCTION; Schema: public; Owner: -
 --
 
@@ -2922,85 +1839,6 @@ $$;
 --
 
 COMMENT ON FUNCTION public.update_expired_recaps() IS 'Automatically transitions events from recap to ended status when recap window (end_datetime + 24h) expires. Called by pg_cron job every 5 minutes.';
-
-
---
--- Name: update_last_read_message(uuid, uuid); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.update_last_read_message(p_event_id uuid, p_message_id uuid) RETURNS jsonb
-    LANGUAGE plpgsql SECURITY DEFINER
-    SET search_path TO 'public'
-    AS $$
-DECLARE
-  v_user_id uuid := auth.uid();
-  v_message_created_at timestamptz;
-  v_is_participant boolean;
-  v_updated boolean := false;
-BEGIN
-  -- Validação 1: User deve estar autenticado
-  IF v_user_id IS NULL THEN
-    RAISE EXCEPTION 'User not authenticated';
-  END IF;
-
-  -- Validação 2: Verificar se user é participante do evento
-  SELECT EXISTS (
-    SELECT 1 FROM event_participants
-    WHERE pevent_id = p_event_id AND user_id = v_user_id  -- ⚠️ Corrigido: pevent_id
-  ) INTO v_is_participant;
-
-  IF NOT v_is_participant THEN
-    RAISE EXCEPTION 'User is not a participant of this event';
-  END IF;
-
-  -- Validação 3: Verificar que mensagem existe e pertence ao evento
-  SELECT created_at INTO v_message_created_at
-  FROM chat_messages
-  WHERE id = p_message_id AND event_id = p_event_id AND is_deleted = false;
-
-  IF v_message_created_at IS NULL THEN
-    RAISE EXCEPTION 'Message not found or does not belong to this event';
-  END IF;
-
-  -- UPSERT: Inserir ou atualizar última mensagem lida
-  -- Apenas atualiza se mensagem é mais recente que a atual last_read
-  INSERT INTO message_reads (user_id, event_id, last_read_message_id, last_read_at, updated_at)
-  VALUES (v_user_id, p_event_id, p_message_id, now(), now())
-  ON CONFLICT (user_id, event_id)
-  DO UPDATE SET
-    last_read_message_id = EXCLUDED.last_read_message_id,
-    last_read_at = now(),
-    updated_at = now()
-  WHERE (
-    -- Apenas atualizar se:
-    -- 1. Nova mensagem é mais recente OU
-    -- 2. Ainda não há last_read registrada
-    message_reads.last_read_message_id IS NULL OR
-    v_message_created_at > (
-      SELECT created_at FROM chat_messages 
-      WHERE id = message_reads.last_read_message_id
-    )
-  )
-  RETURNING true INTO v_updated;
-
-  -- Retornar resultado com informações úteis
-  RETURN jsonb_build_object(
-    'success', true,
-    'updated', COALESCE(v_updated, false),
-    'user_id', v_user_id,
-    'event_id', p_event_id,
-    'last_read_message_id', p_message_id,
-    'last_read_at', now()
-  );
-END;
-$$;
-
-
---
--- Name: FUNCTION update_last_read_message(p_event_id uuid, p_message_id uuid); Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON FUNCTION public.update_last_read_message(p_event_id uuid, p_message_id uuid) IS 'Updates the last message read by the current user in an event. Only updates if the new message is more recent. Returns success status and updated flag.';
 
 
 --
@@ -3127,92 +1965,9 @@ CREATE FUNCTION public.user_exists_by_email(p_email text) RETURNS boolean
 $$;
 
 
---
--- Name: validate_expense(); Type: FUNCTION; Schema: public; Owner: -
---
-
-CREATE FUNCTION public.validate_expense() RETURNS trigger
-    LANGUAGE plpgsql SECURITY DEFINER
-    AS $$
-BEGIN
-  -- Apenas permite o INSERT sem fazer nada
-  -- Splits serão criados pelo Flutter DEPOIS
-  RETURN NEW;
-END;
-$$;
-
-
---
--- Name: FUNCTION validate_expense(); Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON FUNCTION public.validate_expense() IS 'Valida INSERT em event_expenses. Não cria notificações nem splits.';
-
-
 SET default_tablespace = '';
 
 SET default_table_access_method = heap;
-
---
--- Name: chat_active_users; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.chat_active_users (
-    event_id uuid NOT NULL,
-    user_id uuid NOT NULL,
-    last_seen timestamp with time zone DEFAULT now() NOT NULL
-);
-
-
---
--- Name: TABLE chat_active_users; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON TABLE public.chat_active_users IS 'Tracks users actively viewing event chats. Used to prevent push notifications for messages in the chat they are currently viewing. Entries expire after 30 seconds of inactivity.';
-
-
---
--- Name: event_date_options; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.event_date_options (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    event_id uuid NOT NULL,
-    starts_at timestamp with time zone NOT NULL,
-    ends_at timestamp with time zone NOT NULL,
-    created_by uuid,
-    created_at timestamp with time zone DEFAULT now(),
-    is_initial boolean DEFAULT false,
-    CONSTRAINT edo_time_check CHECK ((ends_at > starts_at))
-);
-
-
---
--- Name: event_date_votes; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.event_date_votes (
-    option_id uuid NOT NULL,
-    user_id uuid DEFAULT auth.uid() NOT NULL,
-    voted_at timestamp with time zone DEFAULT now(),
-    event_id uuid NOT NULL
-);
-
-
---
--- Name: event_expenses; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.event_expenses (
-    id uuid DEFAULT extensions.uuid_generate_v4() NOT NULL,
-    event_id uuid NOT NULL,
-    title text NOT NULL,
-    total_amount numeric(10,2) NOT NULL,
-    created_at timestamp with time zone DEFAULT now(),
-    created_by uuid,
-    paid_by uuid NOT NULL
-);
-
 
 --
 -- Name: event_guest_rsvps; Type: TABLE; Schema: public; Owner: -
@@ -3282,6 +2037,7 @@ SELECT
     NULL::bigint AS missing_responses,
     NULL::bigint AS going_count,
     NULL::bigint AS not_going_count,
+    NULL::bigint AS maybe_count,
     NULL::uuid[] AS participant_user_ids;
 
 
@@ -3372,19 +2128,7 @@ CREATE TABLE public.events (
 -- Name: TABLE events; Type: COMMENT; Schema: public; Owner: -
 --
 
-COMMENT ON TABLE public.events IS 'Table that holds  an event suggested in a group';
-
-
---
--- Name: expense_splits; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.expense_splits (
-    expense_id uuid NOT NULL,
-    user_id uuid NOT NULL,
-    amount numeric(10,2) NOT NULL,
-    has_paid boolean DEFAULT false
-);
+COMMENT ON TABLE public.events IS 'Table that holds standalone events';
 
 
 --
@@ -3412,10 +2156,12 @@ CREATE VIEW public.home_events_view WITH (security_invoker='on') AS
             count(ep_1.user_id) AS participants_total,
             count(ep_1.user_id) FILTER (WHERE (ep_1.rsvp = 'yes'::public.rsvp_status)) AS going_count,
             count(ep_1.user_id) FILTER (WHERE (ep_1.rsvp = 'no'::public.rsvp_status)) AS not_going_count,
+            count(ep_1.user_id) FILTER (WHERE (ep_1.rsvp = 'maybe'::public.rsvp_status)) AS maybe_count,
             count(ep_1.user_id) FILTER (WHERE ((ep_1.rsvp IS NULL) OR (ep_1.rsvp = 'pending'::public.rsvp_status))) AS no_response_count,
-            count(ep_1.user_id) FILTER (WHERE (ep_1.rsvp = ANY (ARRAY['yes'::public.rsvp_status, 'no'::public.rsvp_status]))) AS voters_total,
+            count(ep_1.user_id) FILTER (WHERE (ep_1.rsvp = ANY (ARRAY['yes'::public.rsvp_status, 'no'::public.rsvp_status, 'maybe'::public.rsvp_status]))) AS voters_total,
             COALESCE(jsonb_agg(jsonb_build_object('user_id', ep_1.user_id, 'display_name', p.name, 'avatar_url', p.avatar_url, 'voted_at', ep_1.confirmed_at)) FILTER (WHERE (ep_1.rsvp = 'yes'::public.rsvp_status)), '[]'::jsonb) AS going_users,
             COALESCE(jsonb_agg(jsonb_build_object('user_id', ep_1.user_id, 'display_name', p.name, 'avatar_url', p.avatar_url, 'voted_at', ep_1.confirmed_at)) FILTER (WHERE (ep_1.rsvp = 'no'::public.rsvp_status)), '[]'::jsonb) AS not_going_users,
+            COALESCE(jsonb_agg(jsonb_build_object('user_id', ep_1.user_id, 'display_name', p.name, 'avatar_url', p.avatar_url, 'voted_at', ep_1.confirmed_at)) FILTER (WHERE (ep_1.rsvp = 'maybe'::public.rsvp_status)), '[]'::jsonb) AS maybe_users,
             COALESCE(jsonb_agg(jsonb_build_object('user_id', ep_1.user_id, 'display_name', p.name, 'avatar_url', p.avatar_url)) FILTER (WHERE ((ep_1.rsvp IS NULL) OR (ep_1.rsvp = 'pending'::public.rsvp_status))), '[]'::jsonb) AS no_response_users
            FROM (public.event_participants ep_1
              LEFT JOIN public.users p ON ((p.id = ep_1.user_id)))
@@ -3446,16 +2192,20 @@ CREATE VIEW public.home_events_view WITH (security_invoker='on') AS
     agg.no_response_count,
     agg.going_count,
     agg.not_going_count,
+    agg.maybe_count,
     agg.going_users,
     agg.not_going_users,
+    agg.maybe_users,
     agg.no_response_users,
     COALESCE(guest.guest_going, (0)::bigint) AS guest_going_count,
+    COALESCE(guest.guest_maybe, (0)::bigint) AS guest_maybe_count,
     COALESCE(guest.guest_total, (0)::bigint) AS guest_total_count
    FROM ((((public.event_participants ep
      JOIN public.events e ON ((e.id = ep.pevent_id)))
      LEFT JOIN public.locations l ON ((l.id = e.location_id)))
      LEFT JOIN participant_agg agg ON ((agg.event_id = e.id)))
      LEFT JOIN LATERAL ( SELECT count(*) FILTER (WHERE (gr.rsvp = 'going'::text)) AS guest_going,
+            count(*) FILTER (WHERE (gr.rsvp = 'maybe'::text)) AS guest_maybe,
             count(*) AS guest_total
            FROM public.event_guest_rsvps gr
           WHERE (gr.event_id = e.id)) guest ON (true))
@@ -3486,50 +2236,6 @@ CREATE TABLE public.invite_analytics (
 
 
 --
--- Name: location_suggestion_votes; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.location_suggestion_votes (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    suggestion_id uuid NOT NULL,
-    user_id uuid NOT NULL,
-    created_at timestamp with time zone DEFAULT now()
-);
-
-
---
--- Name: location_suggestions; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.location_suggestions (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    event_id uuid NOT NULL,
-    user_id uuid NOT NULL,
-    location_name text NOT NULL,
-    address text,
-    latitude double precision,
-    longitude double precision,
-    created_at timestamp with time zone DEFAULT now(),
-    is_initial boolean DEFAULT false
-);
-
-
---
--- Name: memories; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.memories (
-    mem_id uuid DEFAULT gen_random_uuid() NOT NULL,
-    user_id uuid NOT NULL,
-    photo_id uuid NOT NULL,
-    mem_title text NOT NULL,
-    mem_location text NOT NULL,
-    mem_date text NOT NULL,
-    visibility boolean DEFAULT false NOT NULL
-);
-
-
---
 -- Name: notifications; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -3547,7 +2253,6 @@ CREATE TABLE public.notifications (
     event_emoji text,
     user_name text,
     event_name text,
-    amount text,
     hours text,
     mins text,
     date text,
@@ -3555,31 +2260,8 @@ CREATE TABLE public.notifications (
     place text,
     device text,
     note text,
-    dedup_bucket timestamp with time zone DEFAULT (date_trunc('minute'::text, now()) + '00:05:00'::interval) NOT NULL,
-    expense_id uuid
+    dedup_bucket timestamp with time zone DEFAULT (date_trunc('minute'::text, now()) + '00:05:00'::interval) NOT NULL
 );
-
-
---
--- Name: photos; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.photos (
-    photo_id uuid DEFAULT gen_random_uuid() NOT NULL,
-    event_id uuid NOT NULL,
-    uploaded_by uuid NOT NULL,
-    storage_path text NOT NULL,
-    width bigint,
-    height bigint,
-    date text NOT NULL
-);
-
-
---
--- Name: TABLE photos; Type: COMMENT; Schema: public; Owner: -
---
-
-COMMENT ON TABLE public.photos IS 'Table that keeps photos for each user';
 
 
 --
@@ -3594,26 +2276,8 @@ CREATE TABLE public.problem_reports (
     status public.report_status DEFAULT 'pending'::public.report_status NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL,
-    CONSTRAINT problem_reports_category_check CHECK ((category = ANY (ARRAY['Sign up / Login'::text, 'Create or join event'::text, 'Upload photos & memories'::text, 'Share memories'::text, 'Payments & expenses'::text, 'Notifications'::text, 'Other'::text]))),
+    CONSTRAINT problem_reports_category_check CHECK ((category = ANY (ARRAY['Sign up / Login'::text, 'Create or join event'::text, 'Upload photos & memories'::text, 'Share memories'::text, 'Notifications'::text, 'Other'::text]))),
     CONSTRAINT problem_reports_description_check CHECK (((char_length(description) >= 10) AND (char_length(description) <= 500)))
-);
-
-
---
--- Name: push_tokens; Type: TABLE; Schema: public; Owner: -
---
-
-CREATE TABLE public.push_tokens (
-    id uuid DEFAULT gen_random_uuid() NOT NULL,
-    user_id uuid NOT NULL,
-    token text NOT NULL,
-    platform text NOT NULL,
-    device_name text,
-    created_at timestamp with time zone DEFAULT now() NOT NULL,
-    updated_at timestamp with time zone DEFAULT now() NOT NULL,
-    last_used_at timestamp with time zone,
-    is_active boolean DEFAULT true NOT NULL,
-    CONSTRAINT push_tokens_platform_check CHECK ((platform = ANY (ARRAY['ios'::text, 'android'::text, 'web'::text])))
 );
 
 
@@ -3634,31 +2298,6 @@ CREATE TABLE public.reviewer_auth_sessions (
 
 
 --
--- Name: user_event_expenses; Type: VIEW; Schema: public; Owner: -
---
-
-CREATE VIEW public.user_event_expenses WITH (security_invoker='on') AS
- SELECT ee.id AS expense_id,
-    ee.event_id,
-    ee.title,
-    ee.total_amount,
-    ee.paid_by AS paid_by_user_id,
-    ee.created_at,
-    es.user_id AS participant_id,
-    es.amount AS participant_amount,
-    es.has_paid AS participant_has_paid,
-        CASE
-            WHEN (es.user_id = ee.paid_by) THEN 'payer'::text
-            WHEN (es.user_id IS NOT NULL) THEN 'participant'::text
-            ELSE 'not_related'::text
-        END AS user_role,
-    count(*) OVER (PARTITION BY ee.id) AS total_participants
-   FROM (public.event_expenses ee
-     JOIN public.expense_splits es ON ((es.expense_id = ee.id)))
-  ORDER BY ee.created_at DESC;
-
-
---
 -- Name: user_notification_settings; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -3670,7 +2309,6 @@ CREATE TABLE public.user_notification_settings (
     quiet_hours_end time without time zone,
     push_enabled_for_invites boolean DEFAULT true NOT NULL,
     push_enabled_for_events boolean DEFAULT true NOT NULL,
-    push_enabled_for_payments boolean DEFAULT true NOT NULL,
     created_at timestamp with time zone DEFAULT now() NOT NULL,
     updated_at timestamp with time zone DEFAULT now() NOT NULL
 );
@@ -3728,38 +2366,6 @@ CREATE TABLE public.user_suggestions (
 
 
 --
--- Name: chat_active_users chat_active_users_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.chat_active_users
-    ADD CONSTRAINT chat_active_users_pkey PRIMARY KEY (event_id, user_id);
-
-
---
--- Name: event_date_options event_date_options_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.event_date_options
-    ADD CONSTRAINT event_date_options_pkey PRIMARY KEY (id);
-
-
---
--- Name: event_date_votes event_date_votes_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.event_date_votes
-    ADD CONSTRAINT event_date_votes_pkey PRIMARY KEY (option_id, user_id);
-
-
---
--- Name: event_expenses event_expenses_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.event_expenses
-    ADD CONSTRAINT event_expenses_pkey PRIMARY KEY (id);
-
-
---
 -- Name: event_guest_rsvps event_guest_rsvps_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -3800,43 +2406,11 @@ ALTER TABLE ONLY public.events
 
 
 --
--- Name: expense_splits expense_splits_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.expense_splits
-    ADD CONSTRAINT expense_splits_pkey PRIMARY KEY (expense_id, user_id);
-
-
---
 -- Name: invite_analytics invite_analytics_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.invite_analytics
     ADD CONSTRAINT invite_analytics_pkey PRIMARY KEY (id);
-
-
---
--- Name: location_suggestion_votes location_suggestion_votes_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.location_suggestion_votes
-    ADD CONSTRAINT location_suggestion_votes_pkey PRIMARY KEY (id);
-
-
---
--- Name: location_suggestion_votes location_suggestion_votes_suggestion_id_user_id_key; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.location_suggestion_votes
-    ADD CONSTRAINT location_suggestion_votes_suggestion_id_user_id_key UNIQUE (suggestion_id, user_id);
-
-
---
--- Name: location_suggestions location_suggestions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.location_suggestions
-    ADD CONSTRAINT location_suggestions_pkey PRIMARY KEY (id);
 
 
 --
@@ -3848,22 +2422,6 @@ ALTER TABLE ONLY public.locations
 
 
 --
--- Name: memories memories_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.memories
-    ADD CONSTRAINT memories_pkey PRIMARY KEY (mem_id);
-
-
---
--- Name: memories memories_user_id_key; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.memories
-    ADD CONSTRAINT memories_user_id_key UNIQUE (user_id);
-
-
---
 -- Name: notifications notifications_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -3872,59 +2430,11 @@ ALTER TABLE ONLY public.notifications
 
 
 --
--- Name: photos photos_event_id_key; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.photos
-    ADD CONSTRAINT photos_event_id_key UNIQUE (event_id);
-
-
---
--- Name: photos photos_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.photos
-    ADD CONSTRAINT photos_pkey PRIMARY KEY (photo_id);
-
-
---
--- Name: photos photos_unique_storage_path; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.photos
-    ADD CONSTRAINT photos_unique_storage_path UNIQUE (storage_path);
-
-
---
--- Name: photos photos_uploaded_by_key; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.photos
-    ADD CONSTRAINT photos_uploaded_by_key UNIQUE (uploaded_by);
-
-
---
 -- Name: problem_reports problem_reports_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.problem_reports
     ADD CONSTRAINT problem_reports_pkey PRIMARY KEY (id);
-
-
---
--- Name: push_tokens push_tokens_pkey; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.push_tokens
-    ADD CONSTRAINT push_tokens_pkey PRIMARY KEY (id);
-
-
---
--- Name: push_tokens push_tokens_unique; Type: CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.push_tokens
-    ADD CONSTRAINT push_tokens_unique UNIQUE (user_id, token);
 
 
 --
@@ -3992,13 +2502,6 @@ ALTER TABLE ONLY public.users
 
 
 --
--- Name: idx_chat_active_users_event_last_seen; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_chat_active_users_event_last_seen ON public.chat_active_users USING btree (event_id, last_seen DESC);
-
-
---
 -- Name: idx_ep_event; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -4024,27 +2527,6 @@ CREATE INDEX idx_ep_event_user ON public.event_participants USING btree (pevent_
 --
 
 CREATE INDEX idx_ep_user ON public.event_participants USING btree (user_id);
-
-
---
--- Name: idx_event_date_options_created_at; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_event_date_options_created_at ON public.event_date_options USING btree (created_at);
-
-
---
--- Name: idx_event_expenses_created_by; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_event_expenses_created_by ON public.event_expenses USING btree (created_by);
-
-
---
--- Name: idx_event_expenses_paid_by; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_event_expenses_paid_by ON public.event_expenses USING btree (paid_by);
 
 
 --
@@ -4104,6 +2586,27 @@ CREATE INDEX idx_event_participants_user ON public.event_participants USING btre
 
 
 --
+-- Name: idx_event_photos_created_at; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_event_photos_created_at ON public.event_photos USING btree (created_at DESC);
+
+
+--
+-- Name: idx_event_photos_event_captured; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_event_photos_event_captured ON public.event_photos USING btree (event_id, captured_at DESC);
+
+
+--
+-- Name: idx_event_photos_uploader; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_event_photos_uploader ON public.event_photos USING btree (uploader_id);
+
+
+--
 -- Name: idx_event_photos_uploader_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -4125,41 +2628,6 @@ CREATE INDEX idx_events_state ON public.events USING btree (status);
 
 
 --
--- Name: idx_expense_splits_expense; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_expense_splits_expense ON public.expense_splits USING btree (expense_id);
-
-
---
--- Name: idx_expense_splits_user_unpaid; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_expense_splits_user_unpaid ON public.expense_splits USING btree (user_id, has_paid) WHERE (has_paid = false);
-
-
---
--- Name: idx_group_photos_created; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_group_photos_created ON public.event_photos USING btree (created_at DESC);
-
-
---
--- Name: idx_group_photos_event_captured; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_group_photos_event_captured ON public.event_photos USING btree (event_id, captured_at DESC);
-
-
---
--- Name: idx_group_photos_uploader; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_group_photos_uploader ON public.event_photos USING btree (uploader_id);
-
-
---
 -- Name: idx_invite_analytics_event; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -4174,48 +2642,6 @@ CREATE INDEX idx_invite_analytics_token ON public.invite_analytics USING btree (
 
 
 --
--- Name: idx_location_suggestion_votes_suggestion; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_location_suggestion_votes_suggestion ON public.location_suggestion_votes USING btree (suggestion_id);
-
-
---
--- Name: idx_location_suggestion_votes_user; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_location_suggestion_votes_user ON public.location_suggestion_votes USING btree (user_id);
-
-
---
--- Name: idx_location_suggestions_created; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_location_suggestions_created ON public.location_suggestions USING btree (event_id, created_at DESC);
-
-
---
--- Name: idx_location_suggestions_created_at; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_location_suggestions_created_at ON public.location_suggestions USING btree (created_at);
-
-
---
--- Name: idx_location_suggestions_event; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_location_suggestions_event ON public.location_suggestions USING btree (event_id);
-
-
---
--- Name: idx_location_suggestions_user; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_location_suggestions_user ON public.location_suggestions USING btree (user_id);
-
-
---
 -- Name: idx_notifications_category; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -4227,13 +2653,6 @@ CREATE INDEX idx_notifications_category ON public.notifications USING btree (rec
 --
 
 CREATE INDEX idx_notifications_event ON public.notifications USING btree (event_id, created_at DESC) WHERE (event_id IS NOT NULL);
-
-
---
--- Name: idx_notifications_expense_id; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_notifications_expense_id ON public.notifications USING btree (expense_id);
 
 
 --
@@ -4269,13 +2688,6 @@ CREATE INDEX idx_problem_reports_status ON public.problem_reports USING btree (s
 --
 
 CREATE INDEX idx_problem_reports_user_id ON public.problem_reports USING btree (user_id);
-
-
---
--- Name: idx_push_tokens_user; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE INDEX idx_push_tokens_user ON public.push_tokens USING btree (user_id, is_active) WHERE (is_active = true);
 
 
 --
@@ -4342,27 +2754,6 @@ CREATE INDEX idx_users_avatar ON public.users USING btree (avatar_url) WHERE (av
 
 
 --
--- Name: uq_event_date_options_event_id_id; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE UNIQUE INDEX uq_event_date_options_event_id_id ON public.event_date_options USING btree (event_id, id);
-
-
---
--- Name: uq_photos_event_and_pk; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE UNIQUE INDEX uq_photos_event_and_pk ON public.photos USING btree (event_id, photo_id);
-
-
---
--- Name: uq_photos_event_id_id; Type: INDEX; Schema: public; Owner: -
---
-
-CREATE UNIQUE INDEX uq_photos_event_id_id ON public.photos USING btree (event_id, photo_id);
-
-
---
 -- Name: users_email_uidx; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -4384,21 +2775,15 @@ CREATE OR REPLACE VIEW public.event_participants_summary_view AS
     e.emoji,
     e.created_at,
     count(ep.user_id) AS participants_total,
-    count(ep.user_id) FILTER (WHERE (ep.rsvp = ANY (ARRAY['yes'::public.rsvp_status, 'no'::public.rsvp_status]))) AS voters_total,
+    count(ep.user_id) FILTER (WHERE (ep.rsvp = ANY (ARRAY['yes'::public.rsvp_status, 'no'::public.rsvp_status, 'maybe'::public.rsvp_status]))) AS voters_total,
     count(ep.user_id) FILTER (WHERE ((ep.rsvp IS NULL) OR (ep.rsvp = 'pending'::public.rsvp_status))) AS missing_responses,
     count(ep.user_id) FILTER (WHERE (ep.rsvp = 'yes'::public.rsvp_status)) AS going_count,
     count(ep.user_id) FILTER (WHERE (ep.rsvp = 'no'::public.rsvp_status)) AS not_going_count,
+    count(ep.user_id) FILTER (WHERE (ep.rsvp = 'maybe'::public.rsvp_status)) AS maybe_count,
     array_agg(ep.user_id) AS participant_user_ids
    FROM (public.events e
      LEFT JOIN public.event_participants ep ON ((ep.pevent_id = e.id)))
   GROUP BY e.id;
-
-
---
--- Name: event_date_options date_suggestion_added_notification; Type: TRIGGER; Schema: public; Owner: -
---
-
-CREATE TRIGGER date_suggestion_added_notification AFTER INSERT ON public.event_date_options FOR EACH ROW EXECUTE FUNCTION public.notify_date_suggestion_added();
 
 
 --
@@ -4465,20 +2850,6 @@ COMMENT ON TRIGGER event_status_ended_trigger ON public.events IS 'Automatically
 
 
 --
--- Name: expense_splits expense_paid_notification; Type: TRIGGER; Schema: public; Owner: -
---
-
-CREATE TRIGGER expense_paid_notification AFTER UPDATE ON public.expense_splits FOR EACH ROW EXECUTE FUNCTION public.notify_payment_received();
-
-
---
--- Name: location_suggestions location_suggestion_added_notification; Type: TRIGGER; Schema: public; Owner: -
---
-
-CREATE TRIGGER location_suggestion_added_notification AFTER INSERT ON public.location_suggestions FOR EACH ROW EXECUTE FUNCTION public.notify_location_suggestion_added();
-
-
---
 -- Name: events notify_before_event_delete; Type: TRIGGER; Schema: public; Owner: -
 --
 
@@ -4507,38 +2878,10 @@ CREATE TRIGGER on_notification_insert_send_push AFTER INSERT ON public.notificat
 
 
 --
--- Name: location_suggestions suggestion_added_notification; Type: TRIGGER; Schema: public; Owner: -
---
-
-CREATE TRIGGER suggestion_added_notification AFTER INSERT ON public.location_suggestions FOR EACH ROW EXECUTE FUNCTION public.notify_suggestion_added();
-
-
---
 -- Name: users trigger_create_user_settings; Type: TRIGGER; Schema: public; Owner: -
 --
 
 CREATE TRIGGER trigger_create_user_settings AFTER INSERT ON public.users FOR EACH ROW EXECUTE FUNCTION public.create_user_settings_for_new_user();
-
-
---
--- Name: event_photos trigger_refresh_photos_on_delete; Type: TRIGGER; Schema: public; Owner: -
---
-
-CREATE TRIGGER trigger_refresh_photos_on_delete AFTER DELETE ON public.event_photos FOR EACH STATEMENT EXECUTE FUNCTION public.refresh_group_photos_view();
-
-
---
--- Name: event_photos trigger_refresh_photos_on_insert; Type: TRIGGER; Schema: public; Owner: -
---
-
-CREATE TRIGGER trigger_refresh_photos_on_insert AFTER INSERT ON public.event_photos FOR EACH STATEMENT EXECUTE FUNCTION public.refresh_group_photos_view();
-
-
---
--- Name: event_photos trigger_refresh_photos_on_update; Type: TRIGGER; Schema: public; Owner: -
---
-
-CREATE TRIGGER trigger_refresh_photos_on_update AFTER UPDATE ON public.event_photos FOR EACH STATEMENT EXECUTE FUNCTION public.refresh_group_photos_view();
 
 
 --
@@ -4563,17 +2906,17 @@ CREATE TRIGGER trigger_update_user_suggestions_updated_at BEFORE UPDATE ON publi
 
 
 --
+-- Name: event_photos update_event_photos_updated_at; Type: TRIGGER; Schema: public; Owner: -
+--
+
+CREATE TRIGGER update_event_photos_updated_at BEFORE UPDATE ON public.event_photos FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+
+--
 -- Name: events update_events_updated_at; Type: TRIGGER; Schema: public; Owner: -
 --
 
 CREATE TRIGGER update_events_updated_at BEFORE UPDATE ON public.events FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
-
-
---
--- Name: event_photos update_group_photos_updated_at; Type: TRIGGER; Schema: public; Owner: -
---
-
-CREATE TRIGGER update_group_photos_updated_at BEFORE UPDATE ON public.event_photos FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
 
 --
@@ -4588,78 +2931,6 @@ CREATE TRIGGER uploads_open_notification AFTER UPDATE ON public.events FOR EACH 
 --
 
 CREATE TRIGGER users_touch_updated_at BEFORE UPDATE ON public.users FOR EACH ROW EXECUTE FUNCTION public._touch_updated_at();
-
-
---
--- Name: chat_active_users chat_active_users_event_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.chat_active_users
-    ADD CONSTRAINT chat_active_users_event_id_fkey FOREIGN KEY (event_id) REFERENCES public.events(id) ON DELETE CASCADE;
-
-
---
--- Name: chat_active_users chat_active_users_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.chat_active_users
-    ADD CONSTRAINT chat_active_users_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
-
-
---
--- Name: event_date_options event_date_options_created_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.event_date_options
-    ADD CONSTRAINT event_date_options_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.users(id);
-
-
---
--- Name: event_date_options event_date_options_event_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.event_date_options
-    ADD CONSTRAINT event_date_options_event_id_fkey FOREIGN KEY (event_id) REFERENCES public.events(id) ON DELETE CASCADE;
-
-
---
--- Name: event_date_votes event_date_votes_option_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.event_date_votes
-    ADD CONSTRAINT event_date_votes_option_id_fkey FOREIGN KEY (option_id) REFERENCES public.event_date_options(id) ON DELETE CASCADE;
-
-
---
--- Name: event_date_votes event_date_votes_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.event_date_votes
-    ADD CONSTRAINT event_date_votes_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON UPDATE CASCADE ON DELETE CASCADE;
-
-
---
--- Name: event_expenses event_expenses_created_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.event_expenses
-    ADD CONSTRAINT event_expenses_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.users(id);
-
-
---
--- Name: event_expenses event_expenses_event_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.event_expenses
-    ADD CONSTRAINT event_expenses_event_id_fkey FOREIGN KEY (event_id) REFERENCES public.events(id) ON DELETE CASCADE;
-
-
---
--- Name: event_expenses event_expenses_paid_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.event_expenses
-    ADD CONSTRAINT event_expenses_paid_by_fkey FOREIGN KEY (paid_by) REFERENCES public.users(id);
 
 
 --
@@ -4743,22 +3014,6 @@ ALTER TABLE ONLY public.events
 
 
 --
--- Name: expense_splits expense_splits_expense_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.expense_splits
-    ADD CONSTRAINT expense_splits_expense_id_fkey FOREIGN KEY (expense_id) REFERENCES public.event_expenses(id) ON DELETE CASCADE;
-
-
---
--- Name: expense_splits expense_splits_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.expense_splits
-    ADD CONSTRAINT expense_splits_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
-
-
---
 -- Name: invite_analytics invite_analytics_event_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -4775,59 +3030,11 @@ ALTER TABLE ONLY public.invite_analytics
 
 
 --
--- Name: location_suggestion_votes location_suggestion_votes_suggestion_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.location_suggestion_votes
-    ADD CONSTRAINT location_suggestion_votes_suggestion_id_fkey FOREIGN KEY (suggestion_id) REFERENCES public.location_suggestions(id) ON DELETE CASCADE;
-
-
---
--- Name: location_suggestion_votes location_suggestion_votes_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.location_suggestion_votes
-    ADD CONSTRAINT location_suggestion_votes_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
-
-
---
--- Name: location_suggestions location_suggestions_event_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.location_suggestions
-    ADD CONSTRAINT location_suggestions_event_id_fkey FOREIGN KEY (event_id) REFERENCES public.events(id) ON DELETE CASCADE;
-
-
---
--- Name: location_suggestions location_suggestions_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.location_suggestions
-    ADD CONSTRAINT location_suggestions_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
-
-
---
 -- Name: locations locations_created_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.locations
     ADD CONSTRAINT locations_created_by_fkey FOREIGN KEY (created_by) REFERENCES public.users(id);
-
-
---
--- Name: memories memories_photo_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.memories
-    ADD CONSTRAINT memories_photo_id_fkey FOREIGN KEY (photo_id) REFERENCES public.photos(photo_id);
-
-
---
--- Name: memories memories_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.memories
-    ADD CONSTRAINT memories_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id);
 
 
 --
@@ -4839,14 +3046,6 @@ ALTER TABLE ONLY public.notifications
 
 
 --
--- Name: notifications notifications_expense_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.notifications
-    ADD CONSTRAINT notifications_expense_id_fkey FOREIGN KEY (expense_id) REFERENCES public.event_expenses(id) ON DELETE CASCADE;
-
-
---
 -- Name: notifications notifications_recipient_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -4855,35 +3054,11 @@ ALTER TABLE ONLY public.notifications
 
 
 --
--- Name: photos photos_event_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.photos
-    ADD CONSTRAINT photos_event_id_fkey FOREIGN KEY (event_id) REFERENCES public.events(id) ON DELETE CASCADE;
-
-
---
--- Name: photos photos_uploaded_by_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.photos
-    ADD CONSTRAINT photos_uploaded_by_fkey FOREIGN KEY (uploaded_by) REFERENCES public.users(id);
-
-
---
 -- Name: problem_reports problem_reports_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
 --
 
 ALTER TABLE ONLY public.problem_reports
     ADD CONSTRAINT problem_reports_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
-
-
---
--- Name: push_tokens push_tokens_user_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
---
-
-ALTER TABLE ONLY public.push_tokens
-    ADD CONSTRAINT push_tokens_user_id_fkey FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE;
 
 
 --
@@ -4926,13 +3101,6 @@ CREATE POLICY "Analytics insertable by anyone" ON public.invite_analytics FOR IN
 
 
 --
--- Name: location_suggestions Enable delete for users based on user_id; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY "Enable delete for users based on user_id" ON public.location_suggestions FOR DELETE USING ((( SELECT auth.uid() AS uid) = user_id));
-
-
---
 -- Name: users Enable insert for authenticated users only; Type: POLICY; Schema: public; Owner: -
 --
 
@@ -4963,15 +3131,6 @@ CREATE POLICY "Event creator or admin can delete events" ON public.events FOR DE
 
 
 --
--- Name: location_suggestions Event creators can delete location suggestions; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY "Event creators can delete location suggestions" ON public.location_suggestions FOR DELETE TO authenticated USING (((user_id = auth.uid()) OR (EXISTS ( SELECT 1
-   FROM public.events e
-  WHERE ((e.id = location_suggestions.event_id) AND (e.created_by = auth.uid()))))));
-
-
---
 -- Name: event_invite_links Event members can create invite links; Type: POLICY; Schema: public; Owner: -
 --
 
@@ -4989,15 +3148,6 @@ CREATE POLICY "Event members can create invite links" ON public.event_invite_lin
 CREATE POLICY "Event organizer can view analytics" ON public.invite_analytics FOR SELECT USING ((EXISTS ( SELECT 1
    FROM public.events e
   WHERE ((e.id = invite_analytics.event_id) AND (e.created_by = auth.uid())))));
-
-
---
--- Name: location_suggestions Event participants can create location suggestions; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY "Event participants can create location suggestions" ON public.location_suggestions FOR INSERT TO authenticated WITH CHECK ((EXISTS ( SELECT 1
-   FROM public.event_participants ep
-  WHERE ((ep.pevent_id = location_suggestions.event_id) AND (ep.user_id = auth.uid())))));
 
 
 --
@@ -5054,15 +3204,6 @@ CREATE POLICY "Event participants can view invite links" ON public.event_invite_
 
 
 --
--- Name: location_suggestions Event participants can view location suggestions; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY "Event participants can view location suggestions" ON public.location_suggestions FOR SELECT TO authenticated USING ((EXISTS ( SELECT 1
-   FROM public.event_participants ep
-  WHERE ((ep.pevent_id = location_suggestions.event_id) AND (ep.user_id = auth.uid())))));
-
-
---
 -- Name: event_photos Event participants can view photos; Type: POLICY; Schema: public; Owner: -
 --
 
@@ -5102,15 +3243,6 @@ CREATE POLICY "Service role only" ON public.reviewer_auth_sessions USING (false)
 
 
 --
--- Name: event_expenses Users can create expenses for their events; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY "Users can create expenses for their events" ON public.event_expenses FOR INSERT WITH CHECK ((EXISTS ( SELECT 1
-   FROM public.event_participants ep
-  WHERE ((ep.pevent_id = event_expenses.event_id) AND (ep.user_id = auth.uid()) AND (ep.rsvp = 'yes'::public.rsvp_status)))));
-
-
---
 -- Name: event_photos Users can delete own event photos; Type: POLICY; Schema: public; Owner: -
 --
 
@@ -5139,27 +3271,10 @@ CREATE POLICY "Users can delete own settings" ON public.user_settings FOR DELETE
 
 
 --
--- Name: push_tokens Users can delete own tokens; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY "Users can delete own tokens" ON public.push_tokens FOR DELETE USING ((auth.uid() = user_id));
-
-
---
 -- Name: events Users can delete their own events; Type: POLICY; Schema: public; Owner: -
 --
 
 CREATE POLICY "Users can delete their own events" ON public.events FOR DELETE USING ((created_by = auth.uid()));
-
-
---
--- Name: expense_splits Users can insert expense splits for event participants; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY "Users can insert expense splits for event participants" ON public.expense_splits FOR INSERT TO authenticated WITH CHECK ((EXISTS ( SELECT 1
-   FROM (public.event_expenses ee
-     JOIN public.event_participants ep ON ((ep.pevent_id = ee.event_id)))
-  WHERE ((ee.id = expense_splits.expense_id) AND (ep.user_id = auth.uid())))));
 
 
 --
@@ -5202,20 +3317,6 @@ CREATE POLICY "Users can insert own settings" ON public.user_settings FOR INSERT
 --
 
 CREATE POLICY "Users can insert own suggestions" ON public.user_suggestions FOR INSERT WITH CHECK ((auth.uid() = user_id));
-
-
---
--- Name: push_tokens Users can insert own tokens; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY "Users can insert own tokens" ON public.push_tokens FOR INSERT WITH CHECK ((auth.uid() = user_id));
-
-
---
--- Name: chat_active_users Users can manage own presence; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY "Users can manage own presence" ON public.chat_active_users USING ((auth.uid() = user_id)) WITH CHECK ((auth.uid() = user_id));
 
 
 --
@@ -5306,13 +3407,6 @@ CREATE POLICY "Users can update own settings" ON public.user_settings FOR UPDATE
 
 
 --
--- Name: push_tokens Users can update own tokens; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY "Users can update own tokens" ON public.push_tokens FOR UPDATE USING ((auth.uid() = user_id));
-
-
---
 -- Name: events Users can update their own events; Type: POLICY; Schema: public; Owner: -
 --
 
@@ -5324,34 +3418,6 @@ CREATE POLICY "Users can update their own events" ON public.events FOR UPDATE US
 --
 
 CREATE POLICY "Users can update their own profile" ON public.users FOR UPDATE USING ((auth.uid() = id)) WITH CHECK ((auth.uid() = id));
-
-
---
--- Name: event_participants Users can view event_participants; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY "Users can view event_participants" ON public.event_participants FOR SELECT TO authenticated USING ((EXISTS ( SELECT 1
-   FROM public.event_participants ep
-  WHERE ((ep.pevent_id = event_participants.pevent_id) AND (ep.user_id = auth.uid())))));
-
-
---
--- Name: expense_splits Users can view expense splits they are part of; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY "Users can view expense splits they are part of" ON public.expense_splits FOR SELECT TO authenticated USING (((user_id = auth.uid()) OR (EXISTS ( SELECT 1
-   FROM (public.event_expenses ee
-     JOIN public.event_participants ep ON ((ep.pevent_id = ee.event_id)))
-  WHERE ((ee.id = expense_splits.expense_id) AND (ep.user_id = auth.uid()))))));
-
-
---
--- Name: event_expenses Users can view expenses from their events; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY "Users can view expenses from their events" ON public.event_expenses FOR SELECT USING ((EXISTS ( SELECT 1
-   FROM public.event_participants ep
-  WHERE ((ep.pevent_id = event_expenses.event_id) AND (ep.user_id = auth.uid()) AND (ep.rsvp = 'yes'::public.rsvp_status)))));
 
 
 --
@@ -5379,13 +3445,6 @@ CREATE POLICY "Users can view own notifications" ON public.notifications FOR SEL
 
 
 --
--- Name: chat_active_users Users can view own presence; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY "Users can view own presence" ON public.chat_active_users FOR SELECT USING ((auth.uid() = user_id));
-
-
---
 -- Name: user_push_tokens Users can view own push tokens; Type: POLICY; Schema: public; Owner: -
 --
 
@@ -5400,75 +3459,6 @@ CREATE POLICY "Users can view own settings" ON public.user_notification_settings
 
 
 --
--- Name: push_tokens Users can view own tokens; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY "Users can view own tokens" ON public.push_tokens FOR SELECT USING ((auth.uid() = user_id));
-
-
---
--- Name: chat_active_users; Type: ROW SECURITY; Schema: public; Owner: -
---
-
-ALTER TABLE public.chat_active_users ENABLE ROW LEVEL SECURITY;
-
---
--- Name: event_date_options edopts_delete; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY edopts_delete ON public.event_date_options FOR DELETE USING (((created_by = auth.uid()) AND public.is_member_of_event(event_id)));
-
-
---
--- Name: event_date_options edopts_insert; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY edopts_insert ON public.event_date_options FOR INSERT WITH CHECK ((public.is_member_of_event(event_id) AND (created_by = auth.uid())));
-
-
---
--- Name: event_date_options edopts_select; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY edopts_select ON public.event_date_options FOR SELECT USING (public.is_member_of_event(event_id));
-
-
---
--- Name: event_date_options edopts_update; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY edopts_update ON public.event_date_options FOR UPDATE USING (((created_by = auth.uid()) AND public.is_member_of_event(event_id))) WITH CHECK ((created_by = auth.uid()));
-
-
---
--- Name: event_date_votes edvotes_delete; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY edvotes_delete ON public.event_date_votes FOR DELETE USING ((user_id = auth.uid()));
-
-
---
--- Name: event_date_votes edvotes_insert; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY edvotes_insert ON public.event_date_votes FOR INSERT WITH CHECK ((public.is_member_of_event(event_id) AND (user_id = auth.uid())));
-
-
---
--- Name: event_date_votes edvotes_select; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY edvotes_select ON public.event_date_votes FOR SELECT USING (public.is_member_of_event(event_id));
-
-
---
--- Name: event_date_votes edvotes_update; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY edvotes_update ON public.event_date_votes FOR UPDATE USING (((user_id = auth.uid()) AND public.is_member_of_event(event_id))) WITH CHECK ((user_id = auth.uid()));
-
-
---
 -- Name: event_participants ep_delete; Type: POLICY; Schema: public; Owner: -
 --
 
@@ -5476,56 +3466,10 @@ CREATE POLICY ep_delete ON public.event_participants FOR DELETE USING ((user_id 
 
 
 --
--- Name: event_participants ep_insert; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY ep_insert ON public.event_participants FOR INSERT WITH CHECK ((public.is_member_of_event(pevent_id) AND (user_id = auth.uid())));
-
-
---
 -- Name: event_participants ep_select; Type: POLICY; Schema: public; Owner: -
 --
 
 CREATE POLICY ep_select ON public.event_participants FOR SELECT USING (public.is_member_of_event(pevent_id));
-
-
---
--- Name: event_participants ep_update; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY ep_update ON public.event_participants FOR UPDATE USING (((user_id = auth.uid()) AND public.is_member_of_event(pevent_id))) WITH CHECK ((user_id = auth.uid()));
-
-
---
--- Name: event_date_options; Type: ROW SECURITY; Schema: public; Owner: -
---
-
-ALTER TABLE public.event_date_options ENABLE ROW LEVEL SECURITY;
-
---
--- Name: event_date_votes; Type: ROW SECURITY; Schema: public; Owner: -
---
-
-ALTER TABLE public.event_date_votes ENABLE ROW LEVEL SECURITY;
-
---
--- Name: event_expenses; Type: ROW SECURITY; Schema: public; Owner: -
---
-
-ALTER TABLE public.event_expenses ENABLE ROW LEVEL SECURITY;
-
---
--- Name: event_expenses event_expenses_delete_policy; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY event_expenses_delete_policy ON public.event_expenses FOR DELETE TO authenticated USING ((created_by = auth.uid()));
-
-
---
--- Name: event_expenses event_expenses_update_policy; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY event_expenses_update_policy ON public.event_expenses FOR UPDATE TO authenticated USING ((created_by = auth.uid())) WITH CHECK ((created_by = auth.uid()));
 
 
 --
@@ -5545,26 +3489,6 @@ ALTER TABLE public.event_invite_links ENABLE ROW LEVEL SECURITY;
 --
 
 ALTER TABLE public.event_participants ENABLE ROW LEVEL SECURITY;
-
---
--- Name: location_suggestion_votes event_participants_can_view_location_votes; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY event_participants_can_view_location_votes ON public.location_suggestion_votes FOR SELECT TO authenticated USING ((EXISTS ( SELECT 1
-   FROM (public.event_participants ep
-     JOIN public.location_suggestions ls ON ((ls.event_id = ep.pevent_id)))
-  WHERE ((ls.id = location_suggestion_votes.suggestion_id) AND (ep.user_id = auth.uid())))));
-
-
---
--- Name: location_suggestion_votes event_participants_can_vote_on_location_suggestions; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY event_participants_can_vote_on_location_suggestions ON public.location_suggestion_votes FOR INSERT TO authenticated WITH CHECK (((user_id = auth.uid()) AND (EXISTS ( SELECT 1
-   FROM (public.event_participants ep
-     JOIN public.location_suggestions ls ON ((ls.event_id = ep.pevent_id)))
-  WHERE ((ls.id = location_suggestion_votes.suggestion_id) AND (ep.user_id = auth.uid()))))));
-
 
 --
 -- Name: event_photos; Type: ROW SECURITY; Schema: public; Owner: -
@@ -5590,32 +3514,6 @@ CREATE POLICY events_insert_own ON public.events FOR INSERT WITH CHECK ((created
 --
 
 CREATE POLICY events_select_own ON public.events FOR SELECT USING ((created_by = auth.uid()));
-
-
---
--- Name: expense_splits; Type: ROW SECURITY; Schema: public; Owner: -
---
-
-ALTER TABLE public.expense_splits ENABLE ROW LEVEL SECURITY;
-
---
--- Name: expense_splits expense_splits_delete_policy; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY expense_splits_delete_policy ON public.expense_splits FOR DELETE TO authenticated USING ((EXISTS ( SELECT 1
-   FROM public.event_expenses ee
-  WHERE ((ee.id = expense_splits.expense_id) AND (ee.created_by = auth.uid())))));
-
-
---
--- Name: expense_splits expense_splits_update_policy; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY expense_splits_update_policy ON public.expense_splits FOR UPDATE TO authenticated USING (((user_id = auth.uid()) OR (EXISTS ( SELECT 1
-   FROM public.event_expenses ee
-  WHERE ((ee.id = expense_splits.expense_id) AND (ee.created_by = auth.uid())))))) WITH CHECK (((user_id = auth.uid()) OR (EXISTS ( SELECT 1
-   FROM public.event_expenses ee
-  WHERE ((ee.id = expense_splits.expense_id) AND (ee.created_by = auth.uid()))))));
 
 
 --
@@ -5653,28 +3551,10 @@ CREATE POLICY loc_update_own ON public.locations FOR UPDATE USING ((created_by =
 
 
 --
--- Name: location_suggestion_votes; Type: ROW SECURITY; Schema: public; Owner: -
---
-
-ALTER TABLE public.location_suggestion_votes ENABLE ROW LEVEL SECURITY;
-
---
--- Name: location_suggestions; Type: ROW SECURITY; Schema: public; Owner: -
---
-
-ALTER TABLE public.location_suggestions ENABLE ROW LEVEL SECURITY;
-
---
 -- Name: locations; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
 ALTER TABLE public.locations ENABLE ROW LEVEL SECURITY;
-
---
--- Name: memories; Type: ROW SECURITY; Schema: public; Owner: -
---
-
-ALTER TABLE public.memories ENABLE ROW LEVEL SECURITY;
 
 --
 -- Name: notifications; Type: ROW SECURITY; Schema: public; Owner: -
@@ -5683,22 +3563,10 @@ ALTER TABLE public.memories ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: photos; Type: ROW SECURITY; Schema: public; Owner: -
---
-
-ALTER TABLE public.photos ENABLE ROW LEVEL SECURITY;
-
---
 -- Name: problem_reports; Type: ROW SECURITY; Schema: public; Owner: -
 --
 
 ALTER TABLE public.problem_reports ENABLE ROW LEVEL SECURITY;
-
---
--- Name: push_tokens; Type: ROW SECURITY; Schema: public; Owner: -
---
-
-ALTER TABLE public.push_tokens ENABLE ROW LEVEL SECURITY;
 
 --
 -- Name: reviewer_auth_sessions; Type: ROW SECURITY; Schema: public; Owner: -
@@ -5737,13 +3605,6 @@ ALTER TABLE public.user_suggestions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: location_suggestion_votes users_can_remove_own_location_votes; Type: POLICY; Schema: public; Owner: -
---
-
-CREATE POLICY users_can_remove_own_location_votes ON public.location_suggestion_votes FOR DELETE TO authenticated USING ((user_id = auth.uid()));
-
-
---
 -- Name: users users_can_view_avatars_of_event_participants; Type: POLICY; Schema: public; Owner: -
 --
 
@@ -5757,5 +3618,5 @@ CREATE POLICY users_can_view_avatars_of_event_participants ON public.users FOR S
 -- PostgreSQL database dump complete
 --
 
-\unrestrict qtmzKkbRblxbdI0drnwV7C1RuajFwIu6Mna99m1ed3bB9F58rYcRxoq19qf8QAV
+\unrestrict ddlLiktetbXH0oVF3N0Ho84yXUQetLy5t8HgO0a3HvWUrtJSTAEdPxXIdjEKEte
 

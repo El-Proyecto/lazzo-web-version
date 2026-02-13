@@ -16,9 +16,6 @@ abstract class EventRepository {
   /// Delete an event
   Future<void> deleteEvent(String id);
 
-  /// Get events for a group
-  Future<List<Event>> getEventsForGroup(String groupId);
-
   /// Search for location suggestions
   Future<List<EventLocation>> searchLocations(String query);
 

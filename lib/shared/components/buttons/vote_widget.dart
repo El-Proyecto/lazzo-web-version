@@ -138,6 +138,13 @@ class VoteWidget extends StatelessWidget {
         iconData = Icons.close;
         voteText = totalVotes == 1 ? '1 vote' : '$totalVotes votes';
         break;
+      case UserVoteStatus.maybe:
+        borderColor = BrandColors.warning;
+        iconColor = BrandColors.warning;
+        textColor = BrandColors.text1;
+        iconData = Icons.help_outline;
+        voteText = totalVotes == 1 ? '1 vote' : '$totalVotes votes';
+        break;
       case UserVoteStatus.notVoted:
         borderColor = BrandColors.text2;
         iconColor = BrandColors.text2;

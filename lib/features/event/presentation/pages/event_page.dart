@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../routes/app_router.dart';
 import '../../../create_event/domain/entities/event.dart' as create_event;
 import '../../../../shared/components/nav/common_app_bar.dart';
@@ -12,6 +11,7 @@ import '../../../../shared/components/dialogs/missing_fields_confirmation_dialog
 import '../../../../shared/components/widgets/rsvp_widget.dart' as rsvp_widget;
 import '../../../../shared/components/widgets/help_plan_event_widget.dart';
 import '../../../../shared/components/widgets/location_widget.dart';
+import '../../../../shared/components/widgets/event_details_widget.dart';
 import '../../../../shared/components/widgets/date_time_widget.dart';
 import '../../../../shared/components/widgets/poll_widget.dart';
 import '../../../../shared/constants/spacing.dart';
@@ -21,7 +21,6 @@ import '../../domain/entities/rsvp.dart';
 import '../../domain/entities/suggestion.dart';
 import '../../domain/entities/event_detail.dart';
 import '../providers/event_providers.dart';
-import '../widgets/event_expenses_widget.dart';
 import '../widgets/date_time_suggestions_widget.dart'
     show DateTimeSuggestionsWidget, DateTimeSuggestion;
 import '../widgets/date_time_suggestions_widget.dart' as datetime_widget;
@@ -29,9 +28,7 @@ import '../widgets/location_suggestions_widget.dart';
 import '../widgets/add_suggestion_bottom_sheet.dart';
 import 'event_page_models.dart';
 
-import '../../../../shared/components/dialogs/add_expense_bottom_sheet.dart';
-import '../../../expense/presentation/providers/event_expense_providers.dart';
-import '../../../inbox/presentation/providers/payments_provider.dart';
+// LAZZO 2.0: payments_provider import removed
 
 /// Event detail page
 /// Displays all event information and interactions
@@ -252,65 +249,6 @@ class _EventPageState extends ConsumerState<EventPage> {
     }
   }
 
-  /// Show add expense bottom sheet
-  Future<void> _showAddExpenseBottomSheet(BuildContext context) async {
-    // Get event participants
-    final participantsAsync =
-        await ref.read(eventParticipantsProvider(eventId).future);
-
-    final currentUserId = Supabase.instance.client.auth.currentUser?.id;
-
-    // Helper function to display "You" for current user
-    String getUserDisplayName(String userId, String userName) {
-      return userId == currentUserId ? 'You' : userName;
-    }
-
-    final participants = participantsAsync
-        .map((p) => ExpenseParticipantOption(
-              id: p.userId,
-              name: getUserDisplayName(p.userId, p.displayName),
-              avatarUrl: p.avatarUrl,
-            ))
-        .toList();
-
-    if (!context.mounted) return;
-
-    // ✅ Check if there are participants before opening bottom sheet
-    if (participants.isEmpty) {
-      TopBanner.showInfo(
-        context,
-        message: 'No participants to split expenses with yet',
-      );
-      return;
-    }
-
-    AddExpenseBottomSheet.show(
-      context: context,
-      participants: participants,
-      onAddExpense: (title, paidBy, participantsOwe, amount) async {
-        // Create expense using expense provider
-        try {
-          await ref.read(eventExpensesProvider(eventId).notifier).addExpense(
-            description: title,
-            amount: amount,
-            paidBy: paidBy,
-            participantsOwe: participantsOwe,
-            participantsPaid: [paidBy],
-          );
-
-          if (context.mounted) {
-            TopBanner.showSuccess(context,
-                message: 'Expense added successfully');
-          }
-        } catch (e) {
-          if (context.mounted) {
-            TopBanner.showError(context, message: 'Failed to add expense: $e');
-          }
-        }
-      },
-    );
-  }
-
   /// Add event to device calendar
   Future<void> _addToCalendar(
     BuildContext context,
@@ -329,7 +267,7 @@ class _EventPageState extends ConsumerState<EventPage> {
       title: '${event.emoji} ${event.name}',
       startDate: event.startDateTime!,
       endDate: event.endDateTime,
-      description: 'Lazzo event',
+      description: event.description ?? 'Lazzo event',
       location: event.location?.displayName,
     );
 
@@ -376,22 +314,11 @@ class _EventPageState extends ConsumerState<EventPage> {
       ref.invalidate(userLocationSuggestionVotesProvider(eventId));
       ref.invalidate(eventParticipantsProvider(eventId));
 
-      // Invalidate expenses for this event
-      ref.invalidate(eventExpensesProvider(eventId));
-
-      // Invalidate base payment providers (affects all events)
-      final currentUserId = Supabase.instance.client.auth.currentUser?.id;
-      if (currentUserId != null) {
-        ref.invalidate(paymentsOwedToUserProvider);
-        ref.invalidate(paymentsUserOwesProvider);
-      }
+      // LAZZO 2.0: payment provider invalidations removed
     }
 
     final eventName = eventAsync.value?.name ?? '';
     final eventStatus = eventAsync.value?.status;
-    final showAddExpense = eventStatus == EventStatus.pending ||
-        eventStatus == EventStatus.confirmed ||
-        eventStatus == EventStatus.living;
 
     return Scaffold(
       backgroundColor: BrandColors.bg1,
@@ -425,9 +352,9 @@ class _EventPageState extends ConsumerState<EventPage> {
                           id: eventData.id,
                           name: eventData.name,
                           emoji: eventData.emoji,
-                          groupId: eventData.groupId,
                           startDateTime: eventData.startDateTime,
                           endDateTime: eventData.endDateTime,
+                          description: eventData.description,
                           location: eventData.location != null
                               ? create_event.EventLocation(
                                   id: 'temp-id', // Will be created/updated in repository
@@ -467,9 +394,9 @@ class _EventPageState extends ConsumerState<EventPage> {
                           id: eventData.id,
                           name: eventData.name,
                           emoji: eventData.emoji,
-                          groupId: eventData.groupId,
                           startDateTime: eventData.startDateTime,
                           endDateTime: eventData.endDateTime,
+                          description: eventData.description,
                           location: eventData.location != null
                               ? create_event.EventLocation(
                                   id: 'temp-id', // Will be created/updated in repository
@@ -498,15 +425,7 @@ class _EventPageState extends ConsumerState<EventPage> {
             );
           },
         ),
-        trailing2: showAddExpense
-            ? IconButton(
-                icon: const Icon(
-                  Icons.receipt_long_outlined,
-                  color: BrandColors.text1,
-                ),
-                onPressed: () => _showAddExpenseBottomSheet(context),
-              )
-            : null,
+        trailing2: null,
       ),
       body: eventAsync.when(
         data: (event) => RefreshIndicator(
@@ -530,12 +449,7 @@ class _EventPageState extends ConsumerState<EventPage> {
                   location: event.location?.displayName,
                   dateTime: event.startDateTime,
                   endDateTime: event.endDateTime,
-                  groupName: event.groupName,
-                  groupId: event.groupId,
                   isExpired: event.isExpired,
-                  onGroupTap: () {
-                    // LAZZO 2.0: Group hub navigation removed — events are standalone
-                  },
                 ),
                 const SizedBox(height: Gaps.md),
 
@@ -707,63 +621,16 @@ class _EventPageState extends ConsumerState<EventPage> {
                   },
                 ),
 
-                // Expenses widget
-                // Use whenOrNull to keep previous expenses visible during refresh
-                participantsAsync.whenOrNull(
-                      data: (participants) {
-                        final currentUserId =
-                            Supabase.instance.client.auth.currentUser?.id;
-                        final participantOptions = participants.map((p) {
-                          return ExpenseParticipantOption(
-                            id: p.userId,
-                            name: _getUserDisplayName(
-                                p.userId, p.displayName, currentUserId),
-                            avatarUrl: p.avatarUrl,
-                          );
-                        }).toList();
-
-                        // Sort: "You" first, then alphabetically by name
-                        participantOptions.sort((a, b) {
-                          if (a.name == 'You') return -1;
-                          if (b.name == 'You') return 1;
-                          return a.name.compareTo(b.name);
-                        });
-
-                        // Determine if expenses widget should be shrinked based on expenses count
-                        final expensesAsync =
-                            ref.watch(eventExpensesProvider(eventId));
-                        final isExpensesShrinked = expensesAsync.maybeWhen(
-                          data: (expenses) => expenses.isEmpty,
-                          orElse: () => false,
-                        );
-
-                        return Padding(
-                          padding: EdgeInsets.only(
-                            top: isExpensesShrinked ? 0 : Gaps.lg,
-                          ),
-                          child: EventExpensesWidget(
-                            eventId: eventId,
-                            mode: EventMode.planning,
-                            participants: participantOptions,
-                            onAddExpense: (title, paidById, participantsOwe,
-                                amount) async {
-                              ref
-                                  .read(eventExpensesProvider(eventId).notifier)
-                                  .addExpense(
-                                description: title,
-                                amount: amount,
-                                paidBy: paidById,
-                                participantsOwe: participantsOwe,
-                                participantsPaid: [],
-                              );
-                            },
-                          ),
-                        );
-                      },
-                    ) ??
-                    const SizedBox.shrink(),
+                // LAZZO 2.0: Expenses widget removed
 
                 const SizedBox(height: Gaps.lg),
+
+                // Event details/description (if present)
+                if (event.description != null &&
+                    event.description!.isNotEmpty) ...[
+                  EventDetailsWidget(details: event.description!),
+                  const SizedBox(height: Gaps.lg),
+                ],
 
                 // Location Widget (if location is set)
                 if (event.location != null) ...[
@@ -842,9 +709,18 @@ class _EventPageState extends ConsumerState<EventPage> {
     );
   }
 
-  bool? _getUserVoteStatus(Rsvp? rsvp) {
-    if (rsvp == null || rsvp.status == RsvpStatus.pending) return null;
-    return rsvp.status == RsvpStatus.going;
+  rsvp_widget.RsvpVoteStatus _getUserVoteStatus(Rsvp? rsvp) {
+    if (rsvp == null) return rsvp_widget.RsvpVoteStatus.pending;
+    switch (rsvp.status) {
+      case RsvpStatus.going:
+        return rsvp_widget.RsvpVoteStatus.going;
+      case RsvpStatus.notGoing:
+        return rsvp_widget.RsvpVoteStatus.notGoing;
+      case RsvpStatus.maybe:
+        return rsvp_widget.RsvpVoteStatus.maybe;
+      case RsvpStatus.pending:
+        return rsvp_widget.RsvpVoteStatus.pending;
+    }
   }
 
   String? _getUserVotedOption(dynamic poll) {
@@ -1299,6 +1175,8 @@ class _EventPageState extends ConsumerState<EventPage> {
                 rsvps.where((r) => r.status == RsvpStatus.going).length;
             final notGoingCount =
                 rsvps.where((r) => r.status == RsvpStatus.notGoing).length;
+            final maybeCount =
+                rsvps.where((r) => r.status == RsvpStatus.maybe).length;
             final pendingCount =
                 rsvps.where((r) => r.status == RsvpStatus.pending).length;
 
@@ -1307,6 +1185,7 @@ class _EventPageState extends ConsumerState<EventPage> {
                 rsvp_widget.RsvpWidget(
                   goingCount: goingCount,
                   notGoingCount: notGoingCount,
+                  maybeCount: maybeCount,
                   pendingCount: pendingCount,
                   userVote: _getUserVoteStatus(userRsvp),
                   currentUserId: currentUserId,
@@ -1316,6 +1195,16 @@ class _EventPageState extends ConsumerState<EventPage> {
                     final newStatus = currentStatus == RsvpStatus.going
                         ? RsvpStatus.pending
                         : RsvpStatus.going;
+                    await ref
+                        .read(userRsvpProvider(eventId).notifier)
+                        .submitVote(newStatus);
+                  },
+                  onMaybePressed: () async {
+                    final currentStatus =
+                        userRsvp?.status ?? RsvpStatus.pending;
+                    final newStatus = currentStatus == RsvpStatus.maybe
+                        ? RsvpStatus.pending
+                        : RsvpStatus.maybe;
                     await ref
                         .read(userRsvpProvider(eventId).notifier)
                         .submitVote(newStatus);
@@ -1338,16 +1227,13 @@ class _EventPageState extends ConsumerState<EventPage> {
                           userName: _getUserDisplayName(
                               r.userId, r.userName, currentUserId),
                           userAvatar: r.userAvatar,
-                          status: r.status == RsvpStatus.going
-                              ? rsvp_widget.RsvpVoteStatus.going
-                              : r.status == RsvpStatus.notGoing
-                                  ? rsvp_widget.RsvpVoteStatus.notGoing
-                                  : rsvp_widget.RsvpVoteStatus.pending,
+                          status: _mapRsvpToVoteStatus(r.status),
                           votedAt: r.createdAt,
                         ),
                       )
                       .toList(),
-                  onAddSuggestion: _getUserVoteStatus(userRsvp) == false
+                  onAddSuggestion: _getUserVoteStatus(userRsvp) ==
+                          rsvp_widget.RsvpVoteStatus.notGoing
                       ? () {
                           if (event.startDateTime == null ||
                               event.endDateTime == null) {
@@ -1414,6 +1300,7 @@ class _EventPageState extends ConsumerState<EventPage> {
     final goingCount = rsvps.where((r) => r.status == RsvpStatus.going).length;
     final notGoingCount =
         rsvps.where((r) => r.status == RsvpStatus.notGoing).length;
+    final maybeCount = rsvps.where((r) => r.status == RsvpStatus.maybe).length;
     final pendingCount =
         rsvps.where((r) => r.status == RsvpStatus.pending).length;
 
@@ -1422,6 +1309,7 @@ class _EventPageState extends ConsumerState<EventPage> {
         rsvp_widget.RsvpWidget(
           goingCount: goingCount,
           notGoingCount: notGoingCount,
+          maybeCount: maybeCount,
           pendingCount: pendingCount,
           userVote: _getUserVoteStatus(userRsvp),
           currentUserId: currentUserId,
@@ -1430,6 +1318,15 @@ class _EventPageState extends ConsumerState<EventPage> {
             final newStatus = currentStatus == RsvpStatus.going
                 ? RsvpStatus.pending
                 : RsvpStatus.going;
+            await ref
+                .read(userRsvpProvider(eventId).notifier)
+                .submitVote(newStatus);
+          },
+          onMaybePressed: () async {
+            final currentStatus = userRsvp?.status ?? RsvpStatus.pending;
+            final newStatus = currentStatus == RsvpStatus.maybe
+                ? RsvpStatus.pending
+                : RsvpStatus.maybe;
             await ref
                 .read(userRsvpProvider(eventId).notifier)
                 .submitVote(newStatus);
@@ -1451,11 +1348,7 @@ class _EventPageState extends ConsumerState<EventPage> {
                   userName:
                       _getUserDisplayName(r.userId, r.userName, currentUserId),
                   userAvatar: r.userAvatar,
-                  status: r.status == RsvpStatus.going
-                      ? rsvp_widget.RsvpVoteStatus.going
-                      : r.status == RsvpStatus.notGoing
-                          ? rsvp_widget.RsvpVoteStatus.notGoing
-                          : rsvp_widget.RsvpVoteStatus.pending,
+                  status: _mapRsvpToVoteStatus(r.status),
                   votedAt: r.createdAt,
                 ),
               )
@@ -1478,10 +1371,11 @@ class _EventPageState extends ConsumerState<EventPage> {
         rsvp_widget.RsvpWidget(
           goingCount: 0,
           notGoingCount: 0,
+          maybeCount: 0,
           pendingCount: 0,
-          userVote: null,
           currentUserId: currentUserId,
           onGoingPressed: () {},
+          onMaybePressed: () {},
           onNotGoingPressed: () {},
           allVotes: const [],
           onAddSuggestion: null,
@@ -1493,6 +1387,20 @@ class _EventPageState extends ConsumerState<EventPage> {
         const SizedBox(height: Gaps.lg),
       ],
     );
+  }
+
+  /// Maps domain RsvpStatus to widget RsvpVoteStatus
+  rsvp_widget.RsvpVoteStatus _mapRsvpToVoteStatus(RsvpStatus status) {
+    switch (status) {
+      case RsvpStatus.going:
+        return rsvp_widget.RsvpVoteStatus.going;
+      case RsvpStatus.notGoing:
+        return rsvp_widget.RsvpVoteStatus.notGoing;
+      case RsvpStatus.maybe:
+        return rsvp_widget.RsvpVoteStatus.maybe;
+      case RsvpStatus.pending:
+        return rsvp_widget.RsvpVoteStatus.pending;
+    }
   }
 
   // ===== DATA PROCESSING METHODS =====

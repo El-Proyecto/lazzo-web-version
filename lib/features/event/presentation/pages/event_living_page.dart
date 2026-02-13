@@ -1,27 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../routes/app_router.dart';
 import '../../../../shared/components/nav/common_app_bar.dart';
 import '../../../../shared/components/common/top_banner.dart';
 import '../../../../shared/components/sections/event_header.dart';
 import '../../../../shared/components/widgets/location_widget.dart';
-import '../../../../shared/components/dialogs/add_expense_bottom_sheet.dart';
 import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/themes/colors.dart';
-import '../../../expense/presentation/providers/event_expense_providers.dart';
 import '../providers/event_providers.dart';
 import '../providers/event_photo_providers.dart';
 import '../widgets/living_time_left_pill.dart';
 import '../widgets/living_action_row.dart';
 import '../widgets/host_time_controls.dart';
-import '../widgets/event_expenses_widget.dart';
-
-/// Helper function to display "You" for current user, otherwise their name
-String _getUserDisplayName(
-    String userId, String userName, String? currentUserId) {
-  return userId == currentUserId ? 'You' : userName;
-}
 
 /// Event page for Living mode
 /// Displays event in progress with photo upload and host controls
@@ -66,7 +56,6 @@ class _EventLivingPageState extends ConsumerState<EventLivingPage> {
   Future<void> refreshEventData() async {
     ref.invalidate(eventDetailProvider(widget.eventId));
     ref.invalidate(eventParticipantsProvider(widget.eventId));
-    ref.invalidate(eventExpensesProvider(widget.eventId));
     ref.invalidate(eventPhotosProvider(widget.eventId));
   }
 
@@ -183,68 +172,6 @@ class _EventLivingPageState extends ConsumerState<EventLivingPage> {
 
                 // Action row
                 LivingActionRow(
-                  onAddExpense: () async {
-                    // Get event participants
-                    final participantsAsync = await ref
-                        .read(eventParticipantsProvider(widget.eventId).future);
-
-                    final currentUserId =
-                        Supabase.instance.client.auth.currentUser?.id;
-                    final participants = participantsAsync
-                        .map((p) => ExpenseParticipantOption(
-                              id: p.userId,
-                              name: _getUserDisplayName(
-                                p.userId,
-                                p.displayName,
-                                currentUserId,
-                              ),
-                              avatarUrl: p.avatarUrl,
-                            ))
-                        .toList();
-
-                    if (!context.mounted) return;
-
-                    // ✅ Check if there are participants before opening bottom sheet
-                    if (participants.isEmpty) {
-                      TopBanner.showInfo(
-                        context,
-                        message: 'No participants to split expenses with yet',
-                      );
-                      return;
-                    }
-
-                    // Open add expense bottom sheet
-                    AddExpenseBottomSheet.show(
-                      context: context,
-                      participants: participants,
-                      onAddExpense:
-                          (title, paidBy, participantsOwe, amount) async {
-                        // Create expense using expense provider
-                        try {
-                          await ref
-                              .read(eventExpensesProvider(widget.eventId)
-                                  .notifier)
-                              .addExpense(
-                            description: title,
-                            amount: amount,
-                            paidBy: paidBy,
-                            participantsOwe: participantsOwe,
-                            participantsPaid: [paidBy],
-                          );
-
-                          if (context.mounted) {
-                            TopBanner.showSuccess(context,
-                                message: 'Expense added successfully');
-                          }
-                        } catch (e) {
-                          if (context.mounted) {
-                            TopBanner.showError(context,
-                                message: 'Failed to add expense: $e');
-                          }
-                        }
-                      },
-                    );
-                  },
                   onTakePhoto: () async {
                     // Get photo upload notifier
                     final photoNotifier = ref.read(
@@ -254,7 +181,6 @@ class _EventLivingPageState extends ConsumerState<EventLivingPage> {
                     // Take photo and upload
                     await photoNotifier.takePhoto(
                       eventId: widget.eventId,
-                      groupId: event.groupId,
                     );
 
                     // Show result
@@ -316,76 +242,7 @@ class _EventLivingPageState extends ConsumerState<EventLivingPage> {
                 ),
                 const SizedBox(height: Gaps.lg),
 
-                // Expenses widget (spacing will be added after if widget renders)
-                FutureBuilder(
-                  future: ref
-                      .read(eventParticipantsProvider(widget.eventId).future),
-                  builder: (context, snapshot) {
-                    final currentUserId =
-                        Supabase.instance.client.auth.currentUser?.id;
-                    final participants = snapshot.data
-                            ?.map((p) => ExpenseParticipantOption(
-                                  id: p.userId,
-                                  name: _getUserDisplayName(
-                                    p.userId,
-                                    p.displayName,
-                                    currentUserId,
-                                  ),
-                                  avatarUrl: p.avatarUrl,
-                                ))
-                            .toList() ??
-                        [];
-
-                    // Check if there are expenses to show
-                    final expensesAsync =
-                        ref.watch(eventExpensesProvider(widget.eventId));
-                    final hasExpenses = expensesAsync.when(
-                      data: (expenses) => expenses.isNotEmpty,
-                      loading: () => false,
-                      error: (_, __) => false,
-                    );
-
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Spacing before expenses section
-                        const SizedBox(height: Gaps.lg),
-                        EventExpensesWidget(
-                          eventId: widget.eventId,
-                          mode: EventMode.living,
-                          participants: participants,
-                          onAddExpense:
-                              (title, paidBy, participantsOwe, amount) async {
-                            try {
-                              await ref
-                                  .read(eventExpensesProvider(widget.eventId)
-                                      .notifier)
-                                  .addExpense(
-                                description: title,
-                                amount: amount,
-                                paidBy: paidBy,
-                                participantsOwe: participantsOwe,
-                                participantsPaid: [paidBy],
-                              );
-
-                              if (context.mounted) {
-                                TopBanner.showSuccess(context,
-                                    message: 'Expense added successfully');
-                              }
-                            } catch (e) {
-                              if (context.mounted) {
-                                TopBanner.showError(context,
-                                    message: 'Failed to add expense: $e');
-                              }
-                            }
-                          },
-                        ),
-                        // Only add spacing after if there are expenses
-                        if (hasExpenses) const SizedBox(height: Gaps.lg),
-                      ],
-                    );
-                  },
-                ),
+                // LAZZO 2.0: Expenses widget removed
 
                 // Location Widget (if location is set)
                 if (event.location != null)

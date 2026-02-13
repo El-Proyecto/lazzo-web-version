@@ -5,8 +5,6 @@ import '../../../../shared/components/common/common_bottom_sheet.dart';
 import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/constants/text_styles.dart';
 import '../../../../shared/themes/colors.dart';
-//import '../../../../shared/services/emoji_suggestion_service.dart';
-import 'event_group_selector.dart';
 import 'location_section.dart';
 import '../providers/event_providers.dart';
 import '../../domain/entities/event.dart';
@@ -16,24 +14,24 @@ import '../../domain/entities/event.dart';
 class ConfirmEventBottomSheet extends ConsumerStatefulWidget {
   final String eventName;
   final String? eventEmoji;
-  final GroupInfo? selectedGroup;
   final DateTime? selectedDate;
   final TimeOfDay? selectedTime;
   final DateTime? endDate;
   final TimeOfDay? endTime;
   final LocationInfo? selectedLocation;
+  final String? description;
   final Function(String eventId)? onEventCreated; // Changed to receive eventId
 
   const ConfirmEventBottomSheet({
     super.key,
     required this.eventName,
     this.eventEmoji,
-    this.selectedGroup,
     this.selectedDate,
     this.selectedTime,
     this.endDate,
     this.endTime,
     this.selectedLocation,
+    this.description,
     this.onEventCreated,
   });
 
@@ -106,12 +104,12 @@ class _ConfirmEventBottomSheetState
         id: '', // Será gerado pelo Supabase
         name: widget.eventName,
         emoji: _displayEmoji,
-        groupId: widget.selectedGroup?.id ?? '',
         startDateTime: startDateTime,
         endDateTime: endDateTime,
         location: eventLocation,
         status: EventStatus.pending,
         createdAt: DateTime.now(),
+        description: widget.description,
       );
 
       // Enviar para o Supabase via provider
@@ -163,15 +161,6 @@ class _ConfirmEventBottomSheetState
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Group
-          _buildInfoRow(
-            'Group',
-            widget.selectedGroup?.name ?? 'No group selected',
-            Icons.group,
-          ),
-
-          const SizedBox(height: Gaps.md),
-
           // Name com emoji
           _buildNameRow(),
 

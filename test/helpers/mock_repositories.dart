@@ -9,9 +9,6 @@ import 'package:lazzo/features/home/domain/repositories/memory_repository.dart';
 // Create Event Feature Mocks
 import 'package:lazzo/features/create_event/domain/repositories/event_repository.dart';
 
-// Groups Feature Mocks
-import 'package:lazzo/features/groups/domain/repositories/group_repository.dart';
-
 // Profile Feature Mocks
 import 'package:lazzo/features/profile/domain/repositories/profile_repository.dart';
 
@@ -28,8 +25,6 @@ class MockAuthRepository extends Mock implements AuthRepository {}
 class MockMemoryRepository extends Mock implements MemoryRepository {}
 
 class MockEventRepository extends Mock implements EventRepository {}
-
-class MockGroupRepository extends Mock implements GroupRepository {}
 
 class MockProfileRepository extends Mock implements ProfileRepository {}
 

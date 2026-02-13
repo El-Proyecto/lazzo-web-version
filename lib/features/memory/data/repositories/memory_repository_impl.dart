@@ -165,7 +165,7 @@ class MemoryRepositoryImpl implements MemoryRepository {
   @override
   Future<bool> removePhoto(String memoryId, String photoId) async {
     try {
-      // TODO: Implement photo removal (delete from group_photos + storage)
+      // TODO: Implement photo removal (delete from event_photos + storage)
       await _photoDataSource.deletePhoto(photoId);
       return true;
     } catch (e) {

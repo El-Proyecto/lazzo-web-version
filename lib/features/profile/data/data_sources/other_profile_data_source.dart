@@ -1,7 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 /// Data source for fetching other user profiles and shared data from Supabase
-/// Queries users table, events, and group_members to find shared context
+/// LAZZO 2.0: Rewritten to use event_participants instead of group_members
 class OtherProfileDataSource {
   final SupabaseClient _client;
 
@@ -21,42 +21,43 @@ class OtherProfileDataSource {
 
   /// Get shared memories between current user and target user
   /// Logic:
-  /// 1. Find all groups where both users are members
-  /// 2. Get events from those shared groups with status='recap'
-  /// 3. Return events with cover photos as memories
+  /// 1. Find all events where current user is a participant
+  /// 2. Find events where target user is also a participant (intersection)
+  /// 3. Return events with status='recap'/'ended' with cover photos
   Future<List<Map<String, dynamic>>> getSharedMemories({
     required String currentUserId,
     required String targetUserId,
   }) async {
     try {
-      // Step 1: Get groups where current user is member
-      final currentUserGroups = await _client
-          .from('group_members')
-          .select('group_id')
+      // Step 1: Get events where current user is a participant
+      final currentUserEvents = await _client
+          .from('event_participants')
+          .select('pevent_id')
           .eq('user_id', currentUserId);
 
-      if ((currentUserGroups as List).isEmpty) {
+      if ((currentUserEvents as List).isEmpty) {
         return [];
       }
 
-      final currentGroupIds =
-          currentUserGroups.map((g) => g['group_id'] as String).toList();
-// Step 2: Get groups where target user is also member (intersection)
-      final targetUserGroups = await _client
-          .from('group_members')
-          .select('group_id')
-          .eq('user_id', targetUserId)
-          .inFilter('group_id', currentGroupIds);
+      final currentEventIds =
+          currentUserEvents.map((e) => e['pevent_id'] as String).toList();
 
-      final sharedGroupIds = (targetUserGroups as List)
-          .map((g) => g['group_id'] as String)
+      // Step 2: Get events where target user is also a participant (intersection)
+      final targetUserEvents = await _client
+          .from('event_participants')
+          .select('pevent_id')
+          .eq('user_id', targetUserId)
+          .inFilter('pevent_id', currentEventIds);
+
+      final sharedEventIds = (targetUserEvents as List)
+          .map((e) => e['pevent_id'] as String)
           .toList();
 
-      if (sharedGroupIds.isEmpty) {
+      if (sharedEventIds.isEmpty) {
         return [];
       }
-// Step 3: Query events for shared groups with status 'recap' or 'ended'
-      // Following EXACT same logic as profile_memory_data_source.dart
+
+      // Step 3: Query events with status 'recap' or 'ended'
       final eventsResponse = await _client
           .from('events')
           .select('''
@@ -64,19 +65,20 @@ class OtherProfileDataSource {
             name,
             end_datetime,
             status,
+            cover_photo_id,
             locations (
               display_name
-            ),
-            cover_photo_id
+            )
           ''')
-          .inFilter('group_id', sharedGroupIds)
+          .inFilter('id', sharedEventIds)
           .inFilter('status', ['recap', 'ended'])
           .order('end_datetime', ascending: false);
 
       if ((eventsResponse as List).isEmpty) {
         return [];
       }
-// Step 4: Process each event to add cover photo (same logic as profile)
+
+      // Step 4: Process each event to add cover photo
       final List<Map<String, dynamic>> memoriesWithCovers = [];
 
       for (final event in eventsResponse) {
@@ -90,7 +92,7 @@ class OtherProfileDataSource {
         if (coverPhotoId != null) {
           try {
             final coverResponse = await _client
-                .from('group_photos')
+                .from('event_photos')
                 .select('storage_path')
                 .eq('id', coverPhotoId)
                 .maybeSingle();
@@ -98,16 +100,14 @@ class OtherProfileDataSource {
             if (coverResponse != null) {
               coverStoragePath = coverResponse['storage_path'] as String?;
             }
-          } catch (e) {
-            // Cover photo not found, will try fallback
-          }
+          } catch (_) {}
         }
 
-        // Try 2: Get first portrait photo if no cover set
+        // Try 2: Get first portrait photo
         if (coverStoragePath == null) {
           try {
             final portraitResponse = await _client
-                .from('group_photos')
+                .from('event_photos')
                 .select('storage_path')
                 .eq('event_id', eventId)
                 .eq('is_portrait', true)
@@ -118,16 +118,14 @@ class OtherProfileDataSource {
             if (portraitResponse != null) {
               coverStoragePath = portraitResponse['storage_path'] as String?;
             }
-          } catch (e) {
-            // No portrait photos found
-          }
+          } catch (_) {}
         }
 
-        // Try 3: Get any photo if still no cover found
+        // Try 3: Get any photo
         if (coverStoragePath == null) {
           try {
             final anyPhoto = await _client
-                .from('group_photos')
+                .from('event_photos')
                 .select('storage_path')
                 .eq('event_id', eventId)
                 .order('captured_at', ascending: true)
@@ -137,9 +135,7 @@ class OtherProfileDataSource {
             if (anyPhoto != null) {
               coverStoragePath = anyPhoto['storage_path'] as String?;
             }
-          } catch (e) {
-            // No photos found at all
-          }
+          } catch (_) {}
         }
 
         // Only add event if we found a valid cover photo
@@ -152,7 +148,7 @@ class OtherProfileDataSource {
                 (eventMap['locations'] as Map?)?['display_name'] as String?,
             'cover_storage_path': coverStoragePath,
           });
-        } else {}
+        }
       }
       return memoriesWithCovers;
     } catch (e) {
@@ -160,35 +156,38 @@ class OtherProfileDataSource {
     }
   }
 
-  /// Get upcoming events in shared groups
-  /// Returns events with status='confirmed' or 'living' from mutual groups
+  /// Get upcoming events shared between two users
+  /// Returns events with status='confirmed' or 'living' where both are participants
   Future<List<Map<String, dynamic>>> getSharedUpcomingEvents({
     required String currentUserId,
     required String targetUserId,
   }) async {
-    // Get shared group IDs (same logic as memories)
-    final currentUserGroups = await _client
-        .from('group_members')
-        .select('group_id')
+    // Get events where current user is a participant
+    final currentUserEvents = await _client
+        .from('event_participants')
+        .select('pevent_id')
         .eq('user_id', currentUserId);
 
-    final currentGroupIds =
-        (currentUserGroups as List).map((g) => g['group_id'] as String).toSet();
+    final currentEventIds = (currentUserEvents as List)
+        .map((e) => e['pevent_id'] as String)
+        .toSet();
 
-    if (currentGroupIds.isEmpty) {
+    if (currentEventIds.isEmpty) {
       return [];
     }
 
-    final targetUserGroups = await _client
-        .from('group_members')
-        .select('group_id')
+    // Get events where target user is also a participant (intersection)
+    final targetUserEvents = await _client
+        .from('event_participants')
+        .select('pevent_id')
         .eq('user_id', targetUserId)
-        .inFilter('group_id', currentGroupIds.toList());
+        .inFilter('pevent_id', currentEventIds.toList());
 
-    final sharedGroupIds =
-        (targetUserGroups as List).map((g) => g['group_id'] as String).toList();
+    final sharedEventIds = (targetUserEvents as List)
+        .map((e) => e['pevent_id'] as String)
+        .toList();
 
-    if (sharedGroupIds.isEmpty) {
+    if (sharedEventIds.isEmpty) {
       return [];
     }
 
@@ -197,7 +196,7 @@ class OtherProfileDataSource {
         .from('events')
         .select(
             'id, name, emoji, start_datetime, end_datetime, status, locations(display_name)')
-        .inFilter('group_id', sharedGroupIds)
+        .inFilter('id', sharedEventIds)
         .inFilter('status', ['confirmed', 'living'])
         .gte('start_datetime', DateTime.now().toIso8601String())
         .order('start_datetime', ascending: true)
@@ -205,7 +204,4 @@ class OtherProfileDataSource {
 
     return (events as List).cast<Map<String, dynamic>>();
   }
-
-  // LAZZO 2.0: Group invite methods removed (getInvitableGroups, inviteToGroup, acceptGroupInvite, declineGroupInvite)
-  // TODO: Replace group_members queries with event_participants when SQL migration runs
 }

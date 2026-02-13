@@ -14,8 +14,6 @@ class FakeEventRepository implements EventRepository {
         id: 'event-1',
         name: 'Churrascada em Sesimbra',
         emoji: '🍖',
-        groupId: 'group-1',
-        groupName: 'Família',
         startDateTime: DateTime.now().add(const Duration(days: 3, hours: 14)),
         endDateTime: DateTime.now().add(const Duration(days: 3, hours: 20)),
         location: const EventLocation(
@@ -46,8 +44,6 @@ class FakeEventRepository implements EventRepository {
         id: event.id,
         name: event.name,
         emoji: event.emoji,
-        groupId: event.groupId,
-        groupName: event.groupName,
         startDateTime: event.startDateTime,
         endDateTime: event.endDateTime,
         location: event.location,
@@ -75,8 +71,6 @@ class FakeEventRepository implements EventRepository {
       id: eventId,
       name: 'Churrascada em Sesimbra',
       emoji: '🍖',
-      groupId: 'group-1',
-      groupName: 'Família',
       startDateTime: DateTime.now().add(const Duration(days: 3, hours: 14)),
       endDateTime: DateTime.now().add(const Duration(days: 3, hours: 20)),
       location: const EventLocation(
@@ -116,8 +110,6 @@ class FakeEventRepository implements EventRepository {
           id: eventId,
           name: 'Churrascada em Sesimbra',
           emoji: '🍖',
-          groupId: 'group-1',
-          groupName: 'Família',
           startDateTime: startDateTime,
           endDateTime: endDateTime,
           location: const EventLocation(
@@ -139,8 +131,6 @@ class FakeEventRepository implements EventRepository {
       id: existingEvent.id,
       name: existingEvent.name,
       emoji: existingEvent.emoji,
-      groupId: existingEvent.groupId,
-      groupName: existingEvent.groupName,
       startDateTime: startDateTime,
       endDateTime: endDateTime,
       location: existingEvent.location,
@@ -179,8 +169,6 @@ class FakeEventRepository implements EventRepository {
       id: existingEvent.id,
       name: existingEvent.name,
       emoji: existingEvent.emoji,
-      groupId: existingEvent.groupId,
-      groupName: existingEvent.groupName,
       startDateTime: existingEvent.startDateTime,
       endDateTime: existingEvent.endDateTime,
       location: EventLocation(
@@ -222,8 +210,6 @@ class FakeEventRepository implements EventRepository {
       id: existingEvent.id,
       name: existingEvent.name,
       emoji: existingEvent.emoji,
-      groupId: existingEvent.groupId,
-      groupName: existingEvent.groupName,
       startDateTime: existingEvent.startDateTime,
       endDateTime: existingEvent.endDateTime,
       location: existingEvent.location,
@@ -243,7 +229,7 @@ class FakeEventRepository implements EventRepository {
   @override
   Future<List<EventParticipantEntity>> getEventParticipants(
       String eventId) async {
-        await Future.delayed(const Duration(milliseconds: 300));
+    await Future.delayed(const Duration(milliseconds: 300));
 
     // Mock participants para teste
     final participants = [
@@ -267,13 +253,13 @@ class FakeEventRepository implements EventRepository {
       ),
     ];
 
-        return participants;
+    return participants;
   }
 
   @override
   Future<EventDetail> extendEventTime(String eventId, int minutes) async {
     await Future.delayed(const Duration(milliseconds: 300));
-    
+
     _initializeIfEmpty();
     final event = _events[eventId];
     if (event == null) {
@@ -294,7 +280,7 @@ class FakeEventRepository implements EventRepository {
   @override
   Future<EventDetail> endEventNow(String eventId) async {
     await Future.delayed(const Duration(milliseconds: 300));
-    
+
     _initializeIfEmpty();
     final event = _events[eventId];
     if (event == null) {

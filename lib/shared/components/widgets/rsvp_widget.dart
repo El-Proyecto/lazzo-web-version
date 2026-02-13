@@ -26,17 +26,19 @@ class RsvpVote {
   });
 }
 
-enum RsvpVoteStatus { going, notGoing, pending }
+enum RsvpVoteStatus { going, notGoing, maybe, pending }
 
 /// RSVP widget for event confirmation
 /// Allows users to vote and view all votes
 class RsvpWidget extends StatelessWidget {
   final int goingCount;
   final int notGoingCount;
+  final int maybeCount;
   final int pendingCount;
-  final bool? userVote; // true = going, false = not going, null = pending
+  final RsvpVoteStatus userVote;
   final VoidCallback onGoingPressed;
   final VoidCallback onNotGoingPressed;
+  final VoidCallback onMaybePressed;
   final List<RsvpVote> allVotes;
   final VoidCallback? onAddSuggestion;
   final DateTime? eventStartDateTime;
@@ -49,10 +51,12 @@ class RsvpWidget extends StatelessWidget {
     super.key,
     required this.goingCount,
     required this.notGoingCount,
+    this.maybeCount = 0,
     required this.pendingCount,
-    this.userVote,
+    this.userVote = RsvpVoteStatus.pending,
     required this.onGoingPressed,
     required this.onNotGoingPressed,
+    required this.onMaybePressed,
     required this.allVotes,
     this.onAddSuggestion,
     this.eventStartDateTime,
@@ -82,7 +86,8 @@ class RsvpWidget extends StatelessWidget {
                 child: Text('Can you make it?', style: AppText.labelLarge),
               ),
               // Only show view votes if there are any votes
-              if (goingCount + notGoingCount + pendingCount > 0) ...[
+              if (goingCount + notGoingCount + maybeCount + pendingCount >
+                  0) ...[
                 InkWell(
                   onTap: () => _showViewVotesBottomSheet(context),
                   borderRadius: BorderRadius.circular(Radii.sm),
@@ -117,7 +122,7 @@ class RsvpWidget extends StatelessWidget {
                 child: _VoteButton(
                   label: 'Can',
                   count: goingCount,
-                  isSelected: userVote == true,
+                  isSelected: userVote == RsvpVoteStatus.going,
                   color: BrandColors.planning,
                   onPressed: onGoingPressed,
                 ),
@@ -125,9 +130,19 @@ class RsvpWidget extends StatelessWidget {
               const SizedBox(width: Gaps.sm),
               Expanded(
                 child: _VoteButton(
+                  label: 'Maybe',
+                  count: maybeCount,
+                  isSelected: userVote == RsvpVoteStatus.maybe,
+                  color: BrandColors.warning,
+                  onPressed: onMaybePressed,
+                ),
+              ),
+              const SizedBox(width: Gaps.sm),
+              Expanded(
+                child: _VoteButton(
                   label: 'Can\'t',
                   count: notGoingCount,
-                  isSelected: userVote == false,
+                  isSelected: userVote == RsvpVoteStatus.notGoing,
                   color: BrandColors.cantVote,
                   onPressed: onNotGoingPressed,
                 ),
@@ -136,7 +151,7 @@ class RsvpWidget extends StatelessWidget {
           ),
 
           // Add suggestion button (shown when user votes "not going" AND no suggestions exist)
-          if (userVote == false &&
+          if (userVote == RsvpVoteStatus.notGoing &&
               onAddSuggestion != null &&
               !hasSuggestions) ...[
             const SizedBox(height: Gaps.sm),
@@ -180,6 +195,14 @@ class RsvpWidget extends StatelessWidget {
             if (b.votedAt == null) return -1;
             return b.votedAt!.compareTo(a.votedAt!);
           });
+    final maybe =
+        allVotes.where((v) => v.status == RsvpVoteStatus.maybe).toList()
+          ..sort((a, b) {
+            if (a.votedAt == null && b.votedAt == null) return 0;
+            if (a.votedAt == null) return 1;
+            if (b.votedAt == null) return -1;
+            return b.votedAt!.compareTo(a.votedAt!);
+          });
     final notGoing =
         allVotes.where((v) => v.status == RsvpVoteStatus.notGoing).toList()
           ..sort((a, b) {
@@ -203,6 +226,17 @@ class RsvpWidget extends StatelessWidget {
               title: 'Can',
               count: going.length,
               votes: going,
+              currentUserId: currentUserId,
+            ),
+            const SizedBox(height: Gaps.lg),
+          ],
+
+          // Maybe section
+          if (maybe.isNotEmpty) ...[
+            _VoteSection(
+              title: 'Maybe',
+              count: maybe.length,
+              votes: maybe,
               currentUserId: currentUserId,
             ),
             const SizedBox(height: Gaps.lg),
@@ -704,12 +738,12 @@ class _VoteItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bool isCurrentUser = vote.userId == currentUserId;
-    
+
     return InkWell(
       onTap: () {
         // Close bottom sheet
         Navigator.pop(context);
-        
+
         if (isCurrentUser) {
           // Navigate to own profile
           Navigator.pushNamed(

@@ -92,11 +92,9 @@ class NotificationEntity {
   final String? actionText;
   final String? actionUrl;
   final String? deeplink; // New field for deeplinks
-  final String? groupId;
   final String? eventId;
   final String? eventEmoji;
   final String? userName; // For {user} placeholder
-  final String? groupName; // For {group} placeholder
   final String? eventName; // For {event} placeholder
   final String? amount; // For {amount} placeholder
   final String? hours; // For {hours} placeholder
@@ -106,7 +104,6 @@ class NotificationEntity {
   final String? place; // For {place} placeholder
   final String? device; // For {device} placeholder
   final String? note; // For payment notes
-  final String? expenseId; // Link to expense for payment notifications
 
   const NotificationEntity({
     required this.id,
@@ -120,11 +117,9 @@ class NotificationEntity {
     this.actionText,
     this.actionUrl,
     this.deeplink,
-    this.groupId,
     this.eventId,
     this.eventEmoji,
     this.userName,
-    this.groupName,
     this.eventName,
     this.amount,
     this.hours,
@@ -134,7 +129,6 @@ class NotificationEntity {
     this.place,
     this.device,
     this.note,
-    this.expenseId,
   });
 
   NotificationEntity copyWith({
@@ -149,11 +143,9 @@ class NotificationEntity {
     String? actionText,
     String? actionUrl,
     String? deeplink,
-    String? groupId,
     String? eventId,
     String? eventEmoji,
     String? userName,
-    String? groupName,
     String? eventName,
     String? amount,
     String? hours,
@@ -163,7 +155,6 @@ class NotificationEntity {
     String? place,
     String? device,
     String? note,
-    String? expenseId,
   }) {
     return NotificationEntity(
       id: id ?? this.id,
@@ -177,11 +168,9 @@ class NotificationEntity {
       actionText: actionText ?? this.actionText,
       actionUrl: actionUrl ?? this.actionUrl,
       deeplink: deeplink ?? this.deeplink,
-      groupId: groupId ?? this.groupId,
       eventId: eventId ?? this.eventId,
       eventEmoji: eventEmoji ?? this.eventEmoji,
       userName: userName ?? this.userName,
-      groupName: groupName ?? this.groupName,
       eventName: eventName ?? this.eventName,
       amount: amount ?? this.amount,
       hours: hours ?? this.hours,
@@ -191,7 +180,6 @@ class NotificationEntity {
       place: place ?? this.place,
       device: device ?? this.device,
       note: note ?? this.note,
-      expenseId: expenseId ?? this.expenseId,
     );
   }
 
@@ -201,9 +189,6 @@ class NotificationEntity {
 
     if (userName != null) {
       message = message.replaceAll('{user}', '**$userName**');
-    }
-    if (groupName != null) {
-      message = message.replaceAll('{group}', '**$groupName**');
     }
     if (eventName != null) {
       message = message.replaceAll('{event}', '**$eventName**');

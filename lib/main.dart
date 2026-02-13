@@ -29,10 +29,7 @@ import 'features/home/presentation/providers/home_event_providers.dart';
 import 'features/home/data/data_sources/recent_memory_data_source.dart';
 import 'features/home/data/repositories/recent_memory_repository_impl.dart';
 
-// INBOX PAYMENTS - Real implementation
-import 'features/inbox/data/data_source/payments_remote_data_source.dart';
-import 'features/inbox/data/repositories/payment_repository_impl.dart';
-import 'features/inbox/presentation/providers/payments_provider.dart';
+// LAZZO 2.0: Payments removed
 
 // INBOX NOTIFICATIONS - Real implementation (P2)
 import 'features/inbox/data/data_sources/notification_remote_data_source.dart';
@@ -44,17 +41,10 @@ import 'features/inbox/presentation/providers/notifications_provider.dart';
 // import '../features/inbox/data/repositories/action_repository_impl.dart';
 // import '../features/inbox/presentation/providers/actions_provider.dart';
 
-// LAZZO 2.0: Groups removed — imports deleted
+// LAZZO 2.0: Groups + Expenses removed
 
-// EXPENSES
-import 'features/expense/presentation/providers/event_expense_providers.dart';
-import 'features/expense/data/data_sources/event_expense_remote_data_source.dart';
-import 'features/expense/data/repositories/event_expense_repository_impl.dart';
-
-// NOTIFICATION SERVICE
-import 'services/notification_service.dart';
-
-// LAZZO 2.0: Group Hub + Groups Update removed — imports deleted
+// LAZZO 2.0: notification_service import unused
+// import 'services/notification_service.dart';
 
 // PROFILE - Real implementation
 import '../features/profile/data/data_sources/profile_remote_data_source.dart';
@@ -168,17 +158,7 @@ void main() async {
           );
         }),
 
-        // Note: HOME PAYMENT SUMMARIES reuses inbox payment data directly
-        // No separate repository needed - see paymentSummariesControllerProvider
-
-        // ✅ INBOX PAYMENTS repo -> real (Supabase) via DI
-        paymentRepositoryProvider.overrideWith(
-          (ref) {
-            final client = Supabase.instance.client;
-            final dataSource = PaymentsRemoteDataSource(client);
-            return PaymentRepositoryImpl(dataSource, client);
-          },
-        ),
+        // LAZZO 2.0: Payments DI removed
 
         // ✅ INBOX NOTIFICATIONS repo -> real (Supabase) via DI (Dec 13, 2025)
         notificationRepositoryProvider.overrideWith(
@@ -196,8 +176,6 @@ void main() async {
         //     ActionRemoteDataSource(Supabase.instance.client),
         //   ),
         // ),
-
-        // LAZZO 2.0: Groups + Group Hub DI overrides removed
 
         // ✅ MEMORY MANAGEMENT repo -> real (Supabase) via DI (Nov 27, 2025)
         memory_manage.memoryRepositoryProvider.overrideWith((ref) {
@@ -249,14 +227,6 @@ void main() async {
         usersRepositoryProvider.overrideWith((ref) {
           final client = Supabase.instance.client;
           return UsersRepository(UsersRemoteDatasource(client));
-        }),
-
-        eventExpenseRepositoryProvider.overrideWith((ref) {
-          final client = Supabase.instance.client;
-          final notificationService = ref.watch(notificationServiceProvider);
-          final dataSource =
-              EventExpenseRemoteDataSource(client, notificationService);
-          return EventExpenseRepositoryImpl(dataSource);
         }),
 
         // ✅ CREATE EVENT repo -> real (Supabase) via DI

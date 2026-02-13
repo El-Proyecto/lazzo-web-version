@@ -2,16 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../features/home/domain/entities/home_event.dart';
-import '../../../features/event/presentation/providers/event_participants_provider.dart';
-import '../../../features/expense/presentation/providers/event_expense_providers.dart';
-import '../../../features/inbox/presentation/providers/payments_provider.dart';
+// LAZZO 2.0: unused after expense removal
+// import '../../../features/event/presentation/providers/event_participants_provider.dart';
 import '../../constants/spacing.dart';
 import '../../constants/text_styles.dart';
 import '../../themes/colors.dart';
 import '../widgets/votes_bottom_sheet.dart';
+import '../widgets/rsvp_widget.dart';
 import '../widgets/photos_bottom_sheet.dart';
-import '../dialogs/add_expense_bottom_sheet.dart';
-import '../common/top_banner.dart';
 
 /// Home event card state
 /// Planning phase: pending (border color) or confirmed (green)
@@ -21,20 +19,17 @@ enum HomeEventCardState { pending, confirmed, living, recap }
 
 /// Large event card for Home page "Next Event" section
 /// Shows event details with state-specific border/chip colors
-/// Includes Expense action button at bottom
 class HomeEventCard extends ConsumerStatefulWidget {
   final HomeEventEntity event;
   final HomeEventCardState state;
   final VoidCallback? onTap;
-  final VoidCallback? onExpensePressed;
-  final Function(String eventId, bool? vote)? onVoteChanged;
+  final Function(String eventId, RsvpVoteStatus vote)? onVoteChanged;
 
   const HomeEventCard({
     super.key,
     required this.event,
     required this.state,
     this.onTap,
-    this.onExpensePressed,
     this.onVoteChanged,
   });
 
@@ -90,10 +85,6 @@ class _HomeEventCardState extends ConsumerState<HomeEventCard> {
 
             // Attendees info
             _buildAttendeeInfo(context),
-            const SizedBox(height: Gaps.md),
-
-            // Action buttons: Expense
-            _buildActionButtons(),
           ],
         ),
       ),
@@ -237,29 +228,6 @@ class _HomeEventCardState extends ConsumerState<HomeEventCard> {
                   ),
                 ],
               ),
-              if (_currentEvent.groupName != null) const SizedBox(height: 2),
-              // Group with icon
-              if (_currentEvent.groupName != null)
-                Row(
-                  children: [
-                    const Icon(
-                      Icons.group,
-                      size: 14,
-                      color: BrandColors.text2,
-                    ),
-                    const SizedBox(width: 4),
-                    Expanded(
-                      child: Text(
-                        _currentEvent.groupName!,
-                        style: AppText.bodyMedium.copyWith(
-                          color: BrandColors.text2,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
-                ),
             ],
           ),
         ),
@@ -382,23 +350,34 @@ class _HomeEventCardState extends ConsumerState<HomeEventCard> {
     }
 
     // For Pending/Confirmed states, show "going" count (not "participants")
-    // ✅ Check if user has already voted using userVote field
-    final hasUserVoted = _currentEvent.userVote != null;
-    final userVotedYes = _currentEvent.userVote == true;
+    // Check if user has already voted using userVote field
+    final hasUserVoted = _currentEvent.userVote != RsvpVoteStatus.pending;
+    String? voteLabel;
+    switch (_currentEvent.userVote) {
+      case RsvpVoteStatus.going:
+        voteLabel = 'You voted yes!';
+        break;
+      case RsvpVoteStatus.notGoing:
+        voteLabel = 'You voted no!';
+        break;
+      case RsvpVoteStatus.maybe:
+        voteLabel = 'You voted maybe!';
+        break;
+      case RsvpVoteStatus.pending:
+        voteLabel = null;
+        break;
+    }
 
     if (_currentEvent.goingCount == 0) {
       if (hasUserVoted) {
-        return userVotedYes
-            ? 'No one going yet • You voted yes!'
-            : 'No one going yet • You voted no!';
+        return 'No one going yet • $voteLabel';
       }
       return 'Tap to vote!';
     }
 
     if (hasUserVoted) {
       // User has voted - show going count + their vote
-      final voteText = userVotedYes ? 'You voted yes!' : 'You voted no!';
-      return '${_currentEvent.goingCount} going • $voteText';
+      return '${_currentEvent.goingCount} going • $voteLabel';
     }
 
     return '${_currentEvent.goingCount} going • Tap to vote!';
@@ -525,268 +504,6 @@ class _HomeEventCardState extends ConsumerState<HomeEventCard> {
             ),
         ],
       ),
-    );
-  }
-
-  Widget _buildActionButtons() {
-    return Row(
-      children: [
-        // Expense button
-        Expanded(
-          child: GestureDetector(
-            onTap: () async {
-              try {
-                final currentState =
-                    ref.read(eventParticipantsProvider(_currentEvent.id));
-
-                // If loading, wait for it to complete
-                if (currentState is AsyncLoading) {
-                  // Wait for data to load
-                  await Future.delayed(const Duration(milliseconds: 1500));
-
-                  final newState =
-                      ref.read(eventParticipantsProvider(_currentEvent.id));
-
-                  if (newState is AsyncData) {
-                    final participants = newState.value ?? [];
-
-                    if (participants.isEmpty) {
-                      if (mounted) {
-                        TopBanner.showInfo(
-                          context,
-                          message: 'No participants found for this event',
-                        );
-                      }
-                      return;
-                    }
-
-                    // Get current user ID
-                    final currentUserId =
-                        Supabase.instance.client.auth.currentUser?.id;
-
-                    // Convert participants - replace current user name with "You"
-                    final participantOptions = participants
-                        .map((p) => ExpenseParticipantOption(
-                              id: p.userId,
-                              name: p.userId == currentUserId
-                                  ? 'You'
-                                  : p.displayName,
-                              avatarUrl: p.avatarUrl,
-                            ))
-                        .toList();
-
-                    // Sort: "You" first, then alphabetically by name
-                    participantOptions.sort((a, b) {
-                      if (a.name == 'You') return -1;
-                      if (b.name == 'You') return 1;
-                      return a.name.compareTo(b.name);
-                    });
-
-                    // Capture eventId before async callback
-                    final eventId = _currentEvent.id;
-
-                    if (mounted) {
-                      AddExpenseBottomSheet.show(
-                        context: context,
-                        participants: participantOptions,
-                        onAddExpense: (title, paidById, participantsOwe,
-                            totalAmount) async {
-                          // ✅ Optimistic UI: Call callback immediately
-                          widget.onExpensePressed?.call();
-
-                          // ✅ Create expense in Supabase (background)
-                          try {
-                            await ref
-                                .read(eventExpensesProvider(eventId).notifier)
-                                .addExpense(
-                              description: title,
-                              amount: totalAmount,
-                              paidBy: paidById,
-                              participantsOwe: participantsOwe,
-                              participantsPaid: [],
-                            );
-
-                            // ✅ Invalidate payments to refresh home page
-                            ref.invalidate(paymentsOwedToUserProvider);
-                            ref.invalidate(paymentsUserOwesProvider);
-
-                            // ✅ Show success TopBanner
-                            if (mounted) {
-                              TopBanner.showSuccess(
-                                context,
-                                message: 'Expense "$title" added!',
-                              );
-                            }
-                          } catch (e) {
-                            debugPrint(
-                                '❌ [HomeEventCard] Error adding expense: $e');
-                            // ✅ Show error TopBanner
-                            if (mounted) {
-                              TopBanner.showError(
-                                context,
-                                message: 'Failed to add expense',
-                              );
-                            }
-                          }
-                        },
-                      );
-                    }
-                  } else if (newState is AsyncError) {
-                    if (mounted) {
-                      TopBanner.showError(
-                        context,
-                        message: 'Failed to load participants',
-                      );
-                    }
-                  } else {
-                    if (mounted) {
-                      TopBanner.showInfo(
-                        context,
-                        message: 'Loading participants, please try again',
-                      );
-                    }
-                  }
-                  return;
-                }
-
-                // If already loaded, use data directly
-                if (currentState is AsyncData) {
-                  final participants = currentState.value ?? [];
-
-                  if (participants.isEmpty) {
-                    if (mounted) {
-                      TopBanner.showInfo(
-                        context,
-                        message: 'No participants found for this event',
-                      );
-                    }
-                    return;
-                  }
-
-                  // Get current user ID
-                  final currentUserId =
-                      Supabase.instance.client.auth.currentUser?.id;
-
-                  // Convert participants - replace current user name with "You"
-                  final participantOptions = participants
-                      .map((p) => ExpenseParticipantOption(
-                            id: p.userId,
-                            name: p.userId == currentUserId
-                                ? 'You'
-                                : p.displayName,
-                            avatarUrl: p.avatarUrl,
-                          ))
-                      .toList();
-
-                  // Sort: "You" first, then alphabetically by name
-                  participantOptions.sort((a, b) {
-                    if (a.name == 'You') return -1;
-                    if (b.name == 'You') return 1;
-                    return a.name.compareTo(b.name);
-                  });
-
-                  // Capture event ID before async callback
-                  final eventId = _currentEvent.id;
-
-                  // Show the bottom sheet
-                  AddExpenseBottomSheet.show(
-                    context: context,
-                    participants: participantOptions,
-                    onAddExpense:
-                        (title, paidById, participantsOwe, totalAmount) async {
-                      // ✅ Optimistic UI: Call callback immediately
-                      widget.onExpensePressed?.call();
-
-                      // ✅ Create expense in Supabase (background)
-                      try {
-                        await ref
-                            .read(eventExpensesProvider(eventId).notifier)
-                            .addExpense(
-                          description: title,
-                          amount: totalAmount,
-                          paidBy: paidById,
-                          participantsOwe: participantsOwe,
-                          participantsPaid: [],
-                        );
-
-                        // ✅ Invalidate payments to refresh home page
-                        ref.invalidate(paymentsOwedToUserProvider);
-                        ref.invalidate(paymentsUserOwesProvider);
-
-                        // ✅ Show success TopBanner
-                        if (mounted) {
-                          TopBanner.showSuccess(
-                            context,
-                            message: 'Expense "$title" added!',
-                          );
-                        }
-                      } catch (e) {
-                        debugPrint(
-                            '❌ [HomeEventCard] Error adding expense: $e');
-                        // ✅ Show error TopBanner
-                        if (mounted) {
-                          TopBanner.showError(
-                            context,
-                            message: 'Failed to add expense',
-                          );
-                        }
-                      }
-                    },
-                  );
-                  return;
-                }
-
-                // If error state
-                if (currentState is AsyncError) {
-                  if (mounted) {
-                    TopBanner.showError(
-                      context,
-                      message: 'Failed to load participants',
-                    );
-                  }
-                  return;
-                }
-              } catch (e, stackTrace) {
-                debugPrint(
-                    '❌ [HomeEventCard] Error opening expense sheet: $e\n$stackTrace');
-                if (mounted) {
-                  TopBanner.showError(
-                    context,
-                    message: 'Failed to open expense sheet',
-                  );
-                }
-              }
-            },
-            child: Container(
-              height: 44,
-              decoration: BoxDecoration(
-                color: BrandColors.bg3,
-                borderRadius: BorderRadius.circular(Radii.sm),
-              ),
-              child: Center(
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const Icon(
-                      Icons.receipt_long_outlined,
-                      color: BrandColors.text1,
-                      size: 18,
-                    ),
-                    const SizedBox(width: Gaps.xs),
-                    Text(
-                      'Expense',
-                      style: AppText.bodyMediumEmph.copyWith(
-                        color: BrandColors.text1,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
-      ],
     );
   }
 
