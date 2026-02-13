@@ -19,6 +19,7 @@ class ConfirmEventBottomSheet extends ConsumerStatefulWidget {
   final DateTime? endDate;
   final TimeOfDay? endTime;
   final LocationInfo? selectedLocation;
+  final String? description;
   final Function(String eventId)? onEventCreated; // Changed to receive eventId
 
   const ConfirmEventBottomSheet({
@@ -30,6 +31,7 @@ class ConfirmEventBottomSheet extends ConsumerStatefulWidget {
     this.endDate,
     this.endTime,
     this.selectedLocation,
+    this.description,
     this.onEventCreated,
   });
 
@@ -107,6 +109,7 @@ class _ConfirmEventBottomSheetState
         location: eventLocation,
         status: EventStatus.pending,
         createdAt: DateTime.now(),
+        description: widget.description,
       );
 
       // Enviar para o Supabase via provider

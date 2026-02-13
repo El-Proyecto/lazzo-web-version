@@ -167,6 +167,7 @@ class EditEventController extends StateNotifier<EditEventState> {
     DateTime? startDateTime,
     DateTime? endDateTime,
     EventLocation? location,
+    String? description,
   }) async {
     state = state.copyWith(isLoading: true, error: null);
 
@@ -178,6 +179,7 @@ class EditEventController extends StateNotifier<EditEventState> {
         startDateTime: startDateTime,
         endDateTime: endDateTime,
         location: location,
+        description: description,
       );
       state = state.copyWith(isLoading: false, updatedEvent: updatedEvent);
     } catch (e) {

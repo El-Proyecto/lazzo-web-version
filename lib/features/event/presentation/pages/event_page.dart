@@ -11,6 +11,7 @@ import '../../../../shared/components/dialogs/missing_fields_confirmation_dialog
 import '../../../../shared/components/widgets/rsvp_widget.dart' as rsvp_widget;
 import '../../../../shared/components/widgets/help_plan_event_widget.dart';
 import '../../../../shared/components/widgets/location_widget.dart';
+import '../../../../shared/components/widgets/event_details_widget.dart';
 import '../../../../shared/components/widgets/date_time_widget.dart';
 import '../../../../shared/components/widgets/poll_widget.dart';
 import '../../../../shared/constants/spacing.dart';
@@ -266,7 +267,7 @@ class _EventPageState extends ConsumerState<EventPage> {
       title: '${event.emoji} ${event.name}',
       startDate: event.startDateTime!,
       endDate: event.endDateTime,
-      description: 'Lazzo event',
+      description: event.description ?? 'Lazzo event',
       location: event.location?.displayName,
     );
 
@@ -353,6 +354,7 @@ class _EventPageState extends ConsumerState<EventPage> {
                           emoji: eventData.emoji,
                           startDateTime: eventData.startDateTime,
                           endDateTime: eventData.endDateTime,
+                          description: eventData.description,
                           location: eventData.location != null
                               ? create_event.EventLocation(
                                   id: 'temp-id', // Will be created/updated in repository
@@ -394,6 +396,7 @@ class _EventPageState extends ConsumerState<EventPage> {
                           emoji: eventData.emoji,
                           startDateTime: eventData.startDateTime,
                           endDateTime: eventData.endDateTime,
+                          description: eventData.description,
                           location: eventData.location != null
                               ? create_event.EventLocation(
                                   id: 'temp-id', // Will be created/updated in repository
@@ -621,6 +624,13 @@ class _EventPageState extends ConsumerState<EventPage> {
                 // LAZZO 2.0: Expenses widget removed
 
                 const SizedBox(height: Gaps.lg),
+
+                // Event details/description (if present)
+                if (event.description != null &&
+                    event.description!.isNotEmpty) ...[
+                  EventDetailsWidget(details: event.description!),
+                  const SizedBox(height: Gaps.lg),
+                ],
 
                 // Location Widget (if location is set)
                 if (event.location != null) ...[

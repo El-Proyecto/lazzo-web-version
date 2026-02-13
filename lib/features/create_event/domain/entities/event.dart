@@ -9,6 +9,7 @@ class Event {
   final EventLocation? location;
   final EventStatus status;
   final DateTime createdAt;
+  final String? description;
 
   const Event({
     required this.id,
@@ -19,6 +20,7 @@ class Event {
     this.location,
     required this.status,
     required this.createdAt,
+    this.description,
   });
 
   /// Copy event with updated fields
@@ -33,6 +35,7 @@ class Event {
     ValueWrapper<EventLocation?>? location,
     EventStatus? status,
     DateTime? createdAt,
+    ValueWrapper<String?>? description,
   }) {
     return Event(
       id: id ?? this.id,
@@ -44,6 +47,7 @@ class Event {
       location: location != null ? location.value : this.location,
       status: status ?? this.status,
       createdAt: createdAt ?? this.createdAt,
+      description: description != null ? description.value : this.description,
     );
   }
 }

@@ -16,6 +16,7 @@ class UpdateEventUseCase {
     DateTime? startDateTime,
     DateTime? endDateTime,
     EventLocation? location,
+    String? description,
   }) async {
     // Business rule: validate event name
     if (name.trim().isEmpty) {
@@ -44,6 +45,7 @@ class UpdateEventUseCase {
       startDateTime: ValueWrapper(startDateTime),
       endDateTime: ValueWrapper(endDateTime),
       location: ValueWrapper(location),
+      description: ValueWrapper(description),
     );
 
     // Delegate to repository

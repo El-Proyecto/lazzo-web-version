@@ -18,6 +18,7 @@ class EventDetailModel {
   final String hostId;
   final int goingCount;
   final int notGoingCount;
+  final String? description;
 
   const EventDetailModel({
     required this.id,
@@ -34,6 +35,7 @@ class EventDetailModel {
     required this.hostId,
     required this.goingCount,
     required this.notGoingCount,
+    this.description,
   });
 
   /// Create model from Supabase JSON
@@ -59,6 +61,7 @@ class EventDetailModel {
       hostId: json['host_id'] as String,
       goingCount: json['rsvp_going_count'] as int? ?? 0,
       notGoingCount: json['rsvp_not_going_count'] as int? ?? 0,
+      description: json['description'] as String?,
     );
   }
 
@@ -77,6 +80,7 @@ class EventDetailModel {
       'status': status,
       'created_at': createdAt.toIso8601String(),
       'host_id': hostId,
+      'description': description,
     };
   }
 
@@ -127,6 +131,7 @@ class EventDetailModel {
       hostId: hostId,
       goingCount: goingCount,
       notGoingCount: notGoingCount,
+      description: description,
     );
   }
 
@@ -147,6 +152,7 @@ class EventDetailModel {
       hostId: entity.hostId,
       goingCount: entity.goingCount,
       notGoingCount: entity.notGoingCount,
+      description: entity.description,
     );
   }
 }

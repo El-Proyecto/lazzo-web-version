@@ -9,6 +9,7 @@ import '../../../../shared/components/nav/common_app_bar.dart';
 import '../widgets/event_name_selector.dart';
 import '../widgets/date_time_section.dart';
 import '../widgets/location_section.dart';
+import '../widgets/description_section.dart';
 import '../widgets/event_history_dialog.dart';
 import '../widgets/confirm_event_dialog.dart';
 import '../widgets/exit_confirmation_dialog.dart';
@@ -42,6 +43,7 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
   DateTime? _endDate;
   TimeOfDay? _endTime;
   LocationInfo? _selectedLocation;
+  String? _description;
 
   // Serviços
   final DraftService _draftService = DraftService();
@@ -441,6 +443,18 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
                       validationError: _getLocationValidationError(),
                     ),
 
+                    const SizedBox(height: Gaps.md),
+
+                    // Seção de details
+                    DescriptionSection(
+                      description: _description,
+                      onDescriptionChanged: (description) {
+                        setState(() {
+                          _description = description;
+                        });
+                      },
+                    ),
+
                     const SizedBox(height: Gaps.lg),
 
                     // Continue button - inside scroll
@@ -549,6 +563,7 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
         endDate: _endDate,
         endTime: _endTime,
         selectedLocation: _selectedLocation,
+        description: _description,
         onEventCreated: _onEventCreated,
       ),
     );

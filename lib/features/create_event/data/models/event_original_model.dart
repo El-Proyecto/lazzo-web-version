@@ -10,6 +10,7 @@ class EventModel {
   final String status;
   final String createdBy;
   final DateTime createdAt;
+  final String? description;
 
   EventModel({
     required this.id,
@@ -21,6 +22,7 @@ class EventModel {
     required this.status,
     required this.createdBy,
     required this.createdAt,
+    this.description,
   });
 
   factory EventModel.fromJson(Map<String, dynamic> json) {
@@ -41,6 +43,7 @@ class EventModel {
       status: (json['status'] as String?)?.toLowerCase() ?? 'draft',
       createdBy: json['created_by'] as String,
       createdAt: asDateTime(json['created_at'])!,
+      description: json['description'] as String?,
     );
   }
 
@@ -55,6 +58,7 @@ class EventModel {
       'status': status,
       'created_by': createdBy,
       'created_at': createdAt.toIso8601String(),
+      'description': description,
     };
   }
 
@@ -68,6 +72,7 @@ class EventModel {
       location: location,
       status: _parseEventStatus(status),
       createdAt: createdAt,
+      description: description,
     );
   }
 
@@ -82,6 +87,7 @@ class EventModel {
       status: event.status.toString().split('.').last,
       createdBy: createdBy,
       createdAt: event.createdAt,
+      description: event.description,
     );
   }
 

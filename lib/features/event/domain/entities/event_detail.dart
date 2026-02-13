@@ -12,6 +12,7 @@ class EventDetail {
   final String hostId;
   final int goingCount;
   final int notGoingCount;
+  final String? description;
 
   const EventDetail({
     required this.id,
@@ -25,6 +26,7 @@ class EventDetail {
     required this.hostId,
     required this.goingCount,
     required this.notGoingCount,
+    this.description,
   });
 
   EventDetail copyWith({
@@ -39,6 +41,8 @@ class EventDetail {
     String? hostId,
     int? goingCount,
     int? notGoingCount,
+    String? description,
+    bool clearDescription = false,
   }) {
     return EventDetail(
       id: id ?? this.id,
@@ -52,6 +56,8 @@ class EventDetail {
       hostId: hostId ?? this.hostId,
       goingCount: goingCount ?? this.goingCount,
       notGoingCount: notGoingCount ?? this.notGoingCount,
+      description:
+          clearDescription ? description : (description ?? this.description),
     );
   }
 

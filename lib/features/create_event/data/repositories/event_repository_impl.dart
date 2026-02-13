@@ -65,6 +65,7 @@ class EventRepositoryImpl implements EventRepository {
           locationId: locationId,
           status: event.status.toString().split('.').last,
           createdBy: userId,
+          description: event.description,
         );
       } catch (e) {
         rethrow;
@@ -248,6 +249,7 @@ class EventRepositoryImpl implements EventRepository {
         endDateTime: event.endDateTime,
         locationId: locationId,
         status: event.status.toString().split('.').last,
+        description: event.description,
       );
 
       // CRITICAL: Delete ALL date suggestions when admin sets/changes event date

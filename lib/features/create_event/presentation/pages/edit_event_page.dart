@@ -5,6 +5,7 @@ import '../../../../shared/constants/text_styles.dart';
 import '../widgets/event_name_selector.dart';
 import '../widgets/date_time_section.dart';
 import '../widgets/location_section.dart'; // Use original version from commit 6641830
+import '../widgets/description_section.dart';
 import '../../../../shared/components/nav/common_app_bar.dart'; // Import CommonAppBar
 // import '../../../../shared/models/event_draft.dart'; // Commented for P1 - conflicts with Google Maps
 // import '../../../../services/draft_service.dart'; // Commented for P1
@@ -38,6 +39,7 @@ class _EditEventPageState extends ConsumerState<EditEventPage> {
   DateTime? _endDate;
   TimeOfDay? _endTime;
   LocationInfo? _selectedLocation;
+  String? _description;
 
   // Serviços
   // final DraftService _draftService = DraftService(); // Commented for P1
@@ -53,6 +55,7 @@ class _EditEventPageState extends ConsumerState<EditEventPage> {
   late DateTime? _initialEndDate;
   late TimeOfDay? _initialEndTime;
   late LocationInfo? _initialSelectedLocation;
+  late String? _initialDescription;
 
   // Validation errors
   String? _nameError;
@@ -98,6 +101,8 @@ class _EditEventPageState extends ConsumerState<EditEventPage> {
       );
     }
 
+    _description = event.description;
+
     // Armazenar valores iniciais após todas as inicializações
     _storeInitialValues();
   }
@@ -111,6 +116,7 @@ class _EditEventPageState extends ConsumerState<EditEventPage> {
     _initialEndDate = _endDate;
     _initialEndTime = _endTime;
     _initialSelectedLocation = _selectedLocation;
+    _initialDescription = _description;
   }
 
   /// Detecta se há alterações não salvas
@@ -121,7 +127,8 @@ class _EditEventPageState extends ConsumerState<EditEventPage> {
         _selectedTime != _initialSelectedTime ||
         _endDate != _initialEndDate ||
         _endTime != _initialEndTime ||
-        _selectedLocation?.id != _initialSelectedLocation?.id;
+        _selectedLocation?.id != _initialSelectedLocation?.id ||
+        _description != _initialDescription;
   }
 
   /// Cria o rascunho atual (Commented for P1)
@@ -332,6 +339,7 @@ class _EditEventPageState extends ConsumerState<EditEventPage> {
       startDateTime: startDateTime,
       endDateTime: endDateTime,
       location: eventLocation,
+      description: _description,
     );
 
     // CRITICAL: Invalidate providers to force UI refresh across the app
@@ -568,6 +576,18 @@ class _EditEventPageState extends ConsumerState<EditEventPage> {
                         });
                       },
                       validationError: _getLocationValidationError(),
+                    ),
+
+                    const SizedBox(height: Gaps.md),
+
+                    // Seção de Details
+                    DescriptionSection(
+                      description: _description,
+                      onDescriptionChanged: (description) {
+                        setState(() {
+                          _description = description;
+                        });
+                      },
                     ),
 
                     const SizedBox(height: Gaps.lg),
