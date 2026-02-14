@@ -18,6 +18,7 @@ import '../features/profile/presentation/pages/edit_profile_page.dart';
 import '../features/profile/presentation/pages/other_profile_page.dart';
 import '../features/event/presentation/pages/event_page.dart';
 import '../features/event/presentation/pages/event_living_page.dart';
+import '../features/event/presentation/pages/manage_guests_page.dart';
 import '../features/memory/presentation/pages/memory_page.dart';
 import '../features/memory/presentation/pages/memory_viewer_page.dart';
 import '../features/memory/presentation/pages/manage_memory_page.dart';
@@ -63,6 +64,7 @@ class AppRouter {
   static const String settings = '/settings';
   static const String reportProblem = '/report-problem';
   static const String shareSuggestion = '/share-suggestion';
+  static const String manageGuests = '/manage-guests';
   static const String reviewerAuth = '/reviewer-auth';
 
   static final routes = <String, WidgetBuilder>{
@@ -112,6 +114,11 @@ class AppRouter {
       final args =
           ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
       return EventLivingPage(eventId: args?['eventId'] ?? 'event-1');
+    },
+    manageGuests: (context) {
+      final args =
+          ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+      return ManageGuestsPage(eventId: args?['eventId'] ?? 'event-1');
     },
     memory: (context) {
       final args =

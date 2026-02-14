@@ -425,7 +425,16 @@ class _EventPageState extends ConsumerState<EventPage> {
             );
           },
         ),
-        trailing2: null,
+        trailing2: IconButton(
+          icon: const Icon(Icons.people_outline, color: BrandColors.text1),
+          onPressed: () {
+            Navigator.pushNamed(
+              context,
+              AppRouter.manageGuests,
+              arguments: {'eventId': eventId},
+            );
+          },
+        ),
       ),
       body: eventAsync.when(
         data: (event) => RefreshIndicator(
