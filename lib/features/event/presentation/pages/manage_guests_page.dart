@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:share_plus/share_plus.dart' show SharePlus, ShareParams;
+import '../../../../routes/app_router.dart';
 import '../../../../shared/components/nav/common_app_bar.dart';
 import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/constants/text_styles.dart';
@@ -144,8 +145,15 @@ class _ManageGuestsPageState extends ConsumerState<ManageGuestsPage> {
                         endIndent: Insets.screenH,
                       ),
                       itemBuilder: (context, index) {
+                        final rsvp = filteredRsvps[index];
                         return GuestListTile(
-                          rsvp: filteredRsvps[index],
+                          rsvp: rsvp,
+                          onTap: () {
+                            Navigator.of(context).pushNamed(
+                              AppRouter.otherProfile,
+                              arguments: {'userId': rsvp.userId},
+                            );
+                          },
                         );
                       },
                     ),
@@ -161,12 +169,21 @@ class _ManageGuestsPageState extends ConsumerState<ManageGuestsPage> {
   Widget _buildEmptyState() {
     final filterLabel =
         _selectedFilter != null ? _filterLabel(_selectedFilter!) : 'guests';
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(Gaps.xl),
-        child: Text(
-          'No $filterLabel yet',
-          style: AppText.bodyLarge.copyWith(color: BrandColors.text2),
+    return Container(
+      margin: const EdgeInsets.symmetric(
+        horizontal: Insets.screenH,
+      ),
+      decoration: BoxDecoration(
+        color: BrandColors.bg2,
+        borderRadius: BorderRadius.circular(Radii.md),
+      ),
+      child: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(Gaps.xl),
+          child: Text(
+            'No $filterLabel yet',
+            style: AppText.bodyLarge.copyWith(color: BrandColors.text2),
+          ),
         ),
       ),
     );

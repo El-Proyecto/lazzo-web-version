@@ -329,7 +329,17 @@ class _EventPageState extends ConsumerState<EventPage> {
           icon: const Icon(Icons.arrow_back, color: BrandColors.text1),
           onPressed: () => Navigator.of(context).pop(),
         ),
-        trailing: Consumer(
+        trailing: IconButton(
+          icon: const Icon(Icons.people, color: BrandColors.text1),
+          onPressed: () {
+            Navigator.pushNamed(
+              context,
+              AppRouter.manageGuests,
+              arguments: {'eventId': eventId},
+            );
+          },
+        ),
+        trailing2: Consumer(
           builder: (context, consumerRef, _) {
             final canManageAsync = consumerRef.watch(
               canManageEventProvider(eventId),
@@ -358,7 +368,7 @@ class _EventPageState extends ConsumerState<EventPage> {
                           description: eventData.description,
                           location: eventData.location != null
                               ? create_event.EventLocation(
-                                  id: 'temp-id', // Will be created/updated in repository
+                                  id: 'temp-id',
                                   displayName: eventData.location!.displayName,
                                   formattedAddress:
                                       eventData.location!.formattedAddress,
@@ -400,7 +410,7 @@ class _EventPageState extends ConsumerState<EventPage> {
                           description: eventData.description,
                           location: eventData.location != null
                               ? create_event.EventLocation(
-                                  id: 'temp-id', // Will be created/updated in repository
+                                  id: 'temp-id',
                                   displayName: eventData.location!.displayName,
                                   formattedAddress:
                                       eventData.location!.formattedAddress,
@@ -423,16 +433,6 @@ class _EventPageState extends ConsumerState<EventPage> {
                 return const SizedBox.shrink();
               },
               error: (_, __) => const SizedBox.shrink(),
-            );
-          },
-        ),
-        trailing2: IconButton(
-          icon: const Icon(Icons.people_outline, color: BrandColors.text1),
-          onPressed: () {
-            Navigator.pushNamed(
-              context,
-              AppRouter.manageGuests,
-              arguments: {'eventId': eventId},
             );
           },
         ),
@@ -638,8 +638,6 @@ class _EventPageState extends ConsumerState<EventPage> {
                   ),
 
                 // LAZZO 2.0: Expenses widget removed
-
-                const SizedBox(height: Gaps.lg),
 
                 // Event details/description (if present)
                 if (event.description != null &&
