@@ -15,6 +15,7 @@ class CreateEventUseCase {
     DateTime? startDateTime,
     DateTime? endDateTime,
     EventLocation? location,
+    String? description,
   }) async {
     // Business rule: validate event name
     if (name.trim().isEmpty) {
@@ -38,6 +39,7 @@ class CreateEventUseCase {
       location: location,
       status: EventStatus.pending,
       createdAt: DateTime.now(),
+      description: description,
     );
 
     // Delegate to repository

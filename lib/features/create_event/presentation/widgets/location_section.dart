@@ -101,11 +101,16 @@ class _LocationSectionState extends State<LocationSection> {
   }
 
   Widget _buildExpandedContent() {
-    if (widget.selectedLocation != null) {
+    final loc = widget.selectedLocation;
+    final hasRealAddress = loc != null &&
+        loc.formattedAddress.isNotEmpty &&
+        (loc.latitude != 0.0 || loc.longitude != 0.0);
+
+    if (hasRealAddress) {
       // Show location with address field filled and clear button
       return _buildLocationWithMap();
     } else {
-      // Show location input form
+      // Show location input form (also for name-only locations)
       return _buildLocationInput();
     }
   }
@@ -478,6 +483,7 @@ class _LocationSectionState extends State<LocationSection> {
 
   void _updateLocationName(String name) {
     if (widget.selectedLocation != null) {
+      // Update existing location's name
       final updatedLocation = LocationInfo(
         id: widget.selectedLocation!.id,
         displayName: name.isEmpty ? null : name,
@@ -486,6 +492,19 @@ class _LocationSectionState extends State<LocationSection> {
         longitude: widget.selectedLocation!.longitude,
       );
       widget.onLocationChanged?.call(updatedLocation);
+    } else if (name.isNotEmpty) {
+      // Create name-only location (no address/coordinates)
+      final nameOnlyLocation = LocationInfo(
+        id: 'name-only',
+        displayName: name,
+        formattedAddress: '',
+        latitude: 0.0,
+        longitude: 0.0,
+      );
+      widget.onLocationChanged?.call(nameOnlyLocation);
+    } else {
+      // Name cleared and no address — clear location
+      widget.onLocationChanged?.call(null);
     }
   }
 

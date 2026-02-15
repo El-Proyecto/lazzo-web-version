@@ -160,11 +160,17 @@ class _EditEventPageState extends ConsumerState<EditEventPage> {
       isValid = false;
     }
 
-    // Validações: date/time are optional but if partially set, both needed
-    if (_selectedDate != null || _selectedTime != null) {
-      if (_selectedDate == null || _selectedTime == null) {
-        isValid = false;
-      }
+    // Date/time is mandatory: both start and end required
+    if (_selectedDate == null ||
+        _selectedTime == null ||
+        _endDate == null ||
+        _endTime == null) {
+      isValid = false;
+    }
+
+    // Location is mandatory
+    if (_selectedLocation == null) {
+      isValid = false;
     }
 
     return isValid;
@@ -175,12 +181,14 @@ class _EditEventPageState extends ConsumerState<EditEventPage> {
     // Nome é obrigatório
     bool nameValid = _eventName.trim().isNotEmpty;
 
-    // Data/hora é válida se vazia ou se tiver ambos definidos
-    bool dateTimeValid = (_selectedDate == null && _selectedTime == null) ||
-        (_selectedDate != null && _selectedTime != null);
+    // Data/hora é obrigatória: start e end
+    bool dateTimeValid = _selectedDate != null &&
+        _selectedTime != null &&
+        _endDate != null &&
+        _endTime != null;
 
-    // Localização é sempre válida (opcional)
-    bool locationValid = true;
+    // Localização é obrigatória (name or address)
+    bool locationValid = false;
     if (_selectedLocation != null) {
       final hasAddress = _selectedLocation!.formattedAddress.isNotEmpty;
       final hasName = _selectedLocation!.displayName != null &&
@@ -194,15 +202,15 @@ class _EditEventPageState extends ConsumerState<EditEventPage> {
   /// Obtém o erro de validação de localização
   String? _getLocationValidationError() {
     if (!_showValidationErrors) return null;
-    // Location is optional
+    if (_selectedLocation == null) return 'Location is required';
     return null;
   }
 
   /// Verifica se data e hora são válidas
   bool get _isDateTimeValid {
-    // Optional: valid if both empty or both set
-    if (_selectedDate == null && _selectedTime == null) return true;
+    // Date/time is mandatory — both start and end required
     if (_selectedDate == null || _selectedTime == null) return false;
+    if (_endDate == null || _endTime == null) return false;
 
     final now = DateTime.now();
     final startDateTime = DateTime(
@@ -218,31 +226,30 @@ class _EditEventPageState extends ConsumerState<EditEventPage> {
       return false;
     }
 
-    // If end date/time is set, validate that end > start
-    if ((_endDate != null && _endTime != null)) {
-      final endDateTime = DateTime(
-        _endDate!.year,
-        _endDate!.month,
-        _endDate!.day,
-        _endTime!.hour,
-        _endTime!.minute,
-      );
+    // End must be after start
+    final endDateTime = DateTime(
+      _endDate!.year,
+      _endDate!.month,
+      _endDate!.day,
+      _endTime!.hour,
+      _endTime!.minute,
+    );
 
-      return endDateTime.isAfter(startDateTime);
-    }
-
-    return true;
+    return endDateTime.isAfter(startDateTime);
   }
 
   /// Obtém o erro de validação de data e hora
   String? _getDateTimeValidationError() {
     if (!_showValidationErrors) return null;
 
-    // Only validate if user started filling in
-    if (_selectedDate == null && _selectedTime == null) return null;
-
+    // Start date and time are mandatory
     if (_selectedDate == null || _selectedTime == null) {
-      return 'Please set both start date and time';
+      return 'Start date and time are required';
+    }
+
+    // End date and time are mandatory
+    if (_endDate == null || _endTime == null) {
+      return 'End date and time are required';
     }
 
     // Check if start date/time is in the past
@@ -259,7 +266,7 @@ class _EditEventPageState extends ConsumerState<EditEventPage> {
       return 'Event date cannot be in the past';
     }
 
-    if ((_endDate != null && _endTime != null) && !_isDateTimeValid) {
+    if (!_isDateTimeValid) {
       return 'End time must be after start time';
     }
 
@@ -386,32 +393,46 @@ class _EditEventPageState extends ConsumerState<EditEventPage> {
   Future<void> _deleteEvent() async {
     final controller = ref.read(editEventControllerProvider.notifier);
 
-    // Call delete through controller
-    await controller.deleteEvent(widget.event.id);
+    try {
+      // Call delete through controller
+      await controller.deleteEvent(widget.event.id);
 
-    // Invalidate providers to refresh home page
-    ref.invalidate(home_providers.nextEventControllerProvider);
-    ref.invalidate(home_providers.confirmedEventsControllerProvider);
-    ref.invalidate(home_providers.homeEventsControllerProvider);
-    ref.invalidate(home_providers.todosControllerProvider);
+      // Invalidate providers to refresh home page
+      ref.invalidate(home_providers.nextEventControllerProvider);
+      ref.invalidate(home_providers.confirmedEventsControllerProvider);
+      ref.invalidate(home_providers.homeEventsControllerProvider);
+      ref.invalidate(home_providers.todosControllerProvider);
 
-    // Invalidate event detail if coming from it
-    ref.invalidate(event_providers.eventDetailProvider(widget.event.id));
+      // Invalidate event detail if coming from it
+      ref.invalidate(event_providers.eventDetailProvider(widget.event.id));
 
-    // Show success banner
-    if (mounted) {
-      TopBanner.showSuccess(
-        context,
-        message: 'Event deleted successfully',
-      );
-    }
+      // Show success banner
+      if (mounted) {
+        TopBanner.showSuccess(
+          context,
+          message: 'Event deleted successfully',
+        );
+      }
 
-    // Navigate back
-    if (mounted && Navigator.of(context).canPop()) {
-      Navigator.of(context).pop(); // Close dialog
-    }
-    if (mounted && Navigator.of(context).canPop()) {
-      Navigator.of(context).pop(); // Return to previous page
+      // Navigate back
+      if (mounted && Navigator.of(context).canPop()) {
+        Navigator.of(context).pop(); // Close dialog
+      }
+      if (mounted && Navigator.of(context).canPop()) {
+        Navigator.of(context).pop(); // Return to previous page
+      }
+    } catch (e) {
+      // Show error banner with detailed message
+      if (mounted) {
+        TopBanner.showError(
+          context,
+          message: e.toString().replaceAll('Exception: ', ''),
+        );
+      }
+      // Close dialog but stay on edit page
+      if (mounted && Navigator.of(context).canPop()) {
+        Navigator.of(context).pop(); // Close dialog only
+      }
     }
   }
 
@@ -500,130 +521,142 @@ class _EditEventPageState extends ConsumerState<EditEventPage> {
             ),
           ),
         ),
-        body: Column(
-          children: [
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: Insets.screenH),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const SizedBox(height: Gaps.lg),
+        body: GestureDetector(
+          onTap: () => FocusScope.of(context).unfocus(),
+          behavior: HitTestBehavior.translucent,
+          child: Column(
+            children: [
+              Expanded(
+                child: SingleChildScrollView(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: Insets.screenH),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: Gaps.lg),
 
-                    // Seletor de nome do evento
-                    EventNameSelector(
-                      eventName: _eventName,
-                      eventEmoji: _eventEmoji,
-                      onEventNameChanged: (value) {
-                        setState(() {
-                          _eventName = value;
-                        });
-
-                        // Clear name error if valid
-                        if (_showValidationErrors && value.trim().isNotEmpty) {
+                      // Seletor de nome do evento
+                      EventNameSelector(
+                        eventName: _eventName,
+                        eventEmoji: _eventEmoji,
+                        onEventNameChanged: (value) {
                           setState(() {
-                            _nameError = null;
+                            _eventName = value;
                           });
-                        }
-                      },
-                      onEmojiPressed: (emoji) {
-                        setState(() {
-                          _eventEmoji = emoji;
-                        });
-                      },
-                      nameError: _showValidationErrors ? _nameError : null,
-                    ),
 
-                    const SizedBox(height: Gaps.md),
-
-                    // Seção de Date & Time
-                    DateTimeSection(
-                      startDate: _selectedDate,
-                      startTime: _selectedTime,
-                      endDate: _endDate,
-                      endTime: _endTime,
-                      onStartDateChanged: (date) {
-                        setState(() {
-                          _selectedDate = date;
-                        });
-                      },
-                      onStartTimeChanged: (time) {
-                        setState(() {
-                          _selectedTime = time;
-                        });
-                      },
-                      onEndDateChanged: (date) {
-                        setState(() {
-                          _endDate = date;
-                        });
-                      },
-                      onEndTimeChanged: (time) {
-                        setState(() {
-                          _endTime = time;
-                        });
-                      },
-                      validationError: _getDateTimeValidationError(),
-                    ),
-
-                    const SizedBox(height: Gaps.md),
-
-                    // Seção de Localização
-                    LocationSection(
-                      selectedLocation: _selectedLocation,
-                      onLocationChanged: (location) {
-                        setState(() {
-                          _selectedLocation = location;
-                        });
-                      },
-                      validationError: _getLocationValidationError(),
-                    ),
-
-                    const SizedBox(height: Gaps.md),
-
-                    // Seção de Details
-                    DescriptionSection(
-                      description: _description,
-                      onDescriptionChanged: (description) {
-                        setState(() {
-                          _description = description;
-                        });
-                      },
-                    ),
-
-                    const SizedBox(height: Gaps.lg),
-
-                    // Save Changes button - inside scroll
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: _handleSaveEvent,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: (_isFormValid() && _hasChanges())
-                              ? BrandColors.planning
-                              : BrandColors.bg3,
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                        ),
-                        child: Text(
-                          'Save Changes',
-                          style: AppText.titleMediumEmph.copyWith(
-                            color: (_isFormValid() && _hasChanges())
-                                ? BrandColors.text1
-                                : BrandColors.text2,
-                          ),
-                        ),
+                          // Clear name error if valid
+                          if (_showValidationErrors &&
+                              value.trim().isNotEmpty) {
+                            setState(() {
+                              _nameError = null;
+                            });
+                          }
+                        },
+                        onEmojiPressed: (emoji) {
+                          setState(() {
+                            _eventEmoji = emoji;
+                          });
+                        },
+                        nameError: _showValidationErrors ? _nameError : null,
                       ),
-                    ),
 
-                    const SizedBox(height: 24),
-                  ],
+                      const SizedBox(height: Gaps.md),
+
+                      // Seção de Date & Time
+                      DateTimeSection(
+                        startDate: _selectedDate,
+                        startTime: _selectedTime,
+                        endDate: _endDate,
+                        endTime: _endTime,
+                        onStartDateChanged: (date) {
+                          setState(() {
+                            _selectedDate = date;
+                          });
+                        },
+                        onStartTimeChanged: (time) {
+                          setState(() {
+                            _selectedTime = time;
+                          });
+                        },
+                        onEndDateChanged: (date) {
+                          setState(() {
+                            _endDate = date;
+                          });
+                        },
+                        onEndTimeChanged: (time) {
+                          setState(() {
+                            _endTime = time;
+                          });
+                        },
+                        validationError: _getDateTimeValidationError(),
+                      ),
+
+                      const SizedBox(height: Gaps.md),
+
+                      // Seção de Localização
+                      LocationSection(
+                        selectedLocation: _selectedLocation,
+                        onLocationChanged: (location) {
+                          setState(() {
+                            _selectedLocation = location;
+                          });
+                        },
+                        validationError: _getLocationValidationError(),
+                      ),
+
+                      const SizedBox(height: Gaps.md),
+
+                      // Seção de Details
+                      DescriptionSection(
+                        description: _description,
+                        onDescriptionChanged: (description) {
+                          setState(() {
+                            _description = description;
+                          });
+                        },
+                      ),
+
+                      const SizedBox(height: Gaps.lg),
+                    ],
+                  ),
                 ),
               ),
-            ),
-          ],
-        ),
+
+              // Save Changes button - fixed at bottom
+              Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  Insets.screenH,
+                  Gaps.sm,
+                  Insets.screenH,
+                  Insets.screenBottom,
+                ),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: _handleSaveEvent,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: (_isFormValid() && _hasChanges())
+                          ? BrandColors.planning
+                          : BrandColors.bg3,
+                      padding: const EdgeInsets.symmetric(vertical: Pads.ctlV),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(Radii.md),
+                      ),
+                    ),
+                    child: Text(
+                      'Save Changes',
+                      style: AppText.titleMediumEmph.copyWith(
+                        color: (_isFormValid() && _hasChanges())
+                            ? BrandColors.text1
+                            : BrandColors.text2,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ), // GestureDetector
       ),
     );
   }

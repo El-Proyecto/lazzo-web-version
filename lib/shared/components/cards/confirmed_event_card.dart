@@ -10,6 +10,7 @@ class ConfirmedEventCard extends StatelessWidget {
   final String title;
   final String dateTime;
   final String location;
+  final String? details;
   final VoidCallback? onTap;
 
   const ConfirmedEventCard({
@@ -18,6 +19,7 @@ class ConfirmedEventCard extends StatelessWidget {
     required this.title,
     required this.dateTime,
     required this.location,
+    this.details,
     this.onTap,
   });
 
@@ -83,6 +85,15 @@ class ConfirmedEventCard extends StatelessWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
+            if (details != null && details!.isNotEmpty) ...[
+              const SizedBox(height: Gaps.xxs),
+              Text(
+                details!,
+                style: AppText.bodyMedium.copyWith(color: BrandColors.text2),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
           ],
         ),
       ),

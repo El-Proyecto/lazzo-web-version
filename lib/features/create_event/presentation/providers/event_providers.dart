@@ -91,6 +91,7 @@ class CreateEventController extends StateNotifier<CreateEventState> {
         startDateTime: event.startDateTime,
         endDateTime: event.endDateTime,
         location: event.location,
+        description: event.description,
       );
       state = state.copyWith(isLoading: false, createdEvent: createdEvent);
     } catch (e) {
@@ -196,6 +197,7 @@ class EditEventController extends StateNotifier<EditEventState> {
       state = state.copyWith(isDeleting: false, isDeleted: true);
     } catch (e) {
       state = state.copyWith(isDeleting: false, error: e.toString());
+      rethrow; // Propagate error to UI
     }
   }
 
