@@ -167,7 +167,7 @@ class SettingsPage extends ConsumerWidget {
                         trailing: SettingsOptionTrailing.arrow(
                           onTap: () async {
                             final url = Uri.parse(
-                                'https://lazzo-invites-web.vercel.app/privacy');
+                                'https://getlazzo.com/privacy');
                             if (await canLaunchUrl(url)) {
                               await launchUrl(url,
                                   mode: LaunchMode.externalApplication);

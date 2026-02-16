@@ -45,7 +45,7 @@ class RecentMemoryDataSource {
           .gte('end_datetime', thirtyDaysAgo.toIso8601String())
           .order('end_datetime', ascending: false);
 
-      if (eventsResponse == null || (eventsResponse as List).isEmpty) {
+      if ((eventsResponse as List).isEmpty) {
         return [];
       }
 

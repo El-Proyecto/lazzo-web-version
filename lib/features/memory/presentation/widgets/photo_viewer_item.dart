@@ -103,7 +103,7 @@ class _PhotoViewerItemState extends State<PhotoViewerItem> {
 
       // Generate filename with timestamp
       final timestamp = DateFormat('yyyyMMdd_HHmmss').format(DateTime.now());
-      final filename = 'lazzo_${timestamp}.jpg';
+      final filename = 'lazzo_$timestamp.jpg';
       final filePath = '${directory.path}/$filename';
 
       // Save the file

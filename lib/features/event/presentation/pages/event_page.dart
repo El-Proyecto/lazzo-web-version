@@ -25,8 +25,10 @@ import '../widgets/date_time_suggestions_widget.dart'
     show DateTimeSuggestionsWidget, DateTimeSuggestion;
 import '../widgets/date_time_suggestions_widget.dart' as datetime_widget;
 import '../widgets/location_suggestions_widget.dart';
-import 'package:share_plus/share_plus.dart' show SharePlus, ShareParams;
 import '../widgets/add_suggestion_bottom_sheet.dart';
+import '../../../../config/app_config.dart';
+import '../../../../shared/components/common/invite_bottom_sheet.dart';
+import '../../../event_invites/presentation/providers/event_invite_providers.dart';
 import '../../../../shared/components/widgets/rsvp_vote_buttons.dart';
 import 'event_page_models.dart';
 
@@ -479,13 +481,32 @@ class _EventPageState extends ConsumerState<EventPage> {
                   width: double.infinity,
                   height: TouchTargets.input,
                   child: ElevatedButton.icon(
-                    onPressed: () {
-                      final eventName = event.name;
-                      SharePlus.instance.share(
-                        ShareParams(
-                          text: 'Join $eventName on Lazzo! \uD83C\uDF89',
-                        ),
-                      );
+                    onPressed: () async {
+                      try {
+                        final useCase = ref.read(createEventInviteLinkProvider);
+                        final entity = await useCase(
+                          eventId: eventId,
+                          shareChannel: 'share_button',
+                        );
+                        final inviteUrl =
+                            '${AppConfig.invitesBaseUrl}/i/${entity.token}';
+                        if (context.mounted) {
+                          InviteBottomSheet.show(
+                            context: context,
+                            inviteUrl: inviteUrl,
+                            entityName: event.name,
+                            entityType: 'event',
+                          );
+                        }
+                      } catch (e) {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Failed to create invite link'),
+                            ),
+                          );
+                        }
+                      }
                     },
                     icon: const Icon(Icons.ios_share, size: IconSizes.smAlt),
                     label: Text(

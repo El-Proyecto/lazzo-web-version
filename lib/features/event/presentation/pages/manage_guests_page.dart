@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:share_plus/share_plus.dart' show SharePlus, ShareParams;
 import '../../../../routes/app_router.dart';
+import '../../../../config/app_config.dart';
+import '../../../../shared/components/common/invite_bottom_sheet.dart';
+import '../../../event_invites/presentation/providers/event_invite_providers.dart';
 import '../../../../shared/components/nav/common_app_bar.dart';
 import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/constants/text_styles.dart';
@@ -41,11 +43,32 @@ class _ManageGuestsPageState extends ConsumerState<ManageGuestsPage> {
         ),
         trailing: IconButton(
           icon: const Icon(Icons.ios_share, color: BrandColors.text1),
-          onPressed: () {
-            final eventName = eventAsync.value?.name ?? 'this event';
-            SharePlus.instance.share(
-              ShareParams(text: 'Join $eventName on Lazzo! 🎉'),
-            );
+          onPressed: () async {
+            try {
+              final useCase = ref.read(createEventInviteLinkProvider);
+              final entity = await useCase(
+                eventId: widget.eventId,
+                shareChannel: 'manage_guests',
+              );
+              final inviteUrl =
+                  '${AppConfig.invitesBaseUrl}/i/${entity.token}';
+              if (context.mounted) {
+                InviteBottomSheet.show(
+                  context: context,
+                  inviteUrl: inviteUrl,
+                  entityName: eventAsync.value?.name ?? 'this event',
+                  entityType: 'event',
+                );
+              }
+            } catch (e) {
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Failed to create invite link'),
+                  ),
+                );
+              }
+            }
           },
         ),
       ),

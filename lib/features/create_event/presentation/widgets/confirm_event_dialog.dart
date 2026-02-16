@@ -201,7 +201,7 @@ class _ConfirmEventBottomSheetState
               onPressed: _isCreating ? null : () => _createEvent(),
               style: ElevatedButton.styleFrom(
                 backgroundColor: _isCreating
-                    ? BrandColors.planning.withOpacity(0.5)
+                    ? BrandColors.planning.withValues(alpha: 0.5)
                     : BrandColors.planning,
                 padding: const EdgeInsets.symmetric(
                   vertical: 12,
@@ -209,7 +209,7 @@ class _ConfirmEventBottomSheetState
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
                 ),
-                disabledBackgroundColor: BrandColors.planning.withOpacity(0.5),
+                disabledBackgroundColor: BrandColors.planning.withValues(alpha: 0.5),
               ),
               child: _isCreating
                   ? Row(

@@ -145,7 +145,7 @@ class _ReviewerAuthPageState extends ConsumerState<ReviewerAuthPage> {
                 style: const TextStyle(color: Colors.white),
                 decoration: InputDecoration(
                   hintText: 'reviewer@example.com',
-                  hintStyle: TextStyle(color: BrandColors.text2),
+                  hintStyle: const TextStyle(color: BrandColors.text2),
                   filled: true,
                   fillColor: BrandColors.bg2,
                   border: OutlineInputBorder(
@@ -175,7 +175,7 @@ class _ReviewerAuthPageState extends ConsumerState<ReviewerAuthPage> {
                 style: const TextStyle(color: Colors.white),
                 decoration: InputDecoration(
                   hintText: '••••••••',
-                  hintStyle: TextStyle(color: BrandColors.text2),
+                  hintStyle: const TextStyle(color: BrandColors.text2),
                   filled: true,
                   fillColor: BrandColors.bg2,
                   border: OutlineInputBorder(
