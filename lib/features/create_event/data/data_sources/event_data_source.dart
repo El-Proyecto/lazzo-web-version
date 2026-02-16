@@ -145,13 +145,23 @@ class EventDataSource {
   /// Respects RLS - user can only delete events they created
   Future<void> deleteEvent(String id) async {
     try {
-      await _client.from('events').delete().eq('id', id);
+      final response =
+          await _client.from('events').delete().eq('id', id).select();
+
+      // If response is empty, event was not deleted (might not exist or RLS blocked it)
+      if (response.isEmpty) {
+        throw Exception(
+            'Failed to delete event - event may not exist or you may not have permission');
+      }
     } catch (e) {
       if (e is PostgrestException) {
         if (e.code == '23503') {
-        } else if (e.code == '22P02') {}
+          throw Exception('Cannot delete event - it has related data');
+        } else if (e.code == '42501') {
+          throw Exception(
+              'Permission denied - you can only delete events you created');
+        }
       }
-
       rethrow;
     }
   }

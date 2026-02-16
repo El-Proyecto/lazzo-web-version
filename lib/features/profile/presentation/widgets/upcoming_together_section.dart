@@ -50,7 +50,7 @@ class UpcomingTogetherSection extends StatelessWidget {
                 emoji: event.emoji,
                 title: event.name,
                 dateTime: _formatEventDate(event.date),
-                location: event.location ?? 'Location to be decided',
+                location: event.location ?? 'Not set',
                 onTap: () => onEventTap?.call(event),
               ),
             );
@@ -61,7 +61,7 @@ class UpcomingTogetherSection extends StatelessWidget {
   }
 
   String _formatEventDate(DateTime? date) {
-    if (date == null) return 'To be decided';
+    if (date == null) return 'Not set';
 
     final months = [
       'Jan',

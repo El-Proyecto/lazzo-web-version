@@ -182,6 +182,16 @@ class _ConfirmEventBottomSheetState
             Icons.location_on,
           ),
 
+          // Details (if present)
+          if (widget.description != null && widget.description!.isNotEmpty) ...[
+            const SizedBox(height: Gaps.md),
+            _buildInfoRow(
+              'Details',
+              widget.description!,
+              Icons.description,
+            ),
+          ],
+
           const SizedBox(height: 24),
 
           // Create button with optimistic UI
@@ -300,10 +310,6 @@ class _ConfirmEventBottomSheetState
   }
 
   String _formatDateTime() {
-    if (widget.selectedDate == null && widget.selectedTime == null) {
-      return 'Date & time to be decided';
-    }
-
     String result = '';
 
     if (widget.selectedDate != null) {
@@ -320,7 +326,7 @@ class _ConfirmEventBottomSheetState
       result += ' - ${_formatTime(widget.endTime!)}';
     }
 
-    return result.isEmpty ? 'Date & time to be decided' : result;
+    return result.isEmpty ? 'Not set' : result;
   }
 
   String _formatDate(DateTime date) {
@@ -363,7 +369,7 @@ class _ConfirmEventBottomSheetState
 
   String _formatLocation() {
     if (widget.selectedLocation == null) {
-      return 'Location to be decided';
+      return 'Not set';
     }
 
     // If has custom name, use it
@@ -377,6 +383,6 @@ class _ConfirmEventBottomSheetState
       return widget.selectedLocation!.formattedAddress;
     }
 
-    return 'Location to be decided';
+    return 'Not set';
   }
 }

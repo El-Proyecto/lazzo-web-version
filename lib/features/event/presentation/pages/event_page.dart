@@ -8,13 +8,13 @@ import '../../../../shared/components/common/top_banner.dart';
 import '../../../../shared/components/chips/event_status_chip.dart';
 import '../../../../shared/components/dialogs/confirmation_dialog.dart';
 import '../../../../shared/components/dialogs/missing_fields_confirmation_dialog.dart';
-import '../../../../shared/components/widgets/rsvp_widget.dart' as rsvp_widget;
 import '../../../../shared/components/widgets/help_plan_event_widget.dart';
 import '../../../../shared/components/widgets/location_widget.dart';
 import '../../../../shared/components/widgets/event_details_widget.dart';
 import '../../../../shared/components/widgets/date_time_widget.dart';
 import '../../../../shared/components/widgets/poll_widget.dart';
 import '../../../../shared/constants/spacing.dart';
+import '../../../../shared/constants/text_styles.dart';
 import '../../../../shared/themes/colors.dart';
 import '../../../../services/calendar_service.dart';
 import '../../domain/entities/rsvp.dart';
@@ -25,7 +25,9 @@ import '../widgets/date_time_suggestions_widget.dart'
     show DateTimeSuggestionsWidget, DateTimeSuggestion;
 import '../widgets/date_time_suggestions_widget.dart' as datetime_widget;
 import '../widgets/location_suggestions_widget.dart';
+import 'package:share_plus/share_plus.dart' show SharePlus, ShareParams;
 import '../widgets/add_suggestion_bottom_sheet.dart';
+import '../../../../shared/components/widgets/rsvp_vote_buttons.dart';
 import 'event_page_models.dart';
 
 // LAZZO 2.0: payments_provider import removed
@@ -298,7 +300,7 @@ class _EventPageState extends ConsumerState<EventPage> {
     // Note: locationSuggestionsAsync, locationVotesAsync, userLocationVotesAsync now in locationSuggestionsDataProvider
     // Note: messagesAsync, unreadCountAsync now in chatPreviewDataProvider
     final pollsAsync = ref.watch(eventPollsProvider(eventId));
-    final participantsAsync = ref.watch(eventParticipantsProvider(eventId));
+    // Participants watcher available via eventParticipantsProvider(eventId) when needed
 
     // Helper to refresh all event data
     Future<void> refreshEventData() async {
@@ -318,7 +320,6 @@ class _EventPageState extends ConsumerState<EventPage> {
     }
 
     final eventName = eventAsync.value?.name ?? '';
-    final eventStatus = eventAsync.value?.status;
 
     return Scaffold(
       backgroundColor: BrandColors.bg1,
@@ -329,6 +330,34 @@ class _EventPageState extends ConsumerState<EventPage> {
           onPressed: () => Navigator.of(context).pop(),
         ),
         trailing: Consumer(
+          builder: (context, consumerRef, _) {
+            final canManageAsync = consumerRef.watch(
+              canManageEventProvider(eventId),
+            );
+            final userRsvpAsync = consumerRef.watch(
+              userRsvpProvider(eventId),
+            );
+
+            // Show ManageGuests icon only for hosts or users who have voted
+            final isHost = canManageAsync.valueOrNull == true;
+            final hasVoted = userRsvpAsync.valueOrNull != null &&
+                userRsvpAsync.valueOrNull!.status != RsvpStatus.pending;
+
+            if (!isHost && !hasVoted) return const SizedBox.shrink();
+
+            return IconButton(
+              icon: const Icon(Icons.people, color: BrandColors.text1),
+              onPressed: () {
+                Navigator.pushNamed(
+                  context,
+                  AppRouter.manageGuests,
+                  arguments: {'eventId': eventId},
+                );
+              },
+            );
+          },
+        ),
+        trailing2: Consumer(
           builder: (context, consumerRef, _) {
             final canManageAsync = consumerRef.watch(
               canManageEventProvider(eventId),
@@ -357,7 +386,7 @@ class _EventPageState extends ConsumerState<EventPage> {
                           description: eventData.description,
                           location: eventData.location != null
                               ? create_event.EventLocation(
-                                  id: 'temp-id', // Will be created/updated in repository
+                                  id: 'temp-id',
                                   displayName: eventData.location!.displayName,
                                   formattedAddress:
                                       eventData.location!.formattedAddress,
@@ -399,7 +428,7 @@ class _EventPageState extends ConsumerState<EventPage> {
                           description: eventData.description,
                           location: eventData.location != null
                               ? create_event.EventLocation(
-                                  id: 'temp-id', // Will be created/updated in repository
+                                  id: 'temp-id',
                                   displayName: eventData.location!.displayName,
                                   formattedAddress:
                                       eventData.location!.formattedAddress,
@@ -425,7 +454,61 @@ class _EventPageState extends ConsumerState<EventPage> {
             );
           },
         ),
-        trailing2: null,
+      ),
+      bottomNavigationBar: eventAsync.whenOrNull(
+        data: (event) {
+          // Show share button only for pending/confirmed events
+          if (event.status == EventStatus.pending ||
+              event.status == EventStatus.confirmed) {
+            return Container(
+              padding: const EdgeInsets.fromLTRB(
+                Insets.screenH,
+                Gaps.sm,
+                Insets.screenH,
+                Gaps.lg,
+              ),
+              decoration: const BoxDecoration(
+                color: BrandColors.bg1,
+                border: Border(
+                  top: BorderSide(color: BrandColors.border, width: 0.5),
+                ),
+              ),
+              child: SafeArea(
+                top: false,
+                child: SizedBox(
+                  width: double.infinity,
+                  height: TouchTargets.input,
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      final eventName = event.name;
+                      SharePlus.instance.share(
+                        ShareParams(
+                          text: 'Join $eventName on Lazzo! \uD83C\uDF89',
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.ios_share, size: IconSizes.smAlt),
+                    label: Text(
+                      'Share invite with friends',
+                      style: AppText.labelLarge.copyWith(
+                        color: BrandColors.text1,
+                      ),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: BrandColors.planning,
+                      foregroundColor: BrandColors.text1,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(Radii.smAlt),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            );
+          }
+          return null;
+        },
       ),
       body: eventAsync.when(
         data: (event) => RefreshIndicator(
@@ -460,51 +543,139 @@ class _EventPageState extends ConsumerState<EventPage> {
                 _buildRsvpSection(event, currentUserId),
 
                 // Date & Time Suggestions Widget (OPTIMIZED)
-                // Combined provider reduces nesting from 4 levels to 1
-                Consumer(
-                  builder: (context, ref, child) {
-                    final dataAsync =
-                        ref.watch(dateTimeSuggestionsDataProvider(eventId));
+                // Skip entirely when event is expired (table may not exist)
+                if (!event.isExpired)
+                  Consumer(
+                    builder: (context, ref, child) {
+                      final dataAsync =
+                          ref.watch(dateTimeSuggestionsDataProvider(eventId));
 
-                    // If no data yet (initial load), show nothing
-                    if (!dataAsync.hasValue) {
-                      return const SizedBox.shrink();
-                    }
+                      // If no data yet (initial load), show nothing
+                      if (!dataAsync.hasValue) {
+                        return const SizedBox.shrink();
+                      }
 
-                    // Use .value to access data even during refresh (when isLoading: true, hasValue: true)
-                    final data = dataAsync.value!;
+                      // Use .value to access data even during refresh (when isLoading: true, hasValue: true)
+                      final data = dataAsync.value!;
 
-                    // Process raw data into UI models
-                    final processedData = _processDateTimeSuggestions(
-                      suggestions: data['suggestions'] as List<Suggestion>,
-                      allVotes: data['allVotes'] as List<SuggestionVote>,
-                      userVoteIds: data['userVoteIds'] as Set<String>,
-                      event: event,
-                      goingCount: data['goingCount'] as int,
-                      currentUserId: currentUserId,
-                    );
+                      // Process raw data into UI models
+                      final processedData = _processDateTimeSuggestions(
+                        suggestions: data['suggestions'] as List<Suggestion>,
+                        allVotes: data['allVotes'] as List<SuggestionVote>,
+                        userVoteIds: data['userVoteIds'] as Set<String>,
+                        event: event,
+                        goingCount: data['goingCount'] as int,
+                        currentUserId: currentUserId,
+                      );
 
-                    // Hide if no alternatives
-                    if (!processedData.hasAlternatives) {
-                      return const SizedBox.shrink();
-                    }
+                      // Hide if no alternatives
+                      if (!processedData.hasAlternatives) {
+                        return const SizedBox.shrink();
+                      }
 
-                    return Column(
-                      children: [
-                        DateTimeSuggestionsWidget(
+                      return Column(
+                        children: [
+                          DateTimeSuggestionsWidget(
+                            suggestions: processedData.suggestions,
+                            userVotes: data['userVoteIds'] as Set<String>,
+                            currentEventStartDateTime: event.startDateTime,
+                            currentEventEndDateTime: event.endDateTime,
+                            onVote: (suggestionId) {
+                              ref
+                                  .read(
+                                    toggleSuggestionVoteNotifierProvider
+                                        .notifier,
+                                  )
+                                  .toggleVote_(eventId, suggestionId);
+                            },
+                            isHost: _cachedIsHost ?? false,
+                            currentUserId: currentUserId,
+                            onAddSuggestion: () {
+                              showAddSuggestionBottomSheet(
+                                context,
+                                eventId: eventId,
+                                eventStartDate:
+                                    event.startDateTime ?? DateTime.now(),
+                                eventStartTime: event.startDateTime != null
+                                    ? TimeOfDay.fromDateTime(
+                                        event.startDateTime!)
+                                    : const TimeOfDay(hour: 0, minute: 0),
+                                eventEndDate:
+                                    event.endDateTime ?? DateTime.now(),
+                                eventEndTime: event.endDateTime != null
+                                    ? TimeOfDay.fromDateTime(event.endDateTime!)
+                                    : const TimeOfDay(hour: 0, minute: 0),
+                              );
+                            },
+                            onSetDate: (selectedSuggestion) async {
+                              await _setEventDate(
+                                context,
+                                ref,
+                                selectedSuggestion,
+                              );
+                            },
+                          ),
+                          const SizedBox(height: Gaps.lg),
+                        ],
+                      );
+                    },
+                  ),
+
+                // Location Suggestions Widget (OPTIMIZED)
+                // Skip entirely when event is expired (table may not exist)
+                if (!event.isExpired)
+                  Consumer(
+                    builder: (context, ref, child) {
+                      final dataAsync =
+                          ref.watch(locationSuggestionsDataProvider(eventId));
+
+                      // If no data yet (initial load), show nothing
+                      if (!dataAsync.hasValue) {
+                        return const SizedBox.shrink();
+                      }
+
+                      // Use .value to access data even during refresh (when isLoading: true, hasValue: true)
+                      final data = dataAsync.value!;
+                      final locationSuggestions = data['locationSuggestions']
+                          as List<LocationSuggestion>;
+
+                      // Hide if no suggestions
+                      if (locationSuggestions.isEmpty) {
+                        return const SizedBox.shrink();
+                      }
+
+                      // Process data to check for alternatives
+                      final processedData = _processLocationSuggestions(
+                        suggestions: locationSuggestions,
+                        allVotes: data['locationVotes'] as List<SuggestionVote>,
+                        event: event,
+                        goingCount: data['goingCount'] as int,
+                      );
+
+                      // Hide if no alternatives
+                      if (!processedData.hasAlternatives) {
+                        return const SizedBox.shrink();
+                      }
+
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: Gaps.lg),
+                        child: LocationSuggestionsWidget(
                           suggestions: processedData.suggestions,
+                          allVotes:
+                              data['locationVotes'] as List<SuggestionVote>,
                           userVotes: data['userVoteIds'] as Set<String>,
-                          currentEventStartDateTime: event.startDateTime,
-                          currentEventEndDateTime: event.endDateTime,
                           onVote: (suggestionId) {
                             ref
                                 .read(
-                                  toggleSuggestionVoteNotifierProvider.notifier,
+                                  toggleLocationSuggestionVoteNotifierProvider
+                                      .notifier,
                                 )
-                                .toggleVote_(eventId, suggestionId);
+                                .toggleVote(eventId, suggestionId);
                           },
                           isHost: _cachedIsHost ?? false,
                           currentUserId: currentUserId,
+                          currentEventGoingCount:
+                              processedData.currentEventGoingCount,
                           onAddSuggestion: () {
                             showAddSuggestionBottomSheet(
                               context,
@@ -518,112 +689,28 @@ class _EventPageState extends ConsumerState<EventPage> {
                               eventEndTime: event.endDateTime != null
                                   ? TimeOfDay.fromDateTime(event.endDateTime!)
                                   : const TimeOfDay(hour: 0, minute: 0),
+                              type: SuggestionType.location,
+                              currentEventLocationName:
+                                  event.location?.displayName,
+                              currentEventAddress:
+                                  event.location?.formattedAddress,
                             );
                           },
-                          onSetDate: (selectedSuggestion) async {
-                            await _setEventDate(
+                          onPickLocation: (selectedLocation) async {
+                            await _setEventLocation(
                               context,
                               ref,
-                              selectedSuggestion,
+                              selectedLocation,
                             );
                           },
+                          currentEventLocationName: event.location?.displayName,
+                          currentEventAddress: event.location?.formattedAddress,
                         ),
-                        const SizedBox(height: Gaps.lg),
-                      ],
-                    );
-                  },
-                ),
-
-                // Location Suggestions Widget (OPTIMIZED)
-                // Combined provider reduces nesting from 3 levels to 1
-                Consumer(
-                  builder: (context, ref, child) {
-                    final dataAsync =
-                        ref.watch(locationSuggestionsDataProvider(eventId));
-
-                    // If no data yet (initial load), show nothing
-                    if (!dataAsync.hasValue) {
-                      return const SizedBox.shrink();
-                    }
-
-                    // Use .value to access data even during refresh (when isLoading: true, hasValue: true)
-                    final data = dataAsync.value!;
-                    final locationSuggestions =
-                        data['locationSuggestions'] as List<LocationSuggestion>;
-
-                    // Hide if no suggestions
-                    if (locationSuggestions.isEmpty) {
-                      return const SizedBox.shrink();
-                    }
-
-                    // Process data to check for alternatives
-                    final processedData = _processLocationSuggestions(
-                      suggestions: locationSuggestions,
-                      allVotes: data['locationVotes'] as List<SuggestionVote>,
-                      event: event,
-                      goingCount: data['goingCount'] as int,
-                    );
-
-                    // Hide if no alternatives
-                    if (!processedData.hasAlternatives) {
-                      return const SizedBox.shrink();
-                    }
-
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: Gaps.lg),
-                      child: LocationSuggestionsWidget(
-                        suggestions: processedData.suggestions,
-                        allVotes: data['locationVotes'] as List<SuggestionVote>,
-                        userVotes: data['userVoteIds'] as Set<String>,
-                        onVote: (suggestionId) {
-                          ref
-                              .read(
-                                toggleLocationSuggestionVoteNotifierProvider
-                                    .notifier,
-                              )
-                              .toggleVote(eventId, suggestionId);
-                        },
-                        isHost: _cachedIsHost ?? false,
-                        currentUserId: currentUserId,
-                        currentEventGoingCount:
-                            processedData.currentEventGoingCount,
-                        onAddSuggestion: () {
-                          showAddSuggestionBottomSheet(
-                            context,
-                            eventId: eventId,
-                            eventStartDate:
-                                event.startDateTime ?? DateTime.now(),
-                            eventStartTime: event.startDateTime != null
-                                ? TimeOfDay.fromDateTime(event.startDateTime!)
-                                : const TimeOfDay(hour: 0, minute: 0),
-                            eventEndDate: event.endDateTime ?? DateTime.now(),
-                            eventEndTime: event.endDateTime != null
-                                ? TimeOfDay.fromDateTime(event.endDateTime!)
-                                : const TimeOfDay(hour: 0, minute: 0),
-                            type: SuggestionType.location,
-                            currentEventLocationName:
-                                event.location?.displayName,
-                            currentEventAddress:
-                                event.location?.formattedAddress,
-                          );
-                        },
-                        onPickLocation: (selectedLocation) async {
-                          await _setEventLocation(
-                            context,
-                            ref,
-                            selectedLocation,
-                          );
-                        },
-                        currentEventLocationName: event.location?.displayName,
-                        currentEventAddress: event.location?.formattedAddress,
-                      ),
-                    );
-                  },
-                ),
+                      );
+                    },
+                  ),
 
                 // LAZZO 2.0: Expenses widget removed
-
-                const SizedBox(height: Gaps.lg),
 
                 // Event details/description (if present)
                 if (event.description != null &&
@@ -632,8 +719,10 @@ class _EventPageState extends ConsumerState<EventPage> {
                   const SizedBox(height: Gaps.lg),
                 ],
 
-                // Location Widget (if location is set)
-                if (event.location != null) ...[
+                // Location Widget (if location has valid coordinates)
+                if (event.location != null &&
+                    (event.location!.latitude != 0.0 ||
+                        event.location!.longitude != 0.0)) ...[
                   LocationWidget(
                     displayName: event.location!.displayName,
                     formattedAddress: event.location!.formattedAddress,
@@ -707,20 +796,6 @@ class _EventPageState extends ConsumerState<EventPage> {
             Center(child: Text('Error loading event: $error')),
       ),
     );
-  }
-
-  rsvp_widget.RsvpVoteStatus _getUserVoteStatus(Rsvp? rsvp) {
-    if (rsvp == null) return rsvp_widget.RsvpVoteStatus.pending;
-    switch (rsvp.status) {
-      case RsvpStatus.going:
-        return rsvp_widget.RsvpVoteStatus.going;
-      case RsvpStatus.notGoing:
-        return rsvp_widget.RsvpVoteStatus.notGoing;
-      case RsvpStatus.maybe:
-        return rsvp_widget.RsvpVoteStatus.maybe;
-      case RsvpStatus.pending:
-        return rsvp_widget.RsvpVoteStatus.pending;
-    }
   }
 
   String? _getUserVotedOption(dynamic poll) {
@@ -1017,64 +1092,122 @@ class _EventPageState extends ConsumerState<EventPage> {
     );
   }
 
+  /// Builds the expired event section
+  /// Host: shows "Set new date" button that navigates to edit page
+  /// Non-host: shows informational message that host needs to set a new date
+  Widget _buildExpiredEventSection(EventDetail event, String? currentUserId) {
+    final isHost = _cachedIsHost ?? (event.hostId == currentUserId);
+
+    return Column(
+      children: [
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(Gaps.md),
+          decoration: BoxDecoration(
+            color: BrandColors.bg2,
+            borderRadius: BorderRadius.circular(Radii.md),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Title
+              Text(
+                'Event date has expired',
+                style: AppText.titleMediumEmph.copyWith(
+                  color: BrandColors.text1,
+                ),
+              ),
+              const SizedBox(height: Gaps.sm),
+
+              if (isHost) ...[
+                // Host: explain and provide action
+                Text(
+                  'The event date has passed without being confirmed. Set a new date to keep the event active.',
+                  style: AppText.bodyMedium.copyWith(
+                    color: BrandColors.text2,
+                  ),
+                ),
+                const SizedBox(height: Gaps.md),
+                ElevatedButton(
+                  onPressed: () {
+                    // Navigate to edit page
+                    final editEvent = create_event.Event(
+                      id: event.id,
+                      name: event.name,
+                      emoji: event.emoji,
+                      startDateTime: event.startDateTime,
+                      endDateTime: event.endDateTime,
+                      description: event.description,
+                      location: event.location != null
+                          ? create_event.EventLocation(
+                              id: 'temp-id',
+                              displayName: event.location!.displayName,
+                              formattedAddress:
+                                  event.location!.formattedAddress,
+                              latitude: event.location!.latitude,
+                              longitude: event.location!.longitude,
+                            )
+                          : null,
+                      status: create_event.EventStatus.pending,
+                      createdAt: event.createdAt,
+                    );
+
+                    Navigator.pushNamed(
+                      context,
+                      AppRouter.editEvent,
+                      arguments: {'event': editEvent},
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: BrandColors.planning,
+                    foregroundColor: BrandColors.bg1,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: Gaps.md,
+                      vertical: Pads.ctlVSm,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(Radii.smAlt),
+                    ),
+                    elevation: 0,
+                  ),
+                  child: Text(
+                    'Set new date',
+                    style: AppText.labelLarge.copyWith(
+                      color: BrandColors.text1,
+                    ),
+                  ),
+                ),
+              ] else ...[
+                // Non-host: informational message
+                Text(
+                  'The event date has passed. The host needs to set a new date for this event.',
+                  style: AppText.bodyMedium.copyWith(
+                    color: BrandColors.text2,
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+        const SizedBox(height: Gaps.lg),
+      ],
+    );
+  }
+
   /// Builds the RSVP section with voting functionality
   /// This is one of the most complex sections with nested AsyncValues
   /// When event is not fully defined/suggested, shows HelpPlanSection instead
   Widget _buildRsvpSection(EventDetail event, String? currentUserId) {
+    // If event is expired, show expired UI without loading suggestions
+    // (suggestions table may not exist, so avoid the provider entirely)
+    if (event.isExpired) {
+      return _buildExpiredEventSection(event, currentUserId);
+    }
+
     // Watch suggestions to determine visibility
     final suggestionsAsync = ref.watch(eventSuggestionsProvider(eventId));
     final locationSuggestionsAsync =
         ref.watch(eventLocationSuggestionsProvider(eventId));
-
-    // If event is expired, never show RSVP
-    if (event.isExpired) {
-      final dateSuggestions = suggestionsAsync.value ?? [];
-
-      // Filter out suggestions that are the SAME as the expired event date
-      // Only consider suggestions that are DIFFERENT (alternatives)
-      final alternateSuggestions = dateSuggestions.where((s) {
-        if (event.startDateTime == null || event.endDateTime == null) {
-          return true;
-        }
-        final isDifferent =
-            !s.startDateTime.isAtSameMomentAs(event.startDateTime!) ||
-                !(s.endDateTime?.isAtSameMomentAs(event.endDateTime!) ?? false);
-        return isDifferent;
-      }).toList();
-
-      // If there are ALTERNATIVE date suggestions, hide this section (let suggestions widget show)
-      if (alternateSuggestions.isNotEmpty) {
-        return const SizedBox.shrink();
-      }
-
-      // No alternative suggestions - show expired widget
-      return Column(
-        children: [
-          HelpPlanEventWidget(
-            hasLocation: event.hasDefinedLocation,
-            hasDate: false, // Force date as missing since it's expired
-            hasSuggestedLocation: false,
-            hasSuggestedDate: false,
-            onAddSuggestion: () {
-              showAddSuggestionBottomSheet(
-                context,
-                eventId: eventId,
-                eventStartDate: event.startDateTime ?? DateTime.now(),
-                eventStartTime: event.startDateTime != null
-                    ? TimeOfDay.fromDateTime(event.startDateTime!)
-                    : TimeOfDay.now(),
-                eventEndDate: event.endDateTime ?? DateTime.now(),
-                eventEndTime: event.endDateTime != null
-                    ? TimeOfDay.fromDateTime(event.endDateTime!)
-                    : TimeOfDay.now(),
-              );
-            },
-            customTitle: 'Event date has expired',
-          ),
-          const SizedBox(height: Gaps.lg),
-        ],
-      );
-    }
 
     // If event is fully defined, show RSVP
     if (event.isFullyDefined) {
@@ -1142,17 +1275,6 @@ class _EventPageState extends ConsumerState<EventPage> {
     Rsvp? userRsvp,
     List<Suggestion> suggestions,
   ) {
-    // Filter suggestions DIFFERENT from current event date
-    final alternateDateSuggestions = suggestions.where((s) {
-      if (event.startDateTime == null || event.endDateTime == null) {
-        return true;
-      }
-      final isDifferent =
-          !s.startDateTime.isAtSameMomentAs(event.startDateTime!) ||
-              !(s.endDateTime?.isAtSameMomentAs(event.endDateTime!) ?? false);
-      return isDifferent;
-    }).toList();
-
     return Consumer(
       builder: (context, consumerRef, child) {
         final locationSuggestionsAsync = consumerRef.watch(
@@ -1161,15 +1283,6 @@ class _EventPageState extends ConsumerState<EventPage> {
 
         return locationSuggestionsAsync.when(
           data: (locationSuggestions) {
-            // Filter location suggestions DIFFERENT from current event location
-            final alternateLocationSuggestions = locationSuggestions.where((s) {
-              if (event.location == null) return true;
-              final isDifferent =
-                  s.locationName != event.location!.displayName ||
-                      (s.address ?? '') != event.location!.formattedAddress;
-              return isDifferent;
-            }).toList();
-
             // Calculate dynamic counts
             final goingCount =
                 rsvps.where((r) => r.status == RsvpStatus.going).length;
@@ -1177,18 +1290,14 @@ class _EventPageState extends ConsumerState<EventPage> {
                 rsvps.where((r) => r.status == RsvpStatus.notGoing).length;
             final maybeCount =
                 rsvps.where((r) => r.status == RsvpStatus.maybe).length;
-            final pendingCount =
-                rsvps.where((r) => r.status == RsvpStatus.pending).length;
 
             return Column(
               children: [
-                rsvp_widget.RsvpWidget(
+                RsvpVoteButtons(
+                  selectedVote: _mapToVoteType(userRsvp),
                   goingCount: goingCount,
-                  notGoingCount: notGoingCount,
                   maybeCount: maybeCount,
-                  pendingCount: pendingCount,
-                  userVote: _getUserVoteStatus(userRsvp),
-                  currentUserId: currentUserId,
+                  notGoingCount: notGoingCount,
                   onGoingPressed: () async {
                     final currentStatus =
                         userRsvp?.status ?? RsvpStatus.pending;
@@ -1219,55 +1328,22 @@ class _EventPageState extends ConsumerState<EventPage> {
                         .read(userRsvpProvider(eventId).notifier)
                         .submitVote(newStatus);
                   },
-                  allVotes: rsvps
-                      .map(
-                        (r) => rsvp_widget.RsvpVote(
-                          id: r.id,
-                          userId: r.userId,
-                          userName: _getUserDisplayName(
-                              r.userId, r.userName, currentUserId),
-                          userAvatar: r.userAvatar,
-                          status: _mapRsvpToVoteStatus(r.status),
-                          votedAt: r.createdAt,
-                        ),
-                      )
+                  onVoteSummaryTap: () {
+                    Navigator.pushNamed(
+                      context,
+                      AppRouter.manageGuests,
+                      arguments: {'eventId': eventId},
+                    );
+                  },
+                  voters: rsvps
+                      .where((r) => r.status != RsvpStatus.pending)
+                      .map((r) => RsvpVoterInfo(
+                            userId: r.userId,
+                            userName: r.userName,
+                            userAvatar: r.userAvatar,
+                            voteType: _mapStatusToVoteType(r.status),
+                          ))
                       .toList(),
-                  onAddSuggestion: _getUserVoteStatus(userRsvp) ==
-                          rsvp_widget.RsvpVoteStatus.notGoing
-                      ? () {
-                          if (event.startDateTime == null ||
-                              event.endDateTime == null) {
-                            TopBanner.showError(
-                              context,
-                              message:
-                                  'Event dates must be set before adding suggestions',
-                            );
-                            return;
-                          }
-                          showAddSuggestionBottomSheet(
-                            context,
-                            eventId: eventId,
-                            eventStartDate: event.startDateTime!,
-                            eventStartTime:
-                                TimeOfDay.fromDateTime(event.startDateTime!),
-                            eventEndDate: event.endDateTime!,
-                            eventEndTime:
-                                TimeOfDay.fromDateTime(event.endDateTime!),
-                            type: locationSuggestions.isNotEmpty
-                                ? SuggestionType.location
-                                : SuggestionType.dateTime,
-                            currentEventLocationName:
-                                event.location?.displayName,
-                            currentEventAddress:
-                                event.location?.formattedAddress,
-                          );
-                        }
-                      : null,
-                  eventStartDateTime: event.startDateTime,
-                  eventEndDateTime: event.endDateTime,
-                  isHost: event.hostId == currentUserId,
-                  hasSuggestions: alternateDateSuggestions.isNotEmpty ||
-                      alternateLocationSuggestions.isNotEmpty,
                 ),
                 const SizedBox(height: Gaps.lg),
               ],
@@ -1301,18 +1377,14 @@ class _EventPageState extends ConsumerState<EventPage> {
     final notGoingCount =
         rsvps.where((r) => r.status == RsvpStatus.notGoing).length;
     final maybeCount = rsvps.where((r) => r.status == RsvpStatus.maybe).length;
-    final pendingCount =
-        rsvps.where((r) => r.status == RsvpStatus.pending).length;
 
     return Column(
       children: [
-        rsvp_widget.RsvpWidget(
+        RsvpVoteButtons(
+          selectedVote: _mapToVoteType(userRsvp),
           goingCount: goingCount,
-          notGoingCount: notGoingCount,
           maybeCount: maybeCount,
-          pendingCount: pendingCount,
-          userVote: _getUserVoteStatus(userRsvp),
-          currentUserId: currentUserId,
+          notGoingCount: notGoingCount,
           onGoingPressed: () async {
             final currentStatus = userRsvp?.status ?? RsvpStatus.pending;
             final newStatus = currentStatus == RsvpStatus.going
@@ -1340,24 +1412,22 @@ class _EventPageState extends ConsumerState<EventPage> {
                 .read(userRsvpProvider(eventId).notifier)
                 .submitVote(newStatus);
           },
-          allVotes: rsvps
-              .map(
-                (r) => rsvp_widget.RsvpVote(
-                  id: r.id,
-                  userId: r.userId,
-                  userName:
-                      _getUserDisplayName(r.userId, r.userName, currentUserId),
-                  userAvatar: r.userAvatar,
-                  status: _mapRsvpToVoteStatus(r.status),
-                  votedAt: r.createdAt,
-                ),
-              )
+          onVoteSummaryTap: () {
+            Navigator.pushNamed(
+              context,
+              AppRouter.manageGuests,
+              arguments: {'eventId': eventId},
+            );
+          },
+          voters: rsvps
+              .where((r) => r.status != RsvpStatus.pending)
+              .map((r) => RsvpVoterInfo(
+                    userId: r.userId,
+                    userName: r.userName,
+                    userAvatar: r.userAvatar,
+                    voteType: _mapStatusToVoteType(r.status),
+                  ))
               .toList(),
-          onAddSuggestion: null,
-          eventStartDateTime: event.startDateTime,
-          eventEndDateTime: event.endDateTime,
-          isHost: event.hostId == currentUserId,
-          hasSuggestions: false,
         ),
         const SizedBox(height: Gaps.lg),
       ],
@@ -1368,38 +1438,53 @@ class _EventPageState extends ConsumerState<EventPage> {
   Widget _buildRsvpErrorState(EventDetail event, String? currentUserId) {
     return Column(
       children: [
-        rsvp_widget.RsvpWidget(
+        RsvpVoteButtons(
+          selectedVote: null,
           goingCount: 0,
-          notGoingCount: 0,
           maybeCount: 0,
-          pendingCount: 0,
-          currentUserId: currentUserId,
+          notGoingCount: 0,
           onGoingPressed: () {},
           onMaybePressed: () {},
           onNotGoingPressed: () {},
-          allVotes: const [],
-          onAddSuggestion: null,
-          eventStartDateTime: event.startDateTime,
-          eventEndDateTime: event.endDateTime,
-          isHost: event.hostId == currentUserId,
-          hasSuggestions: false,
+          onVoteSummaryTap: () {
+            Navigator.pushNamed(
+              context,
+              AppRouter.manageGuests,
+              arguments: {'eventId': eventId},
+            );
+          },
         ),
         const SizedBox(height: Gaps.lg),
       ],
     );
   }
 
-  /// Maps domain RsvpStatus to widget RsvpVoteStatus
-  rsvp_widget.RsvpVoteStatus _mapRsvpToVoteStatus(RsvpStatus status) {
+  /// Maps domain Rsvp to the new RsvpVoteType for RsvpVoteButtons
+  RsvpVoteType? _mapToVoteType(Rsvp? rsvp) {
+    if (rsvp == null) return null;
+    switch (rsvp.status) {
+      case RsvpStatus.going:
+        return RsvpVoteType.going;
+      case RsvpStatus.maybe:
+        return RsvpVoteType.maybe;
+      case RsvpStatus.notGoing:
+        return RsvpVoteType.notGoing;
+      case RsvpStatus.pending:
+        return null;
+    }
+  }
+
+  /// Maps a non-pending RsvpStatus to RsvpVoteType (for voter info).
+  RsvpVoteType _mapStatusToVoteType(RsvpStatus status) {
     switch (status) {
       case RsvpStatus.going:
-        return rsvp_widget.RsvpVoteStatus.going;
-      case RsvpStatus.notGoing:
-        return rsvp_widget.RsvpVoteStatus.notGoing;
+        return RsvpVoteType.going;
       case RsvpStatus.maybe:
-        return rsvp_widget.RsvpVoteStatus.maybe;
+        return RsvpVoteType.maybe;
+      case RsvpStatus.notGoing:
+        return RsvpVoteType.notGoing;
       case RsvpStatus.pending:
-        return rsvp_widget.RsvpVoteStatus.pending;
+        return RsvpVoteType.going; // fallback, should not happen
     }
   }
 
