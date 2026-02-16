@@ -5,6 +5,7 @@ import '../../../../routes/app_router.dart';
 import '../../../../shared/components/nav/common_app_bar.dart';
 import '../../../../shared/components/common/top_banner.dart';
 import '../../../../shared/components/sections/event_header.dart';
+import '../../../../shared/components/inputs/photo_selector.dart';
 import '../../../../shared/components/widgets/location_widget.dart';
 import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/themes/colors.dart';
@@ -59,6 +60,53 @@ class _EventLivingPageState extends ConsumerState<EventLivingPage> {
     ref.invalidate(eventDetailProvider(widget.eventId));
     ref.invalidate(eventParticipantsProvider(widget.eventId));
     ref.invalidate(eventPhotosProvider(widget.eventId));
+  }
+
+  /// Show photo source selector (camera / gallery) and upload
+  void _showPhotoSelector() {
+    PhotoSelectionBottomSheet.show(
+      context: context,
+      showRemoveOption: false,
+      onAction: (action) async {
+        final photoNotifier = ref.read(
+          eventPhotoUploadNotifierProvider(widget.eventId).notifier,
+        );
+
+        if (action == PhotoSourceAction.camera) {
+          await photoNotifier.takePhoto(eventId: widget.eventId);
+        } else if (action == PhotoSourceAction.gallery) {
+          await photoNotifier.pickPhotoFromGallery(eventId: widget.eventId);
+        }
+
+        _handlePhotoUploadResult();
+      },
+    );
+  }
+
+  /// Handle result after photo upload attempt
+  void _handlePhotoUploadResult() {
+    final uploadState = ref.read(
+      eventPhotoUploadNotifierProvider(widget.eventId),
+    );
+    uploadState.when(
+      data: (photoUrl) {
+        if (photoUrl != null) {
+          if (context.mounted) {
+            TopBanner.showSuccess(context,
+                message: '✅ Photo uploaded successfully!');
+          }
+          ref.invalidate(eventDetailProvider(widget.eventId));
+          ref.invalidate(eventPhotosProvider(widget.eventId));
+        }
+      },
+      loading: () {},
+      error: (error, _) {
+        if (context.mounted) {
+          TopBanner.showError(context,
+              message: '❌ Failed to upload photo: $error');
+        }
+      },
+    );
   }
 
   @override
@@ -181,44 +229,7 @@ class _EventLivingPageState extends ConsumerState<EventLivingPage> {
                       ),
                     );
                   },
-                  onTakePhoto: () async {
-                    // Get photo upload notifier
-                    final photoNotifier = ref.read(
-                      eventPhotoUploadNotifierProvider(widget.eventId).notifier,
-                    );
-
-                    // Take photo and upload
-                    await photoNotifier.takePhoto(
-                      eventId: widget.eventId,
-                    );
-
-                    // Show result
-                    final uploadState = ref.read(
-                      eventPhotoUploadNotifierProvider(widget.eventId),
-                    );
-
-                    uploadState.when(
-                      data: (photoUrl) {
-                        if (photoUrl != null) {
-                          TopBanner.showSuccess(
-                            context,
-                            message: '✅ Photo uploaded successfully!',
-                          );
-
-                          // Optimistic UI: invalidate all photo-related providers
-                          ref.invalidate(eventDetailProvider(widget.eventId));
-                          ref.invalidate(eventPhotosProvider(widget.eventId));
-                        }
-                      },
-                      loading: () {},
-                      error: (error, _) {
-                        TopBanner.showError(
-                          context,
-                          message: '❌ Failed to upload photo: $error',
-                        );
-                      },
-                    );
-                  },
+                  onTakePhoto: _showPhotoSelector,
                   onGuests: () {
                     Navigator.pushNamed(
                       context,
@@ -232,32 +243,7 @@ class _EventLivingPageState extends ConsumerState<EventLivingPage> {
                 // Photos grid
                 LivingPhotosWidget(
                   eventId: widget.eventId,
-                  onTakePhoto: () async {
-                    final photoNotifier = ref.read(
-                      eventPhotoUploadNotifierProvider(widget.eventId).notifier,
-                    );
-                    await photoNotifier.takePhoto(
-                      eventId: widget.eventId,
-                    );
-                    final uploadState = ref.read(
-                      eventPhotoUploadNotifierProvider(widget.eventId),
-                    );
-                    uploadState.when(
-                      data: (photoUrl) {
-                        if (photoUrl != null) {
-                          TopBanner.showSuccess(context,
-                              message: '✅ Photo uploaded successfully!');
-                          ref.invalidate(eventDetailProvider(widget.eventId));
-                          ref.invalidate(eventPhotosProvider(widget.eventId));
-                        }
-                      },
-                      loading: () {},
-                      error: (error, _) {
-                        TopBanner.showError(context,
-                            message: '❌ Failed to upload photo: $error');
-                      },
-                    );
-                  },
+                  onTakePhoto: _showPhotoSelector,
                   onViewAll: () async {
                     final hasChanges = await Navigator.pushNamed<bool>(
                       context,

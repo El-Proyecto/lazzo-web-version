@@ -9,6 +9,7 @@ import '../../../../shared/components/nav/app_bar_with_subtitle.dart';
 import '../../../../shared/components/cards/add_photos_cta_card.dart';
 import '../../../../shared/components/cards/close_recap_card.dart';
 import '../../../../shared/components/common/top_banner.dart';
+import '../../../../shared/components/inputs/photo_selector.dart';
 import '../../../../shared/components/sections/cover_mosaic.dart';
 import '../../../../shared/components/sections/hybrid_photo_grid.dart';
 import '../../../../shared/constants/spacing.dart';
@@ -176,12 +177,12 @@ class _MemoryPageState extends ConsumerState<MemoryPage> {
                           ),
                           child: eventStatus == EventStatus.living
                               ? AddPhotosCtaCard.living(
-                                  onPressed: () =>
-                                      _handleAddPhotosFromCta(context),
+                                  onPressed: () => _handleAddPhotosFromCta(
+                                      context, eventStatus),
                                 )
                               : AddPhotosCtaCard.recap(
-                                  onPressed: () =>
-                                      _handleAddPhotosFromCta(context),
+                                  onPressed: () => _handleAddPhotosFromCta(
+                                      context, eventStatus),
                                 ),
                         ),
 
@@ -479,8 +480,51 @@ class _MemoryPageState extends ConsumerState<MemoryPage> {
   }
 
   /// Handle add photos from CTA banner
-  /// Opens gallery first, then navigates to ManageMemory with selected photos
-  Future<void> _handleAddPhotosFromCta(BuildContext context) async {
+  /// Living: shows photo source selector (camera / gallery)
+  /// Recap: opens gallery directly
+  Future<void> _handleAddPhotosFromCta(
+      BuildContext context, EventStatus eventStatus) async {
+    if (eventStatus == EventStatus.living) {
+      // Living: show photo source selector
+      if (!mounted || !context.mounted) return;
+      PhotoSelectionBottomSheet.show(
+        context: context,
+        showRemoveOption: false,
+        onAction: (action) async {
+          if (action == PhotoSourceAction.camera) {
+            // Take single photo with camera
+            final picker = ImagePicker();
+            final photo = await picker.pickImage(
+              source: ImageSource.camera,
+              maxWidth: 1920,
+              maxHeight: 1920,
+              imageQuality: 85,
+            );
+            if (photo != null && mounted && context.mounted) {
+              final result = await Navigator.of(context).pushNamed(
+                AppRouter.manageMemory,
+                arguments: {
+                  'memoryId': widget.memoryId,
+                  'selectedPhotos': [photo.path],
+                },
+              );
+              if (result == true && mounted) {
+                ref.invalidate(memoryDetailProvider(widget.memoryId));
+              }
+            }
+          } else if (action == PhotoSourceAction.gallery) {
+            await _pickFromGalleryAndNavigate(context);
+          }
+        },
+      );
+    } else {
+      // Recap: open gallery directly
+      await _pickFromGalleryAndNavigate(context);
+    }
+  }
+
+  /// Pick photos from gallery and navigate to ManageMemory
+  Future<void> _pickFromGalleryAndNavigate(BuildContext context) async {
     final picker = ImagePicker();
     final selectedImages = await picker.pickMultiImage(
       maxWidth: 1920,
@@ -489,21 +533,14 @@ class _MemoryPageState extends ConsumerState<MemoryPage> {
     );
 
     if (selectedImages.isNotEmpty && mounted) {
-      // Limit to 5 photos
       final limitedImages = selectedImages.take(5).toList();
 
       if (limitedImages.length < selectedImages.length) {
-        if (!mounted) return;
-        if (!context.mounted) return;
-        TopBanner.showInfo(
-          context,
-          message: 'Maximum 5 photos selected',
-        );
+        if (!mounted || !context.mounted) return;
+        TopBanner.showInfo(context, message: 'Maximum 5 photos selected');
       }
 
-      // Navigate to ManageMemory with selected photos
-      if (!mounted) return;
-      if (!context.mounted) return;
+      if (!mounted || !context.mounted) return;
       final result = await Navigator.of(context).pushNamed(
         AppRouter.manageMemory,
         arguments: {
@@ -512,7 +549,6 @@ class _MemoryPageState extends ConsumerState<MemoryPage> {
         },
       );
 
-      // Refresh if changes were made
       if (result == true && mounted) {
         ref.invalidate(memoryDetailProvider(widget.memoryId));
         try {

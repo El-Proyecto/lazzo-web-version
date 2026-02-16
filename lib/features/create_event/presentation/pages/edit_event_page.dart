@@ -16,6 +16,7 @@ import '../../../../shared/components/dialogs/confirmation_dialog.dart';
 import '../providers/event_providers.dart';
 import '../../../event/presentation/providers/event_providers.dart'
     as event_providers;
+import '../../../event/domain/entities/rsvp.dart' show RsvpStatus;
 import '../../../home/presentation/providers/home_event_providers.dart'
     as home_providers;
 
@@ -352,6 +353,12 @@ class _EditEventPageState extends ConsumerState<EditEventPage> {
     // CRITICAL: Invalidate providers to force UI refresh across the app
     // 1. Event detail page (shows updated date/time/location)
     ref.invalidate(event_providers.eventDetailProvider(widget.event.id));
+
+    // Host auto-vote: ensure host always has "Can" vote after editing
+    await ref
+        .read(event_providers.userRsvpProvider(widget.event.id).notifier)
+        .submitVote(RsvpStatus.going);
+
     // 2. Home page providers (shows updated event in lists)
     ref.invalidate(home_providers.nextEventControllerProvider);
     ref.invalidate(home_providers.confirmedEventsControllerProvider);

@@ -2,6 +2,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/home_event_model.dart';
 import '../../domain/entities/home_event.dart';
 import '../../../../services/avatar_cache_service.dart';
+import '../../../../shared/components/widgets/rsvp_widget.dart';
 
 /// Remote data source for home events
 /// Fetches events from Supabase and maps to entities
@@ -127,6 +128,13 @@ class HomeEventRemoteDataSource {
           .length;
 
       if (confirmedCount > 0 && confirmedAfterFilter == 0) {}
+
+      // ✅ Filter out living/recap events where user didn't vote "Can"
+      // These should not appear as the next event in the navbar
+      nonExpiredEvents.removeWhere((e) =>
+          (e.status == HomeEventStatus.living ||
+              e.status == HomeEventStatus.recap) &&
+          e.userVote != RsvpVoteStatus.going);
 
       // ✅ If no non-expired events, use expired pending events as fallback
       final eventsToSort =
@@ -368,8 +376,7 @@ class HomeEventRemoteDataSource {
           ''')
           .eq('user_id', userId)
           .inFilter('event_status', ['living', 'recap'])
-          .neq('user_rsvp',
-              'no') // Show events where user didn't decline (matches fetchNextEvent behavior)
+          .eq('user_rsvp', 'yes') // Only show events where user voted "yes"
           .not('end_datetime', 'is', null) // Only events with end_datetime
           .order('end_datetime', ascending: true)
           .limit(20);
