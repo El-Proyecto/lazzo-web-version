@@ -100,29 +100,38 @@ class LivingPhotosWidget extends ConsumerWidget {
     return GestureDetector(
       onTap: onTakePhoto,
       child: Container(
-        height: 80,
+        padding: const EdgeInsets.symmetric(
+          vertical: Gaps.xl,
+          horizontal: Pads.sectionH,
+        ),
         decoration: BoxDecoration(
           color: BrandColors.bg3,
           borderRadius: BorderRadius.circular(Radii.sm),
         ),
-        child: Center(
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(
-                Icons.camera_alt,
-                size: IconSizes.sm,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(
+              Icons.camera_alt,
+              size: IconSizes.lg,
+              color: BrandColors.living,
+            ),
+            const SizedBox(height: Gaps.sm),
+            Text(
+              'Add first photo',
+              style: AppText.titleMediumEmph.copyWith(
                 color: BrandColors.living,
               ),
-              const SizedBox(width: Gaps.xs),
-              Text(
-                'Add first photo',
-                style: AppText.labelLarge.copyWith(
-                  color: BrandColors.living,
-                ),
+            ),
+            const SizedBox(height: Gaps.xxs),
+            Text(
+              'Capture moments from your event',
+              style: AppText.bodyMedium.copyWith(
+                color: BrandColors.text2,
               ),
-            ],
-          ),
+              textAlign: TextAlign.center,
+            ),
+          ],
         ),
       ),
     );

@@ -115,7 +115,7 @@ class _ManageGuestsPageState extends ConsumerState<ManageGuestsPage> {
 
     return Column(
       children: [
-        // Summary cards: Photos + Participants
+        // Summary cards: Participants + Photos (swap order)
         Padding(
           padding: const EdgeInsets.symmetric(
             horizontal: Insets.screenH,
@@ -124,15 +124,15 @@ class _ManageGuestsPageState extends ConsumerState<ManageGuestsPage> {
           child: Row(
             children: [
               _LivingSummaryCard(
-                icon: Icons.photo_library_outlined,
-                count: totalPhotos,
-                label: 'Photos',
-              ),
-              const SizedBox(width: Gaps.xs),
-              _LivingSummaryCard(
                 icon: Icons.people_outline,
                 count: participantCount,
                 label: 'Participants',
+              ),
+              const SizedBox(width: Gaps.xs),
+              _LivingSummaryCard(
+                icon: Icons.photo_library_outlined,
+                count: totalPhotos,
+                label: 'Photos',
               ),
             ],
           ),
@@ -407,60 +407,70 @@ class _LivingParticipantTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(
-        vertical: Pads.ctlVXs,
-        horizontal: Pads.sectionH,
-      ),
-      child: Row(
-        children: [
-          // Avatar
-          CircleAvatar(
-            radius: 24,
-            backgroundColor: BrandColors.bg3,
-            child: entry.userAvatar != null
-                ? ClipOval(
-                    child: Image.network(
-                      entry.userAvatar!,
-                      width: 48,
-                      height: 48,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => _buildDefaultAvatar(),
-                    ),
-                  )
-                : _buildDefaultAvatar(),
-          ),
-          const SizedBox(width: Gaps.sm),
-
-          // Name
-          Expanded(
-            child: Text(
-              entry.userName,
-              style: AppText.titleMediumEmph.copyWith(color: BrandColors.text1),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
+    return GestureDetector(
+      onTap: () {
+        Navigator.of(context).pushNamed(
+          AppRouter.otherProfile,
+          arguments: {'userId': entry.userId},
+        );
+      },
+      behavior: HitTestBehavior.opaque,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          vertical: Pads.ctlVXs,
+          horizontal: Pads.sectionH,
+        ),
+        child: Row(
+          children: [
+            // Avatar
+            CircleAvatar(
+              radius: 24,
+              backgroundColor: BrandColors.bg3,
+              child: entry.userAvatar != null
+                  ? ClipOval(
+                      child: Image.network(
+                        entry.userAvatar!,
+                        width: 48,
+                        height: 48,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => _buildDefaultAvatar(),
+                      ),
+                    )
+                  : _buildDefaultAvatar(),
             ),
-          ),
+            const SizedBox(width: Gaps.sm),
 
-          // Photo count
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(
-                Icons.photo_outlined,
-                size: IconSizes.sm,
-                color: BrandColors.text2,
+            // Name
+            Expanded(
+              child: Text(
+                entry.userName,
+                style:
+                    AppText.titleMediumEmph.copyWith(color: BrandColors.text1),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
-              const SizedBox(width: Gaps.xxs),
-              Text(
-                '${entry.photoCount}',
-                style: AppText.titleMediumEmph.copyWith(
-                  color: BrandColors.living,
+            ),
+
+            // Photo count: number (text2) + icon after
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  '${entry.photoCount}',
+                  style: AppText.titleMediumEmph.copyWith(
+                    color: BrandColors.text2,
+                  ),
                 ),
-              ),
-            ],
-          ),
-        ],
+                const SizedBox(width: Gaps.xxs),
+                const Icon(
+                  Icons.photo_outlined,
+                  size: IconSizes.sm,
+                  color: BrandColors.text2,
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

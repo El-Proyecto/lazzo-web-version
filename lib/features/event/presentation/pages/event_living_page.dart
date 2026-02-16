@@ -66,6 +66,7 @@ class _EventLivingPageState extends ConsumerState<EventLivingPage> {
   void _showPhotoSelector() {
     PhotoSelectionBottomSheet.show(
       context: context,
+      title: 'Add Photo',
       showRemoveOption: false,
       onAction: (action) async {
         final photoNotifier = ref.read(
@@ -245,13 +246,12 @@ class _EventLivingPageState extends ConsumerState<EventLivingPage> {
                   eventId: widget.eventId,
                   onTakePhoto: _showPhotoSelector,
                   onViewAll: () async {
-                    final hasChanges = await Navigator.pushNamed<bool>(
-                      context,
+                    final hasChanges = await Navigator.of(context).pushNamed(
                       AppRouter.manageMemory,
                       arguments: {
                         'memoryId': widget.eventId,
                       },
-                    );
+                    ) as bool?;
                     if (hasChanges == true) {
                       ref.invalidate(eventDetailProvider(widget.eventId));
                       ref.invalidate(eventPhotosProvider(widget.eventId));
