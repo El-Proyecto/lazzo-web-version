@@ -141,7 +141,7 @@ class _RsvpVoteButtonsState extends State<RsvpVoteButtons>
       children: [
         Expanded(
           child: _VoteButton(
-            icon: Icons.check_circle_outline,
+            icon: Icons.check,
             label: 'Can',
             onPressed: widget.onGoingPressed,
           ),
@@ -149,7 +149,7 @@ class _RsvpVoteButtonsState extends State<RsvpVoteButtons>
         const SizedBox(width: Gaps.sm),
         Expanded(
           child: _VoteButton(
-            icon: Icons.help_outline,
+            icon: Icons.question_mark,
             label: 'Maybe',
             onPressed: widget.onMaybePressed,
           ),
@@ -157,7 +157,7 @@ class _RsvpVoteButtonsState extends State<RsvpVoteButtons>
         const SizedBox(width: Gaps.sm),
         Expanded(
           child: _VoteButton(
-            icon: Icons.cancel_outlined,
+            icon: Icons.close,
             label: "Can't",
             onPressed: widget.onNotGoingPressed,
           ),
@@ -367,11 +367,11 @@ class _RsvpVoteButtonsState extends State<RsvpVoteButtons>
   IconData _voteIcon(RsvpVoteType type) {
     switch (type) {
       case RsvpVoteType.going:
-        return Icons.check_circle_outline;
+        return Icons.check;
       case RsvpVoteType.maybe:
-        return Icons.help_outline;
+        return Icons.question_mark;
       case RsvpVoteType.notGoing:
-        return Icons.cancel_outlined;
+        return Icons.close;
     }
   }
 

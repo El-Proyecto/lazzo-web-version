@@ -368,7 +368,8 @@ class HomeEventRemoteDataSource {
           ''')
           .eq('user_id', userId)
           .inFilter('event_status', ['living', 'recap'])
-          .eq('user_rsvp', 'yes') // Only show events where user voted "yes"
+          .neq('user_rsvp',
+              'no') // Show events where user didn't decline (matches fetchNextEvent behavior)
           .not('end_datetime', 'is', null) // Only events with end_datetime
           .order('end_datetime', ascending: true)
           .limit(20);

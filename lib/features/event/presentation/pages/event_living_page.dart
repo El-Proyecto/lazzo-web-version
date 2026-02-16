@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:share_plus/share_plus.dart' show SharePlus, ShareParams;
 import '../../../../routes/app_router.dart';
 import '../../../../shared/components/nav/common_app_bar.dart';
 import '../../../../shared/components/common/top_banner.dart';
@@ -11,6 +12,7 @@ import '../providers/event_providers.dart';
 import '../providers/event_photo_providers.dart';
 import '../widgets/living_time_left_pill.dart';
 import '../widgets/living_action_row.dart';
+import '../widgets/living_photos_widget.dart';
 import '../widgets/host_time_controls.dart';
 
 /// Event page for Living mode
@@ -172,6 +174,13 @@ class _EventLivingPageState extends ConsumerState<EventLivingPage> {
 
                 // Action row
                 LivingActionRow(
+                  onShare: () {
+                    SharePlus.instance.share(
+                      ShareParams(
+                        text: 'Join ${event.name} on Lazzo! \uD83C\uDF89',
+                      ),
+                    );
+                  },
                   onTakePhoto: () async {
                     // Get photo upload notifier
                     final photoNotifier = ref.read(
@@ -197,21 +206,8 @@ class _EventLivingPageState extends ConsumerState<EventLivingPage> {
                           );
 
                           // Optimistic UI: invalidate all photo-related providers
-                          // This forces fresh data fetch when navigating to manage memory
                           ref.invalidate(eventDetailProvider(widget.eventId));
                           ref.invalidate(eventPhotosProvider(widget.eventId));
-
-                          // Navigate immediately to manage memory page
-                          // The manageMemoryProvider will fetch fresh photos on init
-                          if (context.mounted) {
-                            Navigator.pushNamed(
-                              context,
-                              AppRouter.manageMemory,
-                              arguments: {
-                                'memoryId': widget.eventId,
-                              },
-                            );
-                          }
                         }
                       },
                       loading: () {},
@@ -223,8 +219,46 @@ class _EventLivingPageState extends ConsumerState<EventLivingPage> {
                       },
                     );
                   },
-                  onViewMemory: () async {
-                    // Navigate to manage memory page and refresh on return if changes made
+                  onGuests: () {
+                    Navigator.pushNamed(
+                      context,
+                      AppRouter.manageGuests,
+                      arguments: {'eventId': widget.eventId},
+                    );
+                  },
+                ),
+                const SizedBox(height: Gaps.lg),
+
+                // Photos grid
+                LivingPhotosWidget(
+                  eventId: widget.eventId,
+                  onTakePhoto: () async {
+                    final photoNotifier = ref.read(
+                      eventPhotoUploadNotifierProvider(widget.eventId).notifier,
+                    );
+                    await photoNotifier.takePhoto(
+                      eventId: widget.eventId,
+                    );
+                    final uploadState = ref.read(
+                      eventPhotoUploadNotifierProvider(widget.eventId),
+                    );
+                    uploadState.when(
+                      data: (photoUrl) {
+                        if (photoUrl != null) {
+                          TopBanner.showSuccess(context,
+                              message: '✅ Photo uploaded successfully!');
+                          ref.invalidate(eventDetailProvider(widget.eventId));
+                          ref.invalidate(eventPhotosProvider(widget.eventId));
+                        }
+                      },
+                      loading: () {},
+                      error: (error, _) {
+                        TopBanner.showError(context,
+                            message: '❌ Failed to upload photo: $error');
+                      },
+                    );
+                  },
+                  onViewAll: () async {
                     final hasChanges = await Navigator.pushNamed<bool>(
                       context,
                       AppRouter.manageMemory,
@@ -232,8 +266,6 @@ class _EventLivingPageState extends ConsumerState<EventLivingPage> {
                         'memoryId': widget.eventId,
                       },
                     );
-
-                    // Refresh data if changes were made
                     if (hasChanges == true) {
                       ref.invalidate(eventDetailProvider(widget.eventId));
                       ref.invalidate(eventPhotosProvider(widget.eventId));
