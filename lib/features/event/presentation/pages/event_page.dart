@@ -8,7 +8,6 @@ import '../../../../shared/components/common/top_banner.dart';
 import '../../../../shared/components/chips/event_status_chip.dart';
 import '../../../../shared/components/dialogs/confirmation_dialog.dart';
 import '../../../../shared/components/dialogs/missing_fields_confirmation_dialog.dart';
-import '../../../../shared/components/widgets/rsvp_widget.dart' as rsvp_widget;
 import '../../../../shared/components/widgets/help_plan_event_widget.dart';
 import '../../../../shared/components/widgets/location_widget.dart';
 import '../../../../shared/components/widgets/event_details_widget.dart';
@@ -26,7 +25,9 @@ import '../widgets/date_time_suggestions_widget.dart'
     show DateTimeSuggestionsWidget, DateTimeSuggestion;
 import '../widgets/date_time_suggestions_widget.dart' as datetime_widget;
 import '../widgets/location_suggestions_widget.dart';
+import 'package:share_plus/share_plus.dart' show SharePlus, ShareParams;
 import '../widgets/add_suggestion_bottom_sheet.dart';
+import '../../../../shared/components/widgets/rsvp_vote_buttons.dart';
 import 'event_page_models.dart';
 
 // LAZZO 2.0: payments_provider import removed
@@ -299,7 +300,7 @@ class _EventPageState extends ConsumerState<EventPage> {
     // Note: locationSuggestionsAsync, locationVotesAsync, userLocationVotesAsync now in locationSuggestionsDataProvider
     // Note: messagesAsync, unreadCountAsync now in chatPreviewDataProvider
     final pollsAsync = ref.watch(eventPollsProvider(eventId));
-    final participantsAsync = ref.watch(eventParticipantsProvider(eventId));
+    // Participants watcher available via eventParticipantsProvider(eventId) when needed
 
     // Helper to refresh all event data
     Future<void> refreshEventData() async {
@@ -319,7 +320,6 @@ class _EventPageState extends ConsumerState<EventPage> {
     }
 
     final eventName = eventAsync.value?.name ?? '';
-    final eventStatus = eventAsync.value?.status;
 
     return Scaffold(
       backgroundColor: BrandColors.bg1,
@@ -329,13 +329,31 @@ class _EventPageState extends ConsumerState<EventPage> {
           icon: const Icon(Icons.arrow_back, color: BrandColors.text1),
           onPressed: () => Navigator.of(context).pop(),
         ),
-        trailing: IconButton(
-          icon: const Icon(Icons.people, color: BrandColors.text1),
-          onPressed: () {
-            Navigator.pushNamed(
-              context,
-              AppRouter.manageGuests,
-              arguments: {'eventId': eventId},
+        trailing: Consumer(
+          builder: (context, consumerRef, _) {
+            final canManageAsync = consumerRef.watch(
+              canManageEventProvider(eventId),
+            );
+            final userRsvpAsync = consumerRef.watch(
+              userRsvpProvider(eventId),
+            );
+
+            // Show ManageGuests icon only for hosts or users who have voted
+            final isHost = canManageAsync.valueOrNull == true;
+            final hasVoted = userRsvpAsync.valueOrNull != null &&
+                userRsvpAsync.valueOrNull!.status != RsvpStatus.pending;
+
+            if (!isHost && !hasVoted) return const SizedBox.shrink();
+
+            return IconButton(
+              icon: const Icon(Icons.people, color: BrandColors.text1),
+              onPressed: () {
+                Navigator.pushNamed(
+                  context,
+                  AppRouter.manageGuests,
+                  arguments: {'eventId': eventId},
+                );
+              },
             );
           },
         ),
@@ -436,6 +454,61 @@ class _EventPageState extends ConsumerState<EventPage> {
             );
           },
         ),
+      ),
+      bottomNavigationBar: eventAsync.whenOrNull(
+        data: (event) {
+          // Show share button only for pending/confirmed events
+          if (event.status == EventStatus.pending ||
+              event.status == EventStatus.confirmed) {
+            return Container(
+              padding: const EdgeInsets.fromLTRB(
+                Insets.screenH,
+                Gaps.sm,
+                Insets.screenH,
+                Gaps.lg,
+              ),
+              decoration: const BoxDecoration(
+                color: BrandColors.bg1,
+                border: Border(
+                  top: BorderSide(color: BrandColors.border, width: 0.5),
+                ),
+              ),
+              child: SafeArea(
+                top: false,
+                child: SizedBox(
+                  width: double.infinity,
+                  height: TouchTargets.input,
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      final eventName = event.name;
+                      SharePlus.instance.share(
+                        ShareParams(
+                          text: 'Join $eventName on Lazzo! \uD83C\uDF89',
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.ios_share, size: IconSizes.smAlt),
+                    label: Text(
+                      'Share invite with friends',
+                      style: AppText.labelLarge.copyWith(
+                        color: BrandColors.text1,
+                      ),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: BrandColors.planning,
+                      foregroundColor: BrandColors.text1,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(Radii.smAlt),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            );
+          }
+          return null;
+        },
       ),
       body: eventAsync.when(
         data: (event) => RefreshIndicator(
@@ -723,20 +796,6 @@ class _EventPageState extends ConsumerState<EventPage> {
             Center(child: Text('Error loading event: $error')),
       ),
     );
-  }
-
-  rsvp_widget.RsvpVoteStatus _getUserVoteStatus(Rsvp? rsvp) {
-    if (rsvp == null) return rsvp_widget.RsvpVoteStatus.pending;
-    switch (rsvp.status) {
-      case RsvpStatus.going:
-        return rsvp_widget.RsvpVoteStatus.going;
-      case RsvpStatus.notGoing:
-        return rsvp_widget.RsvpVoteStatus.notGoing;
-      case RsvpStatus.maybe:
-        return rsvp_widget.RsvpVoteStatus.maybe;
-      case RsvpStatus.pending:
-        return rsvp_widget.RsvpVoteStatus.pending;
-    }
   }
 
   String? _getUserVotedOption(dynamic poll) {
@@ -1216,17 +1275,6 @@ class _EventPageState extends ConsumerState<EventPage> {
     Rsvp? userRsvp,
     List<Suggestion> suggestions,
   ) {
-    // Filter suggestions DIFFERENT from current event date
-    final alternateDateSuggestions = suggestions.where((s) {
-      if (event.startDateTime == null || event.endDateTime == null) {
-        return true;
-      }
-      final isDifferent =
-          !s.startDateTime.isAtSameMomentAs(event.startDateTime!) ||
-              !(s.endDateTime?.isAtSameMomentAs(event.endDateTime!) ?? false);
-      return isDifferent;
-    }).toList();
-
     return Consumer(
       builder: (context, consumerRef, child) {
         final locationSuggestionsAsync = consumerRef.watch(
@@ -1235,15 +1283,6 @@ class _EventPageState extends ConsumerState<EventPage> {
 
         return locationSuggestionsAsync.when(
           data: (locationSuggestions) {
-            // Filter location suggestions DIFFERENT from current event location
-            final alternateLocationSuggestions = locationSuggestions.where((s) {
-              if (event.location == null) return true;
-              final isDifferent =
-                  s.locationName != event.location!.displayName ||
-                      (s.address ?? '') != event.location!.formattedAddress;
-              return isDifferent;
-            }).toList();
-
             // Calculate dynamic counts
             final goingCount =
                 rsvps.where((r) => r.status == RsvpStatus.going).length;
@@ -1251,18 +1290,14 @@ class _EventPageState extends ConsumerState<EventPage> {
                 rsvps.where((r) => r.status == RsvpStatus.notGoing).length;
             final maybeCount =
                 rsvps.where((r) => r.status == RsvpStatus.maybe).length;
-            final pendingCount =
-                rsvps.where((r) => r.status == RsvpStatus.pending).length;
 
             return Column(
               children: [
-                rsvp_widget.RsvpWidget(
+                RsvpVoteButtons(
+                  selectedVote: _mapToVoteType(userRsvp),
                   goingCount: goingCount,
-                  notGoingCount: notGoingCount,
                   maybeCount: maybeCount,
-                  pendingCount: pendingCount,
-                  userVote: _getUserVoteStatus(userRsvp),
-                  currentUserId: currentUserId,
+                  notGoingCount: notGoingCount,
                   onGoingPressed: () async {
                     final currentStatus =
                         userRsvp?.status ?? RsvpStatus.pending;
@@ -1293,55 +1328,22 @@ class _EventPageState extends ConsumerState<EventPage> {
                         .read(userRsvpProvider(eventId).notifier)
                         .submitVote(newStatus);
                   },
-                  allVotes: rsvps
-                      .map(
-                        (r) => rsvp_widget.RsvpVote(
-                          id: r.id,
-                          userId: r.userId,
-                          userName: _getUserDisplayName(
-                              r.userId, r.userName, currentUserId),
-                          userAvatar: r.userAvatar,
-                          status: _mapRsvpToVoteStatus(r.status),
-                          votedAt: r.createdAt,
-                        ),
-                      )
+                  onVoteSummaryTap: () {
+                    Navigator.pushNamed(
+                      context,
+                      AppRouter.manageGuests,
+                      arguments: {'eventId': eventId},
+                    );
+                  },
+                  voters: rsvps
+                      .where((r) => r.status != RsvpStatus.pending)
+                      .map((r) => RsvpVoterInfo(
+                            userId: r.userId,
+                            userName: r.userName,
+                            userAvatar: r.userAvatar,
+                            voteType: _mapStatusToVoteType(r.status),
+                          ))
                       .toList(),
-                  onAddSuggestion: _getUserVoteStatus(userRsvp) ==
-                          rsvp_widget.RsvpVoteStatus.notGoing
-                      ? () {
-                          if (event.startDateTime == null ||
-                              event.endDateTime == null) {
-                            TopBanner.showError(
-                              context,
-                              message:
-                                  'Event dates must be set before adding suggestions',
-                            );
-                            return;
-                          }
-                          showAddSuggestionBottomSheet(
-                            context,
-                            eventId: eventId,
-                            eventStartDate: event.startDateTime!,
-                            eventStartTime:
-                                TimeOfDay.fromDateTime(event.startDateTime!),
-                            eventEndDate: event.endDateTime!,
-                            eventEndTime:
-                                TimeOfDay.fromDateTime(event.endDateTime!),
-                            type: locationSuggestions.isNotEmpty
-                                ? SuggestionType.location
-                                : SuggestionType.dateTime,
-                            currentEventLocationName:
-                                event.location?.displayName,
-                            currentEventAddress:
-                                event.location?.formattedAddress,
-                          );
-                        }
-                      : null,
-                  eventStartDateTime: event.startDateTime,
-                  eventEndDateTime: event.endDateTime,
-                  isHost: event.hostId == currentUserId,
-                  hasSuggestions: alternateDateSuggestions.isNotEmpty ||
-                      alternateLocationSuggestions.isNotEmpty,
                 ),
                 const SizedBox(height: Gaps.lg),
               ],
@@ -1375,18 +1377,14 @@ class _EventPageState extends ConsumerState<EventPage> {
     final notGoingCount =
         rsvps.where((r) => r.status == RsvpStatus.notGoing).length;
     final maybeCount = rsvps.where((r) => r.status == RsvpStatus.maybe).length;
-    final pendingCount =
-        rsvps.where((r) => r.status == RsvpStatus.pending).length;
 
     return Column(
       children: [
-        rsvp_widget.RsvpWidget(
+        RsvpVoteButtons(
+          selectedVote: _mapToVoteType(userRsvp),
           goingCount: goingCount,
-          notGoingCount: notGoingCount,
           maybeCount: maybeCount,
-          pendingCount: pendingCount,
-          userVote: _getUserVoteStatus(userRsvp),
-          currentUserId: currentUserId,
+          notGoingCount: notGoingCount,
           onGoingPressed: () async {
             final currentStatus = userRsvp?.status ?? RsvpStatus.pending;
             final newStatus = currentStatus == RsvpStatus.going
@@ -1414,24 +1412,22 @@ class _EventPageState extends ConsumerState<EventPage> {
                 .read(userRsvpProvider(eventId).notifier)
                 .submitVote(newStatus);
           },
-          allVotes: rsvps
-              .map(
-                (r) => rsvp_widget.RsvpVote(
-                  id: r.id,
-                  userId: r.userId,
-                  userName:
-                      _getUserDisplayName(r.userId, r.userName, currentUserId),
-                  userAvatar: r.userAvatar,
-                  status: _mapRsvpToVoteStatus(r.status),
-                  votedAt: r.createdAt,
-                ),
-              )
+          onVoteSummaryTap: () {
+            Navigator.pushNamed(
+              context,
+              AppRouter.manageGuests,
+              arguments: {'eventId': eventId},
+            );
+          },
+          voters: rsvps
+              .where((r) => r.status != RsvpStatus.pending)
+              .map((r) => RsvpVoterInfo(
+                    userId: r.userId,
+                    userName: r.userName,
+                    userAvatar: r.userAvatar,
+                    voteType: _mapStatusToVoteType(r.status),
+                  ))
               .toList(),
-          onAddSuggestion: null,
-          eventStartDateTime: event.startDateTime,
-          eventEndDateTime: event.endDateTime,
-          isHost: event.hostId == currentUserId,
-          hasSuggestions: false,
         ),
         const SizedBox(height: Gaps.lg),
       ],
@@ -1442,38 +1438,53 @@ class _EventPageState extends ConsumerState<EventPage> {
   Widget _buildRsvpErrorState(EventDetail event, String? currentUserId) {
     return Column(
       children: [
-        rsvp_widget.RsvpWidget(
+        RsvpVoteButtons(
+          selectedVote: null,
           goingCount: 0,
-          notGoingCount: 0,
           maybeCount: 0,
-          pendingCount: 0,
-          currentUserId: currentUserId,
+          notGoingCount: 0,
           onGoingPressed: () {},
           onMaybePressed: () {},
           onNotGoingPressed: () {},
-          allVotes: const [],
-          onAddSuggestion: null,
-          eventStartDateTime: event.startDateTime,
-          eventEndDateTime: event.endDateTime,
-          isHost: event.hostId == currentUserId,
-          hasSuggestions: false,
+          onVoteSummaryTap: () {
+            Navigator.pushNamed(
+              context,
+              AppRouter.manageGuests,
+              arguments: {'eventId': eventId},
+            );
+          },
         ),
         const SizedBox(height: Gaps.lg),
       ],
     );
   }
 
-  /// Maps domain RsvpStatus to widget RsvpVoteStatus
-  rsvp_widget.RsvpVoteStatus _mapRsvpToVoteStatus(RsvpStatus status) {
+  /// Maps domain Rsvp to the new RsvpVoteType for RsvpVoteButtons
+  RsvpVoteType? _mapToVoteType(Rsvp? rsvp) {
+    if (rsvp == null) return null;
+    switch (rsvp.status) {
+      case RsvpStatus.going:
+        return RsvpVoteType.going;
+      case RsvpStatus.maybe:
+        return RsvpVoteType.maybe;
+      case RsvpStatus.notGoing:
+        return RsvpVoteType.notGoing;
+      case RsvpStatus.pending:
+        return null;
+    }
+  }
+
+  /// Maps a non-pending RsvpStatus to RsvpVoteType (for voter info).
+  RsvpVoteType _mapStatusToVoteType(RsvpStatus status) {
     switch (status) {
       case RsvpStatus.going:
-        return rsvp_widget.RsvpVoteStatus.going;
-      case RsvpStatus.notGoing:
-        return rsvp_widget.RsvpVoteStatus.notGoing;
+        return RsvpVoteType.going;
       case RsvpStatus.maybe:
-        return rsvp_widget.RsvpVoteStatus.maybe;
+        return RsvpVoteType.maybe;
+      case RsvpStatus.notGoing:
+        return RsvpVoteType.notGoing;
       case RsvpStatus.pending:
-        return rsvp_widget.RsvpVoteStatus.pending;
+        return RsvpVoteType.going; // fallback, should not happen
     }
   }
 
