@@ -116,51 +116,20 @@ class _ManageMemoryPageState extends ConsumerState<ManageMemoryPage> {
             children: [
               // Main content with scroll
               SingleChildScrollView(
-                physics:
-                    const AlwaysScrollableScrollPhysics(), // Enable scroll even when content is small
+                physics: const AlwaysScrollableScrollPhysics(),
                 child: Padding(
                   padding: EdgeInsets.only(
                     left: Insets.screenH,
                     right: Insets.screenH,
-                    bottom: _isSelectionMode
-                        ? 100
-                        : Gaps.xl, // Extra space for fixed button
+                    bottom: _isSelectionMode || _shouldShowCloseRecap()
+                        ? ((MediaQuery.of(context).size.height * 0.36)
+                        .clamp(200.0, 400.0))
+                        : Gaps.xl,
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const SizedBox(height: Gaps.lg),
-
-                      // Close Recap Card at top (only for hosts in recap with photos)
-                      if (_shouldShowCloseRecap())
-                        ...eventAsync.when(
-                          data: (event) {
-                            final endDateTime = event.endDateTime;
-                            if (endDateTime != null) {
-                              final recapEndTime =
-                                  endDateTime.add(const Duration(hours: 24));
-                              final remaining =
-                                  recapEndTime.difference(DateTime.now());
-                              if (!remaining.isNegative) {
-                                final hours = remaining.inHours;
-                                final minutes =
-                                    remaining.inMinutes.remainder(60);
-                                final timeRemaining = '${hours}h ${minutes}m';
-                                return [
-                                  CloseRecapCard(
-                                    timeRemaining: timeRemaining,
-                                    onCloseConfirmed: () => _handleCloseRecap(),
-                                    isLiving: false,
-                                  ),
-                                  const SizedBox(height: Gaps.md),
-                                ];
-                              }
-                            }
-                            return [];
-                          },
-                          loading: () => [],
-                          error: (_, __) => [],
-                        ),
 
                       // Show CTA banner if no photos exist yet, otherwise show cover selection
                       // CTA encourages first upload, cover selection manages existing photos
@@ -278,6 +247,53 @@ class _ManageMemoryPageState extends ConsumerState<ManageMemoryPage> {
                           color: Colors.white,
                           fontWeight: FontWeight.w600,
                         ),
+                      ),
+                    ),
+                  ),
+                ),
+
+              // Fixed bottom Close Recap banner (host only, recap with photos)
+              if (!_isSelectionMode && _shouldShowCloseRecap())
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: Insets.screenH,
+                      vertical: Gaps.md,
+                    ),
+                    decoration: const BoxDecoration(
+                      color: BrandColors.bg2,
+                      border: Border(
+                        top: BorderSide(color: BrandColors.bg3, width: 1),
+                      ),
+                    ),
+                    child: SafeArea(
+                      top: false,
+                      child: eventAsync.when(
+                        data: (event) {
+                          final endDateTime = event.endDateTime;
+                          if (endDateTime != null) {
+                            final recapEndTime =
+                                endDateTime.add(const Duration(hours: 24));
+                            final remaining =
+                                recapEndTime.difference(DateTime.now());
+                            if (!remaining.isNegative) {
+                              final hours = remaining.inHours;
+                              final minutes = remaining.inMinutes.remainder(60);
+                              final timeRemaining = '${hours}h ${minutes}m';
+                              return CloseRecapCard(
+                                timeRemaining: timeRemaining,
+                                onCloseConfirmed: () => _handleCloseRecap(),
+                                isLiving: false,
+                              );
+                            }
+                          }
+                          return const SizedBox.shrink();
+                        },
+                        loading: () => const SizedBox.shrink(),
+                        error: (_, __) => const SizedBox.shrink(),
                       ),
                     ),
                   ),

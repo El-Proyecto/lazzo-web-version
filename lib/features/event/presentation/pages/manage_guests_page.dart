@@ -32,17 +32,19 @@ class _ManageGuestsPageState extends ConsumerState<ManageGuestsPage> {
   Widget build(BuildContext context) {
     final rsvpsAsync = ref.watch(eventRsvpsProvider(widget.eventId));
     final eventAsync = ref.watch(eventDetailProvider(widget.eventId));
-    final isLiving = eventAsync.value?.status == EventStatus.living;
+    final eventStatus = eventAsync.value?.status;
+    final isPhotoMode =
+        eventStatus == EventStatus.living || eventStatus == EventStatus.recap;
 
     return Scaffold(
       backgroundColor: BrandColors.bg1,
       appBar: CommonAppBar(
-        title: isLiving ? 'Guests' : 'Manage Guests',
+        title: isPhotoMode ? 'Guests' : 'Manage Guests',
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: BrandColors.text1),
           onPressed: () => Navigator.of(context).pop(),
         ),
-        trailing: isLiving
+        trailing: isPhotoMode
             ? null
             : IconButton(
                 icon: const Icon(Icons.ios_share, color: BrandColors.text1),
@@ -55,11 +57,12 @@ class _ManageGuestsPageState extends ConsumerState<ManageGuestsPage> {
               ),
       ),
       body: rsvpsAsync.when(
-        data: (rsvps) =>
-            isLiving ? _buildLivingContent(rsvps) : _buildContent(rsvps),
+        data: (rsvps) => isPhotoMode
+            ? _buildPhotoContributorContent(rsvps, eventStatus!)
+            : _buildContent(rsvps),
         loading: () => Center(
           child: CircularProgressIndicator(
-            color: isLiving ? BrandColors.living : BrandColors.planning,
+            color: isPhotoMode ? BrandColors.living : BrandColors.planning,
           ),
         ),
         error: (error, _) => Center(
@@ -75,11 +78,19 @@ class _ManageGuestsPageState extends ConsumerState<ManageGuestsPage> {
     );
   }
 
-  // ─── Living Mode ──────────────────────────────────────────
+  // ─── Photo Contributor Mode (Living / Recap / Ended) ────
 
-  Widget _buildLivingContent(List<Rsvp> rsvps) {
+  Widget _buildPhotoContributorContent(
+      List<Rsvp> rsvps, EventStatus eventStatus) {
     final photosAsync = ref.watch(eventPhotosProvider(widget.eventId));
     final photos = photosAsync.value ?? [];
+
+    // Accent color based on status
+    final accentColor = eventStatus == EventStatus.living
+        ? BrandColors.living
+        : eventStatus == EventStatus.recap
+            ? BrandColors.recap
+            : BrandColors.text2;
 
     // Count total photos and participants (going only)
     final totalPhotos = photos.length;
@@ -96,7 +107,7 @@ class _ManageGuestsPageState extends ConsumerState<ManageGuestsPage> {
       }
     }
 
-    // Build participant list with photo counts — all going participants
+    // Build participant list with photo counts
     final participantEntries = goingRsvps.map((rsvp) {
       return _ParticipantEntry(
         userId: rsvp.userId,
@@ -115,7 +126,7 @@ class _ManageGuestsPageState extends ConsumerState<ManageGuestsPage> {
 
     return Column(
       children: [
-        // Summary cards: Participants + Photos (swap order)
+        // Summary cards: Participants + Photos
         Padding(
           padding: const EdgeInsets.symmetric(
             horizontal: Insets.screenH,
@@ -127,12 +138,14 @@ class _ManageGuestsPageState extends ConsumerState<ManageGuestsPage> {
                 icon: Icons.people_outline,
                 count: participantCount,
                 label: 'Participants',
+                accentColor: accentColor,
               ),
               const SizedBox(width: Gaps.xs),
               _LivingSummaryCard(
                 icon: Icons.photo_library_outlined,
                 count: totalPhotos,
                 label: 'Photos',
+                accentColor: accentColor,
               ),
             ],
           ),
@@ -356,16 +369,18 @@ class _ParticipantEntry {
   });
 }
 
-/// Non-clickable summary card for living mode (Photos / Participants)
+/// Non-clickable summary card for living/recap/ended modes
 class _LivingSummaryCard extends StatelessWidget {
   final IconData icon;
   final int count;
   final String label;
+  final Color accentColor;
 
   const _LivingSummaryCard({
     required this.icon,
     required this.count,
     required this.label,
+    this.accentColor = BrandColors.living,
   });
 
   @override
@@ -388,7 +403,7 @@ class _LivingSummaryCard extends StatelessWidget {
             Text(
               '$count',
               style: AppText.headlineMedium.copyWith(
-                color: BrandColors.living,
+                color: accentColor,
                 fontWeight: FontWeight.w700,
               ),
             ),

@@ -489,7 +489,7 @@ class _EventPageState extends ConsumerState<EventPage> {
                 Gaps.lg,
               ),
               decoration: const BoxDecoration(
-                color: BrandColors.bg1,
+                color: BrandColors.bg2,
                 border: Border(
                   top: BorderSide(color: BrandColors.border, width: 0.5),
                 ),
