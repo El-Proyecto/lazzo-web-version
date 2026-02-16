@@ -5,9 +5,11 @@ import '../../../../shared/constants/text_styles.dart';
 import '../../../../shared/themes/colors.dart';
 import '../providers/event_photo_providers.dart';
 
-/// Photos grid widget for the living page.
-/// Shows a 3‑column grid (max 9 visible), an add‑photo card,
-/// and a "+N" overflow indicator when there are more photos.
+/// Photos widget for the living page.
+/// bg2 container matching LocationWidget style.
+/// 3-column grid with 4:5 aspect ratio (same as manage memory).
+/// Max 9 visible slots: when full, no Add card — last photo shows "+N".
+/// Tapping the widget opens the Memory page.
 class LivingPhotosWidget extends ConsumerWidget {
   final String eventId;
   final VoidCallback onTakePhoto;
@@ -21,7 +23,7 @@ class LivingPhotosWidget extends ConsumerWidget {
   });
 
   static const int _columns = 3;
-  static const int _maxVisible = 9;
+  static const int _maxSlots = 9;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -37,19 +39,30 @@ class LivingPhotosWidget extends ConsumerWidget {
   Widget _buildContent(BuildContext context, List<dynamic> photos) {
     final totalCount = photos.length;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Section header
-        _buildHeader(totalCount),
-        const SizedBox(height: Gaps.sm),
+    return GestureDetector(
+      onTap: onViewAll,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(Pads.sectionH),
+        decoration: BoxDecoration(
+          color: BrandColors.bg2,
+          borderRadius: BorderRadius.circular(Radii.md),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header
+            _buildHeader(totalCount),
+            const SizedBox(height: Gaps.md),
 
-        // Grid
-        if (totalCount == 0)
-          _buildEmptyState()
-        else
-          _buildGrid(context, photos),
-      ],
+            // Grid
+            if (totalCount == 0)
+              _buildEmptyState()
+            else
+              _buildGrid(context, photos),
+          ],
+        ),
+      ),
     );
   }
 
@@ -57,77 +70,123 @@ class LivingPhotosWidget extends ConsumerWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(
-          'Photos${count > 0 ? ' ($count)' : ''}',
-          style: AppText.titleMediumEmph,
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Photos', style: AppText.labelLarge),
+            if (count > 0) ...[
+              const SizedBox(height: 2),
+              Text(
+                '$count photo${count != 1 ? 's' : ''} added',
+                style: AppText.bodyMedium.copyWith(
+                  color: BrandColors.text2,
+                  fontSize: 12,
+                ),
+              ),
+            ],
+          ],
         ),
         if (count > 0)
-          GestureDetector(
-            onTap: onViewAll,
-            child: Text(
-              'See all',
-              style: AppText.bodyMedium.copyWith(
-                color: BrandColors.living,
-              ),
-            ),
+          const Icon(
+            Icons.chevron_right,
+            color: BrandColors.text2,
+            size: IconSizes.md,
           ),
       ],
     );
   }
 
   Widget _buildEmptyState() {
-    return _AddPhotoCard(onTap: onTakePhoto);
+    return GestureDetector(
+      onTap: onTakePhoto,
+      child: Container(
+        height: 80,
+        decoration: BoxDecoration(
+          color: BrandColors.bg3,
+          borderRadius: BorderRadius.circular(Radii.sm),
+        ),
+        child: Center(
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(
+                Icons.camera_alt,
+                size: IconSizes.sm,
+                color: BrandColors.living,
+              ),
+              const SizedBox(width: Gaps.xs),
+              Text(
+                'Add first photo',
+                style: AppText.labelLarge.copyWith(
+                  color: BrandColors.living,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   Widget _buildGrid(BuildContext context, List<dynamic> photos) {
     final totalCount = photos.length;
-    // How many photo slots we show (reserve 1 slot for the add‑photo card)
-    final photoSlots = (_maxVisible - 1).clamp(0, totalCount); // max 8 photos
-    final hasOverflow = totalCount > photoSlots;
-    final overflowCount = totalCount - photoSlots;
+    final isFull = totalCount >= _maxSlots;
 
-    // Build grid children: photo tiles + add card
+    // If full (>=9): show 9 photos, last has +N overlay
+    // If not full (<9): show all photos + 1 add card
+    final int photoSlotsToShow;
+    final bool showAddCard;
+
+    if (isFull) {
+      photoSlotsToShow = _maxSlots;
+      showAddCard = false;
+    } else {
+      photoSlotsToShow = totalCount;
+      showAddCard = true;
+    }
+
+    final hasOverflow = totalCount > _maxSlots;
+    final overflowCount =
+        totalCount - _maxSlots + 1; // +1 because last slot is the overlay
+
     final List<Widget> children = [];
 
-    for (int i = 0; i < photoSlots; i++) {
+    for (int i = 0; i < photoSlotsToShow; i++) {
       final photo = photos[i] as Map<String, dynamic>;
-      final isLast = i == photoSlots - 1;
+      final isLastSlot = i == _maxSlots - 1;
 
-      Widget tile = _PhotoTile(
-        imageUrl: photo['url'] as String? ?? '',
-        onTap: onViewAll,
-      );
-
-      // Show overlay on last photo tile if there's overflow
-      if (isLast && hasOverflow) {
-        tile = _OverflowPhotoTile(
+      if (isLastSlot && hasOverflow) {
+        children.add(_OverflowPhotoTile(
           imageUrl: photo['url'] as String? ?? '',
           overflowCount: overflowCount,
           onTap: onViewAll,
-        );
+        ));
+      } else {
+        children.add(_PhotoTile(
+          imageUrl: photo['url'] as String? ?? '',
+          onTap: onViewAll,
+        ));
       }
-
-      children.add(tile);
     }
 
-    // Always add the "add photo" card at the end if we have room
-    if (children.length < _maxVisible) {
+    if (showAddCard) {
       children.add(_AddPhotoCard(onTap: onTakePhoto));
     }
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final spacing = Gaps.xs;
-        final tileSize =
+        final spacing = Gaps.xs.toDouble();
+        final tileWidth =
             (constraints.maxWidth - spacing * (_columns - 1)) / _columns;
+        final tileHeight = tileWidth * 5 / 4; // 4:5 aspect ratio
 
         return Wrap(
           spacing: spacing,
           runSpacing: spacing,
           children: children.map((child) {
             return SizedBox(
-              width: tileSize,
-              height: tileSize,
+              width: tileWidth,
+              height: tileHeight,
               child: child,
             );
           }).toList(),
@@ -137,21 +196,29 @@ class LivingPhotosWidget extends ConsumerWidget {
   }
 
   Widget _buildLoading() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text('Photos', style: AppText.titleMediumEmph),
-        const SizedBox(height: Gaps.sm),
-        const SizedBox(
-          height: 80,
-          child: Center(
-            child: CircularProgressIndicator(
-              color: BrandColors.living,
-              strokeWidth: 2,
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(Pads.sectionH),
+      decoration: BoxDecoration(
+        color: BrandColors.bg2,
+        borderRadius: BorderRadius.circular(Radii.md),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Photos', style: AppText.labelLarge),
+          const SizedBox(height: Gaps.md),
+          const SizedBox(
+            height: 80,
+            child: Center(
+              child: CircularProgressIndicator(
+                color: BrandColors.living,
+                strokeWidth: 2,
+              ),
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
@@ -176,7 +243,7 @@ class _PhotoTile extends StatelessWidget {
           loadingBuilder: (_, child, progress) {
             if (progress == null) return child;
             return Container(
-              color: BrandColors.bg2,
+              color: BrandColors.bg3,
               child: const Center(
                 child: CircularProgressIndicator(
                   strokeWidth: 2,
@@ -186,7 +253,7 @@ class _PhotoTile extends StatelessWidget {
             );
           },
           errorBuilder: (_, __, ___) => Container(
-            color: BrandColors.bg2,
+            color: BrandColors.bg3,
             child: const Icon(
               Icons.broken_image_outlined,
               color: BrandColors.text2,
@@ -221,7 +288,7 @@ class _OverflowPhotoTile extends StatelessWidget {
             Image.network(
               imageUrl,
               fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => Container(color: BrandColors.bg2),
+              errorBuilder: (_, __, ___) => Container(color: BrandColors.bg3),
             ),
             Container(
               color: Colors.black.withValues(alpha: 0.55),
@@ -252,9 +319,8 @@ class _AddPhotoCard extends StatelessWidget {
       onTap: onTap,
       child: Container(
         decoration: BoxDecoration(
-          color: BrandColors.bg2,
+          color: BrandColors.bg3,
           borderRadius: BorderRadius.circular(Radii.sm),
-          border: Border.all(color: BrandColors.border),
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
