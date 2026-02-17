@@ -1,14 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../../../shared/components/nav/common_app_bar.dart';
+import '../../../../shared/components/inputs/photo_selector.dart';
 import '../../../../shared/themes/colors.dart';
 import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/constants/text_styles.dart';
+import '../../../../routes/app_router.dart';
 import '../../domain/entities/notification_entity.dart';
+import '../../domain/entities/action.dart';
 import '../providers/notifications_provider.dart';
+import '../providers/actions_provider.dart';
 import '../widgets/notifications_section.dart';
+import '../widgets/actions_section.dart';
 
-/// Inbox page — notifications only (LAZZO 2.0: payments/expenses removed)
+/// Inbox page — Notifications + Actions tabs (LAZZO 2.0)
 class InboxPage extends ConsumerStatefulWidget {
   const InboxPage({super.key});
 
@@ -17,6 +23,8 @@ class InboxPage extends ConsumerStatefulWidget {
 }
 
 class _InboxPageState extends ConsumerState<InboxPage> {
+  int _selectedTab = 0; // 0 = Notifications, 1 = Actions
+
   @override
   void initState() {
     super.initState();
@@ -46,7 +54,172 @@ class _InboxPageState extends ConsumerState<InboxPage> {
     return Scaffold(
       backgroundColor: BrandColors.bg1,
       appBar: const CommonAppBar(title: 'Inbox'),
-      body: _buildNotificationsTab(),
+      body: Column(
+        children: [
+          _buildSegmentedControl(),
+          Expanded(
+            child: _selectedTab == 0
+                ? _buildNotificationsTab()
+                : _buildActionsTab(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSegmentedControl() {
+    return Container(
+      margin: const EdgeInsets.symmetric(
+        horizontal: Insets.screenH,
+        vertical: Gaps.sm,
+      ),
+      padding: const EdgeInsets.all(3),
+      decoration: BoxDecoration(
+        color: BrandColors.bg2,
+        borderRadius: BorderRadius.circular(Radii.smAlt),
+      ),
+      child: Row(
+        children: [
+          _buildSegmentButton('Notifications', 0),
+          _buildSegmentButton('Actions', 1),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSegmentButton(String label, int index) {
+    final isSelected = _selectedTab == index;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => setState(() => _selectedTab = index),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: Gaps.sm),
+          decoration: BoxDecoration(
+            color: isSelected ? BrandColors.bg3 : Colors.transparent,
+            borderRadius: BorderRadius.circular(Radii.smAlt),
+          ),
+          child: Center(
+            child: Text(
+              label,
+              style: AppText.labelLarge.copyWith(
+                color: isSelected ? BrandColors.text1 : BrandColors.text2,
+                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildActionsTab() {
+    final actionsState = ref.watch(actionsProvider);
+
+    return actionsState.when(
+      data: (actions) {
+        return ActionsSection(
+          actions: actions,
+          onRefresh: () => ref.read(actionsProvider.notifier).refresh(),
+          onActionTap: (action) => _handleActionEntityTap(action),
+        );
+      },
+      loading: () {
+        return const ActionsSection(actions: [], isLoading: true);
+      },
+      error: (error, stack) {
+        return Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                'Error loading actions',
+                style:
+                    AppText.titleMediumEmph.copyWith(color: BrandColors.text1),
+              ),
+              const SizedBox(height: Gaps.md),
+              TextButton(
+                onPressed: () => ref.read(actionsProvider.notifier).refresh(),
+                child: Text(
+                  'Try again',
+                  style:
+                      AppText.labelLarge.copyWith(color: BrandColors.planning),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _handleActionEntityTap(ActionEntity action) {
+    if (action.eventId == null) return;
+
+    switch (action.type) {
+      case ActionType.remindMaybeVoters:
+      case ActionType.reviewGuests:
+        // Navigate to Manage Guests
+        Navigator.pushNamed(
+          context,
+          AppRouter.manageGuests,
+          arguments: {'eventId': action.eventId},
+        );
+        break;
+      case ActionType.confirmEvent:
+        // Navigate to event page to confirm
+        Navigator.pushNamed(
+          context,
+          AppRouter.event,
+          arguments: {'eventId': action.eventId},
+        );
+        break;
+      case ActionType.rescheduleExpiredEvent:
+        // Navigate to event page (host can edit dates there)
+        Navigator.pushNamed(
+          context,
+          AppRouter.event,
+          arguments: {'eventId': action.eventId},
+        );
+        break;
+      case ActionType.addPhotos:
+        // Open photo picker, then navigate to manage memory
+        _handleAddPhotoAction(action.eventId!);
+        break;
+    }
+  }
+
+  /// Opens camera/gallery picker, then navigates to manage memory page.
+  void _handleAddPhotoAction(String eventId) {
+    PhotoSelectionBottomSheet.show(
+      context: context,
+      title: 'Add Photo',
+      showRemoveOption: false,
+      onAction: (action) async {
+        final picker = ImagePicker();
+        XFile? photo;
+        if (action == PhotoSourceAction.camera) {
+          photo = await picker.pickImage(
+            source: ImageSource.camera,
+            maxWidth: 1920,
+            maxHeight: 1920,
+            imageQuality: 85,
+          );
+        } else if (action == PhotoSourceAction.gallery) {
+          photo = await picker.pickImage(
+            source: ImageSource.gallery,
+            maxWidth: 1920,
+            maxHeight: 1920,
+            imageQuality: 85,
+          );
+        }
+        if (photo != null && mounted) {
+          Navigator.pushNamed(
+            context,
+            AppRouter.manageMemory,
+            arguments: {'memoryId': eventId},
+          );
+        }
+      },
     );
   }
 

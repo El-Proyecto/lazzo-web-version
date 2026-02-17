@@ -4,7 +4,7 @@ import '../../domain/repositories/action_repository.dart';
 import '../../domain/usecases/get_user_actions.dart';
 import '../../data/fakes/fake_action_repository.dart';
 
-// Repository provider - defaults to fake
+// Repository provider - defaults to fake, overridden in main.dart for real
 final actionRepositoryProvider = Provider<ActionRepository>((ref) {
   return FakeActionRepository();
 });
@@ -14,44 +14,30 @@ final getUserActionsUseCaseProvider = Provider<GetUserActions>((ref) {
   return GetUserActions(ref.watch(actionRepositoryProvider));
 });
 
-final getActionsByTimeLeftUseCaseProvider = Provider<GetActionsByTimeLeft>((
-  ref,
-) {
-  return GetActionsByTimeLeft(ref.watch(actionRepositoryProvider));
+final dismissActionUseCaseProvider = Provider<DismissAction>((ref) {
+  return DismissAction(ref.watch(actionRepositoryProvider));
 });
 
-final completeActionUseCaseProvider = Provider<CompleteAction>((ref) {
-  return CompleteAction(ref.watch(actionRepositoryProvider));
-});
-
-// State providers
+// State provider
 final actionsProvider =
     StateNotifierProvider<ActionsController, AsyncValue<List<ActionEntity>>>((
-      ref,
-    ) {
-      return ActionsController(ref.watch(getActionsByTimeLeftUseCaseProvider));
-    });
+  ref,
+) {
+  return ActionsController(ref.watch(getUserActionsUseCaseProvider));
+});
 
 class ActionsController extends StateNotifier<AsyncValue<List<ActionEntity>>> {
-  final GetActionsByTimeLeft _getActionsByTimeLeft;
+  final GetUserActions _getUserActions;
 
-  ActionsController(this._getActionsByTimeLeft)
-    : super(const AsyncValue.loading()) {
+  ActionsController(this._getUserActions) : super(const AsyncValue.loading()) {
     loadActions();
   }
 
   Future<void> loadActions() async {
     state = const AsyncValue.loading();
     try {
-      final allActions = await _getActionsByTimeLeft();
-      // Filter out payment actions - they go to payments section
-      final filteredActions = allActions
-          .where(
-            (action) =>
-                action.type != ActionType.payment && action.dueDate != null,
-          ) // Only show actions with deadlines
-          .toList();
-      state = AsyncValue.data(filteredActions);
+      final actions = await _getUserActions();
+      state = AsyncValue.data(actions);
     } catch (error, stackTrace) {
       state = AsyncValue.error(error, stackTrace);
     }
