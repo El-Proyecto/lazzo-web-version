@@ -1,6 +1,8 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:share_plus/share_plus.dart' show SharePlus, ShareParams;
+import 'package:image_picker/image_picker.dart';
 import '../../../../shared/components/nav/common_app_bar.dart';
 import '../../../../shared/components/inputs/search_bar.dart' as custom;
 import '../../../../shared/components/sections/section_block.dart';
@@ -22,6 +24,7 @@ import '../../../event/domain/entities/rsvp.dart';
 import '../../../../shared/components/widgets/rsvp_widget.dart';
 // LAZZO 2.0: no_groups_yet_card import removed
 import '../widgets/no_upcoming_events_card.dart';
+import '../../../../shared/components/inputs/photo_selector.dart';
 import '../providers/home_event_providers.dart';
 import '../../../../routes/app_router.dart';
 import '../../../memory/data/fakes/fake_memory_repository.dart';
@@ -203,6 +206,88 @@ class _HomePageState extends ConsumerState<HomePage> {
     }
   }
 
+  /// Navigate to manage guests page
+  void _handleGuestsTap(String eventId) {
+    Navigator.pushNamed(
+      context,
+      AppRouter.manageGuests,
+      arguments: {'eventId': eventId},
+    );
+  }
+
+  /// Share event invite
+  void _handleInviteTap(String eventId) {
+    SharePlus.instance.share(
+      ShareParams(
+        text: 'Join my event on Lazzo! 🎉',
+      ),
+    );
+  }
+
+  /// Navigate to photo picker/camera for adding photo
+  void _handleAddPhotoTap(String eventId) {
+    PhotoSelectionBottomSheet.show(
+      context: context,
+      title: 'Add Photo',
+      showRemoveOption: false,
+      onAction: (action) async {
+        final picker = ImagePicker();
+        if (action == PhotoSourceAction.camera) {
+          final photo = await picker.pickImage(
+            source: ImageSource.camera,
+            maxWidth: 1920,
+            maxHeight: 1920,
+            imageQuality: 85,
+          );
+          if (photo != null && mounted) {
+            // Navigate to event living page with photo for upload
+            Navigator.pushNamed(
+              context,
+              AppRouter.eventLiving,
+              arguments: {'eventId': eventId},
+            );
+          }
+        } else if (action == PhotoSourceAction.gallery) {
+          final photo = await picker.pickImage(
+            source: ImageSource.gallery,
+            maxWidth: 1920,
+            maxHeight: 1920,
+            imageQuality: 85,
+          );
+          if (photo != null && mounted) {
+            // Navigate to event living page with photo for upload
+            Navigator.pushNamed(
+              context,
+              AppRouter.eventLiving,
+              arguments: {'eventId': eventId},
+            );
+          }
+        }
+      },
+    );
+  }
+
+  /// Navigate to manage memory page
+  void _handleManagePhotosTap(String eventId) {
+    Navigator.pushNamed(
+      context,
+      AppRouter.manageMemory,
+      arguments: {'memoryId': eventId},
+    );
+  }
+
+  /// Check if user can manage photos (has uploaded photos)
+  /// Note: Host check requires hostId field in HomeEventEntity (not yet available)
+  bool _canManagePhotos(HomeEventEntity event) {
+    final userId = Supabase.instance.client.auth.currentUser?.id;
+    if (userId == null) return false;
+
+    // User has uploaded photos
+    return event.participantPhotos.any(
+      (p) => p.userId == userId && p.photoCount > 0,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     // Listen for scroll-to-top trigger (when tapping active NavBar tab)
@@ -375,6 +460,13 @@ class _HomePageState extends ConsumerState<HomePage> {
                                     );
                                   },
                                   onVoteChanged: _handleVoteChanged,
+                                  onGuestsTap: () => _handleGuestsTap(event.id),
+                                  onInviteTap: () => _handleInviteTap(event.id),
+                                  onAddPhotoTap: () =>
+                                      _handleAddPhotoTap(event.id),
+                                  onManagePhotosTap: () =>
+                                      _handleManagePhotosTap(event.id),
+                                  canManagePhotos: _canManagePhotos(event),
                                 ),
                               ),
                               const SizedBox(height: Gaps.lg),
@@ -432,6 +524,17 @@ class _HomePageState extends ConsumerState<HomePage> {
                                         );
                                       },
                                       onVoteChanged: _handleVoteChanged,
+                                      onGuestsTap: () => _handleGuestsTap(
+                                          livingEvents.first.id),
+                                      onInviteTap: () => _handleInviteTap(
+                                          livingEvents.first.id),
+                                      onAddPhotoTap: () => _handleAddPhotoTap(
+                                          livingEvents.first.id),
+                                      onManagePhotosTap: () =>
+                                          _handleManagePhotosTap(
+                                              livingEvents.first.id),
+                                      canManagePhotos:
+                                          _canManagePhotos(livingEvents.first),
                                     ),
 
                                     // Additional living events as EventFullCard
@@ -503,6 +606,17 @@ class _HomePageState extends ConsumerState<HomePage> {
                                           );
                                         },
                                         onVoteChanged: _handleVoteChanged,
+                                        onGuestsTap: () => _handleGuestsTap(
+                                            recapEvents.first.id),
+                                        onInviteTap: () => _handleInviteTap(
+                                            recapEvents.first.id),
+                                        onAddPhotoTap: () => _handleAddPhotoTap(
+                                            recapEvents.first.id),
+                                        onManagePhotosTap: () =>
+                                            _handleManagePhotosTap(
+                                                recapEvents.first.id),
+                                        canManagePhotos:
+                                            _canManagePhotos(recapEvents.first),
                                       ),
 
                                     // Additional recap events as EventFullCard

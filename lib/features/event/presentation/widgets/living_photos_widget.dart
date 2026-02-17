@@ -55,7 +55,7 @@ class LivingPhotosWidget extends ConsumerWidget {
             _buildHeader(totalCount),
             const SizedBox(height: Gaps.md),
 
-            // Grid
+            // Grid or empty state
             if (totalCount == 0)
               _buildEmptyState()
             else
@@ -114,13 +114,13 @@ class LivingPhotosWidget extends ConsumerWidget {
             const Icon(
               Icons.camera_alt,
               size: IconSizes.lg,
-              color: BrandColors.living,
+              color: BrandColors.text1,
             ),
             const SizedBox(height: Gaps.sm),
             Text(
               'Add first photo',
               style: AppText.titleMediumEmph.copyWith(
-                color: BrandColors.living,
+                color: BrandColors.text1,
               ),
             ),
             const SizedBox(height: Gaps.xxs),
@@ -337,7 +337,7 @@ class _AddPhotoCard extends StatelessWidget {
             const Icon(
               Icons.camera_alt,
               size: IconSizes.md,
-              color: BrandColors.living,
+              color: BrandColors.text1,
             ),
             const SizedBox(height: Gaps.xxs),
             Text(
