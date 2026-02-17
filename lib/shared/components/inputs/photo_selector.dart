@@ -157,17 +157,20 @@ class _PhotoPlaceholder extends StatelessWidget {
 
 /// Bottom sheet for photo selection options
 class PhotoSelectionBottomSheet extends StatelessWidget {
+  final String title;
   final bool showRemoveOption;
   final Function(PhotoSourceAction) onAction;
 
   const PhotoSelectionBottomSheet({
     super.key,
+    this.title = 'Change Photo',
     required this.showRemoveOption,
     required this.onAction,
   });
 
   static Future<void> show({
     required BuildContext context,
+    String title = 'Change Photo',
     required bool showRemoveOption,
     required Function(PhotoSourceAction) onAction,
   }) {
@@ -188,6 +191,7 @@ class PhotoSelectionBottomSheet extends StatelessWidget {
         ),
         child: SafeArea(
           child: PhotoSelectionBottomSheet(
+            title: title,
             showRemoveOption: showRemoveOption,
             onAction: (action) {
               Navigator.of(context).pop();
@@ -208,7 +212,7 @@ class PhotoSelectionBottomSheet extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
-            'Change Photo',
+            title,
             style: AppText.labelLarge,
             textAlign: TextAlign.center,
           ),
@@ -270,7 +274,7 @@ class _PhotoOption extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(Pads.ctlV),
         decoration: BoxDecoration(
-          color: BrandColors.bg2,
+          color: BrandColors.bg3,
           borderRadius: BorderRadius.circular(Radii.md),
         ),
         child: Row(

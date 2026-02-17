@@ -1,261 +1,121 @@
 import '../../domain/entities/action.dart';
 import '../../domain/repositories/action_repository.dart';
 
+/// Fake action repository providing sample host actions for development.
 class FakeActionRepository implements ActionRepository {
   final List<ActionEntity> _actions = [
-    // action.vote.date - Vote a date · closes {weekday}
+    // Host needs to remind maybe voters before Friday Dinner
     ActionEntity(
-      id: '1',
-      title: 'Vote a date',
-      description: 'Vote for the best date for our dinner',
-      type: ActionType.voteDate,
+      id: 'action-1',
+      title: 'Remind maybe voters',
+      subtitle: '3 guests haven\'t responded yet',
+      type: ActionType.remindMaybeVoters,
       status: ActionStatus.pending,
       priority: ActionPriority.high,
       createdAt: DateTime.now().subtract(const Duration(hours: 2)),
       dueDate: DateTime.now().add(const Duration(days: 2)),
-      groupId: 'group1',
-      eventId: 'event1',
+      eventId: 'event-1',
+      eventName: 'Friday Dinner',
       eventEmoji: '🍽️',
+      contextInfo: '3 guests haven\'t responded',
     ),
 
-    // action.vote.place - Vote a place · closes {weekday}
+    // Confirm event — only shown 24h before
     ActionEntity(
-      id: '2',
-      title: 'Vote a place',
-      description: 'Vote for the place where we\'ll watch the game',
-      type: ActionType.votePlace,
+      id: 'action-2',
+      title: 'Confirm event',
+      subtitle: 'Event starts in less than 24h',
+      type: ActionType.confirmEvent,
       status: ActionStatus.pending,
-      priority: ActionPriority.high,
-      createdAt: DateTime.now().subtract(const Duration(hours: 4)),
-      dueDate: DateTime.now().add(const Duration(days: 3)),
-      groupId: 'group1',
-      eventId: 'event2',
-      eventEmoji: '⚽',
-    ),
-
-    // action.confirm.attendance - Confirm attendance · {days}d left
-    ActionEntity(
-      id: '3',
-      title: 'Confirm attendance',
-      description: 'Confirm if you\'re going to the beach day',
-      type: ActionType.confirmAttendance,
-      status: ActionStatus.pending,
-      priority: ActionPriority.medium,
+      priority: ActionPriority.urgent,
       createdAt: DateTime.now().subtract(const Duration(hours: 6)),
-      dueDate: DateTime.now().add(const Duration(days: 3)),
-      groupId: 'group2',
-      eventId: 'event3',
+      dueDate: DateTime.now().add(const Duration(hours: 18)),
+      eventId: 'event-2',
+      eventName: 'Beach BBQ',
       eventEmoji: '🏖️',
+      contextInfo: 'Starts tomorrow — confirm now',
     ),
 
-    // action.complete.details - Complete event details (date/location)
+    // Host has an expired event that needs rescheduling
     ActionEntity(
-      id: '4',
-      title: 'Complete details',
-      description: 'Add missing details about the birthday party',
-      type: ActionType.completeDetails,
-      status: ActionStatus.pending,
-      priority: ActionPriority.high,
-      createdAt: DateTime.now().subtract(const Duration(hours: 8)),
-      dueDate: DateTime.now().add(const Duration(days: 1)),
-      groupId: 'group2',
-      eventId: 'event4',
-      eventEmoji: '�',
-    ),
-
-    // action.add.photos - Add photos · {hours}h left
-    ActionEntity(
-      id: '5',
-      title: 'Add photos',
-      description: 'Add photos from last weekend\'s trip',
-      type: ActionType.addPhotos,
+      id: 'action-3',
+      title: 'Reschedule event',
+      subtitle: 'Event has expired — set new dates',
+      type: ActionType.rescheduleExpiredEvent,
       status: ActionStatus.pending,
       priority: ActionPriority.medium,
-      createdAt: DateTime.now().subtract(const Duration(hours: 1)),
-      dueDate: DateTime.now().add(const Duration(hours: 4)),
-      groupId: 'group3',
-      eventId: 'event5',
-      eventEmoji: '📸',
+      createdAt: DateTime.now().subtract(const Duration(days: 1)),
+      eventId: 'event-3',
+      eventName: 'Birthday Party',
+      eventEmoji: '🎂',
+      contextInfo: 'Event has expired — set new dates',
     ),
 
-    // Some completed actions for variety
+    // Host should review guests who are still "maybe"
     ActionEntity(
-      id: '6',
-      title: 'Vote a date',
-      description: 'Vote for the best date for movie night',
-      type: ActionType.voteDate,
-      status: ActionStatus.completed,
-      priority: ActionPriority.medium,
-      createdAt: DateTime.now().subtract(const Duration(days: 2)),
-      dueDate: DateTime.now().subtract(const Duration(hours: 6)),
-      groupId: 'group1',
-      eventId: 'event6',
-      eventEmoji: '🎬',
-    ),
-
-    // action.vote.place - Vote a place · closes {weekday}
-    ActionEntity(
-      id: '2',
-      title: 'Vote a place',
-      description: 'Vote a place · closes Friday',
-      type: ActionType.votePlace,
+      id: 'action-4',
+      title: 'Review guest list',
+      subtitle: '2 guests are still maybe',
+      type: ActionType.reviewGuests,
       status: ActionStatus.pending,
-      priority: ActionPriority.high,
+      priority: ActionPriority.medium,
       createdAt: DateTime.now().subtract(const Duration(hours: 4)),
       dueDate: DateTime.now().add(const Duration(days: 3)),
-      groupId: 'group1',
-      eventId: 'event2',
-      eventEmoji: '�️',
-      weekday: 'Friday',
+      eventId: 'event-4',
+      eventName: 'Concert Night',
+      eventEmoji: '🎵',
+      contextInfo: '2 guests are still maybe',
     ),
 
-    // action.confirm.attendance - Confirm attendance · {days}d left
+    // Host should upload photos during living phase
     ActionEntity(
-      id: '3',
-      title: 'Confirm attendance',
-      description: 'Confirm attendance · 3d left',
-      type: ActionType.confirmAttendance,
-      status: ActionStatus.pending,
-      priority: ActionPriority.medium,
-      createdAt: DateTime.now().subtract(const Duration(hours: 6)),
-      dueDate: DateTime.now().add(const Duration(days: 3)),
-      groupId: 'group2',
-      eventId: 'event3',
-      eventEmoji: '�',
-      days: '3',
-    ),
-
-    // action.complete.details - Complete event details (date/location)
-    ActionEntity(
-      id: '4',
-      title: 'Complete event details',
-      description: 'Complete event details (date/location)',
-      type: ActionType.completeDetails,
-      status: ActionStatus.pending,
-      priority: ActionPriority.high,
-      createdAt: DateTime.now().subtract(const Duration(hours: 8)),
-      dueDate: DateTime.now().add(const Duration(days: 1)),
-      groupId: 'group2',
-      eventId: 'event4',
-      eventEmoji: '⚽',
-    ),
-
-    // action.add.photos - Add photos · {hours}h left
-    ActionEntity(
-      id: '5',
+      id: 'action-5',
       title: 'Add photos',
-      description: 'Add photos · 4h left',
+      subtitle: 'You haven\'t added any photos yet',
       type: ActionType.addPhotos,
       status: ActionStatus.pending,
-      priority: ActionPriority.medium,
+      priority: ActionPriority.high,
       createdAt: DateTime.now().subtract(const Duration(hours: 1)),
       dueDate: DateTime.now().add(const Duration(hours: 4)),
-      groupId: 'group3',
-      eventId: 'event5',
-      eventEmoji: '🎂',
-      hours: '4',
-    ),
-
-    // Some completed actions for variety
-    ActionEntity(
-      id: '6',
-      title: 'Vote date - Movie Night',
-      description: 'Vote for the best date for movie night',
-      type: ActionType.voteDate,
-      status: ActionStatus.completed,
-      priority: ActionPriority.medium,
-      createdAt: DateTime.now().subtract(const Duration(days: 2)),
-      dueDate: DateTime.now().subtract(const Duration(hours: 6)),
-      groupId: 'group1',
-      eventId: 'event6',
-      eventEmoji: '🎬',
-      weekday: 'Monday',
+      eventId: 'event-5',
+      eventName: 'Weekend Trip',
+      eventEmoji: '⛺',
+      contextInfo: 'You haven\'t added any photos yet',
     ),
   ];
 
+  final Set<String> _dismissedIds = {};
+
   @override
-  Future<List<ActionEntity>> getActions({
-    int limit = 20,
-    int offset = 0,
-    String? groupId,
-    String? eventId,
-  }) async {
-    await Future.delayed(const Duration(milliseconds: 500));
-
-    var actions = _actions;
-    if (groupId != null) {
-      actions = actions.where((a) => a.groupId == groupId).toList();
-    }
-    if (eventId != null) {
-      actions = actions.where((a) => a.eventId == eventId).toList();
-    }
-
-    return actions.skip(offset).take(limit).toList();
+  Future<List<ActionEntity>> getActions() async {
+    await Future.delayed(const Duration(milliseconds: 400));
+    return _actions
+        .where((a) =>
+            a.status == ActionStatus.pending && !_dismissedIds.contains(a.id))
+        .toList()
+      ..sort((a, b) {
+        // Urgent first, then by due date
+        final priorityOrder = b.priority.index.compareTo(a.priority.index);
+        if (priorityOrder != 0) return priorityOrder;
+        if (a.dueDate == null && b.dueDate == null) return 0;
+        if (a.dueDate == null) return 1;
+        if (b.dueDate == null) return -1;
+        return a.dueDate!.compareTo(b.dueDate!);
+      });
   }
 
   @override
-  Future<List<ActionEntity>> getActionsByTimeLeft({
-    int limit = 20,
-    bool overdueFirst = true,
-  }) async {
-    await Future.delayed(const Duration(milliseconds: 500));
-
-    var actions = List<ActionEntity>.from(_actions);
-
-    actions.sort((a, b) {
-      // First sort by overdue status if requested
-      if (overdueFirst) {
-        final aIsOverdue = a.isOverdue;
-        final bIsOverdue = b.isOverdue;
-        if (aIsOverdue != bIsOverdue) {
-          return aIsOverdue ? -1 : 1;
-        }
-      }
-
-      // Then sort by due date
-      if (a.dueDate == null && b.dueDate == null) return 0;
-      if (a.dueDate == null) return 1;
-      if (b.dueDate == null) return -1;
-      return a.dueDate!.compareTo(b.dueDate!);
-    });
-
-    return actions.take(limit).toList();
-  }
-
-  @override
-  Future<ActionEntity?> getActionById(String id) async {
+  Future<void> dismissAction(String actionId) async {
     await Future.delayed(const Duration(milliseconds: 200));
-    return _actions.where((a) => a.id == id).firstOrNull;
-  }
-
-  @override
-  Future<void> markAsCompleted(String id) async {
-    await Future.delayed(const Duration(milliseconds: 200));
-    final index = _actions.indexWhere((a) => a.id == id);
-    if (index != -1) {
-      _actions[index] = _actions[index].copyWith(
-        status: ActionStatus.completed,
-      );
-    }
-  }
-
-  @override
-  Future<void> updateActionStatus(String id, ActionStatus status) async {
-    await Future.delayed(const Duration(milliseconds: 200));
-    final index = _actions.indexWhere((a) => a.id == id);
-    if (index != -1) {
-      _actions[index] = _actions[index].copyWith(status: status);
-    }
+    _dismissedIds.add(actionId);
   }
 
   @override
   Future<int> getPendingCount() async {
     await Future.delayed(const Duration(milliseconds: 100));
-    return _actions.where((a) => a.status == ActionStatus.pending).length;
-  }
-
-  @override
-  Stream<List<ActionEntity>> watchActions() {
-    return Stream.periodic(const Duration(seconds: 5), (_) => _actions);
+    return _actions
+        .where((a) =>
+            a.status == ActionStatus.pending && !_dismissedIds.contains(a.id))
+        .length;
   }
 }

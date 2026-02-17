@@ -137,6 +137,45 @@ class HybridPhotoGrid extends StatelessWidget {
     bool isP(int i) => cand[i].isPortrait;
     bool isL(int i) => !cand[i].isPortrait;
 
+    // ---- Priority 0: VSCO Column — P + 2L (or 2L + P) ----
+    // Creates a column layout: one tall portrait + two landscapes stacked
+    // Only fires when the first 3 items have exactly 1P and 2L.
+    if (buffer.length >= 3) {
+      final first3P = [0, 1, 2].where((i) => isP(i)).toList();
+      final first3L = [0, 1, 2].where((i) => isL(i)).toList();
+
+      if (first3P.length == 1 && first3L.length == 2) {
+        final pIdx = first3P.first;
+        final l1Idx = first3L[0];
+        final l2Idx = first3L[1];
+
+        // P is first (P, L, L) → portrait left, 2 landscapes stacked right
+        if (pIdx < l1Idx) {
+          return _TemplateResult(
+            widget: Padding(
+              padding: EdgeInsets.symmetric(horizontal: innerSidePad),
+              child: _buildColumnPLL(
+                  cand[pIdx], cand[l1Idx], cand[l2Idx], unitW, gap),
+            ),
+            usedIndexes: [pIdx, l1Idx, l2Idx],
+            penalty: 0,
+          );
+        }
+        // P is last (L, L, P) → 2 landscapes stacked left, portrait right
+        else {
+          return _TemplateResult(
+            widget: Padding(
+              padding: EdgeInsets.symmetric(horizontal: innerSidePad),
+              child: _buildColumnLLP(
+                  cand[l1Idx], cand[l2Idx], cand[pIdx], unitW, gap),
+            ),
+            usedIndexes: [l1Idx, l2Idx, pIdx],
+            penalty: 0,
+          );
+        }
+      }
+    }
+
     // ---- Priority 1: L full + P (or P + L full) ----
     // (a) L then P anywhere within lookahead
     for (int i = 0; i < la - 1; i++) {
@@ -375,6 +414,87 @@ class HybridPhotoGrid extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           _buildPhotoTile(photo, wP, h, rowHeight: h),
+        ],
+      ),
+    );
+  }
+
+  // ---------- VSCO COLUMN BUILDERS ----------
+
+  /// Column: P (left, tall) + 2L stacked (right)
+  /// Portrait takes full height, two landscapes split the height.
+  Widget _buildColumnPLL(
+    HybridPhotoData portrait,
+    HybridPhotoData land1,
+    HybridPhotoData land2,
+    double unitW,
+    double gap,
+  ) {
+    // Each side = 3 sub-units wide
+    final wHalf = unitW * 3 + gap * 2;
+    // Total height driven by portrait's 4:5 ratio
+    final totalH = wHalf * 5 / 4;
+    // Each landscape gets half the height minus inner gap
+    final lH = (totalH - gap) / 2;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: Gaps.xs),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Portrait (tall left)
+          _buildPhotoTile(portrait, wHalf, totalH, rowHeight: totalH),
+          SizedBox(width: gap),
+          // Two landscapes stacked
+          SizedBox(
+            width: wHalf,
+            height: totalH,
+            child: Column(
+              children: [
+                _buildPhotoTile(land1, wHalf, lH, rowHeight: lH),
+                SizedBox(height: gap),
+                _buildPhotoTile(land2, wHalf, lH, rowHeight: lH),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Column: 2L stacked (left) + P (right, tall)
+  /// Portrait takes full height, two landscapes split the height.
+  Widget _buildColumnLLP(
+    HybridPhotoData land1,
+    HybridPhotoData land2,
+    HybridPhotoData portrait,
+    double unitW,
+    double gap,
+  ) {
+    final wHalf = unitW * 3 + gap * 2;
+    final totalH = wHalf * 5 / 4;
+    final lH = (totalH - gap) / 2;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: Gaps.xs),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Two landscapes stacked (left)
+          SizedBox(
+            width: wHalf,
+            height: totalH,
+            child: Column(
+              children: [
+                _buildPhotoTile(land1, wHalf, lH, rowHeight: lH),
+                SizedBox(height: gap),
+                _buildPhotoTile(land2, wHalf, lH, rowHeight: lH),
+              ],
+            ),
+          ),
+          SizedBox(width: gap),
+          // Portrait (tall right)
+          _buildPhotoTile(portrait, wHalf, totalH, rowHeight: totalH),
         ],
       ),
     );

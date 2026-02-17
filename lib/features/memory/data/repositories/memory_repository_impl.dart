@@ -130,6 +130,7 @@ class MemoryRepositoryImpl implements MemoryRepository {
         id: memoryData['id'] as String,
         eventId: memoryData['id'] as String,
         title: memoryData['name'] as String,
+        emoji: memoryData['emoji'] as String? ?? '🎉',
         location: locationName ?? 'Unknown Location',
         eventDate: DateTime.parse(memoryData['start_datetime'] as String),
         endDatetime:

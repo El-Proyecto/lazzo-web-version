@@ -4,21 +4,34 @@ import '../../../../shared/constants/text_styles.dart';
 import '../../../../shared/themes/colors.dart';
 
 /// Action row for living mode with action buttons:
-/// Take Photo (purple), View Memory
+/// Share (bg2), Take Photo (purple), Guests (bg2)
 class LivingActionRow extends StatelessWidget {
+  final VoidCallback onShare;
   final VoidCallback onTakePhoto;
-  final VoidCallback onViewMemory;
+  final VoidCallback onGuests;
 
   const LivingActionRow({
     super.key,
+    required this.onShare,
     required this.onTakePhoto,
-    required this.onViewMemory,
+    required this.onGuests,
   });
 
   @override
   Widget build(BuildContext context) {
     return Row(
       children: [
+        Expanded(
+          child: _ActionButton(
+            icon: Icons.ios_share,
+            label: 'Share',
+            onPressed: onShare,
+            backgroundColor: BrandColors.bg2,
+            textColor: BrandColors.text1,
+            iconColor: BrandColors.text1,
+          ),
+        ),
+        const SizedBox(width: Gaps.sm),
         Expanded(
           child: _ActionButton(
             icon: Icons.camera_alt,
@@ -32,9 +45,9 @@ class LivingActionRow extends StatelessWidget {
         const SizedBox(width: Gaps.sm),
         Expanded(
           child: _ActionButton(
-            icon: Icons.photo_library,
-            label: 'Memory',
-            onPressed: onViewMemory,
+            icon: Icons.people,
+            label: 'Guests',
+            onPressed: onGuests,
             backgroundColor: BrandColors.bg2,
             textColor: BrandColors.text1,
             iconColor: BrandColors.text1,

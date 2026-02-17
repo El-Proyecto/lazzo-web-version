@@ -103,14 +103,18 @@ class ProfileMemoryDataSource {
         }
 
         if (coverStoragePath != null) {
-          memoriesWithCovers.add({
+          final memoryData = {
             'id': eventId,
-            'title': eventMap['name'] as String? ?? 'Untitled',
-            'date': eventMap['end_datetime'],
-            'location':
+            'name': eventMap['name'],
+            'end_datetime': eventMap['end_datetime'],
+            'display_name':
                 (eventMap['locations'] as Map?)?['display_name'] as String?,
             'cover_storage_path': coverStoragePath,
-          });
+            'status': eventMap['status'],
+          };
+
+          print('[ProfileMemoryDataSource] Memory data: $memoryData');
+          memoriesWithCovers.add(memoryData);
         }
       }
 

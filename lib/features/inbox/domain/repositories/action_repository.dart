@@ -1,25 +1,15 @@
 import '../entities/action.dart';
 
+/// Repository for host-facing actions.
+/// Actions are computed from event state — no dedicated DB table needed for beta.
 abstract class ActionRepository {
-  Future<List<ActionEntity>> getActions({
-    int limit = 20,
-    int offset = 0,
-    String? groupId,
-    String? eventId,
-  });
+  /// Get all pending actions for the current user (as host).
+  /// Returns actions sorted by priority/urgency.
+  Future<List<ActionEntity>> getActions();
 
-  Future<List<ActionEntity>> getActionsByTimeLeft({
-    int limit = 20,
-    bool overdueFirst = true,
-  });
+  /// Dismiss an action (user chose to ignore it).
+  Future<void> dismissAction(String actionId);
 
-  Future<ActionEntity?> getActionById(String id);
-
-  Future<void> markAsCompleted(String id);
-
-  Future<void> updateActionStatus(String id, ActionStatus status);
-
+  /// Get count of pending actions (for badge).
   Future<int> getPendingCount();
-
-  Stream<List<ActionEntity>> watchActions();
 }

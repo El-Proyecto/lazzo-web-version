@@ -24,6 +24,11 @@ class HomeEventCard extends ConsumerStatefulWidget {
   final HomeEventCardState state;
   final VoidCallback? onTap;
   final Function(String eventId, RsvpVoteStatus vote)? onVoteChanged;
+  final VoidCallback? onGuestsTap;
+  final VoidCallback? onInviteTap;
+  final VoidCallback? onAddPhotoTap;
+  final VoidCallback? onManagePhotosTap;
+  final bool? canManagePhotos; // For recap/living: host or user has uploaded
 
   const HomeEventCard({
     super.key,
@@ -31,6 +36,11 @@ class HomeEventCard extends ConsumerStatefulWidget {
     required this.state,
     this.onTap,
     this.onVoteChanged,
+    this.onGuestsTap,
+    this.onInviteTap,
+    this.onAddPhotoTap,
+    this.onManagePhotosTap,
+    this.canManagePhotos,
   });
 
   @override
@@ -85,6 +95,12 @@ class _HomeEventCardState extends ConsumerState<HomeEventCard> {
 
             // Attendees info
             _buildAttendeeInfo(context),
+
+            // Action buttons
+            if (_shouldShowActionButtons()) ...[
+              const SizedBox(height: Gaps.md),
+              _buildActionButtons(),
+            ],
           ],
         ),
       ),
@@ -587,5 +603,114 @@ class _HomeEventCardState extends ConsumerState<HomeEventCard> {
     // Show time range if endDate is available, otherwise just start time
     final timeRange = endTime != null ? '$startTime–$endTime' : startTime;
     return '$weekday, $day $month • $timeRange';
+  }
+
+  bool _shouldShowActionButtons() {
+    // Show buttons for all states except when event is expired
+    final isExpired = widget.state == HomeEventCardState.pending &&
+        _currentEvent.date != null &&
+        DateTime.now().isAfter(_currentEvent.date!);
+
+    return !isExpired;
+  }
+
+  Widget _buildActionButtons() {
+    // Pending/Confirmed: Guests + Invite
+    if (widget.state == HomeEventCardState.pending ||
+        widget.state == HomeEventCardState.confirmed) {
+      return Row(
+        children: [
+          Expanded(
+            child: _ActionButton(
+              label: 'Guests',
+              icon: Icons.people,
+              onTap: widget.onGuestsTap,
+            ),
+          ),
+          const SizedBox(width: Gaps.xs),
+          Expanded(
+            child: _ActionButton(
+              label: 'Invite',
+              icon: Icons.ios_share,
+              onTap: widget.onInviteTap,
+            ),
+          ),
+        ],
+      );
+    }
+
+    // Living/Recap: Add Photo + Manage Photos
+    if (widget.state == HomeEventCardState.living ||
+        widget.state == HomeEventCardState.recap) {
+      return Row(
+        children: [
+          Expanded(
+            child: _ActionButton(
+              label: 'Add Photo',
+              icon: Icons.camera_alt,
+              onTap: widget.onAddPhotoTap,
+            ),
+          ),
+          const SizedBox(width: Gaps.xs),
+          Expanded(
+            child: _ActionButton(
+              label: 'Manage Photos',
+              icon: Icons.photo_library_outlined,
+              onTap: widget.onManagePhotosTap,
+            ),
+          ),
+        ],
+      );
+    }
+
+    return const SizedBox.shrink();
+  }
+}
+
+/// Action button for home event card
+class _ActionButton extends StatelessWidget {
+  final String label;
+  final IconData icon;
+  final VoidCallback? onTap;
+
+  const _ActionButton({
+    required this.label,
+    required this.icon,
+    this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: BrandColors.bg3,
+      borderRadius: BorderRadius.circular(Radii.sm),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(Radii.sm),
+        child: Container(
+          padding: const EdgeInsets.symmetric(
+            horizontal: Pads.sectionV,
+            vertical: Gaps.sm,
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                icon,
+                size: IconSizes.sm,
+                color: BrandColors.text1,
+              ),
+              const SizedBox(width: Gaps.xxs),
+              Text(
+                label,
+                style: AppText.labelLarge.copyWith(
+                  color: BrandColors.text1,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
