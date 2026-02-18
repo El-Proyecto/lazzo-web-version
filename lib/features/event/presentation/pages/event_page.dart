@@ -212,6 +212,27 @@ class _EventPageState extends ConsumerState<EventPage> {
       return;
     }
 
+    // If trying to confirm, check if there are participants who voted "Can"
+    if (!isConfirmed) {
+      final rsvpsAsync = ref.read(eventRsvpsProvider(eventId));
+      final rsvps = rsvpsAsync.valueOrNull ?? [];
+      final goingCount =
+          rsvps.where((r) => r.status == RsvpStatus.going).length;
+      if (goingCount == 0) {
+        showDialog(
+          context: context,
+          builder: (context) => ConfirmationDialog(
+            title: 'Cannot Confirm Event',
+            message:
+                'You need at least one participant who voted "Can" before confirming the event.',
+            confirmText: 'Ok',
+            onConfirm: () {},
+          ),
+        );
+        return;
+      }
+    }
+
     showDialog(
       context: context,
       builder: (context) => ConfirmationDialog(
@@ -470,7 +491,7 @@ class _EventPageState extends ConsumerState<EventPage> {
                 Gaps.lg,
               ),
               decoration: const BoxDecoration(
-                color: BrandColors.bg1,
+                color: BrandColors.bg2,
                 border: Border(
                   top: BorderSide(color: BrandColors.border, width: 0.5),
                 ),
@@ -1325,6 +1346,28 @@ class _EventPageState extends ConsumerState<EventPage> {
                     final newStatus = currentStatus == RsvpStatus.going
                         ? RsvpStatus.pending
                         : RsvpStatus.going;
+                    // Host removing "Can" vote: show confirmation
+                    if (newStatus == RsvpStatus.pending &&
+                        event.hostId == currentUserId) {
+                      if (!context.mounted) return;
+                      showDialog(
+                        context: context,
+                        builder: (_) => ConfirmationDialog(
+                          title: 'Remove Vote',
+                          message:
+                              'You are the host of this event. Are you sure you want to remove your "Can" vote?',
+                          confirmText: 'Confirm',
+                          cancelText: 'Cancel',
+                          isDestructive: true,
+                          onConfirm: () async {
+                            await ref
+                                .read(userRsvpProvider(eventId).notifier)
+                                .submitVote(newStatus);
+                          },
+                        ),
+                      );
+                      return;
+                    }
                     await ref
                         .read(userRsvpProvider(eventId).notifier)
                         .submitVote(newStatus);
@@ -1411,6 +1454,28 @@ class _EventPageState extends ConsumerState<EventPage> {
             final newStatus = currentStatus == RsvpStatus.going
                 ? RsvpStatus.pending
                 : RsvpStatus.going;
+            // Host removing "Can" vote: show confirmation
+            if (newStatus == RsvpStatus.pending &&
+                event.hostId == currentUserId) {
+              if (!context.mounted) return;
+              showDialog(
+                context: context,
+                builder: (_) => ConfirmationDialog(
+                  title: 'Remove Vote',
+                  message:
+                      'You are the host of this event. Are you sure you want to remove your "Can" vote?',
+                  confirmText: 'Confirm',
+                  cancelText: 'Cancel',
+                  isDestructive: true,
+                  onConfirm: () async {
+                    await ref
+                        .read(userRsvpProvider(eventId).notifier)
+                        .submitVote(newStatus);
+                  },
+                ),
+              );
+              return;
+            }
             await ref
                 .read(userRsvpProvider(eventId).notifier)
                 .submitVote(newStatus);

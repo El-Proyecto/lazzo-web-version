@@ -16,8 +16,10 @@ import '../../../../shared/components/dialogs/confirmation_dialog.dart';
 import '../providers/event_providers.dart';
 import '../../../event/presentation/providers/event_providers.dart'
     as event_providers;
+import '../../../event/domain/entities/rsvp.dart' show RsvpStatus;
 import '../../../home/presentation/providers/home_event_providers.dart'
     as home_providers;
+import '../../../../routes/app_router.dart';
 
 /// Página para edição de eventos existentes
 /// Reutiliza todos os widgets tokenizados da criação de eventos
@@ -352,6 +354,12 @@ class _EditEventPageState extends ConsumerState<EditEventPage> {
     // CRITICAL: Invalidate providers to force UI refresh across the app
     // 1. Event detail page (shows updated date/time/location)
     ref.invalidate(event_providers.eventDetailProvider(widget.event.id));
+
+    // Host auto-vote: ensure host always has "Can" vote after editing
+    await ref
+        .read(event_providers.userRsvpProvider(widget.event.id).notifier)
+        .submitVote(RsvpStatus.going);
+
     // 2. Home page providers (shows updated event in lists)
     ref.invalidate(home_providers.nextEventControllerProvider);
     ref.invalidate(home_providers.confirmedEventsControllerProvider);
@@ -363,13 +371,12 @@ class _EditEventPageState extends ConsumerState<EditEventPage> {
       _storeInitialValues();
     });
 
-    // Navigate back to previous page
-    // Pop twice: once for dialog (if shown), once for edit page
-    if (mounted && Navigator.of(context).canPop()) {
-      Navigator.of(context).pop(); // Close dialog if shown
-    }
-    if (mounted && Navigator.of(context).canPop()) {
-      Navigator.of(context).pop(); // Return to previous page
+    // Navigate to event page instead of returning to previous page
+    if (mounted) {
+      Navigator.of(context).pushReplacementNamed(
+        AppRouter.event,
+        arguments: {'eventId': widget.event.id},
+      );
     }
   }
 
@@ -414,12 +421,12 @@ class _EditEventPageState extends ConsumerState<EditEventPage> {
         );
       }
 
-      // Navigate back
-      if (mounted && Navigator.of(context).canPop()) {
-        Navigator.of(context).pop(); // Close dialog
-      }
-      if (mounted && Navigator.of(context).canPop()) {
-        Navigator.of(context).pop(); // Return to previous page
+      // Navigate to home after delete
+      if (mounted) {
+        Navigator.of(context).pushNamedAndRemoveUntil(
+          AppRouter.home,
+          (route) => false,
+        );
       }
     } catch (e) {
       // Show error banner with detailed message

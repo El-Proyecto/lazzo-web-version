@@ -1,20 +1,24 @@
 import 'dart:io';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:image/image.dart' as img;
+import '../../../../services/storage_service.dart';
 
 /// Data source for event photo operations using Supabase
 /// Handles photo uploads to memory_groups storage bucket
 class EventPhotoDataSource {
   final SupabaseClient _client;
+  final StorageService _storageService;
 
-  EventPhotoDataSource(this._client);
+  EventPhotoDataSource(this._client)
+      : _storageService = StorageService(_client);
 
   /// Upload a photo to Supabase Storage and create database record
   ///
-  /// Storage path: /{eventId}/{userId}/{timestamp}.jpg
+  /// Uses StorageService for consistent path convention:
+  /// /{eventId}/{eventId}/{userId}/{uuid}.extension
   /// Bucket: memory_groups (private, requires auth)
   ///
-  /// Returns the uploaded photo data including URL and storage path
+  /// Returns the uploaded photo data including storage path
   Future<Map<String, dynamic>> uploadPhoto({
     required String eventId,
     required File imageFile,
@@ -26,29 +30,19 @@ class EventPhotoDataSource {
         throw Exception('User not authenticated');
       }
 
-      // 1. Generate storage path: /{eventId}/{userId}/{timestamp}.extension
-      final timestamp = DateTime.now().millisecondsSinceEpoch;
-      final extension = imageFile.path.split('.').last.toLowerCase();
-      final storagePath = '$eventId/$userId/$timestamp.$extension';
+      // 1. Upload to storage using StorageService (same path convention as MemoryPhotoDataSource)
+      final storagePath = await _storageService.uploadMemoryPhoto(
+        eventId: eventId,
+        memoryId: eventId,
+        userId: userId,
+        file: imageFile,
+      );
 
-      // 2. Upload to Supabase Storage
-      await _client.storage.from('memory_groups').upload(
-            storagePath,
-            imageFile,
-            fileOptions: FileOptions(
-              contentType: _getMimeType(extension),
-              upsert: false,
-            ),
-          );
-
-      // 3. Get public URL (will require signed URL for private bucket)
-      final publicUrl =
-          _client.storage.from('memory_groups').getPublicUrl(storagePath);
-
-      // 4. Create database record in event_photos table
+      // 2. Create database record in event_photos table
       final photoData = {
         'event_id': eventId,
-        'url': publicUrl,
+        'url':
+            storagePath, // Store path, not URL — signed URLs generated on-demand
         'storage_path': storagePath,
         'captured_at': capturedAt.toIso8601String(),
         'uploader_id': userId,
@@ -87,28 +81,10 @@ class EventPhotoDataSource {
   Future<String> getSignedUrl(String storagePath,
       {int expiresIn = 3600}) async {
     try {
-      return await _client.storage
-          .from('memory_groups')
-          .createSignedUrl(storagePath, expiresIn);
+      return await _storageService.getSignedUrl(storagePath,
+          expiresInSeconds: expiresIn);
     } catch (e) {
       throw Exception('Failed to get signed URL: $e');
-    }
-  }
-
-  /// Determine MIME type from file extension
-  String _getMimeType(String extension) {
-    switch (extension) {
-      case 'jpg':
-      case 'jpeg':
-        return 'image/jpeg';
-      case 'png':
-        return 'image/png';
-      case 'heic':
-        return 'image/heic';
-      case 'webp':
-        return 'image/webp';
-      default:
-        return 'image/jpeg';
     }
   }
 

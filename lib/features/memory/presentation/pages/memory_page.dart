@@ -3,33 +3,33 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:share_plus/share_plus.dart' show SharePlus, ShareParams;
 import '../../../../routes/app_router.dart';
 import '../../../../shared/components/nav/common_app_bar.dart';
-import '../../../../shared/components/nav/app_bar_with_subtitle.dart';
-import '../../../../shared/components/cards/add_photos_cta_card.dart';
-import '../../../../shared/components/cards/close_recap_card.dart';
 import '../../../../shared/components/common/top_banner.dart';
+import '../../../../shared/components/inputs/photo_selector.dart';
 import '../../../../shared/components/sections/cover_mosaic.dart';
 import '../../../../shared/components/sections/hybrid_photo_grid.dart';
 import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/constants/text_styles.dart';
 import '../../../../shared/themes/colors.dart';
-import '../../../home/presentation/providers/home_event_providers.dart';
+import '../../../event/domain/entities/rsvp.dart';
+import '../../../event/presentation/providers/event_providers.dart';
 import '../providers/memory_providers.dart';
 import '../../domain/entities/memory_entity.dart';
 
 /// Memory page displaying event photos with state-based UI
-/// Structure (top to bottom):
-/// - Header: back button, "Memory" title, edit button (conditional)
-/// - CTA banner: Add photos prompt (living/recap, conditional)
-/// - Cover Mosaic: 1-3 cover photos with adaptive layout
-/// - Event title & subtitle (location • date)
-/// - Photo Grid: all non-cover photos
+///
+/// Layout (top to bottom):
+/// 1. AppBar: emoji + title, edit icon + share icon
+/// 2. Info: location + date, avatar row, stats text
+/// 3. CoverMosaic + HybridPhotoGrid (continuous)
+/// 4. Bottom banner: "Add your photos" (recap/living only)
 ///
 /// Three states based on event status:
-/// 1. Living: CTA banner if no photos uploaded, edit button if has photos or is host
-/// 2. Recap: Same as living but with orange CTA button
-/// 3. Ended: No CTA, no edit button - read-only memory
+/// - Living: edit + banner, purple accents
+/// - Recap: edit + banner with timer, orange accents
+/// - Ended: read-only, no banner
 class MemoryPage extends ConsumerStatefulWidget {
   final String memoryId;
 
@@ -46,13 +46,11 @@ class _MemoryPageState extends ConsumerState<MemoryPage> {
   @override
   void initState() {
     super.initState();
-    // Refresh data when page is first loaded
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _refreshData();
     });
   }
 
-  /// Refresh memory data
   void _refreshData() {
     ref.invalidate(memoryDetailProvider(widget.memoryId));
   }
@@ -60,13 +58,14 @@ class _MemoryPageState extends ConsumerState<MemoryPage> {
   @override
   Widget build(BuildContext context) {
     final memoryAsync = ref.watch(memoryDetailProvider(widget.memoryId));
+    final rsvpsAsync = ref.watch(eventRsvpsProvider(widget.memoryId));
     final currentUserId = Supabase.instance.client.auth.currentUser?.id;
 
     return memoryAsync.when(
       loading: () => Scaffold(
         backgroundColor: BrandColors.bg1,
         appBar: CommonAppBar(
-          title: 'Memory',
+          title: '',
           leading: IconButton(
             icon: const Icon(Icons.arrow_back, color: BrandColors.text1),
             onPressed: () => Navigator.of(context).pop(),
@@ -77,7 +76,7 @@ class _MemoryPageState extends ConsumerState<MemoryPage> {
       error: (error, stack) => Scaffold(
         backgroundColor: BrandColors.bg1,
         appBar: CommonAppBar(
-          title: 'Memory',
+          title: '',
           leading: IconButton(
             icon: const Icon(Icons.arrow_back, color: BrandColors.text1),
             onPressed: () => Navigator.of(context).pop(),
@@ -90,7 +89,7 @@ class _MemoryPageState extends ConsumerState<MemoryPage> {
           return Scaffold(
             backgroundColor: BrandColors.bg1,
             appBar: CommonAppBar(
-              title: 'Memory',
+              title: '',
               leading: IconButton(
                 icon: const Icon(Icons.arrow_back, color: BrandColors.text1),
                 onPressed: () => Navigator.of(context).pop(),
@@ -108,32 +107,49 @@ class _MemoryPageState extends ConsumerState<MemoryPage> {
         final eventStatus = memory.status;
         final isHost =
             currentUserId != null && memory.createdBy == currentUserId;
-
-        // Check if user has uploaded photos
         final userHasUploadedPhotos = currentUserId != null &&
             memory.photos.any((photo) => photo.uploaderId == currentUserId);
 
         final coverPhotos = memory.coverPhotos;
         final gridPhotos = memory.gridPhotos;
 
-        // Build AppBar based on event status
-        final appBar = _buildAppBar(
-          context,
-          ref,
+        // Get participants from RSVPs
+        final participants = rsvpsAsync.when<List<Rsvp>>(
+          data: (rsvps) =>
+              rsvps.where((r) => r.status == RsvpStatus.going).toList(),
+          loading: () => <Rsvp>[],
+          error: (_, __) => <Rsvp>[],
+        );
+        final participantCount = participants.length;
+
+        // Compute stats
+        final totalPhotos = memory.photos.length;
+
+        // Calculate "last added X ago" for recap
+        String? lastAddedText;
+        if (eventStatus == EventStatus.recap && memory.photos.isNotEmpty) {
+          final sorted = List<MemoryPhoto>.from(memory.photos)
+            ..sort((a, b) => b.capturedAt.compareTo(a.capturedAt));
+          lastAddedText = _formatTimeAgo(sorted.first.capturedAt);
+        }
+
+        // Should show edit icon (hosts always, others after uploading)
+        final showEditIcon = eventStatus != EventStatus.ended &&
+            (isHost || userHasUploadedPhotos);
+
+        // Should show bottom banner
+        final showBottomBanner = _shouldShowBottomBanner(
           eventStatus,
-          isHost,
           userHasUploadedPhotos,
-          memory,
         );
 
         return Scaffold(
           backgroundColor: BrandColors.bg1,
-          appBar: appBar,
+          appBar: _buildAppBar(context, memory, showEditIcon),
           body: Stack(
             children: [
               RefreshIndicator(
                 onRefresh: () async {
-                  // Invalidate and wait for memory data to refetch
                   _refreshData();
                   await ref.read(memoryDetailProvider(widget.memoryId).future);
                 },
@@ -141,115 +157,153 @@ class _MemoryPageState extends ConsumerState<MemoryPage> {
                 backgroundColor: BrandColors.bg2,
                 child: SingleChildScrollView(
                   physics: const AlwaysScrollableScrollPhysics(),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const SizedBox(height: Gaps.sm),
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(
+                      minHeight: MediaQuery.of(context).size.height -
+                          kToolbarHeight -
+                          MediaQuery.of(context).padding.top -
+                          (showBottomBanner ? 0 : 0),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
 
-                      // Close Recap Card: Show at top for hosts in recap state with photos
-                      if (eventStatus == EventStatus.recap &&
-                          isHost &&
-                          memory.photos.isNotEmpty)
-                        Padding(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: Insets.screenH,
+                        // ── Info Section ──
+                        // Location • Date
+                        Text(
+                          _buildSubtitle(memory.location, memory.eventDate),
+                          style: AppText.bodyMedium.copyWith(
+                            color: BrandColors.text2,
                           ),
-                          child: CloseRecapCard(
-                            timeRemaining: memory.formattedRecapTimeRemaining,
-                            onCloseConfirmed: () =>
-                                _handleEndRecapEarly(context, ref),
-                            isLiving: false,
-                          ),
+                          textAlign: TextAlign.center,
                         ),
 
-                      if (eventStatus == EventStatus.recap &&
-                          isHost &&
-                          memory.photos.isNotEmpty)
+                        const SizedBox(height: Gaps.sm),
+
+                        // Avatar row (tappable -> manage guests)
+                        if (participants.isNotEmpty)
+                          Center(
+                            child: GestureDetector(
+                              onTap: () {
+                                Navigator.of(context).pushNamed(
+                                  AppRouter.manageGuests,
+                                  arguments: {'eventId': widget.memoryId},
+                                );
+                              },
+                              child: _buildAvatarRow(participants),
+                            ),
+                          ),
+
+                        const SizedBox(height: Gaps.sm),
+
+                        Text(
+                          _buildStatsText(
+                            totalPhotos,
+                            participantCount,
+                            lastAddedText,
+                          ),
+                          style: AppText.bodyMedium.copyWith(
+                            color: BrandColors.text2,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+
                         const SizedBox(height: Gaps.md),
 
-                      // CTA Banner: Show for living/recap if user hasn't uploaded photos
-                      if (_shouldShowCtaBanner(
-                          eventStatus, userHasUploadedPhotos))
-                        Padding(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: Insets.screenH,
-                          ),
-                          child: eventStatus == EventStatus.living
-                              ? AddPhotosCtaCard.living(
-                                  onPressed: () =>
-                                      _handleAddPhotosFromCta(context),
-                                )
-                              : AddPhotosCtaCard.recap(
-                                  onPressed: () =>
-                                      _handleAddPhotosFromCta(context),
+                        // ── Empty State or Content ──
+                        if (memory.photos.isEmpty)
+                          GestureDetector(
+                            onTap: () =>
+                                _handleAddPhotosFromCta(context, eventStatus),
+                            child: Container(
+                              margin: const EdgeInsets.symmetric(
+                                horizontal: Insets.screenH,
+                              ),
+                              padding: const EdgeInsets.all(Gaps.lg),
+                              decoration: BoxDecoration(
+                                color: BrandColors.bg2,
+                                borderRadius: BorderRadius.circular(Radii.md),
+                                border: Border.all(
+                                  color: BrandColors.bg3,
+                                  width: 1,
                                 ),
-                        ),
-
-                      if (_shouldShowCtaBanner(
-                          eventStatus, userHasUploadedPhotos))
-                        const SizedBox(height: Gaps.lg),
-
-                      // Cover Mosaic (full width with horizontal padding)
-                      CoverMosaic(
-                        covers: coverPhotos
-                            .map(
-                              (photo) => CoverPhotoData(
-                                id: photo.id,
-                                imageUrl: photo.coverUrl ?? photo.url,
-                                isPortrait: photo.isPortrait,
                               ),
-                            )
-                            .toList(),
-                        onPhotoTap: (photoId) =>
-                            _navigateToViewer(context, photoId),
-                      ),
-
-                      const SizedBox(height: Gaps.lg),
-
-                      // Event Title & Subtitle (full width, center-aligned)
-                      Padding(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: Insets.screenH),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            // Title
-                            Text(
-                              memory.title,
-                              style: AppText.subtitleMuted.copyWith(
-                                color: BrandColors.text1,
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.photo_library_outlined,
+                                    size: 48,
+                                    color: BrandColors.text2,
+                                  ),
+                                  const SizedBox(height: Gaps.md),
+                                  Text(
+                                    'No photos yet',
+                                    style: AppText.titleMediumEmph.copyWith(
+                                      color: BrandColors.text1,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  const SizedBox(height: Gaps.xs),
+                                  Text(
+                                    eventStatus == EventStatus.recap
+                                        ? 'Add your photos to create the memory'
+                                        : 'Photos will appear here once added',
+                                    style: AppText.bodyMedium.copyWith(
+                                      color: BrandColors.text2,
+                                    ),
+                                    textAlign: TextAlign.center,
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ],
                               ),
-                              textAlign: TextAlign.center,
                             ),
+                          ),
 
-                            const SizedBox(height: Gaps.xxs),
+                        // ── Cover Mosaic ──
+                        if (memory.photos.isNotEmpty)
+                          CoverMosaic(
+                            covers: coverPhotos
+                                .map(
+                                  (photo) => CoverPhotoData(
+                                    id: photo.id,
+                                    imageUrl: photo.coverUrl ?? photo.url,
+                                    isPortrait: photo.isPortrait,
+                                  ),
+                                )
+                                .toList(),
+                            onPhotoTap: (photoId) =>
+                                _navigateToViewer(context, photoId),
+                          ),
 
-                            // Subtitle: location • date
-                            Text(
-                              _buildSubtitle(memory.location, memory.eventDate),
-                              style: AppText.bodyMedium.copyWith(
-                                color: BrandColors.text2,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                          ],
-                        ),
-                      ),
+                        // ── Photo Grid (continuous after cover) ──
+                        if (gridPhotos.isNotEmpty)
+                          const SizedBox(height: Gaps.xs),
 
-                      const SizedBox(height: Gaps.xl),
+                        if (gridPhotos.isNotEmpty)
+                          HybridPhotoGrid(
+                            clusters: _buildClusters(gridPhotos),
+                            onPhotoTap: (photoId) =>
+                                _navigateToViewer(context, photoId),
+                          ),
 
-                      // Hybrid Photo Grid with Clustering
-                      HybridPhotoGrid(
-                        clusters: _buildClusters(gridPhotos),
-                        onPhotoTap: (photoId) =>
-                            _navigateToViewer(context, photoId),
-                      ),
-
-                      const SizedBox(height: Gaps.xl),
-                    ],
+                        // Extra space for bottom banner
+                        SizedBox(height: showBottomBanner ? 120 : Gaps.xl),
+                      ],
+                    ),
                   ),
                 ),
               ),
+
+              // ── Fixed Bottom Banner ──
+              if (showBottomBanner)
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  child: _buildBottomBanner(context, eventStatus, memory),
+                ),
             ],
           ),
         );
@@ -257,35 +311,258 @@ class _MemoryPageState extends ConsumerState<MemoryPage> {
     );
   }
 
-  /// Check if CTA banner should be shown
-  /// Show for living/recap events when:
-  /// - User hasn't uploaded photos yet (encourage first upload)
-  /// Logic: Host always has edit button, non-host sees CTA if no photos
-  bool _shouldShowCtaBanner(
+  // ─── AppBar ──────────────────────────────────────────────
+
+  PreferredSizeWidget _buildAppBar(
+    BuildContext context,
+    MemoryEntity memory,
+    bool showEditIcon,
+  ) {
+    final titleWithEmoji = '${memory.emoji} ${memory.title}';
+    debugPrint('[MemoryPage] AppBar emoji: "${memory.emoji}"');
+    debugPrint('[MemoryPage] AppBar title: "${memory.title}"');
+    debugPrint('[MemoryPage] AppBar titleWithEmoji: "$titleWithEmoji"');
+
+    return CommonAppBar(
+      title: titleWithEmoji,
+      leading: IconButton(
+        icon: const Icon(Icons.arrow_back, color: BrandColors.text1),
+        onPressed: () {
+          if (Navigator.of(context).canPop()) {
+            Navigator.of(context).pop();
+          } else {
+            Navigator.of(context).pushNamedAndRemoveUntil(
+              AppRouter.mainLayout,
+              (route) => false,
+            );
+          }
+        },
+      ),
+      trailing: showEditIcon
+          ? IconButton(
+              icon: const Icon(Icons.photo_library_outlined,
+                  color: BrandColors.text1),
+              onPressed: () => _navigateToManageMemory(context),
+            )
+          : null,
+      trailing2: IconButton(
+        icon: const Icon(Icons.ios_share, color: BrandColors.text1),
+        onPressed: () => _navigateToShareMemory(context, memory.status),
+      ),
+    );
+  }
+
+  // ─── Avatar Row ──────────────────────────────────────────
+
+  Widget _buildAvatarRow(List<Rsvp> participants) {
+    const maxAvatars = 6;
+    final visible = participants.take(maxAvatars).toList();
+    final overflow = participants.length - maxAvatars;
+
+    // Calculate actual width: each avatar 36px minus 8px overlap per avatar after first
+    final totalAvatars = overflow > 0 ? maxAvatars + 1 : visible.length;
+    final width = 36.0 + (28.0 * (totalAvatars - 1));
+
+    return SizedBox(
+      width: width,
+      height: 36,
+      child: Stack(
+        children: [
+          ...visible.asMap().entries.map((entry) {
+            final index = entry.key;
+            final participant = entry.value;
+            return Positioned(
+              left: index * 28.0,
+              child: Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(color: BrandColors.bg1, width: 2),
+                ),
+                child: ClipOval(
+                  child: participant.userAvatar != null
+                      ? Image.network(
+                          participant.userAvatar!,
+                          width: 32,
+                          height: 32,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) =>
+                              _buildDefaultAvatarSmall(participant.userName),
+                        )
+                      : _buildDefaultAvatarSmall(participant.userName),
+                ),
+              ),
+            );
+          }),
+          if (overflow > 0)
+            Positioned(
+              left: visible.length * 28.0,
+              child: Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: BrandColors.bg3,
+                  border: Border.all(color: BrandColors.bg1, width: 2),
+                ),
+                child: Center(
+                  child: Text(
+                    '+$overflow',
+                    style: AppText.bodyMedium.copyWith(
+                      color: BrandColors.text2,
+                      fontSize: 11,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDefaultAvatarSmall(String name) {
+    return Container(
+      width: 32,
+      height: 32,
+      color: BrandColors.bg3,
+      child: Center(
+        child: Text(
+          name.isNotEmpty ? name[0].toUpperCase() : '?',
+          style: AppText.labelLarge.copyWith(
+            color: BrandColors.text2,
+            fontSize: 13,
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ─── Bottom Banner ───────────────────────────────────────
+
+  bool _shouldShowBottomBanner(
     EventStatus eventStatus,
     bool userHasUploadedPhotos,
   ) {
-    // Only show during living or recap phases
-    if (eventStatus != EventStatus.living && eventStatus != EventStatus.recap) {
-      return false;
+    // Always show for recap, show for living only if user hasn't uploaded
+    if (eventStatus == EventStatus.recap) {
+      return true;
     }
-
-    // Show CTA if user hasn't uploaded photos yet
-    // (Hosts will have edit button instead, non-hosts see CTA to encourage upload)
-    return !userHasUploadedPhotos;
+    if (eventStatus == EventStatus.living) {
+      return !userHasUploadedPhotos;
+    }
+    return false;
   }
 
-  /// Build subtitle text: "Location • Date"
+  Widget _buildBottomBanner(
+    BuildContext context,
+    EventStatus eventStatus,
+    MemoryEntity memory,
+  ) {
+    final isRecap = eventStatus == EventStatus.recap;
+    final buttonColor = isRecap ? BrandColors.recap : BrandColors.living;
+
+    String subtitle;
+    if (isRecap && memory.recapTimeRemaining != null) {
+      subtitle = 'Recap closes in ${memory.formattedRecapTimeRemaining}';
+    } else {
+      subtitle = 'You can then select a photo cover';
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: Insets.screenH,
+        vertical: Gaps.md,
+      ),
+      decoration: const BoxDecoration(
+        color: BrandColors.bg2,
+        border: Border(
+          top: BorderSide(color: BrandColors.bg3, width: 1),
+        ),
+      ),
+      child: SafeArea(
+        top: false,
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'Add your photos',
+                    style: AppText.titleMediumEmph.copyWith(
+                      color: BrandColors.text1,
+                    ),
+                  ),
+                  const SizedBox(height: Gaps.xxs),
+                  Text(
+                    subtitle,
+                    style: AppText.bodyMedium.copyWith(
+                      color: BrandColors.text2,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: Gaps.md),
+            GestureDetector(
+              onTap: () => _handleAddPhotosFromCta(context, eventStatus),
+              child: Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: buttonColor,
+                  borderRadius: BorderRadius.circular(Radii.smAlt),
+                ),
+                child: Icon(
+                  isRecap ? Icons.add_photo_alternate : Icons.camera_alt,
+                  color: BrandColors.text1,
+                  size: 24,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ─── Helpers ─────────────────────────────────────────────
+
   String _buildSubtitle(String? location, DateTime eventDate) {
-    final dateStr = DateFormat('d MMMM yyyy').format(eventDate);
+    final dateStr = DateFormat('d MMM yyyy').format(eventDate);
     if (location != null && location.isNotEmpty) {
-      return '$location • $dateStr';
+      final shortLocation =
+          location.contains(',') ? location.split(',').first.trim() : location;
+      return '$shortLocation • $dateStr';
     }
     return dateStr;
   }
 
-  /// Build photo clusters from grid photos
-  /// Groups photos by temporal proximity (same day/hour)
+  String _buildStatsText(
+    int totalPhotos,
+    int participantCount,
+    String? lastAddedText,
+  ) {
+    final buffer = StringBuffer();
+    buffer.write('$totalPhotos photos \u2022 $participantCount participants');
+    if (lastAddedText != null) {
+      buffer.write(' \u2022 last added $lastAddedText');
+    }
+    return buffer.toString();
+  }
+
+  String _formatTimeAgo(DateTime dateTime) {
+    final now = DateTime.now();
+    final diff = now.difference(dateTime);
+    if (diff.inMinutes < 1) return 'just now';
+    if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
+    if (diff.inHours < 24) return '${diff.inHours}h ago';
+    return '${diff.inDays}d ago';
+  }
+
   List<PhotoCluster> _buildClusters(List<MemoryPhoto> photos) {
     if (photos.isEmpty) return [];
 
@@ -304,7 +581,6 @@ class _MemoryPageState extends ConsumerState<MemoryPage> {
       );
 
       if (currentDate == null || !_isSameDay(currentDate, photoDate)) {
-        // New cluster
         if (currentCluster.isNotEmpty) {
           clusters.add(PhotoCluster(
             label: _formatClusterLabel(currentDate!),
@@ -328,7 +604,6 @@ class _MemoryPageState extends ConsumerState<MemoryPage> {
       }
     }
 
-    // Add last cluster
     if (currentCluster.isNotEmpty && currentDate != null) {
       clusters.add(PhotoCluster(
         label: _formatClusterLabel(currentDate),
@@ -357,174 +632,45 @@ class _MemoryPageState extends ConsumerState<MemoryPage> {
     return DateFormat('d MMMM yyyy').format(date);
   }
 
-  /// Build AppBar based on event status
-  /// - Recap: AppBarWithSubtitle showing countdown timer
-  /// - Living/Ended: CommonAppBar
-  PreferredSizeWidget _buildAppBar(
-    BuildContext context,
-    WidgetRef ref,
-    EventStatus eventStatus,
-    bool isHost,
-    bool userHasUploadedPhotos,
-    MemoryEntity memory,
-  ) {
-    final leading = IconButton(
-      icon: const Icon(Icons.arrow_back, color: BrandColors.text1),
-      onPressed: () {
-        // Safe navigation: if no previous route, go to MainLayout (Home)
-        if (Navigator.of(context).canPop()) {
-          Navigator.of(context).pop();
-        } else {
-          Navigator.of(context).pushNamedAndRemoveUntil(
-            AppRouter.mainLayout,
-            (route) => false,
-          );
-        }
-      },
-    );
+  // ─── Navigation ──────────────────────────────────────────
 
-    // Recap state: show countdown timer with edit button (if applicable)
-    if (eventStatus == EventStatus.recap) {
-      final subtitle = memory.recapTimeRemaining != null
-          ? 'Closes in ${memory.formattedRecapTimeRemaining}'
-          : 'Closes soon';
-      final subtitleColor = memory.isRecapClosingSoon
-          ? BrandColors.cantVote // Red when <30min
-          : BrandColors.text2;
-
-      // Edit button (only if host or has uploaded photos)
-      final editButton = (isHost || userHasUploadedPhotos)
-          ? IconButton(
-              icon: const Icon(Icons.edit, color: BrandColors.text1),
-              onPressed: () => _navigateToManageMemory(context),
-            )
-          : null;
-
-      return AppBarWithSubtitle(
-        title: 'Memory',
-        subtitle: subtitle,
-        subtitleColor: subtitleColor,
-        leading: leading,
-        trailing: editButton,
-      );
-    }
-
-    // Living/Ended: standard AppBar with edit button (if applicable)
-    final trailing = _buildTrailingIcon(
-      context,
-      ref,
-      memory,
-      eventStatus,
-      isHost,
-      userHasUploadedPhotos,
-    );
-
-    return CommonAppBar(
-      title: 'Memory',
-      leading: leading,
-      trailing: trailing,
-    );
-  }
-
-  /// Build trailing icon based on event status and permissions
-  /// - Living/Recap: Edit button if user is host OR has uploaded photos
-  /// - Ended: No button (read-only)
-  Widget? _buildTrailingIcon(
-    BuildContext context,
-    WidgetRef ref,
-    MemoryEntity memory,
-    EventStatus eventStatus,
-    bool isHost,
-    bool userHasUploadedPhotos,
-  ) {
-    // Ended state: no edit button (read-only)
-    if (eventStatus == EventStatus.ended) {
-      return null;
-    }
-
-    // Living/Recap state: show edit if user is host OR has uploaded photos
-    if (isHost || userHasUploadedPhotos) {
-      return IconButton(
-        icon: const Icon(Icons.edit, color: BrandColors.text1),
-        onPressed: () => _navigateToManageMemory(context),
-      );
-    }
-
-    // No icon for users who haven't uploaded
-    return null;
-  }
-
-  /// Navigate to manage memory page
   Future<void> _navigateToManageMemory(BuildContext context) async {
-    // Invalidate provider before navigation to ensure fresh state
     ref.invalidate(memoryDetailProvider(widget.memoryId));
 
     await Navigator.of(context).pushNamed(
       AppRouter.manageMemory,
-      arguments: {
-        'memoryId': widget.memoryId,
-      },
+      arguments: {'memoryId': widget.memoryId},
     );
 
-    // Always refresh when returning from manage memory
-    // This ensures cover selections, photo deletions, etc. are reflected
     if (mounted) {
       ref.invalidate(memoryDetailProvider(widget.memoryId));
       try {
         await ref.read(memoryDetailProvider(widget.memoryId).future);
       } catch (e) {
-        // Handle error silently, provider will show error state
+        // Provider will show error state
       }
     }
   }
 
-  /// Handle add photos from CTA banner
-  /// Opens gallery first, then navigates to ManageMemory with selected photos
-  Future<void> _handleAddPhotosFromCta(BuildContext context) async {
-    final picker = ImagePicker();
-    final selectedImages = await picker.pickMultiImage(
-      maxWidth: 1920,
-      maxHeight: 1920,
-      imageQuality: 85,
-    );
-
-    if (selectedImages.isNotEmpty && mounted) {
-      // Limit to 5 photos
-      final limitedImages = selectedImages.take(5).toList();
-
-      if (limitedImages.length < selectedImages.length) {
-        if (!mounted) return;
-        if (!context.mounted) return;
-        TopBanner.showInfo(
-          context,
-          message: 'Maximum 5 photos selected',
-        );
-      }
-
-      // Navigate to ManageMemory with selected photos
-      if (!mounted) return;
-      if (!context.mounted) return;
-      final result = await Navigator.of(context).pushNamed(
-        AppRouter.manageMemory,
-        arguments: {
-          'memoryId': widget.memoryId,
-          'selectedPhotos': limitedImages.map((img) => img.path).toList(),
-        },
+  void _navigateToShareMemory(BuildContext context, EventStatus status) {
+    // Recap/Living: Share link via native share
+    if (status == EventStatus.recap || status == EventStatus.living) {
+      final memoryUrl = 'https://lazzo.app/memory/${widget.memoryId}';
+      SharePlus.instance.share(
+        ShareParams(
+          text: 'Check out this memory on Lazzo!\n$memoryUrl',
+        ),
       );
-
-      // Refresh if changes were made
-      if (result == true && mounted) {
-        ref.invalidate(memoryDetailProvider(widget.memoryId));
-        try {
-          await ref.read(memoryDetailProvider(widget.memoryId).future);
-        } catch (e) {
-          // Handle error silently
-        }
-      }
+      return;
     }
+
+    // Ended: Navigate to ShareMemoryPage for full share experience
+    Navigator.of(context).pushNamed(
+      AppRouter.shareMemory,
+      arguments: {'memoryId': widget.memoryId},
+    );
   }
 
-  /// Navigate to memory viewer page
   void _navigateToViewer(BuildContext context, String photoId) {
     Navigator.of(context).pushNamed(
       AppRouter.memoryViewer,
@@ -535,36 +681,77 @@ class _MemoryPageState extends ConsumerState<MemoryPage> {
     );
   }
 
-  /// Handle ending recap early (host action)
-  /// Note: Confirmation dialog is already shown by CloseRecapCard
-  Future<void> _handleEndRecapEarly(BuildContext context, WidgetRef ref) async {
-    try {
-      // Update event status to 'ended' in Supabase
-      // Trigger handle_event_ended() will automatically call notify_memory_ready()
-      await Supabase.instance.client
-          .from('events')
-          .update({'status': 'ended'}).eq('id', widget.memoryId);
+  Future<void> _handleAddPhotosFromCta(
+      BuildContext context, EventStatus eventStatus) async {
+    if (eventStatus == EventStatus.living) {
+      if (!mounted || !context.mounted) return;
+      PhotoSelectionBottomSheet.show(
+        context: context,
+        title: 'Add Photo',
+        showRemoveOption: false,
+        onAction: (action) async {
+          if (action == PhotoSourceAction.camera) {
+            final picker = ImagePicker();
+            final photo = await picker.pickImage(
+              source: ImageSource.camera,
+              maxWidth: 1920,
+              maxHeight: 1920,
+              imageQuality: 85,
+            );
+            if (photo != null && mounted && context.mounted) {
+              final result = await Navigator.of(context).pushNamed(
+                AppRouter.manageMemory,
+                arguments: {
+                  'memoryId': widget.memoryId,
+                  'selectedPhotos': [photo.path],
+                },
+              );
+              if (result == true && mounted) {
+                ref.invalidate(memoryDetailProvider(widget.memoryId));
+              }
+            }
+          } else if (action == PhotoSourceAction.gallery) {
+            await _pickFromGalleryAndNavigate(context);
+          }
+        },
+      );
+    } else {
+      await _pickFromGalleryAndNavigate(context);
+    }
+  }
 
-      // Refresh memory data and home data
-      ref.invalidate(memoryDetailProvider(widget.memoryId));
-      ref.invalidate(nextEventControllerProvider);
-      ref.invalidate(confirmedEventsControllerProvider);
+  Future<void> _pickFromGalleryAndNavigate(BuildContext context) async {
+    final picker = ImagePicker();
+    final selectedImages = await picker.pickMultiImage(
+      maxWidth: 1920,
+      maxHeight: 1920,
+      imageQuality: 85,
+    );
 
-      if (context.mounted) {
-        // Navigate to MemoryReadyPage
-        Navigator.of(context).pushReplacementNamed(
-          AppRouter.memoryReady,
-          arguments: {
-            'memoryId': widget.memoryId,
-          },
-        );
+    if (selectedImages.isNotEmpty && mounted) {
+      final limitedImages = selectedImages.take(5).toList();
+
+      if (limitedImages.length < selectedImages.length) {
+        if (!mounted || !context.mounted) return;
+        TopBanner.showInfo(context, message: 'Maximum 5 photos selected');
       }
-    } catch (e) {
-      if (context.mounted) {
-        TopBanner.showError(
-          context,
-          message: 'Failed to end recap',
-        );
+
+      if (!mounted || !context.mounted) return;
+      final result = await Navigator.of(context).pushNamed(
+        AppRouter.manageMemory,
+        arguments: {
+          'memoryId': widget.memoryId,
+          'selectedPhotos': limitedImages.map((img) => img.path).toList(),
+        },
+      );
+
+      if (result == true && mounted) {
+        ref.invalidate(memoryDetailProvider(widget.memoryId));
+        try {
+          await ref.read(memoryDetailProvider(widget.memoryId).future);
+        } catch (e) {
+          // Handle error silently
+        }
       }
     }
   }

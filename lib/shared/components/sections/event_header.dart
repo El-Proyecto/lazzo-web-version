@@ -40,7 +40,7 @@ class EventHeader extends StatelessWidget {
         Text(
           title,
           textAlign: TextAlign.center,
-          style: AppText.titleMediumEmph,
+          style: AppText.titleLargeEmph,
         ),
         const SizedBox(height: Gaps.xs),
 

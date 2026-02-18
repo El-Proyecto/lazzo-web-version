@@ -4,81 +4,88 @@ import 'package:flutter/material.dart';
 class AppText {
   static const _f = 'Roboto';
   static TextStyle get dropdownTitle => const TextStyle(
-    fontFamily: _f,
-    fontWeight: FontWeight.w400,
-    fontSize: 22,
-    height: 28 / 22,
-    letterSpacing: 0,
-  );
+        fontFamily: _f,
+        fontWeight: FontWeight.w400,
+        fontSize: 22,
+        height: 28 / 22,
+        letterSpacing: 0,
+      );
   static TextStyle get labelLarge => const TextStyle(
-    fontFamily: _f,
-    fontWeight: FontWeight.w500,
-    fontSize: 14,
-    height: 20 / 14,
-    letterSpacing: 0.5,
-  );
+        fontFamily: _f,
+        fontWeight: FontWeight.w500,
+        fontSize: 14,
+        height: 20 / 14,
+        letterSpacing: 0.5,
+      );
   static TextStyle get labelLargeEmph => const TextStyle(
-    fontFamily: _f,
-    fontWeight: FontWeight.w600,
-    fontSize: 14,
-    height: 20 / 14,
-    letterSpacing: 0.5,
-  );
+        fontFamily: _f,
+        fontWeight: FontWeight.w600,
+        fontSize: 14,
+        height: 20 / 14,
+        letterSpacing: 0.5,
+      );
   static TextStyle get bodyLarge => const TextStyle(
-    fontFamily: _f,
-    fontWeight: FontWeight.w400,
-    fontSize: 16,
-    height: 24 / 16,
-    letterSpacing: 0.5,
-  );
+        fontFamily: _f,
+        fontWeight: FontWeight.w400,
+        fontSize: 16,
+        height: 24 / 16,
+        letterSpacing: 0.5,
+      );
   static TextStyle get titleMediumEmph => const TextStyle(
-    fontFamily: _f,
-    fontWeight: FontWeight.w600,
-    fontSize: 16,
-    height: 24 / 16,
-    letterSpacing: 0.15,
-  );
+        fontFamily: _f,
+        fontWeight: FontWeight.w600,
+        fontSize: 16,
+        height: 24 / 16,
+        letterSpacing: 0.15,
+      );
+  static TextStyle get titleLargeEmph => const TextStyle(
+        fontFamily: _f,
+        fontWeight: FontWeight.w600,
+        fontSize: 22,
+        height: 28 / 22,
+        letterSpacing: 0,
+      );
   static TextStyle get headlineMedium => const TextStyle(
-    fontFamily: _f,
-    fontWeight: FontWeight.w500,
-    fontSize: 28,
-    height: 36 / 28,
-    letterSpacing: 0,
-  );
+        fontFamily: _f,
+        fontWeight: FontWeight.w500,
+        fontSize: 28,
+        height: 36 / 28,
+        letterSpacing: 0,
+      );
   static TextStyle get bodyMedium => const TextStyle(
-    fontFamily: _f,
-    fontWeight: FontWeight.w400,
-    fontSize: 14,
-    height: 20 / 14,
-    letterSpacing: 0.25,
-  );
+        fontFamily: _f,
+        fontWeight: FontWeight.w400,
+        fontSize: 14,
+        height: 20 / 14,
+        letterSpacing: 0.25,
+      );
   static TextStyle get bodyMediumEmph => const TextStyle(
-    fontFamily: _f,
-    fontWeight: FontWeight.w500,
-    fontSize: 14,
-    height: 20 / 14,
-    letterSpacing: 0.25,
-  );
+        fontFamily: _f,
+        fontWeight: FontWeight.w500,
+        fontSize: 14,
+        height: 20 / 14,
+        letterSpacing: 0.25,
+      );
 
   // Migration from app_styles.dart
   static TextStyle get enterCodeTitle => const TextStyle(
-    fontFamily: _f,
-    fontWeight: FontWeight.w500,
-    fontSize: 32,
-    height: 1.25,
-  );
+        fontFamily: _f,
+        fontWeight: FontWeight.w500,
+        fontSize: 32,
+        height: 1.25,
+      );
 
   static TextStyle get subtitleMuted => const TextStyle(
-    fontFamily: _f,
-    fontWeight: FontWeight.w500,
-    fontSize: 22,
-    height: 1.27,
-  );
+        fontFamily: _f,
+        fontWeight: FontWeight.w500,
+        fontSize: 22,
+        height: 1.27,
+      );
 
   static TextStyle get subtitleStrong => const TextStyle(
-    fontFamily: _f,
-    fontWeight: FontWeight.w500,
-    fontSize: 22,
-    height: 1.27,
-  );
+        fontFamily: _f,
+        fontWeight: FontWeight.w500,
+        fontSize: 22,
+        height: 1.27,
+      );
 }

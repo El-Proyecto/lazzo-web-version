@@ -39,10 +39,10 @@ import 'features/inbox/data/data_sources/notification_remote_data_source.dart';
 import 'features/inbox/data/repositories/notification_repository_impl.dart';
 import 'features/inbox/presentation/providers/notifications_provider.dart';
 
-// INBOX ACTIONS - TODO: Add real implementation imports when available
-// import '../features/inbox/data/data_sources/action_remote_data_source.dart';
-// import '../features/inbox/data/repositories/action_repository_impl.dart';
-// import '../features/inbox/presentation/providers/actions_provider.dart';
+// INBOX ACTIONS - Real implementation (computed from event data)
+import 'features/inbox/data/data_sources/action_remote_data_source.dart';
+import 'features/inbox/data/repositories/action_repository_impl.dart';
+import 'features/inbox/presentation/providers/actions_provider.dart';
 
 // LAZZO 2.0: Groups + Expenses removed
 
@@ -181,12 +181,12 @@ void main() async {
           },
         ),
 
-        // Action repo -> TODO: Add when ActionRepositoryImpl exists
-        // actionRepositoryProvider.overrideWith(
-        //   (ref) => ActionRepositoryImpl(
-        //     ActionRemoteDataSource(Supabase.instance.client),
-        //   ),
-        // ),
+        // ✅ INBOX ACTIONS repo -> real (computed from Supabase event data)
+        actionRepositoryProvider.overrideWith(
+          (ref) => ActionRepositoryImpl(
+            ActionRemoteDataSource(Supabase.instance.client),
+          ),
+        ),
 
         // ✅ MEMORY MANAGEMENT repo -> real (Supabase) via DI (Nov 27, 2025)
         memory_manage.memoryRepositoryProvider.overrideWith((ref) {

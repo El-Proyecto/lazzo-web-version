@@ -7,6 +7,7 @@ import '../../../../shared/components/common/top_banner.dart';
 import '../../../../shared/components/dialogs/confirmation_dialog.dart';
 import '../../../../shared/components/cards/add_photos_cta_card.dart';
 import '../../../../shared/components/cards/close_recap_card.dart';
+import '../../../../shared/components/inputs/photo_selector.dart';
 import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/constants/text_styles.dart';
 import '../../../../shared/themes/colors.dart';
@@ -115,51 +116,20 @@ class _ManageMemoryPageState extends ConsumerState<ManageMemoryPage> {
             children: [
               // Main content with scroll
               SingleChildScrollView(
-                physics:
-                    const AlwaysScrollableScrollPhysics(), // Enable scroll even when content is small
+                physics: const AlwaysScrollableScrollPhysics(),
                 child: Padding(
                   padding: EdgeInsets.only(
                     left: Insets.screenH,
                     right: Insets.screenH,
-                    bottom: _isSelectionMode
-                        ? 100
-                        : Gaps.xl, // Extra space for fixed button
+                    bottom: _isSelectionMode || _shouldShowCloseRecap()
+                        ? ((MediaQuery.of(context).size.height * 0.36)
+                        .clamp(200.0, 400.0))
+                        : Gaps.xl,
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const SizedBox(height: Gaps.lg),
-
-                      // Close Recap Card at top (only for hosts in recap with photos)
-                      if (_shouldShowCloseRecap())
-                        ...eventAsync.when(
-                          data: (event) {
-                            final endDateTime = event.endDateTime;
-                            if (endDateTime != null) {
-                              final recapEndTime =
-                                  endDateTime.add(const Duration(hours: 24));
-                              final remaining =
-                                  recapEndTime.difference(DateTime.now());
-                              if (!remaining.isNegative) {
-                                final hours = remaining.inHours;
-                                final minutes =
-                                    remaining.inMinutes.remainder(60);
-                                final timeRemaining = '${hours}h ${minutes}m';
-                                return [
-                                  CloseRecapCard(
-                                    timeRemaining: timeRemaining,
-                                    onCloseConfirmed: () => _handleCloseRecap(),
-                                    isLiving: false,
-                                  ),
-                                  const SizedBox(height: Gaps.md),
-                                ];
-                              }
-                            }
-                            return [];
-                          },
-                          loading: () => [],
-                          error: (_, __) => [],
-                        ),
 
                       // Show CTA banner if no photos exist yet, otherwise show cover selection
                       // CTA encourages first upload, cover selection manages existing photos
@@ -277,6 +247,53 @@ class _ManageMemoryPageState extends ConsumerState<ManageMemoryPage> {
                           color: Colors.white,
                           fontWeight: FontWeight.w600,
                         ),
+                      ),
+                    ),
+                  ),
+                ),
+
+              // Fixed bottom Close Recap banner (host only, recap with photos)
+              if (!_isSelectionMode && _shouldShowCloseRecap())
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: Insets.screenH,
+                      vertical: Gaps.md,
+                    ),
+                    decoration: const BoxDecoration(
+                      color: BrandColors.bg2,
+                      border: Border(
+                        top: BorderSide(color: BrandColors.bg3, width: 1),
+                      ),
+                    ),
+                    child: SafeArea(
+                      top: false,
+                      child: eventAsync.when(
+                        data: (event) {
+                          final endDateTime = event.endDateTime;
+                          if (endDateTime != null) {
+                            final recapEndTime =
+                                endDateTime.add(const Duration(hours: 24));
+                            final remaining =
+                                recapEndTime.difference(DateTime.now());
+                            if (!remaining.isNegative) {
+                              final hours = remaining.inHours;
+                              final minutes = remaining.inMinutes.remainder(60);
+                              final timeRemaining = '${hours}h ${minutes}m';
+                              return CloseRecapCard(
+                                timeRemaining: timeRemaining,
+                                onCloseConfirmed: () => _handleCloseRecap(),
+                                isLiving: false,
+                              );
+                            }
+                          }
+                          return const SizedBox.shrink();
+                        },
+                        loading: () => const SizedBox.shrink(),
+                        error: (_, __) => const SizedBox.shrink(),
                       ),
                     ),
                   ),
@@ -466,62 +483,73 @@ class _ManageMemoryPageState extends ConsumerState<ManageMemoryPage> {
         final status = event.status.toString().split('.').last;
         final isLiving = status == 'living';
 
-        // Get photo upload notifier
-        final photoNotifier = ref.read(
-          eventPhotoUploadNotifierProvider(widget.memoryId).notifier,
-        );
-
-        // Living: take photo with camera, Recap: pick from gallery
         if (isLiving) {
-          await photoNotifier.takePhoto(
-            eventId: widget.memoryId,
-          );
-        } else {
-          await photoNotifier.pickPhotoFromGallery(
-            eventId: widget.memoryId,
-          );
-        }
+          // Living: show photo source selector (camera / gallery)
+          if (!mounted) return;
+          PhotoSelectionBottomSheet.show(
+            context: context,
+            showRemoveOption: false,
+            onAction: (action) async {
+              final photoNotifier = ref.read(
+                eventPhotoUploadNotifierProvider(widget.memoryId).notifier,
+              );
 
-        // Show result
-        final uploadState = ref.read(
-          eventPhotoUploadNotifierProvider(widget.memoryId),
-        );
-
-        uploadState.when(
-          data: (photoUrl) {
-            if (photoUrl != null) {
-              if (mounted) {
-                TopBanner.showSuccess(
-                  context,
-                  message: '✅ Photo uploaded successfully!',
-                );
+              if (action == PhotoSourceAction.camera) {
+                await photoNotifier.takePhoto(eventId: widget.memoryId);
+              } else if (action == PhotoSourceAction.gallery) {
+                await photoNotifier.pickPhotoFromGallery(
+                    eventId: widget.memoryId);
               }
 
-              // Refresh the manage memory state to show new photos
-              ref.invalidate(manageMemoryProvider(widget.memoryId));
-              ref.invalidate(memoryDetailProvider(widget.memoryId));
-              ref.invalidate(eventDetailProvider(widget.memoryId));
-
-              setState(() => _hasChanges = true);
-            }
-          },
-          loading: () {},
-          error: (error, _) {
-            if (mounted) {
-              TopBanner.showError(
-                context,
-                message: '❌ Failed to upload photo: $error',
-              );
-            }
-          },
-        );
+              _showPhotoUploadResult();
+            },
+          );
+        } else {
+          // Recap: only gallery
+          final photoNotifier = ref.read(
+            eventPhotoUploadNotifierProvider(widget.memoryId).notifier,
+          );
+          await photoNotifier.pickPhotoFromGallery(eventId: widget.memoryId);
+          _showPhotoUploadResult();
+        }
       },
       loading: () {},
       error: (_, __) {
         if (mounted) {
+          TopBanner.showError(context, message: 'Event not loaded');
+        }
+      },
+    );
+  }
+
+  void _showPhotoUploadResult() {
+    final uploadState = ref.read(
+      eventPhotoUploadNotifierProvider(widget.memoryId),
+    );
+
+    uploadState.when(
+      data: (photoUrl) {
+        if (photoUrl != null) {
+          if (mounted) {
+            TopBanner.showSuccess(
+              context,
+              message: '✅ Photo uploaded successfully!',
+            );
+          }
+
+          ref.invalidate(manageMemoryProvider(widget.memoryId));
+          ref.invalidate(memoryDetailProvider(widget.memoryId));
+          ref.invalidate(eventDetailProvider(widget.memoryId));
+
+          setState(() => _hasChanges = true);
+        }
+      },
+      loading: () {},
+      error: (error, _) {
+        if (mounted) {
           TopBanner.showError(
             context,
-            message: 'Event not loaded',
+            message: '❌ Failed to upload photo: $error',
           );
         }
       },

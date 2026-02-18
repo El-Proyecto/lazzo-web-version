@@ -8,13 +8,15 @@ import '../../../../shared/components/nav/common_app_bar.dart';
 import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/constants/text_styles.dart';
 import '../../../../shared/themes/colors.dart';
+import '../../domain/entities/event_detail.dart';
 import '../../domain/entities/rsvp.dart';
 import '../providers/event_providers.dart';
+import '../providers/event_photo_providers.dart';
 import '../widgets/guest_vote_summary_card.dart';
 import '../widgets/guest_list_tile.dart';
 
 /// Page showing all event guests grouped and filterable by RSVP status.
-/// Accessible from the event detail app bar via the members icon.
+/// In living mode: shows photo + participant counts and member photo contributions.
 class ManageGuestsPage extends ConsumerStatefulWidget {
   final String eventId;
 
@@ -32,11 +34,14 @@ class _ManageGuestsPageState extends ConsumerState<ManageGuestsPage> {
   Widget build(BuildContext context) {
     final rsvpsAsync = ref.watch(eventRsvpsProvider(widget.eventId));
     final eventAsync = ref.watch(eventDetailProvider(widget.eventId));
+    final eventStatus = eventAsync.value?.status;
+    final isPhotoMode =
+        eventStatus == EventStatus.living || eventStatus == EventStatus.recap;
 
     return Scaffold(
       backgroundColor: BrandColors.bg1,
       appBar: CommonAppBar(
-        title: 'Manage Guests',
+        title: isPhotoMode ? 'Guests' : 'Manage Guests',
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: BrandColors.text1),
           onPressed: () => Navigator.of(context).pop(),
@@ -73,9 +78,13 @@ class _ManageGuestsPageState extends ConsumerState<ManageGuestsPage> {
         ),
       ),
       body: rsvpsAsync.when(
-        data: (rsvps) => _buildContent(rsvps),
-        loading: () => const Center(
-          child: CircularProgressIndicator(color: BrandColors.planning),
+        data: (rsvps) => isPhotoMode
+            ? _buildPhotoContributorContent(rsvps, eventStatus!)
+            : _buildContent(rsvps),
+        loading: () => Center(
+          child: CircularProgressIndicator(
+            color: isPhotoMode ? BrandColors.living : BrandColors.planning,
+          ),
         ),
         error: (error, _) => Center(
           child: Padding(
@@ -89,6 +98,139 @@ class _ManageGuestsPageState extends ConsumerState<ManageGuestsPage> {
       ),
     );
   }
+
+  // ─── Photo Contributor Mode (Living / Recap / Ended) ────
+
+  Widget _buildPhotoContributorContent(
+      List<Rsvp> rsvps, EventStatus eventStatus) {
+    final photosAsync = ref.watch(eventPhotosProvider(widget.eventId));
+    final photos = photosAsync.value ?? [];
+
+    // Accent color based on status
+    final accentColor = eventStatus == EventStatus.living
+        ? BrandColors.living
+        : eventStatus == EventStatus.recap
+            ? BrandColors.recap
+            : BrandColors.text2;
+
+    // Count total photos and participants (going only)
+    final totalPhotos = photos.length;
+    final goingRsvps =
+        rsvps.where((r) => r.status == RsvpStatus.going).toList();
+    final participantCount = goingRsvps.length;
+
+    // Build per-user photo counts from photos data
+    final photoCountByUser = <String, int>{};
+    for (final photo in photos) {
+      final uploaderId = photo['uploader_id'] as String? ?? '';
+      if (uploaderId.isNotEmpty) {
+        photoCountByUser[uploaderId] = (photoCountByUser[uploaderId] ?? 0) + 1;
+      }
+    }
+
+    // Build participant list with photo counts
+    final participantEntries = goingRsvps.map((rsvp) {
+      return _ParticipantEntry(
+        userId: rsvp.userId,
+        userName: rsvp.userName,
+        userAvatar: rsvp.userAvatar,
+        photoCount: photoCountByUser[rsvp.userId] ?? 0,
+      );
+    }).toList();
+
+    // Sort by photo count descending, then alphabetically
+    participantEntries.sort((a, b) {
+      final countCmp = b.photoCount.compareTo(a.photoCount);
+      if (countCmp != 0) return countCmp;
+      return a.userName.compareTo(b.userName);
+    });
+
+    return Column(
+      children: [
+        // Summary cards: Participants + Photos
+        Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: Insets.screenH,
+            vertical: Gaps.md,
+          ),
+          child: Row(
+            children: [
+              _LivingSummaryCard(
+                icon: Icons.people_outline,
+                count: participantCount,
+                label: 'Participants',
+                accentColor: accentColor,
+              ),
+              const SizedBox(width: Gaps.xs),
+              _LivingSummaryCard(
+                icon: Icons.photo_library_outlined,
+                count: totalPhotos,
+                label: 'Photos',
+                accentColor: accentColor,
+              ),
+            ],
+          ),
+        ),
+
+        // Participant list with photo counts
+        Expanded(
+          child: participantEntries.isEmpty
+              ? _buildLivingEmptyState()
+              : Container(
+                  margin: const EdgeInsets.symmetric(
+                    horizontal: Insets.screenH,
+                  ),
+                  decoration: BoxDecoration(
+                    color: BrandColors.bg2,
+                    borderRadius: BorderRadius.circular(Radii.md),
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(Radii.md),
+                    child: ListView.separated(
+                      padding: const EdgeInsets.symmetric(
+                        vertical: Pads.ctlV,
+                      ),
+                      itemCount: participantEntries.length,
+                      separatorBuilder: (_, __) => Divider(
+                        height: 1,
+                        color: BrandColors.border.withValues(alpha: 0.3),
+                        indent: Insets.screenH + 48 + Gaps.sm,
+                        endIndent: Insets.screenH,
+                      ),
+                      itemBuilder: (context, index) {
+                        final entry = participantEntries[index];
+                        return _LivingParticipantTile(entry: entry);
+                      },
+                    ),
+                  ),
+                ),
+        ),
+
+        const SizedBox(height: Gaps.lg),
+      ],
+    );
+  }
+
+  Widget _buildLivingEmptyState() {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: Insets.screenH),
+      decoration: BoxDecoration(
+        color: BrandColors.bg2,
+        borderRadius: BorderRadius.circular(Radii.md),
+      ),
+      child: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(Gaps.xl),
+          child: Text(
+            'No participants yet',
+            style: AppText.bodyLarge.copyWith(color: BrandColors.text2),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ─── Default Mode (Planning/Confirmed) ────────────────────
 
   Widget _buildContent(List<Rsvp> rsvps) {
     // Count votes by status (exclude pending)
@@ -229,5 +371,151 @@ class _ManageGuestsPageState extends ConsumerState<ManageGuestsPage> {
       case RsvpStatus.pending:
         return 'pending guests';
     }
+  }
+}
+
+// ─── Living Mode Helper Models & Widgets ─────────────────────
+
+class _ParticipantEntry {
+  final String userId;
+  final String userName;
+  final String? userAvatar;
+  final int photoCount;
+
+  const _ParticipantEntry({
+    required this.userId,
+    required this.userName,
+    this.userAvatar,
+    required this.photoCount,
+  });
+}
+
+/// Non-clickable summary card for living/recap/ended modes
+class _LivingSummaryCard extends StatelessWidget {
+  final IconData icon;
+  final int count;
+  final String label;
+  final Color accentColor;
+
+  const _LivingSummaryCard({
+    required this.icon,
+    required this.count,
+    required this.label,
+    this.accentColor = BrandColors.living,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: Pads.ctlV),
+        decoration: BoxDecoration(
+          color: BrandColors.bg3,
+          borderRadius: BorderRadius.circular(Radii.smAlt),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              label,
+              style: AppText.bodyMedium.copyWith(color: BrandColors.text1),
+            ),
+            const SizedBox(height: Gaps.xxs),
+            Text(
+              '$count',
+              style: AppText.headlineMedium.copyWith(
+                color: accentColor,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Participant tile for living mode — avatar + name + photo count
+class _LivingParticipantTile extends StatelessWidget {
+  final _ParticipantEntry entry;
+
+  const _LivingParticipantTile({required this.entry});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () {
+        Navigator.of(context).pushNamed(
+          AppRouter.otherProfile,
+          arguments: {'userId': entry.userId},
+        );
+      },
+      behavior: HitTestBehavior.opaque,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          vertical: Pads.ctlVXs,
+          horizontal: Pads.sectionH,
+        ),
+        child: Row(
+          children: [
+            // Avatar
+            CircleAvatar(
+              radius: 24,
+              backgroundColor: BrandColors.bg3,
+              child: entry.userAvatar != null
+                  ? ClipOval(
+                      child: Image.network(
+                        entry.userAvatar!,
+                        width: 48,
+                        height: 48,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => _buildDefaultAvatar(),
+                      ),
+                    )
+                  : _buildDefaultAvatar(),
+            ),
+            const SizedBox(width: Gaps.sm),
+
+            // Name
+            Expanded(
+              child: Text(
+                entry.userName,
+                style:
+                    AppText.titleMediumEmph.copyWith(color: BrandColors.text1),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+
+            // Photo count: number (text2) + icon after
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  '${entry.photoCount}',
+                  style: AppText.titleMediumEmph.copyWith(
+                    color: BrandColors.text2,
+                  ),
+                ),
+                const SizedBox(width: Gaps.xxs),
+                const Icon(
+                  Icons.photo_outlined,
+                  size: IconSizes.sm,
+                  color: BrandColors.text2,
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDefaultAvatar() {
+    return Text(
+      entry.userName.isNotEmpty ? entry.userName[0].toUpperCase() : '?',
+      style: AppText.bodyMediumEmph
+          .copyWith(color: BrandColors.text2, fontSize: 18),
+    );
   }
 }

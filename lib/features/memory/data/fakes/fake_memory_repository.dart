@@ -209,6 +209,7 @@ MemoryEntity _buildDynamicMemory() {
     id: 'memory-dynamic',
     eventId: 'event-dynamic',
     title: 'Memory Photos',
+    emoji: '🎉',
     location: 'Test Location',
     eventDate: _baseDate,
     endDatetime: FakeMemoryConfig.closeTime != null

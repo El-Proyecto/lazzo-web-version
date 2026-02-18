@@ -1,45 +1,24 @@
 import '../entities/action.dart';
 import '../repositories/action_repository.dart';
 
+/// Get all pending host actions for the current user.
 class GetUserActions {
   final ActionRepository repository;
 
   const GetUserActions(this.repository);
 
-  Future<List<ActionEntity>> call({
-    int limit = 20,
-    int offset = 0,
-    String? groupId,
-    String? eventId,
-  }) {
-    return repository.getActions(
-      limit: limit,
-      offset: offset,
-      groupId: groupId,
-      eventId: eventId,
-    );
+  Future<List<ActionEntity>> call() {
+    return repository.getActions();
   }
 }
 
-class GetActionsByTimeLeft {
+/// Dismiss an action the host doesn't want to see anymore.
+class DismissAction {
   final ActionRepository repository;
 
-  const GetActionsByTimeLeft(this.repository);
+  const DismissAction(this.repository);
 
-  Future<List<ActionEntity>> call({int limit = 20, bool overdueFirst = true}) {
-    return repository.getActionsByTimeLeft(
-      limit: limit,
-      overdueFirst: overdueFirst,
-    );
-  }
-}
-
-class CompleteAction {
-  final ActionRepository repository;
-
-  const CompleteAction(this.repository);
-
-  Future<void> call(String id) {
-    return repository.markAsCompleted(id);
+  Future<void> call(String actionId) {
+    return repository.dismissAction(actionId);
   }
 }
