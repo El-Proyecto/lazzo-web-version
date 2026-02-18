@@ -5,8 +5,9 @@ import '../../../../shared/themes/colors.dart';
 import '../../domain/entities/calendar_event_entity.dart';
 
 /// Calendar grid widget showing a month view with event indicators
-/// Days with events show emojis (overlapping if multiple)
-/// Past events with memory cover photos show a thumbnail
+/// Days with events show ONLY emojis or cover photos (no day number)
+/// Days without events show the day number
+/// Past dates use text2 color for the number
 class CalendarGrid extends StatelessWidget {
   final int year;
   final int month;
@@ -88,6 +89,9 @@ class CalendarGrid extends StatelessWidget {
         day.year == selectedDate.year &&
         day.month == selectedDate.month &&
         day.day == selectedDate.day;
+    bool isPast(DateTime day) =>
+        DateTime(day.year, day.month, day.day)
+            .isBefore(DateTime(today.year, today.month, today.day));
 
     final List<Widget> rows = [];
     List<Widget> currentRow = [];
@@ -107,6 +111,7 @@ class CalendarGrid extends StatelessWidget {
           events: dayEvents,
           isToday: isToday(date),
           isSelected: isSelected(date),
+          isPast: isPast(date),
           onTap: () => onDaySelected(date),
         ),
       );
@@ -146,11 +151,15 @@ class CalendarGrid extends StatelessWidget {
 }
 
 /// Individual day cell in the calendar grid
+/// If event exists: show ONLY emoji or cover photo (no number)
+/// If no event: show day number
+/// Past dates numbers use text2 color
 class _DayCell extends StatelessWidget {
   final int day;
   final List<CalendarEventEntity> events;
   final bool isToday;
   final bool isSelected;
+  final bool isPast;
   final VoidCallback onTap;
 
   const _DayCell({
@@ -158,6 +167,7 @@ class _DayCell extends StatelessWidget {
     required this.events,
     required this.isToday,
     required this.isSelected,
+    required this.isPast,
     required this.onTap,
   });
 
@@ -170,44 +180,46 @@ class _DayCell extends StatelessWidget {
 
     return GestureDetector(
       onTap: onTap,
-      child: SizedBox(
+      child: Container(
         width: 44,
         height: 56,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            if (hasEvents && !showCoverPhoto)
-              // Show emojis for events
-              _buildEmojiIndicator()
-            else if (showCoverPhoto)
-              // Show cover photo for past events with memories
-              _buildCoverPhoto(memoryEvent.first.coverPhotoUrl!)
-            else
-              // Just show the day number
-              _buildDayNumber(),
-          ],
+        decoration: isSelected
+            ? BoxDecoration(
+                color: BrandColors.bg3,
+                borderRadius: BorderRadius.circular(Radii.sm),
+              )
+            : null,
+        child: Center(
+          child: hasEvents && showCoverPhoto
+              ? _buildCoverPhoto(memoryEvent.first.coverPhotoUrl!)
+              : hasEvents
+                  ? _buildEmojiOnly()
+                  : _buildDayNumber(),
         ),
       ),
     );
   }
 
+  /// Show only the day number (no events)
   Widget _buildDayNumber() {
     return Container(
       width: 36,
       height: 36,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: isSelected
-            ? BrandColors.bg3
-            : isToday
-                ? BrandColors.planning.withValues(alpha: 0.3)
-                : Colors.transparent,
+        color: isToday
+            ? BrandColors.planning.withValues(alpha: 0.3)
+            : Colors.transparent,
       ),
       child: Center(
         child: Text(
           '$day',
           style: AppText.bodyLarge.copyWith(
-            color: isToday ? BrandColors.planning : BrandColors.text1,
+            color: isToday
+                ? BrandColors.planning
+                : isPast
+                    ? BrandColors.text2
+                    : BrandColors.text1,
             fontWeight: isToday ? FontWeight.w600 : FontWeight.w400,
           ),
         ),
@@ -215,103 +227,56 @@ class _DayCell extends StatelessWidget {
     );
   }
 
-  Widget _buildEmojiIndicator() {
-    // Show emojis with overlapping effect (max 2 visible)
+  /// Show ONLY emojis — no day number at all
+  Widget _buildEmojiOnly() {
     final emojis = events.map((e) => e.emoji).toSet().toList();
     final displayEmojis = emojis.take(2).toList();
 
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        // Day number (smaller when has events)
-        Container(
-          width: 36,
-          height: 22,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(Radii.sm),
-            color: isSelected
-                ? BrandColors.bg3
-                : isToday
-                    ? BrandColors.planning.withValues(alpha: 0.3)
-                    : Colors.transparent,
-          ),
-          child: Center(
+    if (displayEmojis.length == 1) {
+      return Text(
+        displayEmojis.first,
+        style: const TextStyle(fontSize: 24),
+      );
+    }
+
+    // Multiple emojis: overlapping stack
+    return SizedBox(
+      width: 40,
+      height: 32,
+      child: Stack(
+        alignment: Alignment.center,
+        clipBehavior: Clip.none,
+        children: [
+          Positioned(
+            left: 2,
             child: Text(
-              '$day',
-              style: AppText.bodyMedium.copyWith(
-                color: isToday ? BrandColors.planning : BrandColors.text1,
-                fontWeight: isToday ? FontWeight.w600 : FontWeight.w400,
-                fontSize: 13,
-              ),
+              displayEmojis[0],
+              style: const TextStyle(fontSize: 20),
             ),
           ),
-        ),
-        // Overlapping emojis row
-        SizedBox(
-          height: 24,
-          child: Stack(
-            alignment: Alignment.center,
-            clipBehavior: Clip.none,
-            children: [
-              for (int i = 0; i < displayEmojis.length; i++)
-                Positioned(
-                  left: i == 0 ? (displayEmojis.length > 1 ? 0 : 8) : 14,
-                  child: Text(
-                    displayEmojis[i],
-                    style: const TextStyle(fontSize: 16),
-                  ),
-                ),
-            ],
+          Positioned(
+            left: 16,
+            child: Text(
+              displayEmojis[1],
+              style: const TextStyle(fontSize: 20),
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
+  /// Show cover photo thumbnail (for past events with memories)
   Widget _buildCoverPhoto(String url) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        // Day number
-        Container(
-          width: 36,
-          height: 18,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(Radii.sm),
-            color: isSelected
-                ? BrandColors.bg3
-                : isToday
-                    ? BrandColors.planning.withValues(alpha: 0.3)
-                    : Colors.transparent,
-          ),
-          child: Center(
-            child: Text(
-              '$day',
-              style: AppText.bodyMedium.copyWith(
-                color: isToday ? BrandColors.planning : BrandColors.text1,
-                fontWeight: isToday ? FontWeight.w600 : FontWeight.w400,
-                fontSize: 12,
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(height: 1),
-        // Cover photo thumbnail
-        ClipRRect(
-          borderRadius: BorderRadius.circular(4),
-          child: Image.network(
-            url,
-            width: 30,
-            height: 30,
-            fit: BoxFit.cover,
-            errorBuilder: (_, __, ___) => const SizedBox(
-              width: 30,
-              height: 30,
-              child: Icon(Icons.image, size: 16, color: BrandColors.text2),
-            ),
-          ),
-        ),
-      ],
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(Radii.sm),
+      child: Image.network(
+        url,
+        width: 38,
+        height: 38,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => _buildEmojiOnly(),
+      ),
     );
   }
 }

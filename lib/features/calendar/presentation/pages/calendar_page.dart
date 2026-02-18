@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../../shared/components/nav/calendar_app_bar.dart';
+import '../../../../shared/components/nav/common_app_bar.dart';
 import '../../../../shared/themes/colors.dart';
 import '../providers/calendar_providers.dart';
+import '../widgets/calendar_header.dart';
 import '../widgets/calendar_grid.dart';
 import '../widgets/calendar_list_view.dart';
 import '../widgets/day_events_bottom_sheet.dart';
@@ -49,8 +50,16 @@ class _CalendarPageState extends ConsumerState<CalendarPage> {
     ref.read(selectedDayProvider.notifier).state = date;
   }
 
-  String _getTitle(DateTime month) {
+  String _getMonthTitle(DateTime month) {
     return '${_months[month.month - 1]} ${month.year}';
+  }
+
+  /// Calculate the number of weeks (rows) needed for a month
+  int _weeksInMonth(int year, int month) {
+    final firstDay = DateTime(year, month, 1);
+    final daysInMonth = DateTime(year, month + 1, 0).day;
+    final startingWeekday = firstDay.weekday % 7; // 0=Sun
+    return ((startingWeekday + daysInMonth) / 7).ceil();
   }
 
   @override
@@ -59,29 +68,37 @@ class _CalendarPageState extends ConsumerState<CalendarPage> {
     final selectedDay = ref.watch(selectedDayProvider);
     final eventsByDay = ref.watch(eventsByDayProvider);
     final selectedDayEvents = ref.watch(selectedDayEventsProvider);
-    final allEventsAsync = ref.watch(allUpcomingEventsProvider);
     final monthEventsAsync = ref.watch(monthEventsProvider);
 
     return Scaffold(
       backgroundColor: BrandColors.bg1,
-      appBar: CalendarAppBar(
-        title: _getTitle(selectedMonth),
-        viewMode: _viewMode,
-        onViewModeChanged: (mode) {
-          setState(() {
-            _viewMode = mode;
-          });
-        },
+      appBar: const CommonAppBar(title: 'Calendar'),
+      body: Column(
+        children: [
+          // Month title + view toggle
+          CalendarHeader(
+            title: _getMonthTitle(selectedMonth),
+            viewMode: _viewMode,
+            onViewModeChanged: (mode) {
+              setState(() {
+                _viewMode = mode;
+              });
+            },
+          ),
+          // Content area
+          Expanded(
+            child: _viewMode == CalendarViewMode.calendar
+                ? _buildCalendarView(
+                    selectedMonth,
+                    selectedDay,
+                    eventsByDay,
+                    selectedDayEvents,
+                    monthEventsAsync,
+                  )
+                : _buildListView(monthEventsAsync),
+          ),
+        ],
       ),
-      body: _viewMode == CalendarViewMode.calendar
-          ? _buildCalendarView(
-              selectedMonth,
-              selectedDay,
-              eventsByDay,
-              selectedDayEvents,
-              monthEventsAsync,
-            )
-          : _buildListView(allEventsAsync),
     );
   }
 
@@ -92,61 +109,78 @@ class _CalendarPageState extends ConsumerState<CalendarPage> {
     List<dynamic> selectedDayEvents,
     AsyncValue<List<dynamic>> monthEventsAsync,
   ) {
-    return Stack(
-      children: [
-        // Calendar grid at the top
-        Column(
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final totalHeight = constraints.maxHeight;
+        // Calculate calendar grid height dynamically
+        final weeks = _weeksInMonth(selectedMonth.year, selectedMonth.month);
+        // weekday headers(~24) + gap(8) + rows(weeks * 56) + bottom padding(8)
+        final calendarHeight = 24.0 + 8 + (weeks * 56.0) + 8;
+        final calendarRatio = calendarHeight / totalHeight;
+        final sheetInitial = (1.0 - calendarRatio).clamp(0.25, 0.75);
+
+        return Stack(
           children: [
-            monthEventsAsync.when(
-              data: (_) => CalendarGrid(
-                year: selectedMonth.year,
-                month: selectedMonth.month,
-                selectedDate: selectedDay,
-                eventsByDay: eventsByDay.cast(),
-                onDaySelected: _onDaySelected,
-                onSwipeLeft: _goToNextMonth,
-                onSwipeRight: _goToPreviousMonth,
-              ),
-              loading: () => const SizedBox(
-                height: 300,
-                child: Center(
-                  child: CircularProgressIndicator(
-                    color: BrandColors.planning,
+            // Calendar grid at the top
+            Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                monthEventsAsync.when(
+                  data: (_) => CalendarGrid(
+                    year: selectedMonth.year,
+                    month: selectedMonth.month,
+                    selectedDate: selectedDay,
+                    eventsByDay: eventsByDay.cast(),
+                    onDaySelected: _onDaySelected,
+                    onSwipeLeft: _goToNextMonth,
+                    onSwipeRight: _goToPreviousMonth,
+                  ),
+                  loading: () => SizedBox(
+                    height: calendarHeight,
+                    child: const Center(
+                      child: CircularProgressIndicator(
+                        color: BrandColors.planning,
+                      ),
+                    ),
+                  ),
+                  error: (error, _) => SizedBox(
+                    height: calendarHeight,
+                    child: const Center(
+                      child: Text(
+                        'Failed to load events',
+                        style: TextStyle(color: BrandColors.text2),
+                      ),
+                    ),
                   ),
                 ),
-              ),
-              error: (error, _) => const SizedBox(
-                height: 300,
-                child: Center(
-                  child: Text(
-                    'Failed to load events',
-                    style: TextStyle(color: BrandColors.text2),
-                  ),
-                ),
-              ),
+              ],
+            ),
+            // Bottom sheet for selected day events
+            DraggableScrollableSheet(
+              initialChildSize: sheetInitial,
+              minChildSize: sheetInitial,
+              maxChildSize: 0.85,
+              builder: (context, scrollController) {
+                return DayEventsBottomSheet(
+                  selectedDate: selectedDay,
+                  events: selectedDayEvents.cast(),
+                  scrollController: scrollController,
+                );
+              },
             ),
           ],
-        ),
-        // Bottom sheet for selected day events
-        DraggableScrollableSheet(
-          initialChildSize: 0.35,
-          minChildSize: 0.25,
-          maxChildSize: 0.85,
-          builder: (context, scrollController) {
-            return DayEventsBottomSheet(
-              selectedDate: selectedDay,
-              events: selectedDayEvents.cast(),
-              scrollController: scrollController,
-            );
-          },
-        ),
-      ],
+        );
+      },
     );
   }
 
-  Widget _buildListView(AsyncValue<List<dynamic>> allEventsAsync) {
-    return allEventsAsync.when(
-      data: (events) => CalendarListView(events: events.cast()),
+  Widget _buildListView(AsyncValue<List<dynamic>> monthEventsAsync) {
+    return monthEventsAsync.when(
+      data: (events) => CalendarListView(
+        events: events.cast(),
+        onSwipeLeft: _goToNextMonth,
+        onSwipeRight: _goToPreviousMonth,
+      ),
       loading: () => const Center(
         child: CircularProgressIndicator(color: BrandColors.planning),
       ),

@@ -1,19 +1,20 @@
 import 'package:flutter/material.dart';
-import '../../constants/spacing.dart';
-import '../../constants/text_styles.dart';
-import '../../themes/colors.dart';
+import '../../../../shared/constants/spacing.dart';
+import '../../../../shared/constants/text_styles.dart';
+import '../../../../shared/themes/colors.dart';
 
 /// Calendar view mode toggle
 enum CalendarViewMode { calendar, list }
 
-/// Shared app bar for the Calendar page
-/// Month/year title on the left, view toggle on the right
-class CalendarAppBar extends StatelessWidget implements PreferredSizeWidget {
+/// Private header widget for the calendar page
+/// Shows month/year title on the left and calendar/list toggle on the right
+/// This is NOT an AppBar — it lives inside the page body
+class CalendarHeader extends StatelessWidget {
   final String title;
   final CalendarViewMode viewMode;
   final ValueChanged<CalendarViewMode> onViewModeChanged;
 
-  const CalendarAppBar({
+  const CalendarHeader({
     super.key,
     required this.title,
     required this.viewMode,
@@ -22,46 +23,28 @@ class CalendarAppBar extends StatelessWidget implements PreferredSizeWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AppBar(
-      backgroundColor: Colors.transparent,
-      surfaceTintColor: Colors.transparent,
-      shadowColor: Colors.transparent,
-      elevation: 0,
-      automaticallyImplyLeading: false,
-      flexibleSpace: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: Pads.sectionH),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.end,
-          children: [
-            SizedBox(
-              height: kToolbarHeight,
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  // Month/Year title on the left
-                  Text(
-                    title,
-                    style: AppText.headlineMedium.copyWith(
-                      color: BrandColors.text1,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  // View toggle on the right
-                  _ViewToggle(
-                    viewMode: viewMode,
-                    onChanged: onViewModeChanged,
-                  ),
-                ],
-              ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(
+        horizontal: Pads.sectionH,
+        vertical: Gaps.xs,
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            title,
+            style: AppText.titleLargeEmph.copyWith(
+              color: BrandColors.text1,
             ),
-          ],
-        ),
+          ),
+          _ViewToggle(
+            viewMode: viewMode,
+            onChanged: onViewModeChanged,
+          ),
+        ],
       ),
     );
   }
-
-  @override
-  Size get preferredSize => const Size.fromHeight(kToolbarHeight);
 }
 
 /// Toggle widget that switches between calendar and list view

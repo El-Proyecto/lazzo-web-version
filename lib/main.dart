@@ -107,6 +107,12 @@ import '../features/settings/data/repositories/suggestion_repository_impl.dart'
 // CREATE EVENT & EVENT FEATURES (P1 - fake only, no imports needed)
 // Default fake repositories will be used automatically
 
+// CALENDAR - Real implementation
+import 'features/calendar/presentation/providers/calendar_providers.dart'
+    as calendar;
+import 'features/calendar/data/data_sources/calendar_remote_data_source.dart';
+import 'features/calendar/data/repositories/calendar_repository_impl.dart';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -284,6 +290,14 @@ void main() async {
           final dataSource =
               settings_suggestion_ds.SuggestionRemoteDataSource(client);
           return settings_suggestion_repo.SuggestionRepositoryImpl(dataSource);
+        }),
+
+        // ✅ CALENDAR repo -> real (Supabase) via DI
+        calendar.calendarRepositoryProvider.overrideWith((ref) {
+          final client = Supabase.instance.client;
+          final userId = client.auth.currentUser?.id ?? '';
+          final dataSource = CalendarRemoteDataSource(client);
+          return CalendarRepositoryImpl(dataSource, userId);
         }),
       ],
       child: const LazzoApp(),

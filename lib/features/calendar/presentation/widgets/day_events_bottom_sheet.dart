@@ -8,6 +8,7 @@ import '../../domain/entities/calendar_event_entity.dart';
 
 /// Bottom sheet that shows events for the selected day
 /// Can be dragged from collapsed to almost full screen
+/// Background uses bg2 color
 class DayEventsBottomSheet extends StatelessWidget {
   final DateTime selectedDate;
   final List<CalendarEventEntity> events;
@@ -63,34 +64,42 @@ class DayEventsBottomSheet extends StatelessWidget {
     }
   }
 
-  String _formatEventDate(CalendarEventEntity event) {
+  /// Format: "14:30-18h30" (same day) or "14:30 - 28 Nov 18h30" (multi-day)
+  String _formatEventDateTime(CalendarEventEntity event) {
     if (event.date == null) return 'Date TBD';
-    final d = event.date!;
-    const weekdaysShort = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-    const monthsShort = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec',
-    ];
-    final wd = weekdaysShort[d.weekday - 1];
-    final mo = monthsShort[d.month - 1];
-    return '$wd, ${d.day} $mo';
+    final start = event.date!;
+    final end = event.endDate;
+
+    String fmtTime(DateTime dt) =>
+        '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+    String fmtTimeH(DateTime dt) =>
+        '${dt.hour.toString().padLeft(2, '0')}h${dt.minute.toString().padLeft(2, '0')}';
+
+    final startTime = fmtTime(start);
+    if (end == null) return startTime;
+
+    final sameDay = start.year == end.year &&
+        start.month == end.month &&
+        start.day == end.day;
+    final endTime = fmtTimeH(end);
+
+    if (sameDay) {
+      return '$startTime-$endTime';
+    } else {
+      const monthsShort = [
+        'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+      ];
+      final endMonth = monthsShort[end.month - 1];
+      return '$startTime - ${end.day} $endMonth $endTime';
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Container(
       decoration: const BoxDecoration(
-        color: BrandColors.bg1,
+        color: BrandColors.bg2,
         borderRadius: BorderRadius.vertical(
           top: Radius.circular(Radii.md),
         ),
@@ -134,10 +143,21 @@ class DayEventsBottomSheet extends StatelessWidget {
                   horizontal: Pads.sectionH,
                   vertical: Gaps.xxs,
                 ),
-                child: _CalendarEventCard(
-                  event: event,
-                  formattedDate: _formatEventDate(event),
-                  cardState: _mapStatus(event.status),
+                child: EventSmallCard(
+                  emoji: event.emoji,
+                  title: event.name,
+                  dateTime: _formatEventDateTime(event),
+                  location: event.location,
+                  state: _mapStatus(event.status),
+                  isExpired: event.isPast &&
+                      event.status == CalendarEventStatus.pending,
+                  onTap: () {
+                    Navigator.pushNamed(
+                      context,
+                      AppRouter.event,
+                      arguments: {'eventId': event.id},
+                    );
+                  },
                 ),
               ),
             ),
@@ -155,9 +175,10 @@ class DayEventsBottomSheet extends StatelessWidget {
       ),
       child: Column(
         children: [
-          const Text(
-            '📭',
-            style: TextStyle(fontSize: 48),
+          const Icon(
+            Icons.event_available_outlined,
+            size: 48,
+            color: BrandColors.text2,
           ),
           const SizedBox(height: Gaps.sm),
           Text(
@@ -193,184 +214,6 @@ class DayEventsBottomSheet extends StatelessWidget {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-/// Calendar-specific event card with green border for confirmed events
-/// Matches the design from the screenshot
-class _CalendarEventCard extends StatelessWidget {
-  final CalendarEventEntity event;
-  final String formattedDate;
-  final EventSmallCardState cardState;
-
-  const _CalendarEventCard({
-    required this.event,
-    required this.formattedDate,
-    required this.cardState,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final isConfirmed = event.status == CalendarEventStatus.confirmed;
-
-    return GestureDetector(
-      onTap: () {
-        Navigator.pushNamed(
-          context,
-          AppRouter.event,
-          arguments: {'eventId': event.id},
-        );
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(
-          horizontal: Pads.ctlH,
-          vertical: Pads.ctlV,
-        ),
-        decoration: BoxDecoration(
-          color: BrandColors.bg2,
-          borderRadius: BorderRadius.circular(Radii.md),
-          border: isConfirmed
-              ? Border.all(color: BrandColors.planning, width: 1.5)
-              : null,
-        ),
-        child: Row(
-          children: [
-            // Emoji
-            Text(event.emoji, style: const TextStyle(fontSize: 40)),
-            const SizedBox(width: Gaps.sm),
-            // Event info
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    event.name,
-                    style: AppText.titleMediumEmph.copyWith(
-                      color: BrandColors.text1,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 2),
-                  if (event.location != null)
-                    Row(
-                      children: [
-                        const Icon(
-                          Icons.location_on,
-                          size: 14,
-                          color: BrandColors.text2,
-                        ),
-                        const SizedBox(width: 2),
-                        Expanded(
-                          child: Text(
-                            event.location!,
-                            style: AppText.bodyMedium.copyWith(
-                              color: BrandColors.text2,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
-                    ),
-                  if (event.groupName != null) ...[
-                    const SizedBox(height: 2),
-                    Row(
-                      children: [
-                        const Icon(
-                          Icons.groups,
-                          size: 14,
-                          color: BrandColors.text2,
-                        ),
-                        const SizedBox(width: 4),
-                        Expanded(
-                          child: Text(
-                            event.groupName!,
-                            style: AppText.bodyMedium.copyWith(
-                              color: BrandColors.text2,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ],
-              ),
-            ),
-            const SizedBox(width: Gaps.xs),
-            // Status chip
-            _StatusChip(status: event.status),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// Status chip for calendar event cards
-class _StatusChip extends StatelessWidget {
-  final CalendarEventStatus status;
-
-  const _StatusChip({required this.status});
-
-  Color get _backgroundColor {
-    switch (status) {
-      case CalendarEventStatus.pending:
-        return BrandColors.bg3;
-      case CalendarEventStatus.confirmed:
-        return BrandColors.planning;
-      case CalendarEventStatus.living:
-        return BrandColors.living;
-      case CalendarEventStatus.recap:
-        return BrandColors.recap;
-    }
-  }
-
-  Color get _borderColor {
-    if (status == CalendarEventStatus.pending) return BrandColors.border;
-    return Colors.transparent;
-  }
-
-  Color get _textColor {
-    if (status == CalendarEventStatus.pending) return BrandColors.text1;
-    return Colors.white;
-  }
-
-  String get _label {
-    switch (status) {
-      case CalendarEventStatus.pending:
-        return 'Pending';
-      case CalendarEventStatus.confirmed:
-        return 'Confirmed';
-      case CalendarEventStatus.living:
-        return 'Live';
-      case CalendarEventStatus.recap:
-        return 'Recap';
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: Pads.sectionV,
-        vertical: Pads.ctlVXss,
-      ),
-      decoration: BoxDecoration(
-        color: _backgroundColor,
-        borderRadius: BorderRadius.circular(Radii.pill),
-        border: Border.all(color: _borderColor, width: 1),
-      ),
-      child: Text(
-        _label,
-        style: AppText.labelLarge.copyWith(
-          color: _textColor,
-          fontWeight: FontWeight.w500,
-        ),
       ),
     );
   }
