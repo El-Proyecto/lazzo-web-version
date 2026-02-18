@@ -48,8 +48,7 @@ class CalendarRemoteDataSource {
           uniqueEvents.values.map(CalendarEventModel.fromMap).toList();
 
       // Batch fetch cover photos
-      return await _enrichWithCoverPhotos(
-          models, uniqueEvents.keys.toList());
+      return await _enrichWithCoverPhotos(models, uniqueEvents.keys.toList());
     } catch (e) {
       return [];
     }
@@ -78,8 +77,7 @@ class CalendarRemoteDataSource {
       final models =
           uniqueEvents.values.map(CalendarEventModel.fromMap).toList();
 
-      return await _enrichWithCoverPhotos(
-          models, uniqueEvents.keys.toList());
+      return await _enrichWithCoverPhotos(models, uniqueEvents.keys.toList());
     } catch (e) {
       return [];
     }
@@ -105,9 +103,8 @@ class CalendarRemoteDataSource {
           (coverResponse as List<dynamic>).cast<Map<String, dynamic>>();
 
       if (coverData.isNotEmpty) {
-        final photoIds = coverData
-            .map((e) => e['cover_photo_id'] as String)
-            .toList();
+        final photoIds =
+            coverData.map((e) => e['cover_photo_id'] as String).toList();
 
         final photosResponse = await client
             .from('event_photos')
@@ -120,8 +117,7 @@ class CalendarRemoteDataSource {
         // Map photoId -> storagePath
         final Map<String, String> photoPathMap = {};
         for (final photo in photosData) {
-          photoPathMap[photo['id'] as String] =
-              photo['storage_path'] as String;
+          photoPathMap[photo['id'] as String] = photo['storage_path'] as String;
         }
 
         // Map eventId -> storagePath

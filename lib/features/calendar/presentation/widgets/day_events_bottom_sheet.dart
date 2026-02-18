@@ -87,8 +87,18 @@ class DayEventsBottomSheet extends StatelessWidget {
       return '$startTime-$endTime';
     } else {
       const monthsShort = [
-        'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-        'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+        'Jan',
+        'Feb',
+        'Mar',
+        'Apr',
+        'May',
+        'Jun',
+        'Jul',
+        'Aug',
+        'Sep',
+        'Oct',
+        'Nov',
+        'Dec',
       ];
       final endMonth = monthsShort[end.month - 1];
       return '$startTime - ${end.day} $endMonth $endTime';

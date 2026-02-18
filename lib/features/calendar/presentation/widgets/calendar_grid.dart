@@ -89,9 +89,8 @@ class CalendarGrid extends StatelessWidget {
         day.year == selectedDate.year &&
         day.month == selectedDate.month &&
         day.day == selectedDate.day;
-    bool isPast(DateTime day) =>
-        DateTime(day.year, day.month, day.day)
-            .isBefore(DateTime(today.year, today.month, today.day));
+    bool isPast(DateTime day) => DateTime(day.year, day.month, day.day)
+        .isBefore(DateTime(today.year, today.month, today.day));
 
     final List<Widget> rows = [];
     List<Widget> currentRow = [];
