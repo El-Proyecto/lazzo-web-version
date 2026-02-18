@@ -53,4 +53,5 @@ export 'dialogs/missing_fields_confirmation_dialog.dart';
 
 // Navigation Components
 export 'nav/app_bar_with_subtitle.dart';
+export 'nav/calendar_app_bar.dart';
 export 'nav/common_app_bar.dart';

@@ -38,9 +38,11 @@ class NavigationBar extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           _buildNavItem(0, Icons.home_outlined, Icons.home, false),
+          _buildNavItem(
+              1, Icons.calendar_today_outlined, Icons.calendar_today, false),
           _buildCenterButton(),
-          _buildNavItem(2, Icons.mail_outline, Icons.mail, true),
-          _buildNavItem(3, Icons.person_outline, Icons.person, false),
+          _buildNavItem(3, Icons.mail_outline, Icons.mail, true),
+          _buildNavItem(4, Icons.person_outline, Icons.person, false),
         ],
       ),
     );
@@ -118,7 +120,7 @@ class NavigationBar extends StatelessWidget {
     }
 
     return GestureDetector(
-      onTap: () => onTap(1),
+      onTap: () => onTap(2),
       child: SizedBox(
         width: 48,
         height: 48,
