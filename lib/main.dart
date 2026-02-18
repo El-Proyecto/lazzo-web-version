@@ -5,6 +5,9 @@ import 'env.dart';
 
 import 'package:lazzo/app.dart';
 
+// REALTIME (web → app sync via Supabase channels)
+import '../services/realtime_service.dart';
+
 // MEMORY (Home recent memories - different from manage_memory)
 import '../features/home/data/data_sources/memory_remote_data_source.dart';
 import '../features/home/data/repositories/memory_repository_impl.dart';
@@ -125,6 +128,14 @@ void main() async {
   runApp(
     ProviderScope(
       overrides: [
+        // ✅ REALTIME SERVICE -> live updates from Supabase (web→app sync)
+        realtimeServiceProvider.overrideWith((ref) {
+          final service = RealtimeService(Supabase.instance.client);
+          service.subscribe();
+          ref.onDispose(() => service.dispose());
+          return service;
+        }),
+
         // Memory repo -> real (Supabase)
         memoryRepositoryProvider.overrideWith(
           (ref) => MemoryRepositoryImpl(

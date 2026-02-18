@@ -9,6 +9,8 @@ class RecentMemoryDataSource {
 
   /// Fetch memories from the last 30 days for the current user
   /// Returns list of events with status 'recap' or 'ended' where user is a participant
+  ///
+  /// ✅ Optimized: single batch query for cover photos instead of N+1 individual queries.
   Future<List<Map<String, dynamic>>> getRecentMemories(String userId) async {
     try {
       // Calculate 30 days ago timestamp
@@ -49,60 +51,56 @@ class RecentMemoryDataSource {
         return [];
       }
 
-      // 3) Process each event to add cover photo
+      // 3) ✅ BATCH: Fetch ALL photos for these events in ONE query
+      //    Then pick the best cover photo per event in-memory.
+      final memoryEventIds =
+          eventsResponse.map((e) => e['id'] as String).toList();
+
+      final allPhotos = await _client
+          .from('event_photos')
+          .select('id, event_id, storage_path, is_portrait')
+          .inFilter('event_id', memoryEventIds)
+          .order('captured_at', ascending: true);
+
+      // Index photos by event_id for O(1) lookup
+      final photosByEvent = <String, List<Map<String, dynamic>>>{};
+      for (final photo in allPhotos as List) {
+        final eid = photo['event_id'] as String;
+        photosByEvent.putIfAbsent(eid, () => []).add(
+          Map<String, dynamic>.from(photo),
+        );
+      }
+
+      // 4) Pick best cover photo for each event
       final List<Map<String, dynamic>> memoriesWithCovers = [];
 
       for (final event in eventsResponse) {
         final eventMap = Map<String, dynamic>.from(event);
-        String? coverStoragePath;
         final eventId = eventMap['id'] as String;
         final coverPhotoId = eventMap['cover_photo_id'] as String?;
+        final photos = photosByEvent[eventId] ?? [];
 
-        // Try 1: Use cover_photo_id if set
+        String? coverStoragePath;
+
+        // Priority 1: explicit cover_photo_id
         if (coverPhotoId != null) {
-          try {
-            final coverResponse = await _client
-                .from('event_photos')
-                .select('storage_path')
-                .eq('id', coverPhotoId)
-                .maybeSingle();
-            if (coverResponse != null) {
-              coverStoragePath = coverResponse['storage_path'] as String?;
-            }
-          } catch (_) {}
+          final match = photos.where((p) => p['id'] == coverPhotoId);
+          if (match.isNotEmpty) {
+            coverStoragePath = match.first['storage_path'] as String?;
+          }
         }
 
-        // Try 2: Get first portrait photo
+        // Priority 2: first portrait photo
         if (coverStoragePath == null) {
-          try {
-            final portraitResponse = await _client
-                .from('event_photos')
-                .select('storage_path')
-                .eq('event_id', eventId)
-                .eq('is_portrait', true)
-                .order('captured_at', ascending: true)
-                .limit(1)
-                .maybeSingle();
-            if (portraitResponse != null) {
-              coverStoragePath = portraitResponse['storage_path'] as String?;
-            }
-          } catch (_) {}
+          final portrait = photos.where((p) => p['is_portrait'] == true);
+          if (portrait.isNotEmpty) {
+            coverStoragePath = portrait.first['storage_path'] as String?;
+          }
         }
 
-        // Try 3: Get any photo
-        if (coverStoragePath == null) {
-          try {
-            final anyPhoto = await _client
-                .from('event_photos')
-                .select('storage_path')
-                .eq('event_id', eventId)
-                .order('captured_at', ascending: true)
-                .limit(1)
-                .maybeSingle();
-            if (anyPhoto != null) {
-              coverStoragePath = anyPhoto['storage_path'] as String?;
-            }
-          } catch (_) {}
+        // Priority 3: any photo
+        if (coverStoragePath == null && photos.isNotEmpty) {
+          coverStoragePath = photos.first['storage_path'] as String?;
         }
 
         if (coverStoragePath != null) {

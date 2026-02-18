@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../shared/components/nav/common_app_bar.dart';
@@ -29,6 +30,24 @@ class HomeSearchPage extends ConsumerStatefulWidget {
 
 class _HomeSearchPageState extends ConsumerState<HomeSearchPage> {
   String _searchQuery = '';
+  Timer? _debounce;
+
+  @override
+  void dispose() {
+    _debounce?.cancel();
+    super.dispose();
+  }
+
+  void _onSearchChanged(String value) {
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 400), () {
+      if (mounted) {
+        setState(() {
+          _searchQuery = value.trim();
+        });
+      }
+    });
+  }
 
   String _formatEventDate(DateTime? date) {
     if (date == null) return 'Date and Location to be decided';
@@ -213,11 +232,7 @@ class _HomeSearchPageState extends ConsumerState<HomeSearchPage> {
               child: custom.SearchBar(
                 placeholder: 'Search events, memories...',
                 enabled: true,
-                onChanged: (value) {
-                  setState(() {
-                    _searchQuery = value;
-                  });
-                },
+                onChanged: _onSearchChanged,
               ),
             ),
 
