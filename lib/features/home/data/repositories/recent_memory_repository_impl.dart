@@ -61,7 +61,8 @@ class RecentMemoryRepositoryImpl implements RecentMemoryRepository {
       }).toList();
 
       return entities;
-    } catch (e) {
+    } catch (e, st) {
+      print('[RecentMemoryRepo] ERROR: $e\n$st');
       return [];
     }
   }

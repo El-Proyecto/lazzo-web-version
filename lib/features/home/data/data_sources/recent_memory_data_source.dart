@@ -14,13 +14,18 @@ class RecentMemoryDataSource {
       // Calculate 30 days ago timestamp
       final thirtyDaysAgo = DateTime.now().subtract(const Duration(days: 30));
 
+      print('[RecentMemory] userId=$userId thirtyDaysAgo=$thirtyDaysAgo');
+
       // 1) Get event IDs where user is a participant
       final participantResponse = await _client
           .from('event_participants')
           .select('pevent_id')
           .eq('user_id', userId);
 
+      print('[RecentMemory] participantRows=${participantResponse.length}');
+
       if (participantResponse.isEmpty) {
+        print('[RecentMemory] no participant rows → returning empty');
         return [];
       }
 
@@ -45,14 +50,19 @@ class RecentMemoryDataSource {
           .gte('end_datetime', thirtyDaysAgo.toIso8601String())
           .order('end_datetime', ascending: false);
 
-      if (eventsResponse == null || (eventsResponse as List).isEmpty) {
+      final eventsList = (eventsResponse as List).cast<Map<String, dynamic>>();
+      print('[RecentMemory] eventsResponse count=${eventsList.length}');
+
+      if (eventsList.isEmpty) {
+        print(
+            '[RecentMemory] eventsResponse is empty → check: statuses recap/ended AND end_datetime >= $thirtyDaysAgo');
         return [];
       }
 
       // 3) Process each event to add cover photo
       final List<Map<String, dynamic>> memoriesWithCovers = [];
 
-      for (final event in eventsResponse) {
+      for (final event in eventsList) {
         final eventMap = Map<String, dynamic>.from(event);
         String? coverStoragePath;
         final eventId = eventMap['id'] as String;
@@ -105,20 +115,23 @@ class RecentMemoryDataSource {
           } catch (_) {}
         }
 
+        print(
+            '[RecentMemory] event=${eventMap['name']} coverStoragePath=$coverStoragePath');
         if (coverStoragePath != null) {
           memoriesWithCovers.add({
             'id': eventId,
-            'title': eventMap['name'] as String? ?? 'Untitled',
-            'date': eventMap['end_datetime'],
-            'location':
-                (eventMap['locations'] as Map?)?['display_name'] as String?,
+            'name': eventMap['name'] as String? ?? 'Untitled',
+            'end_datetime': eventMap['end_datetime'],
+            'locations': eventMap['locations'],
             'cover_storage_path': coverStoragePath,
           });
         }
       }
 
+      print('[RecentMemory] memoriesWithCovers=${memoriesWithCovers.length}');
       return memoriesWithCovers;
     } catch (e) {
+      print('[RecentMemory] ERROR: $e');
       return [];
     }
   }

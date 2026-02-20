@@ -36,6 +36,9 @@ class ActionRepositoryImpl implements ActionRepository {
         isExpired = false;
       }
 
+      print(
+          '[Actions] event=${row.eventName} status=${row.eventStatus} start=${row.startDatetime} end=${row.endDatetime} isExpired=$isExpired undecided=$undecidedCount');
+
       // --- remindMaybeVoters ---
       // When: event is pending/confirmed, NOT expired, AND has maybe/pending guests
       if (!isExpired &&
