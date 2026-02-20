@@ -24,17 +24,11 @@ class ActionRepositoryImpl implements ActionRepository {
     for (final row in rows) {
       final undecidedCount = row.maybeCount + row.pendingCount;
 
-      // An event is expired when its date has passed while still pending/confirmed.
-      // Check end_datetime first; if null, fall back to start_datetime.
-      // Expired events should only show rescheduleExpiredEvent — not reminder/confirm.
-      final bool isExpired;
-      if (row.endDatetime != null) {
-        isExpired = row.endDatetime!.isBefore(now);
-      } else if (row.startDatetime != null) {
-        isExpired = row.startDatetime!.isBefore(now);
-      } else {
-        isExpired = false;
-      }
+      // An event is expired when its start_datetime has passed without being confirmed.
+      // This reflects the product concept: if the event start date passed and it was
+      // never confirmed, the host missed their window — the event is expired.
+      final bool isExpired =
+          row.startDatetime != null && row.startDatetime!.isBefore(now);
 
       print(
           '[Actions] event=${row.eventName} status=${row.eventStatus} start=${row.startDatetime} end=${row.endDatetime} isExpired=$isExpired undecided=$undecidedCount');

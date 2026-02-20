@@ -7,9 +7,11 @@ import '../../../../shared/components/cards/memory_small_card.dart';
 import '../../../../routes/app_router.dart';
 import '../../domain/entities/calendar_event_entity.dart';
 
-/// List view showing events for the current month, grouped by day
-/// Supports horizontal swipe for month navigation
-class CalendarListView extends StatelessWidget {
+/// List view showing events for the current month, grouped by day.
+/// Supports horizontal swipe for month navigation.
+/// Automatically scrolls to the first expired event on first build —
+/// past memories are visible above by scrolling up; future events below.
+class CalendarListView extends StatefulWidget {
   final List<CalendarEventEntity> events;
   final VoidCallback onSwipeLeft;
   final VoidCallback onSwipeRight;
@@ -21,10 +23,32 @@ class CalendarListView extends StatelessWidget {
     required this.onSwipeRight,
   });
 
+  @override
+  State<CalendarListView> createState() => _CalendarListViewState();
+}
+
+class _CalendarListViewState extends State<CalendarListView> {
+  late final ScrollController _scrollController;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController = ScrollController();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _scrollToFirstExpired();
+    });
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
   /// Group events by date
   Map<DateTime, List<CalendarEventEntity>> _groupByDate() {
     final Map<DateTime, List<CalendarEventEntity>> grouped = {};
-    for (final event in events) {
+    for (final event in widget.events) {
       if (event.date == null) continue;
       final dateKey = DateTime(
         event.date!.year,
@@ -34,6 +58,51 @@ class CalendarListView extends StatelessWidget {
       grouped.putIfAbsent(dateKey, () => []).add(event);
     }
     return grouped;
+  }
+
+  /// Scroll the list so the first expired event group is at the top.
+  /// "Expired" = past start date + still pending (never confirmed).
+  /// Uses estimated item heights — close enough to land on the right group.
+  void _scrollToFirstExpired() {
+    if (!_scrollController.hasClients) return;
+
+    final grouped = _groupByDate();
+    final sortedDates = grouped.keys.toList()..sort();
+
+    // Find the first date group that contains an expired event.
+    int? targetIndex;
+    for (int i = 0; i < sortedDates.length; i++) {
+      final dayEvents = grouped[sortedDates[i]]!;
+      final hasExpired = dayEvents.any(
+        (e) => e.isPast && e.status == CalendarEventStatus.pending,
+      );
+      if (hasExpired) {
+        targetIndex = i;
+        break;
+      }
+    }
+
+    // Nothing to scroll to (no expired events, or first group already expired).
+    if (targetIndex == null || targetIndex == 0) return;
+
+    // Estimate the pixel offset of the target group.
+    // ListView top padding: Gaps.md = 16px.
+    // Per group: optional leading gap (Gaps.lg=24) + header (~22px) + xs gap (8) + n*card (~82px each).
+    const double topPadding = Gaps.md;
+    const double groupLeadingGap = Gaps.lg;
+    const double headerHeight = 22.0;
+    const double headerBottomGap = Gaps.xs;
+    const double cardHeight = 82.0; // card + bottom padding (Gaps.xs=8)
+
+    double offset = topPadding;
+    for (int i = 0; i < targetIndex; i++) {
+      if (i > 0) offset += groupLeadingGap;
+      offset += headerHeight + headerBottomGap;
+      offset += (grouped[sortedDates[i]]!.length) * cardHeight;
+    }
+
+    final maxScroll = _scrollController.position.maxScrollExtent;
+    _scrollController.jumpTo(offset.clamp(0.0, maxScroll));
   }
 
   String _formatDayHeader(DateTime date) {
@@ -137,13 +206,14 @@ class CalendarListView extends StatelessWidget {
       onHorizontalDragEnd: (details) {
         if (details.primaryVelocity != null) {
           if (details.primaryVelocity! < -100) {
-            onSwipeLeft(); // Next month
+            widget.onSwipeLeft(); // Next month
           } else if (details.primaryVelocity! > 100) {
-            onSwipeRight(); // Previous month
+            widget.onSwipeRight(); // Previous month
           }
         }
       },
-      child: events.isEmpty ? _buildEmptyState(context) : _buildEventList(),
+      child:
+          widget.events.isEmpty ? _buildEmptyState(context) : _buildEventList(),
     );
   }
 
@@ -152,6 +222,7 @@ class CalendarListView extends StatelessWidget {
     final sortedDates = grouped.keys.toList()..sort();
 
     return ListView.builder(
+      controller: _scrollController,
       padding: const EdgeInsets.symmetric(
         horizontal: Pads.sectionH,
         vertical: Gaps.md,
