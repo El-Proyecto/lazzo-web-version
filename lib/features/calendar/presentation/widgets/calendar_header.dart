@@ -33,8 +33,9 @@ class CalendarHeader extends StatelessWidget {
         children: [
           Text(
             title,
-            style: AppText.titleLargeEmph.copyWith(
+            style: AppText.titleMediumEmph.copyWith(
               color: BrandColors.text1,
+              fontSize: 18,
             ),
           ),
           _ViewToggle(

@@ -170,6 +170,43 @@ class _DayCell extends StatelessWidget {
     required this.onTap,
   });
 
+  /// Returns the selection colour based on the highest-priority non-memory event.
+  /// Priority: living > recap > confirmed > expired > pending.
+  /// Memory events (past + has cover photo) are excluded from colour calculation.
+  Color get _selectionColor {
+    if (events.isEmpty) return BrandColors.bg3;
+
+    // Collect effective statuses, excluding memory events
+    final statuses = <String>{};
+    for (final e in events) {
+      // Skip memory events — they don't contribute to selection color
+      if (e.hasMemory && e.isPast) continue;
+      final key = (isPast && e.status == CalendarEventStatus.pending)
+          ? 'expired'
+          : e.status.name;
+      statuses.add(key);
+    }
+
+    // If only memories (no non-memory events), use default bg
+    if (statuses.isEmpty) return BrandColors.bg3;
+
+    // Pure priority — first match wins
+    if (statuses.contains('living')) {
+      return BrandColors.living.withValues(alpha: 0.25);
+    }
+    if (statuses.contains('recap')) {
+      return BrandColors.recap.withValues(alpha: 0.25);
+    }
+    if (statuses.contains('confirmed')) {
+      return BrandColors.planning.withValues(alpha: 0.25);
+    }
+    if (statuses.contains('expired')) {
+      return Colors.amber.withValues(alpha: 0.25);
+    }
+    // pending
+    return BrandColors.bg3;
+  }
+
   @override
   Widget build(BuildContext context) {
     final hasEvents = events.isNotEmpty;
@@ -184,7 +221,7 @@ class _DayCell extends StatelessWidget {
         height: 56,
         decoration: isSelected
             ? BoxDecoration(
-                color: BrandColors.bg3,
+                color: _selectionColor,
                 borderRadius: BorderRadius.circular(Radii.sm),
               )
             : null,

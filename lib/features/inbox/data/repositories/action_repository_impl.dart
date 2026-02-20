@@ -24,10 +24,17 @@ class ActionRepositoryImpl implements ActionRepository {
     for (final row in rows) {
       final undecidedCount = row.maybeCount + row.pendingCount;
 
-      // An event is expired when end_datetime has passed while still pending/confirmed.
+      // An event is expired when its date has passed while still pending/confirmed.
+      // Check end_datetime first; if null, fall back to start_datetime.
       // Expired events should only show rescheduleExpiredEvent — not reminder/confirm.
-      final isExpired =
-          row.endDatetime != null && row.endDatetime!.isBefore(now);
+      final bool isExpired;
+      if (row.endDatetime != null) {
+        isExpired = row.endDatetime!.isBefore(now);
+      } else if (row.startDatetime != null) {
+        isExpired = row.startDatetime!.isBefore(now);
+      } else {
+        isExpired = false;
+      }
 
       // --- remindMaybeVoters ---
       // When: event is pending/confirmed, NOT expired, AND has maybe/pending guests
@@ -85,10 +92,9 @@ class ActionRepositoryImpl implements ActionRepository {
       }
 
       // --- rescheduleExpiredEvent ---
-      // When: event end_datetime has passed (expired) and still pending/confirmed
-      if ((row.eventStatus == 'pending' || row.eventStatus == 'confirmed') &&
-          row.endDatetime != null &&
-          row.endDatetime!.isBefore(now)) {
+      // When: event is expired (date passed) and still pending/confirmed
+      if (isExpired &&
+          (row.eventStatus == 'pending' || row.eventStatus == 'confirmed')) {
         final key = 'reschedule_expired_event_${row.eventId}';
         if (!dismissed.contains(key) && !_localDismissals.contains(key)) {
           actions.add(ActionEntity(

@@ -3,6 +3,7 @@ import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/constants/text_styles.dart';
 import '../../../../shared/themes/colors.dart';
 import '../../../../shared/components/cards/event_small_card.dart';
+import '../../../../shared/components/cards/memory_small_card.dart';
 import '../../../../routes/app_router.dart';
 import '../../domain/entities/calendar_event_entity.dart';
 
@@ -172,29 +173,74 @@ class CalendarListView extends StatelessWidget {
               ),
             ),
             const SizedBox(height: Gaps.xs),
-            // Event cards for this day — using shared EventSmallCard
+            // Event cards for this day
             ...dayEvents.map(
               (event) => Padding(
                 padding: const EdgeInsets.only(bottom: Gaps.xs),
-                child: EventSmallCard(
-                  emoji: event.emoji,
-                  title: event.name,
-                  dateTime: _formatEventDateTime(event),
-                  location: event.location,
-                  state: _mapStatus(event.status),
-                  isExpired: event.isPast &&
-                      event.status == CalendarEventStatus.pending,
-                  onTap: () {
-                    Navigator.pushNamed(
-                      context,
-                      AppRouter.event,
-                      arguments: {'eventId': event.id},
-                    );
-                  },
-                ),
+                child: _buildEventCard(context, event),
               ),
             ),
           ],
+        );
+      },
+    );
+  }
+
+  /// Returns true if this event should be rendered as a memory card
+  bool _isMemoryEvent(CalendarEventEntity event) {
+    return event.hasMemory && event.isPast;
+  }
+
+  /// Format memory date: "12 Jul"
+  String _formatMemoryDate(CalendarEventEntity event) {
+    if (event.date == null) return '';
+    const monthsShort = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
+    return '${event.date!.day} ${monthsShort[event.date!.month - 1]}';
+  }
+
+  /// Build the appropriate card widget for an event
+  Widget _buildEventCard(BuildContext context, CalendarEventEntity event) {
+    if (_isMemoryEvent(event)) {
+      return MemorySmallCard(
+        title: event.name,
+        dateTime: _formatMemoryDate(event),
+        location: event.location,
+        coverPhotoUrl: event.coverPhotoUrl,
+        onTap: () {
+          Navigator.pushNamed(
+            context,
+            AppRouter.memory,
+            arguments: {'memoryId': event.id},
+          );
+        },
+      );
+    }
+
+    return EventSmallCard(
+      emoji: event.emoji,
+      title: event.name,
+      dateTime: _formatEventDateTime(event),
+      location: event.location,
+      state: _mapStatus(event.status),
+      isExpired: event.isPast && event.status == CalendarEventStatus.pending,
+      onTap: () {
+        Navigator.pushNamed(
+          context,
+          AppRouter.event,
+          arguments: {'eventId': event.id},
         );
       },
     );

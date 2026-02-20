@@ -3,6 +3,7 @@
 
 // Card Components
 export 'cards/memory_card.dart';
+export 'cards/memory_small_card.dart';
 // LAZZO 2.0: group_card.dart export removed
 export 'cards/action_card.dart';
 export 'cards/event_full_card.dart';

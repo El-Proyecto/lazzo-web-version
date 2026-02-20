@@ -159,7 +159,7 @@ class _CalendarPageState extends ConsumerState<CalendarPage> {
             DraggableScrollableSheet(
               initialChildSize: sheetInitial,
               minChildSize: sheetInitial,
-              maxChildSize: 0.85,
+              maxChildSize: 0.93,
               builder: (context, scrollController) {
                 return DayEventsBottomSheet(
                   selectedDate: selectedDay,

@@ -29,9 +29,11 @@ class CalendarEventModel {
       emoji: _normalizeEmoji((map['emoji'] ?? '📅') as String),
       date: _parseDateTime(map['start_datetime']),
       endDate: _parseDateTime(map['end_datetime']),
-      location: map['location_name'] as String?,
+      location: (map['location_name'] as String?) ??
+          ((map['locations'] as Map<String, dynamic>?)?['display_name']
+              as String?),
       status: _calculateStatus(
-        (map['event_status'] ?? 'pending') as String,
+        (map['event_status'] ?? map['status'] ?? 'pending') as String,
         _parseDateTime(map['start_datetime']),
         _parseDateTime(map['end_datetime']),
       ),

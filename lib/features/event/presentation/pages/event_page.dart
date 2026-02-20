@@ -478,9 +478,10 @@ class _EventPageState extends ConsumerState<EventPage> {
       ),
       bottomNavigationBar: eventAsync.whenOrNull(
         data: (event) {
-          // Show share button only for pending/confirmed events
-          if (event.status == EventStatus.pending ||
-              event.status == EventStatus.confirmed) {
+          // Show share button only for pending/confirmed events that are NOT expired
+          if ((event.status == EventStatus.pending ||
+                  event.status == EventStatus.confirmed) &&
+              !event.isExpired) {
             return Container(
               padding: const EdgeInsets.fromLTRB(
                 Insets.screenH,
