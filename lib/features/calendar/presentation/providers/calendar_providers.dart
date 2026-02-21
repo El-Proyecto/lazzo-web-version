@@ -31,9 +31,10 @@ final selectedDayProvider = StateProvider<DateTime>((ref) {
 });
 
 // Per-month cache — each month keeps its own loaded state.
-// Prevents dots disappearing while swiping pages.
-final monthEventsFamilyProvider = FutureProvider.autoDispose
-    .family<List<CalendarEventEntity>, DateTime>((ref, month) async {
+// NOT autoDispose so data survives while user swipes between months.
+final monthEventsFamilyProvider =
+    FutureProvider.family<List<CalendarEventEntity>, DateTime>(
+        (ref, month) async {
   final useCase = ref.watch(getEventsForMonthProvider);
   return await useCase(month.year, month.month);
 });

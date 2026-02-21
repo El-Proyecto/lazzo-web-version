@@ -9,10 +9,33 @@ import '../../../../routes/app_router.dart';
 import '../../domain/entities/calendar_event_entity.dart';
 import '../providers/calendar_providers.dart';
 
-/// List view showing events for the current month, grouped by day.
-/// Auto-changes month when scrolling past the top or bottom of the list.
-/// Automatically scrolls to the first expired event on first build —
-/// past memories are visible above by scrolling up; future events below.
+// ---------------------------------------------------------------------------
+// Row model — flat list of visual items
+// ---------------------------------------------------------------------------
+
+enum _RowKind { monthHeader, dayHeader, dayGap, eventCard }
+
+class _Row {
+  final _RowKind kind;
+  final DateTime? month; // for monthHeader
+  final DateTime? day; // for dayHeader
+  final CalendarEventEntity? event; // for eventCard
+  const _Row({required this.kind, this.month, this.day, this.event});
+}
+
+// Estimated row heights used to compute section offsets
+const double _kMonthHeaderH = 46.0; // text + bottom padding
+const double _kDayHeaderH = 28.0; // text + bottom padding
+const double _kDayGapH = Gaps.lg; // vertical gap between day groups
+const double _kCardH = 90.0; // card widget height including bottom gap
+const double _kListPaddingV = Gaps.md; // ListView vertical padding
+
+// ---------------------------------------------------------------------------
+// Widget
+// ---------------------------------------------------------------------------
+
+/// Multi-month continuous scroll list — synced bidirectionally with
+/// [selectedMonthProvider] so Calendar ↔ List views stay in step.
 class CalendarListView extends ConsumerStatefulWidget {
   final List<CalendarEventEntity> events;
 
@@ -27,113 +50,178 @@ class CalendarListView extends ConsumerStatefulWidget {
 
 class _CalendarListViewState extends ConsumerState<CalendarListView> {
   late final ScrollController _scrollController;
-  bool _monthChangeTriggered = false;
+
+  // Flat row list built from events
+  List<_Row> _rows = [];
+
+  // month DateTime → estimated pixel offset (top of that month's header)
+  Map<DateTime, double> _monthOffset = {};
+
+  // Sorted list of sections (months that have at least one event)
+  List<DateTime> _sectionMonths = [];
+
+  // Guards against feedback loops between scroll listener and provider listener
+  bool _programmaticScrolling = false;
 
   @override
   void initState() {
     super.initState();
     _scrollController = ScrollController();
+    _buildRowData();
+    _scrollController.addListener(_onScroll);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _scrollToFirstExpired();
+      // After first frame, jump to the month that the calendar is showing
+      _scrollToMonth(ref.read(selectedMonthProvider), animated: false);
     });
   }
 
   @override
+  void didUpdateWidget(CalendarListView old) {
+    super.didUpdateWidget(old);
+    if (widget.events != old.events) {
+      _buildRowData();
+    }
+  }
+
+  @override
   void dispose() {
+    _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
     super.dispose();
   }
 
-  /// Detect overscroll to auto-change month
-  bool _onScrollNotification(ScrollNotification notification) {
-    if (_monthChangeTriggered) return false;
+  // ---------------------------------------------------------------------------
+  // Data building
+  // ---------------------------------------------------------------------------
 
-    if (notification is OverscrollNotification) {
-      if (notification.overscroll < -20) {
-        // Overscrolled past top → previous month
-        _monthChangeTriggered = true;
-        _goToPreviousMonth();
-      } else if (notification.overscroll > 20) {
-        // Overscrolled past bottom → next month
-        _monthChangeTriggered = true;
-        _goToNextMonth();
-      }
-    } else if (notification is ScrollEndNotification) {
-      _monthChangeTriggered = false;
-    }
-    return false;
-  }
-
-  void _goToNextMonth() {
-    final current = ref.read(selectedMonthProvider);
-    final next = DateTime(current.year, current.month + 1);
-    ref.read(selectedMonthProvider.notifier).state = next;
-  }
-
-  void _goToPreviousMonth() {
-    final current = ref.read(selectedMonthProvider);
-    final prev = DateTime(current.year, current.month - 1);
-    ref.read(selectedMonthProvider.notifier).state = prev;
-  }
-
-  /// Group events by date
-  Map<DateTime, List<CalendarEventEntity>> _groupByDate() {
-    final Map<DateTime, List<CalendarEventEntity>> grouped = {};
+  /// Build flat [_rows], [_monthOffset], [_sectionMonths].
+  void _buildRowData() {
+    // Group: month → day → events
+    final Map<DateTime, Map<DateTime, List<CalendarEventEntity>>> byMonth = {};
     for (final event in widget.events) {
       if (event.date == null) continue;
-      final dateKey = DateTime(
-        event.date!.year,
-        event.date!.month,
-        event.date!.day,
-      );
-      grouped.putIfAbsent(dateKey, () => []).add(event);
+      final m = DateTime(event.date!.year, event.date!.month);
+      final d = DateTime(event.date!.year, event.date!.month, event.date!.day);
+      byMonth.putIfAbsent(m, () => {}).putIfAbsent(d, () => []).add(event);
     }
-    return grouped;
+
+    final sortedMonths = byMonth.keys.toList()..sort();
+    final rows = <_Row>[];
+    final monthOffset = <DateTime, double>{};
+    double offsetAccum = _kListPaddingV;
+
+    for (final month in sortedMonths) {
+      monthOffset[month] = offsetAccum;
+      rows.add(_Row(kind: _RowKind.monthHeader, month: month));
+      offsetAccum += _kMonthHeaderH;
+
+      final sortedDays = byMonth[month]!.keys.toList()..sort();
+      for (int di = 0; di < sortedDays.length; di++) {
+        if (di > 0) {
+          rows.add(const _Row(kind: _RowKind.dayGap));
+          offsetAccum += _kDayGapH;
+        }
+        final day = sortedDays[di];
+        rows.add(_Row(kind: _RowKind.dayHeader, day: day));
+        offsetAccum += _kDayHeaderH;
+
+        for (final event in byMonth[month]![day]!) {
+          rows.add(_Row(kind: _RowKind.eventCard, event: event));
+          offsetAccum += _kCardH;
+        }
+      }
+    }
+
+    _rows = rows;
+    _monthOffset = {...monthOffset};
+    _sectionMonths = sortedMonths;
   }
 
-  /// Scroll the list so the first expired event group is at the top.
-  /// "Expired" = past start date + still pending (never confirmed).
-  /// Uses estimated item heights — close enough to land on the right group.
-  void _scrollToFirstExpired() {
+  // ---------------------------------------------------------------------------
+  // Scroll ↔ Provider sync
+  // ---------------------------------------------------------------------------
+
+  /// Called every scroll frame. Determines which month header is at/above the
+  /// top of the viewport and updates [selectedMonthProvider].
+  void _onScroll() {
+    if (_programmaticScrolling) return;
     if (!_scrollController.hasClients) return;
+    final offset = _scrollController.offset;
 
-    final grouped = _groupByDate();
-    final sortedDates = grouped.keys.toList()..sort();
-
-    // Find the first date group that contains an expired event.
-    int? targetIndex;
-    for (int i = 0; i < sortedDates.length; i++) {
-      final dayEvents = grouped[sortedDates[i]]!;
-      final hasExpired = dayEvents.any(
-        (e) => e.isPast && e.status == CalendarEventStatus.pending,
-      );
-      if (hasExpired) {
-        targetIndex = i;
+    // Find the last month whose estimated offset is ≤ current scroll position
+    DateTime? current;
+    for (final month in _sectionMonths) {
+      final mo = _monthOffset[month] ?? 0.0;
+      if (mo <= offset + 1.0) {
+        current = month;
+      } else {
         break;
       }
     }
-
-    // Nothing to scroll to (no expired events, or first group already expired).
-    if (targetIndex == null || targetIndex == 0) return;
-
-    // Estimate the pixel offset of the target group.
-    // ListView top padding: Gaps.md = 16px.
-    // Per group: optional leading gap (Gaps.lg=24) + header (~22px) + xs gap (8) + n*card (~82px each).
-    const double topPadding = Gaps.md;
-    const double groupLeadingGap = Gaps.lg;
-    const double headerHeight = 22.0;
-    const double headerBottomGap = Gaps.xs;
-    const double cardHeight = 82.0; // card + bottom padding (Gaps.xs=8)
-
-    double offset = topPadding;
-    for (int i = 0; i < targetIndex; i++) {
-      if (i > 0) offset += groupLeadingGap;
-      offset += headerHeight + headerBottomGap;
-      offset += (grouped[sortedDates[i]]!.length) * cardHeight;
+    if (current == null && _sectionMonths.isNotEmpty) {
+      current = _sectionMonths.first;
     }
+    if (current == null) return;
 
-    final maxScroll = _scrollController.position.maxScrollExtent;
-    _scrollController.jumpTo(offset.clamp(0.0, maxScroll));
+    final providerMonth = ref.read(selectedMonthProvider);
+    if (current != providerMonth) {
+      ref.read(selectedMonthProvider.notifier).state = current;
+    }
+  }
+
+  /// Scroll the list to [month]'s section. Uses estimated offsets.
+  void _scrollToMonth(DateTime month, {bool animated = true}) {
+    if (!_scrollController.hasClients) return;
+
+    // Find the closest section month (in case the exact month has no events)
+    DateTime? target;
+    for (final m in _sectionMonths) {
+      if (!m.isBefore(month) && target == null) target = m;
+    }
+    target ??= _sectionMonths.isEmpty ? null : _sectionMonths.last;
+    if (target == null) return;
+
+    final offset = (_monthOffset[target] ?? 0.0).clamp(
+      0.0,
+      _scrollController.position.maxScrollExtent,
+    );
+
+    _programmaticScrolling = true;
+
+    if (animated) {
+      _scrollController
+          .animateTo(
+            offset,
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeInOut,
+          )
+          .then((_) => _programmaticScrolling = false);
+    } else {
+      _scrollController.jumpTo(offset);
+      _programmaticScrolling = false;
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Formatting helpers
+  // ---------------------------------------------------------------------------
+
+  String _getMonthTitle(DateTime month) {
+    const months = [
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December',
+    ];
+    return '${months[month.month - 1]} ${month.year}';
   }
 
   String _formatDayHeader(DateTime date) {
@@ -169,30 +257,11 @@ class _CalendarListViewState extends ConsumerState<CalendarListView> {
     final weekday = weekdays[date.weekday - 1];
     final month = months[date.month - 1];
 
-    if (dateOnly == today) {
-      return 'Today — $weekday, ${date.day} $month';
-    } else if (dateOnly == tomorrow) {
-      return 'Tomorrow — $weekday, ${date.day} $month';
-    }
+    if (dateOnly == today) return 'Today — $weekday, ${date.day} $month';
+    if (dateOnly == tomorrow) return 'Tomorrow — $weekday, ${date.day} $month';
     return '$weekday, ${date.day} $month';
   }
 
-  EventSmallCardState _mapStatus(CalendarEventStatus status) {
-    switch (status) {
-      case CalendarEventStatus.pending:
-        return EventSmallCardState.pending;
-      case CalendarEventStatus.confirmed:
-        return EventSmallCardState.confirmed;
-      case CalendarEventStatus.living:
-        return EventSmallCardState.living;
-      case CalendarEventStatus.recap:
-        return EventSmallCardState.recap;
-      case CalendarEventStatus.ended:
-        return EventSmallCardState.pending;
-    }
-  }
-
-  /// Format: "14:30-18h30" (same day) or "14:30 - 28 Nov 18h30" (multi-day)
   String _formatEventDateTime(CalendarEventEntity event) {
     if (event.date == null) return 'Date TBD';
     final start = event.date!;
@@ -203,92 +272,31 @@ class _CalendarListViewState extends ConsumerState<CalendarListView> {
     String fmtTimeH(DateTime dt) =>
         '${dt.hour.toString().padLeft(2, '0')}h${dt.minute.toString().padLeft(2, '0')}';
 
-    final startTime = fmtTime(start);
-    if (end == null) return startTime;
+    if (end == null) return fmtTime(start);
 
     final sameDay = start.year == end.year &&
         start.month == end.month &&
         start.day == end.day;
-    final endTime = fmtTimeH(end);
 
-    if (sameDay) {
-      return '$startTime-$endTime';
-    } else {
-      const monthsShort = [
-        'Jan',
-        'Feb',
-        'Mar',
-        'Apr',
-        'May',
-        'Jun',
-        'Jul',
-        'Aug',
-        'Sep',
-        'Oct',
-        'Nov',
-        'Dec',
-      ];
-      final endMonth = monthsShort[end.month - 1];
-      return '$startTime - ${end.day} $endMonth $endTime';
-    }
+    if (sameDay) return '${fmtTime(start)}-${fmtTimeH(end)}';
+
+    const monthsShort = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
+    return '${fmtTime(start)} - ${end.day} ${monthsShort[end.month - 1]} ${fmtTimeH(end)}';
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return NotificationListener<ScrollNotification>(
-      onNotification: _onScrollNotification,
-      child:
-          widget.events.isEmpty ? _buildEmptyState(context) : _buildEventList(),
-    );
-  }
-
-  Widget _buildEventList() {
-    final grouped = _groupByDate();
-    final sortedDates = grouped.keys.toList()..sort();
-
-    return ListView.builder(
-      controller: _scrollController,
-      padding: const EdgeInsets.symmetric(
-        horizontal: Pads.sectionH,
-        vertical: Gaps.md,
-      ),
-      itemCount: sortedDates.length,
-      itemBuilder: (context, index) {
-        final date = sortedDates[index];
-        final dayEvents = grouped[date]!;
-
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (index > 0) const SizedBox(height: Gaps.lg),
-            // Day header
-            Text(
-              _formatDayHeader(date),
-              style: AppText.titleMediumEmph.copyWith(
-                color: BrandColors.text1,
-              ),
-            ),
-            const SizedBox(height: Gaps.xs),
-            // Event cards for this day
-            ...dayEvents.map(
-              (event) => Padding(
-                padding: const EdgeInsets.only(bottom: Gaps.xs),
-                child: _buildEventCard(context, event),
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  /// Returns true if this event should be rendered as a memory card
-  /// Only ended events with photos are memories
-  bool _isMemoryEvent(CalendarEventEntity event) {
-    return event.status == CalendarEventStatus.ended && event.hasMemory;
-  }
-
-  /// Format memory date: "12 Jul"
   String _formatMemoryDate(CalendarEventEntity event) {
     if (event.date == null) return '';
     const monthsShort = [
@@ -308,64 +316,140 @@ class _CalendarListViewState extends ConsumerState<CalendarListView> {
     return '${event.date!.day} ${monthsShort[event.date!.month - 1]}';
   }
 
-  /// Build the appropriate card widget for an event
-  Widget _buildEventCard(BuildContext context, CalendarEventEntity event) {
+  EventSmallCardState _mapStatus(CalendarEventStatus status) {
+    switch (status) {
+      case CalendarEventStatus.pending:
+        return EventSmallCardState.pending;
+      case CalendarEventStatus.confirmed:
+        return EventSmallCardState.confirmed;
+      case CalendarEventStatus.living:
+        return EventSmallCardState.living;
+      case CalendarEventStatus.recap:
+        return EventSmallCardState.recap;
+      case CalendarEventStatus.ended:
+        return EventSmallCardState.pending;
+    }
+  }
+
+  bool _isMemoryEvent(CalendarEventEntity event) =>
+      event.status == CalendarEventStatus.ended && event.hasMemory;
+
+  // ---------------------------------------------------------------------------
+  // Item builders
+  // ---------------------------------------------------------------------------
+
+  Widget _buildMonthHeader(DateTime month) {
+    return Padding(
+      padding: const EdgeInsets.only(top: Gaps.xs, bottom: Gaps.md),
+      child: Text(
+        _getMonthTitle(month),
+        style: AppText.titleLargeEmph.copyWith(color: BrandColors.text1),
+      ),
+    );
+  }
+
+  Widget _buildDayHeader(DateTime date) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: Gaps.xs),
+      child: Text(
+        _formatDayHeader(date),
+        style: AppText.titleMediumEmph.copyWith(color: BrandColors.text1),
+      ),
+    );
+  }
+
+  Widget _buildEventCard(CalendarEventEntity event) {
     if (_isMemoryEvent(event)) {
-      return MemorySmallCard(
-        title: event.name,
-        dateTime: _formatMemoryDate(event),
-        location: event.location,
-        coverPhotoUrl: event.coverPhotoUrl,
-        onTap: () {
-          Navigator.pushNamed(
+      return Padding(
+        padding: const EdgeInsets.only(bottom: Gaps.xs),
+        child: MemorySmallCard(
+          title: event.name,
+          dateTime: _formatMemoryDate(event),
+          location: event.location,
+          coverPhotoUrl: event.coverPhotoUrl,
+          onTap: () => Navigator.pushNamed(
             context,
             AppRouter.memory,
             arguments: {'memoryId': event.id},
-          );
-        },
+          ),
+        ),
       );
     }
 
     final isLivingOrRecap = event.status == CalendarEventStatus.living ||
         event.status == CalendarEventStatus.recap;
 
-    return EventSmallCard(
-      emoji: event.emoji,
-      title: event.name,
-      dateTime: _formatEventDateTime(event),
-      location: event.location,
-      state: _mapStatus(event.status),
-      isExpired: event.isPast && event.status == CalendarEventStatus.pending,
-      onTap: () {
-        Navigator.pushNamed(
+    return Padding(
+      padding: const EdgeInsets.only(bottom: Gaps.xs),
+      child: EventSmallCard(
+        emoji: event.emoji,
+        title: event.name,
+        dateTime: _formatEventDateTime(event),
+        location: event.location,
+        state: _mapStatus(event.status),
+        isExpired: event.isPast && event.status == CalendarEventStatus.pending,
+        onTap: () => Navigator.pushNamed(
           context,
           isLivingOrRecap ? AppRouter.eventLiving : AppRouter.event,
           arguments: {'eventId': event.id},
-        );
+        ),
+      ),
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Build
+  // ---------------------------------------------------------------------------
+
+  @override
+  Widget build(BuildContext context) {
+    // When the calendar view changes month (arrow tap / swipe), scroll here too
+    ref.listen<DateTime>(selectedMonthProvider, (prev, next) {
+      if (!_programmaticScrolling) {
+        _scrollToMonth(next);
+      }
+    });
+
+    if (widget.events.isEmpty) return _buildEmptyState();
+
+    return ListView.builder(
+      controller: _scrollController,
+      padding: const EdgeInsets.symmetric(
+        horizontal: Pads.sectionH,
+        vertical: _kListPaddingV,
+      ),
+      itemCount: _rows.length,
+      itemBuilder: (context, index) {
+        final row = _rows[index];
+        switch (row.kind) {
+          case _RowKind.monthHeader:
+            return _buildMonthHeader(row.month!);
+          case _RowKind.dayHeader:
+            return _buildDayHeader(row.day!);
+          case _RowKind.dayGap:
+            return const SizedBox(height: _kDayGapH);
+          case _RowKind.eventCard:
+            return _buildEventCard(row.event!);
+        }
       },
     );
   }
 
-  Widget _buildEmptyState(BuildContext context) {
+  Widget _buildEmptyState() {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(
-            Icons.event_note_outlined,
-            size: 48,
-            color: BrandColors.text2,
-          ),
+          const Icon(Icons.event_note_outlined,
+              size: 48, color: BrandColors.text2),
           const SizedBox(height: Gaps.sm),
           Text(
-            'No events this month',
+            'No upcoming events',
             style: AppText.bodyLarge.copyWith(color: BrandColors.text2),
           ),
           const SizedBox(height: Gaps.md),
           GestureDetector(
-            onTap: () {
-              Navigator.pushNamed(context, AppRouter.createEvent);
-            },
+            onTap: () => Navigator.pushNamed(context, AppRouter.createEvent),
             child: Container(
               padding: const EdgeInsets.symmetric(
                 horizontal: Pads.ctlH,
@@ -377,9 +461,7 @@ class _CalendarListViewState extends ConsumerState<CalendarListView> {
               ),
               child: Text(
                 'Create Event',
-                style: AppText.labelLargeEmph.copyWith(
-                  color: Colors.white,
-                ),
+                style: AppText.labelLargeEmph.copyWith(color: Colors.white),
               ),
             ),
           ),
