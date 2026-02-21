@@ -353,8 +353,8 @@ class _CalendarListViewState extends ConsumerState<CalendarListView> {
       );
     }
 
-    final isLivingOrRecap = event.status == CalendarEventStatus.living ||
-        event.status == CalendarEventStatus.recap;
+    final isLiving = event.status == CalendarEventStatus.living;
+    final isRecap = event.status == CalendarEventStatus.recap;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: Gaps.xs),
@@ -365,11 +365,21 @@ class _CalendarListViewState extends ConsumerState<CalendarListView> {
         location: event.location,
         state: _mapStatus(event.status),
         isExpired: event.isPast && event.status == CalendarEventStatus.pending,
-        onTap: () => Navigator.pushNamed(
-          context,
-          isLivingOrRecap ? AppRouter.eventLiving : AppRouter.event,
-          arguments: {'eventId': event.id},
-        ),
+        onTap: () {
+          final String route;
+          if (isRecap) {
+            route = AppRouter.eventRecap;
+          } else if (isLiving) {
+            route = AppRouter.eventLiving;
+          } else {
+            route = AppRouter.event;
+          }
+          Navigator.pushNamed(
+            context,
+            route,
+            arguments: {'eventId': event.id},
+          );
+        },
       ),
     );
   }

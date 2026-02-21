@@ -214,8 +214,8 @@ class DayEventsBottomSheet extends StatelessWidget {
       );
     }
 
-    final isLivingOrRecap = event.status == CalendarEventStatus.living ||
-        event.status == CalendarEventStatus.recap;
+    final isLiving = event.status == CalendarEventStatus.living;
+    final isRecap = event.status == CalendarEventStatus.recap;
 
     return EventSmallCard(
       emoji: event.emoji,
@@ -225,9 +225,17 @@ class DayEventsBottomSheet extends StatelessWidget {
       state: _mapStatus(event.status),
       isExpired: event.isPast && event.status == CalendarEventStatus.pending,
       onTap: () {
+        final String route;
+        if (isRecap) {
+          route = AppRouter.eventRecap;
+        } else if (isLiving) {
+          route = AppRouter.eventLiving;
+        } else {
+          route = AppRouter.event;
+        }
         Navigator.pushNamed(
           context,
-          isLivingOrRecap ? AppRouter.eventLiving : AppRouter.event,
+          route,
           arguments: {'eventId': event.id},
         );
       },
