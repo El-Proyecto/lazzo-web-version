@@ -29,7 +29,7 @@ class FakeCalendarRepository implements CalendarRepository {
     return allEvents
         .where((e) =>
             e.date != null &&
-            e.date!.isAfter(now.subtract(const Duration(days: 30))))
+            e.date!.isAfter(now.subtract(const Duration(days: 60))))
         .toList()
       ..sort((a, b) =>
           (a.date ?? DateTime(2099)).compareTo(b.date ?? DateTime(2099)));
@@ -102,6 +102,27 @@ class FakeCalendarRepository implements CalendarRepository {
         date: DateTime(now.year, now.month + 1, 10),
         location: 'Restaurante',
         status: CalendarEventStatus.pending,
+        groupName: null,
+      ),
+      // Memory events — ended with cover photo (show as MemorySmallCard)
+      CalendarEventEntity(
+        id: '8',
+        name: 'Weekend Trip',
+        emoji: '🏕️',
+        date: DateTime(now.year, now.month, 5),
+        location: 'Serra da Estrela',
+        status: CalendarEventStatus.ended,
+        coverPhotoUrl: 'https://picsum.photos/seed/trip/400/300',
+        groupName: 'Amigos',
+      ),
+      CalendarEventEntity(
+        id: '9',
+        name: 'Birthday Party',
+        emoji: '🎂',
+        date: DateTime(now.year, now.month - 1, 20),
+        location: 'Casa do João',
+        status: CalendarEventStatus.ended,
+        coverPhotoUrl: 'https://picsum.photos/seed/birthday/400/300',
         groupName: null,
       ),
     ];

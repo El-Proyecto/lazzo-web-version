@@ -162,7 +162,7 @@ class _CalendarPageState extends ConsumerState<CalendarPage> {
     return LayoutBuilder(
       builder: (context, constraints) {
         final calendarRatio = _calendarHeight / constraints.maxHeight;
-        final sheetInitial = (1.0 - calendarRatio).clamp(0.25, 0.75);
+        final sheetInitial = (1.1 - calendarRatio).clamp(0.25, 0.75);
 
         return Stack(
           children: [

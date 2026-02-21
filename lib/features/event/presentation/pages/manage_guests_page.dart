@@ -110,7 +110,7 @@ class _ManageGuestsPageState extends ConsumerState<ManageGuestsPage> {
       }
     }
 
-    // Build participant list — only those who uploaded at least one photo
+    // Build participant list — all going participants (0 photos shown as 'No photos yet')
     final participantEntries = goingRsvps
         .map((rsvp) => _ParticipantEntry(
               userId: rsvp.userId,
@@ -118,7 +118,6 @@ class _ManageGuestsPageState extends ConsumerState<ManageGuestsPage> {
               userAvatar: rsvp.userAvatar,
               photoCount: photoCountByUser[rsvp.userId] ?? 0,
             ))
-        .where((e) => e.photoCount > 0)
         .toList();
 
     // Sort by photo count descending, then alphabetically

@@ -80,7 +80,7 @@ class CalendarRemoteDataSource {
     }
   }
 
-  /// Fetch all upcoming events for the user
+  /// Fetch all upcoming events for the user, including past events with memories
   Future<List<CalendarEventEntity>> fetchAllUpcomingEvents(
       String userId) async {
     try {
@@ -100,10 +100,31 @@ class CalendarRemoteDataSource {
         uniqueEvents.putIfAbsent(eventId, () => row);
       }
 
-      final models =
-          uniqueEvents.values.map(CalendarEventModel.fromMap).toList();
+      // Also include past events with cover photos (memories) not in the view,
+      // looking back 90 days so recent memories appear in the list.
+      final now = DateTime.now();
+      final lookback = now.subtract(const Duration(days: 90));
+      final pastModels = await _fetchPastMemoryEvents(
+        userId,
+        DateTime.utc(lookback.year, lookback.month, lookback.day),
+        DateTime.utc(now.year, now.month, now.day, 23, 59, 59),
+        uniqueEvents.keys.toList(),
+      );
 
-      return await _enrichWithCoverPhotos(models, uniqueEvents.keys.toList());
+      final viewModels =
+          uniqueEvents.values.map(CalendarEventModel.fromMap).toList();
+      final allModels = [...viewModels];
+      for (final pm in pastModels) {
+        if (!allModels.any((m) => m.id == pm.id)) {
+          allModels.add(pm);
+        }
+      }
+
+      allModels.sort((a, b) =>
+          (a.date ?? DateTime(2099)).compareTo(b.date ?? DateTime(2099)));
+
+      return await _enrichWithCoverPhotos(
+          allModels, allModels.map((m) => m.id).toList());
     } catch (e) {
       return [];
     }

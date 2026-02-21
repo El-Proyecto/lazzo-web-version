@@ -13,18 +13,16 @@ import '../providers/calendar_providers.dart';
 // Row model — flat list of visual items
 // ---------------------------------------------------------------------------
 
-enum _RowKind { monthHeader, dayHeader, dayGap, eventCard }
+enum _RowKind { dayHeader, dayGap, eventCard }
 
 class _Row {
   final _RowKind kind;
-  final DateTime? month; // for monthHeader
   final DateTime? day; // for dayHeader
   final CalendarEventEntity? event; // for eventCard
-  const _Row({required this.kind, this.month, this.day, this.event});
+  const _Row({required this.kind, this.day, this.event});
 }
 
 // Estimated row heights used to compute section offsets
-const double _kMonthHeaderH = 46.0; // text + bottom padding
 const double _kDayHeaderH = 28.0; // text + bottom padding
 const double _kDayGapH = Gaps.lg; // vertical gap between day groups
 const double _kCardH = 90.0; // card widget height including bottom gap
@@ -110,10 +108,17 @@ class _CalendarListViewState extends ConsumerState<CalendarListView> {
     final monthOffset = <DateTime, double>{};
     double offsetAccum = _kListPaddingV;
 
-    for (final month in sortedMonths) {
+    for (int mi = 0; mi < sortedMonths.length; mi++) {
+      final month = sortedMonths[mi];
+
+      // Gap between months — no text header, just breathing room
+      if (mi > 0) {
+        rows.add(const _Row(kind: _RowKind.dayGap));
+        offsetAccum += _kDayGapH;
+      }
+
+      // Offset points to the first day header of this month
       monthOffset[month] = offsetAccum;
-      rows.add(_Row(kind: _RowKind.monthHeader, month: month));
-      offsetAccum += _kMonthHeaderH;
 
       final sortedDays = byMonth[month]!.keys.toList()..sort();
       for (int di = 0; di < sortedDays.length; di++) {
@@ -205,24 +210,6 @@ class _CalendarListViewState extends ConsumerState<CalendarListView> {
   // ---------------------------------------------------------------------------
   // Formatting helpers
   // ---------------------------------------------------------------------------
-
-  String _getMonthTitle(DateTime month) {
-    const months = [
-      'January',
-      'February',
-      'March',
-      'April',
-      'May',
-      'June',
-      'July',
-      'August',
-      'September',
-      'October',
-      'November',
-      'December',
-    ];
-    return '${months[month.month - 1]} ${month.year}';
-  }
 
   String _formatDayHeader(DateTime date) {
     final now = DateTime.now();
@@ -338,16 +325,6 @@ class _CalendarListViewState extends ConsumerState<CalendarListView> {
   // Item builders
   // ---------------------------------------------------------------------------
 
-  Widget _buildMonthHeader(DateTime month) {
-    return Padding(
-      padding: const EdgeInsets.only(top: Gaps.xs, bottom: Gaps.md),
-      child: Text(
-        _getMonthTitle(month),
-        style: AppText.titleLargeEmph.copyWith(color: BrandColors.text1),
-      ),
-    );
-  }
-
   Widget _buildDayHeader(DateTime date) {
     return Padding(
       padding: const EdgeInsets.only(bottom: Gaps.xs),
@@ -422,8 +399,6 @@ class _CalendarListViewState extends ConsumerState<CalendarListView> {
       itemBuilder: (context, index) {
         final row = _rows[index];
         switch (row.kind) {
-          case _RowKind.monthHeader:
-            return _buildMonthHeader(row.month!);
           case _RowKind.dayHeader:
             return _buildDayHeader(row.day!);
           case _RowKind.dayGap:
