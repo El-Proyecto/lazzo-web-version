@@ -533,7 +533,7 @@ class _ManageMemoryPageState extends ConsumerState<ManageMemoryPage> {
           if (mounted) {
             TopBanner.showSuccess(
               context,
-              message: '✅ Photo uploaded successfully!',
+              message: 'Photo uploaded successfully!',
             );
           }
 

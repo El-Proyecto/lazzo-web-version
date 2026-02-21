@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../shared/components/widgets/rsvp_widget.dart';
 import '../../../../services/avatar_cache_service.dart';
@@ -121,6 +122,15 @@ class _HomeEventModel {
     // Fetch participant photos for living/recap events
     final participantPhotos = await _fetchParticipantPhotos();
 
+    // ✅ FIX: home_events_view has no photo_count/max_photos columns.
+    // Compute both from what we already have:
+    //   photoCount  = sum of each participant's photo count
+    //   maxPhotos   = max(20, 5 × total participants) — business rule
+    final computedPhotoCount =
+        participantPhotos.fold(0, (sum, p) => sum + p.photoCount);
+    final computedMaxPhotos =
+        [20, 5 * participantsTotal].reduce((a, b) => a > b ? a : b);
+
     return HomeEventEntity(
       id: id,
       name: name,
@@ -134,8 +144,8 @@ class _HomeEventModel {
       attendeeNames: _extractNames(goingUsers),
       userVote: _mapUserVote(userRsvp),
       allVotes: allVotes,
-      photoCount: photoCount,
-      maxPhotos: maxPhotos,
+      photoCount: computedPhotoCount,
+      maxPhotos: computedMaxPhotos,
       participantPhotos: participantPhotos,
     );
   }
@@ -145,6 +155,8 @@ class _HomeEventModel {
     try {
       // Only fetch photos for living/recap events
       if (status != 'living' && status != 'recap') {
+        debugPrint(
+            '[HomeEventModel] _fetchParticipantPhotos skipped for status=$status event=$id');
         return [];
       }
 
@@ -152,9 +164,12 @@ class _HomeEventModel {
       final response = await supabaseClient
           .from('event_photos')
           .select(
-              'uploader_id, users!event_photos_uploader_id_fkey(id, display_name, avatar_url)')
+              'uploader_id, users!event_photos_uploader_id_fkey(id, name, avatar_url)')
           .eq('event_id', id)
           .order('captured_at', ascending: false);
+
+      debugPrint(
+          '[HomeEventModel] _fetchParticipantPhotos event=$id rows=${response.length}');
 
       if (response.isEmpty) {
         return [];
@@ -191,7 +206,7 @@ class _HomeEventModel {
         final userData = row['users'];
         if (userData is! Map<String, dynamic>) continue;
 
-        final displayName = userData['display_name'] as String? ?? 'Unknown';
+        final displayName = userData['name'] as String? ?? 'Unknown';
         final avatarPath = userData['avatar_url'] as String?;
 
         // ✅ Get signed URL from batch result (already fetched)

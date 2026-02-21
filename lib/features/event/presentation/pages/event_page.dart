@@ -1388,6 +1388,7 @@ class _EventPageState extends ConsumerState<EventPage> {
                             voteType: _mapStatusToVoteType(r.status),
                           ))
                       .toList(),
+                  currentUserId: currentUserId,
                 ),
                 const SizedBox(height: Gaps.lg),
               ],
@@ -1494,6 +1495,7 @@ class _EventPageState extends ConsumerState<EventPage> {
                     voteType: _mapStatusToVoteType(r.status),
                   ))
               .toList(),
+          currentUserId: currentUserId,
         ),
         const SizedBox(height: Gaps.lg),
       ],

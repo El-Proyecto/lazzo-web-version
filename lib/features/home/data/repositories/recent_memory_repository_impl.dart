@@ -62,8 +62,7 @@ class RecentMemoryRepositoryImpl implements RecentMemoryRepository {
 
       return entities;
     } catch (e, st) {
-      print('[RecentMemoryRepo] ERROR: $e\n$st');
-      return [];
+            return [];
     }
   }
 }

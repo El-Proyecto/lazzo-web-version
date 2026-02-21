@@ -14,19 +14,16 @@ class RecentMemoryDataSource {
       // Calculate 30 days ago timestamp
       final thirtyDaysAgo = DateTime.now().subtract(const Duration(days: 30));
 
-      print('[RecentMemory] userId=$userId thirtyDaysAgo=$thirtyDaysAgo');
-
+      
       // 1) Get event IDs where user is a participant
       final participantResponse = await _client
           .from('event_participants')
           .select('pevent_id')
           .eq('user_id', userId);
 
-      print('[RecentMemory] participantRows=${participantResponse.length}');
-
+      
       if (participantResponse.isEmpty) {
-        print('[RecentMemory] no participant rows → returning empty');
-        return [];
+                return [];
       }
 
       final eventIds =
@@ -51,12 +48,9 @@ class RecentMemoryDataSource {
           .order('end_datetime', ascending: false);
 
       final eventsList = (eventsResponse as List).cast<Map<String, dynamic>>();
-      print('[RecentMemory] eventsResponse count=${eventsList.length}');
-
+      
       if (eventsList.isEmpty) {
-        print(
-            '[RecentMemory] eventsResponse is empty → check: statuses recap/ended AND end_datetime >= $thirtyDaysAgo');
-        return [];
+                return [];
       }
 
       // 3) Process each event to add cover photo
@@ -115,9 +109,7 @@ class RecentMemoryDataSource {
           } catch (_) {}
         }
 
-        print(
-            '[RecentMemory] event=${eventMap['name']} coverStoragePath=$coverStoragePath');
-        if (coverStoragePath != null) {
+                if (coverStoragePath != null) {
           memoriesWithCovers.add({
             'id': eventId,
             'name': eventMap['name'] as String? ?? 'Untitled',
@@ -128,11 +120,9 @@ class RecentMemoryDataSource {
         }
       }
 
-      print('[RecentMemory] memoriesWithCovers=${memoriesWithCovers.length}');
-      return memoriesWithCovers;
+            return memoriesWithCovers;
     } catch (e) {
-      print('[RecentMemory] ERROR: $e');
-      return [];
+            return [];
     }
   }
 }

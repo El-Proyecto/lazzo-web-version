@@ -49,7 +49,7 @@ class DayEventsBottomSheet extends StatelessWidget {
 
     final weekday = weekdays[date.weekday - 1];
     final month = months[date.month - 1];
-    return '$weekday, $month ${date.day}';
+    return '$weekday, ${date.day} $month';
   }
 
   EventSmallCardState _mapStatus(CalendarEventStatus status) {
@@ -62,6 +62,8 @@ class DayEventsBottomSheet extends StatelessWidget {
         return EventSmallCardState.living;
       case CalendarEventStatus.recap:
         return EventSmallCardState.recap;
+      case CalendarEventStatus.ended:
+        return EventSmallCardState.pending;
     }
   }
 
@@ -169,8 +171,9 @@ class DayEventsBottomSheet extends StatelessWidget {
   }
 
   /// Returns true if this event should be rendered as a memory card
+  /// Only ended events with photos are memories
   bool _isMemoryEvent(CalendarEventEntity event) {
-    return event.hasMemory && event.isPast;
+    return event.status == CalendarEventStatus.ended && event.hasMemory;
   }
 
   /// Format memory date: "12 Jul"
@@ -211,6 +214,9 @@ class DayEventsBottomSheet extends StatelessWidget {
       );
     }
 
+    final isLivingOrRecap = event.status == CalendarEventStatus.living ||
+        event.status == CalendarEventStatus.recap;
+
     return EventSmallCard(
       emoji: event.emoji,
       title: event.name,
@@ -221,7 +227,7 @@ class DayEventsBottomSheet extends StatelessWidget {
       onTap: () {
         Navigator.pushNamed(
           context,
-          AppRouter.event,
+          isLivingOrRecap ? AppRouter.eventLiving : AppRouter.event,
           arguments: {'eventId': event.id},
         );
       },

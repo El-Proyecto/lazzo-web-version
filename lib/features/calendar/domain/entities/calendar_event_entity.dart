@@ -34,4 +34,4 @@ class CalendarEventEntity {
 }
 
 /// Status of a calendar event
-enum CalendarEventStatus { pending, confirmed, living, recap }
+enum CalendarEventStatus { pending, confirmed, living, recap, ended }

@@ -62,6 +62,8 @@ class CalendarEventModel {
         return CalendarEventStatus.living;
       case 'recap':
         return CalendarEventStatus.recap;
+      case 'ended':
+        return CalendarEventStatus.ended;
       case 'pending':
       default:
         return CalendarEventStatus.pending;
@@ -71,14 +73,26 @@ class CalendarEventModel {
   static String _calculateStatus(
       String backendStatus, DateTime? startDate, DateTime? endDate) {
     final now = DateTime.now().toUtc();
+    const recapDuration = Duration(hours: 24);
+
+    // Pending events never auto-transition
+    if (backendStatus == 'pending') {
+      return backendStatus;
+    }
 
     if (backendStatus == 'confirmed' &&
         startDate != null &&
         startDate.toUtc().isBefore(now)) {
-      if (endDate != null && endDate.toUtc().isBefore(now)) {
+      // Event has started
+      if (endDate == null || endDate.toUtc().isAfter(now)) {
+        return 'living';
+      }
+      // Event has ended
+      if (now.toUtc().difference(endDate.toUtc()) < recapDuration) {
         return 'recap';
       }
-      return 'living';
+      // Past recap period → ended
+      return 'ended';
     }
 
     return backendStatus;

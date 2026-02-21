@@ -43,9 +43,7 @@ class MemorySmallCard extends StatelessWidget {
             // Debug: print rendered width to verify card sizing
             WidgetsBinding.instance.addPostFrameCallback((_) {
               // ignore: avoid_print
-              print(
-                  '[MemorySmallCard] photoSize=$_photoSize constraints.maxWidth=${constraints.maxWidth.toStringAsFixed(1)}');
-            });
+                          });
             return Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [

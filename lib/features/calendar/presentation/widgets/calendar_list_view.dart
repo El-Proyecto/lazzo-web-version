@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/constants/text_styles.dart';
 import '../../../../shared/themes/colors.dart';
@@ -6,29 +7,27 @@ import '../../../../shared/components/cards/event_small_card.dart';
 import '../../../../shared/components/cards/memory_small_card.dart';
 import '../../../../routes/app_router.dart';
 import '../../domain/entities/calendar_event_entity.dart';
+import '../providers/calendar_providers.dart';
 
 /// List view showing events for the current month, grouped by day.
-/// Supports horizontal swipe for month navigation.
+/// Auto-changes month when scrolling past the top or bottom of the list.
 /// Automatically scrolls to the first expired event on first build —
 /// past memories are visible above by scrolling up; future events below.
-class CalendarListView extends StatefulWidget {
+class CalendarListView extends ConsumerStatefulWidget {
   final List<CalendarEventEntity> events;
-  final VoidCallback onSwipeLeft;
-  final VoidCallback onSwipeRight;
 
   const CalendarListView({
     super.key,
     required this.events,
-    required this.onSwipeLeft,
-    required this.onSwipeRight,
   });
 
   @override
-  State<CalendarListView> createState() => _CalendarListViewState();
+  ConsumerState<CalendarListView> createState() => _CalendarListViewState();
 }
 
-class _CalendarListViewState extends State<CalendarListView> {
+class _CalendarListViewState extends ConsumerState<CalendarListView> {
   late final ScrollController _scrollController;
+  bool _monthChangeTriggered = false;
 
   @override
   void initState() {
@@ -43,6 +42,38 @@ class _CalendarListViewState extends State<CalendarListView> {
   void dispose() {
     _scrollController.dispose();
     super.dispose();
+  }
+
+  /// Detect overscroll to auto-change month
+  bool _onScrollNotification(ScrollNotification notification) {
+    if (_monthChangeTriggered) return false;
+
+    if (notification is OverscrollNotification) {
+      if (notification.overscroll < -20) {
+        // Overscrolled past top → previous month
+        _monthChangeTriggered = true;
+        _goToPreviousMonth();
+      } else if (notification.overscroll > 20) {
+        // Overscrolled past bottom → next month
+        _monthChangeTriggered = true;
+        _goToNextMonth();
+      }
+    } else if (notification is ScrollEndNotification) {
+      _monthChangeTriggered = false;
+    }
+    return false;
+  }
+
+  void _goToNextMonth() {
+    final current = ref.read(selectedMonthProvider);
+    final next = DateTime(current.year, current.month + 1);
+    ref.read(selectedMonthProvider.notifier).state = next;
+  }
+
+  void _goToPreviousMonth() {
+    final current = ref.read(selectedMonthProvider);
+    final prev = DateTime(current.year, current.month - 1);
+    ref.read(selectedMonthProvider.notifier).state = prev;
   }
 
   /// Group events by date
@@ -139,11 +170,11 @@ class _CalendarListViewState extends State<CalendarListView> {
     final month = months[date.month - 1];
 
     if (dateOnly == today) {
-      return 'Today — $weekday, $month ${date.day}';
+      return 'Today — $weekday, ${date.day} $month';
     } else if (dateOnly == tomorrow) {
-      return 'Tomorrow — $weekday, $month ${date.day}';
+      return 'Tomorrow — $weekday, ${date.day} $month';
     }
-    return '$weekday, $month ${date.day}';
+    return '$weekday, ${date.day} $month';
   }
 
   EventSmallCardState _mapStatus(CalendarEventStatus status) {
@@ -156,6 +187,8 @@ class _CalendarListViewState extends State<CalendarListView> {
         return EventSmallCardState.living;
       case CalendarEventStatus.recap:
         return EventSmallCardState.recap;
+      case CalendarEventStatus.ended:
+        return EventSmallCardState.pending;
     }
   }
 
@@ -202,16 +235,8 @@ class _CalendarListViewState extends State<CalendarListView> {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onHorizontalDragEnd: (details) {
-        if (details.primaryVelocity != null) {
-          if (details.primaryVelocity! < -100) {
-            widget.onSwipeLeft(); // Next month
-          } else if (details.primaryVelocity! > 100) {
-            widget.onSwipeRight(); // Previous month
-          }
-        }
-      },
+    return NotificationListener<ScrollNotification>(
+      onNotification: _onScrollNotification,
       child:
           widget.events.isEmpty ? _buildEmptyState(context) : _buildEventList(),
     );
@@ -258,8 +283,9 @@ class _CalendarListViewState extends State<CalendarListView> {
   }
 
   /// Returns true if this event should be rendered as a memory card
+  /// Only ended events with photos are memories
   bool _isMemoryEvent(CalendarEventEntity event) {
-    return event.hasMemory && event.isPast;
+    return event.status == CalendarEventStatus.ended && event.hasMemory;
   }
 
   /// Format memory date: "12 Jul"
@@ -300,6 +326,9 @@ class _CalendarListViewState extends State<CalendarListView> {
       );
     }
 
+    final isLivingOrRecap = event.status == CalendarEventStatus.living ||
+        event.status == CalendarEventStatus.recap;
+
     return EventSmallCard(
       emoji: event.emoji,
       title: event.name,
@@ -310,7 +339,7 @@ class _CalendarListViewState extends State<CalendarListView> {
       onTap: () {
         Navigator.pushNamed(
           context,
-          AppRouter.event,
+          isLivingOrRecap ? AppRouter.eventLiving : AppRouter.event,
           arguments: {'eventId': event.id},
         );
       },

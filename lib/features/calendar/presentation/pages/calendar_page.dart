@@ -19,6 +19,13 @@ class CalendarPage extends ConsumerStatefulWidget {
 class _CalendarPageState extends ConsumerState<CalendarPage> {
   CalendarViewMode _viewMode = CalendarViewMode.calendar;
 
+  // PageView state for the calendar grid
+  late final PageController _pageController;
+  late final DateTime _baseMonth; // page 600 = this month
+  bool _isAnimatingToPage = false;
+
+  static const _kCenterPage = 600;
+
   static const _months = [
     'January',
     'February',
@@ -34,16 +41,30 @@ class _CalendarPageState extends ConsumerState<CalendarPage> {
     'December',
   ];
 
-  void _goToNextMonth() {
-    final current = ref.read(selectedMonthProvider);
-    final next = DateTime(current.year, current.month + 1);
-    ref.read(selectedMonthProvider.notifier).state = next;
+  @override
+  void initState() {
+    super.initState();
+    final now = DateTime.now();
+    _baseMonth = DateTime(now.year, now.month);
+    _pageController = PageController(initialPage: _kCenterPage);
   }
 
-  void _goToPreviousMonth() {
-    final current = ref.read(selectedMonthProvider);
-    final prev = DateTime(current.year, current.month - 1);
-    ref.read(selectedMonthProvider.notifier).state = prev;
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  // Convert a month DateTime to its PageView page index
+  int _pageForMonth(DateTime month) {
+    final diff =
+        (month.year - _baseMonth.year) * 12 + (month.month - _baseMonth.month);
+    return _kCenterPage + diff;
+  }
+
+  // Convert a PageView page index to a month DateTime
+  DateTime _monthForPage(int page) {
+    return DateTime(_baseMonth.year, _baseMonth.month + (page - _kCenterPage));
   }
 
   void _onDaySelected(DateTime date) {
@@ -54,21 +75,34 @@ class _CalendarPageState extends ConsumerState<CalendarPage> {
     return '${_months[month.month - 1]} ${month.year}';
   }
 
-  /// Calculate the number of weeks (rows) needed for a month
-  int _weeksInMonth(int year, int month) {
-    final firstDay = DateTime(year, month, 1);
-    final daysInMonth = DateTime(year, month + 1, 0).day;
-    final startingWeekday = firstDay.weekday % 7; // 0=Sun
-    return ((startingWeekday + daysInMonth) / 7).ceil();
-  }
-
   @override
   Widget build(BuildContext context) {
     final selectedMonth = ref.watch(selectedMonthProvider);
     final selectedDay = ref.watch(selectedDayProvider);
     final eventsByDay = ref.watch(eventsByDayProvider);
     final selectedDayEvents = ref.watch(selectedDayEventsProvider);
-    final monthEventsAsync = ref.watch(monthEventsProvider);
+    // Use family provider so each month has its own cached async state
+    final monthEventsAsync =
+        ref.watch(monthEventsFamilyProvider(selectedMonth));
+
+    // Sync PageView when selectedMonthProvider changes externally (e.g. arrow taps)
+    ref.listen<DateTime>(selectedMonthProvider, (prev, next) {
+      if (_isAnimatingToPage) return;
+      final targetPage = _pageForMonth(next);
+      final currentPage = _pageController.page?.round() ?? _kCenterPage;
+      if (targetPage != currentPage) {
+        _isAnimatingToPage = true;
+        _pageController
+            .animateToPage(
+          targetPage,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeInOut,
+        )
+            .then((_) {
+          if (mounted) _isAnimatingToPage = false;
+        });
+      }
+    });
 
     return Scaffold(
       backgroundColor: BrandColors.bg1,
@@ -95,7 +129,7 @@ class _CalendarPageState extends ConsumerState<CalendarPage> {
                     selectedDayEvents,
                     monthEventsAsync,
                   )
-                : _buildListView(monthEventsAsync),
+                : _buildListView(),
           ),
         ],
       ),
@@ -109,31 +143,52 @@ class _CalendarPageState extends ConsumerState<CalendarPage> {
     List<dynamic> selectedDayEvents,
     AsyncValue<List<dynamic>> monthEventsAsync,
   ) {
+    // Always allocate max possible height (6 rows) so adjacent PageView pages
+    // with more rows never overflow. The layout is identical for 4/5/6-row months.
+    const double calendarHeight = 24.0 + 8.0 + (6 * 56.0) + 8.0; // 376px
+
     return LayoutBuilder(
       builder: (context, constraints) {
         final totalHeight = constraints.maxHeight;
-        // Calculate calendar grid height dynamically
-        final weeks = _weeksInMonth(selectedMonth.year, selectedMonth.month);
-        // weekday headers(~24) + gap(8) + rows(weeks * 56) + bottom padding(8)
-        final calendarHeight = 24.0 + 8 + (weeks * 56.0) + 8;
         final calendarRatio = calendarHeight / totalHeight;
-        final sheetInitial = (1.0 - calendarRatio).clamp(0.25, 0.75);
+        final sheetInitial = (1.1 - calendarRatio).clamp(0.25, 0.75);
 
         return Stack(
           children: [
-            // Calendar grid at the top
+            // PageView-based calendar grid (real horizontal drag)
             Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 monthEventsAsync.when(
-                  data: (_) => CalendarGrid(
-                    year: selectedMonth.year,
-                    month: selectedMonth.month,
-                    selectedDate: selectedDay,
-                    eventsByDay: eventsByDay.cast(),
-                    onDaySelected: _onDaySelected,
-                    onSwipeLeft: _goToNextMonth,
-                    onSwipeRight: _goToPreviousMonth,
+                  data: (_) => SizedBox(
+                    height: calendarHeight,
+                    child: PageView.builder(
+                      controller: _pageController,
+                      onPageChanged: (page) {
+                        if (_isAnimatingToPage) return;
+                        final newMonth = _monthForPage(page);
+                        ref.read(selectedMonthProvider.notifier).state =
+                            newMonth;
+                      },
+                      itemBuilder: (context, page) {
+                        final month = _monthForPage(page);
+                        final isCurrentMonth =
+                            month.year == selectedMonth.year &&
+                                month.month == selectedMonth.month;
+                        return CalendarGrid(
+                          key: ValueKey('${month.year}-${month.month}'),
+                          year: month.year,
+                          month: month.month,
+                          selectedDate: selectedDay,
+                          // Only pass event dots for the current month;
+                          // adjacent pages are empty while loading.
+                          eventsByDay:
+                              isCurrentMonth ? eventsByDay.cast() : const {},
+                          onDaySelected: _onDaySelected,
+                          // No swipe callbacks — PageView handles drag
+                        );
+                      },
+                    ),
                   ),
                   loading: () => SizedBox(
                     height: calendarHeight,
@@ -174,13 +229,10 @@ class _CalendarPageState extends ConsumerState<CalendarPage> {
     );
   }
 
-  Widget _buildListView(AsyncValue<List<dynamic>> monthEventsAsync) {
-    return monthEventsAsync.when(
-      data: (events) => CalendarListView(
-        events: events.cast(),
-        onSwipeLeft: _goToNextMonth,
-        onSwipeRight: _goToPreviousMonth,
-      ),
+  Widget _buildListView() {
+    final listEventsAsync = ref.watch(listViewEventsProvider);
+    return listEventsAsync.when(
+      data: (events) => CalendarListView(events: events),
       loading: () => const Center(
         child: CircularProgressIndicator(color: BrandColors.planning),
       ),
