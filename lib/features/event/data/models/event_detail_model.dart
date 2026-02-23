@@ -100,6 +100,9 @@ class EventDetailModel {
       case 'recap':
         statusEnum = EventStatus.recap;
         break;
+      case 'ended':
+        statusEnum = EventStatus.ended;
+        break;
       default:
         statusEnum = EventStatus.pending;
     }

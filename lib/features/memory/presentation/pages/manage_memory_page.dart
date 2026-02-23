@@ -1,19 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../routes/app_router.dart';
 import '../../../../shared/components/nav/common_app_bar.dart';
 import '../../../../shared/components/common/top_banner.dart';
 import '../../../../shared/components/dialogs/confirmation_dialog.dart';
 import '../../../../shared/components/cards/add_photos_cta_card.dart';
-import '../../../../shared/components/cards/close_recap_card.dart';
 import '../../../../shared/components/inputs/photo_selector.dart';
 import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/constants/text_styles.dart';
 import '../../../../shared/themes/colors.dart';
 import '../../../event/presentation/providers/event_providers.dart';
 import '../../../event/presentation/providers/event_photo_providers.dart';
-import '../../../home/presentation/providers/home_event_providers.dart';
 import '../providers/manage_memory_providers.dart';
 import '../providers/memory_providers.dart';
 import '../widgets/cover_selection_card.dart';
@@ -121,9 +118,9 @@ class _ManageMemoryPageState extends ConsumerState<ManageMemoryPage> {
                   padding: EdgeInsets.only(
                     left: Insets.screenH,
                     right: Insets.screenH,
-                    bottom: _isSelectionMode || _shouldShowCloseRecap()
+                    bottom: _isSelectionMode
                         ? ((MediaQuery.of(context).size.height * 0.36)
-                        .clamp(200.0, 400.0))
+                            .clamp(200.0, 400.0))
                         : Gaps.xl,
                   ),
                   child: Column(
@@ -247,53 +244,6 @@ class _ManageMemoryPageState extends ConsumerState<ManageMemoryPage> {
                           color: Colors.white,
                           fontWeight: FontWeight.w600,
                         ),
-                      ),
-                    ),
-                  ),
-                ),
-
-              // Fixed bottom Close Recap banner (host only, recap with photos)
-              if (!_isSelectionMode && _shouldShowCloseRecap())
-                Positioned(
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: Insets.screenH,
-                      vertical: Gaps.md,
-                    ),
-                    decoration: const BoxDecoration(
-                      color: BrandColors.bg2,
-                      border: Border(
-                        top: BorderSide(color: BrandColors.bg3, width: 1),
-                      ),
-                    ),
-                    child: SafeArea(
-                      top: false,
-                      child: eventAsync.when(
-                        data: (event) {
-                          final endDateTime = event.endDateTime;
-                          if (endDateTime != null) {
-                            final recapEndTime =
-                                endDateTime.add(const Duration(hours: 24));
-                            final remaining =
-                                recapEndTime.difference(DateTime.now());
-                            if (!remaining.isNegative) {
-                              final hours = remaining.inHours;
-                              final minutes = remaining.inMinutes.remainder(60);
-                              final timeRemaining = '${hours}h ${minutes}m';
-                              return CloseRecapCard(
-                                timeRemaining: timeRemaining,
-                                onCloseConfirmed: () => _handleCloseRecap(),
-                                isLiving: false,
-                              );
-                            }
-                          }
-                          return const SizedBox.shrink();
-                        },
-                        loading: () => const SizedBox.shrink(),
-                        error: (_, __) => const SizedBox.shrink(),
                       ),
                     ),
                   ),
@@ -533,7 +483,7 @@ class _ManageMemoryPageState extends ConsumerState<ManageMemoryPage> {
           if (mounted) {
             TopBanner.showSuccess(
               context,
-              message: '✅ Photo uploaded successfully!',
+              message: 'Photo uploaded successfully!',
             );
           }
 
@@ -554,80 +504,6 @@ class _ManageMemoryPageState extends ConsumerState<ManageMemoryPage> {
         }
       },
     );
-  }
-
-  /// Check if CloseRecapCard should be shown (host in recap with photos)
-  bool _shouldShowCloseRecap() {
-    final eventAsync = ref.watch(eventDetailProvider(widget.memoryId));
-    final manageState = ref.watch(manageMemoryProvider(widget.memoryId));
-
-    return eventAsync.maybeWhen(
-      data: (event) {
-        final currentUserId = Supabase.instance.client.auth.currentUser?.id;
-        final isHost = event.hostId == currentUserId;
-        final status = event.status.toString().split('.').last;
-        final isRecap = status == 'recap';
-        final hasPhotos = manageState.maybeWhen(
-          data: (state) => state.allPhotos.isNotEmpty,
-          orElse: () => false,
-        );
-
-        return isHost && isRecap && hasPhotos && event.endDateTime != null;
-      },
-      orElse: () => false,
-    );
-  }
-
-  void _handleCloseRecap() async {
-    try {
-      // Call use case to close recap
-      final closeRecapUseCase = ref.read(closeRecapUseCaseProvider);
-      final success = await closeRecapUseCase(widget.memoryId);
-
-      if (!success) {
-        if (mounted) {
-          TopBanner.showError(
-            context,
-            message: 'Failed to close recap. Please try again.',
-          );
-        }
-        return;
-      }
-
-      // Refresh home data
-      ref.invalidate(nextEventControllerProvider);
-      ref.invalidate(confirmedEventsControllerProvider);
-
-      // Mark that changes were made
-      setState(() {
-        _hasChanges = true;
-      });
-
-      // Show success message
-      if (mounted) {
-        TopBanner.showSuccess(
-          context,
-          message: 'Recap closed. Memory is ready!',
-        );
-      }
-
-      // Navigate to MemoryReady page
-      if (mounted) {
-        Navigator.of(context).pushReplacementNamed(
-          AppRouter.memoryReady,
-          arguments: {
-            'memoryId': widget.memoryId,
-          },
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        TopBanner.showError(
-          context,
-          message: 'Cannot close recap: At least one photo is required',
-        );
-      }
-    }
   }
 
   void _showPhotoSelector(

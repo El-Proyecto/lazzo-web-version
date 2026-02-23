@@ -355,11 +355,10 @@ class _HomeEventCardState extends ConsumerState<HomeEventCard> {
       } else if (userPhotoCount > 0) {
         // User has added photos - show their contribution
         photoInfo =
-            '${_currentEvent.photoCount}/${_currentEvent.maxPhotos} ${_currentEvent.photoCount == 1 ? 'photo' : 'photos'} • You added $userPhotoCount';
+            '${_currentEvent.photoCount} of ${_currentEvent.maxPhotos} • You added $userPhotoCount';
       } else {
         // Show total photos
-        photoInfo =
-            '${_currentEvent.photoCount}/${_currentEvent.maxPhotos} ${_currentEvent.photoCount == 1 ? 'photo' : 'photos'}';
+        photoInfo = '${_currentEvent.photoCount} of ${_currentEvent.maxPhotos}';
       }
 
       return '${_currentEvent.goingCount} $participantText • $photoInfo';

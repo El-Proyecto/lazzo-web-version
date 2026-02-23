@@ -24,10 +24,11 @@ class ActionRepositoryImpl implements ActionRepository {
     for (final row in rows) {
       final undecidedCount = row.maybeCount + row.pendingCount;
 
-      // An event is expired when end_datetime has passed while still pending/confirmed.
-      // Expired events should only show rescheduleExpiredEvent — not reminder/confirm.
-      final isExpired =
-          row.endDatetime != null && row.endDatetime!.isBefore(now);
+      // An event is expired when its start_datetime has passed without being confirmed.
+      // This reflects the product concept: if the event start date passed and it was
+      // never confirmed, the host missed their window — the event is expired.
+      final bool isExpired =
+          row.startDatetime != null && row.startDatetime!.isBefore(now);
 
       // --- remindMaybeVoters ---
       // When: event is pending/confirmed, NOT expired, AND has maybe/pending guests
@@ -85,10 +86,9 @@ class ActionRepositoryImpl implements ActionRepository {
       }
 
       // --- rescheduleExpiredEvent ---
-      // When: event end_datetime has passed (expired) and still pending/confirmed
-      if ((row.eventStatus == 'pending' || row.eventStatus == 'confirmed') &&
-          row.endDatetime != null &&
-          row.endDatetime!.isBefore(now)) {
+      // When: event is expired (date passed) and still pending/confirmed
+      if (isExpired &&
+          (row.eventStatus == 'pending' || row.eventStatus == 'confirmed')) {
         final key = 'reschedule_expired_event_${row.eventId}';
         if (!dismissed.contains(key) && !_localDismissals.contains(key)) {
           actions.add(ActionEntity(
@@ -137,10 +137,16 @@ class ActionRepositoryImpl implements ActionRepository {
       }
 
       // --- addPhotos ---
-      // When: event is living AND host has 0 photos
-      if (row.eventStatus == 'living' && row.hostPhotoCount == 0) {
+      // When: event is living or recap AND host has 0 photos
+      if ((row.eventStatus == 'living' || row.eventStatus == 'recap') &&
+          row.hostPhotoCount == 0) {
         final key = 'add_photos_${row.eventId}';
         if (!dismissed.contains(key) && !_localDismissals.contains(key)) {
+          // For recap events the window closes 24h after end_datetime.
+          // Using endDatetime directly for recap would always show "Overdue".
+          final addPhotosDue = row.eventStatus == 'recap'
+              ? row.endDatetime?.add(const Duration(hours: 24))
+              : row.endDatetime;
           actions.add(ActionEntity(
             id: key,
             title: 'Add photos',
@@ -149,7 +155,7 @@ class ActionRepositoryImpl implements ActionRepository {
             status: ActionStatus.pending,
             priority: ActionPriority.high,
             createdAt: now,
-            dueDate: row.endDatetime,
+            dueDate: addPhotosDue,
             eventId: row.eventId,
             eventName: row.eventName,
             eventEmoji: row.eventEmoji,

@@ -3,6 +3,7 @@ import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/constants/text_styles.dart';
 import '../../../../shared/themes/colors.dart';
 import '../../../../shared/components/cards/event_small_card.dart';
+import '../../../../shared/components/cards/memory_small_card.dart';
 import '../../../../routes/app_router.dart';
 import '../../domain/entities/calendar_event_entity.dart';
 
@@ -48,7 +49,7 @@ class DayEventsBottomSheet extends StatelessWidget {
 
     final weekday = weekdays[date.weekday - 1];
     final month = months[date.month - 1];
-    return '$weekday, $month ${date.day}';
+    return '$weekday, ${date.day} $month';
   }
 
   EventSmallCardState _mapStatus(CalendarEventStatus status) {
@@ -61,6 +62,8 @@ class DayEventsBottomSheet extends StatelessWidget {
         return EventSmallCardState.living;
       case CalendarEventStatus.recap:
         return EventSmallCardState.recap;
+      case CalendarEventStatus.ended:
+        return EventSmallCardState.pending;
     }
   }
 
@@ -108,10 +111,14 @@ class DayEventsBottomSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: const BoxDecoration(
-        color: BrandColors.bg2,
-        borderRadius: BorderRadius.vertical(
+      decoration: BoxDecoration(
+        color: BrandColors.bg1,
+        borderRadius: const BorderRadius.vertical(
           top: Radius.circular(Radii.md),
+        ),
+        border: Border(
+          top: BorderSide(
+              color: BrandColors.border.withValues(alpha: 0.6), width: 1),
         ),
       ),
       child: ListView(
@@ -137,8 +144,9 @@ class DayEventsBottomSheet extends StatelessWidget {
             ),
             child: Text(
               _formatDate(selectedDate),
-              style: AppText.titleLargeEmph.copyWith(
+              style: AppText.titleMediumEmph.copyWith(
                 color: BrandColors.text1,
+                fontSize: 18,
               ),
             ),
           ),
@@ -153,27 +161,84 @@ class DayEventsBottomSheet extends StatelessWidget {
                   horizontal: Pads.sectionH,
                   vertical: Gaps.xxs,
                 ),
-                child: EventSmallCard(
-                  emoji: event.emoji,
-                  title: event.name,
-                  dateTime: _formatEventDateTime(event),
-                  location: event.location,
-                  state: _mapStatus(event.status),
-                  isExpired: event.isPast &&
-                      event.status == CalendarEventStatus.pending,
-                  onTap: () {
-                    Navigator.pushNamed(
-                      context,
-                      AppRouter.event,
-                      arguments: {'eventId': event.id},
-                    );
-                  },
-                ),
+                child: _buildEventCard(context, event),
               ),
             ),
           const SizedBox(height: Gaps.xl),
         ],
       ),
+    );
+  }
+
+  /// Returns true if this event should be rendered as a memory card
+  /// Only ended events with photos are memories
+  bool _isMemoryEvent(CalendarEventEntity event) {
+    return event.status == CalendarEventStatus.ended && event.hasMemory;
+  }
+
+  /// Format memory date: "12 Jul"
+  String _formatMemoryDate(CalendarEventEntity event) {
+    if (event.date == null) return '';
+    const monthsShort = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
+    return '${event.date!.day} ${monthsShort[event.date!.month - 1]}';
+  }
+
+  /// Build the appropriate card widget for an event
+  Widget _buildEventCard(BuildContext context, CalendarEventEntity event) {
+    if (_isMemoryEvent(event)) {
+      return MemorySmallCard(
+        title: event.name,
+        dateTime: _formatMemoryDate(event),
+        location: event.location,
+        coverPhotoUrl: event.coverPhotoUrl,
+        onTap: () {
+          Navigator.pushNamed(
+            context,
+            AppRouter.memory,
+            arguments: {'memoryId': event.id},
+          );
+        },
+      );
+    }
+
+    final isLiving = event.status == CalendarEventStatus.living;
+    final isRecap = event.status == CalendarEventStatus.recap;
+
+    return EventSmallCard(
+      emoji: event.emoji,
+      title: event.name,
+      dateTime: _formatEventDateTime(event),
+      location: event.location,
+      state: _mapStatus(event.status),
+      isExpired: event.isPast && event.status == CalendarEventStatus.pending,
+      onTap: () {
+        final String route;
+        if (isRecap) {
+          route = AppRouter.eventRecap;
+        } else if (isLiving) {
+          route = AppRouter.eventLiving;
+        } else {
+          route = AppRouter.event;
+        }
+        Navigator.pushNamed(
+          context,
+          route,
+          arguments: {'eventId': event.id},
+        );
+      },
     );
   }
 

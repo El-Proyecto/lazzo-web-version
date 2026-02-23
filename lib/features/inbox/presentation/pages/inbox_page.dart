@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:image_picker/image_picker.dart';
 import '../../../../shared/components/nav/common_app_bar.dart';
+import '../../../../shared/components/common/top_banner.dart';
 import '../../../../shared/components/inputs/photo_selector.dart';
+import '../../../event/presentation/providers/event_photo_providers.dart';
 import '../../../../shared/themes/colors.dart';
 import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/constants/text_styles.dart';
@@ -188,37 +189,38 @@ class _InboxPageState extends ConsumerState<InboxPage> {
     }
   }
 
-  /// Opens camera/gallery picker, then navigates to manage memory page.
+  /// Opens camera/gallery picker and uploads the photo to the event.
   void _handleAddPhotoAction(String eventId) {
     PhotoSelectionBottomSheet.show(
       context: context,
-      title: 'Add Photo',
+      title: 'Upload Photo',
       showRemoveOption: false,
       onAction: (action) async {
-        final picker = ImagePicker();
-        XFile? photo;
+        final photoNotifier = ref.read(
+          eventPhotoUploadNotifierProvider(eventId).notifier,
+        );
+
         if (action == PhotoSourceAction.camera) {
-          photo = await picker.pickImage(
-            source: ImageSource.camera,
-            maxWidth: 1920,
-            maxHeight: 1920,
-            imageQuality: 85,
-          );
+          await photoNotifier.takePhoto(eventId: eventId);
         } else if (action == PhotoSourceAction.gallery) {
-          photo = await picker.pickImage(
-            source: ImageSource.gallery,
-            maxWidth: 1920,
-            maxHeight: 1920,
-            imageQuality: 85,
-          );
+          await photoNotifier.pickPhotoFromGallery(eventId: eventId);
         }
-        if (photo != null && mounted) {
-          Navigator.pushNamed(
-            context,
-            AppRouter.manageMemory,
-            arguments: {'memoryId': eventId},
-          );
-        }
+
+        if (!mounted) return;
+        final uploadState = ref.read(eventPhotoUploadNotifierProvider(eventId));
+        uploadState.when(
+          data: (photoUrl) {
+            if (photoUrl != null) {
+              TopBanner.showSuccess(context,
+                  message: 'Photo uploaded successfully!');
+            }
+          },
+          loading: () {},
+          error: (error, _) {
+            TopBanner.showError(context,
+                message: 'Failed to upload photo: $error');
+          },
+        );
       },
     );
   }

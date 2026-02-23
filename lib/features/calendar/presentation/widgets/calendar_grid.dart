@@ -14,8 +14,9 @@ class CalendarGrid extends StatelessWidget {
   final DateTime selectedDate;
   final Map<int, List<CalendarEventEntity>> eventsByDay;
   final ValueChanged<DateTime> onDaySelected;
-  final VoidCallback onSwipeLeft;
-  final VoidCallback onSwipeRight;
+  // Optional — omit when a PageView handles swiping externally
+  final VoidCallback? onSwipeLeft;
+  final VoidCallback? onSwipeRight;
 
   const CalendarGrid({
     super.key,
@@ -24,30 +25,37 @@ class CalendarGrid extends StatelessWidget {
     required this.selectedDate,
     required this.eventsByDay,
     required this.onDaySelected,
-    required this.onSwipeLeft,
-    required this.onSwipeRight,
+    this.onSwipeLeft,
+    this.onSwipeRight,
   });
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onHorizontalDragEnd: (details) {
-        if (details.primaryVelocity != null) {
-          if (details.primaryVelocity! < -100) {
-            onSwipeLeft(); // Next month
-          } else if (details.primaryVelocity! > 100) {
-            onSwipeRight(); // Previous month
-          }
-        }
-      },
-      child: Column(
-        children: [
-          _buildWeekdayHeaders(),
-          const SizedBox(height: Gaps.xs),
-          _buildDayGrid(context),
-        ],
-      ),
+    final content = Column(
+      children: [
+        _buildWeekdayHeaders(),
+        const SizedBox(height: Gaps.xs),
+        _buildDayGrid(context),
+      ],
     );
+
+    // Only wrap in GestureDetector when swipe callbacks are provided
+    if (onSwipeLeft != null || onSwipeRight != null) {
+      return GestureDetector(
+        onHorizontalDragEnd: (details) {
+          if (details.primaryVelocity != null) {
+            if (details.primaryVelocity! < -100) {
+              onSwipeLeft?.call(); // Next month
+            } else if (details.primaryVelocity! > 100) {
+              onSwipeRight?.call(); // Previous month
+            }
+          }
+        },
+        child: content,
+      );
+    }
+
+    return content;
   }
 
   Widget _buildWeekdayHeaders() {
@@ -170,11 +178,50 @@ class _DayCell extends StatelessWidget {
     required this.onTap,
   });
 
+  /// Returns the selection colour based on the highest-priority non-memory event.
+  /// Priority: living > recap > confirmed > expired > pending.
+  /// Memory events (ended + has cover photo) are excluded from colour calculation.
+  Color get _selectionColor {
+    if (events.isEmpty) return BrandColors.bg3;
+
+    // Collect effective statuses, excluding memory events
+    final statuses = <String>{};
+    for (final e in events) {
+      // Skip memory events — ended with photos don't contribute to selection color
+      if (e.status == CalendarEventStatus.ended && e.hasMemory) continue;
+      final key = (isPast && e.status == CalendarEventStatus.pending)
+          ? 'expired'
+          : e.status.name;
+      statuses.add(key);
+    }
+
+    // If only memories (no non-memory events), use default bg
+    if (statuses.isEmpty) return BrandColors.bg3;
+
+    // Pure priority — first match wins
+    if (statuses.contains('living')) {
+      return BrandColors.living.withValues(alpha: 0.25);
+    }
+    if (statuses.contains('recap')) {
+      return BrandColors.recap.withValues(alpha: 0.25);
+    }
+    if (statuses.contains('confirmed')) {
+      return BrandColors.planning.withValues(alpha: 0.25);
+    }
+    if (statuses.contains('expired')) {
+      return Colors.amber.withValues(alpha: 0.25);
+    }
+    // pending
+    return BrandColors.bg3;
+  }
+
   @override
   Widget build(BuildContext context) {
     final hasEvents = events.isNotEmpty;
-    // Check if any past event has a memory cover photo
-    final memoryEvent = events.where((e) => e.hasMemory && e.isPast).toList();
+    // Check if any ended event has a memory cover photo
+    final memoryEvent = events
+        .where((e) => e.status == CalendarEventStatus.ended && e.hasMemory)
+        .toList();
     final showCoverPhoto = memoryEvent.isNotEmpty;
 
     return GestureDetector(
@@ -184,7 +231,7 @@ class _DayCell extends StatelessWidget {
         height: 56,
         decoration: isSelected
             ? BoxDecoration(
-                color: BrandColors.bg3,
+                color: _selectionColor,
                 borderRadius: BorderRadius.circular(Radii.sm),
               )
             : null,

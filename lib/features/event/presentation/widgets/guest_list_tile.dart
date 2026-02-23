@@ -9,11 +9,13 @@ import '../../domain/entities/rsvp.dart';
 class GuestListTile extends StatelessWidget {
   final Rsvp rsvp;
   final VoidCallback? onTap;
+  final String? currentUserId;
 
   const GuestListTile({
     super.key,
     required this.rsvp,
     this.onTap,
+    this.currentUserId,
   });
 
   @override
@@ -52,7 +54,7 @@ class GuestListTile extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    rsvp.userName,
+                    rsvp.userId == currentUserId ? 'You' : rsvp.userName,
                     style: AppText.titleMediumEmph.copyWith(
                       color: BrandColors.text1,
                     ),

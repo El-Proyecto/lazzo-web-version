@@ -94,7 +94,7 @@ class _EventLivingPageState extends ConsumerState<EventLivingPage> {
         if (photoUrl != null) {
           if (context.mounted) {
             TopBanner.showSuccess(context,
-                message: '✅ Photo uploaded successfully!');
+                message: 'Photo uploaded successfully!');
           }
           ref.invalidate(eventDetailProvider(widget.eventId));
           ref.invalidate(eventPhotosProvider(widget.eventId));

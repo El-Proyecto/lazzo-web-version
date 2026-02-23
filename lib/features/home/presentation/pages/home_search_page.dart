@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../shared/components/nav/common_app_bar.dart';
 import '../../../../shared/components/inputs/search_bar.dart' as custom;
 import '../../../../shared/components/cards/event_small_card.dart';
-import '../../../../shared/components/cards/recent_memory_card.dart';
+import '../../../../shared/components/cards/memory_small_card.dart';
 // LAZZO 2.0: payment_summary_card import removed
 import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/constants/text_styles.dart';
@@ -11,7 +11,6 @@ import '../../../../shared/themes/colors.dart';
 // LAZZO 2.0: main_layout_providers unused
 // import '../../../../shared/layouts/main_layout_providers.dart';
 import '../../../../routes/app_router.dart';
-import '../../../memory/data/fakes/fake_memory_repository.dart';
 // LAZZO 2.0: payments_provider import removed
 import '../../domain/entities/home_event.dart';
 import '../../domain/entities/recent_memory_entity.dart';
@@ -398,28 +397,26 @@ class _HomeSearchPageState extends ConsumerState<HomeSearchPage> {
 
                             // Memories
                             if (filteredMemories.isNotEmpty) ...[
-                              _buildSectionHeader('Recent Memories'),
+                              _buildSectionHeader('Memories'),
                               const SizedBox(height: Gaps.sm),
                               ...filteredMemories.map((memory) {
                                 return Padding(
                                   padding: const EdgeInsets.only(
                                     bottom: Gaps.sm,
                                   ),
-                                  child: SizedBox(
-                                    height: 120,
-                                    child: RecentMemoryCard(
-                                      memory: memory,
-                                      onTap: () {
-                                        Navigator.of(context).pushNamed(
-                                          AppRouter.memory,
-                                          arguments: {
-                                            'memoryId': memory.id,
-                                            'eventStatus':
-                                                FakeEventStatus.ended,
-                                          },
-                                        );
-                                      },
-                                    ),
+                                  child: MemorySmallCard(
+                                    title: memory.eventName,
+                                    dateTime: memory.formattedDate,
+                                    location: memory.location,
+                                    coverPhotoUrl: memory.coverPhotoUrl,
+                                    onTap: () {
+                                      Navigator.of(context).pushNamed(
+                                        AppRouter.memory,
+                                        arguments: {
+                                          'memoryId': memory.id,
+                                        },
+                                      );
+                                    },
                                   ),
                                 );
                               }),

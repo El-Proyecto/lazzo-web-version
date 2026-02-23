@@ -18,6 +18,7 @@ import '../features/profile/presentation/pages/edit_profile_page.dart';
 import '../features/profile/presentation/pages/other_profile_page.dart';
 import '../features/event/presentation/pages/event_page.dart';
 import '../features/event/presentation/pages/event_living_page.dart';
+import '../features/event/presentation/pages/event_recap_page.dart';
 import '../features/event/presentation/pages/manage_guests_page.dart';
 import '../features/memory/presentation/pages/memory_page.dart';
 import '../features/memory/presentation/pages/memory_viewer_page.dart';
@@ -47,6 +48,7 @@ class AppRouter {
   static const String otherProfile = '/other-profile';
   static const String event = '/event';
   static const String eventLiving = '/event-living';
+  static const String eventRecap = '/event-recap';
   static const String memory = '/memory';
   static const String memoryViewer = '/memory-viewer';
   static const String photoPreview = '/photo-preview';
@@ -114,6 +116,11 @@ class AppRouter {
       final args =
           ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
       return EventLivingPage(eventId: args?['eventId'] ?? 'event-1');
+    },
+    eventRecap: (context) {
+      final args =
+          ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+      return EventRecapPage(eventId: args?['eventId'] ?? 'event-1');
     },
     manageGuests: (context) {
       final args =

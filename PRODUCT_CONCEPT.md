@@ -94,7 +94,7 @@
 - **Speed > features:** minimal taps, clear states (loading/empty/error), progressive disclosure.
 - **Zero‑friction participation:** web‑first for non‑hosts; no app install barrier.
 - **Privacy by default:** no global feed; opt‑in sharing only.
-- **Temporal clarity:** event phases (**Planning → Live → Recap**) drive surfaces and CTAs — consistent across app and web.
+- **Temporal clarity:** event phases (**Planning → Live → Recap**, or **Expired** if the host missed the start date) drive surfaces and CTAs — consistent across app and web.
 - **Consistency:** one visual language across app and web; predictable section headers/cards; touch targets ≥44px.
 - **“Don’t block the moment”**: capture first; organize/curate shortly after.
 
@@ -187,7 +187,8 @@
 ---
 
 ## 14) Glossary
-- **Event phases:** Planning → Live → Recap.
+- **Event phases:** Planning → Live → Recap (or Expired if the start date passes without confirmation).
+- **Expired event:** An event reaches *expired* state when its `start_datetime` passes while it was never confirmed by the host. The event never transitioned to Live — the moment was missed. The host can reschedule (set new dates) to reactivate it. Expiry is based purely on `start_datetime`, not `end_datetime`.
 - **Host:** the user who creates the event (requires app).
 - **Member/Participant:** anyone invited to the event (can use app or web).
 - **Cover:** one photo selected by an uploader to represent their contribution.

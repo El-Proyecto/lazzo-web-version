@@ -30,25 +30,49 @@ final selectedDayProvider = StateProvider<DateTime>((ref) {
   return DateTime.now();
 });
 
-// Events for the currently selected month
+// Per-month cache — each month keeps its own loaded state.
+// NOT autoDispose so data survives while user swipes between months.
+final monthEventsFamilyProvider =
+    FutureProvider.family<List<CalendarEventEntity>, DateTime>(
+        (ref, month) async {
+  final useCase = ref.watch(getEventsForMonthProvider);
+  return await useCase(month.year, month.month);
+});
+
+// Convenience alias for the currently selected month
 final monthEventsProvider =
     FutureProvider.autoDispose<List<CalendarEventEntity>>((ref) async {
   final selectedMonth = ref.watch(selectedMonthProvider);
-  final useCase = ref.watch(getEventsForMonthProvider);
-  return await useCase(selectedMonth.year, selectedMonth.month);
+  return ref.watch(monthEventsFamilyProvider(selectedMonth)).when(
+        data: (e) => e,
+        loading: () => const [],
+        error: (_, __) => const [],
+      );
 });
 
-// All upcoming events (for list view)
+// All upcoming events (for list view — multi-month continuous scroll)
 final allUpcomingEventsProvider =
     FutureProvider.autoDispose<List<CalendarEventEntity>>((ref) async {
   final useCase = ref.watch(getAllUpcomingEventsProvider);
   return await useCase();
 });
 
-// Events grouped by day for the selected month
+// Alias used by the list view tab — reads allUpcomingEventsProvider
+final listViewEventsProvider =
+    FutureProvider.autoDispose<List<CalendarEventEntity>>((ref) async {
+  return ref.watch(allUpcomingEventsProvider).when(
+        data: (e) => e,
+        loading: () => const [],
+        error: (_, __) => const [],
+      );
+});
+
+// Events grouped by day for the selected month.
+// Uses the family provider so cached data is NOT cleared while loading next month.
 final eventsByDayProvider =
     Provider.autoDispose<Map<int, List<CalendarEventEntity>>>((ref) {
-  final eventsAsync = ref.watch(monthEventsProvider);
+  final selectedMonth = ref.watch(selectedMonthProvider);
+  final eventsAsync = ref.watch(monthEventsFamilyProvider(selectedMonth));
   return eventsAsync.maybeWhen(
     data: (events) {
       final Map<int, List<CalendarEventEntity>> grouped = {};
@@ -64,11 +88,12 @@ final eventsByDayProvider =
   );
 });
 
-// Events for the selected day
+// Events for the selected day.
 final selectedDayEventsProvider =
     Provider.autoDispose<List<CalendarEventEntity>>((ref) {
   final selectedDay = ref.watch(selectedDayProvider);
-  final eventsAsync = ref.watch(monthEventsProvider);
+  final selectedMonth = ref.watch(selectedMonthProvider);
+  final eventsAsync = ref.watch(monthEventsFamilyProvider(selectedMonth));
   return eventsAsync.maybeWhen(
     data: (events) {
       return events

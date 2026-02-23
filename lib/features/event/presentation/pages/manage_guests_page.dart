@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:share_plus/share_plus.dart' show SharePlus, ShareParams;
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../routes/app_router.dart';
 import '../../../../shared/components/nav/common_app_bar.dart';
 import '../../../../shared/constants/spacing.dart';
@@ -33,8 +34,10 @@ class _ManageGuestsPageState extends ConsumerState<ManageGuestsPage> {
     final rsvpsAsync = ref.watch(eventRsvpsProvider(widget.eventId));
     final eventAsync = ref.watch(eventDetailProvider(widget.eventId));
     final eventStatus = eventAsync.value?.status;
-    final isPhotoMode =
-        eventStatus == EventStatus.living || eventStatus == EventStatus.recap;
+    final currentUserId = Supabase.instance.client.auth.currentUser?.id;
+    final isPhotoMode = eventStatus == EventStatus.living ||
+        eventStatus == EventStatus.recap ||
+        eventStatus == EventStatus.ended;
 
     return Scaffold(
       backgroundColor: BrandColors.bg1,
@@ -58,8 +61,8 @@ class _ManageGuestsPageState extends ConsumerState<ManageGuestsPage> {
       ),
       body: rsvpsAsync.when(
         data: (rsvps) => isPhotoMode
-            ? _buildPhotoContributorContent(rsvps, eventStatus!)
-            : _buildContent(rsvps),
+            ? _buildPhotoContributorContent(rsvps, eventStatus!, currentUserId)
+            : _buildContent(rsvps, currentUserId),
         loading: () => Center(
           child: CircularProgressIndicator(
             color: isPhotoMode ? BrandColors.living : BrandColors.planning,
@@ -81,7 +84,7 @@ class _ManageGuestsPageState extends ConsumerState<ManageGuestsPage> {
   // ─── Photo Contributor Mode (Living / Recap / Ended) ────
 
   Widget _buildPhotoContributorContent(
-      List<Rsvp> rsvps, EventStatus eventStatus) {
+      List<Rsvp> rsvps, EventStatus eventStatus, String? currentUserId) {
     final photosAsync = ref.watch(eventPhotosProvider(widget.eventId));
     final photos = photosAsync.value ?? [];
 
@@ -90,7 +93,7 @@ class _ManageGuestsPageState extends ConsumerState<ManageGuestsPage> {
         ? BrandColors.living
         : eventStatus == EventStatus.recap
             ? BrandColors.recap
-            : BrandColors.text2;
+            : BrandColors.text1; // ended / memory
 
     // Count total photos and participants (going only)
     final totalPhotos = photos.length;
@@ -107,15 +110,15 @@ class _ManageGuestsPageState extends ConsumerState<ManageGuestsPage> {
       }
     }
 
-    // Build participant list with photo counts
-    final participantEntries = goingRsvps.map((rsvp) {
-      return _ParticipantEntry(
-        userId: rsvp.userId,
-        userName: rsvp.userName,
-        userAvatar: rsvp.userAvatar,
-        photoCount: photoCountByUser[rsvp.userId] ?? 0,
-      );
-    }).toList();
+    // Build participant list — all going participants (0 photos shown as 'No photos yet')
+    final participantEntries = goingRsvps
+        .map((rsvp) => _ParticipantEntry(
+              userId: rsvp.userId,
+              userName: rsvp.userName,
+              userAvatar: rsvp.userAvatar,
+              photoCount: photoCountByUser[rsvp.userId] ?? 0,
+            ))
+        .toList();
 
     // Sort by photo count descending, then alphabetically
     participantEntries.sort((a, b) {
@@ -178,7 +181,10 @@ class _ManageGuestsPageState extends ConsumerState<ManageGuestsPage> {
                       ),
                       itemBuilder: (context, index) {
                         final entry = participantEntries[index];
-                        return _LivingParticipantTile(entry: entry);
+                        return _LivingParticipantTile(
+                          entry: entry,
+                          currentUserId: currentUserId,
+                        );
                       },
                     ),
                   ),
@@ -211,7 +217,7 @@ class _ManageGuestsPageState extends ConsumerState<ManageGuestsPage> {
 
   // ─── Default Mode (Planning/Confirmed) ────────────────────
 
-  Widget _buildContent(List<Rsvp> rsvps) {
+  Widget _buildContent(List<Rsvp> rsvps, String? currentUserId) {
     // Count votes by status (exclude pending)
     final goingCount = rsvps.where((r) => r.status == RsvpStatus.going).length;
     final maybeCount = rsvps.where((r) => r.status == RsvpStatus.maybe).length;
@@ -292,11 +298,19 @@ class _ManageGuestsPageState extends ConsumerState<ManageGuestsPage> {
                         final rsvp = filteredRsvps[index];
                         return GuestListTile(
                           rsvp: rsvp,
+                          currentUserId: currentUserId,
                           onTap: () {
-                            Navigator.of(context).pushNamed(
-                              AppRouter.otherProfile,
-                              arguments: {'userId': rsvp.userId},
-                            );
+                            if (rsvp.userId == currentUserId) {
+                              Navigator.of(context).pushNamed(
+                                AppRouter.profile,
+                                arguments: {'showBackButton': true},
+                              );
+                            } else {
+                              Navigator.of(context).pushNamed(
+                                AppRouter.otherProfile,
+                                arguments: {'userId': rsvp.userId},
+                              );
+                            }
                           },
                         );
                       },
@@ -417,17 +431,29 @@ class _LivingSummaryCard extends StatelessWidget {
 /// Participant tile for living mode — avatar + name + photo count
 class _LivingParticipantTile extends StatelessWidget {
   final _ParticipantEntry entry;
+  final String? currentUserId;
 
-  const _LivingParticipantTile({required this.entry});
+  const _LivingParticipantTile({
+    required this.entry,
+    this.currentUserId,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final isCurrentUser = entry.userId == currentUserId;
     return GestureDetector(
       onTap: () {
-        Navigator.of(context).pushNamed(
-          AppRouter.otherProfile,
-          arguments: {'userId': entry.userId},
-        );
+        if (isCurrentUser) {
+          Navigator.of(context).pushNamed(
+            AppRouter.profile,
+            arguments: {'showBackButton': true},
+          );
+        } else {
+          Navigator.of(context).pushNamed(
+            AppRouter.otherProfile,
+            arguments: {'userId': entry.userId},
+          );
+        }
       },
       behavior: HitTestBehavior.opaque,
       child: Padding(
@@ -458,7 +484,7 @@ class _LivingParticipantTile extends StatelessWidget {
             // Name
             Expanded(
               child: Text(
-                entry.userName,
+                isCurrentUser ? 'You' : entry.userName,
                 style:
                     AppText.titleMediumEmph.copyWith(color: BrandColors.text1),
                 maxLines: 1,

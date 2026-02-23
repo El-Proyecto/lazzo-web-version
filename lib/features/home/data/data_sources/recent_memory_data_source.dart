@@ -14,14 +14,16 @@ class RecentMemoryDataSource {
       // Calculate 30 days ago timestamp
       final thirtyDaysAgo = DateTime.now().subtract(const Duration(days: 30));
 
+      
       // 1) Get event IDs where user is a participant
       final participantResponse = await _client
           .from('event_participants')
           .select('pevent_id')
           .eq('user_id', userId);
 
+      
       if (participantResponse.isEmpty) {
-        return [];
+                return [];
       }
 
       final eventIds =
@@ -45,14 +47,16 @@ class RecentMemoryDataSource {
           .gte('end_datetime', thirtyDaysAgo.toIso8601String())
           .order('end_datetime', ascending: false);
 
-      if (eventsResponse == null || (eventsResponse as List).isEmpty) {
-        return [];
+      final eventsList = (eventsResponse as List).cast<Map<String, dynamic>>();
+      
+      if (eventsList.isEmpty) {
+                return [];
       }
 
       // 3) Process each event to add cover photo
       final List<Map<String, dynamic>> memoriesWithCovers = [];
 
-      for (final event in eventsResponse) {
+      for (final event in eventsList) {
         final eventMap = Map<String, dynamic>.from(event);
         String? coverStoragePath;
         final eventId = eventMap['id'] as String;
@@ -105,21 +109,20 @@ class RecentMemoryDataSource {
           } catch (_) {}
         }
 
-        if (coverStoragePath != null) {
+                if (coverStoragePath != null) {
           memoriesWithCovers.add({
             'id': eventId,
-            'title': eventMap['name'] as String? ?? 'Untitled',
-            'date': eventMap['end_datetime'],
-            'location':
-                (eventMap['locations'] as Map?)?['display_name'] as String?,
+            'name': eventMap['name'] as String? ?? 'Untitled',
+            'end_datetime': eventMap['end_datetime'],
+            'locations': eventMap['locations'],
             'cover_storage_path': coverStoragePath,
           });
         }
       }
 
-      return memoriesWithCovers;
+            return memoriesWithCovers;
     } catch (e) {
-      return [];
+            return [];
     }
   }
 }
