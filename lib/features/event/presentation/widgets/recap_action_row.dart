@@ -34,7 +34,7 @@ class RecapActionRow extends StatelessWidget {
         const SizedBox(width: Gaps.sm),
         Expanded(
           child: _ActionButton(
-            icon: Icons.file_upload_outlined,
+            icon: Icons.add_photo_alternate,
             label: 'Upload',
             onPressed: onUpload,
             backgroundColor: BrandColors.recap,

@@ -17,9 +17,7 @@ class PhotosBottomSheet {
     final sortedParticipants = [...participants]
       ..sort((a, b) => b.photoCount.compareTo(a.photoCount));
 
-    final photoCountText = totalPhotos == 0
-        ? 'No photos yet'
-        : '$totalPhotos of $maxPhotos photos';
+    final photoCountText = '$totalPhotos of $maxPhotos';
 
     showModalBottomSheet(
       context: context,
@@ -58,7 +56,7 @@ class PhotosBottomSheet {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    'Photos by participants',
+                    'Photos',
                     style: AppText.titleMediumEmph.copyWith(
                       color: BrandColors.text1,
                     ),
@@ -116,7 +114,7 @@ class _ParticipantPhotoItem extends StatelessWidget {
 
   String get _photoText {
     if (participant.photoCount == 0) {
-      return 'No photos yet';
+      return 'No photos';
     } else if (participant.photoCount == 1) {
       return '1 photo';
     } else {

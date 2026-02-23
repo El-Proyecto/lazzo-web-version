@@ -145,6 +145,14 @@ class _EventRecapPageState extends ConsumerState<EventRecapPage> {
           icon: const Icon(Icons.arrow_back, color: BrandColors.text1),
           onPressed: () => Navigator.of(context).pop(),
         ),
+        trailing: IconButton(
+          icon: const Icon(Icons.people, color: BrandColors.text1),
+          onPressed: () => Navigator.pushNamed(
+            context,
+            AppRouter.manageGuests,
+            arguments: {'eventId': widget.eventId},
+          ),
+        ),
       ),
       body: eventAsync.when(
         data: (event) {

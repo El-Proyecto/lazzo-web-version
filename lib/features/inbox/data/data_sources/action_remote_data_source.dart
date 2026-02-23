@@ -94,7 +94,7 @@ class ActionRemoteDataSource {
         .select(
             'id, name, emoji, status, start_datetime, end_datetime, location_id')
         .eq('created_by', _userId)
-        .inFilter('status', ['pending', 'confirmed', 'living']);
+        .inFilter('status', ['pending', 'confirmed', 'living', 'recap']);
 
     final events = eventsResponse as List;
     if (events.isEmpty) return [];

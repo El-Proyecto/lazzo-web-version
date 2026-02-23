@@ -30,7 +30,6 @@ class ActionRepositoryImpl implements ActionRepository {
       final bool isExpired =
           row.startDatetime != null && row.startDatetime!.isBefore(now);
 
-      
       // --- remindMaybeVoters ---
       // When: event is pending/confirmed, NOT expired, AND has maybe/pending guests
       if (!isExpired &&
@@ -138,10 +137,16 @@ class ActionRepositoryImpl implements ActionRepository {
       }
 
       // --- addPhotos ---
-      // When: event is living AND host has 0 photos
-      if (row.eventStatus == 'living' && row.hostPhotoCount == 0) {
+      // When: event is living or recap AND host has 0 photos
+      if ((row.eventStatus == 'living' || row.eventStatus == 'recap') &&
+          row.hostPhotoCount == 0) {
         final key = 'add_photos_${row.eventId}';
         if (!dismissed.contains(key) && !_localDismissals.contains(key)) {
+          // For recap events the window closes 24h after end_datetime.
+          // Using endDatetime directly for recap would always show "Overdue".
+          final addPhotosDue = row.eventStatus == 'recap'
+              ? row.endDatetime?.add(const Duration(hours: 24))
+              : row.endDatetime;
           actions.add(ActionEntity(
             id: key,
             title: 'Add photos',
@@ -150,7 +155,7 @@ class ActionRepositoryImpl implements ActionRepository {
             status: ActionStatus.pending,
             priority: ActionPriority.high,
             createdAt: now,
-            dueDate: row.endDatetime,
+            dueDate: addPhotosDue,
             eventId: row.eventId,
             eventName: row.eventName,
             eventEmoji: row.eventEmoji,

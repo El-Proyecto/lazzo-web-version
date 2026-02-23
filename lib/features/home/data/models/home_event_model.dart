@@ -172,7 +172,26 @@ class _HomeEventModel {
           '[HomeEventModel] _fetchParticipantPhotos event=$id rows=${response.length}');
 
       if (response.isEmpty) {
-        return [];
+        debugPrint(
+            '[HomeEventModel] _fetchParticipantPhotos NO photos in event_photos for event=$id, will only show goingUsers with 0 photos');
+        // Still need to build 0-photo list from goingUsers
+        final zeroPhotoList = <ParticipantPhoto>[];
+        for (final u in goingUsers) {
+          if (u is! Map<String, dynamic>) continue;
+          final userId = u['user_id'] as String?;
+          if (userId == null) continue;
+          final displayName = u['display_name'] as String? ?? 'Unknown';
+          final avatarUrl = u['avatar_url'] as String?;
+          zeroPhotoList.add(ParticipantPhoto(
+            userId: userId,
+            userName: currentUserId == userId ? 'You' : displayName,
+            userAvatar: avatarUrl,
+            photoCount: 0,
+          ));
+        }
+        debugPrint(
+            '[HomeEventModel] zeroPhotoList: ${zeroPhotoList.map((p) => '${p.userName}:${p.photoCount}').join(', ')}');
+        return zeroPhotoList;
       }
 
       // ✅ OPTIMIZATION: Collect all unique avatar paths first
@@ -230,8 +249,36 @@ class _HomeEventModel {
         }
       }
 
-      return participantsMap.values.toList()
+      // ✅ Include all going participants with 0 photos (not yet in map)
+      debugPrint(
+          '[HomeEventModel] _fetchParticipantPhotos goingUsers.length=${goingUsers.length} for event=$id');
+      for (final u in goingUsers) {
+        if (u is! Map<String, dynamic>) {
+          debugPrint('[HomeEventModel] goingUser skipped – not a Map: $u');
+          continue;
+        }
+        final userId = u['user_id'] as String?;
+        final displayName = u['display_name'] as String? ?? 'Unknown';
+        debugPrint(
+            '[HomeEventModel] goingUser userId=$userId displayName=$displayName alreadyInMap=${participantsMap.containsKey(userId)}');
+        if (userId == null || participantsMap.containsKey(userId)) continue;
+        final avatarUrl = u['avatar_url'] as String?; // already signed
+        debugPrint(
+            '[HomeEventModel] Adding 0-photo participant userId=$userId displayName=$displayName');
+        participantsMap[userId] = ParticipantPhoto(
+          userId: userId,
+          userName: currentUserId == userId ? 'You' : displayName,
+          userAvatar: avatarUrl,
+          photoCount: 0,
+        );
+      }
+
+      // Sort: participants with photos first, then 0-photo participants
+      final result = participantsMap.values.toList()
         ..sort((a, b) => b.photoCount.compareTo(a.photoCount));
+      debugPrint(
+          '[HomeEventModel] _fetchParticipantPhotos final result: ${result.map((p) => '${p.userName}:${p.photoCount}').join(', ')}');
+      return result;
     } catch (e) {
       return [];
     }
