@@ -807,16 +807,16 @@ Vai a **PostHog → Persons & Groups → Cohorts → New Cohort**:
 ### Pre-flight (antes do primeiro cohort)
 
 **PostHog Account:**
-- [ ] Conta Cloud EU criada (eu.posthog.com)
-- [ ] Projeto "Lazzo" criado
-- [ ] API key anotado
-- [ ] Session Replay OFF
-- [ ] Autocapture OFF
-- [ ] Exception Autocapture ON
+- [X] Conta Cloud EU criada (eu.posthog.com)
+- [X] Projeto "Lazzo" criado
+- [X] API key anotado
+- [X] Session Replay OFF
+- [X] Autocapture OFF
+- [X] Exception Autocapture ON
 
 **App (Flutter/iOS):**
-- [ ] `posthog_flutter` adicionado ao `pubspec.yaml`
-- [ ] `Info.plist` configurado (API key + host + captureScreenViews: false)
+- [X] `posthog_flutter` adicionado ao `pubspec.yaml`
+- [X] `Info.plist` configurado (API key + host + captureScreenViews: false)
 - [ ] `AnalyticsService` criado e funcional
 - [ ] `AnalyticsService.initialize()` no `main.dart` (após Supabase init)
 - [ ] Identity: `identify()` chamado no auth complete

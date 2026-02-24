@@ -16,6 +16,8 @@ import '../../providers/auth_provider.dart';
 import '../../../../profile/presentation/providers/profile_providers.dart';
 // Rotas
 import '../../../../../routes/app_router.dart';
+// Analytics
+import '../../../../../services/analytics_service.dart';
 
 class LoginOtpVerificationPage extends ConsumerStatefulWidget {
   const LoginOtpVerificationPage({super.key, required this.email});
@@ -67,6 +69,23 @@ class _LoginOtpVerificationPageState
       // 3) CRITICAL: Invalidate profile provider to clear any stale error state
       // This ensures the new user's profile is fetched fresh
       ref.invalidate(currentUserProfileProvider);
+
+      // 4) PostHog: identify user (merge anonymous → authenticated)
+      final user = ref.read(authProvider).valueOrNull;
+      if (user != null) {
+        await AnalyticsService.identify(
+          user.id,
+          properties: {
+            'email': user.email,
+            'role': 'host',
+          },
+        );
+        await AnalyticsService.track('auth_completed', properties: {
+          'auth_type': 'email_passwordless',
+          'is_new_user': false,
+          'platform': 'ios',
+        });
+      }
 
       if (!mounted) return;
 

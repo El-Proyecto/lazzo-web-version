@@ -11,6 +11,7 @@ import '../widgets/otp_verification/verify_footer.dart';
 import '../widgets/otp_verification/resend_otp_button.dart';
 import '../../../../shared/themes/colors.dart';
 import '../../../../shared/constants/spacing.dart';
+import '../../../../services/analytics_service.dart';
 
 class OtpVerificationPage extends ConsumerStatefulWidget {
   const OtpVerificationPage({super.key, required this.email, this.name});
@@ -77,6 +78,23 @@ class _OtpVerificationPageState extends ConsumerState<OtpVerificationPage> {
         name: widget.name?.trim(),
         isSignup: true,
       );
+
+      // PostHog: identify new user (merge anonymous → authenticated)
+      final supabaseUser = Supabase.instance.client.auth.currentUser;
+      if (supabaseUser != null) {
+        await AnalyticsService.identify(
+          supabaseUser.id,
+          properties: {
+            if (supabaseUser.email != null) 'email': supabaseUser.email!,
+            'role': 'host',
+          },
+        );
+        await AnalyticsService.track('auth_completed', properties: {
+          'auth_type': 'email_passwordless',
+          'is_new_user': true,
+          'platform': 'ios',
+        });
+      }
 
       // Debug
 

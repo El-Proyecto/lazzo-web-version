@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'env.dart';
 
 import 'package:lazzo/app.dart';
+import 'package:lazzo/services/analytics_service.dart';
 
 // MEMORY (Home recent memories - different from manage_memory)
 import '../features/home/data/data_sources/memory_remote_data_source.dart';
@@ -128,6 +129,10 @@ void main() async {
   } catch (e) {
     rethrow;
   }
+
+  // PostHog Analytics — inicializa após Supabase
+  await AnalyticsService.initialize();
+
   runApp(
     ProviderScope(
       overrides: [
