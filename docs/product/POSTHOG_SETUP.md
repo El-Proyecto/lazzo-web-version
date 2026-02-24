@@ -817,14 +817,14 @@ Vai a **PostHog → Persons & Groups → Cohorts → New Cohort**:
 **App (Flutter/iOS):**
 - [X] `posthog_flutter` adicionado ao `pubspec.yaml`
 - [X] `Info.plist` configurado (API key + host + captureScreenViews: false)
-- [ ] `AnalyticsService` criado e funcional
-- [ ] `AnalyticsService.initialize()` no `main.dart` (após Supabase init)
-- [ ] Identity: `identify()` chamado no auth complete
-- [ ] Identity: `reset()` chamado no logout
-- [ ] `app_opened` dispara na abertura
-- [ ] `screen_viewed` dispara APENAS nos 10 ecrãs críticos
-- [ ] Eventos de funnel instrumentados (event_created, rsvp_submitted, photo_uploaded, etc.)
-- [ ] Feature flags: cache implementado, reload em app open + auth + 30 min
+- [X] `AnalyticsService` criado e funcional (`lib/services/analytics_service.dart`)
+- [X] `AnalyticsService.initialize()` no `main.dart` (após Supabase init)
+- [X] Identity: `identify()` chamado no auth complete (login + signup OTP)
+- [X] Identity: `reset()` chamado no logout (`settings_providers.dart`)
+- [X] `app_opened` dispara na abertura (cold start + resume em `app.dart`)
+- [X] `screen_viewed` dispara APENAS nos 10 ecrãs críticos (home, event_detail, event_living, event_recap, create_event, inbox, memory_ready, memory_viewer, profile, calendar via tab switch)
+- [X] Eventos de funnel instrumentados (event_created, rsvp_submitted, photo_uploaded, invite_link_shared × 5 locations, recap_viewed + memory_ready via screen_viewed)
+- [X] Feature flags: cache implementado, reload em app open + auth + 30 min timer (`app.dart`)
 - [ ] Testado em debug: eventos visíveis no PostHog Live Events
 - [ ] `debug: false` no Info.plist antes de build para TestFlight
 

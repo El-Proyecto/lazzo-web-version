@@ -14,6 +14,7 @@ import '../providers/notifications_provider.dart';
 import '../providers/actions_provider.dart';
 import '../widgets/notifications_section.dart';
 import '../widgets/actions_section.dart';
+import '../../../../services/analytics_service.dart';
 
 /// Inbox page — Notifications + Actions tabs (LAZZO 2.0)
 class InboxPage extends ConsumerStatefulWidget {
@@ -29,6 +30,7 @@ class _InboxPageState extends ConsumerState<InboxPage> {
   @override
   void initState() {
     super.initState();
+    AnalyticsService.screenViewed('inbox');
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _markNotificationsAsRead();
     });

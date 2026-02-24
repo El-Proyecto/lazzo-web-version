@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:share_plus/share_plus.dart' show SharePlus, ShareParams;
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../../../services/analytics_service.dart';
 import '../../../../routes/app_router.dart';
 import '../../../../shared/components/nav/common_app_bar.dart';
 import '../../../../shared/constants/spacing.dart';
@@ -56,6 +57,12 @@ class _ManageGuestsPageState extends ConsumerState<ManageGuestsPage> {
                   SharePlus.instance.share(
                     ShareParams(text: 'Join $eventName on Lazzo! 🎉'),
                   );
+                  AnalyticsService.track('invite_link_shared', properties: {
+                    'event_id': widget.eventId,
+                    'share_channel': 'share',
+                    'source': 'manage_guests',
+                    'platform': 'ios',
+                  });
                 },
               ),
       ),

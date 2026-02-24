@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../../../services/analytics_service.dart';
 import '../../data/fakes/fake_event_repository.dart';
 import '../../data/fakes/fake_rsvp_repository.dart';
 import '../../data/fakes/fake_poll_repository.dart';
@@ -27,7 +28,6 @@ import '../../domain/usecases/update_event_status.dart';
 import '../../domain/usecases/extend_event_time.dart';
 import '../../domain/usecases/end_event_now.dart';
 import '../../domain/entities/event_participant_entity.dart';
-
 
 // Current user ID provider
 final currentUserIdProvider = Provider<String?>((ref) {
@@ -93,8 +93,6 @@ final submitRsvpProvider = Provider<SubmitRsvp>((ref) {
 final getEventPollsProvider = Provider<GetEventPolls>((ref) {
   return GetEventPolls(ref.watch(pollRepositoryProvider));
 });
-
-
 
 final getEventSuggestionsProvider = Provider<GetEventSuggestions>((ref) {
   return GetEventSuggestions(ref.watch(suggestionRepositoryProvider));
@@ -206,8 +204,6 @@ final eventPollsProvider = FutureProvider.family<List<Poll>, String>((
   return await useCase(eventId);
 });
 
-
-
 // Event suggestions state provider
 final eventSuggestionsProvider =
     FutureProvider.family<List<Suggestion>, String>((ref, eventId) async {
@@ -309,6 +305,13 @@ class UserRsvpNotifier extends StateNotifier<AsyncValue<Rsvp?>> {
 
       // Update local state - this triggers UI rebuild
       state = AsyncValue.data(rsvp);
+
+      // Track RSVP submission
+      AnalyticsService.track('rsvp_submitted', properties: {
+        'event_id': eventId,
+        'vote': status.name,
+        'platform': 'ios',
+      });
 
       // Check auto-confirmation after RSVP submission
       await _checkAutoConfirmation();

@@ -24,6 +24,7 @@ import '../../../../shared/themes/colors.dart';
 import '../../../event/presentation/providers/event_providers.dart';
 import '../providers/event_history_provider.dart';
 import '../../../home/presentation/providers/home_event_providers.dart';
+import '../../../../services/analytics_service.dart';
 
 /// Página principal para criação de eventos
 /// Usa todos os widgets tokenizados e reutilizáveis
@@ -60,6 +61,7 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
   @override
   void initState() {
     super.initState();
+    AnalyticsService.screenViewed('create_event');
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _handleNavigationArguments();
       _loadDraftIfExists();

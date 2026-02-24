@@ -8,12 +8,13 @@ import '../../domain/entities/memory_entity.dart';
 import '../providers/memory_providers.dart';
 import '../widgets/memory_viewer_app_bar.dart';
 import '../widgets/photo_viewer_item.dart';
+import '../../../../services/analytics_service.dart';
 
 /// Memory Viewer Page - Full screen photo viewer
 /// Accessed when tapping a photo on the memory page
 /// Opens directly at the selected photo
 /// Photos are ordered: covers first (by votes), then grid (by timestamp)
-class MemoryViewerPage extends ConsumerWidget {
+class MemoryViewerPage extends ConsumerStatefulWidget {
   final String memoryId;
   final String? initialPhotoId;
 
@@ -24,9 +25,20 @@ class MemoryViewerPage extends ConsumerWidget {
   });
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final memoryAsync = ref.watch(memoryDetailProvider(memoryId));
-    final photosAsync = ref.watch(memoryPhotosProvider(memoryId));
+  ConsumerState<MemoryViewerPage> createState() => _MemoryViewerPageState();
+}
+
+class _MemoryViewerPageState extends ConsumerState<MemoryViewerPage> {
+  @override
+  void initState() {
+    super.initState();
+    AnalyticsService.screenViewed('memory_viewer', eventId: widget.memoryId);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final memoryAsync = ref.watch(memoryDetailProvider(widget.memoryId));
+    final photosAsync = ref.watch(memoryPhotosProvider(widget.memoryId));
 
     return Scaffold(
       backgroundColor: BrandColors.bg1,
@@ -63,8 +75,8 @@ class MemoryViewerPage extends ConsumerWidget {
           }
 
           // Find initial index (if initialPhotoId provided)
-          final initialIndex = initialPhotoId != null
-              ? photos.indexWhere((p) => p.id == initialPhotoId)
+          final initialIndex = widget.initialPhotoId != null
+              ? photos.indexWhere((p) => p.id == widget.initialPhotoId)
               : 0;
 
           final startIndex = initialIndex >= 0 ? initialIndex : 0;

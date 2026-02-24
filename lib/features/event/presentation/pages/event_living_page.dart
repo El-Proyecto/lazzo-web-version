@@ -15,6 +15,7 @@ import '../widgets/living_time_left_pill.dart';
 import '../widgets/living_action_row.dart';
 import '../widgets/living_photos_widget.dart';
 import '../widgets/host_time_controls.dart';
+import '../../../../services/analytics_service.dart';
 
 /// Event page for Living mode
 /// Displays event in progress with photo upload and host controls
@@ -34,6 +35,7 @@ class _EventLivingPageState extends ConsumerState<EventLivingPage> {
   @override
   void initState() {
     super.initState();
+    AnalyticsService.screenViewed('event_living', eventId: widget.eventId);
     // Listen to scroll to show/hide title in app bar
     _scrollController.addListener(_onScroll);
   }
@@ -229,6 +231,12 @@ class _EventLivingPageState extends ConsumerState<EventLivingPage> {
                         text: 'Join ${event.name} on Lazzo! \uD83C\uDF89',
                       ),
                     );
+                    AnalyticsService.track('invite_link_shared', properties: {
+                      'event_id': widget.eventId,
+                      'share_channel': 'share',
+                      'source': 'event_living',
+                      'platform': 'ios',
+                    });
                   },
                   onTakePhoto: _showPhotoSelector,
                   onGuests: () {

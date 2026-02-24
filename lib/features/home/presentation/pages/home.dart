@@ -29,6 +29,7 @@ import '../providers/home_event_providers.dart';
 import '../../../../routes/app_router.dart';
 import '../../../memory/data/fakes/fake_memory_repository.dart';
 import '../../domain/entities/home_event.dart';
+import '../../../../services/analytics_service.dart';
 
 /// Home page - main screen showing next event, confirmed/pending events, and memories
 ///
@@ -50,6 +51,7 @@ class _HomePageState extends ConsumerState<HomePage> {
   @override
   void initState() {
     super.initState();
+    AnalyticsService.screenViewed('home');
   }
 
   @override

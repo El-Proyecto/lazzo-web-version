@@ -17,6 +17,7 @@ import '../../features/event/presentation/providers/event_providers.dart';
 import '../../features/event/presentation/providers/event_photo_providers.dart';
 import '../../routes/app_router.dart';
 import '../../services/event_status_service.dart';
+import '../../services/analytics_service.dart';
 import 'main_layout_providers.dart';
 
 class MainLayout extends ConsumerStatefulWidget {
@@ -194,6 +195,10 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
     setState(() {
       _currentIndex = pageIndex;
     });
+
+    // Track screen_viewed for tab pages
+    const tabScreenNames = ['home', 'calendar', 'inbox', 'profile'];
+    AnalyticsService.screenViewed(tabScreenNames[pageIndex]);
 
     // Update provider as well
     ref.read(mainLayoutTabProvider.notifier).state = pageIndex;

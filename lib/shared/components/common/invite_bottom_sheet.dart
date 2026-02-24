@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:share_plus/share_plus.dart';
+import '../../../services/analytics_service.dart';
 import '../../constants/spacing.dart';
 import '../../constants/text_styles.dart';
 import '../../themes/colors.dart';
@@ -88,6 +89,11 @@ class InviteBottomSheet extends StatelessWidget {
                   context,
                   message: 'Link copied to clipboard',
                 );
+                AnalyticsService.track('invite_link_shared', properties: {
+                  'share_channel': 'copy',
+                  'entity_type': entityType,
+                  'platform': 'ios',
+                });
               },
               onShareLink: () async {
                 final shareText =
@@ -100,6 +106,11 @@ class InviteBottomSheet extends StatelessWidget {
                       subject: 'Join $entityName on Lazzo',
                     ),
                   );
+                  AnalyticsService.track('invite_link_shared', properties: {
+                    'share_channel': 'share',
+                    'entity_type': entityType,
+                    'platform': 'ios',
+                  });
                 } catch (e) {
                   if (context.mounted) {
                     TopBanner.showInfo(
