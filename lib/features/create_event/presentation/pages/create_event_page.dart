@@ -66,10 +66,22 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
     });
   }
 
-  /// Verifica se existe um grupo pré-selecionado nos argumentos de navegação
+  /// Verifica se existe uma data pré-selecionada nos argumentos de navegação
   void _handleNavigationArguments() async {
-    // LAZZO 2.0: Groups removed — no pre-selection needed
-    // Events are standalone, no group association
+    final args =
+        ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+    if (args == null) return;
+
+    final preSelectedDate = args['preSelectedDate'] as DateTime?;
+    if (preSelectedDate != null && mounted) {
+      setState(() {
+        _selectedDate = preSelectedDate;
+        _selectedTime = TimeOfDay(
+          hour: preSelectedDate.hour > 0 ? preSelectedDate.hour : 12,
+          minute: preSelectedDate.minute,
+        );
+      });
+    }
   }
 
   /// Carrega rascunho se existir

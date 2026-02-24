@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../shared/components/widgets/rsvp_widget.dart';
 import '../../../../services/avatar_cache_service.dart';
@@ -121,6 +122,15 @@ class _HomeEventModel {
     // Fetch participant photos for living/recap events
     final participantPhotos = await _fetchParticipantPhotos();
 
+    // ✅ FIX: home_events_view has no photo_count/max_photos columns.
+    // Compute both from what we already have:
+    //   photoCount  = sum of each participant's photo count
+    //   maxPhotos   = max(20, 5 × total participants) — business rule
+    final computedPhotoCount =
+        participantPhotos.fold(0, (sum, p) => sum + p.photoCount);
+    final computedMaxPhotos =
+        [20, 5 * participantsTotal].reduce((a, b) => a > b ? a : b);
+
     return HomeEventEntity(
       id: id,
       name: name,
@@ -134,8 +144,8 @@ class _HomeEventModel {
       attendeeNames: _extractNames(goingUsers),
       userVote: _mapUserVote(userRsvp),
       allVotes: allVotes,
-      photoCount: photoCount,
-      maxPhotos: maxPhotos,
+      photoCount: computedPhotoCount,
+      maxPhotos: computedMaxPhotos,
       participantPhotos: participantPhotos,
     );
   }
@@ -145,6 +155,8 @@ class _HomeEventModel {
     try {
       // Only fetch photos for living/recap events
       if (status != 'living' && status != 'recap') {
+        debugPrint(
+            '[HomeEventModel] _fetchParticipantPhotos skipped for status=$status event=$id');
         return [];
       }
 
@@ -152,12 +164,34 @@ class _HomeEventModel {
       final response = await supabaseClient
           .from('event_photos')
           .select(
-              'uploader_id, users!event_photos_uploader_id_fkey(id, display_name, avatar_url)')
+              'uploader_id, users!event_photos_uploader_id_fkey(id, name, avatar_url)')
           .eq('event_id', id)
           .order('captured_at', ascending: false);
 
+      debugPrint(
+          '[HomeEventModel] _fetchParticipantPhotos event=$id rows=${response.length}');
+
       if (response.isEmpty) {
-        return [];
+        debugPrint(
+            '[HomeEventModel] _fetchParticipantPhotos NO photos in event_photos for event=$id, will only show goingUsers with 0 photos');
+        // Still need to build 0-photo list from goingUsers
+        final zeroPhotoList = <ParticipantPhoto>[];
+        for (final u in goingUsers) {
+          if (u is! Map<String, dynamic>) continue;
+          final userId = u['user_id'] as String?;
+          if (userId == null) continue;
+          final displayName = u['display_name'] as String? ?? 'Unknown';
+          final avatarUrl = u['avatar_url'] as String?;
+          zeroPhotoList.add(ParticipantPhoto(
+            userId: userId,
+            userName: currentUserId == userId ? 'You' : displayName,
+            userAvatar: avatarUrl,
+            photoCount: 0,
+          ));
+        }
+        debugPrint(
+            '[HomeEventModel] zeroPhotoList: ${zeroPhotoList.map((p) => '${p.userName}:${p.photoCount}').join(', ')}');
+        return zeroPhotoList;
       }
 
       // ✅ OPTIMIZATION: Collect all unique avatar paths first
@@ -191,7 +225,7 @@ class _HomeEventModel {
         final userData = row['users'];
         if (userData is! Map<String, dynamic>) continue;
 
-        final displayName = userData['display_name'] as String? ?? 'Unknown';
+        final displayName = userData['name'] as String? ?? 'Unknown';
         final avatarPath = userData['avatar_url'] as String?;
 
         // ✅ Get signed URL from batch result (already fetched)
@@ -215,8 +249,36 @@ class _HomeEventModel {
         }
       }
 
-      return participantsMap.values.toList()
+      // ✅ Include all going participants with 0 photos (not yet in map)
+      debugPrint(
+          '[HomeEventModel] _fetchParticipantPhotos goingUsers.length=${goingUsers.length} for event=$id');
+      for (final u in goingUsers) {
+        if (u is! Map<String, dynamic>) {
+          debugPrint('[HomeEventModel] goingUser skipped – not a Map: $u');
+          continue;
+        }
+        final userId = u['user_id'] as String?;
+        final displayName = u['display_name'] as String? ?? 'Unknown';
+        debugPrint(
+            '[HomeEventModel] goingUser userId=$userId displayName=$displayName alreadyInMap=${participantsMap.containsKey(userId)}');
+        if (userId == null || participantsMap.containsKey(userId)) continue;
+        final avatarUrl = u['avatar_url'] as String?; // already signed
+        debugPrint(
+            '[HomeEventModel] Adding 0-photo participant userId=$userId displayName=$displayName');
+        participantsMap[userId] = ParticipantPhoto(
+          userId: userId,
+          userName: currentUserId == userId ? 'You' : displayName,
+          userAvatar: avatarUrl,
+          photoCount: 0,
+        );
+      }
+
+      // Sort: participants with photos first, then 0-photo participants
+      final result = participantsMap.values.toList()
         ..sort((a, b) => b.photoCount.compareTo(a.photoCount));
+      debugPrint(
+          '[HomeEventModel] _fetchParticipantPhotos final result: ${result.map((p) => '${p.userName}:${p.photoCount}').join(', ')}');
+      return result;
     } catch (e) {
       return [];
     }

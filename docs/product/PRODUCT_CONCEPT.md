@@ -24,7 +24,6 @@
    - Host creates event in <30s (app only): title + emoji, date/time, location.
    - Host shares the **event link** (deep link + QR code) to WhatsApp/iMessage/any messaging app.
    - Members open the link on **app or web**; they enter lightweight credentials (name + email/phone) for identity verification and RSVP (Going / Can’t).
-   - Event chat (per‑event thread) open during planning, live, and 24h after.
 
 2) **Live & Uploads (24h window)**
    - Take photos in‑app and/or import from camera roll (app); upload from device on web.
@@ -43,7 +42,7 @@
 
 5) **Web Experience (Companion)**
    - **Same event link** used for sharing works on the web — phases transition automatically (Planning → Live → Recap).
-   - Web supports: viewing event details, RSVP voting, event chat, uploading photos, viewing memory.
+   - Web supports: viewing event details, RSVP voting, uploading photos, viewing memory.
    - Web does **not** support: creating events, generating Share Cards.
    - Lightweight auth: members identify themselves via name + email or phone (no full account required to participate).
 
@@ -52,8 +51,8 @@
    - Others’ profiles show only shared event context.
 
 7) **Auth & Invites**
-   - **Host (app):** sign‑in via email passwordless, Apple/Google.
-   - **Members (web or app):** lightweight credential entry (name + email/phone) when accessing an event link — enough to verify identity without forcing a full sign‑up.
+   - **Host (app):** sign‑in via email passwordless.
+   - **Members (web or app):** lightweight credential entry (name + email) when accessing an event link — enough to verify identity without forcing a full sign‑up.
    - Event invites: single shareable link + QR code per event (expires with configurable TTL).
 
 8) **Notifications & Inbox**
@@ -61,23 +60,28 @@
    - Notifications (app push + web if applicable): event updates, live started, upload window opened/closing, memory ready.
 
 ### Out of Scope for MVP (explicitly)
-- Groups / group management; expenses / payments; date/location suggestion polls.
+- Groups / group management; expenses / payments. *(Removed in v2 pivot — previously explored, now permanently deferred.)*
 - Complex camera modes; advanced ML; public/global feed.
+- Web-based event creation (host is app-only).
+- Android release (iOS-first for beta).
 
 ---
 
 ## 3) Future Features (Not in MVP)
-- **Groups & recurring events** (group friends who plan together often).
-- **Expense splitting** (light payment tracking per event).
-- **Event recommendations (AI).**
 - **Annual Recap** (Spotify‑style) with highlights.
-- **Phone‑number login** (to streamline identity + enable payment integrations).
+- **Phone‑number login** (to streamline identity).
 - **Short videos** (likely paid tier).
 - **Web‑based event creation** (extend hosting beyond app).
+- **Multi‑day events** (trips, festivals).
+- **Collaborative captions/notes** on photos.
+- **Automatic best‑of selection** (heuristics → ML).
+- **Android release** (Google Play, post-beta).
 
 **If traction skews to nightlife:**
 - Camera/Event modes (Disposable Camera, Random Reveal, etc.).
 - Photo **voting** to select what goes into the memory.
+
+*Note: Groups, recurring events, and expense splitting were explored in v1 and removed in the v2 pivot. Re-evaluation deferred to post-public launch.*
 
 ---
 
@@ -94,7 +98,7 @@
 - **Speed > features:** minimal taps, clear states (loading/empty/error), progressive disclosure.
 - **Zero‑friction participation:** web‑first for non‑hosts; no app install barrier.
 - **Privacy by default:** no global feed; opt‑in sharing only.
-- **Temporal clarity:** event phases (**Planning → Live → Recap**) drive surfaces and CTAs — consistent across app and web.
+- **Temporal clarity:** event phases (**Planning → Live → Recap**, or **Expired** if the host missed the start date) drive surfaces and CTAs — consistent across app and web.
 - **Consistency:** one visual language across app and web; predictable section headers/cards; touch targets ≥44px.
 - **“Don’t block the moment”**: capture first; organize/curate shortly after.
 
@@ -104,14 +108,15 @@
 
 ### App (iOS/Android)
 - **Home** (mode‑aware): first card and center action vary by phase; sections: upcoming events, current event, past memories.
-- **Event Page**: header, RSVP status, chat, location/date/time, uploads; live banner during event.
+- **Calendar**: calendar and list view to track events and past memories.
+- **Event Page**: header, RSVP status, location/date/time, uploaded photos;
 - **Memory**: gallery (covers + rest), close/ready states, Share Card generator.
 - **Inbox**: notifications, actions.
 - **Profile**: edit profile; user’s memories and past events.
 
 ### Web
-- **Event Page** (single‑page per event link): same phases as app — Planning (RSVP + details), Live (uploads + chat), Recap (memory gallery).
-- **Lightweight auth wall**: name + email/phone before interacting.
+- **Event Page** (single‑page per event link): same phases as app — Planning (RSVP + details), Live (uploads), Recap (memory gallery).
+- **Lightweight auth wall**: name + email before interacting.
 - **No home/profile/inbox**: web is event‑scoped only.
 
 ---
@@ -139,7 +144,6 @@
 
 ## 9) Privacy & Trust (Product Policy)
 - **Private by default;** user opt‑in to share to IG/WhatsApp.
-- **Ephemeral chat** scoped to the event (planning + live + 24h post).
 - **Uploads window**: during event + 24h after; host can close early.
 - **Invite integrity:** event links are scoped to a single event; configurable expiry.
 - **Lightweight identity:** web participants provide name + email/phone for verification — minimal data collection.
@@ -156,14 +160,26 @@
 
 ---
 
-## 11) Metrics & Success Criteria (MVP)
-- **Speed:** median time to create event < 30s.
-- **Participation:** % of invited members who open the link and RSVP (web + app combined).
-- **Web adoption:** % of participants using web vs app.
-- **Engagement:** % of events confirmed within 24h; % with memory closed within 24h.
-- **Contribution:** uploads per participant; coverage of covers.
-- **Sharing:** Share Card generation rate from ready memories.
-- **Retention:** D7/D30 host activity; events per host per month.
+## 11) Metrics & Success Criteria (MVP → Beta)
+
+**North Star:** Events with a completed memory (Memory Ready + viewed by ≥1 guest).
+
+**Core metrics (instrumented via PostHog Cloud EU):**
+
+| Category | Metric | Target (Beta) |
+|----------|--------|----------------|
+| Speed | Median time to create event | < 30s |
+| Guest activation | % invite opens → RSVP | ≥ 50% |
+| Memory creation | % events reaching Memory Ready with ≥1 upload | ≥ 60–70% |
+| Contribution | Uploads per event (participants contributing) | ≥ 2 contributors/event |
+| Recap engagement | % events with ≥1 guest recap view | ≥ 40% |
+| Sharing | Share Card generation rate from ready memories | Track baseline |
+| Host retention | % hosts creating 2nd event within 14 days | ≥ 25–30% |
+| Time to RSVP | Median invite open → RSVP | < 60 seconds |
+| Web vs App | % of guest participation via web | Track baseline |
+| Stability | Crash-free sessions (app + web) | ≥ 99% |
+
+See [METRICS.md](METRICS.md) for full PostHog event taxonomy and dashboard specifications.
 
 ---
 
@@ -177,17 +193,19 @@
 ---
 
 ## 13) Risks & Guardrails (Product)
-- **Scope creep:** stick to MVP list; defer groups/expenses/AI/camera modes to future.
+- **Scope creep:** stick to MVP list; defer AI/camera modes/monetization to future. Groups & expenses already removed in v2.
 - **Web parity expectations:** clearly communicate what web can and cannot do (no event creation, no Share Card).
 - **Privacy leaks:** no unintended sharing; explicit confirmation for public profile display.
 - **Friction at peak moments:** prioritize speed in Live flows; capture never blocked by optional fields.
 - **Over‑notification:** batch where possible; clear settings.
-- **Identity abuse (web):** lightweight verification (email/phone) prevents impersonation without adding friction.
+- **Identity abuse (web):** lightweight verification (email) prevents impersonation without adding friction.
+- **Instrumentation blind spots:** ensure PostHog covers both app + web with shared event taxonomy before cohort testing.
 
 ---
 
 ## 14) Glossary
-- **Event phases:** Planning → Live → Recap.
+- **Event phases:** Planning → Live → Recap (or Expired if the start date passes without confirmation).
+- **Expired event:** An event reaches *expired* state when its `start_datetime` passes while it was never confirmed by the host. The event never transitioned to Live — the moment was missed. The host can reschedule (set new dates) to reactivate it. Expiry is based purely on `start_datetime`, not `end_datetime`.
 - **Host:** the user who creates the event (requires app).
 - **Member/Participant:** anyone invited to the event (can use app or web).
 - **Cover:** one photo selected by an uploader to represent their contribution.
@@ -197,15 +215,5 @@
 
 ---
 
-## 15) Appendix — Feature Matrix (MVP vs Later)
-| Area | MVP (Beta) | Later |
-|---|---|---|
-| Planning | Create <30s (app); RSVP via link (app+web) | AI recommendations; groups |
-| Live & Uploads | In‑app camera; import; web upload; covers; extend/end | Advanced camera modes |
-| Memory | Close at 24h; Memory Ready; Share Card (app) | Photo voting; annual recap |
-| Web | RSVP, chat, upload, view memory | Web event creation; full accounts |
-| Social/Profiles | Private by default; app‑only profiles | Streaks; short videos |
-| Invites | Event link + QR (configurable expiry) | Group invites; recurring events |
-| Payments | — | Expense splitting per event |
 
 > This document defines *product intent* for MVP and near‑term roadmap. For implementation rules (architecture, tokens, layering, DI, security), see `README.md` and `AGENTS.md`.

@@ -22,8 +22,9 @@ class RecentMemoryDataSource {
           .select('pevent_id')
           .eq('user_id', userId);
 
+      
       if (participantResponse.isEmpty) {
-        return [];
+                return [];
       }
 
       final eventIds =
@@ -47,8 +48,10 @@ class RecentMemoryDataSource {
           .gte('end_datetime', thirtyDaysAgo.toIso8601String())
           .order('end_datetime', ascending: false);
 
-      if ((eventsResponse as List).isEmpty) {
-        return [];
+      final eventsList = (eventsResponse as List).cast<Map<String, dynamic>>();
+      
+      if (eventsList.isEmpty) {
+                return [];
       }
 
       // 3) ✅ BATCH: Fetch ALL photos for these events in ONE query
@@ -74,7 +77,7 @@ class RecentMemoryDataSource {
       // 4) Pick best cover photo for each event
       final List<Map<String, dynamic>> memoriesWithCovers = [];
 
-      for (final event in eventsResponse) {
+      for (final event in eventsList) {
         final eventMap = Map<String, dynamic>.from(event);
         final eventId = eventMap['id'] as String;
         final coverPhotoId = eventMap['cover_photo_id'] as String?;
@@ -103,21 +106,20 @@ class RecentMemoryDataSource {
           coverStoragePath = photos.first['storage_path'] as String?;
         }
 
-        if (coverStoragePath != null) {
+                if (coverStoragePath != null) {
           memoriesWithCovers.add({
             'id': eventId,
-            'title': eventMap['name'] as String? ?? 'Untitled',
-            'date': eventMap['end_datetime'],
-            'location':
-                (eventMap['locations'] as Map?)?['display_name'] as String?,
+            'name': eventMap['name'] as String? ?? 'Untitled',
+            'end_datetime': eventMap['end_datetime'],
+            'locations': eventMap['locations'],
             'cover_storage_path': coverStoragePath,
           });
         }
       }
 
-      return memoriesWithCovers;
+            return memoriesWithCovers;
     } catch (e) {
-      return [];
+            return [];
     }
   }
 }

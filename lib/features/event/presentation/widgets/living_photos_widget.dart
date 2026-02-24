@@ -100,6 +100,7 @@ class LivingPhotosWidget extends ConsumerWidget {
     return GestureDetector(
       onTap: onTakePhoto,
       child: Container(
+        width: double.infinity,
         padding: const EdgeInsets.symmetric(
           vertical: Gaps.xl,
           horizontal: Pads.sectionH,
@@ -109,7 +110,6 @@ class LivingPhotosWidget extends ConsumerWidget {
           borderRadius: BorderRadius.circular(Radii.sm),
         ),
         child: Column(
-          mainAxisSize: MainAxisSize.min,
           children: [
             const Icon(
               Icons.camera_alt,

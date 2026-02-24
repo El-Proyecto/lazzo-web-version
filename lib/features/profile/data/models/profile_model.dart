@@ -107,8 +107,7 @@ class MemoryModel {
   });
 
   factory MemoryModel.fromMap(Map<String, dynamic> row) {
-    print('[MemoryModel.fromMap] Raw row data: $row');
-
+    
     // Extract location - supports both nested object and direct field (from RPC)
     String? locationName;
     if (row['locations'] != null) {
@@ -137,9 +136,7 @@ class MemoryModel {
         ? 'Untitled Event'
         : rawName;
 
-    print(
-        '[MemoryModel.fromMap] Parsed - title: $safeTitle, date: $parsedDate, location: $locationName');
-
+    
     return MemoryModel(
       eventId: row['id'] as String,
       title: safeTitle,

@@ -135,8 +135,8 @@ class _MemoryPageState extends ConsumerState<MemoryPage> {
           lastAddedText = _formatTimeAgo(sorted.first.capturedAt);
         }
 
-        // Should show edit icon (hosts always, others after uploading)
-        final showEditIcon = eventStatus != EventStatus.ended &&
+        // Should show edit icon: only for ended events (recap has its own page)
+        final showEditIcon = eventStatus == EventStatus.ended &&
             (isHost || userHasUploadedPhotos);
 
         // Should show bottom banner
@@ -169,7 +169,6 @@ class _MemoryPageState extends ConsumerState<MemoryPage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
-
                         // ── Info Section ──
                         // Location • Date
                         Text(

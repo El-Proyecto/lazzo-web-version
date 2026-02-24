@@ -49,6 +49,7 @@ class RsvpVoteButtons extends StatefulWidget {
   final VoidCallback onNotGoingPressed;
   final VoidCallback? onVoteSummaryTap;
   final List<RsvpVoterInfo> voters;
+  final String? currentUserId;
 
   const RsvpVoteButtons({
     super.key,
@@ -61,6 +62,7 @@ class RsvpVoteButtons extends StatefulWidget {
     required this.onNotGoingPressed,
     this.onVoteSummaryTap,
     this.voters = const [],
+    this.currentUserId,
   });
 
   @override
@@ -256,38 +258,72 @@ class _RsvpVoteButtonsState extends State<RsvpVoteButtons>
     );
   }
 
-  /// Row with stacked avatars + latest voter text: "Name is can/maybe/can't"
+  /// Row with stacked avatars + "You and X others are going/maybe/can't"
   Widget _buildVoterRow() {
-    final activeVoters = widget.voters;
+    // Show only voters of the same type as current vote (stage 2).
+    final selectedType = widget.selectedVote;
+    final sameTypeVoters = selectedType != null
+        ? widget.voters.where((v) => v.voteType == selectedType).toList()
+        : widget.voters;
 
-    if (activeVoters.isEmpty) {
+    if (sameTypeVoters.isEmpty) {
       return Text(
         'No votes yet',
         style: AppText.bodyMedium.copyWith(color: BrandColors.text2),
       );
     }
 
-    final lastVoter = activeVoters.last;
+    // Build summary text with "You" for current user.
+    String summaryText;
+    if (widget.currentUserId != null && selectedType != null) {
+      final others = sameTypeVoters
+          .where((v) => v.userId != widget.currentUserId)
+          .toList();
+      final vphrase = _verbPhrase(selectedType);
+      if (others.isEmpty) {
+        summaryText = 'You $vphrase';
+      } else if (others.length == 1) {
+        summaryText = 'You and ${others.first.userName} $vphrase';
+      } else {
+        summaryText = 'You and ${others.length} others $vphrase';
+      }
+    } else {
+      final lastVoter = sameTypeVoters.last;
+      summaryText =
+          '${lastVoter.userName} voted ${_voteStatusText(sameTypeVoters.last)}';
+    }
 
     return Row(
       children: [
-        // Stacked avatars
+        // Stacked avatars (same vote type only)
         SizedBox(
-          width: _stackedAvatarsWidth(activeVoters.take(5).length),
+          width: _stackedAvatarsWidth(sameTypeVoters.take(5).length),
           height: 24,
-          child: _buildStackedAvatars(activeVoters.take(5).toList()),
+          child: _buildStackedAvatars(sameTypeVoters.take(5).toList()),
         ),
         const SizedBox(width: Gaps.xs),
-        // "Name is going"
+        // Summary text
         Expanded(
           child: Text(
-            '${lastVoter.userName} voted ${_voteStatusText(activeVoters.last)}',
+            summaryText,
             style: AppText.bodyMedium.copyWith(color: BrandColors.text1),
             overflow: TextOverflow.ellipsis,
           ),
         ),
       ],
     );
+  }
+
+  /// Verb phrase for each vote type.
+  String _verbPhrase(RsvpVoteType type) {
+    switch (type) {
+      case RsvpVoteType.going:
+        return 'are going';
+      case RsvpVoteType.maybe:
+        return 'maybe can go';
+      case RsvpVoteType.notGoing:
+        return "can't go";
+    }
   }
 
   /// Returns the vote status text for a specific voter.

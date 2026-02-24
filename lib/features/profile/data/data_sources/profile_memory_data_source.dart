@@ -113,8 +113,7 @@ class ProfileMemoryDataSource {
             'status': eventMap['status'],
           };
 
-          print('[ProfileMemoryDataSource] Memory data: $memoryData');
-          memoriesWithCovers.add(memoryData);
+                    memoriesWithCovers.add(memoryData);
         }
       }
 

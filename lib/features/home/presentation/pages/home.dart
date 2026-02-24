@@ -618,9 +618,9 @@ class _HomePageState extends ConsumerState<HomePage> {
                                         onTap: () async {
                                           await Navigator.pushNamed(
                                             context,
-                                            AppRouter.memory,
+                                            AppRouter.eventRecap,
                                             arguments: {
-                                              'memoryId': recapEvents.first.id
+                                              'eventId': recapEvents.first.id
                                             },
                                           );
                                         },
@@ -659,9 +659,9 @@ class _HomePageState extends ConsumerState<HomePage> {
                                               onTap: () async {
                                                 await Navigator.pushNamed(
                                                   context,
-                                                  AppRouter.memory,
+                                                  AppRouter.eventRecap,
                                                   arguments: {
-                                                    'memoryId': event.id
+                                                    'eventId': event.id
                                                   },
                                                 );
                                               },
@@ -692,9 +692,9 @@ class _HomePageState extends ConsumerState<HomePage> {
                                               onTap: () async {
                                                 await Navigator.pushNamed(
                                                   context,
-                                                  AppRouter.memory,
+                                                  AppRouter.eventRecap,
                                                   arguments: {
-                                                    'memoryId': event.id
+                                                    'eventId': event.id
                                                   },
                                                 );
                                               },
