@@ -18,7 +18,7 @@ class MemorySummaryModel {
       MemorySummaryModel(
         eventId: row['event_id'] as String,
         title: row['title'] as String,
-        emoji: row['emoji'] as String? ?? '🖼️',
+        emoji: row['emoji'] as String? ?? '',
         createdAt: DateTime.parse(row['created_at'] as String),
       );
 

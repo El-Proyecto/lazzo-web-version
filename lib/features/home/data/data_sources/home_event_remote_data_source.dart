@@ -46,7 +46,7 @@ class HomeEventRemoteDataSource {
             start_datetime, end_datetime,
             location_name, event_status,
             user_rsvp, voted_at,
-            going_count, going_users,
+            going_count, guest_going_count, going_users,
             not_going_users, no_response_users,
             participants_total, voters_total,
             priority
@@ -189,7 +189,7 @@ class HomeEventRemoteDataSource {
             start_datetime, end_datetime,
             location_name, event_status,
             user_rsvp, voted_at,
-            going_count, going_users,
+            going_count, guest_going_count, going_users,
             not_going_users, no_response_users,
             participants_total, voters_total
           ''')
@@ -253,7 +253,7 @@ class HomeEventRemoteDataSource {
             start_datetime, end_datetime,
             location_name, event_status,
             user_rsvp, voted_at,
-            going_count, going_users,
+            going_count, guest_going_count, going_users,
             not_going_users, no_response_users,
             participants_total, voters_total
           ''')
@@ -370,7 +370,7 @@ class HomeEventRemoteDataSource {
             start_datetime, end_datetime,
             location_name, event_status,
             user_rsvp, voted_at,
-            going_count, going_users,
+            going_count, guest_going_count, going_users,
             not_going_users, no_response_users,
             participants_total, voters_total
           ''')
@@ -475,7 +475,7 @@ class HomeEventRemoteDataSource {
             start_datetime, end_datetime,
             location_name, event_status,
             user_rsvp, voted_at,
-            going_count, going_users,
+            going_count, guest_going_count, going_users,
             not_going_users, no_response_users,
             participants_total, voters_total
           ''')
@@ -529,7 +529,7 @@ class HomeEventRemoteDataSource {
             start_datetime, end_datetime,
             location_name, event_status,
             user_rsvp, voted_at,
-            going_count, going_users,
+            going_count, guest_going_count, going_users,
             not_going_users, no_response_users,
             participants_total, voters_total
           ''')

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../routes/app_router.dart';
@@ -30,6 +32,7 @@ import '../../../../config/app_config.dart';
 import '../../../../shared/components/common/invite_bottom_sheet.dart';
 import '../../../event_invites/presentation/providers/event_invite_providers.dart';
 import '../../../../shared/components/widgets/rsvp_vote_buttons.dart';
+import '../../../../shared/providers/realtime_refresh_provider.dart';
 import 'event_page_models.dart';
 
 // LAZZO 2.0: payments_provider import removed
@@ -58,6 +61,9 @@ class _EventPageState extends ConsumerState<EventPage> {
   // Cache isHost status to prevent flicker during operations
   bool? _cachedIsHost;
 
+  // Periodic timer to refresh guest RSVP counts (fallback for Realtime)
+  Timer? _guestRsvpRefreshTimer;
+
   String get eventId => widget.eventId;
 
   @override
@@ -71,10 +77,21 @@ class _EventPageState extends ConsumerState<EventPage> {
 
     // Listen to scroll to show/hide title in app bar
     _scrollController.addListener(_onScroll);
+
+    // Periodically refresh guest RSVP list from web votes
+    _guestRsvpRefreshTimer = Timer.periodic(
+      const Duration(seconds: 30),
+      (_) {
+        if (mounted) {
+          ref.invalidate(guestRsvpListProvider(eventId));
+        }
+      },
+    );
   }
 
   @override
   void dispose() {
+    _guestRsvpRefreshTimer?.cancel();
     _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
     super.dispose();
@@ -216,8 +233,14 @@ class _EventPageState extends ConsumerState<EventPage> {
     if (!isConfirmed) {
       final rsvpsAsync = ref.read(eventRsvpsProvider(eventId));
       final rsvps = rsvpsAsync.valueOrNull ?? [];
-      final goingCount =
+      final appGoingCount =
           rsvps.where((r) => r.status == RsvpStatus.going).length;
+      final guestList = ref.read(guestRsvpListProvider(eventId)).valueOrNull ?? [];
+      int webGoing = 0;
+      for (final g in guestList) {
+        if ((g['rsvp'] as String?) == 'going') webGoing++;
+      }
+      final goingCount = appGoingCount + webGoing;
       if (goingCount == 0) {
         showDialog(
           context: context,
@@ -316,6 +339,9 @@ class _EventPageState extends ConsumerState<EventPage> {
 
   @override
   Widget build(BuildContext context) {
+    // Ensure Realtime refresh is active on this page (not just Home)
+    ref.watch(realtimeRefreshProvider);
+
     final currentUserId = ref.watch(currentUserIdProvider);
     final eventAsync = ref.watch(eventDetailProvider(eventId));
     // Note: rsvpsAsync, userRsvpAsync watched inside _buildRsvpSection()
@@ -338,6 +364,7 @@ class _EventPageState extends ConsumerState<EventPage> {
       ref.invalidate(locationSuggestionVotesProvider(eventId));
       ref.invalidate(userLocationSuggestionVotesProvider(eventId));
       ref.invalidate(eventParticipantsProvider(eventId));
+      ref.invalidate(guestRsvpListProvider(eventId));
 
       // LAZZO 2.0: payment provider invalidations removed
     }
@@ -480,9 +507,21 @@ class _EventPageState extends ConsumerState<EventPage> {
       ),
       bottomNavigationBar: eventAsync.whenOrNull(
         data: (event) {
-          // Show share button only for pending/confirmed events
+          // Show share button for pending, confirmed, living, and recap events
           if (event.status == EventStatus.pending ||
-              event.status == EventStatus.confirmed) {
+              event.status == EventStatus.confirmed ||
+              event.status == EventStatus.living ||
+              event.status == EventStatus.recap) {
+            // Use accent color based on event status
+            final buttonColor = event.status == EventStatus.living
+                ? BrandColors.living
+                : event.status == EventStatus.recap
+                    ? BrandColors.recap
+                    : BrandColors.planning;
+            final buttonLabel = (event.status == EventStatus.living ||
+                    event.status == EventStatus.recap)
+                ? 'Share event with friends'
+                : 'Share invite with friends';
             return Container(
               padding: const EdgeInsets.fromLTRB(
                 Insets.screenH,
@@ -531,13 +570,13 @@ class _EventPageState extends ConsumerState<EventPage> {
                     },
                     icon: const Icon(Icons.ios_share, size: IconSizes.smAlt),
                     label: Text(
-                      'Share invite with friends',
+                      buttonLabel,
                       style: AppText.labelLarge.copyWith(
                         color: BrandColors.text1,
                       ),
                     ),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: BrandColors.planning,
+                      backgroundColor: buttonColor,
                       foregroundColor: BrandColors.text1,
                       elevation: 0,
                       shape: RoundedRectangleBorder(
@@ -1323,15 +1362,34 @@ class _EventPageState extends ConsumerState<EventPage> {
           eventLocationSuggestionsProvider(eventId),
         );
 
+        // Watch guest RSVP list (single source of truth for web guests)
+        final guestListAsync = consumerRef.watch(
+          guestRsvpListProvider(eventId),
+        );
+        final guestList = guestListAsync.valueOrNull ?? [];
+
         return locationSuggestionsAsync.when(
           data: (locationSuggestions) {
-            // Calculate dynamic counts
-            final goingCount =
+            // Calculate dynamic counts from app participants
+            final appGoingCount =
                 rsvps.where((r) => r.status == RsvpStatus.going).length;
-            final notGoingCount =
+            final appNotGoingCount =
                 rsvps.where((r) => r.status == RsvpStatus.notGoing).length;
-            final maybeCount =
+            final appMaybeCount =
                 rsvps.where((r) => r.status == RsvpStatus.maybe).length;
+
+            // Derive web guest counts from the list (single source of truth)
+            int webGoing = 0, webNotGoing = 0, webMaybe = 0;
+            for (final g in guestList) {
+              switch (g['rsvp'] as String?) {
+                case 'going': webGoing++; break;
+                case 'not_going': webNotGoing++; break;
+                case 'maybe': webMaybe++; break;
+              }
+            }
+            final goingCount = appGoingCount + webGoing;
+            final notGoingCount = appNotGoingCount + webNotGoing;
+            final maybeCount = appMaybeCount + webMaybe;
 
             return Column(
               children: [
@@ -1399,15 +1457,24 @@ class _EventPageState extends ConsumerState<EventPage> {
                       arguments: {'eventId': eventId},
                     );
                   },
-                  voters: rsvps
-                      .where((r) => r.status != RsvpStatus.pending)
-                      .map((r) => RsvpVoterInfo(
-                            userId: r.userId,
-                            userName: r.userName,
-                            userAvatar: r.userAvatar,
-                            voteType: _mapStatusToVoteType(r.status),
-                          ))
-                      .toList(),
+                  voters: [
+                    // App participants
+                    ...rsvps
+                        .where((r) => r.status != RsvpStatus.pending)
+                        .map((r) => RsvpVoterInfo(
+                              userId: r.userId,
+                              userName: r.userName,
+                              userAvatar: r.userAvatar,
+                              voteType: _mapStatusToVoteType(r.status),
+                            )),
+                    // Web guests
+                    ...guestList.map((g) => RsvpVoterInfo(
+                          userId: g['id'] as String? ?? '',
+                          userName: g['guest_name'] as String? ?? 'Guest',
+                          userAvatar: null,
+                          voteType: _guestRsvpToVoteType(g['rsvp'] as String?),
+                        )),
+                  ],
                 ),
                 const SizedBox(height: Gaps.lg),
               ],
@@ -1437,10 +1504,28 @@ class _EventPageState extends ConsumerState<EventPage> {
     List<Rsvp> rsvps,
     Rsvp? userRsvp,
   ) {
-    final goingCount = rsvps.where((r) => r.status == RsvpStatus.going).length;
-    final notGoingCount =
+    // Read cached guest data if available (single source of truth)
+    final guestList =
+        ref.read(guestRsvpListProvider(eventId)).valueOrNull ?? [];
+
+    final appGoingCount =
+        rsvps.where((r) => r.status == RsvpStatus.going).length;
+    final appNotGoingCount =
         rsvps.where((r) => r.status == RsvpStatus.notGoing).length;
-    final maybeCount = rsvps.where((r) => r.status == RsvpStatus.maybe).length;
+    final appMaybeCount =
+        rsvps.where((r) => r.status == RsvpStatus.maybe).length;
+
+    int webGoing = 0, webNotGoing = 0, webMaybe = 0;
+    for (final g in guestList) {
+      switch (g['rsvp'] as String?) {
+        case 'going': webGoing++; break;
+        case 'not_going': webNotGoing++; break;
+        case 'maybe': webMaybe++; break;
+      }
+    }
+    final goingCount = appGoingCount + webGoing;
+    final notGoingCount = appNotGoingCount + webNotGoing;
+    final maybeCount = appMaybeCount + webMaybe;
 
     return Column(
       children: [
@@ -1505,15 +1590,24 @@ class _EventPageState extends ConsumerState<EventPage> {
               arguments: {'eventId': eventId},
             );
           },
-          voters: rsvps
-              .where((r) => r.status != RsvpStatus.pending)
-              .map((r) => RsvpVoterInfo(
-                    userId: r.userId,
-                    userName: r.userName,
-                    userAvatar: r.userAvatar,
-                    voteType: _mapStatusToVoteType(r.status),
-                  ))
-              .toList(),
+          voters: [
+            // App participants
+            ...rsvps
+                .where((r) => r.status != RsvpStatus.pending)
+                .map((r) => RsvpVoterInfo(
+                      userId: r.userId,
+                      userName: r.userName,
+                      userAvatar: r.userAvatar,
+                      voteType: _mapStatusToVoteType(r.status),
+                    )),
+            // Web guests
+            ...guestList.map((g) => RsvpVoterInfo(
+                  userId: g['id'] as String? ?? '',
+                  userName: g['guest_name'] as String? ?? 'Guest',
+                  userAvatar: null,
+                  voteType: _guestRsvpToVoteType(g['rsvp'] as String?),
+                )),
+          ],
         ),
         const SizedBox(height: Gaps.lg),
       ],
@@ -1571,6 +1665,20 @@ class _EventPageState extends ConsumerState<EventPage> {
         return RsvpVoteType.notGoing;
       case RsvpStatus.pending:
         return RsvpVoteType.going; // fallback, should not happen
+    }
+  }
+
+  /// Maps web guest RSVP string ('going'/'not_going'/'maybe') to RsvpVoteType.
+  RsvpVoteType _guestRsvpToVoteType(String? rsvp) {
+    switch (rsvp) {
+      case 'going':
+        return RsvpVoteType.going;
+      case 'not_going':
+        return RsvpVoteType.notGoing;
+      case 'maybe':
+        return RsvpVoteType.maybe;
+      default:
+        return RsvpVoteType.going;
     }
   }
 

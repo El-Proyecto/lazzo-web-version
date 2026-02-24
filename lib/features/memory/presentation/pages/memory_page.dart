@@ -3,9 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:share_plus/share_plus.dart' show SharePlus, ShareParams;
+import '../../../../config/app_config.dart';
 import '../../../../routes/app_router.dart';
 import '../../../../shared/components/nav/common_app_bar.dart';
+import '../../../../shared/components/common/invite_bottom_sheet.dart';
 import '../../../../shared/components/common/top_banner.dart';
 import '../../../../shared/components/inputs/photo_selector.dart';
 import '../../../../shared/components/sections/cover_mosaic.dart';
@@ -15,6 +16,7 @@ import '../../../../shared/constants/text_styles.dart';
 import '../../../../shared/themes/colors.dart';
 import '../../../event/domain/entities/rsvp.dart';
 import '../../../event/presentation/providers/event_providers.dart';
+import '../../../event_invites/presentation/providers/event_invite_providers.dart';
 import '../providers/memory_providers.dart';
 import '../../domain/entities/memory_entity.dart';
 
@@ -347,7 +349,12 @@ class _MemoryPageState extends ConsumerState<MemoryPage> {
           : null,
       trailing2: IconButton(
         icon: const Icon(Icons.ios_share, color: BrandColors.text1),
-        onPressed: () => _navigateToShareMemory(context, memory.status),
+        onPressed: () => _navigateToShareMemory(
+          context,
+          memory.status,
+          memory.eventId,
+          memory.title,
+        ),
       ),
     );
   }
@@ -652,15 +659,34 @@ class _MemoryPageState extends ConsumerState<MemoryPage> {
     }
   }
 
-  void _navigateToShareMemory(BuildContext context, EventStatus status) {
-    // Recap/Living: Share link via native share
+  Future<void> _navigateToShareMemory(
+    BuildContext context,
+    EventStatus status,
+    String eventId,
+    String eventName,
+  ) async {
+    // Recap/Living: Show invite bottom sheet with invite link
     if (status == EventStatus.recap || status == EventStatus.living) {
-      final memoryUrl = 'https://lazzo.app/memory/${widget.memoryId}';
-      SharePlus.instance.share(
-        ShareParams(
-          text: 'Check out this memory on Lazzo!\n$memoryUrl',
-        ),
-      );
+      try {
+        final useCase = ref.read(createEventInviteLinkProvider);
+        final entity = await useCase(
+          eventId: eventId,
+          shareChannel: 'memory_share',
+        );
+        final inviteUrl = '${AppConfig.invitesBaseUrl}/i/${entity.token}';
+        if (context.mounted) {
+          InviteBottomSheet.show(
+            context: context,
+            inviteUrl: inviteUrl,
+            entityName: eventName,
+            entityType: 'event',
+          );
+        }
+      } catch (e) {
+        if (context.mounted) {
+          TopBanner.showError(context, message: 'Failed to create invite link');
+        }
+      }
       return;
     }
 

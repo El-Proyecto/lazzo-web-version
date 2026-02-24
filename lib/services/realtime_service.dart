@@ -10,9 +10,11 @@ class RealtimeService {
   final SupabaseClient _client;
   RealtimeChannel? _rsvpChannel;
   RealtimeChannel? _eventsChannel;
+  RealtimeChannel? _guestRsvpChannel;
 
   final _rsvpChanges = StreamController<RealtimeChangeEvent>.broadcast();
   final _eventChanges = StreamController<RealtimeChangeEvent>.broadcast();
+  final _guestRsvpChanges = StreamController<RealtimeChangeEvent>.broadcast();
 
   /// Stream of RSVP changes (INSERT / UPDATE / DELETE on event_participants)
   Stream<RealtimeChangeEvent> get rsvpChanges => _rsvpChanges.stream;
@@ -20,12 +22,16 @@ class RealtimeService {
   /// Stream of event changes (UPDATE on events — e.g. status, cover_photo)
   Stream<RealtimeChangeEvent> get eventChanges => _eventChanges.stream;
 
+  /// Stream of guest RSVP changes (INSERT / UPDATE / DELETE on event_guest_rsvps)
+  Stream<RealtimeChangeEvent> get guestRsvpChanges => _guestRsvpChanges.stream;
+
   RealtimeService(this._client);
 
   /// Start listening. Call once after auth is confirmed.
   void subscribe() {
     _subscribeRsvps();
     _subscribeEvents();
+    _subscribeGuestRsvps();
   }
 
   void _subscribeRsvps() {
@@ -66,6 +72,25 @@ class RealtimeService {
         .subscribe();
   }
 
+  void _subscribeGuestRsvps() {
+    _guestRsvpChannel = _client
+        .channel('realtime:event_guest_rsvps')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'event_guest_rsvps',
+          callback: (payload) {
+            _guestRsvpChanges.add(RealtimeChangeEvent(
+              table: 'event_guest_rsvps',
+              eventType: payload.eventType.name,
+              newRecord: payload.newRecord,
+              oldRecord: payload.oldRecord,
+            ));
+          },
+        )
+        .subscribe();
+  }
+
   /// Stop listening and release resources.
   Future<void> dispose() async {
     if (_rsvpChannel != null) {
@@ -74,8 +99,12 @@ class RealtimeService {
     if (_eventsChannel != null) {
       await _client.removeChannel(_eventsChannel!);
     }
+    if (_guestRsvpChannel != null) {
+      await _client.removeChannel(_guestRsvpChannel!);
+    }
     await _rsvpChanges.close();
     await _eventChanges.close();
+    await _guestRsvpChanges.close();
   }
 }
 
@@ -93,9 +122,9 @@ class RealtimeChangeEvent {
     required this.oldRecord,
   });
 
-  /// The event ID affected (works for both event_participants.pevent_id and events.id)
+  /// The event ID affected (works for event_participants.pevent_id, events.id, and event_guest_rsvps.event_id)
   String? get eventId {
-    return (newRecord['pevent_id'] ?? newRecord['id'] ?? oldRecord['pevent_id'] ?? oldRecord['id']) as String?;
+    return (newRecord['pevent_id'] ?? newRecord['event_id'] ?? newRecord['id'] ?? oldRecord['pevent_id'] ?? oldRecord['event_id'] ?? oldRecord['id']) as String?;
   }
 }
 
@@ -120,4 +149,10 @@ final rsvpRealtimeProvider = StreamProvider<RealtimeChangeEvent>((ref) {
 final eventRealtimeProvider = StreamProvider<RealtimeChangeEvent>((ref) {
   final service = ref.watch(realtimeServiceProvider);
   return service.eventChanges;
+});
+
+/// Stream provider that watches web guest RSVP changes.
+final guestRsvpRealtimeProvider = StreamProvider<RealtimeChangeEvent>((ref) {
+  final service = ref.watch(realtimeServiceProvider);
+  return service.guestRsvpChanges;
 });

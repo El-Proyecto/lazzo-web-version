@@ -184,6 +184,54 @@ final eventRsvpsProvider = FutureProvider.family<List<Rsvp>, String>((
   return await useCase(eventId);
 });
 
+/// Guest RSVP counts from web invite page (event_guest_rsvps table).
+/// Returns a map with 'going', 'not_going', 'maybe' counts.
+final guestRsvpCountsProvider =
+    FutureProvider.family<Map<String, int>, String>((ref, eventId) async {
+  try {
+    final response = await Supabase.instance.client
+        .from('event_guest_rsvps')
+        .select('rsvp')
+        .eq('event_id', eventId);
+
+    int going = 0, notGoing = 0, maybe = 0;
+    for (final row in response) {
+      switch (row['rsvp'] as String?) {
+        case 'going':
+          going++;
+          break;
+        case 'not_going':
+          notGoing++;
+          break;
+        case 'maybe':
+          maybe++;
+          break;
+      }
+    }
+    return {'going': going, 'not_going': notGoing, 'maybe': maybe};
+  } catch (_) {
+    return {'going': 0, 'not_going': 0, 'maybe': 0};
+  }
+});
+
+/// Guest RSVP *list* from web invite page (event_guest_rsvps table).
+/// Returns individual guest records with names — used for voter display
+/// and manage-guests page alongside app participants.
+final guestRsvpListProvider =
+    FutureProvider.family<List<Map<String, dynamic>>, String>(
+        (ref, eventId) async {
+  try {
+    final response = await Supabase.instance.client
+        .from('event_guest_rsvps')
+        .select('id, guest_name, rsvp, plus_one, created_at')
+        .eq('event_id', eventId)
+        .order('created_at', ascending: false);
+    return List<Map<String, dynamic>>.from(response);
+  } catch (_) {
+    return [];
+  }
+});
+
 // User RSVP state provider
 final userRsvpProvider =
     StateNotifierProvider.family<UserRsvpNotifier, AsyncValue<Rsvp?>, String>((

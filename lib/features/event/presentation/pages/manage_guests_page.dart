@@ -233,16 +233,55 @@ class _ManageGuestsPageState extends ConsumerState<ManageGuestsPage> {
   // ─── Default Mode (Planning/Confirmed) ────────────────────
 
   Widget _buildContent(List<Rsvp> rsvps) {
+    // Fetch web guest RSVPs
+    final guestListAsync = ref.watch(guestRsvpListProvider(widget.eventId));
+    final guestList = guestListAsync.valueOrNull ?? [];
+
+    // Convert web guests to Rsvp entities for unified display
+    final webGuestRsvps = guestList.map((g) {
+      final rsvpStr = g['rsvp'] as String? ?? 'going';
+      RsvpStatus status;
+      switch (rsvpStr) {
+        case 'going':
+          status = RsvpStatus.going;
+          break;
+        case 'not_going':
+          status = RsvpStatus.notGoing;
+          break;
+        case 'maybe':
+          status = RsvpStatus.maybe;
+          break;
+        default:
+          status = RsvpStatus.going;
+      }
+      return Rsvp(
+        id: g['id'] as String? ?? '',
+        eventId: widget.eventId,
+        userId: '', // Web guests have no user account
+        userName: g['guest_name'] as String? ?? 'Guest',
+        userAvatar: null,
+        status: status,
+        createdAt: g['created_at'] != null
+            ? DateTime.tryParse(g['created_at'] as String) ?? DateTime.now()
+            : DateTime.now(),
+      );
+    }).toList();
+
+    // Merge app + web guests
+    final allRsvps = [...rsvps, ...webGuestRsvps];
+
     // Count votes by status (exclude pending)
-    final goingCount = rsvps.where((r) => r.status == RsvpStatus.going).length;
-    final maybeCount = rsvps.where((r) => r.status == RsvpStatus.maybe).length;
+    final goingCount =
+        allRsvps.where((r) => r.status == RsvpStatus.going).length;
+    final maybeCount =
+        allRsvps.where((r) => r.status == RsvpStatus.maybe).length;
     final cantCount =
-        rsvps.where((r) => r.status == RsvpStatus.notGoing).length;
+        allRsvps.where((r) => r.status == RsvpStatus.notGoing).length;
 
     // Filter rsvps based on selected status
     final filteredRsvps = _selectedFilter != null
-        ? rsvps.where((r) => r.status == _selectedFilter).toList()
-        : rsvps.where((r) => r.status != RsvpStatus.pending).toList();
+        ? allRsvps.where((r) => r.status == _selectedFilter).toList()
+        : allRsvps.where((r) => r.status != RsvpStatus.pending).toList();
 
     // Sort by date, most recent first
     filteredRsvps.sort((a, b) => b.createdAt.compareTo(a.createdAt));
@@ -311,14 +350,17 @@ class _ManageGuestsPageState extends ConsumerState<ManageGuestsPage> {
                       ),
                       itemBuilder: (context, index) {
                         final rsvp = filteredRsvps[index];
+                        final isWebGuest = rsvp.userId.isEmpty;
                         return GuestListTile(
                           rsvp: rsvp,
-                          onTap: () {
-                            Navigator.of(context).pushNamed(
-                              AppRouter.otherProfile,
-                              arguments: {'userId': rsvp.userId},
-                            );
-                          },
+                          onTap: isWebGuest
+                              ? null
+                              : () {
+                                  Navigator.of(context).pushNamed(
+                                    AppRouter.otherProfile,
+                                    arguments: {'userId': rsvp.userId},
+                                  );
+                                },
                         );
                       },
                     ),

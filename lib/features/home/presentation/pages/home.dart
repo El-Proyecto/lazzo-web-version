@@ -1,9 +1,10 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:share_plus/share_plus.dart' show SharePlus, ShareParams;
 import 'package:image_picker/image_picker.dart';
+import '../../../../config/app_config.dart';
 import '../../../../shared/components/nav/common_app_bar.dart';
+import '../../../../shared/components/common/invite_bottom_sheet.dart';
 import '../../../../shared/components/inputs/search_bar.dart' as custom;
 import '../../../../shared/components/sections/section_block.dart';
 import '../../../../shared/components/cards/home_event_card.dart';
@@ -27,6 +28,7 @@ import '../widgets/no_upcoming_events_card.dart';
 import '../../../../shared/components/inputs/photo_selector.dart';
 import '../providers/home_event_providers.dart';
 import '../../../../routes/app_router.dart';
+import '../../../event_invites/presentation/providers/event_invite_providers.dart';
 import '../../../memory/data/fakes/fake_memory_repository.dart';
 import '../../domain/entities/home_event.dart';
 import '../../../../shared/providers/realtime_refresh_provider.dart';
@@ -217,12 +219,29 @@ class _HomePageState extends ConsumerState<HomePage> {
   }
 
   /// Share event invite
-  void _handleInviteTap(String eventId) {
-    SharePlus.instance.share(
-      ShareParams(
-        text: 'Join my event on Lazzo! 🎉',
-      ),
-    );
+  Future<void> _handleInviteTap(String eventId, String eventName) async {
+    try {
+      final useCase = ref.read(createEventInviteLinkProvider);
+      final entity = await useCase(
+        eventId: eventId,
+        shareChannel: 'home_card',
+      );
+      final inviteUrl = '${AppConfig.invitesBaseUrl}/i/${entity.token}';
+      if (mounted) {
+        InviteBottomSheet.show(
+          context: context,
+          inviteUrl: inviteUrl,
+          entityName: eventName,
+          entityType: 'event',
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to create invite link')),
+        );
+      }
+    }
   }
 
   /// Navigate to photo picker/camera for adding photo
@@ -469,7 +488,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                                   },
                                   onVoteChanged: _handleVoteChanged,
                                   onGuestsTap: () => _handleGuestsTap(event.id),
-                                  onInviteTap: () => _handleInviteTap(event.id),
+                                  onInviteTap: () => _handleInviteTap(event.id, event.name),
                                   onAddPhotoTap: () =>
                                       _handleAddPhotoTap(event.id),
                                   onManagePhotosTap: () =>
@@ -526,7 +545,8 @@ class _HomePageState extends ConsumerState<HomePage> {
                                       onGuestsTap: () => _handleGuestsTap(
                                           livingEvents.first.id),
                                       onInviteTap: () => _handleInviteTap(
-                                          livingEvents.first.id),
+                                          livingEvents.first.id,
+                                          livingEvents.first.name),
                                       onAddPhotoTap: () => _handleAddPhotoTap(
                                           livingEvents.first.id),
                                       onManagePhotosTap: () =>
@@ -608,7 +628,8 @@ class _HomePageState extends ConsumerState<HomePage> {
                                         onGuestsTap: () => _handleGuestsTap(
                                             recapEvents.first.id),
                                         onInviteTap: () => _handleInviteTap(
-                                            recapEvents.first.id),
+                                            recapEvents.first.id,
+                                            recapEvents.first.name),
                                         onAddPhotoTap: () => _handleAddPhotoTap(
                                             recapEvents.first.id),
                                         onManagePhotosTap: () =>

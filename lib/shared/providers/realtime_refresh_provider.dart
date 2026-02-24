@@ -12,6 +12,7 @@ import '../../features/event/presentation/providers/event_providers.dart';
 final realtimeRefreshProvider = Provider<void>((ref) {
   StreamSubscription<RealtimeChangeEvent>? rsvpSub;
   StreamSubscription<RealtimeChangeEvent>? eventSub;
+  StreamSubscription<RealtimeChangeEvent>? guestRsvpSub;
 
   // Debounce: avoid spamming invalidations for rapid-fire changes
   Timer? debounce;
@@ -52,6 +53,18 @@ final realtimeRefreshProvider = Provider<void>((ref) {
 
       invalidateHome();
     });
+
+    // Web guest RSVP changes → invalidate guest counts + event detail
+    guestRsvpSub = service.guestRsvpChanges.listen((change) {
+      final eventId = change.eventId;
+
+      if (eventId != null) {
+        ref.invalidate(guestRsvpCountsProvider(eventId));
+        ref.invalidate(eventDetailProvider(eventId));
+      }
+
+      invalidateHome();
+    });
   } catch (_) {
     // Realtime not available — graceful degradation
   }
@@ -60,5 +73,6 @@ final realtimeRefreshProvider = Provider<void>((ref) {
     debounce?.cancel();
     rsvpSub?.cancel();
     eventSub?.cancel();
+    guestRsvpSub?.cancel();
   });
 });
