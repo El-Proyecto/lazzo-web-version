@@ -161,7 +161,8 @@ class _EventPageState extends ConsumerState<EventPage> {
                 // Confirm the event
                 await ref
                     .read(eventStatusNotifierProvider(eventId).notifier)
-                    .updateStatus(eventId, EventStatus.confirmed);
+                    .updateStatus(eventId, EventStatus.confirmed,
+                        fromStatus: EventStatus.pending);
 
                 if (context.mounted) {
                   TopBanner.showSuccess(
@@ -250,7 +251,10 @@ class _EventPageState extends ConsumerState<EventPage> {
 
           await ref
               .read(eventStatusNotifierProvider(eventId).notifier)
-              .updateStatus(eventId, newStatus);
+              .updateStatus(eventId, newStatus,
+                  fromStatus: isConfirmed
+                      ? EventStatus.confirmed
+                      : EventStatus.pending);
 
           // Show success message
           if (context.mounted) {

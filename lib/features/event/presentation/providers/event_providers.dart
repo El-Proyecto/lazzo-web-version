@@ -141,7 +141,8 @@ class EventStatusNotifier extends StateNotifier<AsyncValue<EventDetail?>> {
   EventStatusNotifier(this._updateEventStatus, this._ref)
       : super(const AsyncValue.data(null));
 
-  Future<void> updateStatus(String eventId, EventStatus newStatus) async {
+  Future<void> updateStatus(String eventId, EventStatus newStatus,
+      {EventStatus? fromStatus}) async {
     state = const AsyncValue.loading();
 
     try {
@@ -150,6 +151,14 @@ class EventStatusNotifier extends StateNotifier<AsyncValue<EventDetail?>> {
 
       // Invalidate the event detail provider to refresh the UI
       _ref.invalidate(eventDetailProvider(eventId));
+
+      // Track event_phase_changed
+      AnalyticsService.track('event_phase_changed', properties: {
+        'event_id': eventId,
+        if (fromStatus != null) 'from_phase': fromStatus.name,
+        'to_phase': newStatus.name,
+        'platform': 'ios',
+      });
     } catch (error, stackTrace) {
       state = AsyncValue.error(error, stackTrace);
     }
@@ -285,8 +294,14 @@ class UserRsvpNotifier extends StateNotifier<AsyncValue<Rsvp?>> {
     }
   }
 
-  Future<void> submitVote(RsvpStatus status) async {
+  /// Submit a vote.
+  /// [isAutoVote] — true when called programmatically (e.g. host auto-vote
+  /// after edit). Skips analytics tracking.
+  Future<void> submitVote(RsvpStatus status, {bool isAutoVote = false}) async {
     try {
+      // Capture previous vote BEFORE submitting (for rsvp_changed tracking)
+      final previousStatus = state.value?.status;
+
       final currentUserId = ref.read(currentUserIdProvider);
 
       final rsvp =
@@ -306,12 +321,28 @@ class UserRsvpNotifier extends StateNotifier<AsyncValue<Rsvp?>> {
       // Update local state - this triggers UI rebuild
       state = AsyncValue.data(rsvp);
 
-      // Track RSVP submission
-      AnalyticsService.track('rsvp_submitted', properties: {
-        'event_id': eventId,
-        'vote': status.name,
-        'platform': 'ios',
-      });
+      // Track analytics (skip for auto-votes like host auto-vote after edit)
+      if (!isAutoVote) {
+        final hadPreviousVote =
+            previousStatus != null && previousStatus != RsvpStatus.pending;
+
+        if (hadPreviousVote) {
+          // User already had a vote → track as rsvp_changed
+          AnalyticsService.track('rsvp_changed', properties: {
+            'event_id': eventId,
+            'from_vote': previousStatus.name,
+            'to_vote': status.name,
+            'platform': 'ios',
+          });
+        } else {
+          // First vote → track as rsvp_submitted
+          AnalyticsService.track('rsvp_submitted', properties: {
+            'event_id': eventId,
+            'vote': status.name,
+            'platform': 'ios',
+          });
+        }
+      }
 
       // Check auto-confirmation after RSVP submission
       await _checkAutoConfirmation();
@@ -343,7 +374,8 @@ class UserRsvpNotifier extends StateNotifier<AsyncValue<Rsvp?>> {
             // Auto-confirm the event
             await ref
                 .read(eventStatusNotifierProvider(eventId).notifier)
-                .updateStatus(eventId, EventStatus.confirmed);
+                .updateStatus(eventId, EventStatus.confirmed,
+                    fromStatus: EventStatus.pending);
           }
         }
       }

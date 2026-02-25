@@ -201,6 +201,12 @@ class _EventLivingPageState extends ConsumerState<EventLivingPage> {
                               await ref
                                   .read(endEventNowProvider)
                                   .call(widget.eventId);
+                              // Track event_ended_manually
+                              AnalyticsService.track('event_ended_manually',
+                                  properties: {
+                                    'event_id': widget.eventId,
+                                    'platform': 'ios',
+                                  });
                               // Refresh event details
                               ref.invalidate(
                                   eventDetailProvider(widget.eventId));

@@ -55,24 +55,24 @@ PostHog generates an anonymous `distinct_id` on first load (app or web). When th
 
 Only fire `screen_viewed` for screens that represent **meaningful funnel steps or decision points**. Do NOT fire on transient screens, modals, bottom sheets, or animation transitions.
 
-| `screen_name` value | When | Why it matters |
-|---------------------|------|----------------|
-| `event_detail` | User opens an event | Event interest signal |
-| `event_living` | User enters live event view | Live participation |
-| `event_recap` | User views recap page | Memory engagement |
-| `create_event` | User opens event creation | Host intent |
-| `memory_viewer` | User opens full memory | Memory depth |
-| `memory_ready` | User sees Memory Ready page | Completion signal |
-| `invite_landing` | Guest lands on invite page (web) | Top of guest funnel |
-| `calendar` | User interacts with calendar (selects day, changes view mode) | Calendar engagement — tracked on interaction only, NOT on navigation |
-| `actions` | User opens Actions tab in Inbox | Host action engagement |
+| `screen_name` value | When | Why it matters | Checked |
+|---------------------|------|----------------|--|
+| `event_detail` | User opens an event | Event interest signal | X |
+| `event_living` | User enters live event view | Live participation | X |
+| `event_recap` | User views recap page | Memory engagement | X |
+| `create_event` | User opens event creation | Host intent | X |
+| `memory_viewer` | User opens full memory | Memory depth | X |
+| `memory_ready` | User sees Memory Ready page | Completion signal |  |
+| `invite_landing` | Guest lands on invite page (web) | Top of guest funnel |  |
+| `calendar` | User interacts with calendar (selects day, changes view mode) | Calendar engagement — tracked on interaction only, NOT on navigation | X |
+| `actions` | User opens Actions tab in Inbox | Host action engagement | X |
 
 Properties: `screen_name`, `platform`, `event_id` (if applicable)
 
 #### Authentication
 
-| Event | When | Extra Properties |
-|-------|------|-----------------|
+| Event | When | Extra Properties | Checked |
+|-------|------|-----------------|--|
 | `auth_started` | User taps sign in / lands on auth page | `auth_type`: email_passwordless / guest_lightweight |
 | `auth_completed` | Successfully authenticated | `auth_type`, `is_new_user`: bool |
 | `guest_auth_completed` | Web guest completes lightweight auth | `event_id`, `auth_method`: email |
@@ -80,33 +80,33 @@ Properties: `screen_name`, `platform`, `event_id` (if applicable)
 
 #### Event Creation (Host — app only)
 
-| Event | When | Extra Properties |
-|-------|------|-----------------|
-| `event_created` | Host submits new event | `has_location`: bool, `has_datetime`: bool, `has_emoji`: bool, `creation_duration_seconds`: int |
-| `event_edited` | Host edits existing event | `fields_changed`: string[] |
+| Event | When | Extra Properties | Checked |
+|-------|------|-----------------|---|
+| `event_created` | Host submits new event | `has_location`: bool, `has_datetime`: bool, `has_emoji`: bool, `creation_duration_seconds`: int | X |
+| `event_edited` | Host edits existing event | `fields_changed`: string[] | X |
 | `event_phase_changed` | Event transitions phase | `from_phase`, `to_phase`, `trigger`: auto / host_action |
 
 #### Invite & Share
 
-| Event | When | Extra Properties |
-|-------|------|-----------------|
+| Event | When | Extra Properties | Checked
+|-------|------|-----------------|--|
 | `invite_link_shared` | Host shares invite link | `share_channel`: whatsapp / imessage / copy / qr / other |
 | `invite_link_opened` | Someone opens an invite link | `referrer`: string (if available), `is_new_visitor`: bool |
 | `qr_code_scanned` | QR code used to access event | `event_id` |
 
 #### RSVP
 
-| Event | When | Extra Properties |
-|-------|------|-----------------|
-| `rsvp_submitted` | Guest submits RSVP | `vote`: going / cant, `time_to_rsvp_seconds`: int (from invite open) |
+| Event | When | Extra Properties | Checked |
+|-------|------|-----------------|--|
+| `rsvp_submitted` | Guest submits RSVP | `vote`: going / cant, `time_to_rsvp_seconds`: int (from invite open) | X |
 | `rsvp_changed` | Guest changes RSVP | `from_vote`, `to_vote` |
 
 #### Photo Upload
 
-| Event | When | Extra Properties |
-|-------|------|-----------------|
+| Event | When | Extra Properties | Checked |
+|-------|------|-----------------|--|
 | `photo_upload_started` | User initiates upload | `source`: camera / gallery, `photo_count`: int |
-| `photo_uploaded` | Photo successfully uploaded | `upload_duration_ms`: int, `file_size_kb`: int, `is_cover`: bool |
+| `photo_uploaded` | Photo successfully uploaded | `upload_duration_ms`: int, `file_size_kb`: int, `is_cover`: bool | X |
 | `photo_upload_failed` | Upload fails | `error_type`: string, `retry_count`: int |
 | `photo_cover_selected` | User marks a photo as cover | — |
 
@@ -122,8 +122,8 @@ Properties: `screen_name`, `platform`, `event_id` (if applicable)
 
 #### Host Actions
 
-| Event | When | Extra Properties |
-|-------|------|-----------------|
+| Event | When | Extra Properties | Checked |
+|-------|------|-----------------|--|
 | `host_nudge_sent` | Host nudges guests | `nudge_type`: upload / rsvp, `guest_count`: int |
 | `event_participation_viewed` | Host views participation summary | `rsvp_count`: int, `upload_count`: int |
 | `event_ended_manually` | Host ends event early | `hours_before_auto_end`: float |
