@@ -332,15 +332,7 @@ class _InviteCardTab extends StatelessWidget {
         width: double.infinity,
         padding: const EdgeInsets.all(Gaps.lg),
         decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Color(0xFF1A1A2E),
-              Color(0xFF16213E),
-              Color(0xFF0F3460),
-            ],
-          ),
+          color: BrandColors.bg1,
           borderRadius: BorderRadius.circular(Radii.md),
           border: Border.all(
             color: BrandColors.border,
@@ -382,25 +374,19 @@ class _InviteCardTab extends StatelessWidget {
 
             const SizedBox(height: Gaps.lg),
 
-            // Lazzo branding
+            // Lazzo branding — app icon
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Container(
-                  width: 8,
-                  height: 8,
-                  decoration: const BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: LinearGradient(
-                      colors: [
-                        BrandColors.planning,
-                        BrandColors.living,
-                        BrandColors.recap,
-                      ],
-                    ),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(4),
+                  child: Image.asset(
+                    'assets/app_icon.png',
+                    width: 20,
+                    height: 20,
                   ),
                 ),
-                const SizedBox(width: 6),
+                const SizedBox(width: 8),
                 Text(
                   'LAZZO',
                   style: AppText.labelLarge.copyWith(
