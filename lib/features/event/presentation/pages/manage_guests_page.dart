@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:share_plus/share_plus.dart' show SharePlus, ShareParams;
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../routes/app_router.dart';
 import '../../../../config/app_config.dart';
@@ -67,6 +66,7 @@ class _ManageGuestsPageState extends ConsumerState<ManageGuestsPage> {
                   inviteUrl: inviteUrl,
                   entityName: eventAsync.value?.name ?? 'this event',
                   entityType: 'event',
+                  eventEmoji: eventAsync.value?.emoji ?? '📅',
                 );
               }
             } catch (e) {
@@ -84,7 +84,7 @@ class _ManageGuestsPageState extends ConsumerState<ManageGuestsPage> {
       body: rsvpsAsync.when(
         data: (rsvps) => isPhotoMode
             ? _buildPhotoContributorContent(rsvps, eventStatus!, currentUserId)
-            : _buildContent(rsvps, currentUserId),
+            : _buildContent(rsvps),
         loading: () => Center(
           child: CircularProgressIndicator(
             color: isPhotoMode ? BrandColors.living : BrandColors.planning,

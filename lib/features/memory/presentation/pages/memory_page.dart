@@ -232,7 +232,7 @@ class _MemoryPageState extends ConsumerState<MemoryPage> {
                               child: Column(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  Icon(
+                                  const Icon(
                                     Icons.photo_library_outlined,
                                     size: 48,
                                     color: BrandColors.text2,
@@ -353,6 +353,7 @@ class _MemoryPageState extends ConsumerState<MemoryPage> {
           memory.status,
           memory.eventId,
           memory.title,
+          memory.emoji,
         ),
       ),
     );
@@ -663,6 +664,7 @@ class _MemoryPageState extends ConsumerState<MemoryPage> {
     EventStatus status,
     String eventId,
     String eventName,
+    String eventEmoji,
   ) async {
     // Recap/Living: Show invite bottom sheet with invite link
     if (status == EventStatus.recap || status == EventStatus.living) {
@@ -679,6 +681,7 @@ class _MemoryPageState extends ConsumerState<MemoryPage> {
             inviteUrl: inviteUrl,
             entityName: eventName,
             entityType: 'event',
+            eventEmoji: eventEmoji,
           );
         }
       } catch (e) {

@@ -239,6 +239,7 @@ class _EventLivingPageState extends ConsumerState<EventLivingPage> {
                           inviteUrl: inviteUrl,
                           entityName: event.name,
                           entityType: 'event',
+                          eventEmoji: event.emoji,
                         );
                       }
                     } catch (e) {

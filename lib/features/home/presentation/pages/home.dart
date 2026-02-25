@@ -219,7 +219,7 @@ class _HomePageState extends ConsumerState<HomePage> {
   }
 
   /// Share event invite
-  Future<void> _handleInviteTap(String eventId, String eventName) async {
+  Future<void> _handleInviteTap(String eventId, String eventName, String eventEmoji) async {
     try {
       final useCase = ref.read(createEventInviteLinkProvider);
       final entity = await useCase(
@@ -233,6 +233,7 @@ class _HomePageState extends ConsumerState<HomePage> {
           inviteUrl: inviteUrl,
           entityName: eventName,
           entityType: 'event',
+          eventEmoji: eventEmoji,
         );
       }
     } catch (e) {
@@ -488,7 +489,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                                   },
                                   onVoteChanged: _handleVoteChanged,
                                   onGuestsTap: () => _handleGuestsTap(event.id),
-                                  onInviteTap: () => _handleInviteTap(event.id, event.name),
+                                  onInviteTap: () => _handleInviteTap(event.id, event.name, event.emoji),
                                   onAddPhotoTap: () =>
                                       _handleAddPhotoTap(event.id),
                                   onManagePhotosTap: () =>
@@ -546,7 +547,8 @@ class _HomePageState extends ConsumerState<HomePage> {
                                           livingEvents.first.id),
                                       onInviteTap: () => _handleInviteTap(
                                           livingEvents.first.id,
-                                          livingEvents.first.name),
+                                          livingEvents.first.name,
+                                          livingEvents.first.emoji),
                                       onAddPhotoTap: () => _handleAddPhotoTap(
                                           livingEvents.first.id),
                                       onManagePhotosTap: () =>
@@ -629,7 +631,8 @@ class _HomePageState extends ConsumerState<HomePage> {
                                             recapEvents.first.id),
                                         onInviteTap: () => _handleInviteTap(
                                             recapEvents.first.id,
-                                            recapEvents.first.name),
+                                            recapEvents.first.name,
+                                            recapEvents.first.emoji),
                                         onAddPhotoTap: () => _handleAddPhotoTap(
                                             recapEvents.first.id),
                                         onManagePhotosTap: () =>

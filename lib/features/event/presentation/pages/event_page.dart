@@ -556,6 +556,7 @@ class _EventPageState extends ConsumerState<EventPage> {
                             inviteUrl: inviteUrl,
                             entityName: event.name,
                             entityType: 'event',
+                            eventEmoji: event.emoji,
                           );
                         }
                       } catch (e) {
