@@ -30,7 +30,6 @@ class _InboxPageState extends ConsumerState<InboxPage> {
   @override
   void initState() {
     super.initState();
-    AnalyticsService.screenViewed('inbox');
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _markNotificationsAsRead();
     });
@@ -94,7 +93,12 @@ class _InboxPageState extends ConsumerState<InboxPage> {
     final isSelected = _selectedTab == index;
     return Expanded(
       child: GestureDetector(
-        onTap: () => setState(() => _selectedTab = index),
+        onTap: () {
+          setState(() => _selectedTab = index);
+          if (index == 1) {
+            AnalyticsService.screenViewed('actions');
+          }
+        },
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: Gaps.sm),
           decoration: BoxDecoration(

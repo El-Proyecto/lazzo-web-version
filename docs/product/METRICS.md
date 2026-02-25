@@ -57,7 +57,6 @@ Only fire `screen_viewed` for screens that represent **meaningful funnel steps o
 
 | `screen_name` value | When | Why it matters |
 |---------------------|------|----------------|
-| `home` | User lands on home page | App engagement baseline |
 | `event_detail` | User opens an event | Event interest signal |
 | `event_living` | User enters live event view | Live participation |
 | `event_recap` | User views recap page | Memory engagement |
@@ -65,8 +64,8 @@ Only fire `screen_viewed` for screens that represent **meaningful funnel steps o
 | `memory_viewer` | User opens full memory | Memory depth |
 | `memory_ready` | User sees Memory Ready page | Completion signal |
 | `invite_landing` | Guest lands on invite page (web) | Top of guest funnel |
-| `profile` | User views own profile | Engagement |
-| `inbox` | User opens inbox | Notification engagement |
+| `calendar` | User interacts with calendar (selects day, changes view mode) | Calendar engagement — tracked on interaction only, NOT on navigation |
+| `actions` | User opens Actions tab in Inbox | Host action engagement |
 
 Properties: `screen_name`, `platform`, `event_id` (if applicable)
 

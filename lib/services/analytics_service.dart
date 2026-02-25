@@ -69,9 +69,9 @@ class AnalyticsService {
   /// Enviar APENAS para ecrãs críticos (ver lista em METRICS.md).
   /// NÃO chamar em cada navegação/animação/bottom sheet.
   ///
-  /// Ecrãs críticos: home, event_detail, event_living, event_recap,
+  /// Ecrãs críticos: event_detail, event_living, event_recap,
   /// create_event, memory_viewer, memory_ready, invite_landing,
-  /// profile, inbox
+  /// calendar (on interaction), actions (on tab select)
   static Future<void> screenViewed(
     String screenName, {
     String? eventId,
