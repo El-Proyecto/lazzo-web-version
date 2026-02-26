@@ -79,7 +79,7 @@ class _HomeEventModel {
       status: calculatedStatus, // ✅ Calculado, não lido do DB
       userRsvp: _asString(map['user_rsvp']),
       votedAt: _parseDateTime(map['voted_at']),
-      goingCount: _asInt(map['going_count']),
+      goingCount: _asInt(map['going_count']) + _asInt(map['guest_going_count']),
       participantsTotal: _asInt(map['participants_total']),
       votersTotal: _asInt(map['voters_total']),
       goingUsers: _parseJsonArray(map['going_users']),

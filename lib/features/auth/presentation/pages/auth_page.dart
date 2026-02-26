@@ -128,7 +128,7 @@ class _AuthPageState extends ConsumerState<AuthPage> {
                 onLongPress: () {
                   Navigator.pushNamed(context, '/reviewer-auth');
                 },
-                child: Center(
+                child: const Center(
                   child: Text(
                     'v1.0.1',
                     style: TextStyle(

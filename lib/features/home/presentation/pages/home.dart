@@ -1,9 +1,10 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:share_plus/share_plus.dart' show SharePlus, ShareParams;
 import 'package:image_picker/image_picker.dart';
+import '../../../../config/app_config.dart';
 import '../../../../shared/components/nav/common_app_bar.dart';
+import '../../../../shared/components/common/invite_bottom_sheet.dart';
 import '../../../../shared/components/inputs/search_bar.dart' as custom;
 import '../../../../shared/components/sections/section_block.dart';
 import '../../../../shared/components/cards/home_event_card.dart';
@@ -27,8 +28,14 @@ import '../widgets/no_upcoming_events_card.dart';
 import '../../../../shared/components/inputs/photo_selector.dart';
 import '../providers/home_event_providers.dart';
 import '../../../../routes/app_router.dart';
+import '../../../event_invites/presentation/providers/event_invite_providers.dart';
 import '../../../memory/data/fakes/fake_memory_repository.dart';
 import '../../domain/entities/home_event.dart';
+import '../../../../shared/providers/realtime_refresh_provider.dart';
+import '../../../../shared/components/skeletons/home_event_card_skeleton.dart';
+import '../../../../shared/components/skeletons/event_small_card_skeleton.dart';
+import '../../../../shared/components/skeletons/memory_card_skeleton.dart';
+import '../../../../shared/components/widgets/error_retry_widget.dart';
 
 /// Home page - main screen showing next event, confirmed/pending events, and memories
 ///
@@ -44,7 +51,6 @@ class HomePage extends ConsumerStatefulWidget {
 
 class _HomePageState extends ConsumerState<HomePage> {
   bool _isNoEventsCardDismissed = false;
-  bool _isInitialized = false;
   final ScrollController _scrollController = ScrollController();
 
   @override
@@ -55,15 +61,13 @@ class _HomePageState extends ConsumerState<HomePage> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    // Refresh providers when navigating back to Home (e.g., after creating/editing event)
-    // Skip first call (initState already loads data)
-    if (_isInitialized) {
-      _refreshData();
-    }
-    _isInitialized = true;
+    // ✅ Removed blanket invalidation — was causing 6 parallel refetches on
+    //    every navigation return, even when nothing changed.
+    //    Now Supabase Realtime handles live updates automatically, and
+    //    pull-to-refresh (RefreshIndicator) is available for manual refresh.
   }
 
-  /// Refresh all home data providers
+  /// Refresh all home data providers (used by pull-to-refresh only)
   void _refreshData() {
     ref.invalidate(nextEventControllerProvider);
     ref.invalidate(confirmedEventsControllerProvider);
@@ -71,7 +75,6 @@ class _HomePageState extends ConsumerState<HomePage> {
     ref.invalidate(livingAndRecapEventsControllerProvider);
     ref.invalidate(todosControllerProvider);
     ref.invalidate(recentMemoriesControllerProvider);
-    // LAZZO 2.0: paymentSummariesControllerProvider removed
   }
 
   @override
@@ -216,12 +219,30 @@ class _HomePageState extends ConsumerState<HomePage> {
   }
 
   /// Share event invite
-  void _handleInviteTap(String eventId) {
-    SharePlus.instance.share(
-      ShareParams(
-        text: 'Join my event on Lazzo! 🎉',
-      ),
-    );
+  Future<void> _handleInviteTap(String eventId, String eventName, String eventEmoji) async {
+    try {
+      final useCase = ref.read(createEventInviteLinkProvider);
+      final entity = await useCase(
+        eventId: eventId,
+        shareChannel: 'home_card',
+      );
+      final inviteUrl = '${AppConfig.invitesBaseUrl}/i/${entity.token}';
+      if (mounted) {
+        InviteBottomSheet.show(
+          context: context,
+          inviteUrl: inviteUrl,
+          entityName: eventName,
+          entityType: 'event',
+          eventEmoji: eventEmoji,
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to create invite link')),
+        );
+      }
+    }
   }
 
   /// Navigate to photo picker/camera for adding photo
@@ -290,6 +311,10 @@ class _HomePageState extends ConsumerState<HomePage> {
 
   @override
   Widget build(BuildContext context) {
+    // ✅ Activate Supabase Realtime watcher — auto-refreshes home when
+    // web guests vote or events change (no manual polling needed).
+    ref.watch(realtimeRefreshProvider);
+
     // Listen for scroll-to-top trigger (when tapping active NavBar tab)
     ref.listen<int>(scrollToTopProvider, (previous, next) {
       if (previous != next && _scrollController.hasClients) {
@@ -342,8 +367,10 @@ class _HomePageState extends ConsumerState<HomePage> {
         trailing: (nextEventStatus == HomeEventStatus.living ||
                 nextEventStatus == HomeEventStatus.recap)
             ? GestureDetector(
-                onTap: () {
-                  Navigator.pushNamed(context, AppRouter.createEvent);
+                onTap: () async {
+                  await Navigator.pushNamed(context, AppRouter.createEvent);
+                  // Refresh after creating an event
+                  _refreshData();
                 },
                 child: Container(
                   width: 28,
@@ -414,11 +441,12 @@ class _HomePageState extends ConsumerState<HomePage> {
                   child: Column(
                     children: [
                       NoUpcomingEventsCard(
-                        onCreateEvent: () {
-                          Navigator.pushNamed(
+                        onCreateEvent: () async {
+                          await Navigator.pushNamed(
                             context,
                             AppRouter.createEvent,
                           );
+                          _refreshData();
                         },
                         onDismiss: () {
                           setState(() {
@@ -461,7 +489,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                                   },
                                   onVoteChanged: _handleVoteChanged,
                                   onGuestsTap: () => _handleGuestsTap(event.id),
-                                  onInviteTap: () => _handleInviteTap(event.id),
+                                  onInviteTap: () => _handleInviteTap(event.id, event.name, event.emoji),
                                   onAddPhotoTap: () =>
                                       _handleAddPhotoTap(event.id),
                                   onManagePhotosTap: () =>
@@ -473,18 +501,9 @@ class _HomePageState extends ConsumerState<HomePage> {
                             ],
                           );
                         },
-                        loading: () => SectionBlock(
+                        loading: () => const SectionBlock(
                           title: 'Next Event',
-                          child: Container(
-                            height: 200,
-                            decoration: BoxDecoration(
-                              color: Theme.of(context).colorScheme.surface,
-                              borderRadius: BorderRadius.circular(Radii.md),
-                            ),
-                            child: const Center(
-                              child: CircularProgressIndicator(),
-                            ),
-                          ),
+                          child: HomeEventCardSkeleton(),
                         ),
                         error: (error, stackTrace) => const SizedBox.shrink(),
                       );
@@ -527,7 +546,9 @@ class _HomePageState extends ConsumerState<HomePage> {
                                       onGuestsTap: () => _handleGuestsTap(
                                           livingEvents.first.id),
                                       onInviteTap: () => _handleInviteTap(
-                                          livingEvents.first.id),
+                                          livingEvents.first.id,
+                                          livingEvents.first.name,
+                                          livingEvents.first.emoji),
                                       onAddPhotoTap: () => _handleAddPhotoTap(
                                           livingEvents.first.id),
                                       onManagePhotosTap: () =>
@@ -609,7 +630,9 @@ class _HomePageState extends ConsumerState<HomePage> {
                                         onGuestsTap: () => _handleGuestsTap(
                                             recapEvents.first.id),
                                         onInviteTap: () => _handleInviteTap(
-                                            recapEvents.first.id),
+                                            recapEvents.first.id,
+                                            recapEvents.first.name,
+                                            recapEvents.first.emoji),
                                         onAddPhotoTap: () => _handleAddPhotoTap(
                                             recapEvents.first.id),
                                         onManagePhotosTap: () =>
@@ -696,18 +719,9 @@ class _HomePageState extends ConsumerState<HomePage> {
                       ],
                     );
                   },
-                  loading: () => SectionBlock(
+                  loading: () => const SectionBlock(
                     title: 'Live Events',
-                    child: Container(
-                      height: 200,
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.surface,
-                        borderRadius: BorderRadius.circular(Radii.md),
-                      ),
-                      child: const Center(
-                        child: CircularProgressIndicator(),
-                      ),
-                    ),
+                    child: HomeEventCardSkeleton(),
                   ),
                   error: (error, stackTrace) {
                     // If error, fall back to showing Next Event
@@ -767,18 +781,9 @@ class _HomePageState extends ConsumerState<HomePage> {
                           ],
                         );
                       },
-                      loading: () => SectionBlock(
+                      loading: () => const SectionBlock(
                         title: 'Next Event',
-                        child: Container(
-                          height: 200,
-                          decoration: BoxDecoration(
-                            color: Theme.of(context).colorScheme.surface,
-                            borderRadius: BorderRadius.circular(Radii.md),
-                          ),
-                          child: const Center(
-                            child: CircularProgressIndicator(),
-                          ),
-                        ),
+                        child: HomeEventCardSkeleton(),
                       ),
                       error: (error, stackTrace) => const SizedBox.shrink(),
                     );
@@ -876,11 +881,12 @@ class _HomePageState extends ConsumerState<HomePage> {
                   },
                   loading: () => const SectionBlock(
                     title: 'Confirmed Events',
-                    child: Center(
-                      child: CircularProgressIndicator(),
-                    ),
+                    child: EventSmallCardSkeletonList(count: 3),
                   ),
-                  error: (error, stackTrace) => const SizedBox.shrink(),
+                  error: (error, stackTrace) => ErrorRetryWidget(
+                    message: 'Could not load confirmed events',
+                    onRetry: () => ref.invalidate(confirmedEventsControllerProvider),
+                  ),
                 ),
 
                 // Pending Events Section
@@ -974,11 +980,12 @@ class _HomePageState extends ConsumerState<HomePage> {
                   },
                   loading: () => const SectionBlock(
                     title: 'Pending Events',
-                    child: Center(
-                      child: CircularProgressIndicator(),
-                    ),
+                    child: EventSmallCardSkeletonList(count: 3),
                   ),
-                  error: (error, stackTrace) => const SizedBox.shrink(),
+                  error: (error, stackTrace) => ErrorRetryWidget(
+                    message: 'Could not load pending events',
+                    onRetry: () => ref.invalidate(homeEventsControllerProvider),
+                  ),
                 ),
 
                 // To Dos Section removed from MVP (P1 only - awaiting P2 backend)
@@ -1058,8 +1065,50 @@ class _HomePageState extends ConsumerState<HomePage> {
                     ],
                   );
                 },
-                loading: () => const SizedBox.shrink(),
-                error: (error, stackTrace) => const SizedBox.shrink(),
+                loading: () {
+                  final cardWidth = (MediaQuery.of(context).size.width -
+                          (Insets.screenH * 2) -
+                          Gaps.sm) /
+                      2;
+                  return Column(
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: Insets.screenH,
+                        ),
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            'Recent Memories',
+                            style: AppText.titleMediumEmph.copyWith(
+                              color: BrandColors.text1,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: Gaps.md),
+                      SizedBox(
+                        height: 200,
+                        child: ListView.separated(
+                          scrollDirection: Axis.horizontal,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: Insets.screenH,
+                          ),
+                          itemCount: 3,
+                          separatorBuilder: (_, __) =>
+                              const SizedBox(width: Gaps.sm),
+                          itemBuilder: (_, __) =>
+                              MemoryCardSkeleton(width: cardWidth),
+                        ),
+                      ),
+                      const SizedBox(height: Gaps.lg),
+                    ],
+                  );
+                },
+                error: (error, stackTrace) => ErrorRetryWidget(
+                  message: 'Could not load recent memories',
+                  onRetry: () => ref.invalidate(recentMemoriesControllerProvider),
+                ),
               ),
             ],
           ),

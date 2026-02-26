@@ -111,22 +111,18 @@ class _InfoRow extends StatelessWidget {
   final IconData icon;
   final String text;
   final bool isExpired;
-  final bool isTappable;
 
   const _InfoRow({
     required this.icon,
     required this.text,
     this.isExpired = false,
-    this.isTappable = false,
   });
 
   @override
   Widget build(BuildContext context) {
     final color = isExpired
         ? BrandColors.text2.withValues(alpha: 0.5)
-        : isTappable
-            ? BrandColors.text2
-            : BrandColors.text2;
+        : BrandColors.text2;
 
     return Container(
       decoration: BoxDecoration(borderRadius: BorderRadius.circular(Radii.sm)),

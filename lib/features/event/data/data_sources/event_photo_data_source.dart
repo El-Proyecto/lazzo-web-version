@@ -112,7 +112,13 @@ class EventPhotoDataSource {
   }
 
   /// Get all photos for an event with uploader information
-  Future<List<Map<String, dynamic>>> getEventPhotos(String eventId) async {
+  /// Limited to 50 photos per fetch to avoid unbounded queries.
+  /// Use [offset] for pagination when needed.
+  Future<List<Map<String, dynamic>>> getEventPhotos(
+    String eventId, {
+    int limit = 50,
+    int offset = 0,
+  }) async {
     try {
       // Query event_photos with user info
       final response = await _client.from('event_photos').select('''
@@ -123,7 +129,8 @@ class EventPhotoDataSource {
             uploader_id,
             is_portrait,
             uploader:uploader_id(id, name, avatar_url)
-          ''').eq('event_id', eventId).order('captured_at', ascending: false);
+          ''').eq('event_id', eventId).order('captured_at', ascending: false)
+          .range(offset, offset + limit - 1);
 
       // Generate signed URLs for each photo
       final photos = <Map<String, dynamic>>[];

@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:share_plus/share_plus.dart' show SharePlus, ShareParams;
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../services/analytics_service.dart';
 import '../../../../routes/app_router.dart';
+import '../../../../config/app_config.dart';
+import '../../../../shared/components/common/invite_bottom_sheet.dart';
+import '../../../event_invites/presentation/providers/event_invite_providers.dart';
 import '../../../../shared/components/nav/common_app_bar.dart';
 import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/constants/text_styles.dart';
@@ -48,28 +50,42 @@ class _ManageGuestsPageState extends ConsumerState<ManageGuestsPage> {
           icon: const Icon(Icons.arrow_back, color: BrandColors.text1),
           onPressed: () => Navigator.of(context).pop(),
         ),
-        trailing: isPhotoMode
-            ? null
-            : IconButton(
-                icon: const Icon(Icons.ios_share, color: BrandColors.text1),
-                onPressed: () {
-                  final eventName = eventAsync.value?.name ?? 'this event';
-                  SharePlus.instance.share(
-                    ShareParams(text: 'Join $eventName on Lazzo! 🎉'),
-                  );
-                  AnalyticsService.track('invite_link_shared', properties: {
-                    'event_id': widget.eventId,
-                    'share_channel': 'share',
-                    'source': 'manage_guests',
-                    'platform': 'ios',
-                  });
-                },
-              ),
+        trailing: IconButton(
+          icon: const Icon(Icons.ios_share, color: BrandColors.text1),
+          onPressed: () async {
+            try {
+              final useCase = ref.read(createEventInviteLinkProvider);
+              final entity = await useCase(
+                eventId: widget.eventId,
+                shareChannel: 'manage_guests',
+              );
+              final inviteUrl =
+                  '${AppConfig.invitesBaseUrl}/i/${entity.token}';
+              if (context.mounted) {
+                InviteBottomSheet.show(
+                  context: context,
+                  inviteUrl: inviteUrl,
+                  entityName: eventAsync.value?.name ?? 'this event',
+                  entityType: 'event',
+                  eventEmoji: eventAsync.value?.emoji ?? '📅',
+                );
+              }
+            } catch (e) {
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Failed to create invite link'),
+                  ),
+                );
+              }
+            }
+          },
+        ),
       ),
       body: rsvpsAsync.when(
         data: (rsvps) => isPhotoMode
             ? _buildPhotoContributorContent(rsvps, eventStatus!, currentUserId)
-            : _buildContent(rsvps, currentUserId),
+            : _buildContent(rsvps),
         loading: () => Center(
           child: CircularProgressIndicator(
             color: isPhotoMode ? BrandColors.living : BrandColors.planning,
@@ -224,17 +240,56 @@ class _ManageGuestsPageState extends ConsumerState<ManageGuestsPage> {
 
   // ─── Default Mode (Planning/Confirmed) ────────────────────
 
-  Widget _buildContent(List<Rsvp> rsvps, String? currentUserId) {
+  Widget _buildContent(List<Rsvp> rsvps) {
+    // Fetch web guest RSVPs
+    final guestListAsync = ref.watch(guestRsvpListProvider(widget.eventId));
+    final guestList = guestListAsync.valueOrNull ?? [];
+
+    // Convert web guests to Rsvp entities for unified display
+    final webGuestRsvps = guestList.map((g) {
+      final rsvpStr = g['rsvp'] as String? ?? 'going';
+      RsvpStatus status;
+      switch (rsvpStr) {
+        case 'going':
+          status = RsvpStatus.going;
+          break;
+        case 'not_going':
+          status = RsvpStatus.notGoing;
+          break;
+        case 'maybe':
+          status = RsvpStatus.maybe;
+          break;
+        default:
+          status = RsvpStatus.going;
+      }
+      return Rsvp(
+        id: g['id'] as String? ?? '',
+        eventId: widget.eventId,
+        userId: '', // Web guests have no user account
+        userName: g['guest_name'] as String? ?? 'Guest',
+        userAvatar: null,
+        status: status,
+        createdAt: g['created_at'] != null
+            ? DateTime.tryParse(g['created_at'] as String) ?? DateTime.now()
+            : DateTime.now(),
+      );
+    }).toList();
+
+    // Merge app + web guests
+    final allRsvps = [...rsvps, ...webGuestRsvps];
+
     // Count votes by status (exclude pending)
-    final goingCount = rsvps.where((r) => r.status == RsvpStatus.going).length;
-    final maybeCount = rsvps.where((r) => r.status == RsvpStatus.maybe).length;
+    final goingCount =
+        allRsvps.where((r) => r.status == RsvpStatus.going).length;
+    final maybeCount =
+        allRsvps.where((r) => r.status == RsvpStatus.maybe).length;
     final cantCount =
-        rsvps.where((r) => r.status == RsvpStatus.notGoing).length;
+        allRsvps.where((r) => r.status == RsvpStatus.notGoing).length;
 
     // Filter rsvps based on selected status
     final filteredRsvps = _selectedFilter != null
-        ? rsvps.where((r) => r.status == _selectedFilter).toList()
-        : rsvps.where((r) => r.status != RsvpStatus.pending).toList();
+        ? allRsvps.where((r) => r.status == _selectedFilter).toList()
+        : allRsvps.where((r) => r.status != RsvpStatus.pending).toList();
 
     // Sort by date, most recent first
     filteredRsvps.sort((a, b) => b.createdAt.compareTo(a.createdAt));
@@ -303,22 +358,17 @@ class _ManageGuestsPageState extends ConsumerState<ManageGuestsPage> {
                       ),
                       itemBuilder: (context, index) {
                         final rsvp = filteredRsvps[index];
+                        final isWebGuest = rsvp.userId.isEmpty;
                         return GuestListTile(
                           rsvp: rsvp,
-                          currentUserId: currentUserId,
-                          onTap: () {
-                            if (rsvp.userId == currentUserId) {
-                              Navigator.of(context).pushNamed(
-                                AppRouter.profile,
-                                arguments: {'showBackButton': true},
-                              );
-                            } else {
-                              Navigator.of(context).pushNamed(
-                                AppRouter.otherProfile,
-                                arguments: {'userId': rsvp.userId},
-                              );
-                            }
-                          },
+                          onTap: isWebGuest
+                              ? null
+                              : () {
+                                  Navigator.of(context).pushNamed(
+                                    AppRouter.otherProfile,
+                                    arguments: {'userId': rsvp.userId},
+                                  );
+                                },
                         );
                       },
                     ),
