@@ -825,17 +825,17 @@ Vai a **PostHog → Persons & Groups → Cohorts → New Cohort**:
 - [X] `screen_viewed` dispara APENAS nos 10 ecrãs críticos (home, event_detail, event_living, event_recap, create_event, inbox, memory_ready, memory_viewer, profile, calendar via tab switch)
 - [X] Eventos de funnel instrumentados (event_created, rsvp_submitted, photo_uploaded, invite_link_shared × 5 locations, recap_viewed + memory_ready via screen_viewed)
 - [X] Feature flags: cache implementado, reload em app open + auth + 30 min timer (`app.dart`)
-- [ ] Testado em debug: eventos visíveis no PostHog Live Events
+- [X] Testado em debug: eventos visíveis no PostHog Live Events
 - [ ] `debug: false` no Info.plist antes de build para TestFlight
 
 **Web (Vercel):**
-- [ ] PostHog JS SDK adicionado
-- [ ] Config: `autocapture: false`, `disable_session_recording: true`
-- [ ] Identity: `posthog.identify(userId)` no guest auth
-- [ ] Identity: anonymous distinct_id gerado automaticamente (não setado manualmente)
-- [ ] Guest funnel events instrumentados (invite_link_opened → guest_auth_completed → rsvp_submitted → photo_uploaded → recap_viewed)
+- [X] PostHog JS SDK adicionado (`posthog-js` via npm)
+- [X] Config: `autocapture: false`, `disable_session_recording: true` (`lib/analytics.ts`)
+- [X] Identity: `posthog.identify(userId)` no guest auth (RsvpSection, PhotoUploadSheet, RecapAuthGate)
+- [X] Identity: anonymous distinct_id gerado automaticamente (não setado manualmente)
+- [X] Guest funnel events instrumentados (invite_link_opened → guest_auth_completed → rsvp_submitted → photo_uploaded → recap_viewed)
 - [ ] Vercel WAF / rate limiting ativo
-- [ ] `X-Robots-Tag: noindex` nas páginas de evento
+- [X] `X-Robots-Tag: noindex` nas páginas de evento (`vercel.json`)
 - [ ] Testado: eventos visíveis no PostHog Live Events
 
 **Dashboards:**
@@ -853,8 +853,8 @@ Vai a **PostHog → Persons & Groups → Cohorts → New Cohort**:
 - [ ] Valores default definidos (fallback se flag não resolve)
 
 **Cross-Platform:**
-- [ ] Mesmo `user_id` usado em app + web
-- [ ] Mesmo nome de eventos em app + web
+- [X] Mesmo `user_id` usado em app + web (Supabase UUID via `identifyUser()`)
+- [X] Mesmo nome de eventos em app + web (taxonomia partilhada)
 - [ ] Identity merge testado: user visto como 1 pessoa no PostHog (não 2)
 
 ---

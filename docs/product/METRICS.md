@@ -99,7 +99,7 @@ Properties: `screen_name`, `platform`, `event_id` (if applicable)
 | Event | When | Extra Properties | Checked |
 |-------|------|-----------------|--|
 | `rsvp_submitted` | Guest submits RSVP | `vote`: going / cant, `time_to_rsvp_seconds`: int (from invite open) | X |
-| `rsvp_changed` | Guest changes RSVP | `from_vote`, `to_vote` |
+| `rsvp_changed` | Guest changes RSVP | `from_vote`, `to_vote` | X |
 
 #### Photo Upload
 
