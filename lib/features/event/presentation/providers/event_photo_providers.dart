@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
+import '../../../../services/analytics_service.dart';
 import '../../domain/usecases/upload_event_photo.dart';
 import 'event_providers.dart';
 
@@ -83,6 +84,12 @@ class EventPhotoUploadNotifier extends StateNotifier<AsyncValue<String?>> {
       );
 
       state = AsyncValue.data(photoUrl);
+
+      // Track photo upload
+      AnalyticsService.track('photo_uploaded', properties: {
+        'event_id': eventId,
+        'platform': 'ios',
+      });
     } catch (error, stackTrace) {
       state = AsyncValue.error(error, stackTrace);
     }

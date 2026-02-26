@@ -8,6 +8,7 @@ import '../widgets/calendar_header.dart';
 import '../widgets/calendar_grid.dart';
 import '../widgets/calendar_list_view.dart';
 import '../widgets/day_events_bottom_sheet.dart';
+import '../../../../services/analytics_service.dart';
 
 /// Main Calendar page with two views: Calendar (grid) and List
 class CalendarPage extends ConsumerStatefulWidget {
@@ -144,7 +145,10 @@ class _CalendarPageState extends ConsumerState<CalendarPage> {
           CalendarHeader(
             title: _getMonthTitle(selectedMonth),
             viewMode: _viewMode,
-            onViewModeChanged: (mode) => setState(() => _viewMode = mode),
+            onViewModeChanged: (mode) {
+              setState(() => _viewMode = mode);
+              AnalyticsService.screenViewed('calendar');
+            },
           ),
           Expanded(
             child: _viewMode == CalendarViewMode.calendar
@@ -183,8 +187,10 @@ class _CalendarPageState extends ConsumerState<CalendarPage> {
                   return _CalendarGridPage(
                     month: month,
                     selectedDate: selectedDay,
-                    onDaySelected: (date) =>
-                        ref.read(selectedDayProvider.notifier).state = date,
+                    onDaySelected: (date) {
+                      ref.read(selectedDayProvider.notifier).state = date;
+                      AnalyticsService.screenViewed('calendar');
+                    },
                   );
                 },
               ),

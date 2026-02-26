@@ -17,6 +17,7 @@ import '../../../event/domain/entities/rsvp.dart';
 import '../../../event/presentation/providers/event_providers.dart';
 import '../providers/memory_providers.dart';
 import '../../domain/entities/memory_entity.dart';
+import '../../../../services/analytics_service.dart';
 
 /// Memory page displaying event photos with state-based UI
 ///
@@ -43,6 +44,8 @@ class MemoryPage extends ConsumerStatefulWidget {
 }
 
 class _MemoryPageState extends ConsumerState<MemoryPage> {
+  bool _hasTrackedScreen = false;
+
   @override
   void initState() {
     super.initState();
@@ -105,8 +108,14 @@ class _MemoryPageState extends ConsumerState<MemoryPage> {
         }
 
         final eventStatus = memory.status;
-        final isHost =
-            currentUserId != null && memory.createdBy == currentUserId;
+
+        // Track screen_viewed for ended events (memory_viewer)
+        if (eventStatus == EventStatus.ended && !_hasTrackedScreen) {
+          _hasTrackedScreen = true;
+          AnalyticsService.screenViewed('memory_viewer',
+              eventId: widget.memoryId);
+        }
+
         final userHasUploadedPhotos = currentUserId != null &&
             memory.photos.any((photo) => photo.uploaderId == currentUserId);
 
@@ -133,10 +142,6 @@ class _MemoryPageState extends ConsumerState<MemoryPage> {
           lastAddedText = _formatTimeAgo(sorted.first.capturedAt);
         }
 
-        // Should show edit icon: only for ended events (recap has its own page)
-        final showEditIcon = eventStatus == EventStatus.ended &&
-            (isHost || userHasUploadedPhotos);
-
         // Should show bottom banner
         final showBottomBanner = _shouldShowBottomBanner(
           eventStatus,
@@ -145,7 +150,7 @@ class _MemoryPageState extends ConsumerState<MemoryPage> {
 
         return Scaffold(
           backgroundColor: BrandColors.bg1,
-          appBar: _buildAppBar(context, memory, showEditIcon),
+          appBar: _buildAppBar(context, memory),
           body: Stack(
             children: [
               RefreshIndicator(
@@ -230,7 +235,7 @@ class _MemoryPageState extends ConsumerState<MemoryPage> {
                               child: Column(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  Icon(
+                                  const Icon(
                                     Icons.photo_library_outlined,
                                     size: 48,
                                     color: BrandColors.text2,
@@ -315,7 +320,6 @@ class _MemoryPageState extends ConsumerState<MemoryPage> {
   PreferredSizeWidget _buildAppBar(
     BuildContext context,
     MemoryEntity memory,
-    bool showEditIcon,
   ) {
     final titleWithEmoji = '${memory.emoji} ${memory.title}';
     debugPrint('[MemoryPage] AppBar emoji: "${memory.emoji}"');
@@ -337,14 +341,7 @@ class _MemoryPageState extends ConsumerState<MemoryPage> {
           }
         },
       ),
-      trailing: showEditIcon
-          ? IconButton(
-              icon: const Icon(Icons.photo_library_outlined,
-                  color: BrandColors.text1),
-              onPressed: () => _navigateToManageMemory(context),
-            )
-          : null,
-      trailing2: IconButton(
+      trailing: IconButton(
         icon: const Icon(Icons.ios_share, color: BrandColors.text1),
         onPressed: () => _navigateToShareMemory(context, memory.status),
       ),
@@ -632,24 +629,6 @@ class _MemoryPageState extends ConsumerState<MemoryPage> {
   }
 
   // ─── Navigation ──────────────────────────────────────────
-
-  Future<void> _navigateToManageMemory(BuildContext context) async {
-    ref.invalidate(memoryDetailProvider(widget.memoryId));
-
-    await Navigator.of(context).pushNamed(
-      AppRouter.manageMemory,
-      arguments: {'memoryId': widget.memoryId},
-    );
-
-    if (mounted) {
-      ref.invalidate(memoryDetailProvider(widget.memoryId));
-      try {
-        await ref.read(memoryDetailProvider(widget.memoryId).future);
-      } catch (e) {
-        // Provider will show error state
-      }
-    }
-  }
 
   void _navigateToShareMemory(BuildContext context, EventStatus status) {
     // Recap/Living: Share link via native share

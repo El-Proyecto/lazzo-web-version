@@ -16,7 +16,7 @@ The app is a **feature-complete MVP** with 10 features, 62+ shared components, 1
 |------|--------|
 | Auth (passwordless email + OTP) | ✅ Shipped |
 | Event lifecycle (create → live → recap) | ✅ Shipped |
-| RSVP + polls + suggestions | ✅ Shipped |
+| RSVP | ✅ Shipped |
 | Photo upload + cover selection | ✅ Shipped |
 | Memory (ready + viewer + share card) | ✅ Shipped |
 | Home (3 modes: planning/living/recap) | ✅ Shipped |
@@ -155,17 +155,29 @@ Two tracks running in parallel:
 * `recap_shared` — recap shared externally (props: `event_id`, `share_channel`)
 * `share_card_generated` — share card created (props: `event_id`, `format`: story/post)
 * `app_opened` — app launch (props: `platform`, `app_version`)
-* `screen_viewed` — screen navigation (props: `screen_name`, `platform`)
+* `screen_viewed` — **critical screens only** (10 screens: home, event_detail, event_living, event_recap, create_event, memory_viewer, memory_ready, invite_landing, profile, inbox). NOT on every navigation.
 
 **Properties on all events:** `event_id`, `user_id`, `platform` (ios/web), `event_phase`, `user_role` (host/guest), `timestamp`
 
-**Feature Flags — configure in PostHog:**
+**Feature Flags — configure in PostHog (local cache, not per-render):**
 * `auth_wall_placement` — before/after event preview on web
 * `upload_nudge_variant` — copy A/B for upload prompts
 * `recap_cta_variant` — different recap sharing CTAs
 * `rsvp_ui_variant` — RSVP interface variations
+* Cache flags locally; reload only on app open, auth complete, and every 30 min
 
-**Error Tracking:** PostHog error capture on both platforms (unhandled exceptions + key error boundaries)
+**Identity Unification:**
+* Let PostHog generate anonymous `distinct_id` on first launch/page load
+* On auth complete: call `posthog.identify(supabase_user_id)` to merge anonymous → user
+* Same `user_id` on both platforms → PostHog merges cross-platform automatically
+
+**Cost Optimization:**
+* Session Replay: **OFF** (do not enable until post-beta)
+* Autocapture: **OFF** on web (explicit events only)
+* Web bot protection: Vercel WAF + rate limiting on invite endpoints
+* Event budget: ~1,500 events/month at beta scale (well under 1M free tier)
+
+**Error Tracking:** PostHog exception autocapture on both platforms (free)
 
 **Dashboard:** build guest funnel + host loop + cohort view
 
@@ -173,15 +185,19 @@ Two tracks running in parallel:
 * Add `posthog_flutter` to `pubspec.yaml`
 * Create `lib/services/analytics_service.dart` (wraps PostHog SDK)
 * Instrument events in providers/pages (not in domain layer)
-* Read feature flags via `AnalyticsService.isFeatureEnabled()`
+* Feature flags: cache locally, read from `AnalyticsService.isFeatureEnabled()` (sync, no network)
+* Identity: `identify()` on auth, `reset()` on logout
 
 **Implementation (web):**
-* Add PostHog JS SDK to Vercel project
-* Share event taxonomy (same event names + properties)
+* Add PostHog JS SDK to Vercel project (same API key)
+* Config: `autocapture: false`, `disable_session_recording: true`
+* Identity: `posthog.identify(user_id)` on guest auth
+* Share event taxonomy (same event names + properties as app)
+* Enable Vercel WAF / rate limiting
 
-**Non-goals:** session replay (enable later once core events are stable), complex multi-variant experiments.
+**Non-goals:** session replay, autocapture, high-frequency screen tracking, group analytics.
 
-**DoD:** dashboards live + QA verified end-to-end on both platforms.
+**DoD:** dashboards live + QA verified end-to-end on both platforms + $0 PostHog bill.
 
 ### Epic A2 — Quality Bar v1 (P0)
 
@@ -349,6 +365,8 @@ Two tracks running in parallel:
 * AI features (auto-selection, smart albums)
 * Multi-language beyond EN
 * Session replay / advanced PostHog features
+* PostHog autocapture / web analytics
+* Generic screen_viewed on every navigation (cost risk)
 
 ---
 
@@ -368,7 +386,7 @@ Two tracks running in parallel:
 * Web-to-app deep links for power users
 
 ### Theme 3 — Host Delight
-* Host toolkit: agenda, pinned updates, quick polls
+* Host toolkit: agenda, pinned updates
 * Notifications/actions tuning
 * Anti-abuse and moderation basics
 
@@ -421,6 +439,7 @@ Two tracks running in parallel:
 | Share previews inconsistent | Medium | OG pipeline + fallback images; test on WhatsApp/iMessage/Telegram |
 | 2-person team → scope creep / burnout | High | Strict P0-only during phases; defer P2; weekly priority review |
 | PostHog instrumentation gaps → blind decisions | High | Define taxonomy first; QA every event before cohort launch |
+| PostHog costs spike from bots/autocapture | Medium | Autocapture OFF; session replay OFF; Vercel WAF; selective screen_viewed |
 | TestFlight review delays block iteration | Medium | Submit builds early; keep builds stable; have rollback ready |
 | Cross-platform data gaps (app vs web) | Medium | Shared `user_id` + `event_id`; PostHog unifies with `distinct_id` |
 | Not enough beta hosts recruited | Medium | Start reaching out week 1; have backup list; lower minimum to 3 hosts |
@@ -438,7 +457,11 @@ Two tracks running in parallel:
 - [ ] PostHog Cloud EU account created & configured
 - [ ] PostHog SDK integrated in app (`posthog_flutter`)
 - [ ] PostHog JS SDK integrated in web
-- [ ] Core event taxonomy implemented (all events firing correctly)
+- [ ] Core event taxonomy implemented (funnel events firing correctly)
+- [ ] Identity unification verified (anonymous → auth merge works)
+- [ ] Selective screen_viewed on 10 critical screens only
+- [ ] Feature flags configured with local cache (≥ 3 flags ready)
+- [ ] Autocapture OFF, session replay OFF, bot protection ON
 - [ ] Guest funnel dashboard live in PostHog
 - [ ] Host loop dashboard live in PostHog
 - [ ] Feature flags configured (≥ 3 flags ready)

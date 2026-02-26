@@ -20,6 +20,7 @@ import '../../../event/domain/entities/rsvp.dart' show RsvpStatus;
 import '../../../home/presentation/providers/home_event_providers.dart'
     as home_providers;
 import '../../../../routes/app_router.dart';
+import '../../../../services/analytics_service.dart';
 
 /// Página para edição de eventos existentes
 /// Reutiliza todos os widgets tokenizados da criação de eventos
@@ -356,9 +357,10 @@ class _EditEventPageState extends ConsumerState<EditEventPage> {
     ref.invalidate(event_providers.eventDetailProvider(widget.event.id));
 
     // Host auto-vote: ensure host always has "Can" vote after editing
+    // isAutoVote: true to skip analytics tracking (not a user-initiated RSVP)
     await ref
         .read(event_providers.userRsvpProvider(widget.event.id).notifier)
-        .submitVote(RsvpStatus.going);
+        .submitVote(RsvpStatus.going, isAutoVote: true);
 
     // 2. Home page providers (shows updated event in lists)
     ref.invalidate(home_providers.nextEventControllerProvider);
@@ -371,12 +373,15 @@ class _EditEventPageState extends ConsumerState<EditEventPage> {
       _storeInitialValues();
     });
 
-    // Navigate to event page instead of returning to previous page
+    // Track event_edited
+    AnalyticsService.track('event_edited', properties: {
+      'event_id': widget.event.id,
+      'platform': 'ios',
+    });
+
+    // Pop back to the existing event page (providers already invalidated)
     if (mounted) {
-      Navigator.of(context).pushReplacementNamed(
-        AppRouter.event,
-        arguments: {'eventId': widget.event.id},
-      );
+      Navigator.of(context).pop();
     }
   }
 

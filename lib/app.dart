@@ -10,6 +10,7 @@ import 'package:lazzo/shared/components/loading/app_loading_screen.dart';
 import 'package:lazzo/features/home/presentation/providers/home_event_providers.dart';
 // LAZZO 2.0: Groups/group_invites removed
 import 'package:lazzo/services/push_notification_initializer.dart';
+import 'package:lazzo/services/analytics_service.dart';
 
 class LazzoApp extends ConsumerStatefulWidget {
   const LazzoApp({super.key});
@@ -18,10 +19,12 @@ class LazzoApp extends ConsumerStatefulWidget {
   ConsumerState<LazzoApp> createState() => _LazzoAppState();
 }
 
-class _LazzoAppState extends ConsumerState<LazzoApp> {
+class _LazzoAppState extends ConsumerState<LazzoApp>
+    with WidgetsBindingObserver {
   final GlobalKey<NavigatorState> _navigatorKey = GlobalKey<NavigatorState>();
   late final AppLinks _appLinks;
   StreamSubscription<Uri>? _uriLinkSub;
+  Timer? _flagReloadTimer;
 
   @override
   Widget build(BuildContext context) {
@@ -43,7 +46,20 @@ class _LazzoAppState extends ConsumerState<LazzoApp> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _appLinks = AppLinks();
+
+    // PostHog: reload feature flags every 30 minutes
+    _flagReloadTimer = Timer.periodic(
+      const Duration(minutes: 30),
+      (_) => AnalyticsService.reloadFlagsIfNeeded(),
+    );
+
+    // Track app opened (cold start)
+    AnalyticsService.track('app_opened', properties: {
+      'source': 'organic',
+      'platform': 'ios',
+    });
 
     // Handle initial link (cold start)
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -61,8 +77,22 @@ class _LazzoAppState extends ConsumerState<LazzoApp> {
 
   @override
   void dispose() {
+    _flagReloadTimer?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
     _uriLinkSub?.cancel();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      // App voltou ao foreground — reload flags + track app_opened
+      AnalyticsService.reloadFlagsIfNeeded();
+      AnalyticsService.track('app_opened', properties: {
+        'source': 'organic',
+        'platform': 'ios',
+      });
+    }
   }
 
   /// Handles initial link on cold start

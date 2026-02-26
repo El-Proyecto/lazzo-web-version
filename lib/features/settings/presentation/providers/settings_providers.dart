@@ -4,6 +4,7 @@ import '../../domain/repositories/settings_repository.dart';
 import '../../domain/usecases/get_settings.dart';
 import '../../domain/usecases/update_notifications.dart';
 import '../../data/fakes/fake_settings_repository.dart';
+import '../../../../services/analytics_service.dart';
 
 // Import providers to invalidate on logout
 import '../../../home/presentation/providers/home_event_providers.dart';
@@ -100,6 +101,9 @@ class SettingsController extends StateNotifier<AsyncValue<SettingsEntity>> {
   Future<void> logOut() async {
     final repository = ref.read(settingsRepositoryProvider);
     await repository.logOut();
+
+    // PostHog: reset identity (clear distinct_id, generate new anonymous)
+    await AnalyticsService.reset();
 
     // CRITICAL: Invalidate all user-specific providers to clear cached data
     // This prevents stale data from showing when logging in with a different account

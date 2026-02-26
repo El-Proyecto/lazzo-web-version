@@ -7,6 +7,7 @@ import '../../data/fakes/fake_memory_repository.dart';
 import '../../data/data_sources/memory_photo_data_source.dart';
 import 'memory_providers.dart';
 import '../../../../services/storage_service.dart';
+import '../../../../services/analytics_service.dart';
 
 /// Provider for selected photo paths from gallery
 final selectedPhotoPathsProvider = StateProvider<List<String>?>((ref) => null);
@@ -285,6 +286,12 @@ class ManageMemoryNotifier
       try {
         final updateUseCase = ref.read(updateMemoryCoverUseCaseProvider);
         await updateUseCase(memoryId, photo.id);
+
+        // Track photo_cover_selected
+        AnalyticsService.track('photo_cover_selected', properties: {
+          'event_id': memoryId,
+          'platform': 'ios',
+        });
       } catch (e) {
         // Error updating cover
       }
