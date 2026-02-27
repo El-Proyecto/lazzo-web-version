@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../services/analytics_service.dart';
 import '../components/nav/navigation_bar.dart' as nav;
 import '../components/common/top_banner.dart';
 import '../components/dialogs/add_photo_bottom_sheet.dart';
@@ -342,6 +343,11 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
       }
 
       // Recap mode: Always open gallery to upload photos
+      AnalyticsService.track('photo_upload_started', properties: {
+        'event_id': eventId,
+        'source': 'gallery',
+        'platform': 'ios',
+      });
       final picker = ImagePicker();
       final selectedImages = await picker.pickMultiImage(
         maxWidth: 1920,

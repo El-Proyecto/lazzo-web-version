@@ -116,6 +116,12 @@ class _EventRecapPageState extends ConsumerState<EventRecapPage> {
   Future<void> _handleCloseRecap() async {
     try {
       await ref.read(closeRecapUseCaseProvider).call(widget.eventId);
+      // Track event_ended_manually with recap status
+      AnalyticsService.track('event_ended_manually', properties: {
+        'event_id': widget.eventId,
+        'event_status': 'recap',
+        'platform': 'ios',
+      });
       ref.invalidate(eventDetailProvider(widget.eventId));
       if (context.mounted) {
         TopBanner.showSuccess(context, message: 'Recap ended successfully');
@@ -203,10 +209,9 @@ class _EventRecapPageState extends ConsumerState<EventRecapPage> {
                               'Check out ${event.name} on Lazzo! \uD83C\uDF89',
                         ),
                       );
-                      AnalyticsService.track('invite_link_shared', properties: {
+                      AnalyticsService.track('recap_shared', properties: {
                         'event_id': widget.eventId,
-                        'share_channel': 'share',
-                        'source': 'event_recap',
+                        'share_method': 'share',
                         'platform': 'ios',
                       });
                     },

@@ -21,6 +21,12 @@ class EventPhotoUploadNotifier extends StateNotifier<AsyncValue<String?>> {
     required String eventId,
   }) async {
     try {
+      // Track photo upload started
+      AnalyticsService.track('photo_upload_started', properties: {
+        'event_id': eventId,
+        'source': 'camera',
+        'platform': 'ios',
+      });
       // Pick image from camera
       final XFile? photo = await _imagePicker.pickImage(
         source: ImageSource.camera,
@@ -48,6 +54,12 @@ class EventPhotoUploadNotifier extends StateNotifier<AsyncValue<String?>> {
     required String eventId,
   }) async {
     try {
+      // Track photo upload started
+      AnalyticsService.track('photo_upload_started', properties: {
+        'event_id': eventId,
+        'source': 'gallery',
+        'platform': 'ios',
+      });
       // Pick image from gallery
       final XFile? photo = await _imagePicker.pickImage(
         source: ImageSource.gallery,

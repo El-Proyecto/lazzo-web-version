@@ -324,9 +324,6 @@ class _MemoryPageState extends ConsumerState<MemoryPage> {
     MemoryEntity memory,
   ) {
     final titleWithEmoji = '${memory.emoji} ${memory.title}';
-    debugPrint('[MemoryPage] AppBar emoji: "${memory.emoji}"');
-    debugPrint('[MemoryPage] AppBar title: "${memory.title}"');
-    debugPrint('[MemoryPage] AppBar titleWithEmoji: "$titleWithEmoji"');
 
     return CommonAppBar(
       title: titleWithEmoji,
@@ -661,6 +658,7 @@ class _MemoryPageState extends ConsumerState<MemoryPage> {
             entityName: eventName,
             entityType: 'event',
             eventEmoji: eventEmoji,
+            eventId: eventId,
           );
         }
       } catch (e) {
@@ -699,6 +697,11 @@ class _MemoryPageState extends ConsumerState<MemoryPage> {
         onAction: (action) async {
           if (action == PhotoSourceAction.camera) {
             final picker = ImagePicker();
+            AnalyticsService.track('photo_upload_started', properties: {
+              'event_id': widget.memoryId,
+              'source': 'camera',
+              'platform': 'ios',
+            });
             final photo = await picker.pickImage(
               source: ImageSource.camera,
               maxWidth: 1920,
@@ -729,6 +732,11 @@ class _MemoryPageState extends ConsumerState<MemoryPage> {
 
   Future<void> _pickFromGalleryAndNavigate(BuildContext context) async {
     final picker = ImagePicker();
+    AnalyticsService.track('photo_upload_started', properties: {
+      'event_id': widget.memoryId,
+      'source': 'gallery',
+      'platform': 'ios',
+    });
     final selectedImages = await picker.pickMultiImage(
       maxWidth: 1920,
       maxHeight: 1920,

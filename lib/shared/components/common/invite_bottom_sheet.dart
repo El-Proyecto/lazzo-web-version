@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:share_plus/share_plus.dart';
+import '../../../services/analytics_service.dart';
 import '../../constants/spacing.dart';
 import '../../constants/text_styles.dart';
 import '../../themes/colors.dart';
@@ -18,6 +19,7 @@ class InviteBottomSheet extends StatefulWidget {
   final String entityName;
   final String entityType;
   final String eventEmoji;
+  final String? eventId;
 
   const InviteBottomSheet({
     super.key,
@@ -25,6 +27,7 @@ class InviteBottomSheet extends StatefulWidget {
     required this.entityName,
     required this.entityType,
     this.eventEmoji = '📅',
+    this.eventId,
   });
 
   /// Show the invite bottom sheet
@@ -34,6 +37,7 @@ class InviteBottomSheet extends StatefulWidget {
     required String entityName,
     required String entityType,
     String eventEmoji = '📅',
+    String? eventId,
   }) {
     return showModalBottomSheet(
       context: context,
@@ -46,6 +50,7 @@ class InviteBottomSheet extends StatefulWidget {
         entityName: entityName,
         entityType: entityType,
         eventEmoji: eventEmoji,
+        eventId: eventId,
       ),
     );
   }
@@ -157,6 +162,11 @@ class _InviteBottomSheetState extends State<InviteBottomSheet> {
                         context,
                         message: 'Link copied to clipboard',
                       );
+                      AnalyticsService.track('invite_link_shared', properties: {
+                        if (widget.eventId != null) 'event_id': widget.eventId!,
+                        'share_method': 'copy_link',
+                        'platform': 'ios',
+                      });
                     },
                   ),
                 ),
@@ -167,15 +177,24 @@ class _InviteBottomSheetState extends State<InviteBottomSheet> {
                     label: 'Share',
                     color: BrandColors.planning,
                     onTap: () async {
+                      final shareContent =
+                          _selectedTab == 0 ? 'qr_code' : 'card';
                       try {
                         await SharePlus.instance.share(
                           ShareParams(
                             text:
                                 'Join my ${widget.entityType} "${widget.entityName}" on Lazzo!\n\n${widget.inviteUrl}',
-                            subject:
-                                'Join ${widget.entityName} on Lazzo',
+                            subject: 'Join ${widget.entityName} on Lazzo',
                           ),
                         );
+                        AnalyticsService.track('invite_link_shared',
+                            properties: {
+                              if (widget.eventId != null)
+                                'event_id': widget.eventId!,
+                              'share_method': 'share',
+                              'share_content': shareContent,
+                              'platform': 'ios',
+                            });
                       } catch (e) {
                         if (context.mounted) {
                           TopBanner.showInfo(

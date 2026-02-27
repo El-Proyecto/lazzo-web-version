@@ -244,17 +244,13 @@ class _HomeEventModel {
       // ✅ Include all going participants with 0 photos (not yet in map)
       for (final u in goingUsers) {
         if (u is! Map<String, dynamic>) {
-          debugPrint('[HomeEventModel] goingUser skipped – not a Map: $u');
           continue;
         }
         final userId = u['user_id'] as String?;
         final displayName = u['display_name'] as String? ?? 'Unknown';
-        debugPrint(
-            '[HomeEventModel] goingUser userId=$userId displayName=$displayName alreadyInMap=${participantsMap.containsKey(userId)}');
+      
         if (userId == null || participantsMap.containsKey(userId)) continue;
         final avatarUrl = u['avatar_url'] as String?; // already signed
-        debugPrint(
-            '[HomeEventModel] Adding 0-photo participant userId=$userId displayName=$displayName');
         participantsMap[userId] = ParticipantPhoto(
           userId: userId,
           userName: currentUserId == userId ? 'You' : displayName,
@@ -266,8 +262,6 @@ class _HomeEventModel {
       // Sort: participants with photos first, then 0-photo participants
       final result = participantsMap.values.toList()
         ..sort((a, b) => b.photoCount.compareTo(a.photoCount));
-      debugPrint(
-          '[HomeEventModel] _fetchParticipantPhotos final result: ${result.map((p) => '${p.userName}:${p.photoCount}').join(', ')}');
       return result;
     } catch (e) {
       return [];

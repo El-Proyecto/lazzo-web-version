@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../../config/app_config.dart';
+import '../../../../services/analytics_service.dart';
 import '../../../../shared/components/nav/common_app_bar.dart';
 import '../../../../shared/components/common/invite_bottom_sheet.dart';
 import '../../../../shared/components/inputs/search_bar.dart' as custom;
@@ -239,6 +240,7 @@ class _HomePageState extends ConsumerState<HomePage> {
           entityName: eventName,
           entityType: 'event',
           eventEmoji: eventEmoji,
+          eventId: eventId,
         );
       }
     } catch (e) {
@@ -259,6 +261,11 @@ class _HomePageState extends ConsumerState<HomePage> {
       onAction: (action) async {
         final picker = ImagePicker();
         if (action == PhotoSourceAction.camera) {
+          AnalyticsService.track('photo_upload_started', properties: {
+            'event_id': eventId,
+            'source': 'camera',
+            'platform': 'ios',
+          });
           final photo = await picker.pickImage(
             source: ImageSource.camera,
             maxWidth: 1920,
@@ -274,6 +281,11 @@ class _HomePageState extends ConsumerState<HomePage> {
             );
           }
         } else if (action == PhotoSourceAction.gallery) {
+          AnalyticsService.track('photo_upload_started', properties: {
+            'event_id': eventId,
+            'source': 'gallery',
+            'platform': 'ios',
+          });
           final photo = await picker.pickImage(
             source: ImageSource.gallery,
             maxWidth: 1920,

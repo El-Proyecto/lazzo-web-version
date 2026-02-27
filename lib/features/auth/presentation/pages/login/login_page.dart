@@ -1,6 +1,7 @@
 import 'package:lazzo/features/auth/presentation/widgets/login_form.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../../services/analytics_service.dart';
 import '../../../../../shared/components/common/top_banner.dart';
 import '../../../../../shared/constants/spacing.dart';
 import '../../../../../shared/constants/text_styles.dart';
@@ -58,6 +59,10 @@ class _LoginPageState extends ConsumerState<LoginPage> {
       _emailController.clear();
 
       // Navega para a página de verificação específica de login
+      AnalyticsService.track('auth_started', properties: {
+        'auth_type': 'email_passwordless',
+        'platform': 'ios',
+      });
       Navigator.pushNamed(context, '/otp-login', arguments: {'email': email});
 
       // Mostra mensagem de sucesso

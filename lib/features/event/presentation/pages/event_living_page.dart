@@ -162,6 +162,13 @@ class _EventLivingPageState extends ConsumerState<EventLivingPage> {
                               await ref
                                   .read(extendEventTimeProvider)
                                   .call(widget.eventId, 30);
+                              // Track event_extended
+                              AnalyticsService.track('event_extended',
+                                  properties: {
+                                    'event_id': widget.eventId,
+                                    'extension_minutes': 30,
+                                    'platform': 'ios',
+                                  });
                               // Refresh event details
                               ref.invalidate(
                                   eventDetailProvider(widget.eventId));
@@ -182,6 +189,13 @@ class _EventLivingPageState extends ConsumerState<EventLivingPage> {
                               await ref
                                   .read(extendEventTimeProvider)
                                   .call(widget.eventId, minutes);
+                              // Track event_extended
+                              AnalyticsService.track('event_extended',
+                                  properties: {
+                                    'event_id': widget.eventId,
+                                    'extension_minutes': minutes,
+                                    'platform': 'ios',
+                                  });
                               // Refresh event details
                               ref.invalidate(
                                   eventDetailProvider(widget.eventId));
@@ -207,6 +221,7 @@ class _EventLivingPageState extends ConsumerState<EventLivingPage> {
                               AnalyticsService.track('event_ended_manually',
                                   properties: {
                                     'event_id': widget.eventId,
+                                    'event_status': 'living',
                                     'platform': 'ios',
                                   });
                               // Refresh event details
@@ -240,7 +255,8 @@ class _EventLivingPageState extends ConsumerState<EventLivingPage> {
                         eventId: widget.eventId,
                         shareChannel: 'living_action_row',
                       );
-                      final inviteUrl = '${AppConfig.invitesBaseUrl}/i/${entity.token}';
+                      final inviteUrl =
+                          '${AppConfig.invitesBaseUrl}/i/${entity.token}';
                       if (context.mounted) {
                         InviteBottomSheet.show(
                           context: context,
@@ -248,11 +264,13 @@ class _EventLivingPageState extends ConsumerState<EventLivingPage> {
                           entityName: event.name,
                           entityType: 'event',
                           eventEmoji: event.emoji,
+                          eventId: widget.eventId,
                         );
                       }
                     } catch (e) {
                       if (context.mounted) {
-                        TopBanner.showError(context, message: 'Failed to create invite link');
+                        TopBanner.showError(context,
+                            message: 'Failed to create invite link');
                       }
                     }
                   },

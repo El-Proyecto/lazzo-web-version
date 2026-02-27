@@ -66,7 +66,7 @@ Only fire `screen_viewed` for screens that represent **meaningful funnel steps o
 | `invite_landing` | Guest lands on invite page (web) | Top of guest funnel |  |
 | `calendar` | User interacts with calendar (selects day, changes view mode) | Calendar engagement — tracked on interaction only, NOT on navigation | X |
 | `actions` | User opens Actions tab in Inbox | Host action engagement | X |
-| `manage_guests` | User views the guests list / manage guests screen | Guest management engagement — track `event_phase` and `user_role` (host/guest) |
+| `manage_guests` | User views the guests list / manage guests screen | Guest management engagement — track `event_phase` and `user_role` (host/guest) | X
 
 Properties: `screen_name`, `platform`, `event_id` (if applicable)
 
@@ -91,7 +91,7 @@ Properties: `screen_name`, `platform`, `event_id` (if applicable)
 
 | Event | When | Extra Properties | Checked
 |-------|------|-----------------|--|
-| `invite_link_shared` | User taps Share (green button) or Copy Link in the share bottom sheet | `share_method`: `copy_link` / `share`, `share_content`: `card` / `qr_code` (only when method=share) |
+| `invite_link_shared` | User taps Share (green button) or Copy Link in the share bottom sheet | `share_method`: `copy_link` / `share`, `share_content`: `card` / `qr_code` (only when method=share) | X |
 | `invite_link_opened` | Someone opens an invite link | `referrer`: string (if available), `is_new_visitor`: bool |
 
 > **Removed:** `qr_code_scanned` — impossible to detect QR code scanning vs link opening on the receiver side. What matters is tracking *what the host shared* (card vs QR code), which is now captured in `invite_link_shared.share_content`.
@@ -107,7 +107,7 @@ Properties: `screen_name`, `platform`, `event_id` (if applicable)
 
 | Event | When | Extra Properties | Checked |
 |-------|------|-----------------|--|
-| `photo_upload_started` | Camera or gallery picker opens (any entry point: bottom sheet add_photo, nav_bar button, etc.) | `source`: camera / gallery |
+| `photo_upload_started` | Camera or gallery picker opens (any entry point: bottom sheet add_photo, nav_bar button, etc.) | `source`: camera / gallery | X |
 | `photo_uploaded` | Photo successfully uploaded | `upload_duration_ms`: int, `file_size_kb`: int, `is_cover`: bool | X |
 | `photo_upload_failed` | Upload fails | `error_type`: string, `retry_count`: int | X |
 | `photo_cover_selected` | User marks a photo as cover | - | X |
@@ -126,8 +126,8 @@ Properties: `screen_name`, `platform`, `event_id` (if applicable)
 
 | Event | When | Extra Properties | Checked |
 |-------|------|-----------------|--|
-| `event_ended_manually` | Host ends event or recap early via Manage Event | `event_status`: `living` / `recap` (which phase was ended), `hours_before_auto_end`: float |
-| `event_extended` | Host extends event time via Manage Event Time (during living phase) | `extension_minutes`: int |
+| `event_ended_manually` | Host ends event or recap early via Manage Event | `event_status`: `living` / `recap` (which phase was ended), `hours_before_auto_end`: float | X
+| `event_extended` | Host extends event time via Manage Event Time (during living phase) | `extension_minutes`: int | X |
 
 > **Deferred to post-beta:** `host_nudge_sent`, `event_participation_viewed` — not available in current beta build.
 

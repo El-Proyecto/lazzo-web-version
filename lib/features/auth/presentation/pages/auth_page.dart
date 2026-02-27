@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../services/analytics_service.dart';
 import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/components/nav/common_app_bar.dart';
 import '../../../../shared/themes/colors.dart';
@@ -70,6 +71,11 @@ class _AuthPageState extends ConsumerState<AuthPage> {
       }
 
       // Debug
+
+      AnalyticsService.track('auth_started', properties: {
+        'auth_type': 'email_passwordless',
+        'platform': 'ios',
+      });
 
       Navigator.push(
         context,
