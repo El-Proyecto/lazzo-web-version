@@ -120,6 +120,8 @@ class _HomePageState extends ConsumerState<HomePage> {
         return HomeEventCardState.living;
       case HomeEventStatus.recap:
         return HomeEventCardState.recap;
+      case HomeEventStatus.expired:
+        return HomeEventCardState.expired;
     }
   }
 
@@ -165,6 +167,8 @@ class _HomePageState extends ConsumerState<HomePage> {
         return EventDisplayStatus.living;
       case HomeEventStatus.recap:
         return EventDisplayStatus.recap;
+      case HomeEventStatus.expired:
+        return EventDisplayStatus.expired;
     }
   }
 
@@ -219,7 +223,8 @@ class _HomePageState extends ConsumerState<HomePage> {
   }
 
   /// Share event invite
-  Future<void> _handleInviteTap(String eventId, String eventName, String eventEmoji) async {
+  Future<void> _handleInviteTap(
+      String eventId, String eventName, String eventEmoji) async {
     try {
       final useCase = ref.read(createEventInviteLinkProvider);
       final entity = await useCase(
@@ -489,7 +494,8 @@ class _HomePageState extends ConsumerState<HomePage> {
                                   },
                                   onVoteChanged: _handleVoteChanged,
                                   onGuestsTap: () => _handleGuestsTap(event.id),
-                                  onInviteTap: () => _handleInviteTap(event.id, event.name, event.emoji),
+                                  onInviteTap: () => _handleInviteTap(
+                                      event.id, event.name, event.emoji),
                                   onAddPhotoTap: () =>
                                       _handleAddPhotoTap(event.id),
                                   onManagePhotosTap: () =>
@@ -741,6 +747,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                             break;
                           case HomeEventStatus.pending:
                           case HomeEventStatus.confirmed:
+                          case HomeEventStatus.expired:
                             sectionTitle = 'Next Event';
                             break;
                         }
@@ -885,7 +892,8 @@ class _HomePageState extends ConsumerState<HomePage> {
                   ),
                   error: (error, stackTrace) => ErrorRetryWidget(
                     message: 'Could not load confirmed events',
-                    onRetry: () => ref.invalidate(confirmedEventsControllerProvider),
+                    onRetry: () =>
+                        ref.invalidate(confirmedEventsControllerProvider),
                   ),
                 ),
 
@@ -1107,7 +1115,8 @@ class _HomePageState extends ConsumerState<HomePage> {
                 },
                 error: (error, stackTrace) => ErrorRetryWidget(
                   message: 'Could not load recent memories',
-                  onRetry: () => ref.invalidate(recentMemoriesControllerProvider),
+                  onRetry: () =>
+                      ref.invalidate(recentMemoriesControllerProvider),
                 ),
               ),
             ],

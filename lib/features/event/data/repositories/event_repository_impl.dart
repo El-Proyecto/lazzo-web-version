@@ -75,6 +75,9 @@ class EventRepositoryImpl implements EventRepository {
       case EventStatus.ended:
         statusString = 'ended';
         break;
+      case EventStatus.expired:
+        statusString = 'expired';
+        break;
     }
 
     final model = await _remoteDataSource.updateEventStatus(

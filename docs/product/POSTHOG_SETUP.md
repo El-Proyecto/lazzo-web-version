@@ -346,10 +346,19 @@ await AnalyticsService.track('photo_uploaded', properties: {
   'file_size_kb': fileSizeBytes ~/ 1024,
 });
 
-// --- Invite Link Shared (event page) ---
+// --- Invite Link Shared (share bottom sheet) ---
+// On Copy Link button:
 await AnalyticsService.track('invite_link_shared', properties: {
   'event_id': eventId,
-  'share_channel': 'whatsapp',  // ou 'imessage', 'copy', 'qr'
+  'share_method': 'copy_link',
+  'platform': 'ios',
+  'user_role': 'host',
+});
+// On Share (green) button:
+await AnalyticsService.track('invite_link_shared', properties: {
+  'event_id': eventId,
+  'share_method': 'share',
+  'share_content': 'card',  // ou 'qr_code'
   'platform': 'ios',
   'user_role': 'host',
 });
@@ -419,7 +428,7 @@ AnalyticsService.screenViewed('profile');
 AnalyticsService.screenViewed('inbox');
 ```
 
-**NÃO** adicionar screen_viewed em: settings, edit profile, OTP, photo preview, manage guests, share memory, bottom sheets, dialogs, etc.
+**NÃO** adicionar screen_viewed em: settings, edit profile, OTP, photo preview, share memory, bottom sheets, dialogs, etc.
 
 ### 2.8 Usar Feature Flags
 
@@ -753,8 +762,7 @@ Vai a **PostHog → Feature Flags → New Feature Flag** e cria:
 2. **Funnel Insight:**
    - Step 1: `event_created`
    - Step 2: `invite_link_shared`
-   - Step 3: `event_participation_viewed`
-   - Step 4: `recap_shared`
+   - Step 3: `recap_shared`
 3. **Trends Insight:** `event_created` grouped by unique users (ver repeat hosts)
 4. **Filters:** `user_role = host`
 
@@ -822,8 +830,8 @@ Vai a **PostHog → Persons & Groups → Cohorts → New Cohort**:
 - [X] Identity: `identify()` chamado no auth complete (login + signup OTP)
 - [X] Identity: `reset()` chamado no logout (`settings_providers.dart`)
 - [X] `app_opened` dispara na abertura (cold start + resume em `app.dart`)
-- [X] `screen_viewed` dispara APENAS nos 10 ecrãs críticos (home, event_detail, event_living, event_recap, create_event, inbox, memory_ready, memory_viewer, profile, calendar via tab switch)
-- [X] Eventos de funnel instrumentados (event_created, rsvp_submitted, photo_uploaded, invite_link_shared × 5 locations, recap_viewed + memory_ready via screen_viewed)
+- [X] `screen_viewed` dispara APENAS nos ecrãs críticos (home, event_detail, event_living, event_recap, create_event, inbox, memory_ready, memory_viewer, profile, calendar via tab switch, manage_guests)
+- [X] Eventos de funnel instrumentados (event_created, rsvp_submitted, photo_uploaded, invite_link_shared via share bottom sheet copy_link/share, recap_viewed + memory_ready via screen_viewed)
 - [X] Feature flags: cache implementado, reload em app open + auth + 30 min timer (`app.dart`)
 - [X] Testado em debug: eventos visíveis no PostHog Live Events
 - [ ] `debug: false` no Info.plist antes de build para TestFlight
@@ -846,9 +854,9 @@ Vai a **PostHog → Persons & Groups → Cohorts → New Cohort**:
 - [ ] Weekly email digest configurado
 
 **Feature Flags:**
-- [ ] `auth_wall_placement` criada
-- [ ] `upload_nudge_variant` criada
-- [ ] `recap_cta_variant` criada
+- [_] `auth_wall_placement` criada
+- [X] `upload_nudge_variant` criada
+- [-] `recap_cta_variant` criada
 - [ ] Flags testadas em ambas as plataformas
 - [ ] Valores default definidos (fallback se flag não resolve)
 

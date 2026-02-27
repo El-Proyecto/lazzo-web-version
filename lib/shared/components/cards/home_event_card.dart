@@ -15,7 +15,7 @@ import '../widgets/photos_bottom_sheet.dart';
 /// Planning phase: pending (border color) or confirmed (green)
 /// Living phase: living (purple)
 /// Recap phase: recap (purple)
-enum HomeEventCardState { pending, confirmed, living, recap }
+enum HomeEventCardState { pending, confirmed, living, recap, expired }
 
 /// Large event card for Home page "Next Event" section
 /// Shows event details with state-specific border/chip colors
@@ -117,6 +117,8 @@ class _HomeEventCardState extends ConsumerState<HomeEventCard> {
         return BrandColors.living;
       case HomeEventCardState.recap:
         return BrandColors.recap;
+      case HomeEventCardState.expired:
+        return BrandColors.border;
     }
   }
 
@@ -130,6 +132,8 @@ class _HomeEventCardState extends ConsumerState<HomeEventCard> {
         return BrandColors.living;
       case HomeEventCardState.recap:
         return BrandColors.recap;
+      case HomeEventCardState.expired:
+        return BrandColors.bg3;
     }
   }
 
@@ -157,6 +161,8 @@ class _HomeEventCardState extends ConsumerState<HomeEventCard> {
         return 'Live';
       case HomeEventCardState.recap:
         return 'Recap';
+      case HomeEventCardState.expired:
+        return 'Expired';
     }
   }
 

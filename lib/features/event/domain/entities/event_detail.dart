@@ -121,7 +121,7 @@ class EventLocation {
 }
 
 /// Event status enumeration
-enum EventStatus { pending, confirmed, living, recap, ended }
+enum EventStatus { pending, confirmed, living, recap, ended, expired }
 
 /// Event planning status based on location and date definition
 /// Used to determine which UI widgets to show (RSVP vs HelpPlan)

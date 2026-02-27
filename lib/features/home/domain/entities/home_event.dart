@@ -89,4 +89,5 @@ class HomeEventEntity {
 /// Confirmed: planning phase confirmed
 /// Living: event is happening now
 /// Recap: event ended, in recap phase
-enum HomeEventStatus { pending, confirmed, living, recap }
+/// Expired: pending event whose date passed without confirmation
+enum HomeEventStatus { pending, confirmed, living, recap, expired }

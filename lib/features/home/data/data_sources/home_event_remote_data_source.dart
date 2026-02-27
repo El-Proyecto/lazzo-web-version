@@ -2,6 +2,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/home_event_model.dart';
 import '../../domain/entities/home_event.dart';
 import '../../../../services/avatar_cache_service.dart';
+import '../../../../services/analytics_service.dart';
 import '../../../../shared/components/widgets/rsvp_widget.dart';
 
 /// Remote data source for home events
@@ -85,12 +86,7 @@ class HomeEventRemoteDataSource {
       // Pass callback to persist status changes
       final eventsFutures = rawData.map((e) => homeEventFromMap(
             e,
-            onStatusMismatch: (eventId, newStatus) {
-              // Persist status change asynchronously (fire and forget)
-              updateEventStatus(eventId, newStatus).catchError((error) {
-                return false;
-              });
-            },
+            onStatusMismatch: _onStatusMismatch,
             currentUserId: userId,
             supabaseClient: client,
           ));
@@ -206,11 +202,7 @@ class HomeEventRemoteDataSource {
 
       final eventsFutures = rawData.map((e) => homeEventFromMap(
             e,
-            onStatusMismatch: (eventId, newStatus) {
-              updateEventStatus(eventId, newStatus).catchError((error) {
-                return false;
-              });
-            },
+            onStatusMismatch: _onStatusMismatch,
             currentUserId: userId,
             supabaseClient: client,
           ));
@@ -289,11 +281,7 @@ class HomeEventRemoteDataSource {
       // Convert to entities with status persistence
       final eventsFutures = rawData.map((e) => homeEventFromMap(
             e,
-            onStatusMismatch: (eventId, newStatus) {
-              updateEventStatus(eventId, newStatus).catchError((error) {
-                return false;
-              });
-            },
+            onStatusMismatch: _onStatusMismatch,
             currentUserId: userId,
             supabaseClient: client,
           ));
@@ -347,6 +335,18 @@ class HomeEventRemoteDataSource {
 
   /// Update event status in Supabase
   /// Called when calculated status differs from DB status
+  /// Persists new status + tracks event_phase_changed for auto-transitions
+  void _onStatusMismatch(String eventId, String fromStatus, String toStatus) {
+    AnalyticsService.track('event_phase_changed', properties: {
+      'event_id': eventId,
+      'from_phase': fromStatus,
+      'to_phase': toStatus,
+      'trigger': 'auto',
+      'platform': 'ios',
+    });
+    updateEventStatus(eventId, toStatus).catchError((error) => false);
+  }
+
   Future<bool> updateEventStatus(String eventId, String newStatus) async {
     try {
       await client
@@ -393,11 +393,7 @@ class HomeEventRemoteDataSource {
       // Convert to entities with status persistence
       final eventsFutures = rawData.map((e) => homeEventFromMap(
             e,
-            onStatusMismatch: (eventId, newStatus) {
-              updateEventStatus(eventId, newStatus).catchError((error) {
-                return false;
-              });
-            },
+            onStatusMismatch: _onStatusMismatch,
             currentUserId: userId,
             supabaseClient: client,
           ));
@@ -493,10 +489,7 @@ class HomeEventRemoteDataSource {
 
       final eventsFutures = rawData.map((e) => homeEventFromMap(
             e,
-            onStatusMismatch: (eventId, newStatus) {
-              updateEventStatus(eventId, newStatus)
-                  .catchError((error) => false);
-            },
+            onStatusMismatch: _onStatusMismatch,
             currentUserId: userId,
             supabaseClient: client,
           ));
@@ -547,10 +540,7 @@ class HomeEventRemoteDataSource {
 
       final eventsFutures = rawData.map((e) => homeEventFromMap(
             e,
-            onStatusMismatch: (eventId, newStatus) {
-              updateEventStatus(eventId, newStatus)
-                  .catchError((error) => false);
-            },
+            onStatusMismatch: _onStatusMismatch,
             currentUserId: userId,
             supabaseClient: client,
           ));

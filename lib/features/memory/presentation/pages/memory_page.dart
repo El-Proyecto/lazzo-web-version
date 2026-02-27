@@ -638,24 +638,6 @@ class _MemoryPageState extends ConsumerState<MemoryPage> {
 
   // ─── Navigation ──────────────────────────────────────────
 
-  Future<void> _navigateToManageMemory(BuildContext context) async {
-    ref.invalidate(memoryDetailProvider(widget.memoryId));
-
-    await Navigator.of(context).pushNamed(
-      AppRouter.manageMemory,
-      arguments: {'memoryId': widget.memoryId},
-    );
-
-    if (mounted) {
-      ref.invalidate(memoryDetailProvider(widget.memoryId));
-      try {
-        await ref.read(memoryDetailProvider(widget.memoryId).future);
-      } catch (e) {
-        // Provider will show error state
-      }
-    }
-  }
-
   Future<void> _navigateToShareMemory(
     BuildContext context,
     EventStatus status,

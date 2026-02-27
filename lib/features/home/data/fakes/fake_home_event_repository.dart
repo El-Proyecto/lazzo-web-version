@@ -152,6 +152,11 @@ class FakeHomeEventRepository implements HomeEventRepository {
         eventDate = DateTime.now().subtract(const Duration(hours: 6));
         eventEndDate = DateTime.now().subtract(const Duration(hours: 2));
         break;
+      case HomeEventStatus.expired:
+        // Expired pending event - date has passed
+        eventDate = DateTime.now().subtract(const Duration(days: 2));
+        eventEndDate = eventDate.add(const Duration(hours: 4));
+        break;
     }
 
     // Create participant photos for Living/Recap states

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:posthog_flutter/posthog_flutter.dart';
 
 /// Serviço de analytics — wrapper sobre PostHog SDK.
@@ -33,6 +34,7 @@ class AnalyticsService {
     String event, {
     Map<String, Object>? properties,
   }) async {
+    debugPrint('[Analytics] TRACK: $event | props: $properties');
     await _posthog.capture(
       eventName: event,
       properties: properties,
@@ -48,6 +50,7 @@ class AnalyticsService {
     String userId, {
     Map<String, Object>? properties,
   }) async {
+    debugPrint('[Analytics] IDENTIFY: $userId | props: $properties');
     await _posthog.identify(
       userId: userId,
       userProperties: properties,
@@ -59,6 +62,7 @@ class AnalyticsService {
   /// Chamar no logout.
   /// Limpa distinct_id + gera novo anónimo.
   static Future<void> reset() async {
+    debugPrint('[Analytics] RESET: clearing identity + flags');
     await _posthog.reset();
     _flagCache.clear();
     _lastFlagReload = null;
@@ -76,6 +80,7 @@ class AnalyticsService {
     String screenName, {
     String? eventId,
   }) async {
+    debugPrint('[Analytics] SCREEN: $screenName | eventId: $eventId');
     await _posthog.screen(
       screenName: screenName,
       properties: {
@@ -148,8 +153,8 @@ class AnalyticsService {
   static const _knownFlags = <String>[
     'auth_wall_placement',
     'upload_nudge_variant',
-    'recap_cta_variant',
-    'rsvp_ui_variant',
-    'memories_first_flow',
+    //'recap_cta_variant',
+    //'rsvp_ui_variant',
+    //'memories_first_flow',
   ];
 }

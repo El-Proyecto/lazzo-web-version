@@ -123,4 +123,4 @@ class EventDisplayEntity {
 }
 
 /// Status of an event for display purposes
-enum EventDisplayStatus { pending, confirmed, living, recap }
+enum EventDisplayStatus { pending, confirmed, living, recap, expired }

@@ -1,27 +1,41 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'analytics_service.dart';
+
 /// Service to handle event status transitions
 ///
 /// Event Status Flow:
 /// pending → confirmed → living → recap → ended
+/// pending → expired (if start_datetime passes without confirmation)
 ///
 /// Transitions:
+/// - pending → expired: when start_datetime passes without confirmation
 /// - confirmed → living: when event start_datetime is reached
 /// - living → recap: when event end_datetime is reached
 /// - recap → ended: 24 hours after event end_datetime
 ///
-/// This service should ideally be replaced by:
-/// 1. Supabase Edge Function (cron job every minute)
-/// 2. Database trigger on events table
-/// 3. Backend service with scheduled tasks
+/// This service runs client-side for immediate feedback.
+/// A server-side Edge Function (transition-event-phases) also handles
+/// these transitions via cron for guaranteed execution.
 class EventStatusService {
   final SupabaseClient _client;
 
   EventStatusService(this._client);
 
+  /// Track event_phase_changed for automatic transitions
+  static void _trackPhaseChange(String eventId, String from, String to) {
+    AnalyticsService.track('event_phase_changed', properties: {
+      'event_id': eventId,
+      'from_phase': from,
+      'to_phase': to,
+      'trigger': 'auto',
+      'platform': 'ios',
+    });
+  }
+
   /// Update event statuses based on current time
   ///
-  /// This method checks all confirmed and living events and updates their
+  /// This method checks all events and updates their
   /// status based on start/end times.
   ///
   /// Returns: number of events updated
@@ -30,22 +44,37 @@ class EventStatusService {
       final now = DateTime.now().toUtc();
       int updatedCount = 0;
 
-            
+      // 0. Find pending events that should be expired (start_datetime has passed)
+      final pendingToExpired = await _client
+          .from('events')
+          .select('id, name, start_datetime, status')
+          .eq('status', 'pending')
+          .not('start_datetime', 'is', null)
+          .lte('start_datetime', now.toIso8601String());
+
+      if (pendingToExpired.isNotEmpty) {
+        for (final event in pendingToExpired) {
+          await _client
+              .from('events')
+              .update({'status': 'expired'}).eq('id', event['id']);
+          _trackPhaseChange(event['id'] as String, 'pending', 'expired');
+          updatedCount++;
+        }
+      }
+
       // 1. Find confirmed events that should be living (start_datetime has passed)
-            
       final confirmedToLiving = await _client
           .from('events')
           .select('id, name, start_datetime, status')
           .eq('status', 'confirmed')
           .lte('start_datetime', now.toIso8601String());
 
-      
       if (confirmedToLiving.isNotEmpty) {
         for (final event in confirmedToLiving) {
-                    
           await _client
               .from('events')
               .update({'status': 'living'}).eq('id', event['id']);
+          _trackPhaseChange(event['id'] as String, 'confirmed', 'living');
           updatedCount++;
         }
       }
@@ -62,6 +91,7 @@ class EventStatusService {
           await _client
               .from('events')
               .update({'status': 'recap'}).eq('id', event['id']);
+          _trackPhaseChange(event['id'] as String, 'living', 'recap');
           updatedCount++;
         }
       }
@@ -80,12 +110,10 @@ class EventStatusService {
           await _client
               .from('events')
               .update({'status': 'ended'}).eq('id', event['id']);
+          _trackPhaseChange(event['id'] as String, 'recap', 'ended');
           updatedCount++;
         }
-      } else {}
-
-      if (updatedCount > 0) {
-      } else {}
+      }
 
       return updatedCount;
     } catch (e) {
@@ -97,7 +125,6 @@ class EventStatusService {
   /// Useful when you know an event needs updating
   Future<bool> updateEventStatus(String eventId) async {
     try {
-      
       final event = await _client
           .from('events')
           .select('id, name, status, start_datetime, end_datetime')
@@ -110,18 +137,16 @@ class EventStatusService {
       final recapDeadline = endTime.add(const Duration(hours: 24));
       final currentStatus = event['status'] as String;
 
-                                    
       String? newStatus;
 
-      // Only transition events that are already confirmed or beyond
-      // Pending events should remain pending even if time has passed
+      // Pending events with past start_datetime → expired
       if (currentStatus == 'pending') {
-        // Pending events never auto-transition
-                        return false;
-      }
-
-      // Determine correct status based on times (only for confirmed+ events)
-      if (now.isAfter(recapDeadline)) {
+        if (now.isAfter(startTime)) {
+          newStatus = 'expired';
+        } else {
+          return false;
+        }
+      } else if (now.isAfter(recapDeadline)) {
         newStatus = 'ended';
       } else if (now.isAfter(endTime)) {
         newStatus = 'recap';
@@ -132,12 +157,13 @@ class EventStatusService {
       }
 
       if (newStatus != currentStatus) {
-                await _client
+        await _client
             .from('events')
             .update({'status': newStatus}).eq('id', eventId);
-                return true;
+        _trackPhaseChange(eventId, currentStatus, newStatus);
+        return true;
       } else {
-                return false;
+        return false;
       }
     } catch (e) {
       return false;

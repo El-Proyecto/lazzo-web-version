@@ -65,9 +65,8 @@ The app is a **feature-complete MVP** with 10 features, 62+ shared components, 1
 
 1. Event created → `event_created`
 2. Shares invite link → `invite_link_shared`
-3. Sees participation → `event_participation_viewed`
-4. Shares recap → `recap_shared`
-5. Creates another event → `event_created` (repeat)
+3. Shares recap → `recap_shared`
+4. Creates another event → `event_created` (repeat)
 
 ### Activation & Retention Targets (beta-level)
 
@@ -144,7 +143,7 @@ Two tracks running in parallel:
 **Analytics — instrument core events across app + web:**
 * `event_created` — host creates event (props: `event_id`, `has_location`, `has_datetime`)
 * `invite_link_opened` — guest opens invite (props: `event_id`, `platform`, `referrer`)
-* `invite_link_shared` — host shares link (props: `event_id`, `share_channel`)
+* `invite_link_shared` — host shares link (props: `event_id`, `share_method`: copy_link/share, `share_content`: card/qr_code)
 * `guest_auth_completed` — guest completes lightweight auth (props: `event_id`, `auth_method`)
 * `rsvp_submitted` — guest RSVPs (props: `event_id`, `vote`: going/cant, `time_to_rsvp_seconds`)
 * `photo_uploaded` — photo uploaded (props: `event_id`, `platform`, `is_cover`, `upload_duration_ms`)
@@ -289,12 +288,13 @@ Two tracks running in parallel:
 
 **DoD:** data shows upload rate improves without harming RSVP.
 
-### Epic B5 — Host "Participation Insights" v1 (P1)
+### Epic B5 — Host "Participation Insights" v1 (P1) — POST-BETA
 
 **Outcome:** host feels momentum and engagement.
 
 * Simple summary in app: RSVPs + uploads count + "nudge guests" action
-* Track: `host_nudge_sent` event
+* Track: `host_nudge_sent`, `event_participation_viewed` events
+* **Deferred:** not available in current beta build
 
 **DoD:** hosts use at least one nudge in ≥ 30% of events.
 

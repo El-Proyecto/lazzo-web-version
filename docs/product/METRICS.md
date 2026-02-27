@@ -2,7 +2,7 @@
 
 **Tool:** PostHog Cloud EU
 **Platforms:** iOS app (via `posthog_flutter`) + Web (via PostHog JS SDK)
-**Last updated:** Feb 24, 2026
+**Last updated:** Feb 27, 2026
 
 ---
 
@@ -34,7 +34,7 @@ PostHog generates an anonymous `distinct_id` on first load (app or web). When th
 | `user_id` | string (UUID) | Authenticated user ID |
 | `platform` | string | `ios` or `web` |
 | `user_role` | string | `host` or `guest` |
-| `event_phase` | string | `planning`, `live`, `recap`, `expired` (null for non-event screens) |
+| `event_phase` | string | `pending`, `confirmed`, `living`, `recap`, `ended`, `expired` (null for non-event screens) |
 | `app_version` | string | App build version (e.g., `1.0.1+2`) |
 
 ---
@@ -66,6 +66,7 @@ Only fire `screen_viewed` for screens that represent **meaningful funnel steps o
 | `invite_landing` | Guest lands on invite page (web) | Top of guest funnel |  |
 | `calendar` | User interacts with calendar (selects day, changes view mode) | Calendar engagement — tracked on interaction only, NOT on navigation | X |
 | `actions` | User opens Actions tab in Inbox | Host action engagement | X |
+| `manage_guests` | User views the guests list / manage guests screen | Guest management engagement — track `event_phase` and `user_role` (host/guest) |
 
 Properties: `screen_name`, `platform`, `event_id` (if applicable)
 
@@ -73,10 +74,10 @@ Properties: `screen_name`, `platform`, `event_id` (if applicable)
 
 | Event | When | Extra Properties | Checked |
 |-------|------|-----------------|--|
-| `auth_started` | User taps sign in / lands on auth page | `auth_type`: email_passwordless / guest_lightweight |
-| `auth_completed` | Successfully authenticated | `auth_type`, `is_new_user`: bool |
+| `auth_started` | User taps Continue after filling create account / login fields (arrives at OTP verification page) | `auth_type`: email_passwordless / guest_lightweight |
+| `auth_completed` | Successfully authenticated | `auth_type`, `is_new_user`: bool | X |
 | `guest_auth_completed` | Web guest completes lightweight auth | `event_id`, `auth_method`: email |
-| `profile_setup_completed` | User finishes profile creation | `has_avatar`: bool |
+| `profile_details_changed` | User edits profile details (name, avatar, etc.) after account creation | `fields_changed`: string[] |
 
 #### Event Creation (Host — app only)
 
@@ -84,15 +85,16 @@ Properties: `screen_name`, `platform`, `event_id` (if applicable)
 |-------|------|-----------------|---|
 | `event_created` | Host submits new event | `has_location`: bool, `has_datetime`: bool, `has_emoji`: bool, `creation_duration_seconds`: int | X |
 | `event_edited` | Host edits existing event | `fields_changed`: string[] | X |
-| `event_phase_changed` | Event transitions phase | `from_phase`, `to_phase`, `trigger`: auto / host_action |
+| `event_phase_changed` | Event transitions phase | `from_phase`, `to_phase`, `trigger`: `manual` / `auto` (client) / `auto_server` (edge fn) | X |
 
 #### Invite & Share
 
 | Event | When | Extra Properties | Checked
 |-------|------|-----------------|--|
-| `invite_link_shared` | Host shares invite link | `share_channel`: whatsapp / imessage / copy / qr / other |
+| `invite_link_shared` | User taps Share (green button) or Copy Link in the share bottom sheet | `share_method`: `copy_link` / `share`, `share_content`: `card` / `qr_code` (only when method=share) |
 | `invite_link_opened` | Someone opens an invite link | `referrer`: string (if available), `is_new_visitor`: bool |
-| `qr_code_scanned` | QR code used to access event | `event_id` |
+
+> **Removed:** `qr_code_scanned` — impossible to detect QR code scanning vs link opening on the receiver side. What matters is tracking *what the host shared* (card vs QR code), which is now captured in `invite_link_shared.share_content`.
 
 #### RSVP
 
@@ -105,10 +107,10 @@ Properties: `screen_name`, `platform`, `event_id` (if applicable)
 
 | Event | When | Extra Properties | Checked |
 |-------|------|-----------------|--|
-| `photo_upload_started` | User initiates upload | `source`: camera / gallery, `photo_count`: int |
+| `photo_upload_started` | Camera or gallery picker opens (any entry point: bottom sheet add_photo, nav_bar button, etc.) | `source`: camera / gallery |
 | `photo_uploaded` | Photo successfully uploaded | `upload_duration_ms`: int, `file_size_kb`: int, `is_cover`: bool | X |
-| `photo_upload_failed` | Upload fails | `error_type`: string, `retry_count`: int |
-| `photo_cover_selected` | User marks a photo as cover | — |
+| `photo_upload_failed` | Upload fails | `error_type`: string, `retry_count`: int | X |
+| `photo_cover_selected` | User marks a photo as cover | - | X |
 
 #### Memory & Recap
 
@@ -124,10 +126,10 @@ Properties: `screen_name`, `platform`, `event_id` (if applicable)
 
 | Event | When | Extra Properties | Checked |
 |-------|------|-----------------|--|
-| `host_nudge_sent` | Host nudges guests | `nudge_type`: upload / rsvp, `guest_count`: int |
-| `event_participation_viewed` | Host views participation summary | `rsvp_count`: int, `upload_count`: int |
-| `event_ended_manually` | Host ends event early | `hours_before_auto_end`: float |
-| `event_extended` | Host extends event time | `extension_minutes`: int |
+| `event_ended_manually` | Host ends event or recap early via Manage Event | `event_status`: `living` / `recap` (which phase was ended), `hours_before_auto_end`: float |
+| `event_extended` | Host extends event time via Manage Event Time (during living phase) | `extension_minutes`: int |
+
+> **Deferred to post-beta:** `host_nudge_sent`, `event_participation_viewed` — not available in current beta build.
 
 #### Engagement
 
@@ -195,7 +197,7 @@ invite_link_opened → guest_auth_completed → rsvp_submitted → photo_uploade
 **Purpose:** Track host engagement and repeat behavior.
 
 ```
-event_created → invite_link_shared → event_participation_viewed → recap_shared → event_created (repeat)
+event_created → invite_link_shared → recap_shared → event_created (repeat)
 ```
 
 **Filters:** by host, by cohort week
@@ -246,7 +248,7 @@ During active cohort testing (Phases 2–4), review these weekly:
 | **Host repeat rate** | Hosts with ≥2 `event_created` within 14 days | ≥ 25–30% | P1 |
 | **Share rate** | `recap_shared` or `share_card_generated` / `memory_ready` | Track baseline | P1 |
 | **Crash-free sessions** | Sessions without unhandled exceptions | ≥ 99% | P0 |
-| **Upload failure rate** | `photo_upload_failed` / `photo_upload_started` | < 5% | P1 |
+| **Upload failure rate** | `photo_upload_failed` / `photo_upload_started` (camera/gallery opens) | < 5% | P1 |
 
 ---
 

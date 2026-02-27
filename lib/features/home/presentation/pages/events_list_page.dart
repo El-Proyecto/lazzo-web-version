@@ -48,7 +48,7 @@ class _EventsListPageState extends ConsumerState<EventsListPage> {
   }
 
   void _loadInitial() {
-        if (widget.type == EventsListType.confirmed) {
+    if (widget.type == EventsListType.confirmed) {
       ref.read(confirmedEventsListControllerProvider.notifier).loadInitial();
     } else {
       ref.read(pendingEventsListControllerProvider.notifier).loadInitial();
@@ -56,7 +56,7 @@ class _EventsListPageState extends ConsumerState<EventsListPage> {
   }
 
   Future<void> _handleRefresh() async {
-        if (widget.type == EventsListType.confirmed) {
+    if (widget.type == EventsListType.confirmed) {
       await ref
           .read(confirmedEventsListControllerProvider.notifier)
           .loadInitial();
@@ -141,6 +141,8 @@ class _EventsListPageState extends ConsumerState<EventsListPage> {
         return EventSmallCardState.living;
       case HomeEventStatus.recap:
         return EventSmallCardState.recap;
+      case HomeEventStatus.expired:
+        return EventSmallCardState.expired;
     }
   }
 

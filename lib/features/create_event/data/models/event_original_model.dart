@@ -101,6 +101,8 @@ class EventModel {
         return EventStatus.living;
       case 'recap':
         return EventStatus.recap;
+      case 'expired':
+        return EventStatus.expired;
       default:
         return EventStatus.pending;
     }

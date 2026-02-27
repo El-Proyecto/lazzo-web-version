@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../../../../services/analytics_service.dart';
 import '../../../../routes/app_router.dart';
 import '../../../../config/app_config.dart';
 import '../../../../shared/components/common/invite_bottom_sheet.dart';
