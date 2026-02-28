@@ -10,6 +10,7 @@ import '../../../../shared/themes/colors.dart';
 import '../../../home/presentation/providers/home_event_providers.dart';
 import '../providers/memory_providers.dart';
 import '../../domain/entities/memory_entity.dart';
+import '../../../../services/analytics_service.dart';
 
 /// Memory Ready page shown at the end of recap phase
 /// NO SCROLL - fixed height layout
@@ -20,7 +21,7 @@ import '../../domain/entities/memory_entity.dart';
 /// - Subtitle: Event name
 /// - Photo Grid Preview: 1-2 rows from hybrid grid (no clustering labels)
 /// - Action Buttons: Share (recap orange) + Open (bg2)
-class MemoryReadyPage extends ConsumerWidget {
+class MemoryReadyPage extends ConsumerStatefulWidget {
   final String memoryId;
 
   const MemoryReadyPage({
@@ -29,8 +30,19 @@ class MemoryReadyPage extends ConsumerWidget {
   });
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final memoryAsync = ref.watch(memoryDetailProvider(memoryId));
+  ConsumerState<MemoryReadyPage> createState() => _MemoryReadyPageState();
+}
+
+class _MemoryReadyPageState extends ConsumerState<MemoryReadyPage> {
+  @override
+  void initState() {
+    super.initState();
+    AnalyticsService.screenViewed('memory_ready', eventId: widget.memoryId);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final memoryAsync = ref.watch(memoryDetailProvider(widget.memoryId));
 
     return Scaffold(
       backgroundColor: BrandColors.bg1,
@@ -48,7 +60,7 @@ class MemoryReadyPage extends ConsumerWidget {
 
           return _MemoryReadyContent(
             memory: memory,
-            memoryId: memoryId,
+            memoryId: widget.memoryId,
           );
         },
         loading: () => const Center(

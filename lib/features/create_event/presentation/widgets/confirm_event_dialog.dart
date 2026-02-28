@@ -8,6 +8,7 @@ import '../../../../shared/themes/colors.dart';
 import 'location_section.dart';
 import '../providers/event_providers.dart';
 import '../../domain/entities/event.dart';
+import '../../../../services/analytics_service.dart';
 
 /// Bottom sheet para confirmar a criação do evento
 /// Mostra resumo de todas as informações do evento
@@ -123,6 +124,18 @@ class _ConfirmEventBottomSheetState
 
       // Chamar callback antes de fechar o dialog para garantir execução única
       final eventId = createdEvent.id;
+
+      // PostHog: track event_created
+      await AnalyticsService.track('event_created', properties: {
+        'event_id': eventId,
+        'has_location': widget.selectedLocation != null,
+        'has_datetime': startDateTime != null,
+        'has_emoji': widget.eventEmoji != null,
+        'has_description':
+            widget.description != null && widget.description!.isNotEmpty,
+        'platform': 'ios',
+        'user_role': 'host',
+      });
 
       // Fechar dialog
       if (mounted) {

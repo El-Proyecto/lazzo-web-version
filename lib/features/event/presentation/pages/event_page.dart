@@ -34,6 +34,7 @@ import '../../../event_invites/presentation/providers/event_invite_providers.dar
 import '../../../../shared/components/widgets/rsvp_vote_buttons.dart';
 import '../../../../shared/providers/realtime_refresh_provider.dart';
 import 'event_page_models.dart';
+import '../../../../services/analytics_service.dart';
 
 // LAZZO 2.0: payments_provider import removed
 
@@ -69,6 +70,8 @@ class _EventPageState extends ConsumerState<EventPage> {
   @override
   void initState() {
     super.initState();
+    AnalyticsService.screenViewed('event_detail', eventId: widget.eventId);
+
     // Setup Realtime subscription for unread count badge updates
     WidgetsBinding.instance.addPostFrameCallback((_) {
       // Check if we need to show expiration warning
@@ -177,7 +180,8 @@ class _EventPageState extends ConsumerState<EventPage> {
                 // Confirm the event
                 await ref
                     .read(eventStatusNotifierProvider(eventId).notifier)
-                    .updateStatus(eventId, EventStatus.confirmed);
+                    .updateStatus(eventId, EventStatus.confirmed,
+                        fromStatus: EventStatus.pending);
 
                 if (context.mounted) {
                   TopBanner.showSuccess(
@@ -272,7 +276,10 @@ class _EventPageState extends ConsumerState<EventPage> {
 
           await ref
               .read(eventStatusNotifierProvider(eventId).notifier)
-              .updateStatus(eventId, newStatus);
+              .updateStatus(eventId, newStatus,
+                  fromStatus: isConfirmed
+                      ? EventStatus.confirmed
+                      : EventStatus.pending);
 
           // Show success message
           if (context.mounted) {

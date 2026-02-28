@@ -31,6 +31,7 @@ dependencies:
   flutter:
     sdk: flutter
   supabase_flutter: ^2.10.0
+  posthog_flutter: ^5.0.0
   flutter_riverpod: ^2.6.1
   http: ^1.4.0
   font_awesome_flutter: ^10.6.0

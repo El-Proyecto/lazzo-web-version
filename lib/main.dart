@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'env.dart';
 
 import 'package:lazzo/app.dart';
+import 'package:lazzo/services/analytics_service.dart';
 
 // REALTIME (web → app sync via Supabase channels)
 import '../services/realtime_service.dart';
@@ -131,6 +132,10 @@ void main() async {
   } catch (e) {
     rethrow;
   }
+
+  // PostHog Analytics — inicializa após Supabase
+  await AnalyticsService.initialize();
+
   runApp(
     ProviderScope(
       overrides: [

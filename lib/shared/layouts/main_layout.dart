@@ -195,6 +195,10 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
       _currentIndex = pageIndex;
     });
 
+    // Screen tracking removed from tab navigation.
+    // calendar → tracked on interaction (CalendarPage).
+    // actions  → tracked when Actions tab is selected (InboxPage).
+
     // Update provider as well
     ref.read(mainLayoutTabProvider.notifier).state = pageIndex;
   }

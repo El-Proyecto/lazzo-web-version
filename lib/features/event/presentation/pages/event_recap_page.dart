@@ -16,6 +16,7 @@ import '../widgets/recap_time_left_pill.dart';
 import '../widgets/recap_action_row.dart';
 import '../widgets/living_photos_widget.dart';
 import '../widgets/recap_host_time_controls.dart';
+import '../../../../services/analytics_service.dart';
 
 /// Event page for Recap mode
 /// Similar to Living page but with orange accent, End Now only (no add time),
@@ -36,6 +37,7 @@ class _EventRecapPageState extends ConsumerState<EventRecapPage> {
   @override
   void initState() {
     super.initState();
+    AnalyticsService.screenViewed('event_recap', eventId: widget.eventId);
     _scrollController.addListener(_onScroll);
   }
 
@@ -201,6 +203,12 @@ class _EventRecapPageState extends ConsumerState<EventRecapPage> {
                               'Check out ${event.name} on Lazzo! \uD83C\uDF89',
                         ),
                       );
+                      AnalyticsService.track('invite_link_shared', properties: {
+                        'event_id': widget.eventId,
+                        'share_channel': 'share',
+                        'source': 'event_recap',
+                        'platform': 'ios',
+                      });
                     },
                     onUpload: _showPhotoSelector,
                     onMemory: () {
