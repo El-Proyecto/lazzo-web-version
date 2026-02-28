@@ -81,12 +81,9 @@ class EventDetail {
   bool get hasDefinedDate => startDateTime != null;
 
   /// Check if event date has expired
-  /// Returns true when event is in pending status and start date has passed
+  /// Returns true when event has expired status OR is pending with past start date
   bool get isExpired {
-    final hasStartDate = startDateTime != null;
-
-    if (hasStartDate) {}
-
+    if (status == EventStatus.expired) return true;
     if (status != EventStatus.pending) return false;
     if (startDateTime == null) return false;
     return DateTime.now().isAfter(startDateTime!);

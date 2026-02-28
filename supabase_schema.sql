@@ -2,10 +2,10 @@
 -- PostgreSQL database dump
 --
 
-\restrict ddlLiktetbXH0oVF3N0Ho84yXUQetLy5t8HgO0a3HvWUrtJSTAEdPxXIdjEKEte
+\restrict 2vbuTqCGwquwTQ7mv3tDyZlrrpOuXmIaS7ELocDLn6aLgWwuLEoevJUYzqUDcCw
 
 -- Dumped from database version 17.4
--- Dumped by pg_dump version 18.1
+-- Dumped by pg_dump version 17.9 (Homebrew)
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -52,7 +52,8 @@ CREATE TYPE public.event_state AS ENUM (
     'confirmed',
     'living',
     'recap',
-    'ended'
+    'ended',
+    'expired'
 );
 
 
@@ -1904,6 +1905,7 @@ $$;
 CREATE FUNCTION public.upsert_event_guest_rsvp_by_token(p_token text, p_guest_name text, p_rsvp text DEFAULT 'going'::text, p_plus_one integer DEFAULT 0, p_guest_phone text DEFAULT NULL::text) RETURNS TABLE(event_id uuid, event_name text, rsvp_id uuid)
     LANGUAGE plpgsql SECURITY DEFINER
     AS $$
+#variable_conflict use_column
 DECLARE
   v_event_id uuid;
   v_event_name text;
@@ -1923,15 +1925,25 @@ BEGIN
   -- Get event name
   SELECT e.name INTO v_event_name FROM public.events e WHERE e.id = v_event_id;
 
-  -- Upsert guest RSVP (one RSVP per name+token combo)
-  INSERT INTO public.event_guest_rsvps (event_id, invite_token, guest_name, rsvp, plus_one, guest_phone)
-  VALUES (v_event_id, p_token, p_guest_name, p_rsvp, p_plus_one, p_guest_phone)
-  ON CONFLICT ON CONSTRAINT event_guest_rsvps_pkey DO UPDATE
-    SET rsvp = EXCLUDED.rsvp,
-        plus_one = EXCLUDED.plus_one,
-        guest_phone = EXCLUDED.guest_phone,
-        updated_at = now()
-  RETURNING id INTO v_rsvp_id;
+  -- Upsert guest RSVP
+  -- If guest_phone (email) is provided, dedup on (event_id, guest_phone)
+  -- Otherwise fall back to insert (no dedup possible without email)
+  IF p_guest_phone IS NOT NULL THEN
+    INSERT INTO public.event_guest_rsvps (event_id, invite_token, guest_name, rsvp, plus_one, guest_phone)
+    VALUES (v_event_id, p_token, p_guest_name, p_rsvp, p_plus_one, p_guest_phone)
+    ON CONFLICT (event_id, guest_phone) WHERE guest_phone IS NOT NULL
+    DO UPDATE SET
+      rsvp = EXCLUDED.rsvp,
+      guest_name = EXCLUDED.guest_name,
+      plus_one = EXCLUDED.plus_one,
+      invite_token = EXCLUDED.invite_token,
+      updated_at = now()
+    RETURNING id INTO v_rsvp_id;
+  ELSE
+    INSERT INTO public.event_guest_rsvps (event_id, invite_token, guest_name, rsvp, plus_one, guest_phone)
+    VALUES (v_event_id, p_token, p_guest_name, p_rsvp, p_plus_one, p_guest_phone)
+    RETURNING id INTO v_rsvp_id;
+  END IF;
 
   -- Track analytics
   INSERT INTO public.invite_analytics (event_id, invite_token, action, metadata)
@@ -1946,7 +1958,7 @@ $$;
 -- Name: FUNCTION upsert_event_guest_rsvp_by_token(p_token text, p_guest_name text, p_rsvp text, p_plus_one integer, p_guest_phone text); Type: COMMENT; Schema: public; Owner: -
 --
 
-COMMENT ON FUNCTION public.upsert_event_guest_rsvp_by_token(p_token text, p_guest_name text, p_rsvp text, p_plus_one integer, p_guest_phone text) IS 'Allows non-app guests to RSVP to an event via the web landing page using the invite token.';
+COMMENT ON FUNCTION public.upsert_event_guest_rsvp_by_token(p_token text, p_guest_name text, p_rsvp text, p_plus_one integer, p_guest_phone text) IS 'Allows non-app guests to RSVP to an event via the web landing page. Deduplicates by (event_id, guest_phone/email) when email is provided.';
 
 
 --
@@ -1963,6 +1975,59 @@ CREATE FUNCTION public.user_exists_by_email(p_email text) RETURNS boolean
     where email = lower(p_email)
   );
 $$;
+
+
+--
+-- Name: verify_event_access_by_email(text, text); Type: FUNCTION; Schema: public; Owner: -
+--
+
+CREATE FUNCTION public.verify_event_access_by_email(p_token text, p_email text) RETURNS boolean
+    LANGUAGE plpgsql SECURITY DEFINER
+    AS $$
+DECLARE
+  v_event_id uuid;
+  v_found boolean;
+BEGIN
+  -- Validate invite token
+  SELECT eil.event_id INTO v_event_id
+  FROM public.event_invite_links eil
+  WHERE eil.token = p_token
+    AND eil.revoked_at IS NULL
+    AND eil.expires_at > now();
+
+  IF v_event_id IS NULL THEN
+    RETURN FALSE;
+  END IF;
+
+  -- Check app participants (user email match)
+  SELECT EXISTS(
+    SELECT 1
+    FROM public.event_participants ep
+    JOIN public.users u ON u.id = ep.user_id
+    WHERE ep.pevent_id = v_event_id
+      AND lower(u.email) = lower(p_email)
+  ) INTO v_found;
+
+  IF v_found THEN RETURN TRUE; END IF;
+
+  -- Check web guests (guest_phone stores email)
+  SELECT EXISTS(
+    SELECT 1
+    FROM public.event_guest_rsvps egr
+    WHERE egr.event_id = v_event_id
+      AND lower(egr.guest_phone) = lower(p_email)
+  ) INTO v_found;
+
+  RETURN v_found;
+END;
+$$;
+
+
+--
+-- Name: FUNCTION verify_event_access_by_email(p_token text, p_email text); Type: COMMENT; Schema: public; Owner: -
+--
+
+COMMENT ON FUNCTION public.verify_event_access_by_email(p_token text, p_email text) IS 'Checks if an email belongs to an event participant (app user or web guest). Used by the web recap auth gate. Token-gated.';
 
 
 SET default_tablespace = '';
@@ -2502,6 +2567,13 @@ ALTER TABLE ONLY public.users
 
 
 --
+-- Name: idx_egr_event_phone_unique; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX idx_egr_event_phone_unique ON public.event_guest_rsvps USING btree (event_id, guest_phone) WHERE (guest_phone IS NOT NULL);
+
+
+--
 -- Name: idx_ep_event; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -2784,13 +2856,6 @@ CREATE OR REPLACE VIEW public.event_participants_summary_view AS
    FROM (public.events e
      LEFT JOIN public.event_participants ep ON ((ep.pevent_id = e.id)))
   GROUP BY e.id;
-
-
---
--- Name: events event_canceled_notification; Type: TRIGGER; Schema: public; Owner: -
---
-
-CREATE TRIGGER event_canceled_notification BEFORE DELETE ON public.events FOR EACH ROW EXECUTE FUNCTION public.notify_event_canceled();
 
 
 --
@@ -3618,5 +3683,5 @@ CREATE POLICY users_can_view_avatars_of_event_participants ON public.users FOR S
 -- PostgreSQL database dump complete
 --
 
-\unrestrict ddlLiktetbXH0oVF3N0Ho84yXUQetLy5t8HgO0a3HvWUrtJSTAEdPxXIdjEKEte
+\unrestrict 2vbuTqCGwquwTQ7mv3tDyZlrrpOuXmIaS7ELocDLn6aLgWwuLEoevJUYzqUDcCw
 

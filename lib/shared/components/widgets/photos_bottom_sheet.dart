@@ -56,7 +56,7 @@ class PhotosBottomSheet {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    'Photos',
+                    'Participants',
                     style: AppText.titleMediumEmph.copyWith(
                       color: BrandColors.text1,
                     ),

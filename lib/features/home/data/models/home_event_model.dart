@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../shared/components/widgets/rsvp_widget.dart';
 import '../../../../services/avatar_cache_service.dart';
@@ -248,7 +247,7 @@ class _HomeEventModel {
         }
         final userId = u['user_id'] as String?;
         final displayName = u['display_name'] as String? ?? 'Unknown';
-      
+
         if (userId == null || participantsMap.containsKey(userId)) continue;
         final avatarUrl = u['avatar_url'] as String?; // already signed
         participantsMap[userId] = ParticipantPhoto(

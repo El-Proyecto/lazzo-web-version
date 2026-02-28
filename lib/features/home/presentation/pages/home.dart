@@ -132,8 +132,12 @@ class _HomePageState extends ConsumerState<HomePage> {
         return EventSmallCardState.pending;
       case HomeEventStatus.confirmed:
         return EventSmallCardState.confirmed;
-      default:
-        return EventSmallCardState.confirmed;
+      case HomeEventStatus.living:
+        return EventSmallCardState.living;
+      case HomeEventStatus.recap:
+        return EventSmallCardState.recap;
+      case HomeEventStatus.expired:
+        return EventSmallCardState.pending; // Expired events show Pending badge
     }
   }
 
@@ -912,12 +916,16 @@ class _HomePageState extends ConsumerState<HomePage> {
                 // Pending Events Section
                 pendingEventsAsync.when(
                   data: (events) {
-                    if (events.isEmpty) {
+                    // Filter out expired events — they go in their own section
+                    final pendingOnly = events
+                        .where((e) => e.status != HomeEventStatus.expired)
+                        .toList();
+                    if (pendingOnly.isEmpty) {
                       return const SizedBox.shrink();
                     }
                     // Limit to 10 events for home display
-                    final displayEvents = events.take(10).toList();
-                    final hasMore = events.length > 10;
+                    final displayEvents = pendingOnly.take(10).toList();
+                    final hasMore = pendingOnly.length > 10;
 
                     return Column(
                       children: [
@@ -1006,6 +1014,77 @@ class _HomePageState extends ConsumerState<HomePage> {
                     message: 'Could not load pending events',
                     onRetry: () => ref.invalidate(homeEventsControllerProvider),
                   ),
+                ),
+
+                // Expired Events Section (below Pending)
+                pendingEventsAsync.when(
+                  data: (events) {
+                    final expiredOnly = events
+                        .where((e) => e.status == HomeEventStatus.expired)
+                        .toList();
+                    if (expiredOnly.isEmpty) {
+                      return const SizedBox.shrink();
+                    }
+                    final displayEvents = expiredOnly.take(10).toList();
+                    final hasMore = expiredOnly.length > 10;
+
+                    return Column(
+                      children: [
+                        SectionBlock(
+                          title: 'Expired Events',
+                          trailing: hasMore
+                              ? GestureDetector(
+                                  onTap: () {
+                                    Navigator.pushNamed(
+                                      context,
+                                      AppRouter.pendingEventsList,
+                                    );
+                                  },
+                                  child: Text(
+                                    'See All',
+                                    style: AppText.labelLarge.copyWith(
+                                      color:
+                                          Theme.of(context).colorScheme.primary,
+                                    ),
+                                  ),
+                                )
+                              : null,
+                          child: Column(
+                            children:
+                                displayEvents.asMap().entries.map((entry) {
+                              final index = entry.key;
+                              final event = entry.value;
+                              return Column(
+                                children: [
+                                  EventSmallCard(
+                                    emoji: event.emoji,
+                                    title: event.name,
+                                    dateTime: _formatEventDate(event.date),
+                                    location: event.location ??
+                                        'Location to be decided',
+                                    state: EventSmallCardState.pending,
+                                    isExpired: true,
+                                    onTap: () async {
+                                      await Navigator.pushNamed(
+                                        context,
+                                        AppRouter.event,
+                                        arguments: {'eventId': event.id},
+                                      );
+                                    },
+                                  ),
+                                  if (index < displayEvents.length - 1)
+                                    const SizedBox(height: Gaps.sm),
+                                ],
+                              );
+                            }).toList(),
+                          ),
+                        ),
+                        const SizedBox(height: Gaps.lg),
+                      ],
+                    );
+                  },
+                  loading: () => const SizedBox.shrink(),
+                  error: (_, __) => const SizedBox.shrink(),
                 ),
 
                 // To Dos Section removed from MVP (P1 only - awaiting P2 backend)
