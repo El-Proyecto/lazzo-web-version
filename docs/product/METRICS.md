@@ -61,8 +61,7 @@ Only fire `screen_viewed` for screens that represent **meaningful funnel steps o
 | `event_living` | User enters live event view | Live participation | X |  |
 | `event_recap` | User views recap page | Memory engagement | X |  |
 | `create_event` | User opens event creation | Host intent | X | - |
-| `memory_viewer` | User opens full memory | Memory depth | X | - |
-| `memory_ready` | User sees Memory Ready page | Completion signal |  | - |
+| `memory_ready` | User sees Memory Ready page | Completion signal | X | - |
 | `invite_landing` | Guest lands on invite page (web) | Top of guest funnel | - |  |
 | `calendar` | User interacts with calendar (selects day, changes view mode) | Calendar engagement — tracked on interaction only, NOT on navigation | X | - |
 | `actions` | User opens Actions tab in Inbox | Host action engagement | X | - |
@@ -116,11 +115,19 @@ Properties: `screen_name`, `platform`, `event_id` (if applicable)
 
 | Event | When | Extra Properties | App | Web |
 |-------|------|-----------------|-----|-----|
-| `memory_ready` | Memory compilation complete | `photo_count`: int, `contributor_count`: int, `hours_since_event_end`: float |  | - |
-| `recap_viewed` | User views the recap/memory | `viewer_role`: host / guest, `photo_count`: int |  |  |
-| `recap_shared` | User shares recap externally | `share_channel`: string |  | - |
-| `share_card_generated` | Share card created | `format`: story_9_16 / post_1_1 |  | - |
-| `memory_viewer_opened` | Full-screen memory viewer | `photo_index`: int |  | - |
+| `memory_ready` | Memory compilation complete (server-side trigger) | `photo_count`: int, `contributor_count`: int, `hours_since_event_end`: float | X | - |
+| `memory_viewed` | User opens the memory page | `event_id`: string, `view_source`: `memory_ready` / `recap` / `home` / `calendar` / `profile`, `event_phase`: `living` / `recap` / `ended` | X | - |
+| `share_card_viewed` | Share card PNG is generated and displayed on Share Memory page | `memory_id`: string | X | - |
+| `share_card_edited` | User edits photos in the share card and saves | `memory_id`: string | X | - |
+| `share_card_saved` | User saves the share card to device gallery | `memory_id`: string | X | - |
+| `share_card_shared` | User shares the card via Instagram/WhatsApp/native share | `memory_id`: string, `share_channel`: `instagram_story` / `whatsapp` / `native_share` | X | - |
+| `recap_shared` | User shares recap link externally (from recap page) | `share_method`: string |  | - |
+
+> **Removed:** `recap_viewed` — replaced by `memory_viewed` with `view_source` and `event_phase` properties for richer context.
+
+> **Removed:** `memory_viewer_opened` — redundant with `memory_viewed` event.
+
+> **Removed:** `share_card_generated` — renamed to `share_card_viewed` for clarity (fires when the card image appears on screen).
 
 #### Host Actions
 
@@ -186,7 +193,7 @@ All managed via PostHog Feature Flags.
 **Purpose:** Track conversion from invite open to recap view.
 
 ```
-invite_link_opened → guest_auth_completed → rsvp_submitted → photo_uploaded → recap_viewed
+invite_link_opened → guest_auth_completed → rsvp_submitted → photo_uploaded → memory_viewed
 ```
 
 **Filters:** by `event_id`, by `platform`, by date range
@@ -205,14 +212,16 @@ event_created → invite_link_shared → recap_shared → event_created (repeat)
 
 ### Dashboard 3: Memory Health
 
-**Purpose:** Track memory completion rate.
+**Purpose:** Track memory completion rate and engagement.
 
 **Metrics:**
 - % events reaching `memory_ready`
 - Avg photos per memory
 - Avg contributors per memory
 - Time from event end to `memory_ready`
-- % memories with ≥1 `recap_viewed` by a guest
+- % memories with ≥1 `memory_viewed` (where `view_source` ≠ `memory_ready`) — indicates users returning to view past memories
+- % memories with ≥1 `share_card_viewed` — share funnel entry
+- % memories with ≥1 `share_card_shared` — actual share completion
 
 ### Dashboard 4: Acquisition (Phase 4+)
 
@@ -239,14 +248,14 @@ During active cohort testing (Phases 2–4), review these weekly:
 
 | Metric | Definition | Target | Priority |
 |--------|-----------|--------|----------|
-| **Completed memories** | Events with `memory_ready` + `recap_viewed` by ≥1 guest | North Star | P0 |
+| **Completed memories** | Events with `memory_ready` + `memory_viewed` by ≥1 guest | North Star | P0 |
 | **Guest activation rate** | `rsvp_submitted` / `invite_link_opened` | ≥ 50% | P0 |
 | **Memory creation rate** | `memory_ready` / `event_created` | ≥ 60–70% | P0 |
 | **Time to RSVP** | Median seconds from `invite_link_opened` to `rsvp_submitted` | < 60s | P0 |
 | **Upload rate** | Events with ≥1 `photo_uploaded` / total events | ≥ 60% | P0 |
-| **Recap view rate** | Events with ≥1 `recap_viewed` / `memory_ready` events | ≥ 40% | P1 |
+| **Recap view rate** | Events with ≥1 `memory_viewed` / `memory_ready` events | ≥ 40% | P1 |
 | **Host repeat rate** | Hosts with ≥2 `event_created` within 14 days | ≥ 25–30% | P1 |
-| **Share rate** | `recap_shared` or `share_card_generated` / `memory_ready` | Track baseline | P1 |
+| **Share rate** | `share_card_shared` / `memory_ready` | Track baseline | P1 |
 | **Crash-free sessions** | Sessions without unhandled exceptions | ≥ 99% | P0 |
 | **Upload failure rate** | `photo_upload_failed` / `photo_upload_started` (camera/gallery opens) | < 5% | P1 |
 

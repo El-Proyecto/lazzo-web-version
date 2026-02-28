@@ -124,8 +124,12 @@ class _EventRecapPageState extends ConsumerState<EventRecapPage> {
       });
       ref.invalidate(eventDetailProvider(widget.eventId));
       if (context.mounted) {
-        TopBanner.showSuccess(context, message: 'Recap ended successfully');
-        Navigator.pop(context);
+        // Navigate to Memory Ready page instead of just popping
+        Navigator.of(context).pushNamedAndRemoveUntil(
+          AppRouter.memoryReady,
+          (route) => false,
+          arguments: {'memoryId': widget.eventId},
+        );
       }
     } catch (e) {
       if (context.mounted) {
@@ -220,7 +224,10 @@ class _EventRecapPageState extends ConsumerState<EventRecapPage> {
                       Navigator.pushNamed(
                         context,
                         AppRouter.memory,
-                        arguments: {'memoryId': widget.eventId},
+                        arguments: {
+                          'memoryId': widget.eventId,
+                          'viewSource': 'recap',
+                        },
                       );
                     },
                   ),

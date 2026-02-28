@@ -30,6 +30,7 @@ class MainLayout extends ConsumerStatefulWidget {
 class _MainLayoutState extends ConsumerState<MainLayout> {
   int _currentIndex = 0; // Começar na aba Home
   bool _hasShownBanner = false; // Track if banner was already shown
+  bool _hasCheckedMemoryReady = false; // Track if memory ready check was done
 
   @override
   void didChangeDependencies() {
@@ -333,10 +334,18 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
       // First, update event statuses to ensure recap events are correctly marked
       try {
         final statusService = EventStatusService(Supabase.instance.client);
-        final updatedCount = await statusService.updateEventStatuses();
-        if (updatedCount > 0) {
+        final result = await statusService.updateEventStatuses();
+        if (result.updatedCount > 0) {
           // Refresh next event provider to get updated status
           ref.invalidate(nextEventControllerProvider);
+        }
+        // If any events transitioned from recap→ended, show memory ready
+        if (result.recapEndedEventIds.isNotEmpty && mounted) {
+          Navigator.of(context).pushNamed(
+            AppRouter.memoryReady,
+            arguments: {'memoryId': result.recapEndedEventIds.first},
+          );
+          return;
         }
       } catch (e) {
         // Failed to update event status - will retry on next load
@@ -390,6 +399,24 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
 
   @override
   Widget build(BuildContext context) {
+    // Check for pending memory ready notifications on app open (once only)
+    if (!_hasCheckedMemoryReady) {
+      final pendingMemoryReady = ref.watch(pendingMemoryReadyProvider);
+      pendingMemoryReady.whenData((eventId) {
+        if (eventId != null && !_hasCheckedMemoryReady && mounted) {
+          _hasCheckedMemoryReady = true;
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) {
+              Navigator.of(context).pushNamed(
+                AppRouter.memoryReady,
+                arguments: {'memoryId': eventId},
+              );
+            }
+          });
+        }
+      });
+    }
+
     // Listen to tab changes from provider
     ref.listen<int>(mainLayoutTabProvider, (previous, next) {
       if (next != _currentIndex && mounted) {

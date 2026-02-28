@@ -74,7 +74,7 @@ class AnalyticsService {
   /// NÃO chamar em cada navegação/animação/bottom sheet.
   ///
   /// Ecrãs críticos: event_detail, event_living, event_recap,
-  /// create_event, memory_viewer, memory_ready, invite_landing,
+  /// create_event, memory_ready, invite_landing,
   /// calendar (on interaction), actions (on tab select)
   static Future<void> screenViewed(
     String screenName, {

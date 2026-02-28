@@ -1,8 +1,13 @@
 import 'dart:typed_data';
 import 'dart:ui' as ui;
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:share_plus/share_plus.dart' show SharePlus, ShareParams, XFile;
+import 'package:path_provider/path_provider.dart';
+import 'package:gal/gal.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../../shared/components/nav/common_app_bar.dart';
 import '../../../../shared/components/cards/share_card.dart';
 import '../../../../shared/themes/colors.dart';
@@ -12,6 +17,7 @@ import '../widgets/edit_share_photos_sheet.dart';
 import '../providers/memory_providers.dart';
 import '../../domain/entities/memory_entity.dart';
 import 'share_memory_preview_page.dart';
+import '../../../../services/analytics_service.dart';
 
 /// Share Memory page with preview card and share options
 class ShareMemoryPage extends ConsumerStatefulWidget {
@@ -44,6 +50,11 @@ class _ShareMemoryPageState extends ConsumerState<ShareMemoryPage> {
         setState(() {
           _selectedPhotoIds = photoIds;
           _cachedImageBytes = null; // Clear cache to regenerate
+        });
+
+        // Track share card edited
+        AnalyticsService.track('share_card_edited', properties: {
+          'memory_id': widget.memoryId,
         });
 
         // Regenerate image with new photos in the correct order
@@ -410,6 +421,10 @@ class _ShareMemoryPageState extends ConsumerState<ShareMemoryPage> {
           _cachedImageBytes = pngBytes;
           _isGeneratingImage = false;
         });
+        // Track share card viewed when card image is generated and displayed
+        AnalyticsService.track('share_card_viewed', properties: {
+          'memory_id': widget.memoryId,
+        });
       }
     } catch (e) {
       if (mounted) {
@@ -425,21 +440,16 @@ class _ShareMemoryPageState extends ConsumerState<ShareMemoryPage> {
     return uploaders.length;
   }
 
-  void _handleInstagramShare(BuildContext context) {
-    if (_cachedImageBytes == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please wait, generating image...')),
-      );
-      return;
-    }
-
-    // TODO: Implement Instagram story share using _cachedImageBytes
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Instagram share coming soon')),
-    );
+  /// Returns a temporary file path for the share card PNG
+  Future<String> _getShareCardTempPath() async {
+    final dir = await getTemporaryDirectory();
+    final filePath = '${dir.path}/lazzo_memory_${widget.memoryId}.png';
+    final file = File(filePath);
+    await file.writeAsBytes(_cachedImageBytes!);
+    return filePath;
   }
 
-  void _handleWhatsAppShare(BuildContext context) {
+  void _handleInstagramShare(BuildContext context) async {
     if (_cachedImageBytes == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please wait, generating image...')),
@@ -447,13 +457,45 @@ class _ShareMemoryPageState extends ConsumerState<ShareMemoryPage> {
       return;
     }
 
-    // TODO: Implement WhatsApp share using _cachedImageBytes
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('WhatsApp share coming soon')),
-    );
+    try {
+      // Try opening Instagram Stories with the image
+      // Instagram Stories deep link: instagram-stories://share
+      // Requires the image to be shared via the native share sheet
+      // On iOS, we can use the share sheet which shows Instagram Story option
+      final filePath = await _getShareCardTempPath();
+
+      // Try Instagram Stories URL scheme first
+      final instagramUri = Uri.parse('instagram-stories://share');
+      if (await canLaunchUrl(instagramUri)) {
+        // Share via native share targeting Instagram
+        await SharePlus.instance.share(
+          ShareParams(
+            files: [XFile(filePath, mimeType: 'image/png')],
+          ),
+        );
+      } else {
+        // Fallback to native share sheet
+        if (!context.mounted) return;
+        await SharePlus.instance.share(
+          ShareParams(
+            files: [XFile(filePath, mimeType: 'image/png')],
+          ),
+        );
+      }
+
+      AnalyticsService.track('share_card_shared', properties: {
+        'memory_id': widget.memoryId,
+        'share_channel': 'instagram_story',
+      });
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not share to Instagram')),
+      );
+    }
   }
 
-  void _handleSave(BuildContext context) {
+  void _handleWhatsAppShare(BuildContext context) async {
     if (_cachedImageBytes == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please wait, generating image...')),
@@ -461,13 +503,40 @@ class _ShareMemoryPageState extends ConsumerState<ShareMemoryPage> {
       return;
     }
 
-    // TODO: Implement save to gallery using _cachedImageBytes
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Save coming soon')),
-    );
+    try {
+      final filePath = await _getShareCardTempPath();
+
+      // Try opening WhatsApp with the image
+      final whatsappUri = Uri.parse('whatsapp://send');
+      if (await canLaunchUrl(whatsappUri)) {
+        await SharePlus.instance.share(
+          ShareParams(
+            files: [XFile(filePath, mimeType: 'image/png')],
+          ),
+        );
+      } else {
+        // Fallback to native share sheet
+        if (!context.mounted) return;
+        await SharePlus.instance.share(
+          ShareParams(
+            files: [XFile(filePath, mimeType: 'image/png')],
+          ),
+        );
+      }
+
+      AnalyticsService.track('share_card_shared', properties: {
+        'memory_id': widget.memoryId,
+        'share_channel': 'whatsapp',
+      });
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not share to WhatsApp')),
+      );
+    }
   }
 
-  void _handleMore(BuildContext context) {
+  void _handleSave(BuildContext context) async {
     if (_cachedImageBytes == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please wait, generating image...')),
@@ -475,9 +544,53 @@ class _ShareMemoryPageState extends ConsumerState<ShareMemoryPage> {
       return;
     }
 
-    // TODO: Implement native share sheet using _cachedImageBytes
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('More options coming soon')),
-    );
+    try {
+      // Save to gallery using gal package
+      final filePath = await _getShareCardTempPath();
+      await Gal.putImage(filePath);
+
+      AnalyticsService.track('share_card_saved', properties: {
+        'memory_id': widget.memoryId,
+      });
+
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Saved to gallery')),
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not save to gallery')),
+      );
+    }
+  }
+
+  void _handleMore(BuildContext context) async {
+    if (_cachedImageBytes == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please wait, generating image...')),
+      );
+      return;
+    }
+
+    try {
+      final filePath = await _getShareCardTempPath();
+
+      await SharePlus.instance.share(
+        ShareParams(
+          files: [XFile(filePath, mimeType: 'image/png')],
+        ),
+      );
+
+      AnalyticsService.track('share_card_shared', properties: {
+        'memory_id': widget.memoryId,
+        'share_channel': 'native_share',
+      });
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not share')),
+      );
+    }
   }
 }

@@ -337,7 +337,10 @@ class _HomeSearchPageState extends ConsumerState<HomeSearchPage> {
                                       await Navigator.pushNamed(
                                         context,
                                         AppRouter.memory,
-                                        arguments: {'memoryId': event.id},
+                                        arguments: {
+                                          'memoryId': event.id,
+                                          'viewSource': 'home',
+                                        },
                                       );
                                     },
                                   ),
@@ -429,6 +432,7 @@ class _HomeSearchPageState extends ConsumerState<HomeSearchPage> {
                                         AppRouter.memory,
                                         arguments: {
                                           'memoryId': memory.id,
+                                          'viewSource': 'home',
                                         },
                                       );
                                     },

@@ -38,11 +38,14 @@ class EventStatusService {
   /// This method checks all events and updates their
   /// status based on start/end times.
   ///
-  /// Returns: number of events updated
-  Future<int> updateEventStatuses() async {
+  /// Returns: a record with the number of events updated and
+  /// the list of event IDs that transitioned from recap → ended
+  Future<({int updatedCount, List<String> recapEndedEventIds})>
+      updateEventStatuses() async {
     try {
       final now = DateTime.now().toUtc();
       int updatedCount = 0;
+      final List<String> recapEndedEventIds = [];
 
       // 0. Find pending events that should be expired (start_datetime has passed)
       final pendingToExpired = await _client
@@ -111,13 +114,17 @@ class EventStatusService {
               .from('events')
               .update({'status': 'ended'}).eq('id', event['id']);
           _trackPhaseChange(event['id'] as String, 'recap', 'ended');
+          recapEndedEventIds.add(event['id'] as String);
           updatedCount++;
         }
       }
 
-      return updatedCount;
+      return (
+        updatedCount: updatedCount,
+        recapEndedEventIds: recapEndedEventIds
+      );
     } catch (e) {
-      return 0;
+      return (updatedCount: 0, recapEndedEventIds: <String>[]);
     }
   }
 

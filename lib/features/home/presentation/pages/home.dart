@@ -788,7 +788,10 @@ class _HomePageState extends ConsumerState<HomePage> {
                                     await Navigator.pushNamed(
                                       context,
                                       AppRouter.memory,
-                                      arguments: {'memoryId': event.id},
+                                      arguments: {
+                                        'memoryId': event.id,
+                                        'viewSource': 'home',
+                                      },
                                     );
                                   } else {
                                     await Navigator.pushNamed(
@@ -879,7 +882,10 @@ class _HomePageState extends ConsumerState<HomePage> {
                                         await Navigator.pushNamed(
                                           context,
                                           AppRouter.memory,
-                                          arguments: {'memoryId': event.id},
+                                          arguments: {
+                                            'memoryId': event.id,
+                                            'viewSource': 'home'
+                                          },
                                         );
                                       } else {
                                         // pending or confirmed -> event planning page
@@ -983,7 +989,10 @@ class _HomePageState extends ConsumerState<HomePage> {
                                         await Navigator.pushNamed(
                                           context,
                                           AppRouter.memory,
-                                          arguments: {'memoryId': event.id},
+                                          arguments: {
+                                            'memoryId': event.id,
+                                            'viewSource': 'home'
+                                          },
                                         );
                                       } else {
                                         // pending or confirmed -> event planning page
@@ -1152,6 +1161,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                                     arguments: {
                                       'memoryId': memory.id,
                                       'eventStatus': FakeEventStatus.ended,
+                                      'viewSource': 'home',
                                     },
                                   );
                                 },

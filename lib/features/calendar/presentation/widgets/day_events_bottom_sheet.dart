@@ -208,7 +208,10 @@ class DayEventsBottomSheet extends StatelessWidget {
           Navigator.pushNamed(
             context,
             AppRouter.memory,
-            arguments: {'memoryId': event.id},
+            arguments: {
+              'memoryId': event.id,
+              'viewSource': 'calendar',
+            },
           );
         },
       );

@@ -100,7 +100,10 @@ class _EventsListPageState extends ConsumerState<EventsListPage> {
       Navigator.pushNamed(
         context,
         AppRouter.memory,
-        arguments: {'memoryId': event.id},
+        arguments: {
+          'memoryId': event.id,
+          'viewSource': 'home',
+        },
       );
     } else {
       Navigator.pushNamed(

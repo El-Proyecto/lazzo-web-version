@@ -35,10 +35,12 @@ import '../../../../services/analytics_service.dart';
 /// - Ended: read-only, no banner
 class MemoryPage extends ConsumerStatefulWidget {
   final String memoryId;
+  final String? viewSource;
 
   const MemoryPage({
     super.key,
     required this.memoryId,
+    this.viewSource,
   });
 
   @override
@@ -111,11 +113,14 @@ class _MemoryPageState extends ConsumerState<MemoryPage> {
 
         final eventStatus = memory.status;
 
-        // Track screen_viewed for ended events (memory_viewer)
-        if (eventStatus == EventStatus.ended && !_hasTrackedScreen) {
+        // Track memory_viewed with view_source context
+        if (!_hasTrackedScreen) {
           _hasTrackedScreen = true;
-          AnalyticsService.screenViewed('memory_viewer',
-              eventId: widget.memoryId);
+          AnalyticsService.track('memory_viewed', properties: {
+            'event_id': widget.memoryId,
+            'view_source': widget.viewSource ?? 'unknown',
+            'event_phase': eventStatus.name,
+          });
         }
 
         final userHasUploadedPhotos = currentUserId != null &&

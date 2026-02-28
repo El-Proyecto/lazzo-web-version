@@ -154,7 +154,7 @@ class OtherProfilePage extends ConsumerWidget {
       AppRouter.memory,
       arguments: {
         'memoryId': memory.id,
-        // eventStatus is deprecated - removed in favor of querying from repository
+        'viewSource': 'profile',
       },
     );
   }
