@@ -63,6 +63,7 @@ class DateTimeSection extends StatelessWidget {
             label: 'Start',
             date: startDate,
             time: startTime,
+            rangeOtherDate: endDate,
             onDateChanged: onStartDateChanged,
             onTimeChanged: onStartTimeChanged,
           ),
@@ -74,6 +75,7 @@ class DateTimeSection extends StatelessWidget {
             label: 'End',
             date: endDate,
             time: endTime,
+            rangeOtherDate: startDate,
             onDateChanged: onEndDateChanged,
             onTimeChanged: onEndTimeChanged,
           ),
@@ -100,6 +102,7 @@ class _DateTimeRow extends StatefulWidget {
   final String label;
   final DateTime? date;
   final TimeOfDay? time;
+  final DateTime? rangeOtherDate;
   final Function(DateTime?)? onDateChanged;
   final Function(TimeOfDay?)? onTimeChanged;
 
@@ -107,6 +110,7 @@ class _DateTimeRow extends StatefulWidget {
     required this.label,
     this.date,
     this.time,
+    this.rangeOtherDate,
     this.onDateChanged,
     this.onTimeChanged,
   });
@@ -170,6 +174,7 @@ class _DateTimeRowState extends State<_DateTimeRow> {
           const SizedBox(height: Gaps.sm),
           InlineDatePicker(
             selectedDate: widget.date,
+            rangeOtherDate: widget.rangeOtherDate,
             onDateChanged: (date) {
               widget.onDateChanged?.call(date);
               setState(() {

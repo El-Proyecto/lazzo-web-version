@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../shared/components/nav/common_app_bar.dart';
+import '../../../../shared/components/skeletons/calendar_list_skeleton.dart';
 import '../../../../shared/themes/colors.dart';
 import '../../../home/presentation/providers/home_event_providers.dart';
 import '../../../home/domain/entities/home_event.dart';
@@ -230,9 +231,7 @@ class _CalendarPageState extends ConsumerState<CalendarPage> {
     final listEventsAsync = ref.watch(allUpcomingEventsProvider);
     return listEventsAsync.when(
       data: (events) => CalendarListView(events: events),
-      loading: () => const Center(
-        child: CircularProgressIndicator(color: BrandColors.planning),
-      ),
+      loading: () => const CalendarListSkeleton(),
       error: (_, __) => const Center(
         child: Text(
           'Failed to load events',

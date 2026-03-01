@@ -290,6 +290,13 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
       return true;
     }
 
+    // Only show save dialog if all required fields are filled (form is valid)
+    // Otherwise, discard silently
+    if (!_isFormValid) {
+      await _draftService.clearDraft();
+      return true;
+    }
+
     // Mostra dialog de confirmação
     _showExitConfirmation();
     return false; // Não sai automaticamente

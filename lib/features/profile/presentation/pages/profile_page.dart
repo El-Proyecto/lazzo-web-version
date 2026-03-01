@@ -5,6 +5,7 @@ import '../widgets/memories_section.dart';
 import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/themes/colors.dart';
 import '../../../../shared/components/nav/common_app_bar.dart';
+import '../../../../shared/components/skeletons/profile_skeleton.dart';
 import '../../../../routes/app_router.dart';
 import '../../domain/entities/profile_entity.dart';
 import '../providers/profile_providers.dart';
@@ -54,8 +55,18 @@ class ProfilePage extends ConsumerWidget {
         ),
       ),
       body: profileAsync.when(
-        loading: () => const Center(
-          child: CircularProgressIndicator(color: BrandColors.planning),
+        loading: () => SingleChildScrollView(
+          physics: const NeverScrollableScrollPhysics(),
+          padding: const EdgeInsets.symmetric(horizontal: Insets.screenH),
+          child: Column(
+            children: [
+              const SizedBox(height: Gaps.md),
+              const UserInfoCardSkeleton(),
+              const SizedBox(height: Gaps.xl),
+              const MemoriesSectionSkeleton(count: 4),
+              const SizedBox(height: Gaps.md),
+            ],
+          ),
         ),
         error: (error, stack) => Center(
           child: Column(

@@ -361,10 +361,22 @@ class _HomePageState extends ConsumerState<HomePage> {
     final nextEventStatus = ref.watch(navBarStateProvider);
 
     // Debug prints to check data received
-    nextEventAsync.whenData((event) {});
-    confirmedEventsAsync.whenData((events) {});
-    pendingEventsAsync.whenData((events) {});
-    livingAndRecapEventsAsync.whenData((events) {});
+    nextEventAsync.whenData((event) {
+      debugPrint(
+          '[HOME] nextEventAsync → ${event?.name ?? 'NULL'} (status: ${event?.status})');
+    });
+    confirmedEventsAsync.whenData((events) {
+      debugPrint(
+          '[HOME] confirmedEventsAsync → ${events.length} events: ${events.map((e) => '${e.name}(${e.status})').join(', ')}');
+    });
+    pendingEventsAsync.whenData((events) {
+      debugPrint(
+          '[HOME] pendingEventsAsync → ${events.length} events: ${events.map((e) => '${e.name}(${e.status})').join(', ')}');
+    });
+    livingAndRecapEventsAsync.whenData((events) {
+      debugPrint(
+          '[HOME] livingAndRecapEventsAsync → ${events.length} events: ${events.map((e) => '${e.name}(${e.status})').join(', ')}');
+    });
 
     // Calculate empty states based on provider data
     // LAZZO 2.0: Groups empty state removed â€” only check events
@@ -377,9 +389,17 @@ class _HomePageState extends ConsumerState<HomePage> {
         (confirmedEventsAsync.asData?.value.isNotEmpty ?? false) ||
         (pendingEventsAsync.asData?.value.isNotEmpty ?? false));
 
+    debugPrint(
+        '[HOME] eventsLoaded=$eventsLoaded, hasEvents=$hasEvents, nextEvent=${nextEventAsync.asData?.value?.name}, confirmed=${confirmedEventsAsync.asData?.value.length}, pending=${pendingEventsAsync.asData?.value.length}');
+
     // Show "No upcoming events" if no events and data is loaded
     final showNoEventsCard =
         eventsLoaded && !hasEvents && !_isNoEventsCardDismissed;
+    debugPrint('[HOME] showNoEventsCard=$showNoEventsCard');
+
+    // ✅ Track event promoted to hero from pending/confirmed sections
+    // Used to avoid showing the same event in both hero and its original section
+    String? promotedHeroEventId;
 
     return Scaffold(
       appBar: CommonAppBar(
@@ -486,11 +506,46 @@ class _HomePageState extends ConsumerState<HomePage> {
                 livingAndRecapEventsAsync.when(
                   data: (allLivingAndRecapEvents) {
                     if (allLivingAndRecapEvents.isEmpty) {
+                      debugPrint(
+                          '[HOME] No living/recap → trying hero fallback');
                       // No living/recap events, show Next Event section
                       return nextEventAsync.when(
                         data: (event) {
-                          if (event == null) {
+                          debugPrint(
+                              '[HOME] nextEvent → ${event?.name ?? 'NULL'}');
+                          // ✅ Always show hero: fall back to pending/confirmed
+                          HomeEventEntity? heroEvent = event;
+                          if (heroEvent == null) {
+                            final pendingData =
+                                pendingEventsAsync.asData?.value;
+                            final confirmedData =
+                                confirmedEventsAsync.asData?.value;
+                            debugPrint(
+                                '[HOME] Fallback: pending=${pendingData?.length ?? 'null'}, confirmed=${confirmedData?.length ?? 'null'}');
+                            // Try non-expired pending first
+                            heroEvent = pendingData
+                                ?.where(
+                                    (e) => e.status != HomeEventStatus.expired)
+                                .firstOrNull;
+                            debugPrint(
+                                '[HOME] Fallback pending non-expired → ${heroEvent?.name ?? 'NULL'}');
+                            // Then confirmed
+                            heroEvent ??= confirmedData?.firstOrNull;
+                            debugPrint(
+                                '[HOME] Fallback after confirmed → ${heroEvent?.name ?? 'NULL'}');
+                            // Then any event (including expired)
+                            heroEvent ??= pendingData?.firstOrNull;
+                            debugPrint(
+                                '[HOME] Final heroEvent → ${heroEvent?.name ?? 'NULL'} (status: ${heroEvent?.status})');
+                          }
+
+                          if (heroEvent == null) {
                             return const SizedBox.shrink();
+                          }
+
+                          // Track promoted event for deduplication below
+                          if (event == null) {
+                            promotedHeroEventId = heroEvent.id;
                           }
 
                           return Column(
@@ -498,25 +553,28 @@ class _HomePageState extends ConsumerState<HomePage> {
                               SectionBlock(
                                 title: 'Next Event',
                                 child: HomeEventCard(
-                                  event: event,
-                                  state:
-                                      _mapStatusToHomeCardState(event.status),
+                                  event: heroEvent,
+                                  state: _mapStatusToHomeCardState(
+                                      heroEvent.status),
                                   onTap: () async {
                                     await Navigator.pushNamed(
                                       context,
                                       AppRouter.event,
-                                      arguments: {'eventId': event.id},
+                                      arguments: {'eventId': heroEvent!.id},
                                     );
                                   },
                                   onVoteChanged: _handleVoteChanged,
-                                  onGuestsTap: () => _handleGuestsTap(event.id),
+                                  onGuestsTap: () =>
+                                      _handleGuestsTap(heroEvent!.id),
                                   onInviteTap: () => _handleInviteTap(
-                                      event.id, event.name, event.emoji),
+                                      heroEvent!.id,
+                                      heroEvent.name,
+                                      heroEvent.emoji),
                                   onAddPhotoTap: () =>
-                                      _handleAddPhotoTap(event.id),
+                                      _handleAddPhotoTap(heroEvent!.id),
                                   onManagePhotosTap: () =>
-                                      _handleManagePhotosTap(event.id),
-                                  canManagePhotos: _canManagePhotos(event),
+                                      _handleManagePhotosTap(heroEvent!.id),
+                                  canManagePhotos: _canManagePhotos(heroEvent),
                                 ),
                               ),
                               const SizedBox(height: Gaps.lg),
@@ -538,6 +596,75 @@ class _HomePageState extends ConsumerState<HomePage> {
                     final recapEvents = allLivingAndRecapEvents
                         .where((e) => e.status == HomeEventStatus.recap)
                         .toList();
+
+                    // If no actual living/recap events (e.g. only confirmed in the list), use hero fallback
+                    if (livingEvents.isEmpty && recapEvents.isEmpty) {
+                      debugPrint(
+                          '[HOME] Living/recap list has ${allLivingAndRecapEvents.length} items but none are living/recap → hero fallback');
+                      return nextEventAsync.when(
+                        data: (event) {
+                          HomeEventEntity? heroEvent = event;
+                          if (heroEvent == null) {
+                            final pendingData =
+                                pendingEventsAsync.asData?.value;
+                            final confirmedData =
+                                confirmedEventsAsync.asData?.value;
+                            heroEvent = pendingData
+                                ?.where(
+                                    (e) => e.status != HomeEventStatus.expired)
+                                .firstOrNull;
+                            heroEvent ??= confirmedData?.firstOrNull;
+                            heroEvent ??= pendingData?.firstOrNull;
+                          }
+
+                          if (heroEvent == null) {
+                            return const SizedBox.shrink();
+                          }
+
+                          if (event == null) {
+                            promotedHeroEventId = heroEvent.id;
+                          }
+
+                          return Column(
+                            children: [
+                              SectionBlock(
+                                title: 'Next Event',
+                                child: HomeEventCard(
+                                  event: heroEvent,
+                                  state: _mapStatusToHomeCardState(
+                                      heroEvent.status),
+                                  onTap: () async {
+                                    await Navigator.pushNamed(
+                                      context,
+                                      AppRouter.event,
+                                      arguments: {'eventId': heroEvent!.id},
+                                    );
+                                  },
+                                  onVoteChanged: _handleVoteChanged,
+                                  onGuestsTap: () =>
+                                      _handleGuestsTap(heroEvent!.id),
+                                  onInviteTap: () => _handleInviteTap(
+                                      heroEvent!.id,
+                                      heroEvent.name,
+                                      heroEvent.emoji),
+                                  onAddPhotoTap: () =>
+                                      _handleAddPhotoTap(heroEvent!.id),
+                                  onManagePhotosTap: () =>
+                                      _handleManagePhotosTap(heroEvent!.id),
+                                  canManagePhotos: _canManagePhotos(heroEvent),
+                                ),
+                              ),
+                              const SizedBox(height: Gaps.lg),
+                            ],
+                          );
+                        },
+                        loading: () => const SectionBlock(
+                          title: 'Next Event',
+                          child: HomeEventCardSkeleton(),
+                        ),
+                        error: (error, stackTrace) => const SizedBox.shrink(),
+                      );
+                    }
 
                     return Column(
                       children: [
@@ -819,12 +946,18 @@ class _HomePageState extends ConsumerState<HomePage> {
                 // Confirmed Events Section
                 confirmedEventsAsync.when(
                   data: (events) {
-                    if (events.isEmpty) {
+                    // Exclude promoted hero event to avoid duplication
+                    final filtered = promotedHeroEventId != null
+                        ? events
+                            .where((e) => e.id != promotedHeroEventId)
+                            .toList()
+                        : events;
+                    if (filtered.isEmpty) {
                       return const SizedBox.shrink();
                     }
                     // Limit to 10 events for home display
-                    final displayEvents = events.take(10).toList();
-                    final hasMore = events.length > 10;
+                    final displayEvents = filtered.take(10).toList();
+                    final hasMore = filtered.length > 10;
 
                     return Column(
                       children: [
@@ -923,8 +1056,10 @@ class _HomePageState extends ConsumerState<HomePage> {
                 pendingEventsAsync.when(
                   data: (events) {
                     // Filter out expired events — they go in their own section
+                    // Also exclude promoted hero event to avoid duplication
                     final pendingOnly = events
                         .where((e) => e.status != HomeEventStatus.expired)
+                        .where((e) => e.id != promotedHeroEventId)
                         .toList();
                     if (pendingOnly.isEmpty) {
                       return const SizedBox.shrink();
@@ -1028,8 +1163,10 @@ class _HomePageState extends ConsumerState<HomePage> {
                 // Expired Events Section (below Pending)
                 pendingEventsAsync.when(
                   data: (events) {
+                    // Also exclude promoted hero event
                     final expiredOnly = events
                         .where((e) => e.status == HomeEventStatus.expired)
+                        .where((e) => e.id != promotedHeroEventId)
                         .toList();
                     if (expiredOnly.isEmpty) {
                       return const SizedBox.shrink();

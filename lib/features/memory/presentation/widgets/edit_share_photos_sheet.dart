@@ -45,7 +45,7 @@ class EditSharePhotosSheet extends StatefulWidget {
 
 class _EditSharePhotosSheetState extends State<EditSharePhotosSheet> {
   late List<String> _selectedPhotoIds;
-  static const int _requiredPhotos = 4;
+  static const int _maxPhotos = 4;
 
   @override
   void initState() {
@@ -58,7 +58,7 @@ class _EditSharePhotosSheetState extends State<EditSharePhotosSheet> {
       if (_selectedPhotoIds.contains(photoId)) {
         _selectedPhotoIds.remove(photoId);
       } else {
-        if (_selectedPhotoIds.length < _requiredPhotos) {
+        if (_selectedPhotoIds.length < _maxPhotos) {
           _selectedPhotoIds.add(photoId);
         } else {
           // Show warning when trying to select more than 4
@@ -76,17 +76,20 @@ class _EditSharePhotosSheetState extends State<EditSharePhotosSheet> {
     return index >= 0 ? index + 1 : null;
   }
 
-  bool get _canSave => _selectedPhotoIds.length == _requiredPhotos;
+  /// Valid selection: exactly 1 photo (single mode) or exactly 4 photos
+  bool get _canSave =>
+      _selectedPhotoIds.length == 1 || _selectedPhotoIds.length == 4;
+
+  bool get _isSinglePhotoMode => _selectedPhotoIds.length == 1;
 
   void _handleSave() {
     if (_canSave) {
       widget.onSave(_selectedPhotoIds);
       Navigator.of(context).pop();
     } else {
-      // Show warning when trying to save without 4 photos
       TopBanner.showWarning(
         context,
-        message: 'Please select 4 photos to continue',
+        message: 'Select 1 photo or 4 photos',
       );
     }
   }
@@ -121,15 +124,39 @@ class _EditSharePhotosSheetState extends State<EditSharePhotosSheet> {
           const Center(child: GrabberBar()),
           const SizedBox(height: Gaps.sm),
 
-          // Header with title
+          // Header with title and selection hint
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: Gaps.lg),
+            child: Row(
+              children: [
+                Text(
+                  'Edit Share Photos',
+                  style: AppText.titleMediumEmph.copyWith(
+                    color: BrandColors.text1,
+                  ),
+                ),
+                const Spacer(),
+                Text(
+                  '${_selectedPhotoIds.length} selected',
+                  style: AppText.bodyMedium.copyWith(
+                    color: _canSave ? BrandColors.recap : BrandColors.text2,
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // Hint for valid selections
+          Padding(
+            padding:
+                const EdgeInsets.symmetric(horizontal: Gaps.lg, vertical: 4),
             child: Align(
               alignment: Alignment.centerLeft,
               child: Text(
-                'Edit Share Photos',
-                style: AppText.titleMediumEmph.copyWith(
-                  color: BrandColors.text1,
+                'Select 1 photo or 4 photos',
+                style: AppText.bodyMedium.copyWith(
+                  color: BrandColors.text2,
+                  fontSize: 12,
                 ),
               ),
             ),
@@ -173,7 +200,7 @@ class _EditSharePhotosSheetState extends State<EditSharePhotosSheet> {
   }
 
   Widget _buildPreview(MemoryPhoto? heroPhoto, List<MemoryPhoto> thumbnails) {
-    // Build list of 4 photo URLs (null for empty slots)
+    // Build list of photo URLs (null for empty slots)
     final photoUrls = <String?>[];
 
     if (_selectedPhotoIds.isNotEmpty) {
@@ -186,9 +213,11 @@ class _EditSharePhotosSheetState extends State<EditSharePhotosSheet> {
       }
     }
 
-    // Fill remaining slots with null
-    while (photoUrls.length < 4) {
-      photoUrls.add(null);
+    // In single photo mode, keep just 1 URL; otherwise fill to 4 slots
+    if (!_isSinglePhotoMode) {
+      while (photoUrls.length < 4) {
+        photoUrls.add(null);
+      }
     }
 
     return SizedBox(
@@ -199,13 +228,14 @@ class _EditSharePhotosSheetState extends State<EditSharePhotosSheet> {
           location: widget.memory.location,
           eventDate: widget.memory.eventDate,
           photoUrls: photoUrls,
+          singlePhotoMode: _isSinglePhotoMode,
           onPickPhoto: (index) {
             // Find first unselected photo and add it
             final unselectedPhotos = widget.memory.photos
                 .where((p) => !_selectedPhotoIds.contains(p.id))
                 .toList();
             if (unselectedPhotos.isNotEmpty &&
-                _selectedPhotoIds.length < _requiredPhotos) {
+                _selectedPhotoIds.length < _maxPhotos) {
               _togglePhoto(unselectedPhotos.first.id);
             }
           },

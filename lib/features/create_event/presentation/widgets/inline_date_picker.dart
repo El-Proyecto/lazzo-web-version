@@ -9,7 +9,15 @@ class InlineDatePicker extends StatefulWidget {
   final DateTime? selectedDate;
   final Function(DateTime)? onDateChanged;
 
-  const InlineDatePicker({super.key, this.selectedDate, this.onDateChanged});
+  /// The other end of the date range (e.g. startDate when picking end, endDate when picking start)
+  final DateTime? rangeOtherDate;
+
+  const InlineDatePicker({
+    super.key,
+    this.selectedDate,
+    this.onDateChanged,
+    this.rangeOtherDate,
+  });
 
   @override
   State<InlineDatePicker> createState() => _InlineDatePickerState();
@@ -23,7 +31,8 @@ class _InlineDatePickerState extends State<InlineDatePicker> {
   void initState() {
     super.initState();
     _selectedDate = widget.selectedDate;
-    _currentMonth = widget.selectedDate ?? DateTime.now();
+    _currentMonth =
+        widget.selectedDate ?? widget.rangeOtherDate ?? DateTime.now();
   }
 
   @override
@@ -132,6 +141,29 @@ class _InlineDatePickerState extends State<InlineDatePicker> {
       final isPast =
           date.isBefore(DateTime.now().subtract(const Duration(days: 1)));
 
+      // Check if this date is the other end of the range
+      final otherDate = widget.rangeOtherDate;
+      final isOtherEnd = otherDate != null &&
+          otherDate.year == date.year &&
+          otherDate.month == date.month &&
+          otherDate.day == date.day;
+
+      // Check if this date is between the selected date and the other end
+      final bool isInRange;
+      if (_selectedDate != null && otherDate != null) {
+        final rangeStart =
+            _selectedDate!.isBefore(otherDate) ? _selectedDate! : otherDate;
+        final rangeEnd =
+            _selectedDate!.isBefore(otherDate) ? otherDate : _selectedDate!;
+        isInRange =
+            date.isAfter(rangeStart.subtract(const Duration(days: 1))) &&
+                date.isBefore(rangeEnd.add(const Duration(days: 1)));
+      } else if (otherDate != null && _selectedDate == null) {
+        isInRange = false;
+      } else {
+        isInRange = false;
+      }
+
       dayWidgets.add(
         GestureDetector(
           onTap: isPast ? null : () => _selectDate(date),
@@ -139,13 +171,15 @@ class _InlineDatePickerState extends State<InlineDatePicker> {
             width: 32,
             height: 32,
             decoration: BoxDecoration(
-              color: isSelected
+              color: isSelected || isOtherEnd
                   ? BrandColors.planning
-                  : isToday
-                      ? BrandColors.bg2
-                      : Colors.transparent,
+                  : isInRange
+                      ? BrandColors.planning.withValues(alpha: 0.2)
+                      : isToday
+                          ? BrandColors.bg2
+                          : Colors.transparent,
               borderRadius: BorderRadius.circular(16),
-              border: isToday && !isSelected
+              border: isToday && !isSelected && !isOtherEnd && !isInRange
                   ? Border.all(
                       color: BrandColors.planning.withValues(alpha: 0.5),
                       width: 1,
@@ -158,11 +192,15 @@ class _InlineDatePickerState extends State<InlineDatePicker> {
                 style: AppText.bodyMedium.copyWith(
                   color: isPast
                       ? BrandColors.text2.withValues(alpha: 0.5)
-                      : isSelected
+                      : isSelected || isOtherEnd
                           ? BrandColors.text1
-                          : BrandColors.text1,
+                          : isInRange
+                              ? BrandColors.planning
+                              : BrandColors.text1,
                   fontSize: 12,
-                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                  fontWeight: isSelected || isOtherEnd || isInRange
+                      ? FontWeight.w600
+                      : FontWeight.w400,
                 ),
               ),
             ),

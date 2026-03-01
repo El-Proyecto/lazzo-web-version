@@ -95,6 +95,11 @@ class _ShareMemoryPageState extends ConsumerState<ShareMemoryPage> {
     final remaining =
         memory.photos.where((p) => p.id != heroPhoto.id).take(3).toList();
 
+    // If fewer than 4 photos available, use single-photo mode (just hero)
+    if (remaining.length < 3) {
+      return [heroPhoto.id];
+    }
+
     return [heroPhoto.id, ...remaining.map((p) => p.id)];
   }
 

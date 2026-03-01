@@ -20,6 +20,7 @@ import '../../../event_invites/presentation/providers/event_invite_providers.dar
 import '../providers/memory_providers.dart';
 import '../../domain/entities/memory_entity.dart';
 import '../../../../services/analytics_service.dart';
+import '../../../../shared/components/skeletons/memory_page_skeleton.dart';
 
 /// Memory page displaying event photos with state-based UI
 ///
@@ -78,7 +79,7 @@ class _MemoryPageState extends ConsumerState<MemoryPage> {
             onPressed: () => Navigator.of(context).pop(),
           ),
         ),
-        body: const Center(child: CircularProgressIndicator()),
+        body: const MemoryPageSkeleton(),
       ),
       error: (error, stack) => Scaffold(
         backgroundColor: BrandColors.bg1,
