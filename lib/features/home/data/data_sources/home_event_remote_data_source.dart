@@ -2,6 +2,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/home_event_model.dart';
 import '../../domain/entities/home_event.dart';
 import '../../../../services/avatar_cache_service.dart';
+import '../../../../services/analytics_service.dart';
 import '../../../../shared/components/widgets/rsvp_widget.dart';
 
 /// Remote data source for home events
@@ -85,12 +86,7 @@ class HomeEventRemoteDataSource {
       // Pass callback to persist status changes
       final eventsFutures = rawData.map((e) => homeEventFromMap(
             e,
-            onStatusMismatch: (eventId, newStatus) {
-              // Persist status change asynchronously (fire and forget)
-              updateEventStatus(eventId, newStatus).catchError((error) {
-                return false;
-              });
-            },
+            onStatusMismatch: _onStatusMismatch,
             currentUserId: userId,
             supabaseClient: client,
           ));
@@ -109,10 +105,12 @@ class HomeEventRemoteDataSource {
 
       for (final event in events) {
         // Keep confirmed/living/recap events always
-        if (event.status != HomeEventStatus.pending) {
+        if (event.status == HomeEventStatus.expired) {
+          expiredPendingEvents.add(event); // Explicit expired status
+        } else if (event.status != HomeEventStatus.pending) {
           nonExpiredEvents.add(event);
         } else {
-          // For pending events: check if expired
+          // For pending events: check if expired by date
           if (event.date == null) {
             nonExpiredEvents.add(event); // No date = not expired
           } else if (event.date!.toUtc().isAfter(now)) {
@@ -144,12 +142,13 @@ class HomeEventRemoteDataSource {
         return null;
       }
 
-      // Priority order: living (4) > recap (3) > confirmed (2) > pending (1)
+      // Priority order: living (4) > recap (3) > confirmed (2) > pending (1) > expired (0)
       final priorityMap = {
         HomeEventStatus.living: 4,
         HomeEventStatus.recap: 3,
         HomeEventStatus.confirmed: 2,
         HomeEventStatus.pending: 1,
+        HomeEventStatus.expired: 0,
       };
 
       eventsToSort.sort((a, b) {
@@ -206,11 +205,7 @@ class HomeEventRemoteDataSource {
 
       final eventsFutures = rawData.map((e) => homeEventFromMap(
             e,
-            onStatusMismatch: (eventId, newStatus) {
-              updateEventStatus(eventId, newStatus).catchError((error) {
-                return false;
-              });
-            },
+            onStatusMismatch: _onStatusMismatch,
             currentUserId: userId,
             supabaseClient: client,
           ));
@@ -262,7 +257,21 @@ class HomeEventRemoteDataSource {
           // ❌ No RSVP filter - show ALL pending events regardless of user vote
           .limit(50); // Increased limit to show all events
 
-      final data = response as List<dynamic>;
+      // Also fetch expired events (pending events whose date passed)
+      final expiredResponse = await client.from(_eventsView).select('''
+            event_id, event_name, emoji,
+            start_datetime, end_datetime,
+            location_name, event_status,
+            user_rsvp, voted_at,
+            going_count, guest_going_count, going_users,
+            not_going_users, no_response_users,
+            participants_total, voters_total
+          ''').eq('user_id', userId).eq('event_status', 'expired').limit(50);
+
+      final data = [
+        ...(response as List<dynamic>),
+        ...(expiredResponse as List<dynamic>)
+      ];
 
       // ✅ OPTIMIZATION: Batch convert avatar paths to signed URLs BEFORE entity creation
       final rawData = data.cast<Map<String, dynamic>>();
@@ -289,11 +298,7 @@ class HomeEventRemoteDataSource {
       // Convert to entities with status persistence
       final eventsFutures = rawData.map((e) => homeEventFromMap(
             e,
-            onStatusMismatch: (eventId, newStatus) {
-              updateEventStatus(eventId, newStatus).catchError((error) {
-                return false;
-              });
-            },
+            onStatusMismatch: _onStatusMismatch,
             currentUserId: userId,
             supabaseClient: client,
           ));
@@ -347,6 +352,18 @@ class HomeEventRemoteDataSource {
 
   /// Update event status in Supabase
   /// Called when calculated status differs from DB status
+  /// Persists new status + tracks event_phase_changed for auto-transitions
+  void _onStatusMismatch(String eventId, String fromStatus, String toStatus) {
+    AnalyticsService.track('event_phase_changed', properties: {
+      'event_id': eventId,
+      'from_phase': fromStatus,
+      'to_phase': toStatus,
+      'trigger': 'auto',
+      'platform': 'ios',
+    });
+    updateEventStatus(eventId, toStatus).catchError((error) => false);
+  }
+
   Future<bool> updateEventStatus(String eventId, String newStatus) async {
     try {
       await client
@@ -375,7 +392,7 @@ class HomeEventRemoteDataSource {
             participants_total, voters_total
           ''')
           .eq('user_id', userId)
-          .inFilter('event_status', ['living', 'recap'])
+          .inFilter('event_status', ['living', 'recap', 'confirmed'])
           .eq('user_rsvp', 'yes') // Only show events where user voted "yes"
           .not('end_datetime', 'is', null) // Only events with end_datetime
           .order('end_datetime', ascending: true)
@@ -393,11 +410,7 @@ class HomeEventRemoteDataSource {
       // Convert to entities with status persistence
       final eventsFutures = rawData.map((e) => homeEventFromMap(
             e,
-            onStatusMismatch: (eventId, newStatus) {
-              updateEventStatus(eventId, newStatus).catchError((error) {
-                return false;
-              });
-            },
+            onStatusMismatch: _onStatusMismatch,
             currentUserId: userId,
             supabaseClient: client,
           ));
@@ -447,7 +460,7 @@ class HomeEventRemoteDataSource {
           .from(_eventsView)
           .select('event_id')
           .eq('user_id', userId)
-          .eq('event_status', 'pending');
+          .inFilter('event_status', ['pending', 'expired']);
       // ❌ No RSVP filter - count ALL pending events
 
       return (response as List).length;
@@ -493,10 +506,7 @@ class HomeEventRemoteDataSource {
 
       final eventsFutures = rawData.map((e) => homeEventFromMap(
             e,
-            onStatusMismatch: (eventId, newStatus) {
-              updateEventStatus(eventId, newStatus)
-                  .catchError((error) => false);
-            },
+            onStatusMismatch: _onStatusMismatch,
             currentUserId: userId,
             supabaseClient: client,
           ));
@@ -534,7 +544,7 @@ class HomeEventRemoteDataSource {
             participants_total, voters_total
           ''')
           .eq('user_id', userId)
-          .eq('event_status', 'pending')
+          .inFilter('event_status', ['pending', 'expired'])
           // ❌ No RSVP filter - show ALL pending events
           .order('start_datetime', ascending: true)
           .range(offset, offset + limit - 1);
@@ -547,10 +557,7 @@ class HomeEventRemoteDataSource {
 
       final eventsFutures = rawData.map((e) => homeEventFromMap(
             e,
-            onStatusMismatch: (eventId, newStatus) {
-              updateEventStatus(eventId, newStatus)
-                  .catchError((error) => false);
-            },
+            onStatusMismatch: _onStatusMismatch,
             currentUserId: userId,
             supabaseClient: client,
           ));

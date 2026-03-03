@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/cupertino.dart';
 import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/constants/text_styles.dart';
 import '../../../../shared/themes/colors.dart';
@@ -20,10 +19,13 @@ class _InlineTimePickerState extends State<InlineTimePicker> {
   late FixedExtentScrollController _hourController;
   late FixedExtentScrollController _minuteController;
 
+  /// Minute values: 0, 5, 10, ..., 55
+  static const _minuteSteps = [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55];
+
   int _selectedHour = 0;
-  int _selectedMinute = 0;
+  int _selectedMinuteIndex = 0; // index into _minuteSteps
   int _tempHour = 0;
-  int _tempMinute = 0;
+  int _tempMinuteIndex = 0;
 
   @override
   void initState() {
@@ -32,14 +34,29 @@ class _InlineTimePickerState extends State<InlineTimePicker> {
     // Initialize with selected time or current time
     final now = widget.selectedTime ?? TimeOfDay.now();
     _selectedHour = now.hour;
-    _selectedMinute = now.minute;
+    // Snap minute to nearest 5-min slot
+    _selectedMinuteIndex = _snapToNearest5(now.minute);
     _tempHour = _selectedHour;
-    _tempMinute = _selectedMinute;
+    _tempMinuteIndex = _selectedMinuteIndex;
 
     _hourController = FixedExtentScrollController(initialItem: _selectedHour);
     _minuteController = FixedExtentScrollController(
-      initialItem: _selectedMinute,
+      initialItem: _selectedMinuteIndex,
     );
+  }
+
+  /// Returns the index in _minuteSteps closest to the given minute
+  int _snapToNearest5(int minute) {
+    int bestIndex = 0;
+    int bestDiff = 60;
+    for (int i = 0; i < _minuteSteps.length; i++) {
+      final diff = (minute - _minuteSteps[i]).abs();
+      if (diff < bestDiff) {
+        bestDiff = diff;
+        bestIndex = i;
+      }
+    }
+    return bestIndex;
   }
 
   @override
@@ -96,26 +113,27 @@ class _InlineTimePickerState extends State<InlineTimePicker> {
             ),
           ),
 
-          // Minute picker
+          // Minute picker (5-min steps: 00, 05, 10, ..., 55)
           Expanded(
             child: _buildWheelPicker(
               controller: _minuteController,
-              itemCount: 60,
-              selectedValue: _selectedMinute,
+              itemCount: _minuteSteps.length,
+              selectedValue: _selectedMinuteIndex,
               onSelectedItemChanged: (index) {
                 setState(() {
-                  _tempMinute = index;
+                  _tempMinuteIndex = index;
                 });
               },
               onScrollEnd: () {
-                if (_tempMinute != _selectedMinute) {
+                if (_tempMinuteIndex != _selectedMinuteIndex) {
                   setState(() {
-                    _selectedMinute = _tempMinute;
+                    _selectedMinuteIndex = _tempMinuteIndex;
                   });
                   _notifyTimeChanged();
                 }
               },
-              formatter: (value) => value.toString().padLeft(2, '0'),
+              formatter: (value) =>
+                  _minuteSteps[value].toString().padLeft(2, '0'),
             ),
           ),
         ],
@@ -141,34 +159,52 @@ class _InlineTimePickerState extends State<InlineTimePicker> {
         }
         return false;
       },
-      child: CupertinoPicker(
-        scrollController: controller,
-        itemExtent: 28,
-        onSelectedItemChanged: onSelectedItemChanged,
-        selectionOverlay: Container(
-          decoration: BoxDecoration(
-            color: BrandColors.planning.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(4),
-          ),
-        ),
-        children: List.generate(itemCount, (index) {
-          return Center(
-            child: Text(
-              formatter(index),
-              style: AppText.bodyLarge.copyWith(
-                color: BrandColors.text1,
-                fontWeight: FontWeight.w400,
-                fontSize: 16,
+      child: Stack(
+        children: [
+          // Selection overlay (behind the wheel)
+          Positioned.fill(
+            child: Center(
+              child: Container(
+                height: 28,
+                decoration: BoxDecoration(
+                  color: BrandColors.planning.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(4),
+                ),
               ),
             ),
-          );
-        }),
+          ),
+          // Wheel picker without haptic feedback (no CupertinoPicker sound)
+          ListWheelScrollView.useDelegate(
+            controller: controller,
+            itemExtent: 28,
+            physics: const FixedExtentScrollPhysics(),
+            diameterRatio: 1.5,
+            perspective: 0.003,
+            onSelectedItemChanged: onSelectedItemChanged,
+            childDelegate: ListWheelChildBuilderDelegate(
+              childCount: itemCount,
+              builder: (context, index) {
+                return Center(
+                  child: Text(
+                    formatter(index),
+                    style: AppText.bodyLarge.copyWith(
+                      color: BrandColors.text1,
+                      fontWeight: FontWeight.w400,
+                      fontSize: 16,
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
       ),
     );
   }
 
   void _notifyTimeChanged() {
-    final timeOfDay = TimeOfDay(hour: _selectedHour, minute: _selectedMinute);
+    final minute = _minuteSteps[_selectedMinuteIndex];
+    final timeOfDay = TimeOfDay(hour: _selectedHour, minute: minute);
     widget.onTimeChanged?.call(timeOfDay);
   }
 }

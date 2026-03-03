@@ -373,9 +373,21 @@ class _EditEventPageState extends ConsumerState<EditEventPage> {
       _storeInitialValues();
     });
 
-    // Track event_edited
+    // Track event_edited with changed fields
+    final fieldsChanged = <String>[
+      if (_eventName != _initialEventName) 'name',
+      if (_eventEmoji != _initialEventEmoji) 'emoji',
+      if (_selectedDate != _initialSelectedDate ||
+          _selectedTime != _initialSelectedTime)
+        'start_datetime',
+      if (_endDate != _initialEndDate || _endTime != _initialEndTime)
+        'end_datetime',
+      if (_selectedLocation?.id != _initialSelectedLocation?.id) 'location',
+      if (_description != _initialDescription) 'description',
+    ];
     AnalyticsService.track('event_edited', properties: {
       'event_id': widget.event.id,
+      'fields_changed': fieldsChanged,
       'platform': 'ios',
     });
 

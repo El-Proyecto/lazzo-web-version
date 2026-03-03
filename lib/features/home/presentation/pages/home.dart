@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../../config/app_config.dart';
+import '../../../../services/analytics_service.dart';
 import '../../../../shared/components/nav/common_app_bar.dart';
 import '../../../../shared/components/common/invite_bottom_sheet.dart';
 import '../../../../shared/components/inputs/search_bar.dart' as custom;
@@ -120,6 +121,8 @@ class _HomePageState extends ConsumerState<HomePage> {
         return HomeEventCardState.living;
       case HomeEventStatus.recap:
         return HomeEventCardState.recap;
+      case HomeEventStatus.expired:
+        return HomeEventCardState.expired;
     }
   }
 
@@ -129,8 +132,12 @@ class _HomePageState extends ConsumerState<HomePage> {
         return EventSmallCardState.pending;
       case HomeEventStatus.confirmed:
         return EventSmallCardState.confirmed;
-      default:
-        return EventSmallCardState.confirmed;
+      case HomeEventStatus.living:
+        return EventSmallCardState.living;
+      case HomeEventStatus.recap:
+        return EventSmallCardState.recap;
+      case HomeEventStatus.expired:
+        return EventSmallCardState.pending; // Expired events show Pending badge
     }
   }
 
@@ -165,6 +172,8 @@ class _HomePageState extends ConsumerState<HomePage> {
         return EventDisplayStatus.living;
       case HomeEventStatus.recap:
         return EventDisplayStatus.recap;
+      case HomeEventStatus.expired:
+        return EventDisplayStatus.expired;
     }
   }
 
@@ -219,7 +228,8 @@ class _HomePageState extends ConsumerState<HomePage> {
   }
 
   /// Share event invite
-  Future<void> _handleInviteTap(String eventId, String eventName, String eventEmoji) async {
+  Future<void> _handleInviteTap(
+      String eventId, String eventName, String eventEmoji) async {
     try {
       final useCase = ref.read(createEventInviteLinkProvider);
       final entity = await useCase(
@@ -234,6 +244,7 @@ class _HomePageState extends ConsumerState<HomePage> {
           entityName: eventName,
           entityType: 'event',
           eventEmoji: eventEmoji,
+          eventId: eventId,
         );
       }
     } catch (e) {
@@ -254,6 +265,11 @@ class _HomePageState extends ConsumerState<HomePage> {
       onAction: (action) async {
         final picker = ImagePicker();
         if (action == PhotoSourceAction.camera) {
+          AnalyticsService.track('photo_upload_started', properties: {
+            'event_id': eventId,
+            'source': 'camera',
+            'platform': 'ios',
+          });
           final photo = await picker.pickImage(
             source: ImageSource.camera,
             maxWidth: 1920,
@@ -269,6 +285,11 @@ class _HomePageState extends ConsumerState<HomePage> {
             );
           }
         } else if (action == PhotoSourceAction.gallery) {
+          AnalyticsService.track('photo_upload_started', properties: {
+            'event_id': eventId,
+            'source': 'gallery',
+            'platform': 'ios',
+          });
           final photo = await picker.pickImage(
             source: ImageSource.gallery,
             maxWidth: 1920,
@@ -340,10 +361,22 @@ class _HomePageState extends ConsumerState<HomePage> {
     final nextEventStatus = ref.watch(navBarStateProvider);
 
     // Debug prints to check data received
-    nextEventAsync.whenData((event) {});
-    confirmedEventsAsync.whenData((events) {});
-    pendingEventsAsync.whenData((events) {});
-    livingAndRecapEventsAsync.whenData((events) {});
+    nextEventAsync.whenData((event) {
+      debugPrint(
+          '[HOME] nextEventAsync → ${event?.name ?? 'NULL'} (status: ${event?.status})');
+    });
+    confirmedEventsAsync.whenData((events) {
+      debugPrint(
+          '[HOME] confirmedEventsAsync → ${events.length} events: ${events.map((e) => '${e.name}(${e.status})').join(', ')}');
+    });
+    pendingEventsAsync.whenData((events) {
+      debugPrint(
+          '[HOME] pendingEventsAsync → ${events.length} events: ${events.map((e) => '${e.name}(${e.status})').join(', ')}');
+    });
+    livingAndRecapEventsAsync.whenData((events) {
+      debugPrint(
+          '[HOME] livingAndRecapEventsAsync → ${events.length} events: ${events.map((e) => '${e.name}(${e.status})').join(', ')}');
+    });
 
     // Calculate empty states based on provider data
     // LAZZO 2.0: Groups empty state removed â€” only check events
@@ -356,9 +389,17 @@ class _HomePageState extends ConsumerState<HomePage> {
         (confirmedEventsAsync.asData?.value.isNotEmpty ?? false) ||
         (pendingEventsAsync.asData?.value.isNotEmpty ?? false));
 
+    debugPrint(
+        '[HOME] eventsLoaded=$eventsLoaded, hasEvents=$hasEvents, nextEvent=${nextEventAsync.asData?.value?.name}, confirmed=${confirmedEventsAsync.asData?.value.length}, pending=${pendingEventsAsync.asData?.value.length}');
+
     // Show "No upcoming events" if no events and data is loaded
     final showNoEventsCard =
         eventsLoaded && !hasEvents && !_isNoEventsCardDismissed;
+    debugPrint('[HOME] showNoEventsCard=$showNoEventsCard');
+
+    // ✅ Track event promoted to hero from pending/confirmed sections
+    // Used to avoid showing the same event in both hero and its original section
+    String? promotedHeroEventId;
 
     return Scaffold(
       appBar: CommonAppBar(
@@ -465,11 +506,46 @@ class _HomePageState extends ConsumerState<HomePage> {
                 livingAndRecapEventsAsync.when(
                   data: (allLivingAndRecapEvents) {
                     if (allLivingAndRecapEvents.isEmpty) {
+                      debugPrint(
+                          '[HOME] No living/recap → trying hero fallback');
                       // No living/recap events, show Next Event section
                       return nextEventAsync.when(
                         data: (event) {
-                          if (event == null) {
+                          debugPrint(
+                              '[HOME] nextEvent → ${event?.name ?? 'NULL'}');
+                          // ✅ Always show hero: fall back to pending/confirmed
+                          HomeEventEntity? heroEvent = event;
+                          if (heroEvent == null) {
+                            final pendingData =
+                                pendingEventsAsync.asData?.value;
+                            final confirmedData =
+                                confirmedEventsAsync.asData?.value;
+                            debugPrint(
+                                '[HOME] Fallback: pending=${pendingData?.length ?? 'null'}, confirmed=${confirmedData?.length ?? 'null'}');
+                            // Try non-expired pending first
+                            heroEvent = pendingData
+                                ?.where(
+                                    (e) => e.status != HomeEventStatus.expired)
+                                .firstOrNull;
+                            debugPrint(
+                                '[HOME] Fallback pending non-expired → ${heroEvent?.name ?? 'NULL'}');
+                            // Then confirmed
+                            heroEvent ??= confirmedData?.firstOrNull;
+                            debugPrint(
+                                '[HOME] Fallback after confirmed → ${heroEvent?.name ?? 'NULL'}');
+                            // Then any event (including expired)
+                            heroEvent ??= pendingData?.firstOrNull;
+                            debugPrint(
+                                '[HOME] Final heroEvent → ${heroEvent?.name ?? 'NULL'} (status: ${heroEvent?.status})');
+                          }
+
+                          if (heroEvent == null) {
                             return const SizedBox.shrink();
+                          }
+
+                          // Track promoted event for deduplication below
+                          if (event == null) {
+                            promotedHeroEventId = heroEvent.id;
                           }
 
                           return Column(
@@ -477,24 +553,28 @@ class _HomePageState extends ConsumerState<HomePage> {
                               SectionBlock(
                                 title: 'Next Event',
                                 child: HomeEventCard(
-                                  event: event,
-                                  state:
-                                      _mapStatusToHomeCardState(event.status),
+                                  event: heroEvent,
+                                  state: _mapStatusToHomeCardState(
+                                      heroEvent.status),
                                   onTap: () async {
                                     await Navigator.pushNamed(
                                       context,
                                       AppRouter.event,
-                                      arguments: {'eventId': event.id},
+                                      arguments: {'eventId': heroEvent!.id},
                                     );
                                   },
                                   onVoteChanged: _handleVoteChanged,
-                                  onGuestsTap: () => _handleGuestsTap(event.id),
-                                  onInviteTap: () => _handleInviteTap(event.id, event.name, event.emoji),
+                                  onGuestsTap: () =>
+                                      _handleGuestsTap(heroEvent!.id),
+                                  onInviteTap: () => _handleInviteTap(
+                                      heroEvent!.id,
+                                      heroEvent.name,
+                                      heroEvent.emoji),
                                   onAddPhotoTap: () =>
-                                      _handleAddPhotoTap(event.id),
+                                      _handleAddPhotoTap(heroEvent!.id),
                                   onManagePhotosTap: () =>
-                                      _handleManagePhotosTap(event.id),
-                                  canManagePhotos: _canManagePhotos(event),
+                                      _handleManagePhotosTap(heroEvent!.id),
+                                  canManagePhotos: _canManagePhotos(heroEvent),
                                 ),
                               ),
                               const SizedBox(height: Gaps.lg),
@@ -516,6 +596,75 @@ class _HomePageState extends ConsumerState<HomePage> {
                     final recapEvents = allLivingAndRecapEvents
                         .where((e) => e.status == HomeEventStatus.recap)
                         .toList();
+
+                    // If no actual living/recap events (e.g. only confirmed in the list), use hero fallback
+                    if (livingEvents.isEmpty && recapEvents.isEmpty) {
+                      debugPrint(
+                          '[HOME] Living/recap list has ${allLivingAndRecapEvents.length} items but none are living/recap → hero fallback');
+                      return nextEventAsync.when(
+                        data: (event) {
+                          HomeEventEntity? heroEvent = event;
+                          if (heroEvent == null) {
+                            final pendingData =
+                                pendingEventsAsync.asData?.value;
+                            final confirmedData =
+                                confirmedEventsAsync.asData?.value;
+                            heroEvent = pendingData
+                                ?.where(
+                                    (e) => e.status != HomeEventStatus.expired)
+                                .firstOrNull;
+                            heroEvent ??= confirmedData?.firstOrNull;
+                            heroEvent ??= pendingData?.firstOrNull;
+                          }
+
+                          if (heroEvent == null) {
+                            return const SizedBox.shrink();
+                          }
+
+                          if (event == null) {
+                            promotedHeroEventId = heroEvent.id;
+                          }
+
+                          return Column(
+                            children: [
+                              SectionBlock(
+                                title: 'Next Event',
+                                child: HomeEventCard(
+                                  event: heroEvent,
+                                  state: _mapStatusToHomeCardState(
+                                      heroEvent.status),
+                                  onTap: () async {
+                                    await Navigator.pushNamed(
+                                      context,
+                                      AppRouter.event,
+                                      arguments: {'eventId': heroEvent!.id},
+                                    );
+                                  },
+                                  onVoteChanged: _handleVoteChanged,
+                                  onGuestsTap: () =>
+                                      _handleGuestsTap(heroEvent!.id),
+                                  onInviteTap: () => _handleInviteTap(
+                                      heroEvent!.id,
+                                      heroEvent.name,
+                                      heroEvent.emoji),
+                                  onAddPhotoTap: () =>
+                                      _handleAddPhotoTap(heroEvent!.id),
+                                  onManagePhotosTap: () =>
+                                      _handleManagePhotosTap(heroEvent!.id),
+                                  canManagePhotos: _canManagePhotos(heroEvent),
+                                ),
+                              ),
+                              const SizedBox(height: Gaps.lg),
+                            ],
+                          );
+                        },
+                        loading: () => const SectionBlock(
+                          title: 'Next Event',
+                          child: HomeEventCardSkeleton(),
+                        ),
+                        error: (error, stackTrace) => const SizedBox.shrink(),
+                      );
+                    }
 
                     return Column(
                       children: [
@@ -741,6 +890,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                             break;
                           case HomeEventStatus.pending:
                           case HomeEventStatus.confirmed:
+                          case HomeEventStatus.expired:
                             sectionTitle = 'Next Event';
                             break;
                         }
@@ -765,7 +915,10 @@ class _HomePageState extends ConsumerState<HomePage> {
                                     await Navigator.pushNamed(
                                       context,
                                       AppRouter.memory,
-                                      arguments: {'memoryId': event.id},
+                                      arguments: {
+                                        'memoryId': event.id,
+                                        'viewSource': 'home',
+                                      },
                                     );
                                   } else {
                                     await Navigator.pushNamed(
@@ -793,12 +946,18 @@ class _HomePageState extends ConsumerState<HomePage> {
                 // Confirmed Events Section
                 confirmedEventsAsync.when(
                   data: (events) {
-                    if (events.isEmpty) {
+                    // Exclude promoted hero event to avoid duplication
+                    final filtered = promotedHeroEventId != null
+                        ? events
+                            .where((e) => e.id != promotedHeroEventId)
+                            .toList()
+                        : events;
+                    if (filtered.isEmpty) {
                       return const SizedBox.shrink();
                     }
                     // Limit to 10 events for home display
-                    final displayEvents = events.take(10).toList();
-                    final hasMore = events.length > 10;
+                    final displayEvents = filtered.take(10).toList();
+                    final hasMore = filtered.length > 10;
 
                     return Column(
                       children: [
@@ -856,7 +1015,10 @@ class _HomePageState extends ConsumerState<HomePage> {
                                         await Navigator.pushNamed(
                                           context,
                                           AppRouter.memory,
-                                          arguments: {'memoryId': event.id},
+                                          arguments: {
+                                            'memoryId': event.id,
+                                            'viewSource': 'home'
+                                          },
                                         );
                                       } else {
                                         // pending or confirmed -> event planning page
@@ -885,19 +1047,26 @@ class _HomePageState extends ConsumerState<HomePage> {
                   ),
                   error: (error, stackTrace) => ErrorRetryWidget(
                     message: 'Could not load confirmed events',
-                    onRetry: () => ref.invalidate(confirmedEventsControllerProvider),
+                    onRetry: () =>
+                        ref.invalidate(confirmedEventsControllerProvider),
                   ),
                 ),
 
                 // Pending Events Section
                 pendingEventsAsync.when(
                   data: (events) {
-                    if (events.isEmpty) {
+                    // Filter out expired events — they go in their own section
+                    // Also exclude promoted hero event to avoid duplication
+                    final pendingOnly = events
+                        .where((e) => e.status != HomeEventStatus.expired)
+                        .where((e) => e.id != promotedHeroEventId)
+                        .toList();
+                    if (pendingOnly.isEmpty) {
                       return const SizedBox.shrink();
                     }
                     // Limit to 10 events for home display
-                    final displayEvents = events.take(10).toList();
-                    final hasMore = events.length > 10;
+                    final displayEvents = pendingOnly.take(10).toList();
+                    final hasMore = pendingOnly.length > 10;
 
                     return Column(
                       children: [
@@ -955,7 +1124,10 @@ class _HomePageState extends ConsumerState<HomePage> {
                                         await Navigator.pushNamed(
                                           context,
                                           AppRouter.memory,
-                                          arguments: {'memoryId': event.id},
+                                          arguments: {
+                                            'memoryId': event.id,
+                                            'viewSource': 'home'
+                                          },
                                         );
                                       } else {
                                         // pending or confirmed -> event planning page
@@ -986,6 +1158,79 @@ class _HomePageState extends ConsumerState<HomePage> {
                     message: 'Could not load pending events',
                     onRetry: () => ref.invalidate(homeEventsControllerProvider),
                   ),
+                ),
+
+                // Expired Events Section (below Pending)
+                pendingEventsAsync.when(
+                  data: (events) {
+                    // Also exclude promoted hero event
+                    final expiredOnly = events
+                        .where((e) => e.status == HomeEventStatus.expired)
+                        .where((e) => e.id != promotedHeroEventId)
+                        .toList();
+                    if (expiredOnly.isEmpty) {
+                      return const SizedBox.shrink();
+                    }
+                    final displayEvents = expiredOnly.take(10).toList();
+                    final hasMore = expiredOnly.length > 10;
+
+                    return Column(
+                      children: [
+                        SectionBlock(
+                          title: 'Expired Events',
+                          trailing: hasMore
+                              ? GestureDetector(
+                                  onTap: () {
+                                    Navigator.pushNamed(
+                                      context,
+                                      AppRouter.pendingEventsList,
+                                    );
+                                  },
+                                  child: Text(
+                                    'See All',
+                                    style: AppText.labelLarge.copyWith(
+                                      color:
+                                          Theme.of(context).colorScheme.primary,
+                                    ),
+                                  ),
+                                )
+                              : null,
+                          child: Column(
+                            children:
+                                displayEvents.asMap().entries.map((entry) {
+                              final index = entry.key;
+                              final event = entry.value;
+                              return Column(
+                                children: [
+                                  EventSmallCard(
+                                    emoji: event.emoji,
+                                    title: event.name,
+                                    dateTime: _formatEventDate(event.date),
+                                    location: event.location ??
+                                        'Location to be decided',
+                                    state: EventSmallCardState.pending,
+                                    isExpired: true,
+                                    onTap: () async {
+                                      await Navigator.pushNamed(
+                                        context,
+                                        AppRouter.event,
+                                        arguments: {'eventId': event.id},
+                                      );
+                                    },
+                                  ),
+                                  if (index < displayEvents.length - 1)
+                                    const SizedBox(height: Gaps.sm),
+                                ],
+                              );
+                            }).toList(),
+                          ),
+                        ),
+                        const SizedBox(height: Gaps.lg),
+                      ],
+                    );
+                  },
+                  loading: () => const SizedBox.shrink(),
+                  error: (_, __) => const SizedBox.shrink(),
                 ),
 
                 // To Dos Section removed from MVP (P1 only - awaiting P2 backend)
@@ -1053,6 +1298,7 @@ class _HomePageState extends ConsumerState<HomePage> {
                                     arguments: {
                                       'memoryId': memory.id,
                                       'eventStatus': FakeEventStatus.ended,
+                                      'viewSource': 'home',
                                     },
                                   );
                                 },
@@ -1107,7 +1353,8 @@ class _HomePageState extends ConsumerState<HomePage> {
                 },
                 error: (error, stackTrace) => ErrorRetryWidget(
                   message: 'Could not load recent memories',
-                  onRetry: () => ref.invalidate(recentMemoriesControllerProvider),
+                  onRetry: () =>
+                      ref.invalidate(recentMemoriesControllerProvider),
                 ),
               ),
             ],

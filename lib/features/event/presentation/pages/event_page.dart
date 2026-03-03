@@ -239,7 +239,8 @@ class _EventPageState extends ConsumerState<EventPage> {
       final rsvps = rsvpsAsync.valueOrNull ?? [];
       final appGoingCount =
           rsvps.where((r) => r.status == RsvpStatus.going).length;
-      final guestList = ref.read(guestRsvpListProvider(eventId)).valueOrNull ?? [];
+      final guestList =
+          ref.read(guestRsvpListProvider(eventId)).valueOrNull ?? [];
       int webGoing = 0;
       for (final g in guestList) {
         if ((g['rsvp'] as String?) == 'going') webGoing++;
@@ -564,6 +565,7 @@ class _EventPageState extends ConsumerState<EventPage> {
                             entityName: event.name,
                             entityType: 'event',
                             eventEmoji: event.emoji,
+                            eventId: eventId,
                           );
                         }
                       } catch (e) {
@@ -1390,9 +1392,15 @@ class _EventPageState extends ConsumerState<EventPage> {
             int webGoing = 0, webNotGoing = 0, webMaybe = 0;
             for (final g in guestList) {
               switch (g['rsvp'] as String?) {
-                case 'going': webGoing++; break;
-                case 'not_going': webNotGoing++; break;
-                case 'maybe': webMaybe++; break;
+                case 'going':
+                  webGoing++;
+                  break;
+                case 'not_going':
+                  webNotGoing++;
+                  break;
+                case 'maybe':
+                  webMaybe++;
+                  break;
               }
             }
             final goingCount = appGoingCount + webGoing;
@@ -1526,9 +1534,15 @@ class _EventPageState extends ConsumerState<EventPage> {
     int webGoing = 0, webNotGoing = 0, webMaybe = 0;
     for (final g in guestList) {
       switch (g['rsvp'] as String?) {
-        case 'going': webGoing++; break;
-        case 'not_going': webNotGoing++; break;
-        case 'maybe': webMaybe++; break;
+        case 'going':
+          webGoing++;
+          break;
+        case 'not_going':
+          webNotGoing++;
+          break;
+        case 'maybe':
+          webMaybe++;
+          break;
       }
     }
     final goingCount = appGoingCount + webGoing;

@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../shared/components/widgets/rsvp_widget.dart';
 import '../../../../services/avatar_cache_service.dart';
@@ -51,7 +50,8 @@ class _HomeEventModel {
 
   factory _HomeEventModel.fromMap(
     Map<String, dynamic> map, {
-    Function(String, String)? onStatusMismatch,
+    Function(String eventId, String fromStatus, String toStatus)?
+        onStatusMismatch,
     String? currentUserId,
     required SupabaseClient supabaseClient,
   }) {
@@ -66,7 +66,7 @@ class _HomeEventModel {
 
     // ✅ Se status calculado difere do DB, notifica para atualizar
     if (calculatedStatus != backendStatus && onStatusMismatch != null) {
-      onStatusMismatch(eventId, calculatedStatus);
+      onStatusMismatch(eventId, backendStatus, calculatedStatus);
     }
 
     return _HomeEventModel(
@@ -155,8 +155,6 @@ class _HomeEventModel {
     try {
       // Only fetch photos for living/recap events
       if (status != 'living' && status != 'recap') {
-        debugPrint(
-            '[HomeEventModel] _fetchParticipantPhotos skipped for status=$status event=$id');
         return [];
       }
 
@@ -168,12 +166,7 @@ class _HomeEventModel {
           .eq('event_id', id)
           .order('captured_at', ascending: false);
 
-      debugPrint(
-          '[HomeEventModel] _fetchParticipantPhotos event=$id rows=${response.length}');
-
       if (response.isEmpty) {
-        debugPrint(
-            '[HomeEventModel] _fetchParticipantPhotos NO photos in event_photos for event=$id, will only show goingUsers with 0 photos');
         // Still need to build 0-photo list from goingUsers
         final zeroPhotoList = <ParticipantPhoto>[];
         for (final u in goingUsers) {
@@ -189,8 +182,6 @@ class _HomeEventModel {
             photoCount: 0,
           ));
         }
-        debugPrint(
-            '[HomeEventModel] zeroPhotoList: ${zeroPhotoList.map((p) => '${p.userName}:${p.photoCount}').join(', ')}');
         return zeroPhotoList;
       }
 
@@ -250,21 +241,15 @@ class _HomeEventModel {
       }
 
       // ✅ Include all going participants with 0 photos (not yet in map)
-      debugPrint(
-          '[HomeEventModel] _fetchParticipantPhotos goingUsers.length=${goingUsers.length} for event=$id');
       for (final u in goingUsers) {
         if (u is! Map<String, dynamic>) {
-          debugPrint('[HomeEventModel] goingUser skipped – not a Map: $u');
           continue;
         }
         final userId = u['user_id'] as String?;
         final displayName = u['display_name'] as String? ?? 'Unknown';
-        debugPrint(
-            '[HomeEventModel] goingUser userId=$userId displayName=$displayName alreadyInMap=${participantsMap.containsKey(userId)}');
+
         if (userId == null || participantsMap.containsKey(userId)) continue;
         final avatarUrl = u['avatar_url'] as String?; // already signed
-        debugPrint(
-            '[HomeEventModel] Adding 0-photo participant userId=$userId displayName=$displayName');
         participantsMap[userId] = ParticipantPhoto(
           userId: userId,
           userName: currentUserId == userId ? 'You' : displayName,
@@ -276,8 +261,6 @@ class _HomeEventModel {
       // Sort: participants with photos first, then 0-photo participants
       final result = participantsMap.values.toList()
         ..sort((a, b) => b.photoCount.compareTo(a.photoCount));
-      debugPrint(
-          '[HomeEventModel] _fetchParticipantPhotos final result: ${result.map((p) => '${p.userName}:${p.photoCount}').join(', ')}');
       return result;
     } catch (e) {
       return [];
@@ -339,9 +322,17 @@ class _HomeEventModel {
     final now = DateTime.now();
     const recapDuration = Duration(hours: 24);
 
-    // CRITICAL: Pending events NEVER auto-transition, even if date has passed
+    // CRITICAL: Pending events with past start_datetime → expired
     if (backendStatus == 'pending') {
-      return 'pending'; // Always return pending, regardless of dates
+      if (start != null && start.isBefore(now)) {
+        return 'expired';
+      }
+      return 'pending';
+    }
+
+    // Already expired in DB — keep it
+    if (backendStatus == 'expired') {
+      return 'expired';
     }
 
     // Sem data ou data futura = PLANNING → usa status da DB (pending/confirmed)
@@ -369,6 +360,8 @@ class _HomeEventModel {
         return HomeEventStatus.living;
       case 'recap':
         return HomeEventStatus.recap;
+      case 'expired':
+        return HomeEventStatus.expired;
       default:
         return HomeEventStatus.pending;
     }
@@ -454,7 +447,8 @@ class _HomeEventModel {
 /// Public function to convert Map to HomeEventEntity
 Future<HomeEventEntity> homeEventFromMap(
   Map<String, dynamic> map, {
-  Function(String, String)? onStatusMismatch,
+  Function(String eventId, String fromStatus, String toStatus)?
+      onStatusMismatch,
   String? currentUserId,
   required SupabaseClient supabaseClient,
 }) async {

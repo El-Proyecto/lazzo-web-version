@@ -162,6 +162,13 @@ class _EventLivingPageState extends ConsumerState<EventLivingPage> {
                               await ref
                                   .read(extendEventTimeProvider)
                                   .call(widget.eventId, 30);
+                              // Track event_extended
+                              AnalyticsService.track('event_extended',
+                                  properties: {
+                                    'event_id': widget.eventId,
+                                    'extension_minutes': 30,
+                                    'platform': 'ios',
+                                  });
                               // Refresh event details
                               ref.invalidate(
                                   eventDetailProvider(widget.eventId));
@@ -182,6 +189,13 @@ class _EventLivingPageState extends ConsumerState<EventLivingPage> {
                               await ref
                                   .read(extendEventTimeProvider)
                                   .call(widget.eventId, minutes);
+                              // Track event_extended
+                              AnalyticsService.track('event_extended',
+                                  properties: {
+                                    'event_id': widget.eventId,
+                                    'extension_minutes': minutes,
+                                    'platform': 'ios',
+                                  });
                               // Refresh event details
                               ref.invalidate(
                                   eventDetailProvider(widget.eventId));
@@ -200,15 +214,27 @@ class _EventLivingPageState extends ConsumerState<EventLivingPage> {
                           onEndNow: () async {
                             // End event immediately
                             try {
+                              // Compute hours before auto-end for analytics
+                              final hoursBeforeAutoEnd =
+                                  event.endDateTime != null
+                                      ? event.endDateTime!
+                                              .difference(DateTime.now())
+                                              .inMinutes /
+                                          60.0
+                                      : null;
                               await ref
                                   .read(endEventNowProvider)
                                   .call(widget.eventId);
                               // Track event_ended_manually
-                              AnalyticsService.track('event_ended_manually',
-                                  properties: {
-                                    'event_id': widget.eventId,
-                                    'platform': 'ios',
-                                  });
+                              AnalyticsService
+                                  .track('event_ended_manually', properties: {
+                                'event_id': widget.eventId,
+                                'event_status': 'living',
+                                if (hoursBeforeAutoEnd != null)
+                                  'hours_before_auto_end': double.parse(
+                                      hoursBeforeAutoEnd.toStringAsFixed(1)),
+                                'platform': 'ios',
+                              });
                               // Refresh event details
                               ref.invalidate(
                                   eventDetailProvider(widget.eventId));
@@ -240,7 +266,8 @@ class _EventLivingPageState extends ConsumerState<EventLivingPage> {
                         eventId: widget.eventId,
                         shareChannel: 'living_action_row',
                       );
-                      final inviteUrl = '${AppConfig.invitesBaseUrl}/i/${entity.token}';
+                      final inviteUrl =
+                          '${AppConfig.invitesBaseUrl}/i/${entity.token}';
                       if (context.mounted) {
                         InviteBottomSheet.show(
                           context: context,
@@ -248,11 +275,13 @@ class _EventLivingPageState extends ConsumerState<EventLivingPage> {
                           entityName: event.name,
                           entityType: 'event',
                           eventEmoji: event.emoji,
+                          eventId: widget.eventId,
                         );
                       }
                     } catch (e) {
                       if (context.mounted) {
-                        TopBanner.showError(context, message: 'Failed to create invite link');
+                        TopBanner.showError(context,
+                            message: 'Failed to create invite link');
                       }
                     }
                   },

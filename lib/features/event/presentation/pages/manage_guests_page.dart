@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../../../../services/analytics_service.dart';
 import '../../../../routes/app_router.dart';
 import '../../../../config/app_config.dart';
+import '../../../../services/analytics_service.dart';
 import '../../../../shared/components/common/invite_bottom_sheet.dart';
 import '../../../event_invites/presentation/providers/event_invite_providers.dart';
 import '../../../../shared/components/nav/common_app_bar.dart';
@@ -33,6 +33,12 @@ class _ManageGuestsPageState extends ConsumerState<ManageGuestsPage> {
   RsvpStatus? _selectedFilter;
 
   @override
+  void initState() {
+    super.initState();
+    AnalyticsService.screenViewed('manage_guests', eventId: widget.eventId);
+  }
+
+  @override
   Widget build(BuildContext context) {
     final rsvpsAsync = ref.watch(eventRsvpsProvider(widget.eventId));
     final eventAsync = ref.watch(eventDetailProvider(widget.eventId));
@@ -59,8 +65,7 @@ class _ManageGuestsPageState extends ConsumerState<ManageGuestsPage> {
                 eventId: widget.eventId,
                 shareChannel: 'manage_guests',
               );
-              final inviteUrl =
-                  '${AppConfig.invitesBaseUrl}/i/${entity.token}';
+              final inviteUrl = '${AppConfig.invitesBaseUrl}/i/${entity.token}';
               if (context.mounted) {
                 InviteBottomSheet.show(
                   context: context,
@@ -68,6 +73,7 @@ class _ManageGuestsPageState extends ConsumerState<ManageGuestsPage> {
                   entityName: eventAsync.value?.name ?? 'this event',
                   entityType: 'event',
                   eventEmoji: eventAsync.value?.emoji ?? '📅',
+                  eventId: widget.eventId,
                 );
               }
             } catch (e) {

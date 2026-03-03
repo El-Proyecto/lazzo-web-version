@@ -21,6 +21,12 @@ class EventPhotoUploadNotifier extends StateNotifier<AsyncValue<String?>> {
     required String eventId,
   }) async {
     try {
+      // Track photo upload started
+      AnalyticsService.track('photo_upload_started', properties: {
+        'event_id': eventId,
+        'source': 'camera',
+        'platform': 'ios',
+      });
       // Pick image from camera
       final XFile? photo = await _imagePicker.pickImage(
         source: ImageSource.camera,
@@ -48,6 +54,12 @@ class EventPhotoUploadNotifier extends StateNotifier<AsyncValue<String?>> {
     required String eventId,
   }) async {
     try {
+      // Track photo upload started
+      AnalyticsService.track('photo_upload_started', properties: {
+        'event_id': eventId,
+        'source': 'gallery',
+        'platform': 'ios',
+      });
       // Pick image from gallery
       final XFile? photo = await _imagePicker.pickImage(
         source: ImageSource.gallery,
@@ -76,21 +88,30 @@ class EventPhotoUploadNotifier extends StateNotifier<AsyncValue<String?>> {
     required File imageFile,
   }) async {
     state = const AsyncValue.loading();
+    final stopwatch = Stopwatch()..start();
 
     try {
+      // Get file size before upload
+      final fileSizeKb = (await imageFile.length()) ~/ 1024;
+
       final photoUrl = await _uploadEventPhoto(
         eventId: eventId,
         imageFile: imageFile,
       );
 
+      stopwatch.stop();
       state = AsyncValue.data(photoUrl);
 
-      // Track photo upload
+      // Track photo upload with METRICS.md-required properties
       AnalyticsService.track('photo_uploaded', properties: {
         'event_id': eventId,
+        'upload_duration_ms': stopwatch.elapsedMilliseconds,
+        'file_size_kb': fileSizeKb,
+        'is_cover': false,
         'platform': 'ios',
       });
     } catch (error, stackTrace) {
+      stopwatch.stop();
       state = AsyncValue.error(error, stackTrace);
     }
   }

@@ -115,11 +115,35 @@ class _EventRecapPageState extends ConsumerState<EventRecapPage> {
   /// Close recap phase (host only)
   Future<void> _handleCloseRecap() async {
     try {
+      // Compute hours before auto-end (recap auto-ends 24h after event end)
+      final eventDetail =
+          ref.read(eventDetailProvider(widget.eventId)).valueOrNull;
+      double? hoursBeforeAutoEnd;
+      if (eventDetail?.endDateTime != null) {
+        final recapAutoEnd =
+            eventDetail!.endDateTime!.add(const Duration(hours: 24));
+        hoursBeforeAutoEnd =
+            recapAutoEnd.difference(DateTime.now()).inMinutes / 60.0;
+      }
+
       await ref.read(closeRecapUseCaseProvider).call(widget.eventId);
+      // Track event_ended_manually with recap status
+      AnalyticsService.track('event_ended_manually', properties: {
+        'event_id': widget.eventId,
+        'event_status': 'recap',
+        if (hoursBeforeAutoEnd != null)
+          'hours_before_auto_end':
+              double.parse(hoursBeforeAutoEnd.toStringAsFixed(1)),
+        'platform': 'ios',
+      });
       ref.invalidate(eventDetailProvider(widget.eventId));
       if (context.mounted) {
-        TopBanner.showSuccess(context, message: 'Recap ended successfully');
-        Navigator.pop(context);
+        // Navigate to Memory Ready page instead of just popping
+        Navigator.of(context).pushNamedAndRemoveUntil(
+          AppRouter.memoryReady,
+          (route) => false,
+          arguments: {'memoryId': widget.eventId},
+        );
       }
     } catch (e) {
       if (context.mounted) {
@@ -203,10 +227,9 @@ class _EventRecapPageState extends ConsumerState<EventRecapPage> {
                               'Check out ${event.name} on Lazzo! \uD83C\uDF89',
                         ),
                       );
-                      AnalyticsService.track('invite_link_shared', properties: {
+                      AnalyticsService.track('recap_shared', properties: {
                         'event_id': widget.eventId,
-                        'share_channel': 'share',
-                        'source': 'event_recap',
+                        'share_method': 'share',
                         'platform': 'ios',
                       });
                     },
@@ -215,7 +238,10 @@ class _EventRecapPageState extends ConsumerState<EventRecapPage> {
                       Navigator.pushNamed(
                         context,
                         AppRouter.memory,
-                        arguments: {'memoryId': widget.eventId},
+                        arguments: {
+                          'memoryId': widget.eventId,
+                          'viewSource': 'recap',
+                        },
                       );
                     },
                   ),

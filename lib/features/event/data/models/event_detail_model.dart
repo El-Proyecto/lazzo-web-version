@@ -103,6 +103,9 @@ class EventDetailModel {
       case 'ended':
         statusEnum = EventStatus.ended;
         break;
+      case 'expired':
+        statusEnum = EventStatus.expired;
+        break;
       default:
         statusEnum = EventStatus.pending;
     }

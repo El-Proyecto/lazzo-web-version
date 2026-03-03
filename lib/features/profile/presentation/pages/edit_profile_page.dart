@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
+import '../../../../services/analytics_service.dart';
 import '../widgets/editable_profile_photo.dart';
 import '../widgets/photo_change_bottom_sheet.dart';
 import '../../../auth/presentation/widgets/email_info_card.dart';
@@ -321,6 +322,11 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
     try {
       final controller = ref.read(editProfileControllerProvider);
       await controller.updateProfile(updatedProfile);
+
+      AnalyticsService.track('profile_details_changed', properties: {
+        'fields_changed': [fieldName],
+        'platform': 'ios',
+      });
 
       if (mounted) {
         TopBanner.showSuccess(context, message: 'Profile updated successfully');

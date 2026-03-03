@@ -4,7 +4,8 @@ enum EventStatus {
   confirmed,
   living,
   recap,
-  ended;
+  ended,
+  expired;
 
   /// Parse from string (Supabase value)
   static EventStatus fromString(String value) {

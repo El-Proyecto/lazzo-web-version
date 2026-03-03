@@ -77,4 +77,4 @@ class EventLocation {
 }
 
 /// Event status enumeration
-enum EventStatus { pending, confirmed, living, recap }
+enum EventStatus { pending, confirmed, living, recap, expired }

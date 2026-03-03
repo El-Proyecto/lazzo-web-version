@@ -20,6 +20,7 @@ import '../../../event_invites/presentation/providers/event_invite_providers.dar
 import '../providers/memory_providers.dart';
 import '../../domain/entities/memory_entity.dart';
 import '../../../../services/analytics_service.dart';
+import '../../../../shared/components/skeletons/memory_page_skeleton.dart';
 
 /// Memory page displaying event photos with state-based UI
 ///
@@ -35,10 +36,12 @@ import '../../../../services/analytics_service.dart';
 /// - Ended: read-only, no banner
 class MemoryPage extends ConsumerStatefulWidget {
   final String memoryId;
+  final String? viewSource;
 
   const MemoryPage({
     super.key,
     required this.memoryId,
+    this.viewSource,
   });
 
   @override
@@ -76,7 +79,7 @@ class _MemoryPageState extends ConsumerState<MemoryPage> {
             onPressed: () => Navigator.of(context).pop(),
           ),
         ),
-        body: const Center(child: CircularProgressIndicator()),
+        body: const MemoryPageSkeleton(),
       ),
       error: (error, stack) => Scaffold(
         backgroundColor: BrandColors.bg1,
@@ -111,11 +114,14 @@ class _MemoryPageState extends ConsumerState<MemoryPage> {
 
         final eventStatus = memory.status;
 
-        // Track screen_viewed for ended events (memory_viewer)
-        if (eventStatus == EventStatus.ended && !_hasTrackedScreen) {
+        // Track memory_viewed with view_source context
+        if (!_hasTrackedScreen) {
           _hasTrackedScreen = true;
-          AnalyticsService.screenViewed('memory_viewer',
-              eventId: widget.memoryId);
+          AnalyticsService.track('memory_viewed', properties: {
+            'event_id': widget.memoryId,
+            'view_source': widget.viewSource ?? 'unknown',
+            'event_phase': eventStatus.name,
+          });
         }
 
         final userHasUploadedPhotos = currentUserId != null &&
@@ -324,9 +330,6 @@ class _MemoryPageState extends ConsumerState<MemoryPage> {
     MemoryEntity memory,
   ) {
     final titleWithEmoji = '${memory.emoji} ${memory.title}';
-    debugPrint('[MemoryPage] AppBar emoji: "${memory.emoji}"');
-    debugPrint('[MemoryPage] AppBar title: "${memory.title}"');
-    debugPrint('[MemoryPage] AppBar titleWithEmoji: "$titleWithEmoji"');
 
     return CommonAppBar(
       title: titleWithEmoji,
@@ -638,24 +641,6 @@ class _MemoryPageState extends ConsumerState<MemoryPage> {
 
   // ─── Navigation ──────────────────────────────────────────
 
-  Future<void> _navigateToManageMemory(BuildContext context) async {
-    ref.invalidate(memoryDetailProvider(widget.memoryId));
-
-    await Navigator.of(context).pushNamed(
-      AppRouter.manageMemory,
-      arguments: {'memoryId': widget.memoryId},
-    );
-
-    if (mounted) {
-      ref.invalidate(memoryDetailProvider(widget.memoryId));
-      try {
-        await ref.read(memoryDetailProvider(widget.memoryId).future);
-      } catch (e) {
-        // Provider will show error state
-      }
-    }
-  }
-
   Future<void> _navigateToShareMemory(
     BuildContext context,
     EventStatus status,
@@ -679,6 +664,7 @@ class _MemoryPageState extends ConsumerState<MemoryPage> {
             entityName: eventName,
             entityType: 'event',
             eventEmoji: eventEmoji,
+            eventId: eventId,
           );
         }
       } catch (e) {
@@ -717,6 +703,11 @@ class _MemoryPageState extends ConsumerState<MemoryPage> {
         onAction: (action) async {
           if (action == PhotoSourceAction.camera) {
             final picker = ImagePicker();
+            AnalyticsService.track('photo_upload_started', properties: {
+              'event_id': widget.memoryId,
+              'source': 'camera',
+              'platform': 'ios',
+            });
             final photo = await picker.pickImage(
               source: ImageSource.camera,
               maxWidth: 1920,
@@ -747,6 +738,11 @@ class _MemoryPageState extends ConsumerState<MemoryPage> {
 
   Future<void> _pickFromGalleryAndNavigate(BuildContext context) async {
     final picker = ImagePicker();
+    AnalyticsService.track('photo_upload_started', properties: {
+      'event_id': widget.memoryId,
+      'source': 'gallery',
+      'platform': 'ios',
+    });
     final selectedImages = await picker.pickMultiImage(
       maxWidth: 1920,
       maxHeight: 1920,

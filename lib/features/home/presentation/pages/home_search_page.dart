@@ -170,10 +170,14 @@ class _HomeSearchPageState extends ConsumerState<HomeSearchPage> {
       orElse: () => <HomeEventEntity>[],
     );
 
-    final filteredPending = pendingEventsAsync.maybeWhen(
+    final allPending = pendingEventsAsync.maybeWhen(
       data: (events) => _filterEvents(events, _searchQuery),
       orElse: () => <HomeEventEntity>[],
     );
+
+    // Split pending into non-expired and expired
+    final filteredPending = allPending.where((e) => !e.isExpired).toList();
+    final filteredExpired = allPending.where((e) => e.isExpired).toList();
 
     final allLivingAndRecap = livingAndRecapEventsAsync.maybeWhen(
       data: (events) => _filterEvents(events, _searchQuery),
@@ -197,6 +201,7 @@ class _HomeSearchPageState extends ConsumerState<HomeSearchPage> {
 
     final hasResults = filteredConfirmed.isNotEmpty ||
         filteredPending.isNotEmpty ||
+        filteredExpired.isNotEmpty ||
         filteredLiving.isNotEmpty ||
         filteredRecap.isNotEmpty ||
         filteredMemories.isNotEmpty;
@@ -237,212 +242,229 @@ class _HomeSearchPageState extends ConsumerState<HomeSearchPage> {
 
             // Results
             Expanded(
-              child: _searchQuery.isEmpty
+              child: !hasResults
                   ? Center(
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Icon(
-                            Icons.search,
+                            _searchQuery.isEmpty
+                                ? Icons.search
+                                : Icons.search_off,
                             size: 64,
                             color: BrandColors.text2.withValues(alpha: 0.5),
                           ),
                           const SizedBox(height: Gaps.md),
                           Text(
-                            'Search for events or memories',
+                            _searchQuery.isEmpty
+                                ? 'No events or memories yet'
+                                : 'No results found',
                             style: AppText.bodyMedium.copyWith(
                               color: BrandColors.text2,
                             ),
-                            textAlign: TextAlign.center,
                           ),
+                          if (_searchQuery.isNotEmpty) ...[
+                            const SizedBox(height: Gaps.xs),
+                            Text(
+                              'Try a different search term',
+                              style: AppText.bodyMedium.copyWith(
+                                color: BrandColors.text2,
+                              ),
+                            ),
+                          ],
                         ],
                       ),
                     )
-                  : !hasResults
-                      ? Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                Icons.search_off,
-                                size: 64,
-                                color: BrandColors.text2.withValues(alpha: 0.5),
+                  : ListView(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: Insets.screenH,
+                      ),
+                      children: [
+                        // Live Events
+                        if (filteredLiving.isNotEmpty) ...[
+                          _buildSectionHeader('Live Events'),
+                          const SizedBox(height: Gaps.sm),
+                          ...filteredLiving.map((event) {
+                            return Padding(
+                              padding: const EdgeInsets.only(
+                                bottom: Gaps.sm,
                               ),
-                              const SizedBox(height: Gaps.md),
-                              Text(
-                                'No results found',
-                                style: AppText.bodyMedium.copyWith(
-                                  color: BrandColors.text2,
-                                ),
+                              child: EventSmallCard(
+                                emoji: event.emoji,
+                                title: event.name,
+                                dateTime: _formatEventDate(event.date),
+                                location: event.location,
+                                state: EventSmallCardState.living,
+                                onTap: () async {
+                                  await Navigator.pushNamed(
+                                    context,
+                                    AppRouter.eventLiving,
+                                    arguments: {'eventId': event.id},
+                                  );
+                                },
                               ),
-                              const SizedBox(height: Gaps.xs),
-                              Text(
-                                'Try a different search term',
-                                style: AppText.bodyMedium.copyWith(
-                                  color: BrandColors.text2,
-                                ),
+                            );
+                          }),
+                          const SizedBox(height: Gaps.md),
+                        ],
+
+                        // Recaps
+                        if (filteredRecap.isNotEmpty) ...[
+                          _buildSectionHeader('Recaps'),
+                          const SizedBox(height: Gaps.sm),
+                          ...filteredRecap.map((event) {
+                            return Padding(
+                              padding: const EdgeInsets.only(
+                                bottom: Gaps.sm,
                               ),
-                            ],
-                          ),
-                        )
-                      : ListView(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: Insets.screenH,
-                          ),
-                          children: [
-                            // Live Events
-                            if (filteredLiving.isNotEmpty) ...[
-                              _buildSectionHeader('Live Events'),
-                              const SizedBox(height: Gaps.sm),
-                              ...filteredLiving.map((event) {
-                                return Padding(
-                                  padding: const EdgeInsets.only(
-                                    bottom: Gaps.sm,
-                                  ),
-                                  child: EventSmallCard(
-                                    emoji: event.emoji,
-                                    title: event.name,
-                                    dateTime: _formatEventDate(event.date),
-                                    location: event.location,
-                                    state: EventSmallCardState.living,
-                                    onTap: () async {
-                                      await Navigator.pushNamed(
-                                        context,
-                                        AppRouter.eventLiving,
-                                        arguments: {'eventId': event.id},
-                                      );
+                              child: EventSmallCard(
+                                emoji: event.emoji,
+                                title: event.name,
+                                dateTime: _formatEventDate(event.date),
+                                location: event.location,
+                                state: EventSmallCardState.recap,
+                                onTap: () async {
+                                  await Navigator.pushNamed(
+                                    context,
+                                    AppRouter.memory,
+                                    arguments: {
+                                      'memoryId': event.id,
+                                      'viewSource': 'home',
                                     },
-                                  ),
-                                );
-                              }),
-                              const SizedBox(height: Gaps.md),
-                            ],
+                                  );
+                                },
+                              ),
+                            );
+                          }),
+                          const SizedBox(height: Gaps.md),
+                        ],
 
-                            // Recaps
-                            if (filteredRecap.isNotEmpty) ...[
-                              _buildSectionHeader('Recaps'),
-                              const SizedBox(height: Gaps.sm),
-                              ...filteredRecap.map((event) {
-                                return Padding(
-                                  padding: const EdgeInsets.only(
-                                    bottom: Gaps.sm,
-                                  ),
-                                  child: EventSmallCard(
-                                    emoji: event.emoji,
-                                    title: event.name,
-                                    dateTime: _formatEventDate(event.date),
-                                    location: event.location,
-                                    state: EventSmallCardState.recap,
-                                    onTap: () async {
-                                      await Navigator.pushNamed(
-                                        context,
-                                        AppRouter.memory,
-                                        arguments: {'memoryId': event.id},
-                                      );
+                        // Confirmed Events
+                        if (filteredConfirmed.isNotEmpty) ...[
+                          _buildSectionHeader('Confirmed Events'),
+                          const SizedBox(height: Gaps.sm),
+                          ...filteredConfirmed.map((event) {
+                            return Padding(
+                              padding: const EdgeInsets.only(
+                                bottom: Gaps.sm,
+                              ),
+                              child: EventSmallCard(
+                                emoji: event.emoji,
+                                title: event.name,
+                                dateTime: _formatEventDate(event.date),
+                                location: event.date == null
+                                    ? null
+                                    : (event.location ??
+                                        'Location to be decided'),
+                                state: _mapStatusToSmallCardState(event.status),
+                                onTap: () async {
+                                  await Navigator.pushNamed(
+                                    context,
+                                    AppRouter.event,
+                                    arguments: {'eventId': event.id},
+                                  );
+                                },
+                              ),
+                            );
+                          }),
+                          const SizedBox(height: Gaps.md),
+                        ],
+
+                        // Pending Events
+                        if (filteredPending.isNotEmpty) ...[
+                          _buildSectionHeader('Pending Events'),
+                          const SizedBox(height: Gaps.sm),
+                          ...filteredPending.map((event) {
+                            return Padding(
+                              padding: const EdgeInsets.only(
+                                bottom: Gaps.sm,
+                              ),
+                              child: EventSmallCard(
+                                emoji: event.emoji,
+                                title: event.name,
+                                dateTime: _formatEventDate(event.date),
+                                location: event.date == null
+                                    ? null
+                                    : (event.location ??
+                                        'Location to be decided'),
+                                state: _mapStatusToSmallCardState(event.status),
+                                onTap: () async {
+                                  await Navigator.pushNamed(
+                                    context,
+                                    AppRouter.event,
+                                    arguments: {'eventId': event.id},
+                                  );
+                                },
+                              ),
+                            );
+                          }),
+                          const SizedBox(height: Gaps.md),
+                        ],
+
+                        // Expired Events
+                        if (filteredExpired.isNotEmpty) ...[
+                          _buildSectionHeader('Expired Events'),
+                          const SizedBox(height: Gaps.sm),
+                          ...filteredExpired.map((event) {
+                            return Padding(
+                              padding: const EdgeInsets.only(
+                                bottom: Gaps.sm,
+                              ),
+                              child: EventSmallCard(
+                                emoji: event.emoji,
+                                title: event.name,
+                                dateTime: _formatEventDate(event.date),
+                                location:
+                                    event.location ?? 'Location to be decided',
+                                state: EventSmallCardState.pending,
+                                isExpired: true,
+                                onTap: () async {
+                                  await Navigator.pushNamed(
+                                    context,
+                                    AppRouter.event,
+                                    arguments: {'eventId': event.id},
+                                  );
+                                },
+                              ),
+                            );
+                          }),
+                          const SizedBox(height: Gaps.md),
+                        ],
+
+                        // Memories
+                        if (filteredMemories.isNotEmpty) ...[
+                          _buildSectionHeader('Memories'),
+                          const SizedBox(height: Gaps.sm),
+                          ...filteredMemories.map((memory) {
+                            return Padding(
+                              padding: const EdgeInsets.only(
+                                bottom: Gaps.sm,
+                              ),
+                              child: MemorySmallCard(
+                                title: memory.eventName,
+                                dateTime: memory.formattedDate,
+                                location: memory.location,
+                                coverPhotoUrl: memory.coverPhotoUrl,
+                                onTap: () {
+                                  Navigator.of(context).pushNamed(
+                                    AppRouter.memory,
+                                    arguments: {
+                                      'memoryId': memory.id,
+                                      'viewSource': 'home',
                                     },
-                                  ),
-                                );
-                              }),
-                              const SizedBox(height: Gaps.md),
-                            ],
+                                  );
+                                },
+                              ),
+                            );
+                          }),
+                          const SizedBox(height: Gaps.md),
+                        ],
 
-                            // Confirmed Events
-                            if (filteredConfirmed.isNotEmpty) ...[
-                              _buildSectionHeader('Confirmed Events'),
-                              const SizedBox(height: Gaps.sm),
-                              ...filteredConfirmed.map((event) {
-                                return Padding(
-                                  padding: const EdgeInsets.only(
-                                    bottom: Gaps.sm,
-                                  ),
-                                  child: EventSmallCard(
-                                    emoji: event.emoji,
-                                    title: event.name,
-                                    dateTime: _formatEventDate(event.date),
-                                    location: event.date == null
-                                        ? null
-                                        : (event.location ??
-                                            'Location to be decided'),
-                                    state: _mapStatusToSmallCardState(
-                                        event.status),
-                                    onTap: () async {
-                                      await Navigator.pushNamed(
-                                        context,
-                                        AppRouter.event,
-                                        arguments: {'eventId': event.id},
-                                      );
-                                    },
-                                  ),
-                                );
-                              }),
-                              const SizedBox(height: Gaps.md),
-                            ],
+                        // LAZZO 2.0: Payments search results removed
 
-                            // Pending Events
-                            if (filteredPending.isNotEmpty) ...[
-                              _buildSectionHeader('Pending Events'),
-                              const SizedBox(height: Gaps.sm),
-                              ...filteredPending.map((event) {
-                                return Padding(
-                                  padding: const EdgeInsets.only(
-                                    bottom: Gaps.sm,
-                                  ),
-                                  child: EventSmallCard(
-                                    emoji: event.emoji,
-                                    title: event.name,
-                                    dateTime: _formatEventDate(event.date),
-                                    location: event.date == null
-                                        ? null
-                                        : (event.location ??
-                                            'Location to be decided'),
-                                    state: _mapStatusToSmallCardState(
-                                        event.status),
-                                    onTap: () async {
-                                      await Navigator.pushNamed(
-                                        context,
-                                        AppRouter.event,
-                                        arguments: {'eventId': event.id},
-                                      );
-                                    },
-                                  ),
-                                );
-                              }),
-                              const SizedBox(height: Gaps.md),
-                            ],
-
-                            // Memories
-                            if (filteredMemories.isNotEmpty) ...[
-                              _buildSectionHeader('Memories'),
-                              const SizedBox(height: Gaps.sm),
-                              ...filteredMemories.map((memory) {
-                                return Padding(
-                                  padding: const EdgeInsets.only(
-                                    bottom: Gaps.sm,
-                                  ),
-                                  child: MemorySmallCard(
-                                    title: memory.eventName,
-                                    dateTime: memory.formattedDate,
-                                    location: memory.location,
-                                    coverPhotoUrl: memory.coverPhotoUrl,
-                                    onTap: () {
-                                      Navigator.of(context).pushNamed(
-                                        AppRouter.memory,
-                                        arguments: {
-                                          'memoryId': memory.id,
-                                        },
-                                      );
-                                    },
-                                  ),
-                                );
-                              }),
-                              const SizedBox(height: Gaps.md),
-                            ],
-
-                            // LAZZO 2.0: Payments search results removed
-
-                            const SizedBox(height: Gaps.lg),
-                          ],
-                        ),
+                        const SizedBox(height: Gaps.lg),
+                      ],
+                    ),
             ),
           ],
         ),

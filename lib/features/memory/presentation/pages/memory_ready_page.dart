@@ -16,10 +16,9 @@ import '../../../../services/analytics_service.dart';
 /// NO SCROLL - fixed height layout
 /// Structure (top to bottom):
 /// - Header: close button only (like GroupCreatedPage)
+/// - Title: 🎉 Your Memory is ready + event name
 /// - Cover Mosaic: same as memory page but no tap action
-/// - Title: 🎉 Your Memory is ready
-/// - Subtitle: Event name
-/// - Photo Grid Preview: 1-2 rows from hybrid grid (no clustering labels)
+/// - Photo Grid Preview: 1st row from hybrid grid (no clustering labels)
 /// - Action Buttons: Share (recap orange) + Open (bg2)
 class MemoryReadyPage extends ConsumerStatefulWidget {
   final String memoryId;
@@ -34,10 +33,39 @@ class MemoryReadyPage extends ConsumerStatefulWidget {
 }
 
 class _MemoryReadyPageState extends ConsumerState<MemoryReadyPage> {
+  bool _hasTrackedMemoryReady = false;
+
   @override
   void initState() {
     super.initState();
     AnalyticsService.screenViewed('memory_ready', eventId: widget.memoryId);
+  }
+
+  /// Track the memory_ready custom event once when memory data loads.
+  /// Properties: photo_count, contributor_count, hours_since_event_end.
+  void _trackMemoryReadyEvent(MemoryEntity memory) {
+    if (_hasTrackedMemoryReady) return;
+    _hasTrackedMemoryReady = true;
+
+    // Unique uploaders = contributors
+    final contributorCount =
+        memory.photos.map((p) => p.uploaderId).toSet().length;
+
+    // Hours since event end (null-safe)
+    double? hoursSinceEnd;
+    if (memory.endDatetime != null) {
+      hoursSinceEnd =
+          DateTime.now().difference(memory.endDatetime!).inMinutes / 60.0;
+    }
+
+    AnalyticsService.track('memory_ready', properties: {
+      'event_id': widget.memoryId,
+      'photo_count': memory.photos.length,
+      'contributor_count': contributorCount,
+      if (hoursSinceEnd != null)
+        'hours_since_event_end': double.parse(hoursSinceEnd.toStringAsFixed(1)),
+      'platform': 'ios',
+    });
   }
 
   @override
@@ -57,6 +85,9 @@ class _MemoryReadyPageState extends ConsumerState<MemoryReadyPage> {
               ),
             );
           }
+
+          // Track memory_ready event with photo/contributor stats
+          _trackMemoryReadyEvent(memory);
 
           return _MemoryReadyContent(
             memory: memory,
@@ -116,6 +147,7 @@ class _MemoryReadyContent extends StatelessWidget {
   Widget build(BuildContext context) {
     final screenHeight = MediaQuery.of(context).size.height;
     final appBarHeight = kToolbarHeight + MediaQuery.of(context).padding.top;
+    final bottomPadding = MediaQuery.of(context).padding.bottom;
     final availableHeight = screenHeight - appBarHeight;
 
     final coverPhotos = memory.coverPhotos;
@@ -127,26 +159,7 @@ class _MemoryReadyContent extends StatelessWidget {
         children: [
           const SizedBox(height: Gaps.sm),
 
-          // Cover Mosaic - same as memory page but no tap
-          Flexible(
-            flex: 5,
-            child: CoverMosaic(
-              covers: coverPhotos
-                  .map(
-                    (photo) => CoverPhotoData(
-                      id: photo.id,
-                      imageUrl: photo.coverUrl ?? photo.url,
-                      isPortrait: photo.isPortrait,
-                    ),
-                  )
-                  .toList(),
-              onPhotoTap: null, // No tap action on ready page
-            ),
-          ),
-
-          const SizedBox(height: Gaps.lg),
-
-          // Title + Subtitle
+          // Title + Subtitle at the top
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: Insets.screenH),
             child: Column(
@@ -170,15 +183,41 @@ class _MemoryReadyContent extends StatelessWidget {
                     color: BrandColors.text2,
                   ),
                   textAlign: TextAlign.center,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ],
             ),
           ),
 
-          const SizedBox(height: Gaps.lg),
+          const SizedBox(height: Gaps.md),
 
-          // Photo Grid Preview (1 row only, no clustering labels)
-          if (gridPhotos.isNotEmpty) _PhotoGridPreview(photos: gridPhotos),
+          // Cover Mosaic - same as memory page but no tap
+          Flexible(
+            flex: 5,
+            child: CoverMosaic(
+              covers: coverPhotos
+                  .map(
+                    (photo) => CoverPhotoData(
+                      id: photo.id,
+                      imageUrl: photo.coverUrl ?? photo.url,
+                      isPortrait: photo.isPortrait,
+                    ),
+                  )
+                  .toList(),
+              onPhotoTap: null, // No tap action on ready page
+            ),
+          ),
+
+          const SizedBox(height: Gaps.xs),
+
+          // Photo Grid Preview (1st row, like memory page)
+          // Wrapped in Flexible to prevent overflow on small screens
+          if (gridPhotos.isNotEmpty)
+            Flexible(
+              flex: 3,
+              child: _PhotoGridPreview(photos: gridPhotos),
+            ),
 
           const Spacer(),
 
@@ -198,7 +237,7 @@ class _MemoryReadyContent extends StatelessWidget {
             ),
           ),
 
-          const SizedBox(height: Gaps.lg),
+          SizedBox(height: Gaps.lg + bottomPadding),
         ],
       ),
     );
@@ -478,7 +517,7 @@ class _OpenMemoryButton extends StatelessWidget {
     // This ensures back button returns to Home instead of empty page
     Navigator.of(context).pushNamed(
       AppRouter.memory,
-      arguments: {'memoryId': memoryId},
+      arguments: {'memoryId': memoryId, 'viewSource': 'memory_ready'},
     );
   }
 }

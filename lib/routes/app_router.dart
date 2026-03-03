@@ -130,7 +130,10 @@ class AppRouter {
     memory: (context) {
       final args =
           ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
-      return MemoryPage(memoryId: args?['memoryId'] ?? 'memory-1');
+      return MemoryPage(
+        memoryId: args?['memoryId'] ?? 'memory-1',
+        viewSource: args?['viewSource'] as String?,
+      );
     },
     memoryViewer: (context) {
       final args =

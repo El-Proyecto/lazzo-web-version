@@ -64,14 +64,44 @@ class ShareCard extends StatelessWidget {
                 ],
               ),
               padding: const EdgeInsets.only(
-                  left: Gaps.md,
-                  right: Gaps.md,
-                  top: Gaps.md,
-                  bottom: Gaps.sm),
+                  left: Gaps.md, right: Gaps.md, top: Gaps.md, bottom: Gaps.sm),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 mainAxisSize: MainAxisSize.min,
                 children: [
+                  // Photo section — single tall photo or hero + thumbnails
+                  if (thumbnailUrls.isEmpty)
+                    // Single photo: height = hero (square) + gap + thumbnail row
+                    LayoutBuilder(
+                      builder: (context, constraints) {
+                        final width = constraints.maxWidth;
+                        final thumbnailRowHeight = (width - 2 * Gaps.xs) / 3;
+                        final totalHeight =
+                            width + Gaps.xs + thumbnailRowHeight;
+                        return SizedBox(
+                          height: totalHeight,
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(Radii.md),
+                            child: Image.network(
+                              heroPhotoUrl,
+                              fit: BoxFit.cover,
+                              width: double.infinity,
+                              errorBuilder: (context, error, stackTrace) {
+                                return Container(
+                                  color: BrandColors.bg3,
+                                  child: const Icon(
+                                    Icons.image,
+                                    color: BrandColors.text2,
+                                    size: 48,
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                        );
+                      },
+                    )
+                  else ...[
                     // Hero photo (square)
                     AspectRatio(
                       aspectRatio: 1.0,
@@ -97,91 +127,91 @@ class ShareCard extends StatelessWidget {
                     const SizedBox(height: Gaps.xs),
 
                     // Thumbnails row (square aspect ratio - always 3 equal items)
-                    if (thumbnailUrls.isNotEmpty)
-                      Row(
-                        children: [
-                          for (int i = 0; i < 3; i++) ...[
-                            if (i > 0) const SizedBox(width: Gaps.xs),
-                            Expanded(
-                              child: AspectRatio(
-                                aspectRatio: 1,
-                                child: ClipRRect(
-                                  borderRadius: BorderRadius.circular(Radii.sm),
-                                  child: i < thumbnailUrls.length
-                                      ? Image.network(
-                                          thumbnailUrls[i],
-                                          fit: BoxFit.cover,
-                                          errorBuilder:
-                                              (context, error, stackTrace) {
-                                            return Container(
-                                              color: BrandColors.bg3,
-                                              child: const Icon(
-                                                Icons.image,
-                                                color: BrandColors.text2,
-                                                size: 24,
-                                              ),
-                                            );
-                                          },
-                                        )
-                                      : Container(
-                                          color: BrandColors.bg3,
-                                          child: const Icon(
-                                            Icons.image,
-                                            color: BrandColors.text2,
-                                            size: 24,
-                                          ),
+                    Row(
+                      children: [
+                        for (int i = 0; i < 3; i++) ...[
+                          if (i > 0) const SizedBox(width: Gaps.xs),
+                          Expanded(
+                            child: AspectRatio(
+                              aspectRatio: 1,
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(Radii.sm),
+                                child: i < thumbnailUrls.length
+                                    ? Image.network(
+                                        thumbnailUrls[i],
+                                        fit: BoxFit.cover,
+                                        errorBuilder:
+                                            (context, error, stackTrace) {
+                                          return Container(
+                                            color: BrandColors.bg3,
+                                            child: const Icon(
+                                              Icons.image,
+                                              color: BrandColors.text2,
+                                              size: 24,
+                                            ),
+                                          );
+                                        },
+                                      )
+                                    : Container(
+                                        color: BrandColors.bg3,
+                                        child: const Icon(
+                                          Icons.image,
+                                          color: BrandColors.text2,
+                                          size: 24,
                                         ),
-                                ),
+                                      ),
                               ),
                             ),
-                          ],
+                          ),
                         ],
-                      ),
-
-                    const SizedBox(height: Gaps.xs),
-
-                    // Text details
-                    Text(
-                      title,
-                      style: AppText.titleMediumEmph.copyWith(
-                        color: Colors.white,
-                        fontSize: 22,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-
-                    const SizedBox(height: Gaps.xxs),
-
-                    Text(
-                      _buildSecondaryLine(),
-                      style: AppText.bodyMedium.copyWith(
-                        color: Colors.white.withValues(alpha: 0.8),
-                        fontSize: 13,
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-
-                    const SizedBox(height: Gaps.sm),
-
-                    // "made with LAZZO" caption
-                    Center(
-                      child: Text(
-                        'made with LAZZO',
-                        style: AppText.bodyMedium.copyWith(
-                          color: Colors.white.withValues(alpha: 0.4),
-                          fontSize: 11,
-                          letterSpacing: 0.5,
-                        ),
-                      ),
+                      ],
                     ),
                   ],
-                ),
+
+                  const SizedBox(height: Gaps.xs),
+
+                  // Text details
+                  Text(
+                    title,
+                    style: AppText.titleMediumEmph.copyWith(
+                      color: Colors.white,
+                      fontSize: 22,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+
+                  const SizedBox(height: Gaps.xxs),
+
+                  Text(
+                    _buildSecondaryLine(),
+                    style: AppText.bodyMedium.copyWith(
+                      color: Colors.white.withValues(alpha: 0.8),
+                      fontSize: 13,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+
+                  const SizedBox(height: Gaps.sm),
+
+                  // "made with LAZZO" caption
+                  Center(
+                    child: Text(
+                      'made with LAZZO',
+                      style: AppText.bodyMedium.copyWith(
+                        color: Colors.white.withValues(alpha: 0.4),
+                        fontSize: 11,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
         ),
+      ),
     );
   }
 

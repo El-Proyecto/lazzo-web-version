@@ -13,12 +13,14 @@ class CalendarHeader extends StatelessWidget {
   final String title;
   final CalendarViewMode viewMode;
   final ValueChanged<CalendarViewMode> onViewModeChanged;
+  final Color activeColor;
 
   const CalendarHeader({
     super.key,
     required this.title,
     required this.viewMode,
     required this.onViewModeChanged,
+    this.activeColor = BrandColors.planning,
   });
 
   @override
@@ -41,6 +43,7 @@ class CalendarHeader extends StatelessWidget {
           _ViewToggle(
             viewMode: viewMode,
             onChanged: onViewModeChanged,
+            activeColor: activeColor,
           ),
         ],
       ),
@@ -52,10 +55,12 @@ class CalendarHeader extends StatelessWidget {
 class _ViewToggle extends StatelessWidget {
   final CalendarViewMode viewMode;
   final ValueChanged<CalendarViewMode> onChanged;
+  final Color activeColor;
 
   const _ViewToggle({
     required this.viewMode,
     required this.onChanged,
+    required this.activeColor,
   });
 
   @override
@@ -96,7 +101,7 @@ class _ViewToggle extends StatelessWidget {
         width: 40,
         height: 36,
         decoration: BoxDecoration(
-          color: isSelected ? BrandColors.planning : Colors.transparent,
+          color: isSelected ? activeColor : Colors.transparent,
           borderRadius: BorderRadius.circular(Radii.sm),
         ),
         child: Icon(
