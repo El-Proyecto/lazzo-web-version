@@ -378,15 +378,15 @@ class UserRsvpNotifier extends StateNotifier<AsyncValue<Rsvp?>> {
           // User already had a vote → track as rsvp_changed
           AnalyticsService.track('rsvp_changed', properties: {
             'event_id': eventId,
-            'from_vote': previousStatus.name,
-            'to_vote': status.name,
+            'from_vote': _voteLabel(previousStatus),
+            'to_vote': _voteLabel(status),
             'platform': 'ios',
           });
         } else {
           // First vote → track as rsvp_submitted
           AnalyticsService.track('rsvp_submitted', properties: {
             'event_id': eventId,
-            'vote': status.name,
+            'vote': _voteLabel(status),
             'platform': 'ios',
           });
         }
@@ -397,6 +397,21 @@ class UserRsvpNotifier extends StateNotifier<AsyncValue<Rsvp?>> {
     } catch (error, stackTrace) {
       state = AsyncValue.error(error, stackTrace);
       _loadUserRsvp();
+    }
+  }
+
+  /// Map RsvpStatus to METRICS.md standard vote labels.
+  /// going → 'going', notGoing → 'cant', maybe → 'maybe', pending → 'pending'
+  static String _voteLabel(RsvpStatus status) {
+    switch (status) {
+      case RsvpStatus.going:
+        return 'going';
+      case RsvpStatus.notGoing:
+        return 'cant';
+      case RsvpStatus.maybe:
+        return 'maybe';
+      case RsvpStatus.pending:
+        return 'pending';
     }
   }
 

@@ -214,16 +214,27 @@ class _EventLivingPageState extends ConsumerState<EventLivingPage> {
                           onEndNow: () async {
                             // End event immediately
                             try {
+                              // Compute hours before auto-end for analytics
+                              final hoursBeforeAutoEnd =
+                                  event.endDateTime != null
+                                      ? event.endDateTime!
+                                              .difference(DateTime.now())
+                                              .inMinutes /
+                                          60.0
+                                      : null;
                               await ref
                                   .read(endEventNowProvider)
                                   .call(widget.eventId);
                               // Track event_ended_manually
-                              AnalyticsService.track('event_ended_manually',
-                                  properties: {
-                                    'event_id': widget.eventId,
-                                    'event_status': 'living',
-                                    'platform': 'ios',
-                                  });
+                              AnalyticsService
+                                  .track('event_ended_manually', properties: {
+                                'event_id': widget.eventId,
+                                'event_status': 'living',
+                                if (hoursBeforeAutoEnd != null)
+                                  'hours_before_auto_end': double.parse(
+                                      hoursBeforeAutoEnd.toStringAsFixed(1)),
+                                'platform': 'ios',
+                              });
                               // Refresh event details
                               ref.invalidate(
                                   eventDetailProvider(widget.eventId));

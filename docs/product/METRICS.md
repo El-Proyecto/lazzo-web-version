@@ -57,15 +57,15 @@ Only fire `screen_viewed` for screens that represent **meaningful funnel steps o
 
 | `screen_name` value | When | Why it matters | App | Web |
 |---------------------|------|----------------|-----|-----|
-| `event_detail` | User opens an event | Event interest signal | X |  |
-| `event_living` | User enters live event view | Live participation | X |  |
-| `event_recap` | User views recap page | Memory engagement | X |  |
+| `event_detail` | User opens an event | Event interest signal | X | X |
+| `event_living` | User enters live event view | Live participation | X | X |
+| `event_recap` | User views recap page | Memory engagement | X | X |
 | `create_event` | User opens event creation | Host intent | X | - |
 | `memory_ready` | User sees Memory Ready page | Completion signal | X | - |
-| `invite_landing` | Guest lands on invite page (web) | Top of guest funnel | - |  |
+| `invite_landing` | Guest lands on invite page (web) | Top of guest funnel | - | X |
 | `calendar` | User interacts with calendar (selects day, changes view mode) | Calendar engagement — tracked on interaction only, NOT on navigation | X | - |
 | `actions` | User opens Actions tab in Inbox | Host action engagement | X | - |
-| `manage_guests` | User views the guests list / manage guests screen | Guest management engagement — track `event_phase` and `user_role` (host/guest) | X |  |
+| `manage_guests` | User views the guests list / manage guests screen | Guest management engagement — track `event_phase` and `user_role` (host/guest) | X | X |
 
 Properties: `screen_name`, `platform`, `event_id` (if applicable)
 
@@ -73,10 +73,10 @@ Properties: `screen_name`, `platform`, `event_id` (if applicable)
 
 | Event | When | Extra Properties | App | Web |
 |-------|------|-----------------|-----|-----|
-| `auth_started` | User taps Continue after filling create account / login fields (arrives at OTP verification page) | `auth_type`: email_passwordless / guest_lightweight |  |  |
+| `auth_started` | User taps Continue after filling create account / login fields (arrives at OTP verification page) | `auth_type`: email_passwordless / guest_lightweight |  | X |
 | `auth_completed` | Successfully authenticated | `auth_type`, `is_new_user`: bool | X | - |
-| `guest_auth_completed` | Web guest completes lightweight auth | `event_id`, `auth_method`: email | - |  |
-| `profile_details_changed` | User edits profile details (name, avatar, etc.) after account creation | `fields_changed`: string[] |  | - |
+| `guest_auth_completed` | Web guest completes lightweight auth | `event_id`, `auth_method`: email | - | X |
+| `profile_details_changed` | User edits profile details (name, avatar, etc.) after account creation | `fields_changed`: string[] | X | - |
 
 #### Event Creation (Host — app only)
 
@@ -84,14 +84,14 @@ Properties: `screen_name`, `platform`, `event_id` (if applicable)
 |-------|------|-----------------|-----|-----|
 | `event_created` | Host submits new event | `has_location`: bool, `has_datetime`: bool, `has_emoji`: bool, `creation_duration_seconds`: int | X | - |
 | `event_edited` | Host edits existing event | `fields_changed`: string[] | X | - |
-| `event_phase_changed` | Event transitions phase | `from_phase`, `to_phase`, `trigger`: `manual` / `auto` (client) / `auto_server` (edge fn) | X |  |
+| `event_phase_changed` | Event transitions phase | `from_phase`, `to_phase`, `trigger`: `manual` / `auto` (client) / `auto_server` (edge fn) | X | X |
 
 #### Invite & Share
 
 | Event | When | Extra Properties | App | Web |
 |-------|------|-----------------|-----|-----|
-| `invite_link_shared` | User taps Share (green button) or Copy Link in the share bottom sheet | `share_method`: `copy_link` / `share`, `share_content`: `card` / `qr_code` (only when method=share) | X |  |
-| `invite_link_opened` | Someone opens an invite link | `referrer`: string (if available), `is_new_visitor`: bool |  |  |
+| `invite_link_shared` | User taps Share (green button) or Copy Link in the share bottom sheet | `share_method`: `copy_link` / `share`, `share_content`: `card` / `qr_code` (only when method=share) | X | X |
+| `invite_link_opened` | Someone opens an invite link | `referrer`: string (if available), `is_new_visitor`: bool |  | X |
 
 > **Removed:** `qr_code_scanned` — impossible to detect QR code scanning vs link opening on the receiver side. What matters is tracking *what the host shared* (card vs QR code), which is now captured in `invite_link_shared.share_content`.
 
@@ -99,15 +99,18 @@ Properties: `screen_name`, `platform`, `event_id` (if applicable)
 
 | Event | When | Extra Properties | App | Web |
 |-------|------|-----------------|-----|-----|
-| `rsvp_submitted` | Guest submits RSVP | `vote`: going / cant, `time_to_rsvp_seconds`: int (from invite open) | X |  |
-| `rsvp_changed` | Guest changes RSVP | `from_vote`, `to_vote` | X |  |
+| `rsvp_intent_started` | Guest taps a vote button (Can / Can't) on web — fires BEFORE auth | `vote`: going / cant | - | X |
+| `rsvp_submitted` | Guest submits RSVP (after auth completes) | `vote`: going / cant, `time_to_rsvp_seconds`: int (from invite open) | X | X |
+| `rsvp_changed` | Guest changes RSVP | `from_vote`, `to_vote` | X | X |
+
+> **Funnel insight:** Compare `rsvp_intent_started` → `guest_auth_completed` → `rsvp_submitted` to measure auth drop-off. If many guests tap vote but few complete auth, the OTP flow is a friction point.
 
 #### Photo Upload
 
 | Event | When | Extra Properties | App | Web |
 |-------|------|-----------------|-----|-----|
-| `photo_upload_started` | Camera or gallery picker opens (any entry point: bottom sheet add_photo, nav_bar button, etc.) | `source`: camera / gallery | X |  |
-| `photo_uploaded` | Photo successfully uploaded | `upload_duration_ms`: int, `file_size_kb`: int, `is_cover`: bool | X |  |
+| `photo_upload_started` | Camera or gallery picker opens (any entry point: bottom sheet add_photo, nav_bar button, etc.) | `source`: camera / gallery | X | X |
+| `photo_uploaded` | Photo successfully uploaded | `upload_duration_ms`: int, `file_size_kb`: int, `is_cover`: bool | X | X |
 | `photo_upload_failed` | Upload fails | `error_type`: string, `retry_count`: int | X |  |
 | `photo_cover_selected` | User marks a photo as cover | - | X | - |
 
@@ -116,12 +119,12 @@ Properties: `screen_name`, `platform`, `event_id` (if applicable)
 | Event | When | Extra Properties | App | Web |
 |-------|------|-----------------|-----|-----|
 | `memory_ready` | Memory compilation complete (server-side trigger) | `photo_count`: int, `contributor_count`: int, `hours_since_event_end`: float | X | - |
-| `memory_viewed` | User opens the memory page | `event_id`: string, `view_source`: `memory_ready` / `recap` / `home` / `calendar` / `profile`, `event_phase`: `living` / `recap` / `ended` | X | - |
+| `memory_viewed` | User opens the memory page | `event_id`: string, `view_source`: `memory_ready` / `recap` / `home` / `calendar` / `profile`, `event_phase`: `living` / `recap` / `ended` | X | X |
 | `share_card_viewed` | Share card PNG is generated and displayed on Share Memory page | `memory_id`: string | X | - |
 | `share_card_edited` | User edits photos in the share card and saves | `memory_id`: string | X | - |
 | `share_card_saved` | User saves the share card to device gallery | `memory_id`: string | X | - |
 | `share_card_shared` | User shares the card via Instagram/WhatsApp/native share | `memory_id`: string, `share_channel`: `instagram_story` / `whatsapp` / `native_share` | X | - |
-| `recap_shared` | User shares recap link externally (from recap page) | `share_method`: string |  | - |
+| `recap_shared` | User shares recap link externally (from recap page) | `share_method`: string |  | X |
 
 > **Removed:** `recap_viewed` — replaced by `memory_viewed` with `view_source` and `event_phase` properties for richer context.
 
@@ -190,55 +193,68 @@ All managed via PostHog Feature Flags.
 
 ### Dashboard 1: Guest Funnel
 
-**Purpose:** Track conversion from invite open to recap view.
+**Purpose:** Track conversion from invite open to memory view.
 
+**Core Funnel:**
 ```
-invite_link_opened → guest_auth_completed → rsvp_submitted → photo_uploaded → memory_viewed
+invite_link_opened → rsvp_submitted → photo_uploaded → memory_viewed
 ```
+
+**Auth Sub-Funnel (web):**
+```
+rsvp_intent_started → auth_started → guest_auth_completed → rsvp_submitted
+```
+
+**Insights:**
+- Core Guest Funnel (Funnel, 7d window, breakdown by `event_id`)
+- Auth Drop-off Sub-Funnel (Funnel, 30min window, `platform = web`)
+- Time to RSVP (Trends, avg `time_to_rsvp_seconds`)
+- Guest Activation Rate (Formula, `rsvp_submitted / invite_link_opened` unique users)
 
 **Filters:** by `event_id`, by `platform`, by date range
-**Key insight:** Where are guests dropping off?
+**Key insight:** Where are guests dropping off? Auth sub-funnel isolates OTP friction.
 
 ### Dashboard 2: Host Loop
 
 **Purpose:** Track host engagement and repeat behavior.
 
 ```
-event_created → invite_link_shared → recap_shared → event_created (repeat)
+event_created → invite_link_shared → memory_viewed
 ```
 
+**Insights:**
+- Host Loop Funnel (Funnel, 14d window, `platform = ios`)
+- Weekly Active Hosts (Trends, `event_created` unique users)
+- Host Retention (Retention, `event_created` → `event_created`, weekly)
+
 **Filters:** by host, by cohort week
-**Key insight:** Are hosts coming back to create more events?
+**Key insight:** Are hosts coming back to create more events? Retention is the PMF signal.
 
 ### Dashboard 3: Memory Health
 
 **Purpose:** Track memory completion rate and engagement.
 
-**Metrics:**
-- % events reaching `memory_ready`
-- Avg photos per memory
-- Avg contributors per memory
-- Time from event end to `memory_ready`
-- % memories with ≥1 `memory_viewed` (where `view_source` ≠ `memory_ready`) — indicates users returning to view past memories
-- % memories with ≥1 `share_card_viewed` — share funnel entry
-- % memories with ≥1 `share_card_shared` — actual share completion
+**Insights:**
+- Memories Created & Photos Uploaded (Trends, `memory_ready` + `photo_uploaded` counts)
+- Avg Photos & Contributors per Memory (Trends, `memory_ready` property averages)
+- Memory View Rate (Formula, unique `event_id` in `memory_viewed` / `memory_ready` count)
+- Share Card Conversion (Funnel, `share_card_viewed → share_card_shared`, app only)
 
-### Dashboard 4: Acquisition (Phase 4+)
+**Targets:**
+- ≥ 5 photos, ≥ 2 contributors per memory
+- ≥ 40% memories with at least 1 view
 
-**Landing page:**
-- `landing_page_viewed` → `testflight_cta_clicked` (conversion rate)
-- Traffic sources (UTM breakdown)
+### Dashboard 4: Stability
 
-**Referral loop:**
-- `referral_link_created` → `referral_link_opened` → `referral_converted` (funnel)
+**Insights:**
+- Exceptions by Platform (Trends, `$exception` breakdown by `platform`)
+- Upload Failures by Error Type (Trends, `photo_upload_failed` breakdown by `error_type`)
+- Upload Failure Rate (Formula, `photo_upload_failed / photo_upload_started`)
+- App Retention (Retention, `app_opened` → `app_opened`, weekly)
 
-### Dashboard 5: Stability
-
-**Metrics:**
-- Error rate by platform
-- Crash-free session rate (PostHog native)
-- `photo_upload_failed` rate and error types
-- App open → first interaction latency
+**Targets:**
+- Upload failure rate < 5%
+- Crash-free sessions ≥ 99%
 
 ---
 
@@ -271,8 +287,7 @@ During active cohort testing (Phases 2–4), review these weekly:
 | **Repeat hosts** | Users with ≥2 `event_created` ever | Product-market fit signal |
 | **Cohort #1 hosts** | Manual list (Phase 2 beta testers) | Cohort comparison |
 | **Cohort #2 hosts** | Manual list (Phase 3 beta testers) | Cohort comparison |
-| **Web-only guests** | Users where all sessions have `platform = web` | Web experience health |
-
+| **Web-only guests** | Users where all sessions have `platform = web` | Web experience health || **Auth Dropouts** | `rsvp_intent_started` but NOT `rsvp_submitted` in last 30 days | Auth friction measurement |
 ---
 
 ## 6) PostHog Setup Checklist

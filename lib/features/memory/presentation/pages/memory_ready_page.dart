@@ -33,10 +33,39 @@ class MemoryReadyPage extends ConsumerStatefulWidget {
 }
 
 class _MemoryReadyPageState extends ConsumerState<MemoryReadyPage> {
+  bool _hasTrackedMemoryReady = false;
+
   @override
   void initState() {
     super.initState();
     AnalyticsService.screenViewed('memory_ready', eventId: widget.memoryId);
+  }
+
+  /// Track the memory_ready custom event once when memory data loads.
+  /// Properties: photo_count, contributor_count, hours_since_event_end.
+  void _trackMemoryReadyEvent(MemoryEntity memory) {
+    if (_hasTrackedMemoryReady) return;
+    _hasTrackedMemoryReady = true;
+
+    // Unique uploaders = contributors
+    final contributorCount =
+        memory.photos.map((p) => p.uploaderId).toSet().length;
+
+    // Hours since event end (null-safe)
+    double? hoursSinceEnd;
+    if (memory.endDatetime != null) {
+      hoursSinceEnd =
+          DateTime.now().difference(memory.endDatetime!).inMinutes / 60.0;
+    }
+
+    AnalyticsService.track('memory_ready', properties: {
+      'event_id': widget.memoryId,
+      'photo_count': memory.photos.length,
+      'contributor_count': contributorCount,
+      if (hoursSinceEnd != null)
+        'hours_since_event_end': double.parse(hoursSinceEnd.toStringAsFixed(1)),
+      'platform': 'ios',
+    });
   }
 
   @override
@@ -56,6 +85,9 @@ class _MemoryReadyPageState extends ConsumerState<MemoryReadyPage> {
               ),
             );
           }
+
+          // Track memory_ready event with photo/contributor stats
+          _trackMemoryReadyEvent(memory);
 
           return _MemoryReadyContent(
             memory: memory,

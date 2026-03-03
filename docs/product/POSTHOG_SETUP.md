@@ -630,11 +630,11 @@ posthog.capture('photo_uploaded', {
   file_size_kb: Math.round(file.size / 1024),
 });
 
-// --- Recap Viewed ---
-posthog.capture('recap_viewed', {
+// --- Memory Viewed (replaces recap_viewed) ---
+posthog.capture('memory_viewed', {
   event_id: eventId,
-  viewer_role: 'guest',
-  photo_count: photos.length,
+  view_source: 'recap',
+  event_phase: 'recap',
   platform: 'web',
 });
 ```
@@ -742,55 +742,207 @@ Vai a **PostHog → Feature Flags → New Feature Flag** e cria:
 
 ## Parte 5 — Criar Dashboards no PostHog
 
+> **Nota:** Dashboards são combinados (app + web). Usa o filtro global `platform` quando quiseres ver dados de uma só plataforma. Cada dashboard tem insights independentes.
+
+---
+
 ### 5.1 Dashboard: Guest Funnel
+
+**Objetivo:** Medir conversão do guest desde que abre o link até ver o memory.
 
 1. Vai a **PostHog → Dashboards → New Dashboard**
 2. Nome: **"Guest Funnel"**
-3. Adiciona um **Funnel Insight**:
+3. Descrição: *"Conversion from invite open to memory view (web + app)"*
+
+#### Insight 1: Core Guest Funnel (Funnel)
+
+1. Clica **"+ New insight"** → tipo **Funnel**
+2. Steps:
    - Step 1: `invite_link_opened`
-   - Step 2: `guest_auth_completed`
-   - Step 3: `rsvp_submitted`
-   - Step 4: `photo_uploaded`
-   - Step 5: `recap_viewed`
-4. **Filters:** `platform = web`
-5. **Breakdown:** by `event_id` (para ver por evento)
-6. **Conversion window:** 7 days (eventos duram ~24h mas recap pode ser dias depois)
+   - Step 2: `rsvp_submitted`
+   - Step 3: `photo_uploaded`
+   - Step 4: `memory_viewed`
+3. **Conversion window:** 7 days
+4. **Breakdown:** `event_id` (para comparar eventos entre si)
+5. **Chart type:** Steps (bar chart)
+6. Guarda com nome: *"Core Guest Funnel"*
+
+> **Pergunta-chave:** Onde é que os guests estão a desistir? Se o drop-off maior é entre step 1 e 2, o problema é o flow de RSVP/auth. Se é entre 2 e 3, precisamos de melhor nudging para uploads.
+
+#### Insight 2: Auth Drop-off Sub-Funnel (Funnel)
+
+1. Novo insight → **Funnel**
+2. Steps:
+   - Step 1: `rsvp_intent_started`
+   - Step 2: `auth_started`
+   - Step 3: `guest_auth_completed`
+   - Step 4: `rsvp_submitted`
+3. **Conversion window:** 30 minutes (auth flow deve ser rápido)
+4. **Filter:** `platform = web` (estes eventos são web-only)
+5. **Chart type:** Steps (bar chart)
+6. Guarda com nome: *"Auth Drop-off (Web)"*
+
+> **Pergunta-chave:** Quantos guests carregam no botão de voto mas NÃO completam o OTP? Se `rsvp_intent_started` → `auth_started` tem grande drop, o formulário de credentials é o problema. Se `auth_started` → `guest_auth_completed` é a queda, o OTP é a fricção.
+
+#### Insight 3: Time to RSVP (Trends)
+
+1. Novo insight → **Trends**
+2. Evento: `rsvp_submitted`
+3. **Aggregation:** Property average → `time_to_rsvp_seconds`
+4. **Display:** Line chart, por dia
+5. Guarda com nome: *"Time to RSVP (avg seconds)"*
+
+> **Target:** < 60 segundos. Se sobe, algo no flow está a atrasar.
+
+#### Insight 4: Guest Activation Rate (Trends — Formula)
+
+1. Novo insight → **Trends**
+2. Série A: `rsvp_submitted` — count unique users
+3. Série B: `invite_link_opened` — count unique users
+4. **Formula:** `A / B` (ativa formulas no canto superior)
+5. **Display:** Line chart, por semana
+6. Guarda com nome: *"Guest Activation Rate"*
+
+> **Target:** ≥ 50%. Se descer, o funnel está a perder guests antes do RSVP.
+
+---
 
 ### 5.2 Dashboard: Host Loop
 
-1. Novo dashboard: **"Host Loop"**
-2. **Funnel Insight:**
+**Objetivo:** Medir engagement dos hosts e repeat behavior.
+
+1. **PostHog → Dashboards → New Dashboard**
+2. Nome: **"Host Loop"**
+3. Descrição: *"Host engagement: create → share → repeat"*
+
+#### Insight 1: Host Loop Funnel (Funnel)
+
+1. Novo insight → **Funnel**
+2. Steps:
    - Step 1: `event_created`
    - Step 2: `invite_link_shared`
-   - Step 3: `recap_shared`
-3. **Trends Insight:** `event_created` grouped by unique users (ver repeat hosts)
-4. **Filters:** `user_role = host`
+   - Step 3: `memory_viewed` (host a ver o memory do seu evento)
+3. **Conversion window:** 14 days
+4. **Filter:** `platform = ios` (hosts usam a app)
+5. **Chart type:** Steps
+6. Guarda com nome: *"Host Loop"*
+
+> **Pergunta-chave:** Os hosts estão a partilhar o invite depois de criar? Se drop entre step 1→2 é alto, o share UX precisa de trabalho.
+
+#### Insight 2: Repeat Hosts (Trends)
+
+1. Novo insight → **Trends**
+2. Evento: `event_created`
+3. **Aggregation:** Unique users
+4. **Display:** Line chart, por semana
+5. Guarda com nome: *"Weekly Active Hosts (unique)"*
+
+> Compara com total de hosts para inferir repeat rate.
+
+#### Insight 3: Host Retention (Retention)
+
+1. Novo insight → **Retention**
+2. **Cohort event (start):** `event_created`
+3. **Return event:** `event_created`
+4. **Period:** Week
+5. Guarda com nome: *"Host Retention (create → create)"*
+
+> **Pergunta-chave:** Os hosts voltam para criar mais eventos? Este é o **PMF signal** mais forte.
+
+---
 
 ### 5.3 Dashboard: Memory Health
 
-1. Novo dashboard: **"Memory Health"**
-2. **Trends:**
-   - `memory_ready` count over time
-   - `photo_uploaded` count over time (avg per event usando breakdown by `event_id`)
-3. **Table Insight:**
-   - `memory_ready` com properties: `photo_count`, `contributor_count`, `hours_since_event_end`
-4. **Ratio:**
-   - `recap_viewed` (where `viewer_role = guest`) / `memory_ready` = recap view rate
+**Objetivo:** Monitorar a qualidade e engagement com memories.
+
+1. **PostHog → Dashboards → New Dashboard**
+2. Nome: **"Memory Health"**
+3. Descrição: *"Memory creation, engagement, and sharing metrics"*
+
+#### Insight 1: Memory Creation (Trends)
+
+1. Novo insight → **Trends**
+2. Série A: `memory_ready` — count
+3. Série B: `photo_uploaded` — count
+4. **Display:** Line chart, por semana
+5. Guarda com nome: *"Memories Created & Photos Uploaded"*
+
+#### Insight 2: Photos per Memory (Trends)
+
+1. Novo insight → **Trends**
+2. Evento: `memory_ready`
+3. **Aggregation:** Property average → `photo_count`
+4. Segundo: `memory_ready` → Property average → `contributor_count`
+5. **Display:** Line chart
+6. Guarda com nome: *"Avg Photos & Contributors per Memory"*
+
+> **Target:** ≥ 5 fotos, ≥ 2 contributors por memory.
+
+#### Insight 3: Memory View Rate (Trends — Formula)
+
+1. Novo insight → **Trends**
+2. Série A: `memory_viewed` — count unique `event_id`
+3. Série B: `memory_ready` — count
+4. **Formula:** `A / B`
+5. Guarda com nome: *"Memory View Rate"*
+
+> **Target:** ≥ 40% dos memories com pelo menos 1 view.
+
+#### Insight 4: Share Card Funnel (Funnel — app only)
+
+1. Novo insight → **Funnel**
+2. Steps:
+   - Step 1: `share_card_viewed`
+   - Step 2: `share_card_shared`
+3. **Conversion window:** 24 hours
+4. **Filter:** `platform = ios`
+5. Guarda com nome: *"Share Card Conversion (App)"*
+
+> **Pergunta-chave:** Dos que vêem o share card, quantos partilham? Se baixo, o design do card precisa de iteração.
+
+---
 
 ### 5.4 Dashboard: Stability
 
-1. Novo dashboard: **"Stability"**
-2. **Trends:**
-   - `$exception` count (PostHog automatic exception events) by `platform`
-   - `photo_upload_failed` count and breakdown by `error_type`
-3. **Retention:** users returning after first `app_opened`
+**Objetivo:** Monitorar erros e reliability.
 
-### 5.5 Weekly Email Digest
+1. **PostHog → Dashboards → New Dashboard**
+2. Nome: **"Stability"**
+3. Descrição: *"Errors, failures, and app health"*
 
-1. Vai a **PostHog → Dashboards → Guest Funnel**
-2. Clica **"Subscribe"** → email → Weekly (Monday)
-3. Repete para os outros dashboards
-4. Agora recebes um email de segunda-feira com os dados da semana anterior
+#### Insight 1: Exceptions by Platform (Trends)
+
+1. Novo insight → **Trends**
+2. Evento: `$exception`
+3. **Breakdown:** `platform`
+4. **Display:** Line chart, por dia
+5. Guarda com nome: *"Exceptions by Platform"*
+
+#### Insight 2: Photo Upload Failures (Trends) - To Implement
+
+1. Novo insight → **Trends**
+2. Evento: `photo_upload_failed`
+3. **Breakdown:** `error_type`
+4. **Display:** Stacked bar, por dia
+5. Guarda com nome: *"Upload Failures by Error Type"*
+
+#### Insight 3: Upload Failure Rate (Trends — Formula) - To Implement
+
+1. Novo insight → **Trends**
+2. Série A: `photo_upload_failed` — count
+3. Série B: `photo_upload_started` — count
+4. **Formula:** `A / B`
+5. Guarda com nome: *"Upload Failure Rate"*
+
+> **Target:** < 5%.
+
+#### Insight 4: App Retention (Retention)
+
+1. Novo insight → **Retention**
+2. **Cohort event:** `app_opened`
+3. **Return event:** `app_opened`
+4. **Period:** Week
+5. Guarda com nome: *"App Retention (open → open)"*
 
 ---
 
@@ -798,15 +950,26 @@ Vai a **PostHog → Feature Flags → New Feature Flag** e cria:
 
 Vai a **PostHog → Persons & Groups → Cohorts → New Cohort**:
 
-| Nome | Definição | Notas |
-|------|-----------|-------|
-| **Active Hosts** | Performed `event_created` in last 30 days | Retention |
-| **Activated Guests** | Performed `rsvp_submitted` in last 30 days | Guest engagement |
-| **Memory Contributors** | Performed `photo_uploaded` in last 30 days | Upload behavior |
-| **Repeat Hosts** | Performed `event_created` ≥ 2 times ever | PMF signal |
-| **Cohort #1 Hosts** | Manual list — add user emails/IDs | Phase 2 testers |
-| **Cohort #2 Hosts** | Manual list — add user emails/IDs | Phase 3 testers |
-| **Web-only Guests** | All events have `platform = web` | Web experience |
+| # | Nome | Definição | Para quê |
+|---|------|-----------|----------|
+| 1 | **Active Hosts** | Performed `event_created` in last 30 days | Retention — filtrar dashboards por hosts ativos |
+| 2 | **Activated Guests** | Performed `rsvp_submitted` in last 30 days | Guest engagement — validar if guests are converting |
+| 3 | **Memory Contributors** | Performed `photo_uploaded` in last 30 days | Upload behavior — quem contribui para memories |
+| 4 | **Repeat Hosts** | Performed `event_created` ≥ 2 times ever | **PMF signal** — o indicador mais forte de product-market fit |
+| 5 | **Web-only Guests** | All events have `platform = web` | Web experience health — comparar com app guests |
+| 6 | **Auth Dropouts** | Performed `rsvp_intent_started` but NOT `rsvp_submitted` in last 30 days | Friction — guests que quiseram votar mas desistiram no auth |
+| 7 | **Cohort #1 Hosts** | Manual list — add user emails/IDs | Phase 2 beta testers |
+| 8 | **Cohort #2 Hosts** | Manual list — add user emails/IDs | Phase 3 beta testers |
+
+**Criação passo-a-passo (exemplo para "Auth Dropouts"):**
+1. PostHog → Persons & Groups → Cohorts → **New Cohort**
+2. Nome: `Auth Dropouts`
+3. Matching criteria:
+   - **Include users who:** Performed `rsvp_intent_started` in the last 30 days
+   - **Exclude users who:** Performed `rsvp_submitted` in the last 30 days
+4. Guardar
+
+> Usa estes cohorts como filtros nos dashboards para segmentar análises.
 
 ---
 
@@ -831,7 +994,7 @@ Vai a **PostHog → Persons & Groups → Cohorts → New Cohort**:
 - [X] Identity: `reset()` chamado no logout (`settings_providers.dart`)
 - [X] `app_opened` dispara na abertura (cold start + resume em `app.dart`)
 - [X] `screen_viewed` dispara APENAS nos ecrãs críticos (home, event_detail, event_living, event_recap, create_event, inbox, memory_ready, memory_viewer, profile, calendar via tab switch, manage_guests)
-- [X] Eventos de funnel instrumentados (event_created, rsvp_submitted, photo_uploaded, invite_link_shared via share bottom sheet copy_link/share, recap_viewed + memory_ready via screen_viewed)
+- [X] Eventos de funnel instrumentados (event_created, rsvp_submitted, photo_uploaded, invite_link_shared via share bottom sheet copy_link/share, memory_viewed + memory_ready)
 - [X] Feature flags: cache implementado, reload em app open + auth + 30 min timer (`app.dart`)
 - [X] Testado em debug: eventos visíveis no PostHog Live Events
 - [ ] `debug: false` no Info.plist antes de build para TestFlight
@@ -841,17 +1004,20 @@ Vai a **PostHog → Persons & Groups → Cohorts → New Cohort**:
 - [X] Config: `autocapture: false`, `disable_session_recording: true` (`lib/analytics.ts`)
 - [X] Identity: `posthog.identify(userId)` no guest auth (RsvpSection, PhotoUploadSheet, RecapAuthGate)
 - [X] Identity: anonymous distinct_id gerado automaticamente (não setado manualmente)
-- [X] Guest funnel events instrumentados (invite_link_opened → guest_auth_completed → rsvp_submitted → photo_uploaded → recap_viewed)
+- [X] Guest funnel events instrumentados (invite_link_opened → auth_started → guest_auth_completed → rsvp_submitted → photo_uploaded → memory_viewed)
 - [ ] Vercel WAF / rate limiting ativo
 - [X] `X-Robots-Tag: noindex` nas páginas de evento (`vercel.json`)
 - [ ] Testado: eventos visíveis no PostHog Live Events
 
 **Dashboards:**
-- [ ] Guest Funnel dashboard criado
-- [ ] Host Loop dashboard criado
-- [ ] Memory Health dashboard criado
-- [ ] Stability dashboard criado
-- [ ] Weekly email digest configurado
+- [ ] Guest Funnel dashboard criado (4 insights: core funnel, auth sub-funnel, time to RSVP, activation rate)
+- [ ] Host Loop dashboard criado (3 insights: host funnel, weekly active hosts, host retention)
+- [ ] Memory Health dashboard criado (4 insights: creation trends, photos/contributors avg, view rate, share card funnel)
+- [ ] Stability dashboard criado (4 insights: exceptions, upload failures, failure rate, app retention)
+
+**Cohorts:**
+- [ ] Active Hosts, Activated Guests, Memory Contributors, Repeat Hosts, Web-only Guests, Auth Dropouts criados
+- [ ] Cohort #1/#2 Hosts com manual list
 
 **Feature Flags:**
 - [_] `auth_wall_placement` criada
