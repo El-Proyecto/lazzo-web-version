@@ -11,6 +11,8 @@ import 'package:lazzo/features/home/presentation/providers/home_event_providers.
 // LAZZO 2.0: Groups/group_invites removed
 import 'package:lazzo/services/push_notification_initializer.dart';
 import 'package:lazzo/services/analytics_service.dart';
+import 'package:lazzo/services/pending_invite_service.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class LazzoApp extends ConsumerStatefulWidget {
   const LazzoApp({super.key});
@@ -125,10 +127,71 @@ class _LazzoAppState extends ConsumerState<LazzoApp>
         return;
       }
 
-      // LAZZO 2.0: Group invite deep links removed
-      // TODO: Add event invite deep link handling (/e/<token>)
+      // Handle invite deep links:
+      // - Custom scheme: lazzo://invite/<token>
+      // - Universal link: https://lazzo.app/i/<token>
+      String? inviteToken;
+
+      if (uri.scheme == 'lazzo' &&
+          uri.host == 'invite' &&
+          pathSegments.isNotEmpty) {
+        inviteToken = pathSegments.first;
+      } else if (pathSegments.length >= 2 && pathSegments[0] == 'i') {
+        inviteToken = pathSegments[1];
+      }
+
+      if (inviteToken != null && inviteToken.isNotEmpty) {
+        await _handleInviteToken(inviteToken);
+        return;
+      }
     } catch (e) {
       // Silently fail - deep link errors should not crash the app
+    }
+  }
+
+  /// Handle an invite token from a deep link
+  Future<void> _handleInviteToken(String token) async {
+    final client = Supabase.instance.client;
+    final user = client.auth.currentUser;
+
+    if (user == null) {
+      // User not logged in — save token and let auth flow process it after login
+      await PendingInviteService.savePendingToken(token);
+      return;
+    }
+
+    // User is authenticated — accept the invite and navigate to the event
+    try {
+      final response = await client.rpc(
+        'accept_event_invite_by_token',
+        params: {'p_token': token},
+      );
+
+      if (response is List && response.isNotEmpty) {
+        final data = response.first as Map<String, dynamic>;
+        final eventId = data['event_id'] as String;
+        await _navigateToEvent(eventId);
+      }
+    } catch (e) {
+      // If accept fails (expired/invalid token), silently ignore
+    }
+  }
+
+  /// Navigate to event page (generic — the page determines living/recap/etc.)
+  Future<void> _navigateToEvent(String eventId) async {
+    // Wait for navigator to be ready (max 5 seconds)
+    for (int i = 0; i < 10; i++) {
+      if (_navigatorKey.currentState?.mounted == true) {
+        break;
+      }
+      await Future.delayed(const Duration(milliseconds: 500));
+    }
+
+    if (_navigatorKey.currentState?.mounted == true) {
+      _navigatorKey.currentState!.pushNamed(
+        AppRouter.event,
+        arguments: {'eventId': eventId},
+      );
     }
   }
 
@@ -162,6 +225,8 @@ class AuthWrapper extends ConsumerStatefulWidget {
 }
 
 class _AuthWrapperState extends ConsumerState<AuthWrapper> {
+  bool _pendingInviteProcessed = false;
+
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
@@ -199,12 +264,51 @@ class _AuthWrapperState extends ConsumerState<AuthWrapper> {
         }
 
         // Dados carregados, navega para mainLayout
+        // Also process any pending invite token (from deep link before auth)
         WidgetsBinding.instance.addPostFrameCallback((_) {
           Navigator.of(context).pushReplacementNamed(AppRouter.mainLayout);
+          _processPendingInvite();
         });
 
         return const AppLoadingScreen();
       },
     );
+  }
+
+  /// Process a pending invite token saved before authentication
+  Future<void> _processPendingInvite() async {
+    if (_pendingInviteProcessed) return;
+    _pendingInviteProcessed = true;
+
+    try {
+      final token = await PendingInviteService.getPendingToken();
+      if (token == null || token.isEmpty) return;
+
+      // Clear immediately to avoid re-processing
+      await PendingInviteService.clearPendingToken();
+
+      final client = Supabase.instance.client;
+      final response = await client.rpc(
+        'accept_event_invite_by_token',
+        params: {'p_token': token},
+      );
+
+      if (response is List && response.isNotEmpty) {
+        final data = response.first as Map<String, dynamic>;
+        final eventId = data['event_id'] as String;
+
+        // Small delay to let mainLayout mount first
+        await Future.delayed(const Duration(milliseconds: 500));
+
+        if (mounted) {
+          Navigator.of(context).pushNamed(
+            AppRouter.event,
+            arguments: {'eventId': eventId},
+          );
+        }
+      }
+    } catch (e) {
+      // Silently fail — expired/invalid tokens are expected
+    }
   }
 }

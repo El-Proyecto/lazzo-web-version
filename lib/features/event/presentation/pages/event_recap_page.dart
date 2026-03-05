@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:share_plus/share_plus.dart' show SharePlus, ShareParams;
+import '../../../../../config/app_config.dart';
 import '../../../../routes/app_router.dart';
 import '../../../../shared/components/nav/common_app_bar.dart';
+import '../../../../shared/components/common/invite_bottom_sheet.dart';
 import '../../../../shared/components/common/top_banner.dart';
 import '../../../../shared/components/sections/event_header.dart';
 import '../../../../shared/components/inputs/photo_selector.dart';
@@ -11,6 +12,7 @@ import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/themes/colors.dart';
 import '../providers/event_providers.dart';
 import '../providers/event_photo_providers.dart';
+import '../../../event_invites/presentation/providers/event_invite_providers.dart';
 import '../../../memory/presentation/providers/memory_providers.dart';
 import '../widgets/recap_time_left_pill.dart';
 import '../widgets/recap_action_row.dart';
@@ -220,18 +222,28 @@ class _EventRecapPageState extends ConsumerState<EventRecapPage> {
 
                   // Action row: Share, Upload (orange), Memory
                   RecapActionRow(
-                    onShare: () {
-                      SharePlus.instance.share(
-                        ShareParams(
-                          text:
-                              'Check out ${event.name} on Lazzo! \uD83C\uDF89',
-                        ),
-                      );
-                      AnalyticsService.track('recap_shared', properties: {
-                        'event_id': widget.eventId,
-                        'share_method': 'share',
-                        'platform': 'ios',
-                      });
+                    onShare: () async {
+                      try {
+                        final useCase = ref.read(createEventInviteLinkProvider);
+                        final entity = await useCase(
+                          eventId: widget.eventId,
+                          shareChannel: 'recap_action_row',
+                        );
+                        final inviteUrl = '${AppConfig.invitesBaseUrl}/i/${entity.token}';
+                        if (context.mounted) {
+                          InviteBottomSheet.show(
+                            context: context,
+                            inviteUrl: inviteUrl,
+                            entityName: event.name,
+                            entityType: 'event',
+                            eventEmoji: event.emoji,
+                          );
+                        }
+                      } catch (e) {
+                        if (context.mounted) {
+                          TopBanner.showError(context, message: 'Failed to create invite link');
+                        }
+                      }
                     },
                     onUpload: _showPhotoSelector,
                     onMemory: () {
