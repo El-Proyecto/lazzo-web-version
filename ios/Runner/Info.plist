@@ -96,6 +96,6 @@
 	<key>com.posthog.posthog.CAPTURE_APPLICATION_LIFECYCLE_EVENTS</key>
 	<false/>
 	<key>com.posthog.posthog.DEBUG</key>
-	<true/>
+	<false/>
 </dict>
 </plist>
