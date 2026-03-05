@@ -7,6 +7,7 @@ import '../../../../shared/components/common/top_banner.dart';
 import '../../../../shared/components/sections/event_header.dart';
 import '../../../../shared/components/inputs/photo_selector.dart';
 import '../../../../shared/components/widgets/location_widget.dart';
+import '../../../../shared/components/widgets/event_details_widget.dart';
 import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/themes/colors.dart';
 import '../providers/event_providers.dart';
@@ -96,7 +97,7 @@ class _EventRecapPageState extends ConsumerState<EventRecapPage> {
         if (photoUrl != null) {
           if (context.mounted) {
             TopBanner.showSuccess(context,
-                message: 'Photo uploaded successfully!');
+                message: 'Photos uploaded successfully!');
           }
           ref.invalidate(eventDetailProvider(widget.eventId));
           ref.invalidate(eventPhotosProvider(widget.eventId));
@@ -265,6 +266,13 @@ class _EventRecapPageState extends ConsumerState<EventRecapPage> {
                     },
                   ),
                   const SizedBox(height: Gaps.lg),
+
+                  // Event details/description (if present)
+                  if (event.description != null &&
+                      event.description!.isNotEmpty) ...[
+                    EventDetailsWidget(details: event.description!),
+                    const SizedBox(height: Gaps.lg),
+                  ],
 
                   // Location Widget (if location is set)
                   if (event.location != null)

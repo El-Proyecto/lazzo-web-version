@@ -38,6 +38,30 @@ class _ManageGuestsPageState extends ConsumerState<ManageGuestsPage> {
     AnalyticsService.screenViewed('manage_guests', eventId: widget.eventId);
   }
 
+  /// Refresh all guest and event data
+  Future<void> _refreshData() async {
+    ref.invalidate(eventRsvpsProvider(widget.eventId));
+    ref.invalidate(eventDetailProvider(widget.eventId));
+    ref.invalidate(eventPhotosProvider(widget.eventId));
+    ref.invalidate(guestRsvpListProvider(widget.eventId));
+    // Wait for RSVPs to reload
+    await ref.read(eventRsvpsProvider(widget.eventId).future);
+  }
+
+  /// Get accent color based on event status
+  Color _getAccentColor(EventStatus? status) {
+    switch (status) {
+      case EventStatus.living:
+        return BrandColors.living;
+      case EventStatus.recap:
+        return BrandColors.recap;
+      case EventStatus.confirmed:
+        return BrandColors.planning;
+      default:
+        return BrandColors.planning;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final rsvpsAsync = ref.watch(eventRsvpsProvider(widget.eventId));
@@ -89,9 +113,15 @@ class _ManageGuestsPageState extends ConsumerState<ManageGuestsPage> {
         ),
       ),
       body: rsvpsAsync.when(
-        data: (rsvps) => isPhotoMode
-            ? _buildPhotoContributorContent(rsvps, eventStatus!, currentUserId)
-            : _buildContent(rsvps),
+        data: (rsvps) => RefreshIndicator(
+          onRefresh: _refreshData,
+          color: _getAccentColor(eventStatus),
+          backgroundColor: BrandColors.bg2,
+          child: isPhotoMode
+              ? _buildPhotoContributorContent(
+                  rsvps, eventStatus!, currentUserId)
+              : _buildContent(rsvps),
+        ),
         loading: () => Center(
           child: CircularProgressIndicator(
             color: isPhotoMode ? BrandColors.living : BrandColors.planning,
@@ -117,6 +147,10 @@ class _ManageGuestsPageState extends ConsumerState<ManageGuestsPage> {
     final photosAsync = ref.watch(eventPhotosProvider(widget.eventId));
     final photos = photosAsync.value ?? [];
 
+    // Fetch web guest RSVPs for merging
+    final guestListAsync = ref.watch(guestRsvpListProvider(widget.eventId));
+    final guestList = guestListAsync.valueOrNull ?? [];
+
     // Accent color based on status
     final accentColor = eventStatus == EventStatus.living
         ? BrandColors.living
@@ -124,11 +158,60 @@ class _ManageGuestsPageState extends ConsumerState<ManageGuestsPage> {
             ? BrandColors.recap
             : BrandColors.text1; // ended / memory
 
-    // Count total photos and participants (going only)
+    // Build set of app user emails for deduplication
+    final appUserEmails = <String>{};
+    for (final rsvp in rsvps) {
+      if (rsvp.userEmail != null && rsvp.userEmail!.isNotEmpty) {
+        appUserEmails.add(rsvp.userEmail!.trim().toLowerCase());
+      }
+    }
+
+    // Convert web guests to Rsvp entities, excluding duplicates by email
+    final webGuestRsvps = <Rsvp>[];
+    for (final g in guestList) {
+      final guestEmail =
+          (g['guest_phone'] as String?)?.trim().toLowerCase() ?? '';
+      // Skip if this web guest's email matches an app user's email
+      if (guestEmail.isNotEmpty && appUserEmails.contains(guestEmail)) {
+        continue;
+      }
+      final rsvpStr = g['rsvp'] as String? ?? 'going';
+      RsvpStatus status;
+      switch (rsvpStr) {
+        case 'going':
+          status = RsvpStatus.going;
+          break;
+        case 'not_going':
+          status = RsvpStatus.notGoing;
+          break;
+        case 'maybe':
+          status = RsvpStatus.maybe;
+          break;
+        default:
+          status = RsvpStatus.going;
+      }
+      webGuestRsvps.add(Rsvp(
+        id: g['id'] as String? ?? '',
+        eventId: widget.eventId,
+        userId: '', // Web guests have no user account
+        userName: g['guest_name'] as String? ?? 'Guest',
+        userAvatar: null,
+        status: status,
+        createdAt: g['created_at'] != null
+            ? DateTime.tryParse(g['created_at'] as String) ?? DateTime.now()
+            : DateTime.now(),
+      ));
+    }
+
+    // Merge app + web guests (going only)
+    final allGoingRsvps = [
+      ...rsvps.where((r) => r.status == RsvpStatus.going),
+      ...webGuestRsvps.where((r) => r.status == RsvpStatus.going),
+    ];
+
+    // Count total photos and participants
     final totalPhotos = photos.length;
-    final goingRsvps =
-        rsvps.where((r) => r.status == RsvpStatus.going).toList();
-    final participantCount = goingRsvps.length;
+    final participantCount = allGoingRsvps.length;
 
     // Build per-user photo counts from photos data
     final photoCountByUser = <String, int>{};
@@ -140,12 +223,14 @@ class _ManageGuestsPageState extends ConsumerState<ManageGuestsPage> {
     }
 
     // Build participant list — all going participants (0 photos shown as 'No photos yet')
-    final participantEntries = goingRsvps
+    final participantEntries = allGoingRsvps
         .map((rsvp) => _ParticipantEntry(
               userId: rsvp.userId,
               userName: rsvp.userName,
               userAvatar: rsvp.userAvatar,
-              photoCount: photoCountByUser[rsvp.userId] ?? 0,
+              photoCount: rsvp.userId.isNotEmpty
+                  ? (photoCountByUser[rsvp.userId] ?? 0)
+                  : 0, // Web guests can't upload photos
             ))
         .toList();
 
@@ -186,7 +271,10 @@ class _ManageGuestsPageState extends ConsumerState<ManageGuestsPage> {
         // Participant list with photo counts
         Expanded(
           child: participantEntries.isEmpty
-              ? _buildLivingEmptyState()
+              ? ListView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  children: [_buildLivingEmptyState()],
+                )
               : Container(
                   margin: const EdgeInsets.symmetric(
                     horizontal: Insets.screenH,
@@ -251,8 +339,23 @@ class _ManageGuestsPageState extends ConsumerState<ManageGuestsPage> {
     final guestListAsync = ref.watch(guestRsvpListProvider(widget.eventId));
     final guestList = guestListAsync.valueOrNull ?? [];
 
-    // Convert web guests to Rsvp entities for unified display
-    final webGuestRsvps = guestList.map((g) {
+    // Build set of app user emails for deduplication
+    final appUserEmails = <String>{};
+    for (final rsvp in rsvps) {
+      if (rsvp.userEmail != null && rsvp.userEmail!.isNotEmpty) {
+        appUserEmails.add(rsvp.userEmail!.trim().toLowerCase());
+      }
+    }
+
+    // Convert web guests to Rsvp entities, excluding duplicates by email
+    final webGuestRsvps = <Rsvp>[];
+    for (final g in guestList) {
+      final guestEmail =
+          (g['guest_phone'] as String?)?.trim().toLowerCase() ?? '';
+      // Skip if this web guest's email matches an app user's email
+      if (guestEmail.isNotEmpty && appUserEmails.contains(guestEmail)) {
+        continue;
+      }
       final rsvpStr = g['rsvp'] as String? ?? 'going';
       RsvpStatus status;
       switch (rsvpStr) {
@@ -268,7 +371,7 @@ class _ManageGuestsPageState extends ConsumerState<ManageGuestsPage> {
         default:
           status = RsvpStatus.going;
       }
-      return Rsvp(
+      webGuestRsvps.add(Rsvp(
         id: g['id'] as String? ?? '',
         eventId: widget.eventId,
         userId: '', // Web guests have no user account
@@ -278,10 +381,10 @@ class _ManageGuestsPageState extends ConsumerState<ManageGuestsPage> {
         createdAt: g['created_at'] != null
             ? DateTime.tryParse(g['created_at'] as String) ?? DateTime.now()
             : DateTime.now(),
-      );
-    }).toList();
+      ));
+    }
 
-    // Merge app + web guests
+    // Merge app + web guests (deduplicated)
     final allRsvps = [...rsvps, ...webGuestRsvps];
 
     // Count votes by status (exclude pending)
@@ -340,7 +443,10 @@ class _ManageGuestsPageState extends ConsumerState<ManageGuestsPage> {
         // Guest list
         Expanded(
           child: filteredRsvps.isEmpty
-              ? _buildEmptyState()
+              ? ListView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  children: [_buildEmptyState()],
+                )
               : Container(
                   margin: const EdgeInsets.symmetric(
                     horizontal: Insets.screenH,

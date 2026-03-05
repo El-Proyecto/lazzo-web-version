@@ -1388,9 +1388,23 @@ class _EventPageState extends ConsumerState<EventPage> {
             final appMaybeCount =
                 rsvps.where((r) => r.status == RsvpStatus.maybe).length;
 
-            // Derive web guest counts from the list (single source of truth)
+            // Build set of app user emails for deduplication
+            final appUserEmails = <String>{};
+            for (final rsvp in rsvps) {
+              if (rsvp.userEmail != null && rsvp.userEmail!.isNotEmpty) {
+                appUserEmails.add(rsvp.userEmail!.trim().toLowerCase());
+              }
+            }
+
+            // Derive web guest counts, excluding duplicates by email
             int webGoing = 0, webNotGoing = 0, webMaybe = 0;
             for (final g in guestList) {
+              final guestEmail =
+                  (g['guest_phone'] as String?)?.trim().toLowerCase() ?? '';
+              // Skip if this web guest's email matches an app user's email
+              if (guestEmail.isNotEmpty && appUserEmails.contains(guestEmail)) {
+                continue;
+              }
               switch (g['rsvp'] as String?) {
                 case 'going':
                   webGoing++;
@@ -1531,8 +1545,22 @@ class _EventPageState extends ConsumerState<EventPage> {
     final appMaybeCount =
         rsvps.where((r) => r.status == RsvpStatus.maybe).length;
 
+    // Build set of app user emails for deduplication
+    final appUserEmails = <String>{};
+    for (final rsvp in rsvps) {
+      if (rsvp.userEmail != null && rsvp.userEmail!.isNotEmpty) {
+        appUserEmails.add(rsvp.userEmail!.trim().toLowerCase());
+      }
+    }
+
+    // Derive web guest counts, excluding duplicates by email
     int webGoing = 0, webNotGoing = 0, webMaybe = 0;
     for (final g in guestList) {
+      final guestEmail =
+          (g['guest_phone'] as String?)?.trim().toLowerCase() ?? '';
+      if (guestEmail.isNotEmpty && appUserEmails.contains(guestEmail)) {
+        continue;
+      }
       switch (g['rsvp'] as String?) {
         case 'going':
           webGoing++;

@@ -230,7 +230,7 @@ final guestRsvpListProvider =
   try {
     final response = await Supabase.instance.client
         .from('event_guest_rsvps')
-        .select('id, guest_name, rsvp, plus_one, created_at')
+        .select('id, guest_name, rsvp, plus_one, created_at, guest_phone')
         .eq('event_id', eventId)
         .order('created_at', ascending: false);
     return List<Map<String, dynamic>>.from(response);

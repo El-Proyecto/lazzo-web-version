@@ -6,6 +6,7 @@ class Rsvp {
   final String userId;
   final String userName;
   final String? userAvatar;
+  final String? userEmail;
   final RsvpStatus status;
   final DateTime createdAt;
 
@@ -15,6 +16,7 @@ class Rsvp {
     required this.userId,
     required this.userName,
     this.userAvatar,
+    this.userEmail,
     required this.status,
     required this.createdAt,
   });
@@ -25,6 +27,7 @@ class Rsvp {
     String? userId,
     String? userName,
     String? userAvatar,
+    String? userEmail,
     RsvpStatus? status,
     DateTime? createdAt,
   }) {
@@ -34,6 +37,7 @@ class Rsvp {
       userId: userId ?? this.userId,
       userName: userName ?? this.userName,
       userAvatar: userAvatar ?? this.userAvatar,
+      userEmail: userEmail ?? this.userEmail,
       status: status ?? this.status,
       createdAt: createdAt ?? this.createdAt,
     );

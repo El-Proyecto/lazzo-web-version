@@ -9,6 +9,7 @@ class RsvpModel {
   final String eventId;
   final String userName;
   final String? userAvatar;
+  final String? userEmail;
   final String status;
   final DateTime? confirmedAt;
 
@@ -17,6 +18,7 @@ class RsvpModel {
     required this.eventId,
     required this.userName,
     this.userAvatar,
+    this.userEmail,
     required this.status,
     this.confirmedAt,
   });
@@ -32,6 +34,7 @@ class RsvpModel {
           json['pevent_id'] as String, // event_participants uses 'pevent_id'
       userName: userData?['name'] as String? ?? 'Unknown User',
       userAvatar: userData?['avatar_url'] as String?,
+      userEmail: userData?['email'] as String?,
       status: json['rsvp'] as String? ??
           'pending', // event_participants uses 'rsvp' column
       confirmedAt: json['confirmed_at'] != null
@@ -75,6 +78,7 @@ class RsvpModel {
       userId: userId,
       userName: userName,
       userAvatar: userAvatar,
+      userEmail: userEmail,
       status: statusEnum,
       createdAt: confirmedAt ?? DateTime.now(),
     );
@@ -104,6 +108,7 @@ class RsvpModel {
       eventId: entity.eventId,
       userName: entity.userName,
       userAvatar: entity.userAvatar,
+      userEmail: entity.userEmail,
       status: statusString,
       confirmedAt: entity.createdAt,
     );

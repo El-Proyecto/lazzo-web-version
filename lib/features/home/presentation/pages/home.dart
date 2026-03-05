@@ -290,13 +290,12 @@ class _HomePageState extends ConsumerState<HomePage> {
             'source': 'gallery',
             'platform': 'ios',
           });
-          final photo = await picker.pickImage(
-            source: ImageSource.gallery,
+          final photos = await picker.pickMultiImage(
             maxWidth: 1920,
             maxHeight: 1920,
             imageQuality: 85,
           );
-          if (photo != null && mounted) {
+          if (photos.isNotEmpty && mounted) {
             // Navigate to event living page with photo for upload
             Navigator.pushNamed(
               context,

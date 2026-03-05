@@ -49,7 +49,7 @@ class EventPhotoUploadNotifier extends StateNotifier<AsyncValue<String?>> {
     }
   }
 
-  /// Pick and upload a photo from gallery
+  /// Pick and upload photos from gallery (supports multi-selection)
   Future<void> pickPhotoFromGallery({
     required String eventId,
   }) async {
@@ -60,26 +60,61 @@ class EventPhotoUploadNotifier extends StateNotifier<AsyncValue<String?>> {
         'source': 'gallery',
         'platform': 'ios',
       });
-      // Pick image from gallery
-      final XFile? photo = await _imagePicker.pickImage(
-        source: ImageSource.gallery,
+      // Pick multiple images from gallery (native multi-select on iOS/Android)
+      final List<XFile> photos = await _imagePicker.pickMultiImage(
         maxWidth: 1920,
         maxHeight: 1920,
         imageQuality: 85,
       );
 
-      if (photo == null) {
+      if (photos.isEmpty) {
         return;
       }
 
-      // Upload photo
-      await _uploadPhoto(
-        eventId: eventId,
-        imageFile: File(photo.path),
-      );
+      // Limit to 10 photos per batch
+      final limitedPhotos = photos.take(10).toList();
+
+      // Upload all selected photos sequentially
+      state = const AsyncValue.loading();
+      String? lastUrl;
+      for (final photo in limitedPhotos) {
+        lastUrl = await _uploadPhotoFile(
+          eventId: eventId,
+          imageFile: File(photo.path),
+        );
+      }
+
+      state = AsyncValue.data(lastUrl);
     } catch (error, stackTrace) {
       state = AsyncValue.error(error, stackTrace);
     }
+  }
+
+  /// Internal method to upload a single photo file and return URL
+  Future<String> _uploadPhotoFile({
+    required String eventId,
+    required File imageFile,
+  }) async {
+    final stopwatch = Stopwatch()..start();
+    final fileSizeKb = (await imageFile.length()) ~/ 1024;
+
+    final photoUrl = await _uploadEventPhoto(
+      eventId: eventId,
+      imageFile: imageFile,
+    );
+
+    stopwatch.stop();
+
+    // Track photo upload with METRICS.md-required properties
+    AnalyticsService.track('photo_uploaded', properties: {
+      'event_id': eventId,
+      'upload_duration_ms': stopwatch.elapsedMilliseconds,
+      'file_size_kb': fileSizeKb,
+      'is_cover': false,
+      'platform': 'ios',
+    });
+
+    return photoUrl;
   }
 
   /// Internal method to upload photo

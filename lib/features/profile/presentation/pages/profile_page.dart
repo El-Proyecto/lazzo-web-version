@@ -55,16 +55,16 @@ class ProfilePage extends ConsumerWidget {
         ),
       ),
       body: profileAsync.when(
-        loading: () => SingleChildScrollView(
-          physics: const NeverScrollableScrollPhysics(),
-          padding: const EdgeInsets.symmetric(horizontal: Insets.screenH),
+        loading: () => const SingleChildScrollView(
+          physics: NeverScrollableScrollPhysics(),
+          padding: EdgeInsets.symmetric(horizontal: Insets.screenH),
           child: Column(
             children: [
-              const SizedBox(height: Gaps.md),
-              const UserInfoCardSkeleton(),
-              const SizedBox(height: Gaps.xl),
-              const MemoriesSectionSkeleton(count: 4),
-              const SizedBox(height: Gaps.md),
+              SizedBox(height: Gaps.md),
+              UserInfoCardSkeleton(),
+              SizedBox(height: Gaps.xl),
+              MemoriesSectionSkeleton(count: 4),
+              SizedBox(height: Gaps.md),
             ],
           ),
         ),
