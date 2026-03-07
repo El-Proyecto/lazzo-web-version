@@ -125,21 +125,24 @@ class _InviteBottomSheetState extends State<InviteBottomSheet> {
 
           const SizedBox(height: Gaps.lg),
 
-          // Content
-          AnimatedSwitcher(
-            duration: const Duration(milliseconds: 200),
-            child: _selectedTab == 0
-                ? _QrCodeTab(
-                    key: const ValueKey('qr'),
-                    inviteUrl: widget.inviteUrl,
-                  )
-                : _InviteCardTab(
-                    key: const ValueKey('card'),
-                    inviteUrl: widget.inviteUrl,
-                    entityName: widget.entityName,
-                    entityType: widget.entityType,
-                    eventEmoji: widget.eventEmoji,
-                  ),
+          // Content — fixed height to prevent size jumping between tabs
+          ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 340),
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 200),
+              child: _selectedTab == 0
+                  ? _QrCodeTab(
+                      key: const ValueKey('qr'),
+                      inviteUrl: widget.inviteUrl,
+                    )
+                  : _InviteCardTab(
+                      key: const ValueKey('card'),
+                      inviteUrl: widget.inviteUrl,
+                      entityName: widget.entityName,
+                      entityType: widget.entityType,
+                      eventEmoji: widget.eventEmoji,
+                    ),
+            ),
           ),
 
           const SizedBox(height: Gaps.md),
