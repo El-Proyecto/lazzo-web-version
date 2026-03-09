@@ -130,7 +130,7 @@ Two tracks running in parallel:
 
 ---
 
-## Phase 1 — Closed Beta Readiness (Weeks 1–2)
+## Phase 1 — Closed Beta Readiness (23 Feb - 8 Mar)
 
 **Goal:** ship a measurable product, ready for cohort testing.
 
@@ -223,7 +223,7 @@ Two tracks running in parallel:
 
 ---
 
-## Phase 2 — Cohort #1 (Friends) + Iteration (Weeks 3–4)
+## Phase 2 — Cohort #1 (Friends) + Iteration (9 - 22 Mar)
 
 **Goal:** validate funnel works end-to-end with real events; fix top frictions.
 
@@ -266,7 +266,7 @@ Two tracks running in parallel:
 
 ---
 
-## Phase 3 — Cohort #2 ("Outside the bubble") + Differentiation (Weeks 5–6)
+## Phase 3 — Cohort #2 ("Outside the bubble") + Differentiation (23 Mar - 5 Apr)
 
 **Goal:** validate comprehension without founder explanation; emphasize memories-first.
 
@@ -310,7 +310,7 @@ Two tracks running in parallel:
 
 ---
 
-## Phase 4 — Semi-public Beta Packaging (Weeks 7–8)
+## Phase 4 — Semi-public Beta Packaging (6 Apr - 19 Apr)
 
 **Goal:** ready to scale invitations + early brand presence.
 
@@ -449,24 +449,24 @@ Two tracks running in parallel:
 # 10) Appendix — Deliverables Checklist
 
 ## Phase 0: Pipeline
-- [ ] TestFlight build pipeline documented & working
-- [ ] Vercel deploy pipeline verified
-- [ ] Version strategy defined (semver + build number)
+- [X] TestFlight build pipeline documented & working
+- [X] Vercel deploy pipeline verified
+- [X] Version strategy defined (semver + build number)
 
 ## Phase 1: Foundations
-- [ ] PostHog Cloud EU account created & configured
-- [ ] PostHog SDK integrated in app (`posthog_flutter`)
-- [ ] PostHog JS SDK integrated in web
-- [ ] Core event taxonomy implemented (funnel events firing correctly)
-- [ ] Identity unification verified (anonymous → auth merge works)
-- [ ] Selective screen_viewed on 10 critical screens only
-- [ ] Feature flags configured with local cache (≥ 3 flags ready)
-- [ ] Autocapture OFF, session replay OFF, bot protection ON
-- [ ] Guest funnel dashboard live in PostHog
-- [ ] Host loop dashboard live in PostHog
-- [ ] Feature flags configured (≥ 3 flags ready)
-- [ ] Error tracking active on both platforms
-- [ ] Guest web onboarding reviewed & polished
+- [X] PostHog Cloud EU account created & configured
+- [X] PostHog SDK integrated in app (`posthog_flutter`)
+- [X] PostHog JS SDK integrated in web
+- [X] Core event taxonomy implemented (funnel events firing correctly)
+- [X] Identity unification verified (anonymous → auth merge works)
+- [X] Selective screen_viewed on 10 critical screens only
+- [X] Feature flags configured with local cache (≥ 3 flags ready)
+- [X] Autocapture OFF, session replay OFF, bot protection ON
+- [X] Guest funnel dashboard live in PostHog
+- [X] Host loop dashboard live in PostHog
+- [X] Feature flags configured (≥ 3 flags ready)
+- [X] Error tracking active on both platforms
+- [X] Guest web onboarding reviewed & polished
 
 ## Phase 2: Cohort #1
 - [ ] 5–7 hosts recruited and briefed
