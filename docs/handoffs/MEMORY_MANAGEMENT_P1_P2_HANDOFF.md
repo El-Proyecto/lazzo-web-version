@@ -943,7 +943,7 @@ Example: /550e8400-e29b-41d4-a716-446655440000/event123/user456/photo-uuid.jpg
 
 For questions about the P1 implementation or clarification on P2 requirements:
 
-1. **Architecture Questions**: Refer to `agents.md` and `README.md`
+1. **Architecture Questions**: Refer to `.agents/agents.md` and `README.md`
 2. **Component Usage**: Check component documentation in source files
 3. **State Management**: Review providers and state notifier patterns
 4. **Domain Contracts**: All interfaces are defined and documented
@@ -955,7 +955,7 @@ For questions about the P1 implementation or clarification on P2 requirements:
 ## 🔗 Related Documentation
 
 - **Photo Layout Sizes:** `/RELEVANT_FILES/photos_layout_sizes.md`
-- **Architecture Guide:** `/agents.md` and `/README.md`
+- **Architecture Guide:** `.agents/agents.md` and `README.md`
 - **Storage Service:** `/lib/services/storage_service.dart`
 - **Image Compression:** `/lib/shared/utils/image_compression_service.dart`
 

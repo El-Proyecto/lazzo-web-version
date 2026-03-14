@@ -346,7 +346,7 @@ lib/shared/
 
 For questions about the P1 implementation or clarification on P2 requirements:
 
-1. **Architecture Questions**: Refer to `agents.md` and `README.md`
+1. **Architecture Questions**: Refer to `.agents/agents.md` and `README.md`
 2. **Component Usage**: Check component documentation in source files
 3. **State Management**: Review existing providers and draft service
 4. **Domain Contracts**: All interfaces are defined and documented

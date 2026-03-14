@@ -408,7 +408,7 @@ linter:
 + - [ ] Tests cover new functionality (unit for domain, widget for UI)
 ```
 
-### AGENTS.md Updates  
+### .agents/agents.md updates  
 ```diff
 ## 1) Golden Rules
 - **Tokenize first**: replace all colors/sizes/fonts/radii with tokens from `shared/constants` & `shared/themes`.

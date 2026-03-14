@@ -1372,7 +1372,7 @@ If critical issues arise:
 - `event_date_votes` (for voting)
 
 **Architecture Docs:**
-- `agents.md` - Section 17 (Implementation files)
+- `.agents/migrations.md` - Implementation files
 - `README.md` - Feature development flow
 - `supabase_structure.sql` - Database schema reference
 

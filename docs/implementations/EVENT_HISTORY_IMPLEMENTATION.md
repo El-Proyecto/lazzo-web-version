@@ -1072,7 +1072,7 @@ void main() {
 - Test user with past events (for manual testing)
 
 **Next steps after completion:**
-- [ ] Update `SUPABASE_DATABASE_STRUCTURE.md` with index info
+- [ ] Update `supabase_structure.sql` and re-export `supabase_schema.sql` with index info
 - [ ] Document event history feature in `README.md`
 - [ ] Add analytics event for "event_history_opened"
 - [ ] Consider adding "favorite events" feature (bookmark most-used templates)

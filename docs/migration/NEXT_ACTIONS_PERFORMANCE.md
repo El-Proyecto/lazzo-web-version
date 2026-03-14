@@ -225,7 +225,7 @@ flutter clean && flutter pub get
 
 **Questions about implementation:**
 - Review: [MIGRATIONS/HOME_PROFILE_PERFORMANCE_IMPLEMENTATION_SUMMARY.md](HOME_PROFILE_PERFORMANCE_IMPLEMENTATION_SUMMARY.md)
-- Architecture: [agents.md](../agents.md)
+- Architecture: [.agents/agents.md](../../.agents/agents.md)
 
 **P2 Team SQL Deployment:**
 - Guide: [IMPLEMENTATION/SQL_FUNCTIONS_FOR_P2.md](../IMPLEMENTATION/SQL_FUNCTIONS_FOR_P2.md)

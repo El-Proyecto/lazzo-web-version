@@ -98,7 +98,7 @@ If issues arise after migration:
 ## Post-Migration Cleanup
 - [x] Document migration in `MIGRATIONS/` folder
 - [ ] Update `supabase_structure.sql` to reflect new CASCADE constraints
-- [ ] Update `SUPABASE_DATABASE_STRUCTURE.md` with CASCADE behavior notes
+- [ ] Re-export `supabase_schema.sql` after CASCADE changes
 - [ ] Remove any manual cleanup code in Flutter app (if exists)
 - [ ] Test event deletion across all user roles (host, admin, member)
 
@@ -187,7 +187,7 @@ Execute in this exact order:
    - Verify no errors when deleting events with photos
 3. **Both:** 
    - Update `supabase_structure.sql` with CASCADE constraints
-   - Update `SUPABASE_DATABASE_STRUCTURE.md` with materialized view notes
+   - Re-export `supabase_schema.sql` and update `supabase_structure.sql` with materialized view notes
 
 ## Notes for P2 Team
 - No code changes required in Flutter app

@@ -94,7 +94,7 @@ git grep -n "Supabase.instance" lib/features/*/presentation/
 ### Architecture Questions:
 1. Check `ARCHITECTURE_REVIEW.md` for detailed analysis
 2. Review `README.md` for feature development flow
-3. Check `agents.md` for agent-specific guidelines
+3. Check `.agents/agents.md` for agent-specific guidelines
 
 ### Emergency Debugging:
 - **Token issues**: Import from `shared/themes/colors.dart` not `styles/`
