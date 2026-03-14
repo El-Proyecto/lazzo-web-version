@@ -1088,7 +1088,7 @@ case AppRouter.eventsList:
 - [Supabase Pagination](https://supabase.com/docs/guides/api/pagination)
 - [Flutter Infinite Scroll Pattern](https://docs.flutter.dev/cookbook/lists/long-lists)
 - [Riverpod State Management](https://riverpod.dev/docs/concepts/reading)
-- .agents/agents.md - Architecture guidelines
+- agents.md - Architecture guidelines
 
 ---
 

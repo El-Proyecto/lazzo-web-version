@@ -85,7 +85,7 @@ Changes:
 
 ## Architecture Alignment
 
-This fix aligns with the **.agents/agents.md** golden rules:
+This fix aligns with the **agents.md** golden rules:
 - ✅ **Domain ≠ Data**: Domain layer unchanged, data layer simplified
 - ✅ **Single source rule**: Removed duplicate permission logic
 - ✅ **No infra in Domain**: Use case remains clean, repository handles data checks

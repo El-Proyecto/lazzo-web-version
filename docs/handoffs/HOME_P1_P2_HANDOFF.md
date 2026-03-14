@@ -765,7 +765,7 @@ The following components are kept for backwards compatibility but should be phas
 - [x] No Supabase imports in presentation/domain layers
 - [x] `flutter analyze` passes (only 2 pre-existing warnings)
 - [x] README.md guidelines followed
-- [x] .agents/agents.md compliance verified
+- [x] agents.md compliance verified
 
 ---
 
