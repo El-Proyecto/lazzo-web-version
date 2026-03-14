@@ -14,7 +14,7 @@
    - Define **Repository interface** (methods used by use cases/UI).
    - Add **Use case** (one action per class).
 3. **UI**
-   - Copy from Figma → create tokenized component(s) in `shared/components/`.
+   - Create tokenized component(s) in `shared/components/`.
    - Compose screen in `features/<f>/presentation/pages/` (use shared components).
 4. **State**
    - Create **providers** (Riverpod) exposing `AsyncValue` states; inject **FakeRepo** by default.
