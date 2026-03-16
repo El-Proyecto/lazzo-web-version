@@ -87,6 +87,9 @@ class _OtpVerificationPageState extends ConsumerState<OtpVerificationPage> {
           properties: {
             if (supabaseUser.email != null) 'email': supabaseUser.email!,
             'role': 'host',
+            'platform': 'app',
+            if (widget.name != null && widget.name!.trim().isNotEmpty)
+              r'$name': widget.name!.trim(),
           },
         );
         await AnalyticsService.track('auth_completed', properties: {

@@ -78,6 +78,8 @@ class _LoginOtpVerificationPageState
           properties: {
             'email': user.email,
             'role': 'host',
+            'platform': 'app',
+            if (user.name != null && user.name!.isNotEmpty) r'$name': user.name!,
           },
         );
         await AnalyticsService.track('auth_completed', properties: {
