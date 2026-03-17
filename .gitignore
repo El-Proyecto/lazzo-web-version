@@ -44,6 +44,9 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 
+# Local env (copy from .env.example, do not commit)
+.env
+
 # Configs por ambiente (não commitar staging/prod reais)
 config/*.json
 !config/dev.json            # manter dev.json no repo

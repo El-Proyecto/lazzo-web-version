@@ -78,3 +78,8 @@
 - Router: named routes; set `initialRoute` to preview target page.
 - Start: `flutter pub get && flutter run`.
 - Supabase env: initialize in `main.dart`; DI override to use real repositories.
+
+### Required analyzers (before opening a PR)
+
+- **Always run** `flutter analyze` at the project root (`lazzo-web-version`) after any code change.
+- Do not ignore any warnings or errors introduced by your changes; fix them before opening a PR.

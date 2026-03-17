@@ -243,7 +243,7 @@ git revert <commit_range>
 - **Original Plan:** [MIGRATIONS/HOME_PROFILE_PERFORMANCE_OPTIMIZATION.md](HOME_PROFILE_PERFORMANCE_OPTIMIZATION.md)
 - **SQL Deployment Guide:** [IMPLEMENTATION/SQL_FUNCTIONS_FOR_P2.md](../IMPLEMENTATION/SQL_FUNCTIONS_FOR_P2.md)
 - **Database Schema:** [supabase_structure.sql](../../supabase_structure.sql) and [supabase_schema.sql](../../supabase_schema.sql)
-- **Architecture Guide:** [.agents/agents.md](../../.agents/agents.md)
+- **Architecture Guide:** [agents.md](../../agents.md)
 
 ---
 

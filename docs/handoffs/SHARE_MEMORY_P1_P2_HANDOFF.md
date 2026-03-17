@@ -792,5 +792,5 @@ void _handleSave(BuildContext context) async {
 **Handoff Complete** — P2 ready to start! 🚀
 
 For questions or clarifications, refer to:
-- `.agents/agents.md` for architecture guidelines
+- `agents.md` for architecture guidelines
 - `README.md` for project structure

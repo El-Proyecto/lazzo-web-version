@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:image_picker/image_picker.dart';
@@ -456,6 +456,7 @@ class _HomePageState extends ConsumerState<HomePage> {
           backgroundColor: BrandColors.bg2,
           child: ListView(
             controller: _scrollController,
+            physics: const AlwaysScrollableScrollPhysics(),
             padding: EdgeInsets.zero,
             children: [
               const SizedBox(height: Gaps.xs),

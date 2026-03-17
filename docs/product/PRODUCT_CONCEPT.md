@@ -216,4 +216,4 @@ See [METRICS.md](METRICS.md) for full PostHog event taxonomy and dashboard speci
 ---
 
 
-> This document defines *product intent* for MVP and near‑term roadmap. For implementation rules (architecture, tokens, layering, DI, security), see `README.md` and `.agents/agents.md`.
+> This document defines *product intent* for MVP and near‑term roadmap. For implementation rules (architecture, tokens, layering, DI, security), see `README.md` and `agents.md` (repo root).
