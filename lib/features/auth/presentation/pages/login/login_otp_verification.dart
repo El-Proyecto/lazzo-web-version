@@ -16,8 +16,7 @@ import '../../providers/auth_provider.dart';
 import '../../../../profile/presentation/providers/profile_providers.dart';
 // Rotas
 import '../../../../../routes/app_router.dart';
-// Analytics
-import '../../../../../services/analytics_service.dart';
+import '../../utils/auth_analytics.dart';
 
 class LoginOtpVerificationPage extends ConsumerStatefulWidget {
   const LoginOtpVerificationPage({super.key, required this.email});
@@ -73,20 +72,10 @@ class _LoginOtpVerificationPageState
       // 4) PostHog: identify user (merge anonymous → authenticated)
       final user = ref.read(authProvider).valueOrNull;
       if (user != null) {
-        await AnalyticsService.identify(
-          user.id,
-          properties: {
-            'email': user.email,
-            'role': 'host',
-            'platform': 'app',
-            if (user.name != null && user.name!.isNotEmpty) r'$name': user.name!,
-          },
+        await trackAuthCompleted(
+          user: user,
+          isNewUser: false,
         );
-        await AnalyticsService.track('auth_completed', properties: {
-          'auth_type': 'email_passwordless',
-          'is_new_user': false,
-          'platform': 'ios',
-        });
       }
 
       if (!mounted) return;
