@@ -21,7 +21,9 @@ class ConfirmEventBottomSheet extends ConsumerStatefulWidget {
   final TimeOfDay? endTime;
   final LocationInfo? selectedLocation;
   final String? description;
-  final Function(String eventId)? onEventCreated; // Changed to receive eventId
+  // Callback invoked after the event is created.
+  // The eventId can be null if, for any reason, the repository did not return it.
+  final Function(String? eventId)? onEventCreated;
 
   const ConfirmEventBottomSheet({
     super.key,
@@ -116,26 +118,24 @@ class _ConfirmEventBottomSheetState
       // Enviar para o Supabase via provider
       await controller.createEvent(event);
 
-      // Obter o ID do evento criado do estado
+      // Obter o ID do evento criado do estado (pode ser null em casos raros)
       final createdEvent = ref.read(createEventControllerProvider).createdEvent;
-      if (createdEvent == null || createdEvent.id.isEmpty) {
-        throw Exception('Failed to get created event ID');
-      }
-
-      // Chamar callback antes de fechar o dialog para garantir execução única
-      final eventId = createdEvent.id;
+      final eventId = createdEvent?.id;
 
       // PostHog: track event_created
-      await AnalyticsService.track('event_created', properties: {
-        'event_id': eventId,
-        'has_location': widget.selectedLocation != null,
-        'has_datetime': startDateTime != null,
-        'has_emoji': widget.eventEmoji != null,
-        'has_description':
-            widget.description != null && widget.description!.isNotEmpty,
-        'platform': 'ios',
-        'user_role': 'host',
-      });
+      await AnalyticsService.track(
+        'event_created',
+        properties: {
+          if (eventId != null && eventId.isNotEmpty) 'event_id': eventId,
+          'has_location': widget.selectedLocation != null,
+          'has_datetime': startDateTime != null,
+          'has_emoji': widget.eventEmoji != null,
+          'has_description':
+              widget.description != null && widget.description!.isNotEmpty,
+          'platform': 'ios',
+          'user_role': 'host',
+        },
+      );
 
       // Fechar dialog
       if (mounted) {

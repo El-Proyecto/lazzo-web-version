@@ -22,6 +22,7 @@ Always read and follow these, regardless of task:
 - **Reusable widgets in shared** — Put shared UI in `shared/components/`; feature-specific UI stays in `features/<f>/presentation/widgets/`.
 - **Fake-first** — Default DI uses fake repositories; one override switches to real Supabase.
 - **Move-don't-delete** — When relocating widgets or code, move or replace; do not delete without a replacement.
+- **Always run analyzers after changes** — After *any* implementation change, run `flutter analyze` at the repo root to catch errors before pushing.
 
 ## Repository structure
 
