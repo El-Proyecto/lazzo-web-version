@@ -184,11 +184,8 @@ class _EditEventPageState extends ConsumerState<EditEventPage> {
     // Nome é obrigatório
     bool nameValid = _eventName.trim().isNotEmpty;
 
-    // Data/hora é obrigatória: start e end
-    bool dateTimeValid = _selectedDate != null &&
-        _selectedTime != null &&
-        _endDate != null &&
-        _endTime != null;
+    // Data/hora válida: requer campos presentes, start no futuro, end após start
+    bool dateTimeValid = _isDateTimeValid;
 
     // Localização é obrigatória (name or address)
     bool locationValid = false;
@@ -352,6 +349,11 @@ class _EditEventPageState extends ConsumerState<EditEventPage> {
       description: _description,
     );
 
+    // If the controller captured an error, stop here.
+    // The error is surfaced via ref.listen in build().
+    if (!mounted) return;
+    if (ref.read(editEventControllerProvider).error != null) return;
+
     // CRITICAL: Invalidate providers to force UI refresh across the app
     // 1. Event detail page (shows updated date/time/location)
     ref.invalidate(event_providers.eventDetailProvider(widget.event.id));
@@ -497,15 +499,19 @@ class _EditEventPageState extends ConsumerState<EditEventPage> {
 
   @override
   Widget build(BuildContext context) {
-    // Listen to edit state for loading/error handling
+    // Listen to edit state for error handling
     ref.listen<EditEventState>(editEventControllerProvider, (previous, next) {
-      if (next.error != null) {
+      if (next.error != null && previous?.error != next.error) {
         TopBanner.showError(
           context,
           message: 'Error: ${next.error}',
         );
       }
     });
+
+    final isSaving = ref.watch(
+      editEventControllerProvider.select((s) => s.isLoading),
+    );
 
     return PopScope(
       canPop: !_hasChanges(),
@@ -657,24 +663,34 @@ class _EditEventPageState extends ConsumerState<EditEventPage> {
                 child: SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
-                    onPressed: _handleSaveEvent,
+                    onPressed: isSaving ? null : _handleSaveEvent,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: (_isFormValid() && _hasChanges())
-                          ? BrandColors.planning
-                          : BrandColors.bg3,
+                      backgroundColor:
+                          (!isSaving && _isFormValid() && _hasChanges())
+                              ? BrandColors.planning
+                              : BrandColors.bg3,
                       padding: const EdgeInsets.symmetric(vertical: Pads.ctlV),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(Radii.md),
                       ),
                     ),
-                    child: Text(
-                      'Save Changes',
-                      style: AppText.titleMediumEmph.copyWith(
-                        color: (_isFormValid() && _hasChanges())
-                            ? BrandColors.text1
-                            : BrandColors.text2,
-                      ),
-                    ),
+                    child: isSaving
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: BrandColors.text2,
+                            ),
+                          )
+                        : Text(
+                            'Save Changes',
+                            style: AppText.titleMediumEmph.copyWith(
+                              color: (_isFormValid() && _hasChanges())
+                                  ? BrandColors.text1
+                                  : BrandColors.text2,
+                            ),
+                          ),
                   ),
                 ),
               ),

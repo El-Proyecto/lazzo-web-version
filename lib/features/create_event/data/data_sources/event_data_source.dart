@@ -28,9 +28,13 @@ class EventDataSource {
       return 'living';
     }
 
-    // Event hasn't started yet → confirmed (or keep pending/draft)
+    // Event hasn't started yet: keep draft/pending as-is, reset expired to
+    // pending (host must re-confirm), otherwise promote to confirmed.
     if (currentStatus == 'draft' || currentStatus == 'pending') {
       return currentStatus;
+    }
+    if (currentStatus == 'expired') {
+      return 'pending';
     }
 
     return 'confirmed';
@@ -102,9 +106,12 @@ class EventDataSource {
     required String status,
     String? description,
   }) async {
-    // Calculate correct status based on time if event is confirmed/living/recap
+    // Calculate correct status based on time if event is confirmed/living/recap/expired
     String finalStatus = status;
-    if (status == 'confirmed' || status == 'living' || status == 'recap') {
+    if (status == 'confirmed' ||
+        status == 'living' ||
+        status == 'recap' ||
+        status == 'expired') {
       finalStatus = _calculateEventStatus(startDateTime, endDateTime, status);
       if (finalStatus != status) {}
     }

@@ -132,12 +132,12 @@ class _EventPageState extends ConsumerState<EventPage> {
       // Only show if event has a start date
       if (event.startDateTime == null) return;
 
-      // Check if less than 30 minutes until event starts
+      // Check if less than 60 minutes (1 hour) until event starts
       final now = DateTime.now();
       final minutesUntilStart = event.startDateTime!.difference(now).inMinutes;
 
-      // Show warning if less than 30 minutes and event hasn't started yet
-      if (minutesUntilStart > 0 && minutesUntilStart <= 30 && mounted) {
+      // Show warning if less than 60 minutes and event hasn't started yet
+      if (minutesUntilStart > 0 && minutesUntilStart <= 60 && mounted) {
         _showExpirationWarningDialog(event);
       }
     } catch (e) {
