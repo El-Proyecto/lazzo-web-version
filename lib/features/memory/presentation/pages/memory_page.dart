@@ -67,6 +67,7 @@ class _MemoryPageState extends ConsumerState<MemoryPage> {
   Widget build(BuildContext context) {
     final memoryAsync = ref.watch(memoryDetailProvider(widget.memoryId));
     final rsvpsAsync = ref.watch(eventRsvpsProvider(widget.memoryId));
+    final guestListAsync = ref.watch(guestRsvpListProvider(widget.memoryId));
     final currentUserId = Supabase.instance.client.auth.currentUser?.id;
 
     return memoryAsync.when(
@@ -130,10 +131,59 @@ class _MemoryPageState extends ConsumerState<MemoryPage> {
         final coverPhotos = memory.coverPhotos;
         final gridPhotos = memory.gridPhotos;
 
-        // Get participants from RSVPs
+        // Get participants from app RSVPs + web guest RSVPs (going only)
         final participants = rsvpsAsync.when<List<Rsvp>>(
-          data: (rsvps) =>
-              rsvps.where((r) => r.status == RsvpStatus.going).toList(),
+          data: (rsvps) {
+            final appGoing = rsvps
+                .where((r) => r.status == RsvpStatus.going)
+                .toList(growable: false);
+
+            // Dedupe: avoid showing the same person twice (app user vs web guest)
+            final appUserEmails = <String>{};
+            for (final rsvp in appGoing) {
+              final email = rsvp.userEmail;
+              if (email != null && email.isNotEmpty) {
+                appUserEmails.add(email.trim().toLowerCase());
+              }
+            }
+
+            final guestList = guestListAsync.valueOrNull ?? [];
+            final webGuestsGoing = guestList
+                .where((g) => (g['rsvp'] as String?)?.toLowerCase() == 'going')
+                .where((g) {
+                  final guestEmail = (g['guest_phone'] as String?)
+                          ?.trim()
+                          .toLowerCase() ??
+                      '';
+                  if (guestEmail.isEmpty) return true;
+                  return !appUserEmails.contains(guestEmail);
+                })
+                .map((g) {
+                  final rawGuestName = g['guest_name'];
+                  final guestName = rawGuestName is String
+                      ? (rawGuestName.trim().isNotEmpty ? rawGuestName.trim() : 'Guest')
+                      : 'Guest';
+
+                  final createdAtStr = g['created_at'] as String?;
+                  final createdAt = createdAtStr != null
+                      ? DateTime.tryParse(createdAtStr) ?? DateTime.now()
+                      : DateTime.now();
+
+                  return Rsvp(
+                    id: g['id'] as String? ?? '',
+                    eventId: widget.memoryId,
+                    userId: '', // Web guests don't have an app user account
+                    userName: guestName,
+                    userAvatar: null,
+                    userEmail: null,
+                    status: RsvpStatus.going,
+                    createdAt: createdAt,
+                  );
+                })
+                .toList(growable: false);
+
+            return [...appGoing, ...webGuestsGoing];
+          },
           loading: () => <Rsvp>[],
           error: (_, __) => <Rsvp>[],
         );

@@ -443,7 +443,7 @@ class _EditEventPageState extends ConsumerState<EditEventPage> {
       // Navigate to home after delete
       if (mounted) {
         Navigator.of(context).pushNamedAndRemoveUntil(
-          AppRouter.home,
+          AppRouter.mainLayout,
           (route) => false,
         );
       }
