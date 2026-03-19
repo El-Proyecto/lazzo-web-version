@@ -145,11 +145,6 @@ class _ManageGuestsPageState extends ConsumerState<ManageGuestsPage> {
   Widget _buildPhotoContributorContent(
       List<Rsvp> rsvps, EventStatus eventStatus, String? currentUserId) {
     final photosAsync = ref.watch(eventPhotosProvider(widget.eventId));
-    final photos = photosAsync.value ?? [];
-
-    // Fetch web guest RSVPs for merging
-    final guestListAsync = ref.watch(guestRsvpListProvider(widget.eventId));
-    final guestList = guestListAsync.valueOrNull ?? [];
 
     // Accent color based on status
     final accentColor = eventStatus == EventStatus.living
@@ -158,158 +153,135 @@ class _ManageGuestsPageState extends ConsumerState<ManageGuestsPage> {
             ? BrandColors.recap
             : BrandColors.text1; // ended / memory
 
-    // Build set of app user emails for deduplication
-    final appUserEmails = <String>{};
-    for (final rsvp in rsvps) {
-      if (rsvp.userEmail != null && rsvp.userEmail!.isNotEmpty) {
-        appUserEmails.add(rsvp.userEmail!.trim().toLowerCase());
-      }
-    }
+    return photosAsync.when(
+      data: (photos) {
+        // Photo contributor participants are derived from uploaders in `event_photos`.
+        // This fixes missing user name/photo counts when RSVP data differs (e.g. via web).
+        final totalPhotos = photos.length;
 
-    // Convert web guests to Rsvp entities, excluding duplicates by email
-    final webGuestRsvps = <Rsvp>[];
-    for (final g in guestList) {
-      final guestEmail =
-          (g['guest_phone'] as String?)?.trim().toLowerCase() ?? '';
-      // Skip if this web guest's email matches an app user's email
-      if (guestEmail.isNotEmpty && appUserEmails.contains(guestEmail)) {
-        continue;
-      }
-      final rsvpStr = g['rsvp'] as String? ?? 'going';
-      RsvpStatus status;
-      switch (rsvpStr) {
-        case 'going':
-          status = RsvpStatus.going;
-          break;
-        case 'not_going':
-          status = RsvpStatus.notGoing;
-          break;
-        case 'maybe':
-          status = RsvpStatus.maybe;
-          break;
-        default:
-          status = RsvpStatus.going;
-      }
-      webGuestRsvps.add(Rsvp(
-        id: g['id'] as String? ?? '',
-        eventId: widget.eventId,
-        userId: '', // Web guests have no user account
-        userName: g['guest_name'] as String? ?? 'Guest',
-        userAvatar: null,
-        status: status,
-        createdAt: g['created_at'] != null
-            ? DateTime.tryParse(g['created_at'] as String) ?? DateTime.now()
-            : DateTime.now(),
-      ));
-    }
+        final photoCountByUser = <String, int>{};
+        final uploaderNameByUser = <String, String>{};
+        final uploaderAvatarByUser = <String, String?>{};
 
-    // Merge app + web guests (going only)
-    final allGoingRsvps = [
-      ...rsvps.where((r) => r.status == RsvpStatus.going),
-      ...webGuestRsvps.where((r) => r.status == RsvpStatus.going),
-    ];
+        for (final photo in photos) {
+          final uploaderId = photo['uploader_id'] as String? ?? '';
+          if (uploaderId.isEmpty) continue;
 
-    // Count total photos and participants
-    final totalPhotos = photos.length;
-    final participantCount = allGoingRsvps.length;
+          photoCountByUser[uploaderId] = (photoCountByUser[uploaderId] ?? 0) + 1;
 
-    // Build per-user photo counts from photos data
-    final photoCountByUser = <String, int>{};
-    for (final photo in photos) {
-      final uploaderId = photo['uploader_id'] as String? ?? '';
-      if (uploaderId.isNotEmpty) {
-        photoCountByUser[uploaderId] = (photoCountByUser[uploaderId] ?? 0) + 1;
-      }
-    }
+          final uploaderName = photo['uploader_name'] as String? ?? '';
+          final uploaderAvatar = photo['uploader_avatar'] as String?;
 
-    // Build participant list — all going participants (0 photos shown as 'No photos yet')
-    final participantEntries = allGoingRsvps
-        .map((rsvp) => _ParticipantEntry(
-              userId: rsvp.userId,
-              userName: rsvp.userName,
-              userAvatar: rsvp.userAvatar,
-              photoCount: rsvp.userId.isNotEmpty
-                  ? (photoCountByUser[rsvp.userId] ?? 0)
-                  : 0, // Web guests can't upload photos
-            ))
-        .toList();
+          // Prefer the first non-empty metadata we get.
+          if (!uploaderNameByUser.containsKey(uploaderId) ||
+              (uploaderNameByUser[uploaderId]?.isEmpty ?? true)) {
+            uploaderNameByUser[uploaderId] = uploaderName;
+          }
+          if (!uploaderAvatarByUser.containsKey(uploaderId)) {
+            uploaderAvatarByUser[uploaderId] = uploaderAvatar;
+          }
+        }
 
-    // Sort by photo count descending, then alphabetically
-    participantEntries.sort((a, b) {
-      final countCmp = b.photoCount.compareTo(a.photoCount);
-      if (countCmp != 0) return countCmp;
-      return a.userName.compareTo(b.userName);
-    });
-
-    return Column(
-      children: [
-        // Summary cards: Participants + Photos
-        Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: Insets.screenH,
-            vertical: Gaps.md,
-          ),
-          child: Row(
-            children: [
-              _LivingSummaryCard(
-                icon: Icons.people_outline,
-                count: participantCount,
-                label: 'Participants',
-                accentColor: accentColor,
+        final participantEntries = photoCountByUser.entries
+            .map(
+              (e) => _ParticipantEntry(
+                userId: e.key,
+                userName: (uploaderNameByUser[e.key] ?? '').isNotEmpty
+                    ? uploaderNameByUser[e.key]!
+                    : 'Unknown',
+                userAvatar: uploaderAvatarByUser[e.key],
+                photoCount: e.value,
               ),
-              const SizedBox(width: Gaps.xs),
-              _LivingSummaryCard(
-                icon: Icons.photo_library_outlined,
-                count: totalPhotos,
-                label: 'Photos',
-                accentColor: accentColor,
-              ),
-            ],
-          ),
-        ),
+            )
+            .toList()
+          ..sort((a, b) {
+            final countCmp = b.photoCount.compareTo(a.photoCount);
+            if (countCmp != 0) return countCmp;
+            return a.userName.compareTo(b.userName);
+          });
 
-        // Participant list with photo counts
-        Expanded(
-          child: participantEntries.isEmpty
-              ? ListView(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  children: [_buildLivingEmptyState()],
-                )
-              : Container(
-                  margin: const EdgeInsets.symmetric(
-                    horizontal: Insets.screenH,
+        final participantCount = participantEntries.length;
+
+        return Column(
+          children: [
+            // Summary cards: Participants + Photos
+            Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: Insets.screenH,
+                vertical: Gaps.md,
+              ),
+              child: Row(
+                children: [
+                  _LivingSummaryCard(
+                    icon: Icons.people_outline,
+                    count: participantCount,
+                    label: 'Participants',
+                    accentColor: accentColor,
                   ),
-                  decoration: BoxDecoration(
-                    color: BrandColors.bg2,
-                    borderRadius: BorderRadius.circular(Radii.md),
+                  const SizedBox(width: Gaps.xs),
+                  _LivingSummaryCard(
+                    icon: Icons.photo_library_outlined,
+                    count: totalPhotos,
+                    label: 'Photos',
+                    accentColor: accentColor,
                   ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(Radii.md),
-                    child: ListView.separated(
-                      padding: const EdgeInsets.symmetric(
-                        vertical: Pads.ctlV,
+                ],
+              ),
+            ),
+
+            // Participant list with photo counts
+            Expanded(
+              child: participantEntries.isEmpty
+                  ? ListView(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      children: [_buildLivingEmptyState()],
+                    )
+                  : Container(
+                      margin: const EdgeInsets.symmetric(
+                        horizontal: Insets.screenH,
                       ),
-                      itemCount: participantEntries.length,
-                      separatorBuilder: (_, __) => Divider(
-                        height: 1,
-                        color: BrandColors.border.withValues(alpha: 0.3),
-                        indent: Insets.screenH + 48 + Gaps.sm,
-                        endIndent: Insets.screenH,
+                      decoration: BoxDecoration(
+                        color: BrandColors.bg2,
+                        borderRadius: BorderRadius.circular(Radii.md),
                       ),
-                      itemBuilder: (context, index) {
-                        final entry = participantEntries[index];
-                        return _LivingParticipantTile(
-                          entry: entry,
-                          currentUserId: currentUserId,
-                        );
-                      },
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(Radii.md),
+                        child: ListView.separated(
+                          padding: const EdgeInsets.symmetric(
+                            vertical: Pads.ctlV,
+                          ),
+                          itemCount: participantEntries.length,
+                          separatorBuilder: (_, __) => Divider(
+                            height: 1,
+                            color: BrandColors.border.withValues(alpha: 0.3),
+                            indent: Insets.screenH + 48 + Gaps.sm,
+                            endIndent: Insets.screenH,
+                          ),
+                          itemBuilder: (context, index) {
+                            final entry = participantEntries[index];
+                            return _LivingParticipantTile(
+                              entry: entry,
+                              currentUserId: currentUserId,
+                            );
+                          },
+                        ),
+                      ),
                     ),
-                  ),
-                ),
-        ),
+            ),
 
-        const SizedBox(height: Gaps.lg),
-      ],
+            const SizedBox(height: Gaps.lg),
+          ],
+        );
+      },
+      loading: () => Center(
+        child: CircularProgressIndicator(color: accentColor),
+      ),
+      error: (_, __) => ListView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        children: [
+          _buildLivingEmptyState(),
+        ],
+      ),
     );
   }
 

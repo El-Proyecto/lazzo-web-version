@@ -62,6 +62,9 @@ class _EventPageState extends ConsumerState<EventPage> {
   // Cache isHost status to prevent flicker during operations
   bool? _cachedIsHost;
 
+  // Prevent repeated navigations when the provider updates multiple times.
+  EventStatus? _lastNavigatedStatus;
+
   // Periodic timer to refresh guest RSVP counts (fallback for Realtime)
   Timer? _guestRsvpRefreshTimer;
 
@@ -71,6 +74,14 @@ class _EventPageState extends ConsumerState<EventPage> {
   void initState() {
     super.initState();
     AnalyticsService.screenViewed('event_detail', eventId: widget.eventId);
+
+    // Navigate automatically when the backend moves the event through phases.
+    // This avoids needing to manually return to home and refresh.
+    ref.listen(eventDetailProvider(eventId), (prev, next) {
+      next.whenOrNull(
+        data: (event) => _maybeNavigateForPhase(event.status),
+      );
+    });
 
     // Setup Realtime subscription for unread count badge updates
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -109,6 +120,51 @@ class _EventPageState extends ConsumerState<EventPage> {
         _showTitleInAppBar = shouldShow;
       });
     }
+  }
+
+  void _maybeNavigateForPhase(EventStatus status) {
+    if (!mounted) return;
+
+    // Only react to live phase transitions.
+    if (status != EventStatus.living &&
+        status != EventStatus.recap &&
+        status != EventStatus.ended) {
+      return;
+    }
+
+    if (_lastNavigatedStatus == status) return;
+    _lastNavigatedStatus = status;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+
+      final args = {'eventId': eventId};
+      switch (status) {
+        case EventStatus.living:
+          Navigator.pushReplacementNamed(
+            context,
+            AppRouter.eventLiving,
+            arguments: args,
+          );
+          break;
+        case EventStatus.recap:
+          Navigator.pushReplacementNamed(
+            context,
+            AppRouter.eventRecap,
+            arguments: args,
+          );
+          break;
+        case EventStatus.ended:
+          Navigator.pushReplacementNamed(
+            context,
+            AppRouter.memoryReady,
+            arguments: {'memoryId': eventId},
+          );
+          break;
+        default:
+          break;
+      }
+    });
   }
 
   /// Helper to replace current user's name with "You"
