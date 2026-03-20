@@ -3,19 +3,17 @@ import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/constants/text_styles.dart';
 import '../../../../shared/themes/colors.dart';
 
-/// Card for adding photos to memory
-/// Shows camera icon for living state, add icon for recap state
+/// Card for adding photos in the memory grid — matches web `AddPhotoCard`:
+/// gray border, bg2, plus icon, “Add” (no purple/orange on the tile).
 class AddPhotoCard extends StatelessWidget {
   final double width;
   final double height;
-  final bool isLiving;
   final VoidCallback onTap;
 
   const AddPhotoCard({
     super.key,
     required this.width,
     required this.height,
-    required this.isLiving,
     required this.onTap,
   });
 
@@ -28,24 +26,24 @@ class AddPhotoCard extends StatelessWidget {
         height: height,
         decoration: BoxDecoration(
           color: BrandColors.bg2,
-          border: Border.all(color: BrandColors.border, width: 1),
           borderRadius: BorderRadius.circular(Radii.sm),
+          border: Border.all(color: BrandColors.border, width: 2),
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
-              isLiving
-                  ? Icons.camera_alt_outlined
-                  : Icons.add_photo_alternate_outlined,
+              Icons.add,
+              size: IconSizes.md,
               color: BrandColors.text2,
-              size: 32,
             ),
-            const SizedBox(height: Gaps.xs),
+            const SizedBox(height: Gaps.xxs),
             Text(
-              isLiving ? 'Take Photo' : 'Add Photo',
-              style: AppText.bodyMedium.copyWith(
+              'Add',
+              style: AppText.labelLarge.copyWith(
                 color: BrandColors.text2,
+                fontSize: 11,
+                fontWeight: FontWeight.w500,
               ),
               textAlign: TextAlign.center,
             ),
