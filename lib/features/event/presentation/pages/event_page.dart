@@ -42,8 +42,13 @@ import '../../../../services/analytics_service.dart';
 /// Displays all event information and interactions
 class EventPage extends ConsumerStatefulWidget {
   final String eventId;
+  final bool showExpirationWarningOnOpen;
 
-  const EventPage({super.key, required this.eventId});
+  const EventPage({
+    super.key,
+    required this.eventId,
+    this.showExpirationWarningOnOpen = true,
+  });
 
   @override
   ConsumerState<EventPage> createState() => _EventPageState();
@@ -78,7 +83,9 @@ class _EventPageState extends ConsumerState<EventPage> {
     // Setup Realtime subscription for unread count badge updates
     WidgetsBinding.instance.addPostFrameCallback((_) {
       // Check if we need to show expiration warning
-      _checkAndShowExpirationWarning();
+      if (widget.showExpirationWarningOnOpen) {
+        _checkAndShowExpirationWarning();
+      }
     });
 
     // Listen to scroll to show/hide title in app bar
