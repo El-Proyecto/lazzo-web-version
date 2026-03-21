@@ -302,18 +302,10 @@ class _ManageMemoryPageState extends ConsumerState<ManageMemoryPage> {
 
     // Add "Add Photo" card if there's space AND not in selection mode
     if (hasSpace && !_isSelectionMode) {
-      // Determine if event is in living mode from event details
-      final eventAsync = ref.watch(eventDetailProvider(widget.memoryId));
-      final isLiving = eventAsync.maybeWhen(
-        data: (event) => event.status.toString().split('.').last == 'living',
-        orElse: () => false,
-      );
-
       gridItems.add(
         AddPhotoCard(
           width: itemWidth,
           height: itemHeight,
-          isLiving: isLiving,
           onTap: () => _handleAddPhoto(),
         ),
       );

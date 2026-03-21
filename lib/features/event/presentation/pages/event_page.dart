@@ -42,8 +42,13 @@ import '../../../../services/analytics_service.dart';
 /// Displays all event information and interactions
 class EventPage extends ConsumerStatefulWidget {
   final String eventId;
+  final bool showExpirationWarningOnOpen;
 
-  const EventPage({super.key, required this.eventId});
+  const EventPage({
+    super.key,
+    required this.eventId,
+    this.showExpirationWarningOnOpen = true,
+  });
 
   @override
   ConsumerState<EventPage> createState() => _EventPageState();
@@ -62,6 +67,9 @@ class _EventPageState extends ConsumerState<EventPage> {
   // Cache isHost status to prevent flicker during operations
   bool? _cachedIsHost;
 
+  // Prevent repeated navigations when the provider updates multiple times.
+  EventStatus? _lastNavigatedStatus;
+
   // Periodic timer to refresh guest RSVP counts (fallback for Realtime)
   Timer? _guestRsvpRefreshTimer;
 
@@ -75,7 +83,9 @@ class _EventPageState extends ConsumerState<EventPage> {
     // Setup Realtime subscription for unread count badge updates
     WidgetsBinding.instance.addPostFrameCallback((_) {
       // Check if we need to show expiration warning
-      _checkAndShowExpirationWarning();
+      if (widget.showExpirationWarningOnOpen) {
+        _checkAndShowExpirationWarning();
+      }
     });
 
     // Listen to scroll to show/hide title in app bar
@@ -111,6 +121,51 @@ class _EventPageState extends ConsumerState<EventPage> {
     }
   }
 
+  void _maybeNavigateForPhase(EventStatus status) {
+    if (!mounted) return;
+
+    // Only react to live phase transitions.
+    if (status != EventStatus.living &&
+        status != EventStatus.recap &&
+        status != EventStatus.ended) {
+      return;
+    }
+
+    if (_lastNavigatedStatus == status) return;
+    _lastNavigatedStatus = status;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+
+      final args = {'eventId': eventId};
+      switch (status) {
+        case EventStatus.living:
+          Navigator.pushReplacementNamed(
+            context,
+            AppRouter.eventLiving,
+            arguments: args,
+          );
+          break;
+        case EventStatus.recap:
+          Navigator.pushReplacementNamed(
+            context,
+            AppRouter.eventRecap,
+            arguments: args,
+          );
+          break;
+        case EventStatus.ended:
+          Navigator.pushReplacementNamed(
+            context,
+            AppRouter.memoryReady,
+            arguments: {'memoryId': eventId},
+          );
+          break;
+        default:
+          break;
+      }
+    });
+  }
+
   /// Helper to replace current user's name with "You"
   String _getUserDisplayName(
       String userId, String userName, String? currentUserId) {
@@ -132,12 +187,12 @@ class _EventPageState extends ConsumerState<EventPage> {
       // Only show if event has a start date
       if (event.startDateTime == null) return;
 
-      // Check if less than 30 minutes until event starts
+      // Check if less than 60 minutes (1 hour) until event starts
       final now = DateTime.now();
       final minutesUntilStart = event.startDateTime!.difference(now).inMinutes;
 
-      // Show warning if less than 30 minutes and event hasn't started yet
-      if (minutesUntilStart > 0 && minutesUntilStart <= 30 && mounted) {
+      // Show warning if less than 60 minutes and event hasn't started yet
+      if (minutesUntilStart > 0 && minutesUntilStart <= 60 && mounted) {
         _showExpirationWarningDialog(event);
       }
     } catch (e) {
@@ -347,6 +402,14 @@ class _EventPageState extends ConsumerState<EventPage> {
 
   @override
   Widget build(BuildContext context) {
+    // Navigate automatically when the backend moves the event through phases.
+    // `ref.listen` must be registered during build in Consumer widgets.
+    ref.listen(eventDetailProvider(eventId), (prev, next) {
+      next.whenOrNull(
+        data: (event) => _maybeNavigateForPhase(event.status),
+      );
+    });
+
     // Ensure Realtime refresh is active on this page (not just Home)
     ref.watch(realtimeRefreshProvider);
 

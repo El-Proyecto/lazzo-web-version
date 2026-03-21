@@ -79,6 +79,7 @@ class _ShareMemoryPageState extends ConsumerState<ShareMemoryPage> {
           _generateShareImage(
             heroPhoto.coverUrl ?? heroPhoto.url,
             thumbnails,
+            photoIds,
           );
         }
       },
@@ -166,7 +167,7 @@ class _ShareMemoryPageState extends ConsumerState<ShareMemoryPage> {
           // Generate image when data is first loaded or changes
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (_cachedImageBytes == null && !_isGeneratingImage) {
-              _generateShareImage(heroUrl, thumbnails);
+              _generateShareImage(heroUrl, thumbnails, photoIds);
             }
           });
 
@@ -325,7 +326,7 @@ class _ShareMemoryPageState extends ConsumerState<ShareMemoryPage> {
 
   /// Generates PNG image from ShareCard widget
   Future<void> _generateShareImage(
-      String heroUrl, List<String> thumbnails) async {
+      String heroUrl, List<String> thumbnails, List<String> photoIds) async {
     if (_isGeneratingImage) {
       return;
     }
@@ -335,6 +336,26 @@ class _ShareMemoryPageState extends ConsumerState<ShareMemoryPage> {
     });
 
     try {
+      // Fast path: reuse a previously generated PNG (same memory + selection).
+      final cacheFile = await _getShareCardCacheFile(photoIds);
+      try {
+        if (await cacheFile.exists()) {
+          final cachedBytes = await cacheFile.readAsBytes();
+          if (!mounted) return;
+          setState(() {
+            _cachedImageBytes = cachedBytes;
+            _isGeneratingImage = false;
+          });
+
+          AnalyticsService.track('share_card_viewed', properties: {
+            'memory_id': widget.memoryId,
+          });
+          return;
+        }
+      } catch (_) {
+        // If cache read fails, fall back to regeneration.
+      }
+
       final widgetContext = _repaintKey.currentContext;
 
       if (widgetContext == null) {
@@ -426,11 +447,19 @@ class _ShareMemoryPageState extends ConsumerState<ShareMemoryPage> {
           _cachedImageBytes = pngBytes;
           _isGeneratingImage = false;
         });
-        // Track share card viewed when card image is generated and displayed
-        AnalyticsService.track('share_card_viewed', properties: {
-          'memory_id': widget.memoryId,
-        });
       }
+
+      // Persist cache for future openings (best-effort).
+      try {
+        await cacheFile.writeAsBytes(pngBytes, flush: true);
+      } catch (_) {
+        // ignore cache write failures
+      }
+
+      // Track share card viewed when card image is generated and displayed.
+      AnalyticsService.track('share_card_viewed', properties: {
+        'memory_id': widget.memoryId,
+      });
     } catch (e) {
       if (mounted) {
         setState(() {
@@ -452,6 +481,16 @@ class _ShareMemoryPageState extends ConsumerState<ShareMemoryPage> {
     final file = File(filePath);
     await file.writeAsBytes(_cachedImageBytes!);
     return filePath;
+  }
+
+  Future<File> _getShareCardCacheFile(List<String> photoIds) async {
+    final dir = await getTemporaryDirectory();
+    final safeIds = photoIds
+        .join('_')
+        .replaceAll(RegExp(r'[^a-zA-Z0-9_-]'), '');
+    final filePath =
+        '${dir.path}/lazzo_share_card_${widget.memoryId}_$safeIds.png';
+    return File(filePath);
   }
 
   void _handleInstagramShare(BuildContext context) async {

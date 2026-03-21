@@ -140,18 +140,16 @@ class _EventRecapPageState extends ConsumerState<EventRecapPage> {
         'platform': 'ios',
       });
       ref.invalidate(eventDetailProvider(widget.eventId));
-      if (context.mounted) {
-        // Navigate to Memory Ready page instead of just popping
-        Navigator.of(context).pushNamedAndRemoveUntil(
-          AppRouter.memoryReady,
-          (route) => false,
-          arguments: {'memoryId': widget.eventId},
-        );
-      }
+      if (!mounted) return;
+      // Navigate to Memory Ready page instead of just popping
+      Navigator.of(context).pushNamedAndRemoveUntil(
+        AppRouter.memoryReady,
+        (route) => false,
+        arguments: {'memoryId': widget.eventId},
+      );
     } catch (e) {
-      if (context.mounted) {
-        TopBanner.showError(context, message: 'Failed to end recap: $e');
-      }
+      if (!mounted) return;
+      TopBanner.showError(context, message: 'Failed to end recap: $e');
     }
   }
 

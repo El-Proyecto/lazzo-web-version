@@ -3,6 +3,7 @@ import '../../domain/entities/action.dart';
 import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/constants/text_styles.dart';
 import '../../../../shared/themes/colors.dart';
+import '../utils/action_urgency_ui.dart';
 
 class InboxActionCard extends StatelessWidget {
   final ActionEntity action;
@@ -74,30 +75,13 @@ class InboxActionCard extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(Icons.schedule, color: _getTimeLeftColor(), size: IconSizes.sm),
+        Icon(Icons.schedule, color: actionUrgencyColor(action), size: IconSizes.sm),
         const SizedBox(width: Gaps.xs / 2),
         Text(
           text,
-          style: AppText.labelLarge.copyWith(color: _getTimeLeftColor()),
+          style: AppText.labelLarge.copyWith(color: actionUrgencyColor(action)),
         ),
       ],
     );
-  }
-
-  Color _getTimeLeftColor() {
-    if (action.isOverdue) {
-      return BrandColors.cantVote;
-    }
-
-    final timeLeft = action.timeLeft;
-    if (timeLeft == null) return BrandColors.text2;
-
-    if (timeLeft.inHours <= 2) {
-      return BrandColors.cantVote; // Red
-    } else if (timeLeft.inHours <= 24) {
-      return BrandColors.recap; // Orange
-    } else {
-      return BrandColors.planning; // Green
-    }
   }
 }

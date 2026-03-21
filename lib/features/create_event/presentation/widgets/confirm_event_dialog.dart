@@ -137,17 +137,14 @@ class _ConfirmEventBottomSheetState
         },
       );
 
-      // Fechar dialog
-      if (mounted) {
+      if (!mounted) return;
+
+      // Trigger success flow before closing this sheet.
+      // The callback may navigate and dispose this route immediately.
+      if (widget.onEventCreated != null) {
+        widget.onEventCreated!.call(eventId);
+      } else {
         Navigator.of(context).pop();
-
-        // Aguardar um frame para garantir que o dialog foi fechado
-        await Future.delayed(const Duration(milliseconds: 100));
-
-        // Chamar callback apenas se ainda montado
-        if (mounted) {
-          widget.onEventCreated?.call(eventId);
-        }
       }
     } catch (e) {
       // Reset creating state on error

@@ -14,6 +14,7 @@ import '../providers/notifications_provider.dart';
 import '../providers/actions_provider.dart';
 import '../widgets/notifications_section.dart';
 import '../widgets/actions_section.dart';
+import '../utils/action_urgency_ui.dart';
 import '../../../../services/analytics_service.dart';
 
 /// Inbox page — Notifications + Actions tabs (LAZZO 2.0)
@@ -70,6 +71,12 @@ class _InboxPageState extends ConsumerState<InboxPage> {
   }
 
   Widget _buildSegmentedControl() {
+    final actionsState = ref.watch(actionsProvider);
+    final actions = actionsState.valueOrNull ?? const <ActionEntity>[];
+    final hasPendingActions = actions.isNotEmpty;
+    final topActionColor =
+        hasPendingActions ? actionUrgencyColor(actions.first) : BrandColors.text2;
+
     return Container(
       margin: const EdgeInsets.symmetric(
         horizontal: Insets.screenH,
@@ -83,13 +90,23 @@ class _InboxPageState extends ConsumerState<InboxPage> {
       child: Row(
         children: [
           _buildSegmentButton('Notifications', 0),
-          _buildSegmentButton('Actions', 1),
+          _buildSegmentButton(
+            'Actions',
+            1,
+            badgeColor: topActionColor,
+            showBadge: hasPendingActions,
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildSegmentButton(String label, int index) {
+  Widget _buildSegmentButton(
+    String label,
+    int index, {
+    Color? badgeColor,
+    bool showBadge = false,
+  }) {
     final isSelected = _selectedTab == index;
     return Expanded(
       child: GestureDetector(
@@ -106,17 +123,47 @@ class _InboxPageState extends ConsumerState<InboxPage> {
             borderRadius: BorderRadius.circular(Radii.smAlt),
           ),
           child: Center(
-            child: Text(
-              label,
-              style: AppText.labelLarge.copyWith(
-                color: isSelected ? BrandColors.text1 : BrandColors.text2,
-                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-              ),
+            child: Stack(
+              alignment: Alignment.center,
+              clipBehavior: Clip.none,
+              children: [
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      label,
+                      style: AppText.labelLarge.copyWith(
+                        color: isSelected ? BrandColors.text1 : BrandColors.text2,
+                        fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                      ),
+                    ),
+                  ],
+                ),
+                if (showBadge)
+                  Positioned(
+                    right: -8,
+                    top: -2,
+                    child: Container(
+                      width: 8,
+                      height: 8,
+                      decoration: BoxDecoration(
+                        color: badgeColor ?? BrandColors.text2,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                  ),
+              ],
             ),
           ),
         ),
       ),
     );
+  }
+
+  bool _shouldShowExpirationWarningForAction(ActionEntity action) {
+    final minutesLeft = action.timeLeft?.inMinutes;
+    if (minutesLeft == null) return false;
+    return minutesLeft > 0 && minutesLeft <= 60;
   }
 
   Widget _buildActionsTab() {
@@ -177,7 +224,11 @@ class _InboxPageState extends ConsumerState<InboxPage> {
         Navigator.pushNamed(
           context,
           AppRouter.event,
-          arguments: {'eventId': action.eventId},
+          arguments: {
+            'eventId': action.eventId,
+            'showExpirationWarningOnOpen':
+                _shouldShowExpirationWarningForAction(action),
+          },
         );
         break;
       case ActionType.rescheduleExpiredEvent:
