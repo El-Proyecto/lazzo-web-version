@@ -75,14 +75,6 @@ class _EventPageState extends ConsumerState<EventPage> {
     super.initState();
     AnalyticsService.screenViewed('event_detail', eventId: widget.eventId);
 
-    // Navigate automatically when the backend moves the event through phases.
-    // This avoids needing to manually return to home and refresh.
-    ref.listen(eventDetailProvider(eventId), (prev, next) {
-      next.whenOrNull(
-        data: (event) => _maybeNavigateForPhase(event.status),
-      );
-    });
-
     // Setup Realtime subscription for unread count badge updates
     WidgetsBinding.instance.addPostFrameCallback((_) {
       // Check if we need to show expiration warning
@@ -403,6 +395,14 @@ class _EventPageState extends ConsumerState<EventPage> {
 
   @override
   Widget build(BuildContext context) {
+    // Navigate automatically when the backend moves the event through phases.
+    // `ref.listen` must be registered during build in Consumer widgets.
+    ref.listen(eventDetailProvider(eventId), (prev, next) {
+      next.whenOrNull(
+        data: (event) => _maybeNavigateForPhase(event.status),
+      );
+    });
+
     // Ensure Realtime refresh is active on this page (not just Home)
     ref.watch(realtimeRefreshProvider);
 
