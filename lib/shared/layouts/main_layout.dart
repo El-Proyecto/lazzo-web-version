@@ -339,13 +339,18 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
           // Refresh next event provider to get updated status
           ref.invalidate(nextEventControllerProvider);
         }
-        // If any events transitioned from recap→ended, show memory ready
+        // If recap→ended happened, open memory ready only for events with photos.
         if (result.recapEndedEventIds.isNotEmpty && mounted) {
-          Navigator.of(context).pushNamed(
-            AppRouter.memoryReady,
-            arguments: {'memoryId': result.recapEndedEventIds.first},
+          final eventWithPhotos = await _firstEventWithPhotos(
+            result.recapEndedEventIds,
           );
-          return;
+          if (eventWithPhotos != null && mounted) {
+            Navigator.of(context).pushNamed(
+              AppRouter.memoryReady,
+              arguments: {'memoryId': eventWithPhotos},
+            );
+            return;
+          }
         }
       } catch (e) {
         // Failed to update event status - will retry on next load
@@ -395,6 +400,20 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
         );
       }
     }
+  }
+
+  Future<String?> _firstEventWithPhotos(List<String> eventIds) async {
+    for (final id in eventIds) {
+      try {
+        final photos = await ref.read(eventPhotosProvider(id).future);
+        if (photos.isNotEmpty) {
+          return id;
+        }
+      } catch (_) {
+        // Ignore read errors and continue checking next event.
+      }
+    }
+    return null;
   }
 
   @override

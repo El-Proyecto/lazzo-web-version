@@ -23,6 +23,7 @@ import '../../domain/entities/rsvp.dart';
 import '../../domain/entities/suggestion.dart';
 import '../../domain/entities/event_detail.dart';
 import '../providers/event_providers.dart';
+import '../providers/event_photo_providers.dart';
 import '../widgets/date_time_suggestions_widget.dart'
     show DateTimeSuggestionsWidget, DateTimeSuggestion;
 import '../widgets/date_time_suggestions_widget.dart' as datetime_widget;
@@ -121,7 +122,7 @@ class _EventPageState extends ConsumerState<EventPage> {
     }
   }
 
-  void _maybeNavigateForPhase(EventStatus status) {
+  Future<void> _maybeNavigateForPhase(EventStatus status) async {
     if (!mounted) return;
 
     // Only react to live phase transitions.
@@ -132,6 +133,14 @@ class _EventPageState extends ConsumerState<EventPage> {
     }
 
     if (_lastNavigatedStatus == status) return;
+
+    if (status == EventStatus.ended) {
+      final hasPhotos = await _eventHasPhotos();
+      if (!hasPhotos) {
+        return;
+      }
+    }
+
     _lastNavigatedStatus = status;
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -164,6 +173,15 @@ class _EventPageState extends ConsumerState<EventPage> {
           break;
       }
     });
+  }
+
+  Future<bool> _eventHasPhotos() async {
+    try {
+      final photos = await ref.read(eventPhotosProvider(eventId).future);
+      return photos.isNotEmpty;
+    } catch (_) {
+      return false;
+    }
   }
 
   /// Helper to replace current user's name with "You"

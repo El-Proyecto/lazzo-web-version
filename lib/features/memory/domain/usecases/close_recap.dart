@@ -4,8 +4,7 @@ import '../repositories/memory_repository.dart';
 ///
 /// Requirements:
 /// - Host only
-/// - At least one photo must exist
-/// - If no cover set, first photo becomes cover automatically
+/// - If photos exist and no cover is set, first photo becomes cover automatically
 /// - Status changes from 'recap' to 'ended'
 class CloseRecap {
   final MemoryRepository _repository;
@@ -13,7 +12,7 @@ class CloseRecap {
   CloseRecap(this._repository);
 
   /// Close recap phase for an event
-  /// Returns true if successful, throws exception if validation fails
+  /// Returns true if successful
   Future<bool> call(String eventId) async {
     return _repository.closeRecap(eventId);
   }
