@@ -183,13 +183,18 @@ class _InviteBottomSheetState extends State<InviteBottomSheet> {
                       final shareContent =
                           _selectedTab == 0 ? 'qr_code' : 'card';
                       try {
-                        await SharePlus.instance.share(
-                          ShareParams(
-                            text:
-                                'Join my ${widget.entityType} "${widget.entityName}" on Lazzo!\n\n${widget.inviteUrl}',
-                            subject: 'Join ${widget.entityName} on Lazzo',
-                          ),
-                        );
+                        // Card: só o URL. No WhatsApp o destinatário vê o *link preview* (imagem OG +
+                        // título clicável) — isso é gerado pelo WhatsApp ao processar o link, não
+                        // pela pré-visualização do sistema de partilha.
+                        final shareParams = _selectedTab == 1
+                            ? ShareParams(text: widget.inviteUrl)
+                            : ShareParams(
+                                text:
+                                    'Join my ${widget.entityType} "${widget.entityName}" on Lazzo!\n\n${widget.inviteUrl}',
+                                subject:
+                                    'Join ${widget.entityName} on Lazzo',
+                              );
+                        await SharePlus.instance.share(shareParams);
                         AnalyticsService.track('invite_link_shared',
                             properties: {
                               if (widget.eventId != null)
