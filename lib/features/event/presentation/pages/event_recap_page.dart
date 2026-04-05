@@ -129,23 +129,46 @@ class _EventRecapPageState extends ConsumerState<EventRecapPage> {
             recapAutoEnd.difference(DateTime.now()).inMinutes / 60.0;
       }
 
-      await ref.read(closeRecapUseCaseProvider).call(widget.eventId);
+      final didClose = await ref.read(closeRecapUseCaseProvider).call(
+            widget.eventId,
+          );
+      if (!didClose) {
+        throw Exception('Could not end recap at this time');
+      }
+
+      final photos = await ref.read(eventPhotosProvider(widget.eventId).future);
+      final hasPhotos = photos.isNotEmpty;
+
       // Track event_ended_manually with recap status
       AnalyticsService.track('event_ended_manually', properties: {
         'event_id': widget.eventId,
         'event_status': 'recap',
+        'memory_created': hasPhotos,
         if (hoursBeforeAutoEnd != null)
           'hours_before_auto_end':
               double.parse(hoursBeforeAutoEnd.toStringAsFixed(1)),
         'platform': 'ios',
       });
       ref.invalidate(eventDetailProvider(widget.eventId));
+      ref.invalidate(eventPhotosProvider(widget.eventId));
       if (!mounted) return;
-      // Navigate to Memory Ready page instead of just popping
+
+      if (hasPhotos) {
+        Navigator.of(context).pushNamedAndRemoveUntil(
+          AppRouter.memoryReady,
+          (route) => false,
+          arguments: {'memoryId': widget.eventId},
+        );
+        return;
+      }
+
+      TopBanner.showInfo(
+        context,
+        message: 'Recap ended. No memory was created because no photos were uploaded.',
+      );
       Navigator.of(context).pushNamedAndRemoveUntil(
-        AppRouter.memoryReady,
+        AppRouter.mainLayout,
         (route) => false,
-        arguments: {'memoryId': widget.eventId},
       );
     } catch (e) {
       if (!mounted) return;

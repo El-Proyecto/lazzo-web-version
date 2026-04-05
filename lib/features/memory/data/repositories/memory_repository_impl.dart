@@ -177,18 +177,14 @@ class MemoryRepositoryImpl implements MemoryRepository {
   @override
   Future<bool> closeRecap(String eventId) async {
     try {
-      // Step 1: Check if event has at least one photo
+      // Step 1: Load event photos.
       final photosData = await _memoryDataSource.getMemoryPhotos(eventId);
-      if (photosData.isEmpty) {
-        throw Exception(
-            'Cannot close recap: At least one photo is required to create a memory');
-      }
 
-      // Step 2: Check if cover is explicitly set
+      // Step 2: Check if cover is explicitly set.
       final memoryData = await _memoryDataSource.getMemoryByEventId(eventId);
       final coverPhotoId = memoryData?['cover_photo_id'] as String?;
 
-      // Step 3: If no cover set, use first photo as fallback
+      // Step 3: If no cover is set and photos exist, use first photo as fallback.
       if (coverPhotoId == null && photosData.isNotEmpty) {
         final firstPhotoId = photosData[0]['id'] as String;
         await _memoryDataSource.updateEventCover(
@@ -197,7 +193,7 @@ class MemoryRepositoryImpl implements MemoryRepository {
         );
       }
 
-      // Step 4: Update event status to 'ended'
+      // Step 4: Always close recap, even when there are no photos.
       await _memoryDataSource.closeRecapEarly(eventId);
 
       return true;

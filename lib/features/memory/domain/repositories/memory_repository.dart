@@ -20,7 +20,7 @@ abstract class MemoryRepository {
   Future<bool> removePhoto(String memoryId, String photoId);
 
   /// Close recap phase early (host only)
-  /// Requires at least one photo to create memory
-  /// Returns true if successful, false if validation fails
+  /// If photos exist and no cover is selected, first photo becomes cover.
+  /// Returns true if recap was closed, false if operation fails.
   Future<bool> closeRecap(String eventId);
 }

@@ -58,7 +58,7 @@ class RecapHostTimeControls extends StatelessWidget {
       builder: (context) => ConfirmationDialog(
         title: 'End Recap Now',
         message:
-            'Are you sure you want to end the recap phase? The memory will be finalized with the current photos.',
+            'Are you sure you want to end the recap phase now? If no photos were uploaded, no memory will be created.',
         confirmText: 'End Recap',
         cancelText: 'Cancel',
         isDestructive: true,
