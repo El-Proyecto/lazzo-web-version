@@ -110,7 +110,11 @@ class AppRouter {
     event: (context) {
       final args =
           ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
-      return EventPage(eventId: args?['eventId'] ?? 'event-1');
+      return EventPage(
+        eventId: args?['eventId'] ?? 'event-1',
+        showExpirationWarningOnOpen:
+            args?['showExpirationWarningOnOpen'] as bool? ?? true,
+      );
     },
     eventLiving: (context) {
       final args =

@@ -23,6 +23,7 @@ import '../../domain/entities/rsvp.dart';
 import '../../domain/entities/suggestion.dart';
 import '../../domain/entities/event_detail.dart';
 import '../providers/event_providers.dart';
+import '../providers/event_photo_providers.dart';
 import '../widgets/date_time_suggestions_widget.dart'
     show DateTimeSuggestionsWidget, DateTimeSuggestion;
 import '../widgets/date_time_suggestions_widget.dart' as datetime_widget;
@@ -42,8 +43,13 @@ import '../../../../services/analytics_service.dart';
 /// Displays all event information and interactions
 class EventPage extends ConsumerStatefulWidget {
   final String eventId;
+  final bool showExpirationWarningOnOpen;
 
-  const EventPage({super.key, required this.eventId});
+  const EventPage({
+    super.key,
+    required this.eventId,
+    this.showExpirationWarningOnOpen = true,
+  });
 
   @override
   ConsumerState<EventPage> createState() => _EventPageState();
@@ -62,6 +68,9 @@ class _EventPageState extends ConsumerState<EventPage> {
   // Cache isHost status to prevent flicker during operations
   bool? _cachedIsHost;
 
+  // Prevent repeated navigations when the provider updates multiple times.
+  EventStatus? _lastNavigatedStatus;
+
   // Periodic timer to refresh guest RSVP counts (fallback for Realtime)
   Timer? _guestRsvpRefreshTimer;
 
@@ -75,7 +84,9 @@ class _EventPageState extends ConsumerState<EventPage> {
     // Setup Realtime subscription for unread count badge updates
     WidgetsBinding.instance.addPostFrameCallback((_) {
       // Check if we need to show expiration warning
-      _checkAndShowExpirationWarning();
+      if (widget.showExpirationWarningOnOpen) {
+        _checkAndShowExpirationWarning();
+      }
     });
 
     // Listen to scroll to show/hide title in app bar
@@ -111,6 +122,68 @@ class _EventPageState extends ConsumerState<EventPage> {
     }
   }
 
+  Future<void> _maybeNavigateForPhase(EventStatus status) async {
+    if (!mounted) return;
+
+    // Only react to live phase transitions.
+    if (status != EventStatus.living &&
+        status != EventStatus.recap &&
+        status != EventStatus.ended) {
+      return;
+    }
+
+    if (_lastNavigatedStatus == status) return;
+
+    if (status == EventStatus.ended) {
+      final hasPhotos = await _eventHasPhotos();
+      if (!hasPhotos) {
+        return;
+      }
+    }
+
+    _lastNavigatedStatus = status;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+
+      final args = {'eventId': eventId};
+      switch (status) {
+        case EventStatus.living:
+          Navigator.pushReplacementNamed(
+            context,
+            AppRouter.eventLiving,
+            arguments: args,
+          );
+          break;
+        case EventStatus.recap:
+          Navigator.pushReplacementNamed(
+            context,
+            AppRouter.eventRecap,
+            arguments: args,
+          );
+          break;
+        case EventStatus.ended:
+          Navigator.pushReplacementNamed(
+            context,
+            AppRouter.memoryReady,
+            arguments: {'memoryId': eventId},
+          );
+          break;
+        default:
+          break;
+      }
+    });
+  }
+
+  Future<bool> _eventHasPhotos() async {
+    try {
+      final photos = await ref.read(eventPhotosProvider(eventId).future);
+      return photos.isNotEmpty;
+    } catch (_) {
+      return false;
+    }
+  }
+
   /// Helper to replace current user's name with "You"
   String _getUserDisplayName(
       String userId, String userName, String? currentUserId) {
@@ -132,12 +205,12 @@ class _EventPageState extends ConsumerState<EventPage> {
       // Only show if event has a start date
       if (event.startDateTime == null) return;
 
-      // Check if less than 30 minutes until event starts
+      // Check if less than 60 minutes (1 hour) until event starts
       final now = DateTime.now();
       final minutesUntilStart = event.startDateTime!.difference(now).inMinutes;
 
-      // Show warning if less than 30 minutes and event hasn't started yet
-      if (minutesUntilStart > 0 && minutesUntilStart <= 30 && mounted) {
+      // Show warning if less than 60 minutes and event hasn't started yet
+      if (minutesUntilStart > 0 && minutesUntilStart <= 60 && mounted) {
         _showExpirationWarningDialog(event);
       }
     } catch (e) {
@@ -347,6 +420,14 @@ class _EventPageState extends ConsumerState<EventPage> {
 
   @override
   Widget build(BuildContext context) {
+    // Navigate automatically when the backend moves the event through phases.
+    // `ref.listen` must be registered during build in Consumer widgets.
+    ref.listen(eventDetailProvider(eventId), (prev, next) {
+      next.whenOrNull(
+        data: (event) => _maybeNavigateForPhase(event.status),
+      );
+    });
+
     // Ensure Realtime refresh is active on this page (not just Home)
     ref.watch(realtimeRefreshProvider);
 
@@ -1388,9 +1469,23 @@ class _EventPageState extends ConsumerState<EventPage> {
             final appMaybeCount =
                 rsvps.where((r) => r.status == RsvpStatus.maybe).length;
 
-            // Derive web guest counts from the list (single source of truth)
+            // Build set of app user emails for deduplication
+            final appUserEmails = <String>{};
+            for (final rsvp in rsvps) {
+              if (rsvp.userEmail != null && rsvp.userEmail!.isNotEmpty) {
+                appUserEmails.add(rsvp.userEmail!.trim().toLowerCase());
+              }
+            }
+
+            // Derive web guest counts, excluding duplicates by email
             int webGoing = 0, webNotGoing = 0, webMaybe = 0;
             for (final g in guestList) {
+              final guestEmail =
+                  (g['guest_phone'] as String?)?.trim().toLowerCase() ?? '';
+              // Skip if this web guest's email matches an app user's email
+              if (guestEmail.isNotEmpty && appUserEmails.contains(guestEmail)) {
+                continue;
+              }
               switch (g['rsvp'] as String?) {
                 case 'going':
                   webGoing++;
@@ -1531,8 +1626,22 @@ class _EventPageState extends ConsumerState<EventPage> {
     final appMaybeCount =
         rsvps.where((r) => r.status == RsvpStatus.maybe).length;
 
+    // Build set of app user emails for deduplication
+    final appUserEmails = <String>{};
+    for (final rsvp in rsvps) {
+      if (rsvp.userEmail != null && rsvp.userEmail!.isNotEmpty) {
+        appUserEmails.add(rsvp.userEmail!.trim().toLowerCase());
+      }
+    }
+
+    // Derive web guest counts, excluding duplicates by email
     int webGoing = 0, webNotGoing = 0, webMaybe = 0;
     for (final g in guestList) {
+      final guestEmail =
+          (g['guest_phone'] as String?)?.trim().toLowerCase() ?? '';
+      if (guestEmail.isNotEmpty && appUserEmails.contains(guestEmail)) {
+        continue;
+      }
       switch (g['rsvp'] as String?) {
         case 'going':
           webGoing++;

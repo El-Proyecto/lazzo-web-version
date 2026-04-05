@@ -14,26 +14,26 @@ class RsvpRemoteDataSource {
     if (storagePath == null || storagePath.isEmpty) {
       return '';
     }
-    
+
     // Already a full URL
-    if (storagePath.startsWith('http://') || storagePath.startsWith('https://')) {
+    if (storagePath.startsWith('http://') ||
+        storagePath.startsWith('https://')) {
       return storagePath;
     }
-    
+
     try {
       // Normalize path - remove leading slash if present
-      final normalizedPath = storagePath.startsWith('/') 
-          ? storagePath.substring(1) 
-          : storagePath;
-      
+      final normalizedPath =
+          storagePath.startsWith('/') ? storagePath.substring(1) : storagePath;
+
       // Create signed URL (valid for 1 hour)
       final signedUrl = await _supabaseClient.storage
           .from(_avatarBucketName)
           .createSignedUrl(normalizedPath, 3600);
-      
+
       return signedUrl;
     } catch (e) {
-return '';
+      return '';
     }
   }
 
@@ -42,7 +42,8 @@ return '';
     if (json['user'] != null && json['user'] is Map) {
       final user = json['user'] as Map<String, dynamic>;
       if (user['avatar_url'] != null) {
-        user['avatar_url'] = await _getSignedAvatarUrl(user['avatar_url'] as String);
+        user['avatar_url'] =
+            await _getSignedAvatarUrl(user['avatar_url'] as String);
       }
     }
   }
@@ -52,27 +53,23 @@ return '';
   /// Uses existing event_participants table
   Future<List<RsvpModel>> getEventRsvps(String eventId) async {
     try {
-      final response = await _supabaseClient
-          .from('event_participants')
-          .select('''
+      final response =
+          await _supabaseClient.from('event_participants').select('''
             user_id,
             pevent_id,
             rsvp,
             confirmed_at,
-            user:user_id(id, name, avatar_url)
-          ''')
-          .eq('pevent_id', eventId)
-          .order('confirmed_at', ascending: false);
+            user:user_id(id, name, avatar_url, email)
+          ''').eq('pevent_id', eventId).order('confirmed_at', ascending: false);
 
       // Convert avatar URLs from storage paths to signed URLs
       for (final json in response as List) {
         await _convertAvatarUrl(json as Map<String, dynamic>);
       }
 
-      final models = (response as List)
-          .map((json) => RsvpModel.fromJson(json))
-          .toList();
-      
+      final models =
+          (response as List).map((json) => RsvpModel.fromJson(json)).toList();
+
       return models;
     } on PostgrestException catch (e) {
       throw Exception('Failed to get event RSVPs: ${e.message}');
@@ -84,18 +81,14 @@ return '';
   /// Get user's RSVP for an event
   Future<RsvpModel?> getUserRsvp(String eventId, String userId) async {
     try {
-      final response = await _supabaseClient
-          .from('event_participants')
-          .select('''
+      final response =
+          await _supabaseClient.from('event_participants').select('''
             user_id,
             pevent_id,
             rsvp,
             confirmed_at,
-            user:user_id(id, name, avatar_url)
-          ''')
-          .eq('pevent_id', eventId)
-          .eq('user_id', userId)
-          .maybeSingle();
+            user:user_id(id, name, avatar_url, email)
+          ''').eq('pevent_id', eventId).eq('user_id', userId).maybeSingle();
 
       if (response == null) return null;
 
@@ -118,23 +111,18 @@ return '';
     String status,
   ) async {
     try {
- 
-      final response = await _supabaseClient
-          .from('event_participants')
-          .upsert({
-            'pevent_id': eventId,
-            'user_id': userId,
-            'rsvp': status,
-            'confirmed_at': DateTime.now().toIso8601String(),
-          })
-          .select('''
+      final response = await _supabaseClient.from('event_participants').upsert({
+        'pevent_id': eventId,
+        'user_id': userId,
+        'rsvp': status,
+        'confirmed_at': DateTime.now().toIso8601String(),
+      }).select('''
             user_id,
             pevent_id,
             rsvp,
             confirmed_at,
-            user:user_id(id, name, avatar_url)
-          ''')
-          .single();
+            user:user_id(id, name, avatar_url, email)
+          ''').single();
 
       // Convert avatar URL from storage path to signed URL
       await _convertAvatarUrl(response);
@@ -160,7 +148,7 @@ return '';
             pevent_id,
             rsvp,
             confirmed_at,
-            user:user_id(id, name, avatar_url)
+            user:user_id(id, name, avatar_url, email)
           ''')
           .eq('pevent_id', eventId)
           .eq('rsvp', status)

@@ -93,14 +93,20 @@ class MemoryDataSource {
   /// Changes event status from 'recap' to 'ended'
   Future<void> closeRecapEarly(String eventId) async {
     try {
-      await _client
+      final updated = await _client
           .from('events')
           .update({
             'status': 'ended',
             'updated_at': DateTime.now().toIso8601String(),
           })
           .eq('id', eventId)
-          .eq('status', 'recap'); // Only update if currently in recap
+          .eq('status', 'recap')
+          .select('id')
+          .maybeSingle(); // Only update if currently in recap
+
+      if (updated == null) {
+        throw Exception('Failed to close recap: event is not in recap phase');
+      }
     } on PostgrestException catch (e) {
       throw Exception('Failed to close recap: ${e.message}');
     }

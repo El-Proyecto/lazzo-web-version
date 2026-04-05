@@ -183,9 +183,8 @@ class _InviteBottomSheetState extends State<InviteBottomSheet> {
                       final shareContent =
                           _selectedTab == 0 ? 'qr_code' : 'card';
                       try {
-                        // Card: só o URL. No WhatsApp o destinatário vê o *link preview* (imagem OG +
-                        // título clicável) — isso é gerado pelo WhatsApp ao processar o link, não
-                        // pela pré-visualização do sistema de partilha.
+                        // Card tab: share only the invite URL so WhatsApp/Telegram show the
+                        // link preview image without a second line of body text under it.
                         final shareParams = _selectedTab == 1
                             ? ShareParams(text: widget.inviteUrl)
                             : ShareParams(

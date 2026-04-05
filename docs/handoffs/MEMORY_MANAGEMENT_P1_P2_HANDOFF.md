@@ -955,7 +955,7 @@ For questions about the P1 implementation or clarification on P2 requirements:
 ## 🔗 Related Documentation
 
 - **Photo Layout Sizes:** `/RELEVANT_FILES/photos_layout_sizes.md`
-- **Architecture Guide:** `/agents.md` and `/README.md`
+- **Architecture Guide:** `agents.md` and `README.md`
 - **Storage Service:** `/lib/services/storage_service.dart`
 - **Image Compression:** `/lib/shared/utils/image_compression_service.dart`
 

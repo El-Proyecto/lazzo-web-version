@@ -643,7 +643,7 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
 
   // LAZZO 2.0: _createNewGroup method removed — events are standalone, no group creation needed
 
-  void _onEventCreated(String eventId) async {
+  void _onEventCreated(String? eventId) async {
     // Clear draft since event is being created
     await _draftService.clearDraft();
 
@@ -651,15 +651,18 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
     // The repository creates the RSVP asynchronously, so we wait a bit
     await Future.delayed(const Duration(milliseconds: 300));
 
-    // Invalidate user RSVP provider to ensure fresh data load
-    // This guarantees the creator's automatic "Yes" vote is shown
-    ref.invalidate(userRsvpProvider(eventId));
+    // If we have a valid eventId, invalidate event-specific providers
+    if (eventId != null && eventId.isNotEmpty) {
+      // Invalidate user RSVP provider to ensure fresh data load
+      // This guarantees the creator's automatic "Yes" vote is shown
+      ref.invalidate(userRsvpProvider(eventId));
 
-    // Also invalidate event RSVPs provider for vote counts
-    ref.invalidate(eventRsvpsProvider(eventId));
+      // Also invalidate event RSVPs provider for vote counts
+      ref.invalidate(eventRsvpsProvider(eventId));
 
-    // Also invalidate event detail provider to refresh counts
-    ref.invalidate(eventDetailProvider(eventId));
+      // Also invalidate event detail provider to refresh counts
+      ref.invalidate(eventDetailProvider(eventId));
+    }
 
     // Invalidate Home providers to show new event immediately
     ref.invalidate(nextEventControllerProvider);
@@ -667,15 +670,14 @@ class _CreateEventPageState extends ConsumerState<CreateEventPage> {
     ref.invalidate(homeEventsControllerProvider);
     ref.invalidate(todosControllerProvider);
 
-    // Navigate to event detail page with the created event ID
-    // Use pushReplacementNamed to replace CreateEvent with Event page
-    // This way, back button from Event goes to Home (which is still in the stack)
+    // Navigate back to the main layout (home tab) with success banner.
+    // Event-specific arguments are only passed when we have a valid ID.
     if (mounted) {
       Navigator.of(context).pushNamedAndRemoveUntil(
         '/main',
         (Route<dynamic> route) => false,
         arguments: {
-          'eventId': eventId,
+          if (eventId != null && eventId.isNotEmpty) 'eventId': eventId,
           'showSuccessBanner': true,
           'eventName': _eventName.isEmpty ? 'Untitled Event' : _eventName,
         },

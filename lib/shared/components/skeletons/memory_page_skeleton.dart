@@ -8,7 +8,7 @@ import 'shimmer_effect.dart';
 /// 1. Subtitle (location • date)
 /// 2. Avatar row
 /// 3. Stats text
-/// 4. Cover mosaic (hero photo + side photos)
+/// 4. Cover mosaic (single full-width hero, 16:9)
 /// 5. Photo grid rows
 class MemoryPageSkeleton extends StatelessWidget {
   const MemoryPageSkeleton({super.key});
@@ -16,6 +16,10 @@ class MemoryPageSkeleton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
+    final coverWidth = screenWidth - Insets.screenH * 2;
+    final viewportH = MediaQuery.of(context).size.height;
+    final baseHeight = coverWidth / 16 * 9;
+    final coverHeight = baseHeight.clamp(viewportH * 0.36, viewportH * 0.42);
 
     return ShimmerEffect(
       child: SingleChildScrollView(
@@ -61,50 +65,15 @@ class MemoryPageSkeleton extends StatelessWidget {
             const SizedBox(height: Gaps.md),
 
             // ── Cover Mosaic Skeleton ──
-            // Hero photo (large) + 2 side photos
+            // Single full-width hero (matches CoverMosaic single-hero)
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 0),
-              child: SizedBox(
-                height: screenWidth * 0.75,
-                child: Row(
-                  children: [
-                    // Hero photo (2/3 width)
-                    Expanded(
-                      flex: 2,
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF2B2B2B),
-                          borderRadius: BorderRadius.circular(2),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 2),
-                    // Side photos column (1/3 width)
-                    Expanded(
-                      flex: 1,
-                      child: Column(
-                        children: [
-                          Expanded(
-                            child: Container(
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF2B2B2B),
-                                borderRadius: BorderRadius.circular(2),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Expanded(
-                            child: Container(
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF2B2B2B),
-                                borderRadius: BorderRadius.circular(2),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
+              padding: const EdgeInsets.symmetric(horizontal: Insets.screenH),
+              child: Container(
+                width: coverWidth,
+                height: coverHeight,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF2B2B2B),
+                  borderRadius: BorderRadius.circular(16),
                 ),
               ),
             ),

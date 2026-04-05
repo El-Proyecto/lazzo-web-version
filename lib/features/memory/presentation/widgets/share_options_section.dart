@@ -60,6 +60,8 @@ class ShareOptionsSection extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _ShareOption(
+                label: 'Instagram Story',
+                onPressed: onInstagramPressed,
                 child: _BrandIconContainer(
                   gradient: const LinearGradient(
                     begin: Alignment.topRight,
@@ -83,10 +85,10 @@ class ShareOptionsSection extends StatelessWidget {
                     height: 24,
                   ),
                 ),
-                label: 'Instagram Story',
-                onPressed: onInstagramPressed,
               ),
               _ShareOption(
+                label: 'WhatsApp',
+                onPressed: onWhatsAppPressed,
                 child: _BrandIconContainer(
                   color: const Color(0xFF25D366),
                   child: SvgPicture.string(
@@ -95,22 +97,20 @@ class ShareOptionsSection extends StatelessWidget {
                     height: 24,
                   ),
                 ),
-                label: 'WhatsApp',
-                onPressed: onWhatsAppPressed,
               ),
               _ShareOption(
+                label: 'Save',
+                onPressed: onSavePressed,
                 child: const _MaterialIconContainer(
                   icon: Icons.download_rounded,
                 ),
-                label: 'Save',
-                onPressed: onSavePressed,
               ),
               _ShareOption(
+                label: 'More',
+                onPressed: onMorePressed,
                 child: const _MaterialIconContainer(
                   icon: Icons.ios_share_rounded,
                 ),
-                label: 'More',
-                onPressed: onMorePressed,
               ),
             ],
           ),

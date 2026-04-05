@@ -158,6 +158,40 @@ class _HomeEventModel {
         return [];
       }
 
+      // Fetch web guests (invite flow) so the bottom sheet lists all participants.
+      // Web guests have no app user account, so we synthesize a stable userId.
+      final guestRows = await supabaseClient
+          .from('event_guest_rsvps')
+          .select('id, guest_name, guest_phone, rsvp')
+          .eq('event_id', id);
+
+      final webGuestPhotos = <ParticipantPhoto>[];
+      for (final row in guestRows as List<dynamic>) {
+        if (row is! Map<String, dynamic>) continue;
+
+        final guestRsvp = (row['rsvp'] as String?)?.toLowerCase() ?? '';
+        final isGoing = guestRsvp != 'not_going' &&
+            guestRsvp != 'no' &&
+            guestRsvp != 'maybe' &&
+            guestRsvp != 'cancelled';
+
+        if (!isGoing) continue;
+
+        final guestId = row['id']?.toString();
+        if (guestId == null || guestId.isEmpty) continue;
+
+        final guestName = row['guest_name'] as String? ?? 'Guest';
+
+        webGuestPhotos.add(
+          ParticipantPhoto(
+            userId: 'guest_$guestId',
+            userName: guestName.isNotEmpty ? guestName : 'Guest',
+            userAvatar: null,
+            photoCount: 0,
+          ),
+        );
+      }
+
       // Query to get photo count by participant
       final response = await supabaseClient
           .from('event_photos')
@@ -182,7 +216,7 @@ class _HomeEventModel {
             photoCount: 0,
           ));
         }
-        return zeroPhotoList;
+        return [...zeroPhotoList, ...webGuestPhotos];
       }
 
       // ✅ OPTIMIZATION: Collect all unique avatar paths first
@@ -256,6 +290,13 @@ class _HomeEventModel {
           userAvatar: avatarUrl,
           photoCount: 0,
         );
+      }
+
+      // Include all web guests with 0 photos (not yet in map)
+      for (final guest in webGuestPhotos) {
+        if (!participantsMap.containsKey(guest.userId)) {
+          participantsMap[guest.userId] = guest;
+        }
       }
 
       // Sort: participants with photos first, then 0-photo participants

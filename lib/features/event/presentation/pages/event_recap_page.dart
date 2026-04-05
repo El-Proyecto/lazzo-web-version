@@ -8,6 +8,7 @@ import '../../../../shared/components/common/top_banner.dart';
 import '../../../../shared/components/sections/event_header.dart';
 import '../../../../shared/components/inputs/photo_selector.dart';
 import '../../../../shared/components/widgets/location_widget.dart';
+import '../../../../shared/components/widgets/event_details_widget.dart';
 import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/themes/colors.dart';
 import '../providers/event_providers.dart';
@@ -98,7 +99,7 @@ class _EventRecapPageState extends ConsumerState<EventRecapPage> {
         if (photoUrl != null) {
           if (context.mounted) {
             TopBanner.showSuccess(context,
-                message: 'Photo uploaded successfully!');
+                message: 'Photos uploaded successfully!');
           }
           ref.invalidate(eventDetailProvider(widget.eventId));
           ref.invalidate(eventPhotosProvider(widget.eventId));
@@ -128,29 +129,50 @@ class _EventRecapPageState extends ConsumerState<EventRecapPage> {
             recapAutoEnd.difference(DateTime.now()).inMinutes / 60.0;
       }
 
-      await ref.read(closeRecapUseCaseProvider).call(widget.eventId);
+      final didClose = await ref.read(closeRecapUseCaseProvider).call(
+            widget.eventId,
+          );
+      if (!didClose) {
+        throw Exception('Could not end recap at this time');
+      }
+
+      final photos = await ref.read(eventPhotosProvider(widget.eventId).future);
+      final hasPhotos = photos.isNotEmpty;
+
       // Track event_ended_manually with recap status
       AnalyticsService.track('event_ended_manually', properties: {
         'event_id': widget.eventId,
         'event_status': 'recap',
+        'memory_created': hasPhotos,
         if (hoursBeforeAutoEnd != null)
           'hours_before_auto_end':
               double.parse(hoursBeforeAutoEnd.toStringAsFixed(1)),
         'platform': 'ios',
       });
       ref.invalidate(eventDetailProvider(widget.eventId));
-      if (context.mounted) {
-        // Navigate to Memory Ready page instead of just popping
+      ref.invalidate(eventPhotosProvider(widget.eventId));
+      if (!mounted) return;
+
+      if (hasPhotos) {
         Navigator.of(context).pushNamedAndRemoveUntil(
           AppRouter.memoryReady,
           (route) => false,
           arguments: {'memoryId': widget.eventId},
         );
+        return;
       }
+
+      TopBanner.showInfo(
+        context,
+        message: 'Recap ended. No memory was created because no photos were uploaded.',
+      );
+      Navigator.of(context).pushNamedAndRemoveUntil(
+        AppRouter.mainLayout,
+        (route) => false,
+      );
     } catch (e) {
-      if (context.mounted) {
-        TopBanner.showError(context, message: 'Failed to end recap: $e');
-      }
+      if (!mounted) return;
+      TopBanner.showError(context, message: 'Failed to end recap: $e');
     }
   }
 
@@ -277,6 +299,13 @@ class _EventRecapPageState extends ConsumerState<EventRecapPage> {
                     },
                   ),
                   const SizedBox(height: Gaps.lg),
+
+                  // Event details/description (if present)
+                  if (event.description != null &&
+                      event.description!.isNotEmpty) ...[
+                    EventDetailsWidget(details: event.description!),
+                    const SizedBox(height: Gaps.lg),
+                  ],
 
                   // Location Widget (if location is set)
                   if (event.location != null)

@@ -8,6 +8,7 @@ import '../../../../shared/components/common/top_banner.dart';
 import '../../../../shared/components/sections/event_header.dart';
 import '../../../../shared/components/inputs/photo_selector.dart';
 import '../../../../shared/components/widgets/location_widget.dart';
+import '../../../../shared/components/widgets/event_details_widget.dart';
 import '../../../../shared/constants/spacing.dart';
 import '../../../../shared/themes/colors.dart';
 import '../../../event_invites/presentation/providers/event_invite_providers.dart';
@@ -98,7 +99,7 @@ class _EventLivingPageState extends ConsumerState<EventLivingPage> {
         if (photoUrl != null) {
           if (context.mounted) {
             TopBanner.showSuccess(context,
-                message: 'Photo uploaded successfully!');
+                message: 'Photos uploaded successfully!');
           }
           ref.invalidate(eventDetailProvider(widget.eventId));
           ref.invalidate(eventPhotosProvider(widget.eventId));
@@ -316,6 +317,13 @@ class _EventLivingPageState extends ConsumerState<EventLivingPage> {
                 const SizedBox(height: Gaps.lg),
 
                 // LAZZO 2.0: Expenses widget removed
+
+                // Event details/description (if present)
+                if (event.description != null &&
+                    event.description!.isNotEmpty) ...[
+                  EventDetailsWidget(details: event.description!),
+                  const SizedBox(height: Gaps.lg),
+                ],
 
                 // Location Widget (if location is set)
                 if (event.location != null)

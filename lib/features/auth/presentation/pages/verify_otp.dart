@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../data/datasources/auth_remote_datasource.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../widgets/otp_verification/otp_title.dart';
@@ -11,7 +10,8 @@ import '../widgets/otp_verification/verify_footer.dart';
 import '../widgets/otp_verification/resend_otp_button.dart';
 import '../../../../shared/themes/colors.dart';
 import '../../../../shared/constants/spacing.dart';
-import '../../../../services/analytics_service.dart';
+import '../../presentation/providers/auth_provider.dart';
+import '../../presentation/utils/auth_analytics.dart';
 
 class OtpVerificationPage extends ConsumerStatefulWidget {
   const OtpVerificationPage({super.key, required this.email, this.name});
@@ -28,13 +28,6 @@ class _OtpVerificationPageState extends ConsumerState<OtpVerificationPage> {
   String _code = '';
   String? _bannerMessage;
   bool _busy = false;
-  late final AuthRemoteDatasource _authDatasource;
-
-  @override
-  void initState() {
-    super.initState();
-    _authDatasource = AuthRemoteDatasource(Supabase.instance.client);
-  }
 
   Future<void> _resend() async {
     if (_busy) return;
@@ -45,7 +38,8 @@ class _OtpVerificationPageState extends ConsumerState<OtpVerificationPage> {
     });
 
     try {
-      await _authDatasource.register(widget.email);
+      // Usa o repositório de auth para reenviar OTP de signup
+      await ref.read(authRepositoryProvider).register(email: widget.email);
       setState(
         () => _bannerMessage = 'A new code has been sent to your email.',
       );
@@ -70,33 +64,25 @@ class _OtpVerificationPageState extends ConsumerState<OtpVerificationPage> {
     });
 
     try {
-      // Pass name directly to verifyOtp method
-      // isSignup: true because this is the signup flow (shouldCreateUser: true)
-      await _authDatasource.verifyOtp(
-        email: widget.email,
-        token: _code,
-        name: widget.name?.trim(),
-        isSignup: true,
-      );
+      // 1) Verifica OTP via repositório (signup, shouldCreateUser: true)
+      final user = await ref.read(authRepositoryProvider).verifyOtp(
+            email: widget.email,
+            otp: _code,
+            name: widget.name?.trim(),
+            isSignup: true,
+          );
 
-      // PostHog: identify new user (merge anonymous → authenticated)
-      final supabaseUser = Supabase.instance.client.auth.currentUser;
-      if (supabaseUser != null) {
-        await AnalyticsService.identify(
-          supabaseUser.id,
-          properties: {
-            if (supabaseUser.email != null) 'email': supabaseUser.email!,
-            'role': 'host',
-          },
+      // 2) Atualiza estado de sessão no provider (mantém consistente com login)
+      await ref.read(authProvider.notifier).getCurrentUser();
+
+      // 3) PostHog: identify novo utilizador + evento auth_completed
+      final domainUser = user ?? ref.read(authProvider).valueOrNull;
+      if (domainUser != null) {
+        await trackAuthCompleted(
+          user: domainUser,
+          isNewUser: true,
         );
-        await AnalyticsService.track('auth_completed', properties: {
-          'auth_type': 'email_passwordless',
-          'is_new_user': true,
-          'platform': 'ios',
-        });
       }
-
-      // Debug
 
       if (!mounted) return;
       Navigator.pushNamedAndRemoveUntil(context, '/main', (_) => false);
