@@ -226,6 +226,8 @@ class AuthWrapper extends ConsumerStatefulWidget {
 
 class _AuthWrapperState extends ConsumerState<AuthWrapper> {
   bool _pendingInviteProcessed = false;
+  bool _scheduledAuthNavigation = false;
+  bool _scheduledMainNavigation = false;
 
   @override
   Widget build(BuildContext context) {
@@ -234,18 +236,26 @@ class _AuthWrapperState extends ConsumerState<AuthWrapper> {
     return authState.when(
       loading: () => const AppLoadingScreen(),
       error: (error, stackTrace) {
-        // Em caso de erro, vai para a página de auth
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          Navigator.of(context).pushReplacementNamed(AppRouter.auth);
-        });
+        // Em caso de erro, vai para a página de auth (uma vez; evita filas de callbacks)
+        if (!_scheduledAuthNavigation) {
+          _scheduledAuthNavigation = true;
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (!mounted) return;
+            Navigator.of(context).pushReplacementNamed(AppRouter.auth);
+          });
+        }
         return const AppLoadingScreen();
       },
       data: (user) {
         // Se não está logado, vai para a página de auth
         if (user == null) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            Navigator.of(context).pushReplacementNamed(AppRouter.auth);
-          });
+          if (!_scheduledAuthNavigation) {
+            _scheduledAuthNavigation = true;
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (!mounted) return;
+              Navigator.of(context).pushReplacementNamed(AppRouter.auth);
+            });
+          }
           return const AppLoadingScreen();
         }
 
@@ -263,12 +273,19 @@ class _AuthWrapperState extends ConsumerState<AuthWrapper> {
           return const AppLoadingScreen();
         }
 
-        // Dados carregados, navega para mainLayout
-        // Also process any pending invite token (from deep link before auth)
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          Navigator.of(context).pushReplacementNamed(AppRouter.mainLayout);
-          _processPendingInvite();
-        });
+        // Dados carregados: substitui toda a pilha para o main shell (sem rota por baixo).
+        // Isto evita o gesto de voltar (ex.: swipe da esquerda no iOS) revelar o loading.
+        if (!_scheduledMainNavigation) {
+          _scheduledMainNavigation = true;
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (!mounted) return;
+            Navigator.of(context).pushNamedAndRemoveUntil(
+              AppRouter.mainLayout,
+              (route) => false,
+            );
+            _processPendingInvite();
+          });
+        }
 
         return const AppLoadingScreen();
       },
