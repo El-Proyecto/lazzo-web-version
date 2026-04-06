@@ -1,3 +1,4 @@
+import 'package:lazzo/core/utils/date_utils.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/rsvp_model.dart';
 
@@ -115,7 +116,7 @@ class RsvpRemoteDataSource {
         'pevent_id': eventId,
         'user_id': userId,
         'rsvp': status,
-        'confirmed_at': DateTime.now().toIso8601String(),
+        'confirmed_at': DateTime.now().toSupabaseIso8601String(),
       }).select('''
             user_id,
             pevent_id,

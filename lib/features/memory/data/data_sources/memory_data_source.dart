@@ -1,3 +1,4 @@
+import 'package:lazzo/core/utils/date_utils.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 /// Data source for memory operations with Supabase
@@ -97,7 +98,7 @@ class MemoryDataSource {
           .from('events')
           .update({
             'status': 'ended',
-            'updated_at': DateTime.now().toIso8601String(),
+            'updated_at': DateTime.now().toSupabaseIso8601String(),
           })
           .eq('id', eventId)
           .eq('status', 'recap')

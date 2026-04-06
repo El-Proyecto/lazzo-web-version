@@ -1,3 +1,4 @@
+import 'package:lazzo/core/utils/date_utils.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/home_event_model.dart';
 import '../../domain/entities/home_event.dart';
@@ -339,7 +340,7 @@ class HomeEventRemoteDataSource {
           'pevent_id': eventId,
           'user_id': userId,
           'rsvp': isGoing ? 'yes' : 'no',
-          'confirmed_at': DateTime.now().toIso8601String(),
+          'confirmed_at': DateTime.now().toSupabaseIso8601String(),
         },
         onConflict: 'pevent_id,user_id',
       );

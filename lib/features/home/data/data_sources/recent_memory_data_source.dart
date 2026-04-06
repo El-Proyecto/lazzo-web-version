@@ -1,3 +1,4 @@
+import 'package:lazzo/core/utils/date_utils.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 /// Data source for fetching recent memories from the last 30 days
@@ -45,7 +46,7 @@ class RecentMemoryDataSource {
           ''')
           .inFilter('id', eventIds)
           .inFilter('status', ['recap', 'ended'])
-          .gte('end_datetime', thirtyDaysAgo.toIso8601String())
+          .gte('end_datetime', thirtyDaysAgo.toSupabaseIso8601String())
           .order('end_datetime', ascending: false);
 
       final eventsList = (eventsResponse as List).cast<Map<String, dynamic>>();

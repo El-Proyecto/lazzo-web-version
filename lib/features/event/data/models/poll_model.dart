@@ -1,5 +1,7 @@
 // DTO models for Poll - maps Supabase JSON to/from domain entities
 
+import 'package:lazzo/core/utils/date_utils.dart';
+
 import '../../domain/entities/poll.dart';
 
 /// Poll DTO Model
@@ -47,7 +49,7 @@ class PollModel {
       'event_id': eventId,
       'type': type,
       'question': question,
-      'created_at': createdAt.toIso8601String(),
+      'created_at': createdAt.toSupabaseIso8601String(),
       'created_by': createdBy,
     };
   }

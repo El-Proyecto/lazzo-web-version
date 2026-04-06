@@ -1,3 +1,4 @@
+import 'package:lazzo/core/utils/date_utils.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../domain/entities/event.dart';
 import '../../domain/entities/event_history.dart';
@@ -86,7 +87,7 @@ class EventRepositoryImpl implements EventRepository {
             .from('event_participants')
             .update({
               'rsvp': 'yes',
-              'confirmed_at': DateTime.now().toIso8601String(),
+              'confirmed_at': DateTime.now().toSupabaseIso8601String(),
             })
             .eq('pevent_id', eventId)
             .eq('user_id', userId)
@@ -103,8 +104,8 @@ class EventRepositoryImpl implements EventRepository {
               .insert({
                 'event_id': eventId,
                 'created_by': userId,
-                'starts_at': event.startDateTime!.toIso8601String(),
-                'ends_at': event.endDateTime?.toIso8601String(),
+                'starts_at': event.startDateTime!.toSupabaseIso8601String(),
+                'ends_at': dateTimeToSupabaseIso8601String(event.endDateTime),
                 'is_initial':
                     true, // Mark as initial - won't trigger notification
               })

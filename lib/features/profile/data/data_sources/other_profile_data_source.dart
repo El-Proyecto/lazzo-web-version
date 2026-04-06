@@ -1,3 +1,4 @@
+import 'package:lazzo/core/utils/date_utils.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 /// Data source for fetching other user profiles and shared data from Supabase
@@ -198,7 +199,7 @@ class OtherProfileDataSource {
             'id, name, emoji, start_datetime, end_datetime, status, locations(display_name)')
         .inFilter('id', sharedEventIds)
         .inFilter('status', ['confirmed', 'living'])
-        .gte('start_datetime', DateTime.now().toIso8601String())
+        .gte('start_datetime', DateTime.now().toSupabaseIso8601String())
         .order('start_datetime', ascending: true)
         .limit(20);
 

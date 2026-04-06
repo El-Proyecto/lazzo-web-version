@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
+import 'package:lazzo/core/utils/date_utils.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../models/chat_message_model.dart';
@@ -295,7 +296,7 @@ class ChatRemoteDataSource {
         // Simple update to unpin
         await _supabaseClient.from('chat_messages').update({
           'is_pinned': false,
-          'updated_at': DateTime.now().toIso8601String()
+          'updated_at': DateTime.now().toSupabaseIso8601String()
         }).eq('id', messageId);
       }
     } on PostgrestException catch (e) {

@@ -1,3 +1,5 @@
+import 'package:lazzo/core/utils/date_utils.dart';
+
 import '../../domain/entities/event.dart';
 
 class EventModel {
@@ -52,12 +54,12 @@ class EventModel {
       'id': id,
       'name': name,
       'emoji': emoji,
-      'start_datetime': startDateTime?.toIso8601String(),
-      'end_datetime': endDateTime?.toIso8601String(),
+      'start_datetime': dateTimeToSupabaseIso8601String(startDateTime),
+      'end_datetime': dateTimeToSupabaseIso8601String(endDateTime),
       'location_id': locationId,
       'status': status,
       'created_by': createdBy,
-      'created_at': createdAt.toIso8601String(),
+      'created_at': createdAt.toSupabaseIso8601String(),
       'description': description,
     };
   }

@@ -1,3 +1,4 @@
+import 'package:lazzo/core/utils/date_utils.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 /// Remote data source for event operations using Supabase
@@ -65,8 +66,8 @@ class EventDataSource {
         .insert({
           'name': name,
           'emoji': emoji,
-          'start_datetime': startDateTime?.toIso8601String(),
-          'end_datetime': endDateTime?.toIso8601String(),
+          'start_datetime': dateTimeToSupabaseIso8601String(startDateTime),
+          'end_datetime': dateTimeToSupabaseIso8601String(endDateTime),
           'location_id': locationId,
           'status': finalStatus,
           'created_by': createdBy,
@@ -121,11 +122,11 @@ class EventDataSource {
       'name': name,
       'emoji': emoji,
       'description': description,
-      'start_datetime': startDateTime?.toIso8601String(),
-      'end_datetime': endDateTime?.toIso8601String(),
+      'start_datetime': dateTimeToSupabaseIso8601String(startDateTime),
+      'end_datetime': dateTimeToSupabaseIso8601String(endDateTime),
       'location_id': locationId,
       'status': finalStatus,
-      'updated_at': DateTime.now().toIso8601String(),
+      'updated_at': DateTime.now().toSupabaseIso8601String(),
     };
 
     try {

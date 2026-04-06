@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:lazzo/core/utils/date_utils.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'dart:io' show Platform;
 
@@ -47,7 +48,7 @@ class PushTokenService {
         'device_name': deviceName,
         'app_version': appVersion,
         'is_active': true,
-        'last_used_at': DateTime.now().toIso8601String(),
+        'last_used_at': DateTime.now().toSupabaseIso8601String(),
       }, onConflict: 'device_token,platform');
 
       debugPrint('[PushToken] Token registered successfully');
@@ -67,7 +68,7 @@ class PushTokenService {
           .from('user_push_tokens')
           .update({
             'is_active': false,
-            'updated_at': DateTime.now().toIso8601String()
+            'updated_at': DateTime.now().toSupabaseIso8601String()
           })
           .eq('user_id', userId)
           .eq('device_token', deviceToken);

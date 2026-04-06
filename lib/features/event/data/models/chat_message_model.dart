@@ -1,5 +1,7 @@
 // DTO model for ChatMessage - maps Supabase JSON to/from domain entity
 
+import 'package:lazzo/core/utils/date_utils.dart';
+
 import '../../domain/entities/chat_message.dart';
 
 /// Chat Message DTO Model
@@ -72,7 +74,7 @@ class ChatMessageModel {
       'event_id': eventId,
       'user_id': userId,
       'content': content,
-      'created_at': createdAt.toIso8601String(),
+      'created_at': createdAt.toSupabaseIso8601String(),
       'read': isReadBySomeone,
       'is_pinned': isPinned,
       'is_deleted': isDeleted,

@@ -1,5 +1,6 @@
 // Calls Supabase for profile operations
 
+import 'package:lazzo/core/utils/date_utils.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
@@ -106,7 +107,7 @@ class ProfileRemoteDataSource {
           .from('users')
           .update({
             'avatar_url': storagePath,
-            'updated_at': DateTime.now().toIso8601String(),
+            'updated_at': DateTime.now().toSupabaseIso8601String(),
           })
           .eq('id', user.id);
       
@@ -242,7 +243,7 @@ class ProfileRemoteDataSource {
           .from('users')
           .update({
             'avatar_url': null,
-            'updated_at': DateTime.now().toIso8601String(),
+            'updated_at': DateTime.now().toSupabaseIso8601String(),
           })
           .eq('id', user.id);
 

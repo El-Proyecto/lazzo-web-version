@@ -1,4 +1,6 @@
 import 'dart:io';
+
+import 'package:lazzo/core/utils/date_utils.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../services/storage_service.dart';
 
@@ -87,7 +89,7 @@ class MemoryPhotoDataSource {
             'url': storagePath, // Store path in 'url' field temporarily
             'storage_path': storagePath,
             'is_portrait': isPortrait,
-            'captured_at': DateTime.now().toIso8601String(),
+            'captured_at': DateTime.now().toSupabaseIso8601String(),
           })
           .select('id, storage_path')
           .single();

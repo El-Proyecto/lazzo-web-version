@@ -1,3 +1,4 @@
+import 'package:lazzo/core/utils/date_utils.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/suggestion_model.dart';
 
@@ -107,8 +108,8 @@ return '';
           .insert({
         'event_id': eventId,
         'created_by': userId, // Field: created_by
-        'starts_at': startDateTime.toIso8601String(), // Field: starts_at
-        'ends_at': endDateTime?.toIso8601String(), // Field: ends_at
+        'starts_at': startDateTime.toSupabaseIso8601String(), // Field: starts_at
+        'ends_at': dateTimeToSupabaseIso8601String(endDateTime), // Field: ends_at
       }).select('''
             id,
             event_id,

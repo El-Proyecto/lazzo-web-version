@@ -1,3 +1,5 @@
+import 'package:lazzo/core/utils/date_utils.dart';
+
 import '../../domain/entities/event_history.dart';
 
 /// DTO for event history data from Supabase
@@ -85,9 +87,9 @@ class EventHistoryModel {
       'id': id,
       'name': name,
       'emoji': emoji,
-      'start_datetime': startDateTime.toIso8601String(),
+      'start_datetime': startDateTime.toSupabaseIso8601String(),
       'location_id': locationId,
-      'created_at': createdAt.toIso8601String(),
+      'created_at': createdAt.toSupabaseIso8601String(),
       if (locationName != null)
         'locations': {
           'display_name': locationName,

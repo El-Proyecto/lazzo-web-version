@@ -1,4 +1,6 @@
 import 'dart:io';
+
+import 'package:lazzo/core/utils/date_utils.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:image/image.dart' as img;
 import '../../../../services/storage_service.dart';
@@ -44,7 +46,7 @@ class EventPhotoDataSource {
         'url':
             storagePath, // Store path, not URL — signed URLs generated on-demand
         'storage_path': storagePath,
-        'captured_at': capturedAt.toIso8601String(),
+        'captured_at': capturedAt.toSupabaseIso8601String(),
         'uploader_id': userId,
         'is_portrait': await _isPortrait(imageFile),
       };

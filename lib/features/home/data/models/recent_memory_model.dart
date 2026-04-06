@@ -1,3 +1,5 @@
+import 'package:lazzo/core/utils/date_utils.dart';
+
 /// Model for recent memory data from Supabase
 class RecentMemoryModel {
   final String id;
@@ -67,7 +69,7 @@ class RecentMemoryModel {
       'id': id,
       'name': eventName,
       'location': location,
-      'end_datetime': date.toIso8601String(),
+      'end_datetime': date.toSupabaseIso8601String(),
       'cover_storage_path': coverStoragePath,
     };
   }

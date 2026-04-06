@@ -1,5 +1,7 @@
 // DTO models for Suggestions - maps Supabase JSON to/from domain entities
 
+import 'package:lazzo/core/utils/date_utils.dart';
+
 import '../../domain/entities/suggestion.dart';
 
 /// Datetime Suggestion DTO Model
@@ -49,9 +51,9 @@ class SuggestionModel {
       'id': id,
       'event_id': eventId,
       'created_by': userId, // Field: created_by
-      'starts_at': startDateTime.toIso8601String(), // Field: starts_at
-      'ends_at': endDateTime?.toIso8601String(), // Field: ends_at
-      'created_at': createdAt.toIso8601String(),
+      'starts_at': startDateTime.toSupabaseIso8601String(), // Field: starts_at
+      'ends_at': dateTimeToSupabaseIso8601String(endDateTime), // Field: ends_at
+      'created_at': createdAt.toSupabaseIso8601String(),
     };
   }
 
@@ -139,7 +141,7 @@ class LocationSuggestionModel {
       'address': address,
       'latitude': latitude,
       'longitude': longitude,
-      'created_at': createdAt.toIso8601String(),
+      'created_at': createdAt.toSupabaseIso8601String(),
     };
   }
 
@@ -214,7 +216,7 @@ class SuggestionVoteModel {
     return {
       'option_id': optionId, // Field: option_id
       'user_id': userId,
-      'voted_at': votedAt.toIso8601String(), // Field: voted_at
+      'voted_at': votedAt.toSupabaseIso8601String(), // Field: voted_at
       'event_id': eventId,
     };
   }

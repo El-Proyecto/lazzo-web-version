@@ -1,3 +1,5 @@
+import 'package:lazzo/core/utils/date_utils.dart';
+
 import '../../domain/entities/notification_entity.dart';
 
 class NotificationModel {
@@ -82,7 +84,7 @@ class NotificationModel {
       'type': type,
       'category': category,
       'priority': priority,
-      'created_at': createdAt.toIso8601String(),
+      'created_at': createdAt.toSupabaseIso8601String(),
       'is_read': isRead,
       'action_text': actionText,
       'action_url': actionUrl,

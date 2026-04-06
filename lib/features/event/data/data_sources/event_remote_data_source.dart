@@ -1,3 +1,4 @@
+import 'package:lazzo/core/utils/date_utils.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/event_detail_model.dart';
 import '../../domain/entities/event_participant_entity.dart';
@@ -144,8 +145,8 @@ class EventRemoteDataSource {
       await _supabaseClient
           .from('events')
           .update({
-            'start_datetime': startDateTime.toIso8601String(),
-            'end_datetime': endDateTime?.toIso8601String(),
+            'start_datetime': startDateTime.toSupabaseIso8601String(),
+            'end_datetime': dateTimeToSupabaseIso8601String(endDateTime),
           })
           .eq('id', eventId)
           .select()
@@ -479,7 +480,7 @@ class EventRemoteDataSource {
 
       // Update event in database
       await _supabaseClient.from('events').update(
-          {'end_datetime': newEndTime.toIso8601String()}).eq('id', eventId);
+          {'end_datetime': newEndTime.toSupabaseIso8601String()}).eq('id', eventId);
 
       // CRITICAL: Send notifications to all participants (except host)
       try {
@@ -528,7 +529,7 @@ class EventRemoteDataSource {
 
       await _supabaseClient
           .from('events')
-          .update({'end_datetime': now.toIso8601String()}).eq('id', eventId);
+          .update({'end_datetime': now.toSupabaseIso8601String()}).eq('id', eventId);
 
       // Return updated event
       return await getEventDetail(eventId);

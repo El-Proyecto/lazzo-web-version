@@ -1,3 +1,5 @@
+import 'package:lazzo/core/utils/date_utils.dart';
+
 import '../../domain/entities/suggestion_entity.dart';
 
 /// Data Transfer Object for Suggestion
@@ -40,8 +42,8 @@ class SuggestionModel {
       'user_id': userId,
       'description': description,
       'status': status,
-      'created_at': createdAt.toIso8601String(),
-      if (updatedAt != null) 'updated_at': updatedAt!.toIso8601String(),
+      'created_at': createdAt.toSupabaseIso8601String(),
+      if (updatedAt != null) 'updated_at': updatedAt!.toSupabaseIso8601String(),
     };
   }
 

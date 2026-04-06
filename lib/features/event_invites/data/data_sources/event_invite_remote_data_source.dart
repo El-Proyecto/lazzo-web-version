@@ -1,3 +1,4 @@
+import 'package:lazzo/core/utils/date_utils.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/event_invite_link_model.dart';
 
@@ -55,7 +56,7 @@ class EventInviteRemoteDataSource {
               'token': first,
               'expires_at': DateTime.now()
                   .add(Duration(hours: expiresInHours))
-                  .toIso8601String(),
+                  .toSupabaseIso8601String(),
             };
           }
         } else if (response is Map<String, dynamic>) {
@@ -67,7 +68,7 @@ class EventInviteRemoteDataSource {
             'token': response,
             'expires_at': DateTime.now()
                 .add(Duration(hours: expiresInHours))
-                .toIso8601String(),
+                .toSupabaseIso8601String(),
           };
         }
       } catch (e) {

@@ -1,5 +1,7 @@
 // DTO model for RSVP - maps Supabase JSON to/from domain entity
 
+import 'package:lazzo/core/utils/date_utils.dart';
+
 import '../../domain/entities/rsvp.dart';
 
 /// RSVP DTO Model
@@ -49,7 +51,8 @@ class RsvpModel {
       'user_id': userId,
       'pevent_id': eventId,
       'rsvp': status,
-      if (confirmedAt != null) 'confirmed_at': confirmedAt!.toIso8601String(),
+      if (confirmedAt != null)
+        'confirmed_at': confirmedAt!.toSupabaseIso8601String(),
     };
   }
 

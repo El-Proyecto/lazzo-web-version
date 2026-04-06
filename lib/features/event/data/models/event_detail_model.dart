@@ -1,5 +1,7 @@
 // DTO model for EventDetail - maps Supabase JSON to/from domain entity
 
+import 'package:lazzo/core/utils/date_utils.dart';
+
 import '../../domain/entities/event_detail.dart';
 
 /// EventDetail DTO Model
@@ -71,14 +73,14 @@ class EventDetailModel {
       'id': id,
       'name': name,
       'emoji': emoji,
-      'start_datetime': startDateTime?.toIso8601String(),
-      'end_datetime': endDateTime?.toIso8601String(),
+      'start_datetime': dateTimeToSupabaseIso8601String(startDateTime),
+      'end_datetime': dateTimeToSupabaseIso8601String(endDateTime),
       'location_name': locationName,
       'location_address': locationAddress,
       'location_latitude': locationLatitude,
       'location_longitude': locationLongitude,
       'status': status,
-      'created_at': createdAt.toIso8601String(),
+      'created_at': createdAt.toSupabaseIso8601String(),
       'host_id': hostId,
       'description': description,
     };
