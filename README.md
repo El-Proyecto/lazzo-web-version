@@ -39,20 +39,20 @@ graph TD
         P[Riverpod Providers]
         UC[Use Cases]
         RI[Repository Interface]
-        FAKE[Fake Repository (default in DI)]
-        REAL[Supabase Repository (DI override)]
+        FAKE[Fake Repository\ndefault in DI]
+        REAL[Supabase Repository\nDI override]
     end
 
     subgraph Supabase Backend
-        DB[(PostgreSQL (RLS · Triggers))]
-        EDGE[Edge Functions (Deno · Cron)]
-        RT[Realtime (WebSocket)]
+        DB[(PostgreSQL\nRLS · Triggers)]
+        EDGE[Edge Functions\nDeno · Cron]
+        RT[Realtime\nWebSocket]
         STORE[Storage]
     end
 
     subgraph Web Guest App
-        NEXT[Next.js (RSC + Client)]
-        API[API Routes (service role)]
+        NEXT[Next.js \nRSC + Client]
+        API[API Routes\nservice role]
     end
 
     UI --> P --> UC --> RI
@@ -146,11 +146,11 @@ The web companion does not need to be running to use the app.
 ## Links
 
 - **Website:** [getlazzo.com](https://getlazzo.com/)
-- **Web companion repo:** [github.com/El-Proyecto/lazzo-invites-web](https://github.com/El-Proyecto/lazzo-invites-web)
+- **Web companion repo:** [github.com/joaomsgomes/lazzo-invites-web](https://github.com/joaomsgomes/lazzo-invites-web)
 - **TestFlight:** [Join the beta](https://testflight.apple.com/join/G8Q7wWbc)
 
 ---
 
-For the full product case study — problem, research, V1→V2 pivot, and learnings — see [`CASE_STUDY.md`](CASE_STUDY.md).
+For the full product case study (problem, research, V1→V2 pivot, and learnings) see [`CASE_STUDY.md`](CASE_STUDY.md).
 
 For architecture, feature development, and agent rules, see `AGENTS.md` and `.agents/`.

@@ -3,7 +3,7 @@
 **Plan fast, remember forever.**
 
 **Status:** Active beta — iOS (TestFlight) + Web — April 2026
-**Team:** Two engineers
+**Team:** Two 3rd year CS students at IST, Lisbon
 **Stack:** Flutter · Dart 3 · Riverpod · Supabase · Next.js · PostHog
 
 ---
@@ -86,7 +86,7 @@ Friends install because they trust you. They upload because they want to help. T
 ## Links
 
 - **App repository:** [github.com/El-Proyecto/lazzo-web-version](https://github.com/El-Proyecto/lazzo-web-version)
-- **Web repository:** [github.com/El-Proyecto/lazzo-invites-web](https://github.com/El-Proyecto/lazzo-invites-web)
+- **Web repository:** [github.com/joaomsgomes/lazzo-invites-web](https://github.com/joaomsgomes/lazzo-invites-web)
 - **Website:** [getlazzo.com](https://getlazzo.com)
 - **TestFlight:** Available on request — [realeventapp@gmail.com](mailto:realeventapp@gmail.com)
 
