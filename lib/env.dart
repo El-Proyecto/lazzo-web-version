@@ -1,6 +1,8 @@
+// Credentials are injected at build time via --dart-define.
+// For local development, set these in your IDE run configuration or .env file.
+// See .env.example for the required variable names.
+// Do NOT hardcode real values here.
 class Env {
-  static const supabaseUrl = 'https://pgpryaelqhspwhplttzb.supabase.co';
-  static const supabaseAnonKey =
-      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBncHJ5YWVscWhzcHdocGx0dHpiIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTMzNjY0MzUsImV4cCI6MjA2ODk0MjQzNX0.hPcn2J8zSKTC_rY8OeCmhLdJLhZEMT-yV1EZjYGFD2A';
-  
+  static const supabaseUrl = String.fromEnvironment('SUPABASE_URL');
+  static const supabaseAnonKey = String.fromEnvironment('SUPABASE_ANON_KEY');
 }
