@@ -24,7 +24,7 @@ class CreateEventUseCase {
 
     // Business rule: validate end time if provided
     if (startDateTime != null && endDateTime != null) {
-      if (endDateTime.isBefore(startDateTime)) {
+      if (!endDateTime.isAfter(startDateTime)) {
         throw ArgumentError('End time must be after start time');
       }
     }
