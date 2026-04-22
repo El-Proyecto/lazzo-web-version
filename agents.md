@@ -11,6 +11,7 @@
 | New feature | [.agents/workflows.md](.agents/workflows.md), [.agents/architecture.md](.agents/architecture.md), [.agents/coding_rules.md](.agents/coding_rules.md) |
 | Database change | [.agents/database.md](.agents/database.md), [.agents/migrations.md](.agents/migrations.md), [.agents/workflows.md](.agents/workflows.md) |
 | Refactoring | [.agents/architecture.md](.agents/architecture.md), [.agents/migrations.md](.agents/migrations.md), [.agents/coding_rules.md](.agents/coding_rules.md) |
+| Add / fix tests | [.agents/testing.md](.agents/testing.md), then the relevant `test/guides/0X_*.md` for the layer |
 
 ## Non-negotiable rules
 

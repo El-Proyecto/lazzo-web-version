@@ -83,3 +83,10 @@
 
 - **Always run** `flutter analyze` at the project root (`lazzo-web-version`) after any code change.
 - Do not ignore any warnings or errors introduced by your changes; fix them before opening a PR.
+
+## Testing
+
+For all testing work (adding tests, fixing failing tests, improving coverage) see:
+
+- **[.agents/testing.md](testing.md)** — entry point, priority routing, commands, coverage targets.
+- **[test/guides/](../test/guides/)** — 9 numbered guides (00–08), one per layer/priority.
