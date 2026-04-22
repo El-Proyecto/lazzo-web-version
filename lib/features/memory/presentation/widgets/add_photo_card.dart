@@ -32,7 +32,7 @@ class AddPhotoCard extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
+            const Icon(
               Icons.add,
               size: IconSizes.md,
               color: BrandColors.text2,

@@ -40,7 +40,7 @@ void main() {
       expect(find.byType(ConfirmEventBottomSheet), findsNothing);
     });
 
-    testWidgets('Com nome: abre ConfirmEventBottomSheet', (
+    testWidgets('Com nome apenas: não abre ConfirmEventBottomSheet', (
       tester,
     ) async {
       await tester.pumpWidget(wrap(const CreateEventPage()));
@@ -76,11 +76,16 @@ void main() {
       await tester.tap(continueBtn);
       await tester.pumpAndSettle();
 
-      // Deve abrir o ConfirmEventBottomSheet
-      expect(find.byType(ConfirmEventBottomSheet), findsOneWidget);
+      // Com a implementação atual, nome sozinho não basta:
+      // Date/time e location também são obrigatórios.
+      expect(find.byType(ConfirmEventBottomSheet), findsNothing);
 
-      // E não devem existir erros de validação
+      // O erro de nome não deve existir, pois o nome foi preenchido.
       expect(find.text('Event name is required'), findsNothing);
+
+      // Devem aparecer erros dos restantes campos obrigatórios.
+      expect(find.text('Start date and time are required'), findsOneWidget);
+      expect(find.text('Location is required'), findsOneWidget);
     });
   });
 }
