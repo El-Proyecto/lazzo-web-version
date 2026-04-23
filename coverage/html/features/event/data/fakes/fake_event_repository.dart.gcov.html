@@ -31,13 +31,13 @@
             <td class="headerValue">lcov.info</td>
             <td></td>
             <td class="headerItem">Lines:</td>
-            <td class="headerCovTableEntryLo">0.0&nbsp;%</td>
+            <td class="headerCovTableEntryLo">44.1&nbsp;%</td>
             <td class="headerCovTableEntry">102</td>
-            <td class="headerCovTableEntry">0</td>
+            <td class="headerCovTableEntry">45</td>
           </tr>
           <tr>
             <td class="headerItem">Test Date:</td>
-            <td class="headerValue">2026-04-22 16:29:36</td>
+            <td class="headerValue">2026-04-23 20:51:04</td>
             <td></td>
             <td class="headerItem">Functions:</td>
             <td class="headerCovTableEntryHi">-</td>
@@ -67,17 +67,17 @@
 <span id="L5"><span class="lineNum">       5</span>              : /// Fake event repository for development</span>
 <span id="L6"><span class="lineNum">       6</span>              : class FakeEventRepository implements EventRepository {</span>
 <span id="L7"><span class="lineNum">       7</span>              :   // Static storage to persist data across calls</span>
-<span id="L8"><span class="lineNum">       8</span> <span class="tlaUNC">           0 :   static final Map&lt;String, EventDetail&gt; _events = {};</span></span>
+<span id="L8"><span class="lineNum">       8</span> <span class="tlaGNC">           3 :   static final Map&lt;String, EventDetail&gt; _events = {};</span></span>
 <span id="L9"><span class="lineNum">       9</span>              : </span>
 <span id="L10"><span class="lineNum">      10</span>              :   // Initialize with default data</span>
-<span id="L11"><span class="lineNum">      11</span> <span class="tlaUNC">           0 :   static void _initializeIfEmpty() {</span></span>
-<span id="L12"><span class="lineNum">      12</span> <span class="tlaUNC">           0 :     if (_events.isEmpty) {</span></span>
-<span id="L13"><span class="lineNum">      13</span> <span class="tlaUNC">           0 :       _events['event-1'] = EventDetail(</span></span>
+<span id="L11"><span class="lineNum">      11</span> <span class="tlaGNC">           1 :   static void _initializeIfEmpty() {</span></span>
+<span id="L12"><span class="lineNum">      12</span> <span class="tlaGNC">           2 :     if (_events.isEmpty) {</span></span>
+<span id="L13"><span class="lineNum">      13</span> <span class="tlaGNC">           3 :       _events['event-1'] = EventDetail(</span></span>
 <span id="L14"><span class="lineNum">      14</span>              :         id: 'event-1',</span>
 <span id="L15"><span class="lineNum">      15</span>              :         name: 'Churrascada em Sesimbra',</span>
 <span id="L16"><span class="lineNum">      16</span>              :         emoji: '🍖',</span>
-<span id="L17"><span class="lineNum">      17</span> <span class="tlaUNC">           0 :         startDateTime: DateTime.now().add(const Duration(days: 3, hours: 14)),</span></span>
-<span id="L18"><span class="lineNum">      18</span> <span class="tlaUNC">           0 :         endDateTime: DateTime.now().add(const Duration(days: 3, hours: 20)),</span></span>
+<span id="L17"><span class="lineNum">      17</span> <span class="tlaGNC">           2 :         startDateTime: DateTime.now().add(const Duration(days: 3, hours: 14)),</span></span>
+<span id="L18"><span class="lineNum">      18</span> <span class="tlaGNC">           2 :         endDateTime: DateTime.now().add(const Duration(days: 3, hours: 20)),</span></span>
 <span id="L19"><span class="lineNum">      19</span>              :         location: const EventLocation(</span>
 <span id="L20"><span class="lineNum">      20</span>              :           id: 'loc-1',</span>
 <span id="L21"><span class="lineNum">      21</span>              :           displayName: 'Praia do Meco',</span>
@@ -86,7 +86,7 @@
 <span id="L24"><span class="lineNum">      24</span>              :           longitude: -9.1334,</span>
 <span id="L25"><span class="lineNum">      25</span>              :         ),</span>
 <span id="L26"><span class="lineNum">      26</span>              :         status: EventStatus.pending,</span>
-<span id="L27"><span class="lineNum">      27</span> <span class="tlaUNC">           0 :         createdAt: DateTime.now().subtract(const Duration(days: 1)),</span></span>
+<span id="L27"><span class="lineNum">      27</span> <span class="tlaGNC">           2 :         createdAt: DateTime.now().subtract(const Duration(days: 1)),</span></span>
 <span id="L28"><span class="lineNum">      28</span>              :         hostId: 'current-user',</span>
 <span id="L29"><span class="lineNum">      29</span>              :         goingCount: 8,</span>
 <span id="L30"><span class="lineNum">      30</span>              :         notGoingCount: 2,</span>
@@ -118,23 +118,23 @@
 <span id="L56"><span class="lineNum">      56</span>              :     }</span>
 <span id="L57"><span class="lineNum">      57</span>              :   }</span>
 <span id="L58"><span class="lineNum">      58</span>              : </span>
-<span id="L59"><span class="lineNum">      59</span> <span class="tlaUNC">           0 :   @override</span></span>
+<span id="L59"><span class="lineNum">      59</span> <span class="tlaGNC">           1 :   @override</span></span>
 <span id="L60"><span class="lineNum">      60</span>              :   Future&lt;EventDetail&gt; getEventDetail(String eventId) async {</span>
 <span id="L61"><span class="lineNum">      61</span>              :     // Simulate network delay</span>
-<span id="L62"><span class="lineNum">      62</span> <span class="tlaUNC">           0 :     await Future.delayed(const Duration(milliseconds: 500));</span></span>
+<span id="L62"><span class="lineNum">      62</span> <span class="tlaGNC">           1 :     await Future.delayed(const Duration(milliseconds: 500));</span></span>
 <span id="L63"><span class="lineNum">      63</span>              : </span>
-<span id="L64"><span class="lineNum">      64</span> <span class="tlaUNC">           0 :     _initializeIfEmpty();</span></span>
+<span id="L64"><span class="lineNum">      64</span> <span class="tlaGNC">           1 :     _initializeIfEmpty();</span></span>
 <span id="L65"><span class="lineNum">      65</span>              : </span>
-<span id="L66"><span class="lineNum">      66</span> <span class="tlaUNC">           0 :     final event = _events[eventId];</span></span>
+<span id="L66"><span class="lineNum">      66</span> <span class="tlaGNC">           2 :     final event = _events[eventId];</span></span>
 <span id="L67"><span class="lineNum">      67</span>              :     if (event != null) {</span>
 <span id="L68"><span class="lineNum">      68</span>              :       return event;</span>
 <span id="L69"><span class="lineNum">      69</span>              :     }</span>
-<span id="L70"><span class="lineNum">      70</span> <span class="tlaUNC">           0 :     return EventDetail(</span></span>
+<span id="L70"><span class="lineNum">      70</span> <span class="tlaGNC">           1 :     return EventDetail(</span></span>
 <span id="L71"><span class="lineNum">      71</span>              :       id: eventId,</span>
 <span id="L72"><span class="lineNum">      72</span>              :       name: 'Churrascada em Sesimbra',</span>
 <span id="L73"><span class="lineNum">      73</span>              :       emoji: '🍖',</span>
-<span id="L74"><span class="lineNum">      74</span> <span class="tlaUNC">           0 :       startDateTime: DateTime.now().add(const Duration(days: 3, hours: 14)),</span></span>
-<span id="L75"><span class="lineNum">      75</span> <span class="tlaUNC">           0 :       endDateTime: DateTime.now().add(const Duration(days: 3, hours: 20)),</span></span>
+<span id="L74"><span class="lineNum">      74</span> <span class="tlaGNC">           2 :       startDateTime: DateTime.now().add(const Duration(days: 3, hours: 14)),</span></span>
+<span id="L75"><span class="lineNum">      75</span> <span class="tlaGNC">           2 :       endDateTime: DateTime.now().add(const Duration(days: 3, hours: 20)),</span></span>
 <span id="L76"><span class="lineNum">      76</span>              :       location: const EventLocation(</span>
 <span id="L77"><span class="lineNum">      77</span>              :         id: 'loc-1',</span>
 <span id="L78"><span class="lineNum">      78</span>              :         displayName: 'Praia do Meco',</span>
@@ -143,7 +143,7 @@
 <span id="L81"><span class="lineNum">      81</span>              :         longitude: -9.1334,</span>
 <span id="L82"><span class="lineNum">      82</span>              :       ),</span>
 <span id="L83"><span class="lineNum">      83</span>              :       status: EventStatus.pending,</span>
-<span id="L84"><span class="lineNum">      84</span> <span class="tlaUNC">           0 :       createdAt: DateTime.now().subtract(const Duration(days: 1)),</span></span>
+<span id="L84"><span class="lineNum">      84</span> <span class="tlaGNC">           2 :       createdAt: DateTime.now().subtract(const Duration(days: 1)),</span></span>
 <span id="L85"><span class="lineNum">      85</span>              :       hostId: 'current-user',</span>
 <span id="L86"><span class="lineNum">      86</span>              :       goingCount: 8,</span>
 <span id="L87"><span class="lineNum">      87</span>              :       notGoingCount: 2,</span>
@@ -253,37 +253,37 @@
 <span id="L191"><span class="lineNum">     191</span>              :     return updatedEvent;</span>
 <span id="L192"><span class="lineNum">     192</span>              :   }</span>
 <span id="L193"><span class="lineNum">     193</span>              : </span>
-<span id="L194"><span class="lineNum">     194</span> <span class="tlaUNC">           0 :   @override</span></span>
+<span id="L194"><span class="lineNum">     194</span> <span class="tlaGNC">           1 :   @override</span></span>
 <span id="L195"><span class="lineNum">     195</span>              :   Future&lt;EventDetail&gt; updateEventStatus(</span>
 <span id="L196"><span class="lineNum">     196</span>              :     String eventId,</span>
 <span id="L197"><span class="lineNum">     197</span>              :     EventStatus status,</span>
 <span id="L198"><span class="lineNum">     198</span>              :   ) async {</span>
-<span id="L199"><span class="lineNum">     199</span> <span class="tlaUNC">           0 :     _initializeIfEmpty();</span></span>
+<span id="L199"><span class="lineNum">     199</span> <span class="tlaGNC">           1 :     _initializeIfEmpty();</span></span>
 <span id="L200"><span class="lineNum">     200</span>              : </span>
-<span id="L201"><span class="lineNum">     201</span> <span class="tlaUNC">           0 :     final existingEvent = _events[eventId];</span></span>
+<span id="L201"><span class="lineNum">     201</span> <span class="tlaGNC">           2 :     final existingEvent = _events[eventId];</span></span>
 <span id="L202"><span class="lineNum">     202</span>              :     if (existingEvent == null) {</span>
 <span id="L203"><span class="lineNum">     203</span> <span class="tlaUNC">           0 :       throw Exception('Event not found');</span></span>
 <span id="L204"><span class="lineNum">     204</span>              :     }</span>
 <span id="L205"><span class="lineNum">     205</span>              : </span>
-<span id="L206"><span class="lineNum">     206</span> <span class="tlaUNC">           0 :     await Future.delayed(const Duration(milliseconds: 300));</span></span>
+<span id="L206"><span class="lineNum">     206</span> <span class="tlaGNC">           1 :     await Future.delayed(const Duration(milliseconds: 300));</span></span>
 <span id="L207"><span class="lineNum">     207</span>              : </span>
 <span id="L208"><span class="lineNum">     208</span>              :     // Update the event with new status</span>
-<span id="L209"><span class="lineNum">     209</span> <span class="tlaUNC">           0 :     final updatedEvent = EventDetail(</span></span>
-<span id="L210"><span class="lineNum">     210</span> <span class="tlaUNC">           0 :       id: existingEvent.id,</span></span>
-<span id="L211"><span class="lineNum">     211</span> <span class="tlaUNC">           0 :       name: existingEvent.name,</span></span>
-<span id="L212"><span class="lineNum">     212</span> <span class="tlaUNC">           0 :       emoji: existingEvent.emoji,</span></span>
-<span id="L213"><span class="lineNum">     213</span> <span class="tlaUNC">           0 :       startDateTime: existingEvent.startDateTime,</span></span>
-<span id="L214"><span class="lineNum">     214</span> <span class="tlaUNC">           0 :       endDateTime: existingEvent.endDateTime,</span></span>
-<span id="L215"><span class="lineNum">     215</span> <span class="tlaUNC">           0 :       location: existingEvent.location,</span></span>
+<span id="L209"><span class="lineNum">     209</span> <span class="tlaGNC">           1 :     final updatedEvent = EventDetail(</span></span>
+<span id="L210"><span class="lineNum">     210</span> <span class="tlaGNC">           1 :       id: existingEvent.id,</span></span>
+<span id="L211"><span class="lineNum">     211</span> <span class="tlaGNC">           1 :       name: existingEvent.name,</span></span>
+<span id="L212"><span class="lineNum">     212</span> <span class="tlaGNC">           1 :       emoji: existingEvent.emoji,</span></span>
+<span id="L213"><span class="lineNum">     213</span> <span class="tlaGNC">           1 :       startDateTime: existingEvent.startDateTime,</span></span>
+<span id="L214"><span class="lineNum">     214</span> <span class="tlaGNC">           1 :       endDateTime: existingEvent.endDateTime,</span></span>
+<span id="L215"><span class="lineNum">     215</span> <span class="tlaGNC">           1 :       location: existingEvent.location,</span></span>
 <span id="L216"><span class="lineNum">     216</span>              :       status: status,</span>
-<span id="L217"><span class="lineNum">     217</span> <span class="tlaUNC">           0 :       createdAt: existingEvent.createdAt,</span></span>
-<span id="L218"><span class="lineNum">     218</span> <span class="tlaUNC">           0 :       hostId: existingEvent.hostId,</span></span>
-<span id="L219"><span class="lineNum">     219</span> <span class="tlaUNC">           0 :       goingCount: existingEvent.goingCount,</span></span>
-<span id="L220"><span class="lineNum">     220</span> <span class="tlaUNC">           0 :       notGoingCount: existingEvent.notGoingCount,</span></span>
+<span id="L217"><span class="lineNum">     217</span> <span class="tlaGNC">           1 :       createdAt: existingEvent.createdAt,</span></span>
+<span id="L218"><span class="lineNum">     218</span> <span class="tlaGNC">           1 :       hostId: existingEvent.hostId,</span></span>
+<span id="L219"><span class="lineNum">     219</span> <span class="tlaGNC">           1 :       goingCount: existingEvent.goingCount,</span></span>
+<span id="L220"><span class="lineNum">     220</span> <span class="tlaGNC">           1 :       notGoingCount: existingEvent.notGoingCount,</span></span>
 <span id="L221"><span class="lineNum">     221</span>              :     );</span>
 <span id="L222"><span class="lineNum">     222</span>              : </span>
 <span id="L223"><span class="lineNum">     223</span>              :     // Store the updated event</span>
-<span id="L224"><span class="lineNum">     224</span> <span class="tlaUNC">           0 :     _events[eventId] = updatedEvent;</span></span>
+<span id="L224"><span class="lineNum">     224</span> <span class="tlaGNC">           2 :     _events[eventId] = updatedEvent;</span></span>
 <span id="L225"><span class="lineNum">     225</span>              : </span>
 <span id="L226"><span class="lineNum">     226</span>              :     return updatedEvent;</span>
 <span id="L227"><span class="lineNum">     227</span>              :   }</span>
@@ -318,40 +318,40 @@
 <span id="L256"><span class="lineNum">     256</span>              :     return participants;</span>
 <span id="L257"><span class="lineNum">     257</span>              :   }</span>
 <span id="L258"><span class="lineNum">     258</span>              : </span>
-<span id="L259"><span class="lineNum">     259</span> <span class="tlaUNC">           0 :   @override</span></span>
+<span id="L259"><span class="lineNum">     259</span> <span class="tlaGNC">           1 :   @override</span></span>
 <span id="L260"><span class="lineNum">     260</span>              :   Future&lt;EventDetail&gt; extendEventTime(String eventId, int minutes) async {</span>
-<span id="L261"><span class="lineNum">     261</span> <span class="tlaUNC">           0 :     await Future.delayed(const Duration(milliseconds: 300));</span></span>
+<span id="L261"><span class="lineNum">     261</span> <span class="tlaGNC">           1 :     await Future.delayed(const Duration(milliseconds: 300));</span></span>
 <span id="L262"><span class="lineNum">     262</span>              : </span>
-<span id="L263"><span class="lineNum">     263</span> <span class="tlaUNC">           0 :     _initializeIfEmpty();</span></span>
-<span id="L264"><span class="lineNum">     264</span> <span class="tlaUNC">           0 :     final event = _events[eventId];</span></span>
+<span id="L263"><span class="lineNum">     263</span> <span class="tlaGNC">           1 :     _initializeIfEmpty();</span></span>
+<span id="L264"><span class="lineNum">     264</span> <span class="tlaGNC">           2 :     final event = _events[eventId];</span></span>
 <span id="L265"><span class="lineNum">     265</span>              :     if (event == null) {</span>
 <span id="L266"><span class="lineNum">     266</span> <span class="tlaUNC">           0 :       throw Exception('Event not found');</span></span>
 <span id="L267"><span class="lineNum">     267</span>              :     }</span>
 <span id="L268"><span class="lineNum">     268</span>              : </span>
 <span id="L269"><span class="lineNum">     269</span>              :     // Calculate new end time</span>
-<span id="L270"><span class="lineNum">     270</span> <span class="tlaUNC">           0 :     final currentEndTime = event.endDateTime ?? DateTime.now();</span></span>
-<span id="L271"><span class="lineNum">     271</span> <span class="tlaUNC">           0 :     final newEndTime = currentEndTime.add(Duration(minutes: minutes));</span></span>
+<span id="L270"><span class="lineNum">     270</span> <span class="tlaGNC">           1 :     final currentEndTime = event.endDateTime ?? DateTime.now();</span></span>
+<span id="L271"><span class="lineNum">     271</span> <span class="tlaGNC">           2 :     final newEndTime = currentEndTime.add(Duration(minutes: minutes));</span></span>
 <span id="L272"><span class="lineNum">     272</span>              : </span>
 <span id="L273"><span class="lineNum">     273</span>              :     // Update event</span>
-<span id="L274"><span class="lineNum">     274</span> <span class="tlaUNC">           0 :     final updatedEvent = event.copyWith(endDateTime: newEndTime);</span></span>
-<span id="L275"><span class="lineNum">     275</span> <span class="tlaUNC">           0 :     _events[eventId] = updatedEvent;</span></span>
+<span id="L274"><span class="lineNum">     274</span> <span class="tlaGNC">           1 :     final updatedEvent = event.copyWith(endDateTime: newEndTime);</span></span>
+<span id="L275"><span class="lineNum">     275</span> <span class="tlaGNC">           2 :     _events[eventId] = updatedEvent;</span></span>
 <span id="L276"><span class="lineNum">     276</span>              : </span>
 <span id="L277"><span class="lineNum">     277</span>              :     return updatedEvent;</span>
 <span id="L278"><span class="lineNum">     278</span>              :   }</span>
 <span id="L279"><span class="lineNum">     279</span>              : </span>
-<span id="L280"><span class="lineNum">     280</span> <span class="tlaUNC">           0 :   @override</span></span>
+<span id="L280"><span class="lineNum">     280</span> <span class="tlaGNC">           1 :   @override</span></span>
 <span id="L281"><span class="lineNum">     281</span>              :   Future&lt;EventDetail&gt; endEventNow(String eventId) async {</span>
-<span id="L282"><span class="lineNum">     282</span> <span class="tlaUNC">           0 :     await Future.delayed(const Duration(milliseconds: 300));</span></span>
+<span id="L282"><span class="lineNum">     282</span> <span class="tlaGNC">           1 :     await Future.delayed(const Duration(milliseconds: 300));</span></span>
 <span id="L283"><span class="lineNum">     283</span>              : </span>
-<span id="L284"><span class="lineNum">     284</span> <span class="tlaUNC">           0 :     _initializeIfEmpty();</span></span>
-<span id="L285"><span class="lineNum">     285</span> <span class="tlaUNC">           0 :     final event = _events[eventId];</span></span>
+<span id="L284"><span class="lineNum">     284</span> <span class="tlaGNC">           1 :     _initializeIfEmpty();</span></span>
+<span id="L285"><span class="lineNum">     285</span> <span class="tlaGNC">           2 :     final event = _events[eventId];</span></span>
 <span id="L286"><span class="lineNum">     286</span>              :     if (event == null) {</span>
 <span id="L287"><span class="lineNum">     287</span> <span class="tlaUNC">           0 :       throw Exception('Event not found');</span></span>
 <span id="L288"><span class="lineNum">     288</span>              :     }</span>
 <span id="L289"><span class="lineNum">     289</span>              : </span>
 <span id="L290"><span class="lineNum">     290</span>              :     // Set end time to now</span>
-<span id="L291"><span class="lineNum">     291</span> <span class="tlaUNC">           0 :     final updatedEvent = event.copyWith(endDateTime: DateTime.now());</span></span>
-<span id="L292"><span class="lineNum">     292</span> <span class="tlaUNC">           0 :     _events[eventId] = updatedEvent;</span></span>
+<span id="L291"><span class="lineNum">     291</span> <span class="tlaGNC">           2 :     final updatedEvent = event.copyWith(endDateTime: DateTime.now());</span></span>
+<span id="L292"><span class="lineNum">     292</span> <span class="tlaGNC">           2 :     _events[eventId] = updatedEvent;</span></span>
 <span id="L293"><span class="lineNum">     293</span>              : </span>
 <span id="L294"><span class="lineNum">     294</span>              :     return updatedEvent;</span>
 <span id="L295"><span class="lineNum">     295</span>              :   }</span>

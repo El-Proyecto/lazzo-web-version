@@ -37,7 +37,7 @@
           </tr>
           <tr>
             <td class="headerItem">Test Date:</td>
-            <td class="headerValue">2026-04-22 16:29:36</td>
+            <td class="headerValue">2026-04-23 20:51:04</td>
             <td></td>
             <td class="headerItem">Functions:</td>
             <td class="headerCovTableEntryHi">-</td>
@@ -73,7 +73,7 @@
 <span id="L11"><span class="lineNum">      11</span>              :   final DateTime createdAt;</span>
 <span id="L12"><span class="lineNum">      12</span>              :   final String? description;</span>
 <span id="L13"><span class="lineNum">      13</span>              : </span>
-<span id="L14"><span class="lineNum">      14</span> <span class="tlaGNC">           5 :   const Event({</span></span>
+<span id="L14"><span class="lineNum">      14</span> <span class="tlaGNC">           6 :   const Event({</span></span>
 <span id="L15"><span class="lineNum">      15</span>              :     required this.id,</span>
 <span id="L16"><span class="lineNum">      16</span>              :     required this.name,</span>
 <span id="L17"><span class="lineNum">      17</span>              :     required this.emoji,</span>
@@ -88,7 +88,7 @@
 <span id="L26"><span class="lineNum">      26</span>              :   /// Copy event with updated fields</span>
 <span id="L27"><span class="lineNum">      27</span>              :   /// CRITICAL: Uses explicit ValueWrapper to allow clearing nullable fields</span>
 <span id="L28"><span class="lineNum">      28</span>              :   /// This is essential for &quot;Decide Later&quot; functionality (clearing dates/location)</span>
-<span id="L29"><span class="lineNum">      29</span> <span class="tlaGNC">           2 :   Event copyWith({</span></span>
+<span id="L29"><span class="lineNum">      29</span> <span class="tlaGNC">           3 :   Event copyWith({</span></span>
 <span id="L30"><span class="lineNum">      30</span>              :     String? id,</span>
 <span id="L31"><span class="lineNum">      31</span>              :     String? name,</span>
 <span id="L32"><span class="lineNum">      32</span>              :     String? emoji,</span>
@@ -99,17 +99,17 @@
 <span id="L37"><span class="lineNum">      37</span>              :     DateTime? createdAt,</span>
 <span id="L38"><span class="lineNum">      38</span>              :     ValueWrapper&lt;String?&gt;? description,</span>
 <span id="L39"><span class="lineNum">      39</span>              :   }) {</span>
-<span id="L40"><span class="lineNum">      40</span> <span class="tlaGNC">           2 :     return Event(</span></span>
+<span id="L40"><span class="lineNum">      40</span> <span class="tlaGNC">           3 :     return Event(</span></span>
 <span id="L41"><span class="lineNum">      41</span> <span class="tlaGNC">           2 :       id: id ?? this.id,</span></span>
-<span id="L42"><span class="lineNum">      42</span> <span class="tlaGNC">           1 :       name: name ?? this.name,</span></span>
-<span id="L43"><span class="lineNum">      43</span> <span class="tlaGNC">           1 :       emoji: emoji ?? this.emoji,</span></span>
+<span id="L42"><span class="lineNum">      42</span> <span class="tlaGNC">           2 :       name: name ?? this.name,</span></span>
+<span id="L43"><span class="lineNum">      43</span> <span class="tlaGNC">           2 :       emoji: emoji ?? this.emoji,</span></span>
 <span id="L44"><span class="lineNum">      44</span>              :       startDateTime:</span>
-<span id="L45"><span class="lineNum">      45</span> <span class="tlaGNC">           3 :           startDateTime != null ? startDateTime.value : this.startDateTime,</span></span>
-<span id="L46"><span class="lineNum">      46</span> <span class="tlaGNC">           3 :       endDateTime: endDateTime != null ? endDateTime.value : this.endDateTime,</span></span>
-<span id="L47"><span class="lineNum">      47</span> <span class="tlaGNC">           3 :       location: location != null ? location.value : this.location,</span></span>
+<span id="L45"><span class="lineNum">      45</span> <span class="tlaGNC">           4 :           startDateTime != null ? startDateTime.value : this.startDateTime,</span></span>
+<span id="L46"><span class="lineNum">      46</span> <span class="tlaGNC">           4 :       endDateTime: endDateTime != null ? endDateTime.value : this.endDateTime,</span></span>
+<span id="L47"><span class="lineNum">      47</span> <span class="tlaGNC">           4 :       location: location != null ? location.value : this.location,</span></span>
 <span id="L48"><span class="lineNum">      48</span> <span class="tlaGNC">           2 :       status: status ?? this.status,</span></span>
-<span id="L49"><span class="lineNum">      49</span> <span class="tlaGNC">           2 :       createdAt: createdAt ?? this.createdAt,</span></span>
-<span id="L50"><span class="lineNum">      50</span> <span class="tlaGNC">           3 :       description: description != null ? description.value : this.description,</span></span>
+<span id="L49"><span class="lineNum">      49</span> <span class="tlaGNC">           3 :       createdAt: createdAt ?? this.createdAt,</span></span>
+<span id="L50"><span class="lineNum">      50</span> <span class="tlaGNC">           4 :       description: description != null ? description.value : this.description,</span></span>
 <span id="L51"><span class="lineNum">      51</span>              :     );</span>
 <span id="L52"><span class="lineNum">      52</span>              :   }</span>
 <span id="L53"><span class="lineNum">      53</span>              : }</span>

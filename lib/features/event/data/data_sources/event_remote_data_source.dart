@@ -4,34 +4,24 @@ import '../models/event_detail_model.dart';
 import '../../domain/entities/event_participant_entity.dart';
 import '../../../../services/notification_service.dart';
 
-/// Remote data source for event operations
-/// Handles all Supabase queries related to events
-class EventRemoteDataSource {
-  final SupabaseClient _supabaseClient;
-  final NotificationService _notificationService;
+abstract class EventRemoteSupabaseOps {
+  Future<Map<String, dynamic>> getEventDetailRow(String eventId);
+  Future<Map<String, dynamic>?> getLocationRow(String locationId);
+  Future<List<Map<String, dynamic>>> getEventRsvpRows(String eventId);
+  Future<void> resetExpiredVotes(String eventId);
+  Future<Map<String, dynamic>> getEventStatusDates(String eventId);
+  Future<void> updateEventStatus(String eventId, String status);
+  Future<Map<String, dynamic>> verifyEventStatus(String eventId);
+  Future<void> updateEventEndDatetime(String eventId, String endDatetimeIso);
+}
 
-  EventRemoteDataSource(this._supabaseClient)
-      : _notificationService = NotificationService(_supabaseClient);
+class DefaultEventRemoteSupabaseOps implements EventRemoteSupabaseOps {
+  final SupabaseClient _client;
+  DefaultEventRemoteSupabaseOps(this._client);
 
-  /// Reset votes if event is expired (status=pending + date passed)
-  /// Uses Supabase RPC to centralize logic
-  Future<void> _resetExpiredEventVotes(String eventId) async {
-    try {
-      await _supabaseClient.rpc(
-        'reset_event_votes_if_expired',
-        params: {'p_event_id': eventId},
-      );
-    } catch (e) {
-      // Best-effort - silently fail
-    }
-  }
-
-  /// Get event details by ID
-  /// Includes: RSVP counts, suggestion counts, location suggestion counts, poll count, host info
-  Future<EventDetailModel> getEventDetail(String eventId) async {
-    try {
-      // Main event query
-      final response = await _supabaseClient.from('events').select('''
+  @override
+  Future<Map<String, dynamic>> getEventDetailRow(String eventId) async {
+    final response = await _client.from('events').select('''
             id,
             name,
             emoji,
@@ -43,6 +33,94 @@ class EventRemoteDataSource {
             created_by,
             created_at
           ''').eq('id', eventId).single();
+    return Map<String, dynamic>.from(response as Map);
+  }
+
+  @override
+  Future<Map<String, dynamic>?> getLocationRow(String locationId) async {
+    final response = await _client
+        .from('locations')
+        .select('display_name, formatted_address, latitude, longitude')
+        .eq('id', locationId)
+        .maybeSingle();
+    return response == null ? null : Map<String, dynamic>.from(response as Map);
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> getEventRsvpRows(String eventId) async {
+    final response = await _client
+        .from('event_participants')
+        .select('rsvp')
+        .eq('pevent_id', eventId);
+    return List<Map<String, dynamic>>.from(response as List);
+  }
+
+  @override
+  Future<void> resetExpiredVotes(String eventId) async {
+    await _client.rpc(
+      'reset_event_votes_if_expired',
+      params: {'p_event_id': eventId},
+    );
+  }
+
+  @override
+  Future<Map<String, dynamic>> getEventStatusDates(String eventId) async {
+    final event = await _client
+        .from('events')
+        .select('start_datetime, end_datetime')
+        .eq('id', eventId)
+        .single();
+    return Map<String, dynamic>.from(event as Map);
+  }
+
+  @override
+  Future<void> updateEventStatus(String eventId, String status) async {
+    await _client.from('events').update({'status': status}).eq('id', eventId);
+  }
+
+  @override
+  Future<Map<String, dynamic>> verifyEventStatus(String eventId) async {
+    final response = await _client
+        .from('events')
+        .select('id, name, status')
+        .eq('id', eventId)
+        .single();
+    return Map<String, dynamic>.from(response as Map);
+  }
+
+  @override
+  Future<void> updateEventEndDatetime(String eventId, String endDatetimeIso) async {
+    await _client.from('events').update({'end_datetime': endDatetimeIso}).eq('id', eventId);
+  }
+}
+
+/// Remote data source for event operations
+/// Handles all Supabase queries related to events
+class EventRemoteDataSource {
+  final SupabaseClient _supabaseClient;
+  final NotificationService _notificationService;
+  final EventRemoteSupabaseOps _ops;
+
+  EventRemoteDataSource(this._supabaseClient, {EventRemoteSupabaseOps? ops})
+      : _notificationService = NotificationService(_supabaseClient),
+        _ops = ops ?? DefaultEventRemoteSupabaseOps(_supabaseClient);
+
+  /// Reset votes if event is expired (status=pending + date passed)
+  /// Uses Supabase RPC to centralize logic
+  Future<void> _resetExpiredEventVotes(String eventId) async {
+    try {
+      await _ops.resetExpiredVotes(eventId);
+    } catch (e) {
+      // Best-effort - silently fail
+    }
+  }
+
+  /// Get event details by ID
+  /// Includes: RSVP counts, suggestion counts, location suggestion counts, poll count, host info
+  Future<EventDetailModel> getEventDetail(String eventId) async {
+    try {
+      // Main event query
+      final response = await _ops.getEventDetailRow(eventId);
 
       // Reset votes if event is expired (RPC checks internally)
       // Fire-and-forget - RPC handles all logic
@@ -57,11 +135,8 @@ class EventRemoteDataSource {
       double? locationLng;
 
       if (response['location_id'] != null) {
-        final locationResponse = await _supabaseClient
-            .from('locations')
-            .select('display_name, formatted_address, latitude, longitude')
-            .eq('id', response['location_id'])
-            .maybeSingle();
+        final locationResponse =
+            await _ops.getLocationRow(response['location_id'] as String);
 
         if (locationResponse != null) {
           locationName = locationResponse['display_name'] as String?;
@@ -72,10 +147,7 @@ class EventRemoteDataSource {
       }
 
       // Get RSVP counts from event_participants
-      final rsvpCounts = await _supabaseClient
-          .from('event_participants')
-          .select('rsvp')
-          .eq('pevent_id', eventId);
+      final rsvpCounts = await _ops.getEventRsvpRows(eventId);
 
       int goingCount = 0;
       int notGoingCount = 0;
@@ -289,11 +361,7 @@ class EventRemoteDataSource {
   ) async {
     try {
       // Get event dates to calculate correct status
-      final event = await _supabaseClient
-          .from('events')
-          .select('start_datetime, end_datetime')
-          .eq('id', eventId)
-          .single();
+      final event = await _ops.getEventStatusDates(eventId);
 
       final startDateTime = event['start_datetime'] != null
           ? DateTime.parse(event['start_datetime'] as String)
@@ -309,9 +377,7 @@ class EventRemoteDataSource {
       }
 
       // Execute update without select to avoid issues
-      await _supabaseClient
-          .from('events')
-          .update({'status': finalStatus}).eq('id', eventId);
+      await _ops.updateEventStatus(eventId, finalStatus);
 
       // Send "Event Date Set" notification when status changes to planning/confirmed
       if (finalStatus == 'planning' || finalStatus == 'confirmed') {
@@ -363,11 +429,7 @@ class EventRemoteDataSource {
       // Verify the update by fetching the event directly with a small delay
       await Future.delayed(const Duration(milliseconds: 100));
 
-      final verifyResponse = await _supabaseClient
-          .from('events')
-          .select('id, name, status')
-          .eq('id', eventId)
-          .single();
+      final verifyResponse = await _ops.verifyEventStatus(eventId);
 
       if (verifyResponse['status'] != finalStatus) {
         throw Exception(
@@ -479,8 +541,10 @@ class EventRemoteDataSource {
       final newEndTime = currentEndTime.add(Duration(minutes: minutes));
 
       // Update event in database
-      await _supabaseClient.from('events').update(
-          {'end_datetime': newEndTime.toSupabaseIso8601String()}).eq('id', eventId);
+      await _ops.updateEventEndDatetime(
+        eventId,
+        newEndTime.toSupabaseIso8601String(),
+      );
 
       // CRITICAL: Send notifications to all participants (except host)
       try {
@@ -527,9 +591,7 @@ class EventRemoteDataSource {
       // Set end time to now
       final now = DateTime.now();
 
-      await _supabaseClient
-          .from('events')
-          .update({'end_datetime': now.toSupabaseIso8601String()}).eq('id', eventId);
+      await _ops.updateEventEndDatetime(eventId, now.toSupabaseIso8601String());
 
       // Return updated event
       return await getEventDetail(eventId);
