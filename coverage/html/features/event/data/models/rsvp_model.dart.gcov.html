@@ -37,7 +37,7 @@
           </tr>
           <tr>
             <td class="headerItem">Test Date:</td>
-            <td class="headerValue">2026-04-23 20:51:04</td>
+            <td class="headerValue">2026-04-26 23:09:35</td>
             <td></td>
             <td class="headerItem">Functions:</td>
             <td class="headerCovTableEntryHi">-</td>
@@ -77,7 +77,7 @@
 <span id="L15"><span class="lineNum">      15</span>              :   final String status;</span>
 <span id="L16"><span class="lineNum">      16</span>              :   final DateTime? confirmedAt;</span>
 <span id="L17"><span class="lineNum">      17</span>              : </span>
-<span id="L18"><span class="lineNum">      18</span> <span class="tlaGNC">           1 :   const RsvpModel({</span></span>
+<span id="L18"><span class="lineNum">      18</span> <span class="tlaGNC">           2 :   const RsvpModel({</span></span>
 <span id="L19"><span class="lineNum">      19</span>              :     required this.userId,</span>
 <span id="L20"><span class="lineNum">      20</span>              :     required this.eventId,</span>
 <span id="L21"><span class="lineNum">      21</span>              :     required this.userName,</span>
@@ -88,21 +88,21 @@
 <span id="L26"><span class="lineNum">      26</span>              :   });</span>
 <span id="L27"><span class="lineNum">      27</span>              : </span>
 <span id="L28"><span class="lineNum">      28</span>              :   /// Create model from Supabase JSON (event_participants table with user join)</span>
-<span id="L29"><span class="lineNum">      29</span> <span class="tlaGNC">           1 :   factory RsvpModel.fromJson(Map&lt;String, dynamic&gt; json) {</span></span>
+<span id="L29"><span class="lineNum">      29</span> <span class="tlaGNC">           2 :   factory RsvpModel.fromJson(Map&lt;String, dynamic&gt; json) {</span></span>
 <span id="L30"><span class="lineNum">      30</span>              :     // Handle nested user data from join</span>
-<span id="L31"><span class="lineNum">      31</span> <span class="tlaGNC">           1 :     final userData = json['user'] as Map&lt;String, dynamic&gt;?;</span></span>
+<span id="L31"><span class="lineNum">      31</span> <span class="tlaGNC">           2 :     final userData = json['user'] as Map&lt;String, dynamic&gt;?;</span></span>
 <span id="L32"><span class="lineNum">      32</span>              : </span>
-<span id="L33"><span class="lineNum">      33</span> <span class="tlaGNC">           1 :     return RsvpModel(</span></span>
-<span id="L34"><span class="lineNum">      34</span> <span class="tlaGNC">           1 :       userId: json['user_id'] as String,</span></span>
+<span id="L33"><span class="lineNum">      33</span> <span class="tlaGNC">           2 :     return RsvpModel(</span></span>
+<span id="L34"><span class="lineNum">      34</span> <span class="tlaGNC">           2 :       userId: json['user_id'] as String,</span></span>
 <span id="L35"><span class="lineNum">      35</span>              :       eventId:</span>
-<span id="L36"><span class="lineNum">      36</span> <span class="tlaGNC">           1 :           json['pevent_id'] as String, // event_participants uses 'pevent_id'</span></span>
-<span id="L37"><span class="lineNum">      37</span> <span class="tlaGNC">           1 :       userName: userData?['name'] as String? ?? 'Unknown User',</span></span>
-<span id="L38"><span class="lineNum">      38</span> <span class="tlaGNC">           1 :       userAvatar: userData?['avatar_url'] as String?,</span></span>
-<span id="L39"><span class="lineNum">      39</span> <span class="tlaGNC">           1 :       userEmail: userData?['email'] as String?,</span></span>
-<span id="L40"><span class="lineNum">      40</span> <span class="tlaGNC">           1 :       status: json['rsvp'] as String? ??</span></span>
+<span id="L36"><span class="lineNum">      36</span> <span class="tlaGNC">           2 :           json['pevent_id'] as String, // event_participants uses 'pevent_id'</span></span>
+<span id="L37"><span class="lineNum">      37</span> <span class="tlaGNC">           2 :       userName: userData?['name'] as String? ?? 'Unknown User',</span></span>
+<span id="L38"><span class="lineNum">      38</span> <span class="tlaGNC">           2 :       userAvatar: userData?['avatar_url'] as String?,</span></span>
+<span id="L39"><span class="lineNum">      39</span> <span class="tlaGNC">           2 :       userEmail: userData?['email'] as String?,</span></span>
+<span id="L40"><span class="lineNum">      40</span> <span class="tlaGNC">           2 :       status: json['rsvp'] as String? ??</span></span>
 <span id="L41"><span class="lineNum">      41</span>              :           'pending', // event_participants uses 'rsvp' column</span>
-<span id="L42"><span class="lineNum">      42</span> <span class="tlaGNC">           1 :       confirmedAt: json['confirmed_at'] != null</span></span>
-<span id="L43"><span class="lineNum">      43</span> <span class="tlaGNC">           2 :           ? DateTime.parse(json['confirmed_at'] as String)</span></span>
+<span id="L42"><span class="lineNum">      42</span> <span class="tlaGNC">           2 :       confirmedAt: json['confirmed_at'] != null</span></span>
+<span id="L43"><span class="lineNum">      43</span> <span class="tlaGNC">           4 :           ? DateTime.parse(json['confirmed_at'] as String)</span></span>
 <span id="L44"><span class="lineNum">      44</span>              :           : null,</span>
 <span id="L45"><span class="lineNum">      45</span>              :     );</span>
 <span id="L46"><span class="lineNum">      46</span>              :   }</span>

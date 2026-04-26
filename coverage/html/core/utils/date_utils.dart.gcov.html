@@ -37,7 +37,7 @@
           </tr>
           <tr>
             <td class="headerItem">Test Date:</td>
-            <td class="headerValue">2026-04-23 20:51:04</td>
+            <td class="headerValue">2026-04-26 23:09:35</td>
             <td></td>
             <td class="headerItem">Functions:</td>
             <td class="headerCovTableEntryHi">-</td>
@@ -67,7 +67,7 @@
 <span id="L5"><span class="lineNum">       5</span>              : /// shifting the stored instant by the device's UTC offset (e.g. +1h in Lisbon</span>
 <span id="L6"><span class="lineNum">       6</span>              : /// summer). Always send an unambiguous UTC instant with [toSupabaseIso8601String].</span>
 <span id="L7"><span class="lineNum">       7</span>              : extension DateTimeSupabaseIso on DateTime {</span>
-<span id="L8"><span class="lineNum">       8</span> <span class="tlaGNC">           9 :   String toSupabaseIso8601String() =&gt; toUtc().toIso8601String();</span></span>
+<span id="L8"><span class="lineNum">       8</span> <span class="tlaGNC">          15 :   String toSupabaseIso8601String() =&gt; toUtc().toIso8601String();</span></span>
 <span id="L9"><span class="lineNum">       9</span>              : }</span>
 <span id="L10"><span class="lineNum">      10</span>              : </span>
 <span id="L11"><span class="lineNum">      11</span> <span class="tlaGNC">           1 : String? dateTimeToSupabaseIso8601String(DateTime? value) =&gt;</span></span>
