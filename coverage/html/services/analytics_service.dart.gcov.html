@@ -31,13 +31,13 @@
             <td class="headerValue">lcov.info</td>
             <td></td>
             <td class="headerItem">Lines:</td>
-            <td class="headerCovTableEntryLo">12.8&nbsp;%</td>
+            <td class="headerCovTableEntryLo">23.1&nbsp;%</td>
             <td class="headerCovTableEntry">39</td>
-            <td class="headerCovTableEntry">5</td>
+            <td class="headerCovTableEntry">9</td>
           </tr>
           <tr>
             <td class="headerItem">Test Date:</td>
-            <td class="headerValue">2026-04-26 23:09:35</td>
+            <td class="headerValue">2026-04-27 22:51:59</td>
             <td></td>
             <td class="headerItem">Functions:</td>
             <td class="headerCovTableEntryHi">-</td>
@@ -72,7 +72,7 @@
 <span id="L10"><span class="lineNum">      10</span>              : /// 2. Auth completa → chamar identify(supabaseUserId) → merge anónimo → user</span>
 <span id="L11"><span class="lineNum">      11</span>              : /// 3. Logout → chamar reset() → novo distinct_id anónimo</span>
 <span id="L12"><span class="lineNum">      12</span>              : class AnalyticsService {</span>
-<span id="L13"><span class="lineNum">      13</span> <span class="tlaGNC">           2 :   static Posthog get _posthog =&gt; Posthog();</span></span>
+<span id="L13"><span class="lineNum">      13</span> <span class="tlaGNC">           6 :   static Posthog get _posthog =&gt; Posthog();</span></span>
 <span id="L14"><span class="lineNum">      14</span>              : </span>
 <span id="L15"><span class="lineNum">      15</span>              :   // --------------- Cache de feature flags ---------------</span>
 <span id="L16"><span class="lineNum">      16</span> <span class="tlaUNC">           0 :   static final Map&lt;String, dynamic&gt; _flagCache = {};</span></span>
@@ -92,12 +92,12 @@
 <span id="L30"><span class="lineNum">      30</span>              : </span>
 <span id="L31"><span class="lineNum">      31</span>              :   /// Envia um evento para PostHog.</span>
 <span id="L32"><span class="lineNum">      32</span>              :   /// [properties] são mescladas com global properties automaticamente.</span>
-<span id="L33"><span class="lineNum">      33</span> <span class="tlaUNC">           0 :   static Future&lt;void&gt; track(</span></span>
+<span id="L33"><span class="lineNum">      33</span> <span class="tlaGNC">           1 :   static Future&lt;void&gt; track(</span></span>
 <span id="L34"><span class="lineNum">      34</span>              :     String event, {</span>
 <span id="L35"><span class="lineNum">      35</span>              :     Map&lt;String, Object&gt;? properties,</span>
 <span id="L36"><span class="lineNum">      36</span>              :   }) async {</span>
-<span id="L37"><span class="lineNum">      37</span> <span class="tlaUNC">           0 :     debugPrint('[Analytics] TRACK: $event | props: $properties');</span></span>
-<span id="L38"><span class="lineNum">      38</span> <span class="tlaUNC">           0 :     await _posthog.capture(</span></span>
+<span id="L37"><span class="lineNum">      37</span> <span class="tlaGNC">           3 :     debugPrint('[Analytics] TRACK: $event | props: $properties');</span></span>
+<span id="L38"><span class="lineNum">      38</span> <span class="tlaGNC">           2 :     await _posthog.capture(</span></span>
 <span id="L39"><span class="lineNum">      39</span>              :       eventName: event,</span>
 <span id="L40"><span class="lineNum">      40</span>              :       properties: properties,</span>
 <span id="L41"><span class="lineNum">      41</span>              :     );</span>
@@ -138,15 +138,15 @@
 <span id="L76"><span class="lineNum">      76</span>              :   /// Ecrãs críticos: event_detail, event_living, event_recap,</span>
 <span id="L77"><span class="lineNum">      77</span>              :   /// create_event, memory_ready, invite_landing,</span>
 <span id="L78"><span class="lineNum">      78</span>              :   /// calendar (on interaction), actions (on tab select)</span>
-<span id="L79"><span class="lineNum">      79</span> <span class="tlaGNC">           1 :   static Future&lt;void&gt; screenViewed(</span></span>
+<span id="L79"><span class="lineNum">      79</span> <span class="tlaGNC">           2 :   static Future&lt;void&gt; screenViewed(</span></span>
 <span id="L80"><span class="lineNum">      80</span>              :     String screenName, {</span>
 <span id="L81"><span class="lineNum">      81</span>              :     String? eventId,</span>
 <span id="L82"><span class="lineNum">      82</span>              :   }) async {</span>
-<span id="L83"><span class="lineNum">      83</span> <span class="tlaGNC">           3 :     debugPrint('[Analytics] SCREEN: $screenName | eventId: $eventId');</span></span>
-<span id="L84"><span class="lineNum">      84</span> <span class="tlaGNC">           2 :     await _posthog.screen(</span></span>
+<span id="L83"><span class="lineNum">      83</span> <span class="tlaGNC">           6 :     debugPrint('[Analytics] SCREEN: $screenName | eventId: $eventId');</span></span>
+<span id="L84"><span class="lineNum">      84</span> <span class="tlaGNC">           4 :     await _posthog.screen(</span></span>
 <span id="L85"><span class="lineNum">      85</span>              :       screenName: screenName,</span>
-<span id="L86"><span class="lineNum">      86</span> <span class="tlaGNC">           1 :       properties: {</span></span>
-<span id="L87"><span class="lineNum">      87</span> <span class="tlaUNC">           0 :         if (eventId != null) 'event_id': eventId,</span></span>
+<span id="L86"><span class="lineNum">      86</span> <span class="tlaGNC">           2 :       properties: {</span></span>
+<span id="L87"><span class="lineNum">      87</span> <span class="tlaGNC">           1 :         if (eventId != null) 'event_id': eventId,</span></span>
 <span id="L88"><span class="lineNum">      88</span>              :       },</span>
 <span id="L89"><span class="lineNum">      89</span>              :     );</span>
 <span id="L90"><span class="lineNum">      90</span>              :   }</span>

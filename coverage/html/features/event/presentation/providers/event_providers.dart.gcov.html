@@ -31,13 +31,13 @@
             <td class="headerValue">lcov.info</td>
             <td></td>
             <td class="headerItem">Lines:</td>
-            <td class="headerCovTableEntryLo">6.1&nbsp;%</td>
+            <td class="headerCovTableEntryLo">24.8&nbsp;%</td>
             <td class="headerCovTableEntry">310</td>
-            <td class="headerCovTableEntry">19</td>
+            <td class="headerCovTableEntry">77</td>
           </tr>
           <tr>
             <td class="headerItem">Test Date:</td>
-            <td class="headerValue">2026-04-26 23:09:35</td>
+            <td class="headerValue">2026-04-27 22:51:59</td>
             <td></td>
             <td class="headerItem">Functions:</td>
             <td class="headerCovTableEntryHi">-</td>
@@ -92,7 +92,7 @@
 <span id="L30"><span class="lineNum">      30</span>              : import '../../domain/entities/event_participant_entity.dart';</span>
 <span id="L31"><span class="lineNum">      31</span>              : </span>
 <span id="L32"><span class="lineNum">      32</span>              : // Current user ID provider</span>
-<span id="L33"><span class="lineNum">      33</span> <span class="tlaGNC">           3 : final currentUserIdProvider = Provider&lt;String?&gt;((ref) {</span></span>
+<span id="L33"><span class="lineNum">      33</span> <span class="tlaGNC">           9 : final currentUserIdProvider = Provider&lt;String?&gt;((ref) {</span></span>
 <span id="L34"><span class="lineNum">      34</span> <span class="tlaUNC">           0 :   return Supabase.instance.client.auth.currentUser?.id;</span></span>
 <span id="L35"><span class="lineNum">      35</span>              : });</span>
 <span id="L36"><span class="lineNum">      36</span>              : </span>
@@ -100,8 +100,8 @@
 <span id="L38"><span class="lineNum">      38</span>              : </span>
 <span id="L39"><span class="lineNum">      39</span>              : /// Provider to check if current user can manage event (host)</span>
 <span id="L40"><span class="lineNum">      40</span>              : /// LAZZO 2.0: Simplified — only checks if user is event host (no group admin)</span>
-<span id="L41"><span class="lineNum">      41</span> <span class="tlaGNC">           2 : final canManageEventProvider =</span></span>
-<span id="L42"><span class="lineNum">      42</span> <span class="tlaGNC">           2 :     FutureProvider.family&lt;bool, String&gt;((ref, eventId) async {</span></span>
+<span id="L41"><span class="lineNum">      41</span> <span class="tlaGNC">           4 : final canManageEventProvider =</span></span>
+<span id="L42"><span class="lineNum">      42</span> <span class="tlaGNC">           3 :     FutureProvider.family&lt;bool, String&gt;((ref, eventId) async {</span></span>
 <span id="L43"><span class="lineNum">      43</span>              :   try {</span>
 <span id="L44"><span class="lineNum">      44</span>              :     // Get event details to check host</span>
 <span id="L45"><span class="lineNum">      45</span> <span class="tlaGNC">           4 :     final event = await ref.watch(eventDetailProvider(eventId).future);</span></span>
@@ -121,7 +121,7 @@
 <span id="L59"><span class="lineNum">      59</span> <span class="tlaUNC">           0 :   return FakeEventRepository();</span></span>
 <span id="L60"><span class="lineNum">      60</span>              : });</span>
 <span id="L61"><span class="lineNum">      61</span>              : </span>
-<span id="L62"><span class="lineNum">      62</span> <span class="tlaGNC">           3 : final rsvpRepositoryProvider = Provider&lt;RsvpRepository&gt;((ref) {</span></span>
+<span id="L62"><span class="lineNum">      62</span> <span class="tlaGNC">           6 : final rsvpRepositoryProvider = Provider&lt;RsvpRepository&gt;((ref) {</span></span>
 <span id="L63"><span class="lineNum">      63</span> <span class="tlaUNC">           0 :   return FakeRsvpRepository();</span></span>
 <span id="L64"><span class="lineNum">      64</span>              : });</span>
 <span id="L65"><span class="lineNum">      65</span>              : </span>
@@ -236,7 +236,7 @@
 <span id="L174"><span class="lineNum">     174</span>              : });</span>
 <span id="L175"><span class="lineNum">     175</span>              : </span>
 <span id="L176"><span class="lineNum">     176</span>              : // Event detail state provider</span>
-<span id="L177"><span class="lineNum">     177</span> <span class="tlaGNC">           4 : final eventDetailProvider = FutureProvider.family&lt;EventDetail, String&gt;((</span></span>
+<span id="L177"><span class="lineNum">     177</span> <span class="tlaGNC">           7 : final eventDetailProvider = FutureProvider.family&lt;EventDetail, String&gt;((</span></span>
 <span id="L178"><span class="lineNum">     178</span>              :   ref,</span>
 <span id="L179"><span class="lineNum">     179</span>              :   eventId,</span>
 <span id="L180"><span class="lineNum">     180</span>              : ) async {</span>
@@ -245,7 +245,7 @@
 <span id="L183"><span class="lineNum">     183</span>              : });</span>
 <span id="L184"><span class="lineNum">     184</span>              : </span>
 <span id="L185"><span class="lineNum">     185</span>              : // RSVPs state provider</span>
-<span id="L186"><span class="lineNum">     186</span> <span class="tlaGNC">           4 : final eventRsvpsProvider = FutureProvider.family&lt;List&lt;Rsvp&gt;, String&gt;((</span></span>
+<span id="L186"><span class="lineNum">     186</span> <span class="tlaGNC">          10 : final eventRsvpsProvider = FutureProvider.family&lt;List&lt;Rsvp&gt;, String&gt;((</span></span>
 <span id="L187"><span class="lineNum">     187</span>              :   ref,</span>
 <span id="L188"><span class="lineNum">     188</span>              :   eventId,</span>
 <span id="L189"><span class="lineNum">     189</span>              : ) async {</span>
@@ -286,8 +286,8 @@
 <span id="L224"><span class="lineNum">     224</span>              : /// Guest RSVP *list* from web invite page (event_guest_rsvps table).</span>
 <span id="L225"><span class="lineNum">     225</span>              : /// Returns individual guest records with names — used for voter display</span>
 <span id="L226"><span class="lineNum">     226</span>              : /// and manage-guests page alongside app participants.</span>
-<span id="L227"><span class="lineNum">     227</span> <span class="tlaUNC">           0 : final guestRsvpListProvider =</span></span>
-<span id="L228"><span class="lineNum">     228</span> <span class="tlaUNC">           0 :     FutureProvider.family&lt;List&lt;Map&lt;String, dynamic&gt;&gt;, String&gt;(</span></span>
+<span id="L227"><span class="lineNum">     227</span> <span class="tlaGNC">           4 : final guestRsvpListProvider =</span></span>
+<span id="L228"><span class="lineNum">     228</span> <span class="tlaGNC">           2 :     FutureProvider.family&lt;List&lt;Map&lt;String, dynamic&gt;&gt;, String&gt;(</span></span>
 <span id="L229"><span class="lineNum">     229</span> <span class="tlaUNC">           0 :         (ref, eventId) async {</span></span>
 <span id="L230"><span class="lineNum">     230</span>              :   try {</span>
 <span id="L231"><span class="lineNum">     231</span> <span class="tlaUNC">           0 :     final response = await Supabase.instance.client</span></span>
@@ -302,20 +302,20 @@
 <span id="L240"><span class="lineNum">     240</span>              : });</span>
 <span id="L241"><span class="lineNum">     241</span>              : </span>
 <span id="L242"><span class="lineNum">     242</span>              : // User RSVP state provider</span>
-<span id="L243"><span class="lineNum">     243</span> <span class="tlaUNC">           0 : final userRsvpProvider =</span></span>
-<span id="L244"><span class="lineNum">     244</span> <span class="tlaUNC">           0 :     StateNotifierProvider.family&lt;UserRsvpNotifier, AsyncValue&lt;Rsvp?&gt;, String&gt;((</span></span>
+<span id="L243"><span class="lineNum">     243</span> <span class="tlaGNC">           2 : final userRsvpProvider =</span></span>
+<span id="L244"><span class="lineNum">     244</span> <span class="tlaGNC">           2 :     StateNotifierProvider.family&lt;UserRsvpNotifier, AsyncValue&lt;Rsvp?&gt;, String&gt;((</span></span>
 <span id="L245"><span class="lineNum">     245</span>              :   ref,</span>
 <span id="L246"><span class="lineNum">     246</span>              :   eventId,</span>
 <span id="L247"><span class="lineNum">     247</span>              : ) {</span>
-<span id="L248"><span class="lineNum">     248</span> <span class="tlaUNC">           0 :   return UserRsvpNotifier(</span></span>
+<span id="L248"><span class="lineNum">     248</span> <span class="tlaGNC">           1 :   return UserRsvpNotifier(</span></span>
 <span id="L249"><span class="lineNum">     249</span>              :     eventId: eventId,</span>
-<span id="L250"><span class="lineNum">     250</span> <span class="tlaUNC">           0 :     repository: ref.watch(rsvpRepositoryProvider),</span></span>
+<span id="L250"><span class="lineNum">     250</span> <span class="tlaGNC">           2 :     repository: ref.watch(rsvpRepositoryProvider),</span></span>
 <span id="L251"><span class="lineNum">     251</span>              :     ref: ref,</span>
 <span id="L252"><span class="lineNum">     252</span>              :   );</span>
 <span id="L253"><span class="lineNum">     253</span>              : });</span>
 <span id="L254"><span class="lineNum">     254</span>              : </span>
 <span id="L255"><span class="lineNum">     255</span>              : // Polls state provider</span>
-<span id="L256"><span class="lineNum">     256</span> <span class="tlaUNC">           0 : final eventPollsProvider = FutureProvider.family&lt;List&lt;Poll&gt;, String&gt;((</span></span>
+<span id="L256"><span class="lineNum">     256</span> <span class="tlaGNC">           3 : final eventPollsProvider = FutureProvider.family&lt;List&lt;Poll&gt;, String&gt;((</span></span>
 <span id="L257"><span class="lineNum">     257</span>              :   ref,</span>
 <span id="L258"><span class="lineNum">     258</span>              :   eventId,</span>
 <span id="L259"><span class="lineNum">     259</span>              : ) async {</span>
@@ -324,23 +324,23 @@
 <span id="L262"><span class="lineNum">     262</span>              : });</span>
 <span id="L263"><span class="lineNum">     263</span>              : </span>
 <span id="L264"><span class="lineNum">     264</span>              : // Event suggestions state provider</span>
-<span id="L265"><span class="lineNum">     265</span> <span class="tlaUNC">           0 : final eventSuggestionsProvider =</span></span>
-<span id="L266"><span class="lineNum">     266</span> <span class="tlaUNC">           0 :     FutureProvider.family&lt;List&lt;Suggestion&gt;, String&gt;((ref, eventId) async {</span></span>
+<span id="L265"><span class="lineNum">     265</span> <span class="tlaGNC">           2 : final eventSuggestionsProvider =</span></span>
+<span id="L266"><span class="lineNum">     266</span> <span class="tlaGNC">           1 :     FutureProvider.family&lt;List&lt;Suggestion&gt;, String&gt;((ref, eventId) async {</span></span>
 <span id="L267"><span class="lineNum">     267</span> <span class="tlaUNC">           0 :   final useCase = ref.watch(getEventSuggestionsProvider);</span></span>
 <span id="L268"><span class="lineNum">     268</span> <span class="tlaUNC">           0 :   final result = await useCase(eventId);</span></span>
 <span id="L269"><span class="lineNum">     269</span>              :   return result;</span>
 <span id="L270"><span class="lineNum">     270</span>              : });</span>
 <span id="L271"><span class="lineNum">     271</span>              : </span>
 <span id="L272"><span class="lineNum">     272</span>              : // Suggestion votes state provider</span>
-<span id="L273"><span class="lineNum">     273</span> <span class="tlaUNC">           0 : final suggestionVotesProvider =</span></span>
-<span id="L274"><span class="lineNum">     274</span> <span class="tlaUNC">           0 :     FutureProvider.family&lt;List&lt;SuggestionVote&gt;, String&gt;((ref, eventId) async {</span></span>
+<span id="L273"><span class="lineNum">     273</span> <span class="tlaGNC">           2 : final suggestionVotesProvider =</span></span>
+<span id="L274"><span class="lineNum">     274</span> <span class="tlaGNC">           1 :     FutureProvider.family&lt;List&lt;SuggestionVote&gt;, String&gt;((ref, eventId) async {</span></span>
 <span id="L275"><span class="lineNum">     275</span> <span class="tlaUNC">           0 :   final repository = ref.watch(suggestionRepositoryProvider);</span></span>
 <span id="L276"><span class="lineNum">     276</span> <span class="tlaUNC">           0 :   return await repository.getEventSuggestionVotes(eventId);</span></span>
 <span id="L277"><span class="lineNum">     277</span>              : });</span>
 <span id="L278"><span class="lineNum">     278</span>              : </span>
 <span id="L279"><span class="lineNum">     279</span>              : // User suggestion votes state provider</span>
-<span id="L280"><span class="lineNum">     280</span> <span class="tlaUNC">           0 : final userSuggestionVotesProvider =</span></span>
-<span id="L281"><span class="lineNum">     281</span> <span class="tlaUNC">           0 :     FutureProvider.family&lt;List&lt;SuggestionVote&gt;, String&gt;((ref, eventId) async {</span></span>
+<span id="L280"><span class="lineNum">     280</span> <span class="tlaGNC">           2 : final userSuggestionVotesProvider =</span></span>
+<span id="L281"><span class="lineNum">     281</span> <span class="tlaGNC">           1 :     FutureProvider.family&lt;List&lt;SuggestionVote&gt;, String&gt;((ref, eventId) async {</span></span>
 <span id="L282"><span class="lineNum">     282</span> <span class="tlaUNC">           0 :   final repository = ref.watch(suggestionRepositoryProvider);</span></span>
 <span id="L283"><span class="lineNum">     283</span> <span class="tlaUNC">           0 :   final currentUserId = ref.watch(currentUserIdProvider);</span></span>
 <span id="L284"><span class="lineNum">     284</span> <span class="tlaUNC">           0 :   return await repository.getUserSuggestionVotes(</span></span>
@@ -350,8 +350,8 @@
 <span id="L288"><span class="lineNum">     288</span>              : });</span>
 <span id="L289"><span class="lineNum">     289</span>              : </span>
 <span id="L290"><span class="lineNum">     290</span>              : // Location suggestions state provider</span>
-<span id="L291"><span class="lineNum">     291</span> <span class="tlaUNC">           0 : final eventLocationSuggestionsProvider =</span></span>
-<span id="L292"><span class="lineNum">     292</span> <span class="tlaUNC">           0 :     FutureProvider.family&lt;List&lt;LocationSuggestion&gt;, String&gt;((</span></span>
+<span id="L291"><span class="lineNum">     291</span> <span class="tlaGNC">           2 : final eventLocationSuggestionsProvider =</span></span>
+<span id="L292"><span class="lineNum">     292</span> <span class="tlaGNC">           1 :     FutureProvider.family&lt;List&lt;LocationSuggestion&gt;, String&gt;((</span></span>
 <span id="L293"><span class="lineNum">     293</span>              :   ref,</span>
 <span id="L294"><span class="lineNum">     294</span>              :   eventId,</span>
 <span id="L295"><span class="lineNum">     295</span>              : ) async {</span>
@@ -361,15 +361,15 @@
 <span id="L299"><span class="lineNum">     299</span>              : });</span>
 <span id="L300"><span class="lineNum">     300</span>              : </span>
 <span id="L301"><span class="lineNum">     301</span>              : // Location suggestion votes state provider</span>
-<span id="L302"><span class="lineNum">     302</span> <span class="tlaUNC">           0 : final locationSuggestionVotesProvider =</span></span>
-<span id="L303"><span class="lineNum">     303</span> <span class="tlaUNC">           0 :     FutureProvider.family&lt;List&lt;SuggestionVote&gt;, String&gt;((ref, eventId) async {</span></span>
+<span id="L302"><span class="lineNum">     302</span> <span class="tlaGNC">           2 : final locationSuggestionVotesProvider =</span></span>
+<span id="L303"><span class="lineNum">     303</span> <span class="tlaGNC">           1 :     FutureProvider.family&lt;List&lt;SuggestionVote&gt;, String&gt;((ref, eventId) async {</span></span>
 <span id="L304"><span class="lineNum">     304</span> <span class="tlaUNC">           0 :   final repository = ref.watch(suggestionRepositoryProvider);</span></span>
 <span id="L305"><span class="lineNum">     305</span> <span class="tlaUNC">           0 :   return await repository.getEventLocationSuggestionVotes(eventId);</span></span>
 <span id="L306"><span class="lineNum">     306</span>              : });</span>
 <span id="L307"><span class="lineNum">     307</span>              : </span>
 <span id="L308"><span class="lineNum">     308</span>              : // User location suggestion votes state provider</span>
-<span id="L309"><span class="lineNum">     309</span> <span class="tlaUNC">           0 : final userLocationSuggestionVotesProvider =</span></span>
-<span id="L310"><span class="lineNum">     310</span> <span class="tlaUNC">           0 :     FutureProvider.family&lt;List&lt;SuggestionVote&gt;, String&gt;((ref, eventId) async {</span></span>
+<span id="L309"><span class="lineNum">     309</span> <span class="tlaGNC">           2 : final userLocationSuggestionVotesProvider =</span></span>
+<span id="L310"><span class="lineNum">     310</span> <span class="tlaGNC">           1 :     FutureProvider.family&lt;List&lt;SuggestionVote&gt;, String&gt;((ref, eventId) async {</span></span>
 <span id="L311"><span class="lineNum">     311</span> <span class="tlaUNC">           0 :   final repository = ref.watch(suggestionRepositoryProvider);</span></span>
 <span id="L312"><span class="lineNum">     312</span> <span class="tlaUNC">           0 :   final currentUserId = ref.watch(currentUserIdProvider);</span></span>
 <span id="L313"><span class="lineNum">     313</span> <span class="tlaUNC">           0 :   return await repository.getUserLocationSuggestionVotes(</span></span>
@@ -384,21 +384,21 @@
 <span id="L322"><span class="lineNum">     322</span>              :   final RsvpRepository repository;</span>
 <span id="L323"><span class="lineNum">     323</span>              :   final Ref ref;</span>
 <span id="L324"><span class="lineNum">     324</span>              : </span>
-<span id="L325"><span class="lineNum">     325</span> <span class="tlaUNC">           0 :   UserRsvpNotifier({</span></span>
+<span id="L325"><span class="lineNum">     325</span> <span class="tlaGNC">           1 :   UserRsvpNotifier({</span></span>
 <span id="L326"><span class="lineNum">     326</span>              :     required this.eventId,</span>
 <span id="L327"><span class="lineNum">     327</span>              :     required this.repository,</span>
 <span id="L328"><span class="lineNum">     328</span>              :     required this.ref,</span>
-<span id="L329"><span class="lineNum">     329</span> <span class="tlaUNC">           0 :   }) : super(const AsyncValue.loading()) {</span></span>
-<span id="L330"><span class="lineNum">     330</span> <span class="tlaUNC">           0 :     _loadUserRsvp();</span></span>
+<span id="L329"><span class="lineNum">     329</span> <span class="tlaGNC">           1 :   }) : super(const AsyncValue.loading()) {</span></span>
+<span id="L330"><span class="lineNum">     330</span> <span class="tlaGNC">           1 :     _loadUserRsvp();</span></span>
 <span id="L331"><span class="lineNum">     331</span>              :   }</span>
 <span id="L332"><span class="lineNum">     332</span>              : </span>
-<span id="L333"><span class="lineNum">     333</span> <span class="tlaUNC">           0 :   Future&lt;void&gt; _loadUserRsvp() async {</span></span>
-<span id="L334"><span class="lineNum">     334</span> <span class="tlaUNC">           0 :     state = const AsyncValue.loading();</span></span>
+<span id="L333"><span class="lineNum">     333</span> <span class="tlaGNC">           1 :   Future&lt;void&gt; _loadUserRsvp() async {</span></span>
+<span id="L334"><span class="lineNum">     334</span> <span class="tlaGNC">           1 :     state = const AsyncValue.loading();</span></span>
 <span id="L335"><span class="lineNum">     335</span>              :     try {</span>
-<span id="L336"><span class="lineNum">     336</span> <span class="tlaUNC">           0 :       final currentUserId = ref.read(currentUserIdProvider);</span></span>
+<span id="L336"><span class="lineNum">     336</span> <span class="tlaGNC">           3 :       final currentUserId = ref.read(currentUserIdProvider);</span></span>
 <span id="L337"><span class="lineNum">     337</span>              :       final userRsvp =</span>
-<span id="L338"><span class="lineNum">     338</span> <span class="tlaUNC">           0 :           await repository.getUserRsvp(eventId, currentUserId ?? '');</span></span>
-<span id="L339"><span class="lineNum">     339</span> <span class="tlaUNC">           0 :       state = AsyncValue.data(userRsvp);</span></span>
+<span id="L338"><span class="lineNum">     338</span> <span class="tlaGNC">           3 :           await repository.getUserRsvp(eventId, currentUserId ?? '');</span></span>
+<span id="L339"><span class="lineNum">     339</span> <span class="tlaGNC">           2 :       state = AsyncValue.data(userRsvp);</span></span>
 <span id="L340"><span class="lineNum">     340</span>              :     } catch (error, stackTrace) {</span>
 <span id="L341"><span class="lineNum">     341</span> <span class="tlaUNC">           0 :       state = AsyncValue.error(error, stackTrace);</span></span>
 <span id="L342"><span class="lineNum">     342</span>              :     }</span>
@@ -834,28 +834,28 @@
 <span id="L772"><span class="lineNum">     772</span>              : </span>
 <span id="L773"><span class="lineNum">     773</span>              : /// Combined provider for date/time suggestions with all dependencies</span>
 <span id="L774"><span class="lineNum">     774</span>              : /// Combines: suggestions, votes, user votes, and RSVP going count</span>
-<span id="L775"><span class="lineNum">     775</span> <span class="tlaUNC">           0 : final dateTimeSuggestionsDataProvider =</span></span>
-<span id="L776"><span class="lineNum">     776</span> <span class="tlaUNC">           0 :     FutureProvider.autoDispose.family&lt;Map&lt;String, dynamic&gt;, String&gt;(</span></span>
-<span id="L777"><span class="lineNum">     777</span> <span class="tlaUNC">           0 :   (ref, eventId) async {</span></span>
+<span id="L775"><span class="lineNum">     775</span> <span class="tlaGNC">           2 : final dateTimeSuggestionsDataProvider =</span></span>
+<span id="L776"><span class="lineNum">     776</span> <span class="tlaGNC">           2 :     FutureProvider.autoDispose.family&lt;Map&lt;String, dynamic&gt;, String&gt;(</span></span>
+<span id="L777"><span class="lineNum">     777</span> <span class="tlaGNC">           1 :   (ref, eventId) async {</span></span>
 <span id="L778"><span class="lineNum">     778</span>              :     // Fetch all dependencies in parallel</span>
-<span id="L779"><span class="lineNum">     779</span> <span class="tlaUNC">           0 :     final results = await Future.wait([</span></span>
-<span id="L780"><span class="lineNum">     780</span> <span class="tlaUNC">           0 :       ref.watch(eventSuggestionsProvider(eventId).future),</span></span>
-<span id="L781"><span class="lineNum">     781</span> <span class="tlaUNC">           0 :       ref.watch(suggestionVotesProvider(eventId).future),</span></span>
-<span id="L782"><span class="lineNum">     782</span> <span class="tlaUNC">           0 :       ref.watch(userSuggestionVotesProvider(eventId).future),</span></span>
-<span id="L783"><span class="lineNum">     783</span> <span class="tlaUNC">           0 :       ref.watch(eventRsvpsProvider(eventId).future),</span></span>
+<span id="L779"><span class="lineNum">     779</span> <span class="tlaGNC">           2 :     final results = await Future.wait([</span></span>
+<span id="L780"><span class="lineNum">     780</span> <span class="tlaGNC">           4 :       ref.watch(eventSuggestionsProvider(eventId).future),</span></span>
+<span id="L781"><span class="lineNum">     781</span> <span class="tlaGNC">           4 :       ref.watch(suggestionVotesProvider(eventId).future),</span></span>
+<span id="L782"><span class="lineNum">     782</span> <span class="tlaGNC">           4 :       ref.watch(userSuggestionVotesProvider(eventId).future),</span></span>
+<span id="L783"><span class="lineNum">     783</span> <span class="tlaGNC">           4 :       ref.watch(eventRsvpsProvider(eventId).future),</span></span>
 <span id="L784"><span class="lineNum">     784</span>              :     ]);</span>
 <span id="L785"><span class="lineNum">     785</span>              : </span>
-<span id="L786"><span class="lineNum">     786</span> <span class="tlaUNC">           0 :     final suggestions = results[0] as List&lt;Suggestion&gt;;</span></span>
-<span id="L787"><span class="lineNum">     787</span> <span class="tlaUNC">           0 :     final allVotes = results[1] as List&lt;SuggestionVote&gt;;</span></span>
-<span id="L788"><span class="lineNum">     788</span> <span class="tlaUNC">           0 :     final userVotes = results[2] as List&lt;SuggestionVote&gt;;</span></span>
-<span id="L789"><span class="lineNum">     789</span> <span class="tlaUNC">           0 :     final rsvps = results[3] as List&lt;Rsvp&gt;;</span></span>
+<span id="L786"><span class="lineNum">     786</span> <span class="tlaGNC">           1 :     final suggestions = results[0] as List&lt;Suggestion&gt;;</span></span>
+<span id="L787"><span class="lineNum">     787</span> <span class="tlaGNC">           1 :     final allVotes = results[1] as List&lt;SuggestionVote&gt;;</span></span>
+<span id="L788"><span class="lineNum">     788</span> <span class="tlaGNC">           1 :     final userVotes = results[2] as List&lt;SuggestionVote&gt;;</span></span>
+<span id="L789"><span class="lineNum">     789</span> <span class="tlaGNC">           1 :     final rsvps = results[3] as List&lt;Rsvp&gt;;</span></span>
 <span id="L790"><span class="lineNum">     790</span>              : </span>
 <span id="L791"><span class="lineNum">     791</span>              :     // Calculate going count for current event option</span>
-<span id="L792"><span class="lineNum">     792</span> <span class="tlaUNC">           0 :     final goingCount = rsvps.where((r) =&gt; r.status == RsvpStatus.going).length;</span></span>
+<span id="L792"><span class="lineNum">     792</span> <span class="tlaGNC">           2 :     final goingCount = rsvps.where((r) =&gt; r.status == RsvpStatus.going).length;</span></span>
 <span id="L793"><span class="lineNum">     793</span>              : </span>
-<span id="L794"><span class="lineNum">     794</span> <span class="tlaUNC">           0 :     final userVoteIds = userVotes.map((vote) =&gt; vote.suggestionId).toSet();</span></span>
+<span id="L794"><span class="lineNum">     794</span> <span class="tlaGNC">           2 :     final userVoteIds = userVotes.map((vote) =&gt; vote.suggestionId).toSet();</span></span>
 <span id="L795"><span class="lineNum">     795</span>              : </span>
-<span id="L796"><span class="lineNum">     796</span> <span class="tlaUNC">           0 :     return {</span></span>
+<span id="L796"><span class="lineNum">     796</span> <span class="tlaGNC">           1 :     return {</span></span>
 <span id="L797"><span class="lineNum">     797</span>              :       'suggestions': suggestions,</span>
 <span id="L798"><span class="lineNum">     798</span>              :       'allVotes': allVotes,</span>
 <span id="L799"><span class="lineNum">     799</span>              :       'userVoteIds': userVoteIds,</span>
@@ -866,31 +866,31 @@
 <span id="L804"><span class="lineNum">     804</span>              : </span>
 <span id="L805"><span class="lineNum">     805</span>              : /// Combined provider for location suggestions with all dependencies</span>
 <span id="L806"><span class="lineNum">     806</span>              : /// Combines: location suggestions, votes, user votes, and RSVP going count</span>
-<span id="L807"><span class="lineNum">     807</span> <span class="tlaUNC">           0 : final locationSuggestionsDataProvider =</span></span>
-<span id="L808"><span class="lineNum">     808</span> <span class="tlaUNC">           0 :     FutureProvider.autoDispose.family&lt;Map&lt;String, dynamic&gt;, String&gt;(</span></span>
-<span id="L809"><span class="lineNum">     809</span> <span class="tlaUNC">           0 :   (ref, eventId) async {</span></span>
+<span id="L807"><span class="lineNum">     807</span> <span class="tlaGNC">           2 : final locationSuggestionsDataProvider =</span></span>
+<span id="L808"><span class="lineNum">     808</span> <span class="tlaGNC">           2 :     FutureProvider.autoDispose.family&lt;Map&lt;String, dynamic&gt;, String&gt;(</span></span>
+<span id="L809"><span class="lineNum">     809</span> <span class="tlaGNC">           1 :   (ref, eventId) async {</span></span>
 <span id="L810"><span class="lineNum">     810</span>              :     // Fetch all dependencies in parallel</span>
-<span id="L811"><span class="lineNum">     811</span> <span class="tlaUNC">           0 :     final results = await Future.wait([</span></span>
-<span id="L812"><span class="lineNum">     812</span> <span class="tlaUNC">           0 :       ref.watch(eventLocationSuggestionsProvider(eventId).future),</span></span>
-<span id="L813"><span class="lineNum">     813</span> <span class="tlaUNC">           0 :       ref.watch(locationSuggestionVotesProvider(eventId).future),</span></span>
-<span id="L814"><span class="lineNum">     814</span> <span class="tlaUNC">           0 :       ref.watch(userLocationSuggestionVotesProvider(eventId).future),</span></span>
-<span id="L815"><span class="lineNum">     815</span> <span class="tlaUNC">           0 :       ref.watch(eventRsvpsProvider(eventId).future),</span></span>
+<span id="L811"><span class="lineNum">     811</span> <span class="tlaGNC">           2 :     final results = await Future.wait([</span></span>
+<span id="L812"><span class="lineNum">     812</span> <span class="tlaGNC">           4 :       ref.watch(eventLocationSuggestionsProvider(eventId).future),</span></span>
+<span id="L813"><span class="lineNum">     813</span> <span class="tlaGNC">           4 :       ref.watch(locationSuggestionVotesProvider(eventId).future),</span></span>
+<span id="L814"><span class="lineNum">     814</span> <span class="tlaGNC">           4 :       ref.watch(userLocationSuggestionVotesProvider(eventId).future),</span></span>
+<span id="L815"><span class="lineNum">     815</span> <span class="tlaGNC">           4 :       ref.watch(eventRsvpsProvider(eventId).future),</span></span>
 <span id="L816"><span class="lineNum">     816</span>              :     ]);</span>
 <span id="L817"><span class="lineNum">     817</span>              : </span>
-<span id="L818"><span class="lineNum">     818</span> <span class="tlaUNC">           0 :     final locationSuggestions = results[0] as List&lt;LocationSuggestion&gt;;</span></span>
-<span id="L819"><span class="lineNum">     819</span> <span class="tlaUNC">           0 :     final locationVotes = results[1] as List&lt;SuggestionVote&gt;;</span></span>
-<span id="L820"><span class="lineNum">     820</span> <span class="tlaUNC">           0 :     final userLocationVotes = results[2] as List&lt;SuggestionVote&gt;;</span></span>
-<span id="L821"><span class="lineNum">     821</span> <span class="tlaUNC">           0 :     final rsvps = results[3] as List&lt;Rsvp&gt;;</span></span>
+<span id="L818"><span class="lineNum">     818</span> <span class="tlaGNC">           1 :     final locationSuggestions = results[0] as List&lt;LocationSuggestion&gt;;</span></span>
+<span id="L819"><span class="lineNum">     819</span> <span class="tlaGNC">           1 :     final locationVotes = results[1] as List&lt;SuggestionVote&gt;;</span></span>
+<span id="L820"><span class="lineNum">     820</span> <span class="tlaGNC">           1 :     final userLocationVotes = results[2] as List&lt;SuggestionVote&gt;;</span></span>
+<span id="L821"><span class="lineNum">     821</span> <span class="tlaGNC">           1 :     final rsvps = results[3] as List&lt;Rsvp&gt;;</span></span>
 <span id="L822"><span class="lineNum">     822</span>              : </span>
-<span id="L823"><span class="lineNum">     823</span> <span class="tlaUNC">           0 :     for (var i = 0; i &lt; locationSuggestions.length; i++) {}</span></span>
+<span id="L823"><span class="lineNum">     823</span> <span class="tlaGNC">           2 :     for (var i = 0; i &lt; locationSuggestions.length; i++) {}</span></span>
 <span id="L824"><span class="lineNum">     824</span>              : </span>
 <span id="L825"><span class="lineNum">     825</span>              :     // Calculate going count for current event location</span>
-<span id="L826"><span class="lineNum">     826</span> <span class="tlaUNC">           0 :     final goingCount = rsvps.where((r) =&gt; r.status == RsvpStatus.going).length;</span></span>
+<span id="L826"><span class="lineNum">     826</span> <span class="tlaGNC">           2 :     final goingCount = rsvps.where((r) =&gt; r.status == RsvpStatus.going).length;</span></span>
 <span id="L827"><span class="lineNum">     827</span>              : </span>
 <span id="L828"><span class="lineNum">     828</span>              :     final userVoteIds =</span>
-<span id="L829"><span class="lineNum">     829</span> <span class="tlaUNC">           0 :         userLocationVotes.map((vote) =&gt; vote.suggestionId).toSet();</span></span>
+<span id="L829"><span class="lineNum">     829</span> <span class="tlaGNC">           2 :         userLocationVotes.map((vote) =&gt; vote.suggestionId).toSet();</span></span>
 <span id="L830"><span class="lineNum">     830</span>              : </span>
-<span id="L831"><span class="lineNum">     831</span> <span class="tlaUNC">           0 :     return {</span></span>
+<span id="L831"><span class="lineNum">     831</span> <span class="tlaGNC">           1 :     return {</span></span>
 <span id="L832"><span class="lineNum">     832</span>              :       'locationSuggestions': locationSuggestions,</span>
 <span id="L833"><span class="lineNum">     833</span>              :       'locationVotes': locationVotes,</span>
 <span id="L834"><span class="lineNum">     834</span>              :       'userVoteIds': userVoteIds,</span>

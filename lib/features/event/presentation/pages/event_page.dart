@@ -458,7 +458,7 @@ class _EventPageState extends ConsumerState<EventPage> {
       // LAZZO 2.0: payment provider invalidations removed
     }
 
-    final eventName = eventAsync.value?.name ?? '';
+    final eventName = eventAsync.valueOrNull?.name ?? '';
 
     return Scaffold(
       backgroundColor: BrandColors.bg1,
@@ -509,7 +509,7 @@ class _EventPageState extends ConsumerState<EventPage> {
 
                 // Show edit button for host/admin (except in living status)
                 if (canManage) {
-                  final eventData = eventAsync.value;
+                  final eventData = eventAsync.valueOrNull;
                   if (eventData != null &&
                       eventData.status != EventStatus.living) {
                     return IconButton(
@@ -552,7 +552,7 @@ class _EventPageState extends ConsumerState<EventPage> {
               loading: () {
                 // Use cached state during loading
                 if (_cachedIsHost == true) {
-                  final eventData = eventAsync.value;
+                  final eventData = eventAsync.valueOrNull;
                   if (eventData != null &&
                       eventData.status != EventStatus.living) {
                     return IconButton(
