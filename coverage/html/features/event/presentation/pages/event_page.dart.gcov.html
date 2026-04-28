@@ -31,13 +31,13 @@
             <td class="headerValue">lcov.info</td>
             <td></td>
             <td class="headerItem">Lines:</td>
-            <td class="headerCovTableEntryLo">24.6&nbsp;%</td>
+            <td class="headerCovTableEntryLo">24.8&nbsp;%</td>
             <td class="headerCovTableEntry">806</td>
-            <td class="headerCovTableEntry">198</td>
+            <td class="headerCovTableEntry">200</td>
           </tr>
           <tr>
             <td class="headerItem">Test Date:</td>
-            <td class="headerValue">2026-04-27 22:51:59</td>
+            <td class="headerValue">2026-04-28 14:29:17</td>
             <td></td>
             <td class="headerItem">Functions:</td>
             <td class="headerCovTableEntryHi">-</td>
@@ -520,7 +520,7 @@
 <span id="L458"><span class="lineNum">     458</span>              :       // LAZZO 2.0: payment provider invalidations removed</span>
 <span id="L459"><span class="lineNum">     459</span>              :     }</span>
 <span id="L460"><span class="lineNum">     460</span>              : </span>
-<span id="L461"><span class="lineNum">     461</span> <span class="tlaGNC">           2 :     final eventName = eventAsync.value?.name ?? '';</span></span>
+<span id="L461"><span class="lineNum">     461</span> <span class="tlaGNC">           2 :     final eventName = eventAsync.valueOrNull?.name ?? '';</span></span>
 <span id="L462"><span class="lineNum">     462</span>              : </span>
 <span id="L463"><span class="lineNum">     463</span> <span class="tlaGNC">           1 :     return Scaffold(</span></span>
 <span id="L464"><span class="lineNum">     464</span>              :       backgroundColor: BrandColors.bg1,</span>
@@ -571,7 +571,7 @@
 <span id="L509"><span class="lineNum">     509</span>              : </span>
 <span id="L510"><span class="lineNum">     510</span>              :                 // Show edit button for host/admin (except in living status)</span>
 <span id="L511"><span class="lineNum">     511</span>              :                 if (canManage) {</span>
-<span id="L512"><span class="lineNum">     512</span> <span class="tlaUNC">           0 :                   final eventData = eventAsync.value;</span></span>
+<span id="L512"><span class="lineNum">     512</span> <span class="tlaUNC">           0 :                   final eventData = eventAsync.valueOrNull;</span></span>
 <span id="L513"><span class="lineNum">     513</span>              :                   if (eventData != null &amp;&amp;</span>
 <span id="L514"><span class="lineNum">     514</span> <span class="tlaUNC">           0 :                       eventData.status != EventStatus.living) {</span></span>
 <span id="L515"><span class="lineNum">     515</span> <span class="tlaUNC">           0 :                     return IconButton(</span></span>
@@ -614,7 +614,7 @@
 <span id="L552"><span class="lineNum">     552</span> <span class="tlaGNC">           1 :               loading: () {</span></span>
 <span id="L553"><span class="lineNum">     553</span>              :                 // Use cached state during loading</span>
 <span id="L554"><span class="lineNum">     554</span> <span class="tlaGNC">           2 :                 if (_cachedIsHost == true) {</span></span>
-<span id="L555"><span class="lineNum">     555</span> <span class="tlaUNC">           0 :                   final eventData = eventAsync.value;</span></span>
+<span id="L555"><span class="lineNum">     555</span> <span class="tlaUNC">           0 :                   final eventData = eventAsync.valueOrNull;</span></span>
 <span id="L556"><span class="lineNum">     556</span>              :                   if (eventData != null &amp;&amp;</span>
 <span id="L557"><span class="lineNum">     557</span> <span class="tlaUNC">           0 :                       eventData.status != EventStatus.living) {</span></span>
 <span id="L558"><span class="lineNum">     558</span> <span class="tlaUNC">           0 :                     return IconButton(</span></span>
@@ -1026,8 +1026,8 @@
 <span id="L964"><span class="lineNum">     964</span>              :           ),</span>
 <span id="L965"><span class="lineNum">     965</span>              :         ),</span>
 <span id="L966"><span class="lineNum">     966</span> <span class="tlaGNC">           1 :         loading: () =&gt; const Center(child: CircularProgressIndicator()),</span></span>
-<span id="L967"><span class="lineNum">     967</span> <span class="tlaUNC">           0 :         error: (error, stack) =&gt;</span></span>
-<span id="L968"><span class="lineNum">     968</span> <span class="tlaUNC">           0 :             Center(child: Text('Error loading event: $error')),</span></span>
+<span id="L967"><span class="lineNum">     967</span> <span class="tlaGNC">           1 :         error: (error, stack) =&gt;</span></span>
+<span id="L968"><span class="lineNum">     968</span> <span class="tlaGNC">           3 :             Center(child: Text('Error loading event: $error')),</span></span>
 <span id="L969"><span class="lineNum">     969</span>              :       ),</span>
 <span id="L970"><span class="lineNum">     970</span>              :     );</span>
 <span id="L971"><span class="lineNum">     971</span>              :   }</span>

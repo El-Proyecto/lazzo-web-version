@@ -31,13 +31,13 @@
             <td class="headerValue">lcov.info</td>
             <td></td>
             <td class="headerItem">Lines:</td>
-            <td class="headerCovTableEntryLo">0.0&nbsp;%</td>
+            <td class="headerCovTableEntryLo">33.2&nbsp;%</td>
             <td class="headerCovTableEntry">226</td>
-            <td class="headerCovTableEntry">0</td>
+            <td class="headerCovTableEntry">75</td>
           </tr>
           <tr>
             <td class="headerItem">Test Date:</td>
-            <td class="headerValue">2026-04-27 22:51:59</td>
+            <td class="headerValue">2026-04-28 14:29:17</td>
             <td></td>
             <td class="headerItem">Functions:</td>
             <td class="headerCovTableEntryHi">-</td>
@@ -72,7 +72,7 @@
 <span id="L10"><span class="lineNum">      10</span>              :   final String label; // e.g., &quot;Morning&quot;, &quot;5 July 2024&quot;</span>
 <span id="L11"><span class="lineNum">      11</span>              :   final List&lt;HybridPhotoData&gt; photos;</span>
 <span id="L12"><span class="lineNum">      12</span>              : </span>
-<span id="L13"><span class="lineNum">      13</span> <span class="tlaUNC">           0 :   const PhotoCluster({</span></span>
+<span id="L13"><span class="lineNum">      13</span> <span class="tlaGNC">           1 :   const PhotoCluster({</span></span>
 <span id="L14"><span class="lineNum">      14</span>              :     required this.label,</span>
 <span id="L15"><span class="lineNum">      15</span>              :     required this.photos,</span>
 <span id="L16"><span class="lineNum">      16</span>              :   });</span>
@@ -89,45 +89,45 @@
 <span id="L27"><span class="lineNum">      27</span>              :   final List&lt;PhotoCluster&gt; clusters;</span>
 <span id="L28"><span class="lineNum">      28</span>              :   final Function(String photoId)? onPhotoTap;</span>
 <span id="L29"><span class="lineNum">      29</span>              : </span>
-<span id="L30"><span class="lineNum">      30</span> <span class="tlaUNC">           0 :   const HybridPhotoGrid({</span></span>
+<span id="L30"><span class="lineNum">      30</span> <span class="tlaGNC">           1 :   const HybridPhotoGrid({</span></span>
 <span id="L31"><span class="lineNum">      31</span>              :     super.key,</span>
 <span id="L32"><span class="lineNum">      32</span>              :     required this.clusters,</span>
 <span id="L33"><span class="lineNum">      33</span>              :     this.onPhotoTap,</span>
 <span id="L34"><span class="lineNum">      34</span>              :   });</span>
 <span id="L35"><span class="lineNum">      35</span>              : </span>
-<span id="L36"><span class="lineNum">      36</span> <span class="tlaUNC">           0 :   @override</span></span>
+<span id="L36"><span class="lineNum">      36</span> <span class="tlaGNC">           1 :   @override</span></span>
 <span id="L37"><span class="lineNum">      37</span>              :   Widget build(BuildContext context) {</span>
-<span id="L38"><span class="lineNum">      38</span> <span class="tlaUNC">           0 :     if (clusters.isEmpty) {</span></span>
+<span id="L38"><span class="lineNum">      38</span> <span class="tlaGNC">           2 :     if (clusters.isEmpty) {</span></span>
 <span id="L39"><span class="lineNum">      39</span>              :       return const SizedBox.shrink();</span>
 <span id="L40"><span class="lineNum">      40</span>              :     }</span>
 <span id="L41"><span class="lineNum">      41</span>              : </span>
-<span id="L42"><span class="lineNum">      42</span> <span class="tlaUNC">           0 :     return LayoutBuilder(</span></span>
-<span id="L43"><span class="lineNum">      43</span> <span class="tlaUNC">           0 :       builder: (context, constraints) {</span></span>
+<span id="L42"><span class="lineNum">      42</span> <span class="tlaGNC">           1 :     return LayoutBuilder(</span></span>
+<span id="L43"><span class="lineNum">      43</span> <span class="tlaGNC">           1 :       builder: (context, constraints) {</span></span>
 <span id="L44"><span class="lineNum">      44</span>              :         // Visual base: padding 16, gap 8, 3 visual columns -&gt; 6 sub-grid units.</span>
 <span id="L45"><span class="lineNum">      45</span>              :         const padding = Insets.screenH; // 16px</span>
 <span id="L46"><span class="lineNum">      46</span>              :         const gap = Gaps.xs; // 8px</span>
 <span id="L47"><span class="lineNum">      47</span>              :         const subCols = 6; // 6-unit sub-grid (each visual column = 2 units)</span>
 <span id="L48"><span class="lineNum">      48</span>              : </span>
-<span id="L49"><span class="lineNum">      49</span> <span class="tlaUNC">           0 :         final screenW = constraints.maxWidth;</span></span>
-<span id="L50"><span class="lineNum">      50</span> <span class="tlaUNC">           0 :         final innerW = screenW - padding * 2;</span></span>
+<span id="L49"><span class="lineNum">      49</span> <span class="tlaGNC">           1 :         final screenW = constraints.maxWidth;</span></span>
+<span id="L50"><span class="lineNum">      50</span> <span class="tlaGNC">           2 :         final innerW = screenW - padding * 2;</span></span>
 <span id="L51"><span class="lineNum">      51</span>              : </span>
 <span id="L52"><span class="lineNum">      52</span>              :         // Pixel-snapped unit width (floor), then distribute leftover equally.</span>
 <span id="L53"><span class="lineNum">      53</span>              :         final unitW =</span>
-<span id="L54"><span class="lineNum">      54</span> <span class="tlaUNC">           0 :             ((innerW - gap * (subCols - 1)) / subCols).floorToDouble();</span></span>
-<span id="L55"><span class="lineNum">      55</span> <span class="tlaUNC">           0 :         final usedW = unitW * subCols + gap * (subCols - 1);</span></span>
-<span id="L56"><span class="lineNum">      56</span> <span class="tlaUNC">           0 :         final leftover = (innerW - usedW).clamp(0, innerW);</span></span>
-<span id="L57"><span class="lineNum">      57</span> <span class="tlaUNC">           0 :         final innerSidePad = leftover / 2;</span></span>
+<span id="L54"><span class="lineNum">      54</span> <span class="tlaGNC">           5 :             ((innerW - gap * (subCols - 1)) / subCols).floorToDouble();</span></span>
+<span id="L55"><span class="lineNum">      55</span> <span class="tlaGNC">           4 :         final usedW = unitW * subCols + gap * (subCols - 1);</span></span>
+<span id="L56"><span class="lineNum">      56</span> <span class="tlaGNC">           2 :         final leftover = (innerW - usedW).clamp(0, innerW);</span></span>
+<span id="L57"><span class="lineNum">      57</span> <span class="tlaGNC">           1 :         final innerSidePad = leftover / 2;</span></span>
 <span id="L58"><span class="lineNum">      58</span>              : </span>
-<span id="L59"><span class="lineNum">      59</span> <span class="tlaUNC">           0 :         final showClusterLabels = clusters.length &gt; 1;</span></span>
+<span id="L59"><span class="lineNum">      59</span> <span class="tlaGNC">           3 :         final showClusterLabels = clusters.length &gt; 1;</span></span>
 <span id="L60"><span class="lineNum">      60</span>              : </span>
-<span id="L61"><span class="lineNum">      61</span> <span class="tlaUNC">           0 :         return Padding(</span></span>
+<span id="L61"><span class="lineNum">      61</span> <span class="tlaGNC">           1 :         return Padding(</span></span>
 <span id="L62"><span class="lineNum">      62</span>              :           padding: const EdgeInsets.symmetric(horizontal: padding),</span>
-<span id="L63"><span class="lineNum">      63</span> <span class="tlaUNC">           0 :           child: Column(</span></span>
+<span id="L63"><span class="lineNum">      63</span> <span class="tlaGNC">           1 :           child: Column(</span></span>
 <span id="L64"><span class="lineNum">      64</span>              :             crossAxisAlignment: CrossAxisAlignment.start,</span>
-<span id="L65"><span class="lineNum">      65</span> <span class="tlaUNC">           0 :             children: clusters.map((cluster) {</span></span>
-<span id="L66"><span class="lineNum">      66</span> <span class="tlaUNC">           0 :               return Column(</span></span>
+<span id="L65"><span class="lineNum">      65</span> <span class="tlaGNC">           3 :             children: clusters.map((cluster) {</span></span>
+<span id="L66"><span class="lineNum">      66</span> <span class="tlaGNC">           1 :               return Column(</span></span>
 <span id="L67"><span class="lineNum">      67</span>              :                 crossAxisAlignment: CrossAxisAlignment.start,</span>
-<span id="L68"><span class="lineNum">      68</span> <span class="tlaUNC">           0 :                 children: [</span></span>
+<span id="L68"><span class="lineNum">      68</span> <span class="tlaGNC">           1 :                 children: [</span></span>
 <span id="L69"><span class="lineNum">      69</span>              :                   if (showClusterLabels)</span>
 <span id="L70"><span class="lineNum">      70</span> <span class="tlaUNC">           0 :                     Container(</span></span>
 <span id="L71"><span class="lineNum">      71</span>              :                       margin: const EdgeInsets.only(bottom: Gaps.sm),</span>
@@ -148,13 +148,13 @@
 <span id="L86"><span class="lineNum">      86</span>              :                     ),</span>
 <span id="L87"><span class="lineNum">      87</span>              : </span>
 <span id="L88"><span class="lineNum">      88</span>              :                   // Photos in cluster (operate strictly within this cluster)</span>
-<span id="L89"><span class="lineNum">      89</span> <span class="tlaUNC">           0 :                   ..._buildClusterRows(</span></span>
-<span id="L90"><span class="lineNum">      90</span> <span class="tlaUNC">           0 :                       cluster.photos, unitW, gap, innerSidePad),</span></span>
+<span id="L89"><span class="lineNum">      89</span> <span class="tlaGNC">           1 :                   ..._buildClusterRows(</span></span>
+<span id="L90"><span class="lineNum">      90</span> <span class="tlaGNC">           1 :                       cluster.photos, unitW, gap, innerSidePad),</span></span>
 <span id="L91"><span class="lineNum">      91</span>              : </span>
-<span id="L92"><span class="lineNum">      92</span> <span class="tlaUNC">           0 :                   const SizedBox(height: Gaps.lg),</span></span>
+<span id="L92"><span class="lineNum">      92</span> <span class="tlaGNC">           1 :                   const SizedBox(height: Gaps.lg),</span></span>
 <span id="L93"><span class="lineNum">      93</span>              :                 ],</span>
 <span id="L94"><span class="lineNum">      94</span>              :               );</span>
-<span id="L95"><span class="lineNum">      95</span> <span class="tlaUNC">           0 :             }).toList(),</span></span>
+<span id="L95"><span class="lineNum">      95</span> <span class="tlaGNC">           1 :             }).toList(),</span></span>
 <span id="L96"><span class="lineNum">      96</span>              :           ),</span>
 <span id="L97"><span class="lineNum">      97</span>              :         );</span>
 <span id="L98"><span class="lineNum">      98</span>              :       },</span>
@@ -163,23 +163,23 @@
 <span id="L101"><span class="lineNum">     101</span>              : </span>
 <span id="L102"><span class="lineNum">     102</span>              :   /// Build rows for a cluster using greedy priority selection.</span>
 <span id="L103"><span class="lineNum">     103</span>              :   /// Operates only within this cluster; no cross-cluster reordering.</span>
-<span id="L104"><span class="lineNum">     104</span> <span class="tlaUNC">           0 :   List&lt;Widget&gt; _buildClusterRows(</span></span>
+<span id="L104"><span class="lineNum">     104</span> <span class="tlaGNC">           1 :   List&lt;Widget&gt; _buildClusterRows(</span></span>
 <span id="L105"><span class="lineNum">     105</span>              :     List&lt;HybridPhotoData&gt; photos,</span>
 <span id="L106"><span class="lineNum">     106</span>              :     double unitW,</span>
 <span id="L107"><span class="lineNum">     107</span>              :     double gap,</span>
 <span id="L108"><span class="lineNum">     108</span>              :     double innerSidePad,</span>
 <span id="L109"><span class="lineNum">     109</span>              :   ) {</span>
-<span id="L110"><span class="lineNum">     110</span> <span class="tlaUNC">           0 :     final rows = &lt;Widget&gt;[];</span></span>
-<span id="L111"><span class="lineNum">     111</span> <span class="tlaUNC">           0 :     final buffer = List&lt;HybridPhotoData&gt;.from(photos);</span></span>
+<span id="L110"><span class="lineNum">     110</span> <span class="tlaGNC">           1 :     final rows = &lt;Widget&gt;[];</span></span>
+<span id="L111"><span class="lineNum">     111</span> <span class="tlaGNC">           1 :     final buffer = List&lt;HybridPhotoData&gt;.from(photos);</span></span>
 <span id="L112"><span class="lineNum">     112</span>              : </span>
-<span id="L113"><span class="lineNum">     113</span> <span class="tlaUNC">           0 :     while (buffer.isNotEmpty) {</span></span>
-<span id="L114"><span class="lineNum">     114</span> <span class="tlaUNC">           0 :       final rowResult = _selectBestTemplate(buffer, unitW, gap, innerSidePad);</span></span>
-<span id="L115"><span class="lineNum">     115</span> <span class="tlaUNC">           0 :       rows.add(rowResult.widget);</span></span>
+<span id="L113"><span class="lineNum">     113</span> <span class="tlaGNC">           1 :     while (buffer.isNotEmpty) {</span></span>
+<span id="L114"><span class="lineNum">     114</span> <span class="tlaGNC">           1 :       final rowResult = _selectBestTemplate(buffer, unitW, gap, innerSidePad);</span></span>
+<span id="L115"><span class="lineNum">     115</span> <span class="tlaGNC">           2 :       rows.add(rowResult.widget);</span></span>
 <span id="L116"><span class="lineNum">     116</span>              : </span>
 <span id="L117"><span class="lineNum">     117</span>              :       // Remove ONLY the used indexes (descending order to keep indices valid).</span>
-<span id="L118"><span class="lineNum">     118</span> <span class="tlaUNC">           0 :       final idxs = rowResult.usedIndexes.toList()..sort();</span></span>
-<span id="L119"><span class="lineNum">     119</span> <span class="tlaUNC">           0 :       for (int k = idxs.length - 1; k &gt;= 0; k--) {</span></span>
-<span id="L120"><span class="lineNum">     120</span> <span class="tlaUNC">           0 :         buffer.removeAt(idxs[k]);</span></span>
+<span id="L118"><span class="lineNum">     118</span> <span class="tlaGNC">           3 :       final idxs = rowResult.usedIndexes.toList()..sort();</span></span>
+<span id="L119"><span class="lineNum">     119</span> <span class="tlaGNC">           4 :       for (int k = idxs.length - 1; k &gt;= 0; k--) {</span></span>
+<span id="L120"><span class="lineNum">     120</span> <span class="tlaGNC">           2 :         buffer.removeAt(idxs[k]);</span></span>
 <span id="L121"><span class="lineNum">     121</span>              :       }</span>
 <span id="L122"><span class="lineNum">     122</span>              :     }</span>
 <span id="L123"><span class="lineNum">     123</span>              : </span>
@@ -187,22 +187,22 @@
 <span id="L125"><span class="lineNum">     125</span>              :   }</span>
 <span id="L126"><span class="lineNum">     126</span>              : </span>
 <span id="L127"><span class="lineNum">     127</span>              :   /// Select the best row template for the current buffer with lookahead ≤ 4.</span>
-<span id="L128"><span class="lineNum">     128</span> <span class="tlaUNC">           0 :   _TemplateResult _selectBestTemplate(</span></span>
+<span id="L128"><span class="lineNum">     128</span> <span class="tlaGNC">           1 :   _TemplateResult _selectBestTemplate(</span></span>
 <span id="L129"><span class="lineNum">     129</span>              :     List&lt;HybridPhotoData&gt; buffer,</span>
 <span id="L130"><span class="lineNum">     130</span>              :     double unitW,</span>
 <span id="L131"><span class="lineNum">     131</span>              :     double gap,</span>
 <span id="L132"><span class="lineNum">     132</span>              :     double innerSidePad,</span>
 <span id="L133"><span class="lineNum">     133</span>              :   ) {</span>
-<span id="L134"><span class="lineNum">     134</span> <span class="tlaUNC">           0 :     final la = math.min(4, buffer.length);</span></span>
-<span id="L135"><span class="lineNum">     135</span> <span class="tlaUNC">           0 :     final cand = buffer.take(la).toList(growable: false);</span></span>
+<span id="L134"><span class="lineNum">     134</span> <span class="tlaGNC">           2 :     final la = math.min(4, buffer.length);</span></span>
+<span id="L135"><span class="lineNum">     135</span> <span class="tlaGNC">           2 :     final cand = buffer.take(la).toList(growable: false);</span></span>
 <span id="L136"><span class="lineNum">     136</span>              : </span>
-<span id="L137"><span class="lineNum">     137</span> <span class="tlaUNC">           0 :     bool isP(int i) =&gt; cand[i].isPortrait;</span></span>
-<span id="L138"><span class="lineNum">     138</span> <span class="tlaUNC">           0 :     bool isL(int i) =&gt; !cand[i].isPortrait;</span></span>
+<span id="L137"><span class="lineNum">     137</span> <span class="tlaGNC">           3 :     bool isP(int i) =&gt; cand[i].isPortrait;</span></span>
+<span id="L138"><span class="lineNum">     138</span> <span class="tlaGNC">           3 :     bool isL(int i) =&gt; !cand[i].isPortrait;</span></span>
 <span id="L139"><span class="lineNum">     139</span>              : </span>
 <span id="L140"><span class="lineNum">     140</span>              :     // ---- Priority 0: VSCO Column — P + 2L (or 2L + P) ----</span>
 <span id="L141"><span class="lineNum">     141</span>              :     // Creates a column layout: one tall portrait + two landscapes stacked</span>
 <span id="L142"><span class="lineNum">     142</span>              :     // Only fires when the first 3 items have exactly 1P and 2L.</span>
-<span id="L143"><span class="lineNum">     143</span> <span class="tlaUNC">           0 :     if (buffer.length &gt;= 3) {</span></span>
+<span id="L143"><span class="lineNum">     143</span> <span class="tlaGNC">           2 :     if (buffer.length &gt;= 3) {</span></span>
 <span id="L144"><span class="lineNum">     144</span> <span class="tlaUNC">           0 :       final first3P = [0, 1, 2].where((i) =&gt; isP(i)).toList();</span></span>
 <span id="L145"><span class="lineNum">     145</span> <span class="tlaUNC">           0 :       final first3L = [0, 1, 2].where((i) =&gt; isL(i)).toList();</span></span>
 <span id="L146"><span class="lineNum">     146</span>              : </span>
@@ -240,10 +240,10 @@
 <span id="L178"><span class="lineNum">     178</span>              : </span>
 <span id="L179"><span class="lineNum">     179</span>              :     // ---- Priority 1: L full + P (or P + L full) ----</span>
 <span id="L180"><span class="lineNum">     180</span>              :     // (a) L then P anywhere within lookahead</span>
-<span id="L181"><span class="lineNum">     181</span> <span class="tlaUNC">           0 :     for (int i = 0; i &lt; la - 1; i++) {</span></span>
-<span id="L182"><span class="lineNum">     182</span> <span class="tlaUNC">           0 :       if (isL(i)) {</span></span>
-<span id="L183"><span class="lineNum">     183</span> <span class="tlaUNC">           0 :         for (int j = i + 1; j &lt; la; j++) {</span></span>
-<span id="L184"><span class="lineNum">     184</span> <span class="tlaUNC">           0 :           if (isP(j)) {</span></span>
+<span id="L181"><span class="lineNum">     181</span> <span class="tlaGNC">           2 :     for (int i = 0; i &lt; la - 1; i++) {</span></span>
+<span id="L182"><span class="lineNum">     182</span> <span class="tlaGNC">           1 :       if (isL(i)) {</span></span>
+<span id="L183"><span class="lineNum">     183</span> <span class="tlaGNC">           3 :         for (int j = i + 1; j &lt; la; j++) {</span></span>
+<span id="L184"><span class="lineNum">     184</span> <span class="tlaGNC">           1 :           if (isP(j)) {</span></span>
 <span id="L185"><span class="lineNum">     185</span> <span class="tlaUNC">           0 :             return _TemplateResult(</span></span>
 <span id="L186"><span class="lineNum">     186</span> <span class="tlaUNC">           0 :               widget: Padding(</span></span>
 <span id="L187"><span class="lineNum">     187</span> <span class="tlaUNC">           0 :                 padding: EdgeInsets.symmetric(horizontal: innerSidePad),</span></span>
@@ -258,8 +258,8 @@
 <span id="L196"><span class="lineNum">     196</span>              :       }</span>
 <span id="L197"><span class="lineNum">     197</span>              :     }</span>
 <span id="L198"><span class="lineNum">     198</span>              :     // (b) P then L anywhere within lookahead</span>
-<span id="L199"><span class="lineNum">     199</span> <span class="tlaUNC">           0 :     for (int i = 0; i &lt; la - 1; i++) {</span></span>
-<span id="L200"><span class="lineNum">     200</span> <span class="tlaUNC">           0 :       if (isP(i)) {</span></span>
+<span id="L199"><span class="lineNum">     199</span> <span class="tlaGNC">           3 :     for (int i = 0; i &lt; la - 1; i++) {</span></span>
+<span id="L200"><span class="lineNum">     200</span> <span class="tlaGNC">           1 :       if (isP(i)) {</span></span>
 <span id="L201"><span class="lineNum">     201</span> <span class="tlaUNC">           0 :         for (int j = i + 1; j &lt; la; j++) {</span></span>
 <span id="L202"><span class="lineNum">     202</span> <span class="tlaUNC">           0 :           if (isL(j)) {</span></span>
 <span id="L203"><span class="lineNum">     203</span> <span class="tlaUNC">           0 :             return _TemplateResult(</span></span>
@@ -278,16 +278,16 @@
 <span id="L216"><span class="lineNum">     216</span>              : </span>
 <span id="L217"><span class="lineNum">     217</span>              :     // ---- Priority 2: L½ + L½ ----</span>
 <span id="L218"><span class="lineNum">     218</span>              :     // Two consecutive L before the first P in lookahead.</span>
-<span id="L219"><span class="lineNum">     219</span> <span class="tlaUNC">           0 :     int firstP = cand.indexWhere((e) =&gt; e.isPortrait);</span></span>
-<span id="L220"><span class="lineNum">     220</span> <span class="tlaUNC">           0 :     if (firstP == -1) firstP = la; // no P in lookahead</span></span>
-<span id="L221"><span class="lineNum">     221</span> <span class="tlaUNC">           0 :     for (int i = 0; i &lt; math.min(firstP - 1, la - 1); i++) {</span></span>
-<span id="L222"><span class="lineNum">     222</span> <span class="tlaUNC">           0 :       if (isL(i) &amp;&amp; isL(i + 1)) {</span></span>
-<span id="L223"><span class="lineNum">     223</span> <span class="tlaUNC">           0 :         return _TemplateResult(</span></span>
-<span id="L224"><span class="lineNum">     224</span> <span class="tlaUNC">           0 :           widget: Padding(</span></span>
-<span id="L225"><span class="lineNum">     225</span> <span class="tlaUNC">           0 :             padding: EdgeInsets.symmetric(horizontal: innerSidePad),</span></span>
-<span id="L226"><span class="lineNum">     226</span> <span class="tlaUNC">           0 :             child: _buildRowLhalfLhalf([cand[i], cand[i + 1]], unitW, gap),</span></span>
+<span id="L219"><span class="lineNum">     219</span> <span class="tlaGNC">           3 :     int firstP = cand.indexWhere((e) =&gt; e.isPortrait);</span></span>
+<span id="L220"><span class="lineNum">     220</span> <span class="tlaGNC">           2 :     if (firstP == -1) firstP = la; // no P in lookahead</span></span>
+<span id="L221"><span class="lineNum">     221</span> <span class="tlaGNC">           4 :     for (int i = 0; i &lt; math.min(firstP - 1, la - 1); i++) {</span></span>
+<span id="L222"><span class="lineNum">     222</span> <span class="tlaGNC">           3 :       if (isL(i) &amp;&amp; isL(i + 1)) {</span></span>
+<span id="L223"><span class="lineNum">     223</span> <span class="tlaGNC">           1 :         return _TemplateResult(</span></span>
+<span id="L224"><span class="lineNum">     224</span> <span class="tlaGNC">           1 :           widget: Padding(</span></span>
+<span id="L225"><span class="lineNum">     225</span> <span class="tlaGNC">           1 :             padding: EdgeInsets.symmetric(horizontal: innerSidePad),</span></span>
+<span id="L226"><span class="lineNum">     226</span> <span class="tlaGNC">           5 :             child: _buildRowLhalfLhalf([cand[i], cand[i + 1]], unitW, gap),</span></span>
 <span id="L227"><span class="lineNum">     227</span>              :           ),</span>
-<span id="L228"><span class="lineNum">     228</span> <span class="tlaUNC">           0 :           usedIndexes: [i, i + 1],</span></span>
+<span id="L228"><span class="lineNum">     228</span> <span class="tlaGNC">           2 :           usedIndexes: [i, i + 1],</span></span>
 <span id="L229"><span class="lineNum">     229</span>              :           penalty: 0,</span>
 <span id="L230"><span class="lineNum">     230</span>              :         );</span>
 <span id="L231"><span class="lineNum">     231</span>              :       }</span>
@@ -399,17 +399,17 @@
 <span id="L337"><span class="lineNum">     337</span>              :   }</span>
 <span id="L338"><span class="lineNum">     338</span>              : </span>
 <span id="L339"><span class="lineNum">     339</span>              :   /// Row: L½ + L½ (pair only)</span>
-<span id="L340"><span class="lineNum">     340</span> <span class="tlaUNC">           0 :   Widget _buildRowLhalfLhalf(</span></span>
+<span id="L340"><span class="lineNum">     340</span> <span class="tlaGNC">           1 :   Widget _buildRowLhalfLhalf(</span></span>
 <span id="L341"><span class="lineNum">     341</span>              :       List&lt;HybridPhotoData&gt; photos, double unitW, double gap) {</span>
-<span id="L342"><span class="lineNum">     342</span> <span class="tlaUNC">           0 :     final wHalf = unitW * 3 + gap * 2; // span 3 units -&gt; adds 2 inner gaps</span></span>
-<span id="L343"><span class="lineNum">     343</span> <span class="tlaUNC">           0 :     final h = wHalf * 9 / 16; // 16:9</span></span>
-<span id="L344"><span class="lineNum">     344</span> <span class="tlaUNC">           0 :     return Padding(</span></span>
+<span id="L342"><span class="lineNum">     342</span> <span class="tlaGNC">           3 :     final wHalf = unitW * 3 + gap * 2; // span 3 units -&gt; adds 2 inner gaps</span></span>
+<span id="L343"><span class="lineNum">     343</span> <span class="tlaGNC">           2 :     final h = wHalf * 9 / 16; // 16:9</span></span>
+<span id="L344"><span class="lineNum">     344</span> <span class="tlaGNC">           1 :     return Padding(</span></span>
 <span id="L345"><span class="lineNum">     345</span>              :       padding: const EdgeInsets.only(bottom: Gaps.xs),</span>
-<span id="L346"><span class="lineNum">     346</span> <span class="tlaUNC">           0 :       child: Row(</span></span>
-<span id="L347"><span class="lineNum">     347</span> <span class="tlaUNC">           0 :         children: [</span></span>
-<span id="L348"><span class="lineNum">     348</span> <span class="tlaUNC">           0 :           _buildPhotoTile(photos[0], wHalf, h, rowHeight: h),</span></span>
-<span id="L349"><span class="lineNum">     349</span> <span class="tlaUNC">           0 :           SizedBox(width: gap),</span></span>
-<span id="L350"><span class="lineNum">     350</span> <span class="tlaUNC">           0 :           _buildPhotoTile(photos[1], wHalf, h, rowHeight: h),</span></span>
+<span id="L346"><span class="lineNum">     346</span> <span class="tlaGNC">           1 :       child: Row(</span></span>
+<span id="L347"><span class="lineNum">     347</span> <span class="tlaGNC">           1 :         children: [</span></span>
+<span id="L348"><span class="lineNum">     348</span> <span class="tlaGNC">           2 :           _buildPhotoTile(photos[0], wHalf, h, rowHeight: h),</span></span>
+<span id="L349"><span class="lineNum">     349</span> <span class="tlaGNC">           1 :           SizedBox(width: gap),</span></span>
+<span id="L350"><span class="lineNum">     350</span> <span class="tlaGNC">           2 :           _buildPhotoTile(photos[1], wHalf, h, rowHeight: h),</span></span>
 <span id="L351"><span class="lineNum">     351</span>              :         ],</span>
 <span id="L352"><span class="lineNum">     352</span>              :       ),</span>
 <span id="L353"><span class="lineNum">     353</span>              :     );</span>
@@ -566,7 +566,7 @@
 <span id="L504"><span class="lineNum">     504</span>              : </span>
 <span id="L505"><span class="lineNum">     505</span>              :   /// Builds a single photo tile clipped and center-cropped.</span>
 <span id="L506"><span class="lineNum">     506</span>              :   /// width/height are the &quot;natural&quot; AR sizes; rowHeight enforces equal height in the row.</span>
-<span id="L507"><span class="lineNum">     507</span> <span class="tlaUNC">           0 :   Widget _buildPhotoTile(</span></span>
+<span id="L507"><span class="lineNum">     507</span> <span class="tlaGNC">           1 :   Widget _buildPhotoTile(</span></span>
 <span id="L508"><span class="lineNum">     508</span>              :     HybridPhotoData photo,</span>
 <span id="L509"><span class="lineNum">     509</span>              :     double width,</span>
 <span id="L510"><span class="lineNum">     510</span>              :     double height, {</span>
@@ -574,26 +574,26 @@
 <span id="L512"><span class="lineNum">     512</span>              :   }) {</span>
 <span id="L513"><span class="lineNum">     513</span>              :     final targetHeight = rowHeight ?? height;</span>
 <span id="L514"><span class="lineNum">     514</span>              : </span>
-<span id="L515"><span class="lineNum">     515</span> <span class="tlaUNC">           0 :     return GestureDetector(</span></span>
-<span id="L516"><span class="lineNum">     516</span> <span class="tlaUNC">           0 :       onTap: onPhotoTap != null ? () =&gt; onPhotoTap!(photo.id) : null,</span></span>
-<span id="L517"><span class="lineNum">     517</span> <span class="tlaUNC">           0 :       child: AnimatedContainer(</span></span>
+<span id="L515"><span class="lineNum">     515</span> <span class="tlaGNC">           1 :     return GestureDetector(</span></span>
+<span id="L516"><span class="lineNum">     516</span> <span class="tlaGNC">           1 :       onTap: onPhotoTap != null ? () =&gt; onPhotoTap!(photo.id) : null,</span></span>
+<span id="L517"><span class="lineNum">     517</span> <span class="tlaGNC">           1 :       child: AnimatedContainer(</span></span>
 <span id="L518"><span class="lineNum">     518</span>              :         duration: const Duration(milliseconds: 150),</span>
 <span id="L519"><span class="lineNum">     519</span>              :         width: width,</span>
 <span id="L520"><span class="lineNum">     520</span>              :         height: targetHeight, // same height for all tiles in row</span>
-<span id="L521"><span class="lineNum">     521</span> <span class="tlaUNC">           0 :         child: ClipRRect(</span></span>
-<span id="L522"><span class="lineNum">     522</span> <span class="tlaUNC">           0 :           borderRadius: BorderRadius.circular(Radii.sm),</span></span>
-<span id="L523"><span class="lineNum">     523</span> <span class="tlaUNC">           0 :           child: FittedBox(</span></span>
+<span id="L521"><span class="lineNum">     521</span> <span class="tlaGNC">           1 :         child: ClipRRect(</span></span>
+<span id="L522"><span class="lineNum">     522</span> <span class="tlaGNC">           1 :           borderRadius: BorderRadius.circular(Radii.sm),</span></span>
+<span id="L523"><span class="lineNum">     523</span> <span class="tlaGNC">           1 :           child: FittedBox(</span></span>
 <span id="L524"><span class="lineNum">     524</span>              :             fit: BoxFit.cover,</span>
 <span id="L525"><span class="lineNum">     525</span>              :             alignment: Alignment.center,</span>
-<span id="L526"><span class="lineNum">     526</span> <span class="tlaUNC">           0 :             child: SizedBox(</span></span>
+<span id="L526"><span class="lineNum">     526</span> <span class="tlaGNC">           1 :             child: SizedBox(</span></span>
 <span id="L527"><span class="lineNum">     527</span>              :               width: width,</span>
 <span id="L528"><span class="lineNum">     528</span>              :               height: height, // maintained AR inside the FittedBox</span>
-<span id="L529"><span class="lineNum">     529</span> <span class="tlaUNC">           0 :               child: Image.network(</span></span>
-<span id="L530"><span class="lineNum">     530</span> <span class="tlaUNC">           0 :                 photo.imageUrl,</span></span>
+<span id="L529"><span class="lineNum">     529</span> <span class="tlaGNC">           1 :               child: Image.network(</span></span>
+<span id="L530"><span class="lineNum">     530</span> <span class="tlaGNC">           1 :                 photo.imageUrl,</span></span>
 <span id="L531"><span class="lineNum">     531</span>              :                 fit: BoxFit.cover,</span>
-<span id="L532"><span class="lineNum">     532</span> <span class="tlaUNC">           0 :                 loadingBuilder: (context, child, loadingProgress) {</span></span>
+<span id="L532"><span class="lineNum">     532</span> <span class="tlaGNC">           1 :                 loadingBuilder: (context, child, loadingProgress) {</span></span>
 <span id="L533"><span class="lineNum">     533</span>              :                   if (loadingProgress == null) return child;</span>
-<span id="L534"><span class="lineNum">     534</span> <span class="tlaUNC">           0 :                   return Container(</span></span>
+<span id="L534"><span class="lineNum">     534</span> <span class="tlaGNC">           1 :                   return Container(</span></span>
 <span id="L535"><span class="lineNum">     535</span>              :                     color: BrandColors.bg2,</span>
 <span id="L536"><span class="lineNum">     536</span>              :                     child: const Center(</span>
 <span id="L537"><span class="lineNum">     537</span>              :                       child: CircularProgressIndicator(strokeWidth: 2),</span>
@@ -624,7 +624,7 @@
 <span id="L562"><span class="lineNum">     562</span>              :   final List&lt;int&gt; usedIndexes; // indexes in current lookahead/buffer prefix</span>
 <span id="L563"><span class="lineNum">     563</span>              :   final int penalty;</span>
 <span id="L564"><span class="lineNum">     564</span>              : </span>
-<span id="L565"><span class="lineNum">     565</span> <span class="tlaUNC">           0 :   const _TemplateResult({</span></span>
+<span id="L565"><span class="lineNum">     565</span> <span class="tlaGNC">           1 :   const _TemplateResult({</span></span>
 <span id="L566"><span class="lineNum">     566</span>              :     required this.widget,</span>
 <span id="L567"><span class="lineNum">     567</span>              :     required this.usedIndexes,</span>
 <span id="L568"><span class="lineNum">     568</span>              :     required this.penalty,</span>
@@ -639,7 +639,7 @@
 <span id="L577"><span class="lineNum">     577</span>              :   final double aspectRatio;</span>
 <span id="L578"><span class="lineNum">     578</span>              :   final DateTime capturedAt;</span>
 <span id="L579"><span class="lineNum">     579</span>              : </span>
-<span id="L580"><span class="lineNum">     580</span> <span class="tlaUNC">           0 :   const HybridPhotoData({</span></span>
+<span id="L580"><span class="lineNum">     580</span> <span class="tlaGNC">           1 :   const HybridPhotoData({</span></span>
 <span id="L581"><span class="lineNum">     581</span>              :     required this.id,</span>
 <span id="L582"><span class="lineNum">     582</span>              :     required this.imageUrl,</span>
 <span id="L583"><span class="lineNum">     583</span>              :     required this.isPortrait,</span>
