@@ -207,20 +207,20 @@ void main() {
 ## 6. Progress tracker
 
 ### auth
-- [ ] `User`
+- [x] `User`
 
 ### create_event
-- [ ] `Event` + `EventLocation` + `EventStatus` + `ValueWrapper`
-- [ ] `EventHistory`
+- [x] `Event` + `EventLocation` + `EventStatus` + `ValueWrapper`
+- [x] `EventHistory`
 
 ### event
-- [ ] `EventDetail` *(review existing test)*
-- [ ] `Rsvp` + `RsvpStatus`
-- [ ] `Poll` + `PollOption`
-- [ ] `Suggestion`
-- [ ] `ChatMessage`
-- [ ] `EventParticipantEntity`
-- [ ] `EventDisplayEntity`
+- [x] `EventDetail` *(review existing test)*
+- [x] `Rsvp` + `RsvpStatus`
+- [x] `Poll` + `PollOption`
+- [x] `Suggestion`
+- [x] `ChatMessage`
+- [x] `EventParticipantEntity`
+- [x] `EventDisplayEntity`
 
 ### memory
-- [ ] `MemoryEntity` + `MemoryPhoto` + `EventStatus.fromString`
+- [x] `MemoryEntity` + `MemoryPhoto` + `EventStatus.fromString`

@@ -2,13 +2,70 @@ import 'package:lazzo/core/utils/date_utils.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/rsvp_model.dart';
 
+abstract class RsvpRemoteSupabaseOps {
+  Future<List<Map<String, dynamic>>> getEventRsvpsRaw(String eventId);
+  Future<Map<String, dynamic>> upsertRsvp({
+    required String eventId,
+    required String userId,
+    required String status,
+    required String confirmedAtIso,
+  });
+  Future<String> createSignedAvatarUrl(String path);
+}
+
+class DefaultRsvpRemoteSupabaseOps implements RsvpRemoteSupabaseOps {
+  final SupabaseClient _client;
+  DefaultRsvpRemoteSupabaseOps(this._client);
+
+  @override
+  Future<List<Map<String, dynamic>>> getEventRsvpsRaw(String eventId) async {
+    final response =
+        await _client.from('event_participants').select('''
+            user_id,
+            pevent_id,
+            rsvp,
+            confirmed_at,
+            user:user_id(id, name, avatar_url, email)
+          ''').eq('pevent_id', eventId).order('confirmed_at', ascending: false);
+    return List<Map<String, dynamic>>.from(response as List);
+  }
+
+  @override
+  Future<Map<String, dynamic>> upsertRsvp({
+    required String eventId,
+    required String userId,
+    required String status,
+    required String confirmedAtIso,
+  }) async {
+    final response = await _client.from('event_participants').upsert({
+      'pevent_id': eventId,
+      'user_id': userId,
+      'rsvp': status,
+      'confirmed_at': confirmedAtIso,
+    }).select('''
+            user_id,
+            pevent_id,
+            rsvp,
+            confirmed_at,
+            user:user_id(id, name, avatar_url, email)
+          ''').single();
+    return Map<String, dynamic>.from(response as Map);
+  }
+
+  @override
+  Future<String> createSignedAvatarUrl(String path) async {
+    return await _client.storage.from('users-profile-pic').createSignedUrl(path, 3600);
+  }
+}
+
 /// Remote data source for RSVP operations
 /// Handles all Supabase queries related to RSVPs
 class RsvpRemoteDataSource {
   final SupabaseClient _supabaseClient;
-  static const String _avatarBucketName = 'users-profile-pic';
+  final RsvpRemoteSupabaseOps _ops;
 
-  RsvpRemoteDataSource(this._supabaseClient);
+  RsvpRemoteDataSource(this._supabaseClient, {RsvpRemoteSupabaseOps? ops})
+      : _ops = ops ?? DefaultRsvpRemoteSupabaseOps(_supabaseClient);
 
   /// Convert storage path to signed URL (for private buckets)
   Future<String> _getSignedAvatarUrl(String? storagePath) async {
@@ -28,9 +85,7 @@ class RsvpRemoteDataSource {
           storagePath.startsWith('/') ? storagePath.substring(1) : storagePath;
 
       // Create signed URL (valid for 1 hour)
-      final signedUrl = await _supabaseClient.storage
-          .from(_avatarBucketName)
-          .createSignedUrl(normalizedPath, 3600);
+      final signedUrl = await _ops.createSignedAvatarUrl(normalizedPath);
 
       return signedUrl;
     } catch (e) {
@@ -54,14 +109,7 @@ class RsvpRemoteDataSource {
   /// Uses existing event_participants table
   Future<List<RsvpModel>> getEventRsvps(String eventId) async {
     try {
-      final response =
-          await _supabaseClient.from('event_participants').select('''
-            user_id,
-            pevent_id,
-            rsvp,
-            confirmed_at,
-            user:user_id(id, name, avatar_url, email)
-          ''').eq('pevent_id', eventId).order('confirmed_at', ascending: false);
+      final response = await _ops.getEventRsvpsRaw(eventId);
 
       // Convert avatar URLs from storage paths to signed URLs
       for (final json in response as List) {
@@ -112,18 +160,12 @@ class RsvpRemoteDataSource {
     String status,
   ) async {
     try {
-      final response = await _supabaseClient.from('event_participants').upsert({
-        'pevent_id': eventId,
-        'user_id': userId,
-        'rsvp': status,
-        'confirmed_at': DateTime.now().toSupabaseIso8601String(),
-      }).select('''
-            user_id,
-            pevent_id,
-            rsvp,
-            confirmed_at,
-            user:user_id(id, name, avatar_url, email)
-          ''').single();
+      final response = await _ops.upsertRsvp(
+        eventId: eventId,
+        userId: userId,
+        status: status,
+        confirmedAtIso: DateTime.now().toSupabaseIso8601String(),
+      );
 
       // Convert avatar URL from storage path to signed URL
       await _convertAvatarUrl(response);

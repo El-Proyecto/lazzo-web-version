@@ -2,9 +2,50 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/user_model.dart';
 
+abstract class AuthDatasourceSupabaseOps {
+  Future<Map<String, dynamic>?> findUserIdByEmail(String email);
+  Future<void> signInWithOtp({
+    required String email,
+    required bool shouldCreateUser,
+    String? emailRedirectTo,
+    Map<String, dynamic>? data,
+  });
+}
+
+class DefaultAuthDatasourceSupabaseOps implements AuthDatasourceSupabaseOps {
+  final SupabaseClient _client;
+  DefaultAuthDatasourceSupabaseOps(this._client);
+
+  @override
+  Future<Map<String, dynamic>?> findUserIdByEmail(String email) async {
+    return await _client
+        .from('users')
+        .select('id')
+        .eq('email', email)
+        .maybeSingle();
+  }
+
+  @override
+  Future<void> signInWithOtp({
+    required String email,
+    required bool shouldCreateUser,
+    String? emailRedirectTo,
+    Map<String, dynamic>? data,
+  }) async {
+    await _client.auth.signInWithOtp(
+      email: email,
+      shouldCreateUser: shouldCreateUser,
+      emailRedirectTo: emailRedirectTo,
+      data: data,
+    );
+  }
+}
+
 class AuthRemoteDatasource {
   final SupabaseClient client;
-  AuthRemoteDatasource(this.client);
+  final AuthDatasourceSupabaseOps _ops;
+  AuthRemoteDatasource(this.client, {AuthDatasourceSupabaseOps? ops})
+      : _ops = ops ?? DefaultAuthDatasourceSupabaseOps(client);
 
   // 1) Login com email e OTP
   Future<void> login(String email) async {
@@ -13,11 +54,7 @@ class AuthRemoteDatasource {
 
       // Verifica se o usuário existe antes de enviar OTP
 
-      final existingUser = await client
-          .from('users')
-          .select('id')
-          .eq('email', trimmedEmail)
-          .maybeSingle();
+      final existingUser = await _ops.findUserIdByEmail(trimmedEmail);
 
       if (existingUser == null) {
         throw Exception(
@@ -26,10 +63,9 @@ class AuthRemoteDatasource {
       }
 
       // Envia OTP apenas para usuários existentes
-      await client.auth.signInWithOtp(
+      await _ops.signInWithOtp(
         email: trimmedEmail,
         shouldCreateUser: false,
-        //emailRedirectTo: null, // Desabilita magic link
         data: {
           'type': 'login',
           'app': 'lazzo',
@@ -46,7 +82,7 @@ class AuthRemoteDatasource {
     try {
       final trimmedEmail = email.trim().toLowerCase();
 
-      await client.auth.signInWithOtp(
+      await _ops.signInWithOtp(
         email: trimmedEmail,
         shouldCreateUser: true,
         emailRedirectTo: null, // Desabilita magic link
