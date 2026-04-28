@@ -223,16 +223,16 @@ For golden tests, they will run as part of `flutter test --coverage` automatical
 ## 6. Progress tracker
 
 ### Golden tests — shared components
-- [ ] Primary button
-- [ ] Event full card
-- [ ] RSVP widget
-- [ ] Section header
+- [x] Primary button
+- [x] Event full card
+- [x] RSVP widget
+- [x] Section header
 
 ### Golden tests — pages
-- [ ] `CreateEventPage` (empty state)
-- [ ] `EventPage` (loaded state with fake data)
+- [x] `CreateEventPage` (empty state)
+- [x] `EventPage` (loaded state with fake data)
 
 ### Integration tests
-- [ ] Flow 1 — Auth page on launch
-- [ ] Flow 2 — Home/event list with fake data
-- [ ] Flow 3 — Create event happy path
+- [x] Flow 1 — Auth page on launch
+- [x] Flow 2 — Home/event list with fake data
+- [x] Flow 3 — Create event happy path
