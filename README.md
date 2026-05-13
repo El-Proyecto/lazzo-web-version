@@ -18,6 +18,10 @@ Lazzo is a mobile app that turns event planning and shared memories into one flo
 The guest web experience lives in a separate repository and shares the same Supabase backend:
 https://github.com/joaomsgomes/lazzo-invites-web
 
+## Screenshots
+
+![](docs/screenshots/side_by_side_UIs.png)
+
 ---
 
 ## Architecture
