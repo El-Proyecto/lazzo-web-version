@@ -6,9 +6,15 @@ Lazzo is a mobile app that turns event planning and shared memories into one flo
 
 ---
 
+## Screenshots
+
+![](docs/screenshots/side_by_side_UIs.png)
+
+---
+
 ## Built with
 
-- **App:** Flutter 3.5 (Dart 3), Riverpod 2
+- **App:** Flutter 3.32 (Dart 3), Riverpod 2
 - **Backend & DB:** Supabase — PostgreSQL, Row Level Security (RLS), DB triggers, Storage, Realtime (WebSocket channels), Edge Functions (Deno), cron-scheduled jobs
 - **Auth:** Supabase OTP magic-link — zero-friction guest auth, no account required
 - **Analytics:** PostHog (Cloud EU) — full funnel instrumentation across app and web, feature flags
@@ -17,10 +23,6 @@ Lazzo is a mobile app that turns event planning and shared memories into one flo
 
 The guest web experience lives in a separate repository and shares the same Supabase backend:
 https://github.com/joaomsgomes/lazzo-invites-web
-
-## Screenshots
-
-![](docs/screenshots/side_by_side_UIs.png)
 
 ---
 
@@ -96,26 +98,20 @@ graph TD
 - `mocktail` — interface mocking (Riverpod-compatible, no code generation)
 - `faker` — deterministic fake data generation
 
-**Coverage:**
-- `flutter test --coverage` runs on every push and PR
-- `lcov.info` artifact uploaded per PR (3-day retention) for branch coverage review
+**How tests are organized:** Files under `test/` mirror `lib/`. Priorities (domain use cases → widgets → golden/integration), conventions, and per-layer **coverage targets** (working goals; **not enforced in CI yet**) live in [`.agents/testing.md`](.agents/testing.md) and [`test/guides/`](test/guides/).
+
+**Coverage in CI:** Every workflow run executes `flutter test --coverage` and uploads `coverage/lcov.info` as an artifact; pull requests also trigger an upload step with **3-day** retention (see workflow).
 
 **CI pipeline (GitHub Actions — `.github/workflows/ci-dev.yml`):**
 
-```
-checkout → java 17 → flutter 3.5 → pub get
-→ flutter analyze      (zero violations required)
-→ dart format          (format check)
-→ flutter test --coverage
-→ upload coverage artifact
-→ [main branch only] build debug APK with Supabase secrets
-```
+1. **`flutter-ci` (Ubuntu):** checkout → JDK 17 → Flutter (pinned stable, see workflow) → `flutter pub get` → `flutter analyze` → `dart format --output=none` (check only; step uses `continue-on-error`) → `flutter test --coverage` → upload `lcov.info` → verify Supabase dev secrets → on **push to `main`**, build debug APK with dart-defines and upload APK artifact (short retention).
 
-**Quality gates enforced before merge:**
-- `flutter analyze` passes with zero violations
-- No `print()` debug statements (enforced via `./scripts/clean_prints.sh`)
-- `const` constructors used throughout
-- Tokens used — no hardcoded values
+2. **`integration-macos` (macOS):** runs after `flutter-ci` succeeds; `flutter test integration_test/app_test.dart -d macos` with Supabase dev dart-defines.
+
+**Quality gates (team / pre-merge; align with `.agents/testing.md`):**
+- `flutter analyze` clean before merge (CI runs analyze with workflow-specific flags)
+- No `print()` in app or test code (see `./scripts/clean_prints.sh` where used)
+- Prefer `const` constructors and design tokens — no hardcoded UI values in components
 
 **Scheduled cron jobs (separate workflows):**
 - `cron-notify-events-ending.yml` — every 5 minutes, triggers Edge Function
@@ -125,7 +121,7 @@ checkout → java 17 → flutter 3.5 → pub get
 
 ## Running the project locally
 
-**Prerequisites:** Flutter SDK (3.5+), Xcode (iOS) or Android Studio.
+**Prerequisites:** Flutter SDK (stable; CI pins a version in `.github/workflows/ci-dev.yml`), Xcode (iOS) or Android Studio.
 
 1. Clone the repo.
 2. Copy `.env.example` to `.env` and fill in your [Supabase](https://supabase.com) project URL and anon key (Settings → API).
@@ -151,7 +147,7 @@ The web companion does not need to be running to use the app.
 
 - **Website:** [getlazzo.com](https://getlazzo.com/)
 - **Web companion repo:** [github.com/joaomsgomes/lazzo-invites-web](https://github.com/joaomsgomes/lazzo-invites-web)
-- **TestFlight:** [Join the beta](https://testflight.apple.com/join/G8Q7wWbc)
+- **TestFlight:** [testflight.apple.com/join/b1D3qpJK](https://testflight.apple.com/join/b1D3qpJK)
 
 ---
 
