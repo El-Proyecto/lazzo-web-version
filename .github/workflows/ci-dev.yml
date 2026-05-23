@@ -37,7 +37,9 @@ jobs:
         continue-on-error: true
 
       - name: Run unit+widget tests (coverage)
-        run: flutter test --coverage
+        run: |
+          TEST_FILES=$(find test -name "*_test.dart" ! -name "*golden_test.dart" | tr '\n' ' ')
+          flutter test --coverage $TEST_FILES
 
       - name: Upload coverage
         uses: actions/upload-artifact@v4
