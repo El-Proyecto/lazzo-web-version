@@ -47,12 +47,6 @@ jobs:
           name: coverage-lcov
           path: coverage/lcov.info
 
-      - name: Check required secrets (DEV)
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        run: |
-          test -n "${{ secrets.SUPABASE_URL_DEV }}" || (echo "Missing SUPABASE_URL_DEV" && exit 1)
-          test -n "${{ secrets.SUPABASE_ANON_KEY_DEV }}" || (echo "Missing SUPABASE_ANON_KEY_DEV" && exit 1)
-
       - name: Build debug APK (DEV)
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         env:
@@ -98,11 +92,6 @@ jobs:
 
       - name: Flutter pub get
         run: flutter pub get
-
-      - name: Check required secrets (DEV)
-        run: |
-          test -n "${{ secrets.SUPABASE_URL_DEV }}" || (echo "Missing SUPABASE_URL_DEV" && exit 1)
-          test -n "${{ secrets.SUPABASE_ANON_KEY_DEV }}" || (echo "Missing SUPABASE_ANON_KEY_DEV" && exit 1)
 
       - name: Run integration tests (macOS)
         run: |
