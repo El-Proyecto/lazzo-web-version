@@ -47,8 +47,8 @@ jobs:
           name: coverage-lcov
           path: coverage/lcov.info
 
-      # Falhar cedo se secrets estiverem vazios (opcional mas útil)
       - name: Check required secrets (DEV)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: |
           test -n "${{ secrets.SUPABASE_URL_DEV }}" || (echo "Missing SUPABASE_URL_DEV" && exit 1)
           test -n "${{ secrets.SUPABASE_ANON_KEY_DEV }}" || (echo "Missing SUPABASE_ANON_KEY_DEV" && exit 1)
@@ -84,6 +84,7 @@ jobs:
   integration-macos:
     runs-on: macos-latest
     needs: flutter-ci
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
 
     steps:
       - uses: actions/checkout@v4
